@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>Cultivator Idle</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     CHARACTER SELECT SCREEN  (shown on startup)
+═══════════════════════════════════════════════════════ -->
+<div id="charselect">
+
+  <div id="cs-titlebar">
+    <span id="cs-title">☯ Cultivator Idle ☯</span>
+    <button class="tb-btn" id="cs-quit" title="Close">✕</button>
+  </div>
+
+  <div id="cs-header">Select your cultivator</div>
+
+  <div id="cs-slots"></div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MAIN GAME  (hidden until character selected)
+═══════════════════════════════════════════════════════ -->
+<div id="app" class="hidden">
+
+  <div id="titlebar">
+    <span id="cultivator-name" title="Click to rename">Unnamed Cultivator</span>
+    <div id="tb-controls">
+      <button class="tb-btn" id="btn-back"   title="Back to character select">◀</button>
+      <button class="tb-btn" id="btn-pin"    title="Toggle always on top">📌</button>
+      <button class="tb-btn" id="btn-quit"   title="Close">✕</button>
+    </div>
+  </div>
+
+  <div id="sprite-wrap">
+    <canvas id="sprite-canvas" width="300" height="172"></canvas>
+    <div id="meditate-badge" class="hidden">🧘 3× Qi</div>
+  </div>
+
+  <div id="stage-block">
+    <div id="stage-realm">Mortal Realm</div>
+    <div id="stage-layer">Unawakened · 凡人</div>
+    <div id="stage-desc">A mortal who has yet to feel the calling of the Dao.</div>
+  </div>
+
+  <div id="qi-block">
+    <div id="qi-labels">
+      <span class="lbl">氣 Qi</span>
+      <span id="qi-numbers">0 / 100</span>
+    </div>
+    <div id="qi-track"><div id="qi-fill"></div></div>
+    <div id="qi-rate">+0.5 qi/s</div>
+  </div>
+
+  <div id="integrity-block">
+    <div id="integrity-labels">
+      <span class="lbl">⚖ Integrity</span>
+      <span id="integrity-numbers">100 / 100</span>
+    </div>
+    <div id="integrity-track"><div id="integrity-fill"></div></div>
+  </div>
+
+  <div id="actions">
+    <button id="btn-meditate" class="act-btn">
+      <span class="act-icon">🧘</span>
+      <span class="act-name">Meditate</span>
+      <span class="act-sub">3× Qi · 30s</span>
+    </button>
+    <button id="btn-breakthrough" class="act-btn" disabled>
+      <span class="act-icon">⚡</span>
+      <span class="act-name">Breakthrough</span>
+      <span class="act-sub">Advance realm</span>
+    </button>
+  </div>
+
+  <div id="tabs">
+    <button class="tab active" data-tab="techniques">Techniques</button>
+    <button class="tab"        data-tab="stats">Stats</button>
+    <button class="tab"        data-tab="explore">Explore</button>
+    <button class="tab"        data-tab="craft">Craft</button>
+    <button class="tab"        data-tab="events">Log</button>
+  </div>
+
+  <div id="tab-body">
+    <div id="tab-techniques" class="panel active"></div>
+    <div id="tab-stats"      class="panel"></div>
+    <div id="tab-explore"    class="panel"></div>
+    <div id="tab-craft"      class="panel"></div>
+    <div id="tab-events"     class="panel"></div>
+  </div>
+
+</div>
+
+<!-- Rename overlay -->
+<div id="rename-overlay" class="hidden">
+  <input id="rename-input" maxlength="24" placeholder="Enter cultivator name…">
+  <button id="rename-ok">OK</button>
+</div>
+
+<!-- Delete confirm overlay -->
+<div id="confirm-overlay" class="hidden">
+  <div id="confirm-box">
+    <div id="confirm-msg">Delete this cultivator?</div>
+    <div id="confirm-sub">This cannot be undone.</div>
+    <div id="confirm-btns">
+      <button id="confirm-yes">Delete</button>
+      <button id="confirm-no">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/data/stages.js"></script>
+<script src="../assets/data/techniques.js"></script>
+<script src="../assets/data/events.js"></script>
+<script src="../assets/data/items.js"></script>
+<script src="../assets/data/locations.js"></script>
+<script src="../assets/data/enemies.js"></script>
+<script src="../assets/data/recipes.js"></script>
+<script src="../assets/data/beasts.js"></script>
+<script src="../assets/sprites/cultivator-sprites.js"></script>
+<script src="../assets/sprites/beast-sprites.js"></script>
+<script src="engine/game-state.js"></script>
+<script src="engine/ascii-renderer.js"></script>
+<script src="game/cultivation.js"></script>
+<script src="game/expedition.js"></script>
+<script src="game/crafting.js"></script>
+<script src="game/beasts.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(node --check renderer/engine/game-state.js)",
+      "Bash(node --check assets/data/items.js)",
+      "Bash(node --check assets/data/locations.js)",
+      "Bash(node --check assets/data/recipes.js)",
+      "Bash(node --check renderer/game/expedition.js)"
+    ]
+  }
+}

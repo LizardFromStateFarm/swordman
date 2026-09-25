@@ -1,0 +1,1146 @@
+# Cultivator Idle — Feature Roadmap
+
+**→ Always check START_HERE.md first for current build state and last session summary.**
+
+---
+
+## Phase Status
+
+```
+Phase 1  ✅  Core idle loop (Qi, stages, techniques, events, slots, particle renderer)
+Phase 2  ✅  Explore / Combat / Resources / Crafting
+Phase 3  ✅  Breakthrough Integrity + Spiritual Beasts
+Phase 4  ⬜  Sect System — join existing sects
+Phase 5  ⬜  Build your own sect + Sect Wars
+Phase 6  ⬜  Animation Overhaul
+Phase 7  ⬜  Dao Paths + Body Cultivation + Heavenly Tribulation
+Phase 8  ⬜  Ascension & Reincarnation (New Game+)
+Phase 9  ⬜  Desktop Integration (tray, notifications, time-of-day)
+Phase 10 ⬜  Cosmetic & Personalization
+Phase 11 ⬜  Rival NPC + Heaven's Will + Lore Fragments
+Phase 12 ⬜  Birth Origin & Character Foundation
+Phase 13 ⬜  Alignment & Karmic Path (Good vs Evil)
+Phase 14 ⬜  Body Constitution & Physical Tempering (deep)
+Phase 15 ⬜  NPC World Simulation (personalities, sects, relationships)
+Phase 16 ⬜  Marriage & Family
+Phase 17 ⬜  Secret Realm Dungeons (ASCII Map Grid Exploration, Timed Events)
+Phase 18 ⬜  Lineage & Heir Inheritance (Family Trees, Legacy Passives)
+Phase 19 ⬜  World Epochs & Spiritual Tides (Dynamic Global Modifiers)
+Phase 20 ⬜  Optional Settings & Challenge Modes (Permadeath, Accessibility)
+```
+
+---
+
+## Phase 2 — Explore, Combat, Resources & Crafting
+
+### 2A — Expedition System
+
+The cultivator sends expeditions to locations while continuing to meditate.
+Expeditions run in real-time and return with resources.
+
+**Locations** (unlock by cultivation stageIndex):
+| Location | minStage | Duration | Enemy Tier | Primary Drops |
+|----------|----------|----------|------------|---------------|
+| Mortal Forest (凡人森林) | 0 | 60s | Beast rank 1 | Spirit Herbs, Beast Cores |
+| Spirit Stone Quarry (灵石矿场) | 3 | 90s | Puppet rank 1 | Spirit Stones, Iron Ore |
+| Demon Marsh (妖魔沼泽) | 6 | 120s | Demon rank 2 | Demon Essence, Poison Herbs |
+| Ancient Ruins (古代遗迹) | 10 | 180s | Undead rank 3 | Artifact Fragments, Ancient Scripts |
+| Heavenly Peak (天峰) | 15 | 300s | Immortal rank 4 | Celestial Herbs, Heavenly Ore |
+| Void Rift (虚空裂缝) | 19 | 600s | Void rank 5 | Void Crystals, Chaos Essence |
+
+**New files:**
+- `assets/data/items.js` — `ITEMS` map: all item types, stackable flag, display info
+- `assets/data/locations.js` — `LOCATIONS` array with dropTables
+- `assets/data/enemies.js` — `ENEMIES` array with rank/hp/drops/asciiArt
+
+**State additions:**
+```js
+expedition: { active: false, locationId: null, endsAt: null },
+inventory: {},   // itemId → quantity
+```
+
+**UI:** New tab "Explore" — shows unlocked locations, active expedition timer, log of last return
+
+### 2B — Crafting System
+
+New tab "Craft" with sub-tabs: Pills · Elixirs · Weapons · Artifacts.
+
+**Pills** (consumed on breakthrough attempt — stackable in inventory):
+| Pill | Recipe | Effect |
+|------|--------|--------|
+| Qi Refining Pill (聚气丹) | 2× Spirit Herb | +10% BT chance (1 use) |
+| Foundation Pill (筑基丹) | 5× Spirit Herb + 1× Beast Core | +20% BT chance |
+| Heart Calming Pill (定心丹) | 3× Spirit Herb + 1× Demon Essence | -50% Qi lost on failure |
+| Golden Core Pill (金丹) | 10× Celestial Herb + 2× Heavenly Ore | +30% BT, -80% Qi loss |
+| Heaven Defying Pill (逆天丹) | 20× Void Crystal + 5× Chaos Essence | BT always succeeds |
+
+**Elixirs** (spiritual root reroll — consumed immediately):
+| Elixir | Recipe | Root outcome |
+|--------|--------|--------------|
+| Muddy Root Elixir (浊根液) | 3× Spirit Herb | Mixed guaranteed |
+| Cleansing Root Elixir (洗筋液) | 5× Spirit Herb + 2× Beast Core | 50% Dual, 50% Mixed |
+| Pure Root Elixir (纯根丹) | 10× Celestial Herb + 3× Void Crystal | 60% Pure, 35% Dual, 5% Heavenly |
+| Heavenly Root Elixir (天根丹) | 20× Chaos Essence + 5× Ancient Script | 40% Pure, 40% Heavenly, 20% Dual |
+
+**Weapons** (equip slot — passive):
+| Weapon | Recipe | Bonus |
+|--------|--------|-------|
+| Spirit Sword (灵剑) | 3× Iron Ore | +15% Qi/s |
+| Soul Spear (魂枪) | 5× Iron Ore + 2× Beast Core | +25% expedition power |
+| Thunder Staff (雷杖) | 3× Heavenly Ore | Enemies -20% HP |
+| Void Blade (虚刃) | 5× Heavenly Ore + 3× Void Crystal | +50% loot, +20% BT |
+
+**Artifacts** (equip slot — passive):
+| Artifact | Recipe | Bonus |
+|----------|--------|-------|
+| Jade Pendant (玉佩) | 2× Spirit Herb + 1× Iron Ore | Qi cap ×1.2 |
+| Soul Ring (魂环) | 3× Beast Core + 2× Iron Ore | Qi/s ×1.3 |
+| Heaven Talisman (天符) | 5× Ancient Script | BT chance +8% permanent |
+| Void Compass (虚空罗盘) | 3× Void Crystal | Unlocks hidden locations |
+
+**New files:** `assets/data/recipes.js`, `renderer/game/crafting.js`
+**State additions:** `equipped: { weapon: null, artifact: null }`, `pills: {}` (inventory of usable pills)
+
+### 2 — Implementation order
+1. `assets/data/items.js`
+2. `assets/data/locations.js` + `assets/data/enemies.js`
+3. `assets/data/recipes.js`
+4. Add `expedition` + `inventory` + `equipped` + `pills` to `game-state.js` `_newGame()`
+5. `renderer/game/expedition.js`
+6. `renderer/game/crafting.js`
+7. Add Explore + Craft tabs to `renderer/index.html` + `styles.css`
+8. Wire everything in `renderer/game.js`
+9. Update START_HERE.md + PLAN.md phase status + rebuild
+
+---
+
+## Phase 3 — Breakthrough Integrity & Spiritual Beasts
+
+### 3A — Realm Integrity
+
+Add a second bar: **Realm Integrity (0–100)**, starts at 100.
+
+- Failed breakthrough: −20 Integrity (on top of −50% Qi)
+- Integrity = 0: **Realm Demotion** (stageIndex −1), Integrity resets to 60
+- Passive regeneration: +1 Integrity per 30s (very slow — recovery takes time)
+- Heart Calming Pill restores +30 Integrity; Heaven Defying Pill bypasses Integrity check
+- UI: indigo→red bar below Qi bar; shake animation on demotion
+
+**State additions:** `realmIntegrity: 100`
+
+### 3B — Spiritual Beasts
+
+Tameable creatures encountered during expeditions.
+
+- Encounter chance per expedition: scales with location tier
+- Taming requires: Beast Taming Talisman (crafted) + sufficient stageIndex
+- Max 3 active beasts
+- Each beast has 3 random traits from pool: Swift, Iron Skin, Spirit Nose, Heavenly Instinct, Qi Devour, Soul Bond
+- Beast XP gained per expedition → level up every 100 XP (max 10) → +10% per trait per level
+- Send beasts on solo expeditions while cultivator meditates
+
+**New files:** `assets/data/beasts.js`, `renderer/game/beasts.js`
+All beast sprites must pass the Asset Pipeline (≥8.0).
+
+---
+
+## Phase 4 — Sect System (Join Existing)
+
+**Available sects:**
+| Sect | minStage | Specialty |
+|------|----------|-----------|
+| Azure Sword Sect (碧剑宗) | 3 | Weapon buffs, BT chance |
+| Myriad Herb Hall (万草堂) | 2 | Crafting ×2, herb drops |
+| Thunder Palace (雷宫) | 6 | Qi/s +40%, expedition power |
+| Void Moon Pavilion (虚月阁) | 10 | Hidden locations, Integrity regen |
+| Heaven Defying Sect (逆天门) | 15 | BT floor 50%, artifact bonus |
+
+**Sect ranks:** Outer Disciple → Inner Disciple → Core Disciple → Elder → Peak Elder → Grand Elder
+Rank up via Sect Contribution Points earned through missions and donations.
+
+**Sect missions** (real-time, auto-complete):
+| Mission | Duration | Reward |
+|---------|----------|--------|
+| Herb Gathering | 5 min | Herbs + Contribution |
+| Patrol | 10 min | Stones + Contribution |
+| Escort | 20 min | Contribution + Beast XP |
+| Subdue Demon | 30 min | Demon Essence + large Contribution |
+| Retrieve Artifact | 60 min | Fragment + large Contribution |
+
+**New files:** `assets/data/sects.js`, `renderer/game/sect.js`
+**State additions:** `sect: { id: null, rank: 0, contribution: 0, activeMissions: [] }`
+
+---
+
+## Phase 5 — Build Your Own Sect + Sect Wars
+
+### 5A — Found a Sect
+Unlocks at Nascent Soul (stageIndex ≥ 18). Cost: 500 Spirit Stones + 50 Void Crystals.
+
+**Buildings:**
+| Building | Cost | Bonus |
+|----------|------|-------|
+| Sect Hall (宗殿) | Required | +5 disciple cap, unlocks recruitment |
+| Qi Library (气功馆) | 50 Stones | Disciples +20% Qi contribution |
+| Pill Hall (炼丹殿) | 100 Stones + 20 Herbs | Craft speed ×2 |
+| Spirit Beast Pen (灵兽栏) | 80 Stones | +2 beast slots |
+| Training Ground (修炼场) | 60 Stones | Disciple levels +30% faster |
+| Defensive Array (防御阵) | 200 Stones + 5 Void Crystals | War defense +40% |
+| Treasury (宝库) | 150 Stones | Resource income +30% |
+
+**Disciples:** recruit up to 20 NPCs with 1–5 star talent. Higher talent = more resources generated.
+
+### 5B — Sect Wars
+Trigger every 2–6 hours (real time), scaled by sect fame.
+Phases: Scouting (5 min) → Preparation (10 min) → Auto-resolve.
+Win = spoils + enemy contribution loss. Lose = resource penalty + array damage.
+Alliance system: ally with other sects for defensive help.
+
+---
+
+## Phase 6 — Animation Overhaul
+
+### 6A — Particle System Enhancements
+- Bezier-curved Qi streams flowing toward cultivator
+- Realm-specific particles: fire sparks, water droplets, lightning arcs, void static
+- Aura rings with ripple timing tied to sprite fps
+
+### 6B — Sprite Enhancements
+Expand all sprites to 4+ frames. Add per-sprite micro-movements:
+- Breathing sway (±1 char left/right per cycle)
+- Eye blink frame (injected every 3–5 seconds by renderer)
+- Hair/robe ripple frame
+- Stage transition: dissolve/wipe between sprite states
+All new frames must pass the Asset Pipeline (≥8.0).
+
+### 6C — Event Animations
+- BT success: flash → burst → ring cascade → color shift to new stage color
+- BT failure: red flash → particle implosion → Integrity bar shake
+- Realm Demotion: screen tremor + downward spiral particle
+
+### 6D — Background Ambience
+| Realm | Canvas background behavior |
+|-------|---------------------------|
+| Mortal | Faint dust motes |
+| Qi Condensation | Blue Qi wisps drifting upward |
+| Foundation Building | Misty rolling tendrils |
+| Core Formation | Slow golden rotating halo |
+| Nascent Soul | Stars drifting outward |
+| Spirit Severing+ | Void rifts — animated cracks in the background |
+
+---
+
+## Phase 7 — Dao Paths, Body Cultivation & Heavenly Tribulation
+
+### 7A — Dao Path System
+At Foundation Building (stageIndex 10), the cultivator must choose a Dao Path.
+This is a permanent choice per save (reroll costs a Heavenly Root Elixir).
+
+| Dao Path | Bonus | Unique Technique Unlock |
+|----------|-------|------------------------|
+| Sword Dao (剑道) | Weapon bonuses ×1.5, BT chance +5% | Sword Intent: AOE expedition damage |
+| Flame Dao (炎道) | Qi/s ×1.4 | Heart Flame Sutra (enhanced) |
+| Void Dao (虚道) | Hidden locations always accessible | Phase Step: skip one failed BT per hour |
+| Life Dao (生道) | Realm Integrity regen ×3, herb drops ×2 | Undying Roots: never demote below current realm |
+| Heaven Dao (天道) | All bonuses ×1.2, BT always ≥ 30% | Heavenly Will: 1/day auto-advance layer |
+| Devil Dao (魔道) | Qi/s ×2.5, BT chance −15%, Karma slowly drains | Demonic Possession: temporarily ×5 Qi/s |
+
+Devil Dao adds the "Qi Deviation" event pool (higher damage negative events).
+
+### 7B — Body Cultivation
+A parallel track alongside Qi cultivation. Levels from Mortal Body → Bronze → Iron → Diamond → Immortal.
+Each level requires physical tempering (uses Beast Cores + Iron Ore).
+Body level provides: damage reduction in expeditions, Realm Integrity starting value increases.
+
+**State additions:** `bodyLevel: 0, bodyXp: 0`
+
+### 7C — Heavenly Tribulation
+At three specific transitions (Foundation Building, Nascent Soul, Spirit Severing), a Heavenly Tribulation
+is required before you can break through. Not auto-triggered — you must choose to "Face the Tribulation."
+
+Three waves of increasingly powerful lightning strikes. Each wave: survive or lose significant Qi/Integrity.
+Surviving all 3 waves grants the breakthrough and a permanent "Tribulation Veteran" title.
+Failing mid-tribulation: large Qi loss but can retry after a 10-minute cooldown.
+
+The tribulation plays as a special multi-frame ASCII animation (lightning, storm, enduring figure).
+This is a major event — the most dramatic animation in the game.
+
+---
+
+## Phase 8 — Ascension & Reincarnation (New Game+)
+
+When you reach Ascension (stageIndex 22), the game doesn't end — you **Reincarnate**.
+
+**Reincarnation grants Dao Seeds** — permanent, cross-save multipliers:
+- Each reincarnation: +1 Dao Seed (max 10)
+- Dao Seeds apply on new game start: each seed = ×1.2 to base Qi/s
+- Retained across reincarnations: Dao Path choice, any techniques learned above Foundation Building
+- NOT retained: stage, spirit stones, equipment, sect rank, beasts
+
+**Ascension Hall** — a new persistent tab visible after first ascension.
+Shows: total reincarnations, cumulative stats, Dao Seed count, personal bests.
+
+**Sect Legacy** — the sect you founded persists across reincarnations. Buildings and disciples survive.
+Disciples slowly cultivate on their own between sessions.
+
+---
+
+## Phase 9 — Desktop Integration
+
+### 9A — System Tray
+- App minimizes to system tray (not taskbar close)
+- Tray icon updates with cultivation stage (mortal, qi condensation, foundation, etc.)
+- Right-click menu: "Wei Longshan — Qi Condensation L3", "Open", "Quit"
+
+### 9B — Desktop Notifications
+Push notifications (Windows/Mac native) for:
+- Breakthrough ready (Qi at 90%+ of cap)
+- Expedition returned
+- Sect War incoming (15 min warning)
+- Realm Demotion occurred (urgent — user should log in)
+- Beast tamed
+
+### 9C — Time-of-Day Bonuses
+Real-world local time affects cultivation:
+| Time | Effect |
+|------|--------|
+| Midnight–4am | Moonlight meditation: Qi/s ×1.3 |
+| 4am–8am | Dawn enlightenment: BT chance +5% |
+| Noon–2pm | Solar peak: Fire Dao Qi/s ×1.5 |
+| Dusk 6–8pm | Evening reflection: Karma +1 |
+
+### 9D — Seasonal Cultivation
+Real calendar month affects passive bonuses:
+- Spring (Mar–May): Herb drops ×1.5, wood/life cultivation +10%
+- Summer (Jun–Aug): Fire expedition drops ×1.5, Qi/s ×1.1
+- Autumn (Sep–Nov): Metal refinement ×1.5, weapon crafting cheaper
+- Winter (Dec–Feb): Water cultivation +10%, meditation duration +50%
+
+---
+
+## Phase 10 — Cosmetic & Personalization
+
+### 10A — Title System
+Earn titles displayed under the cultivator's name in the UI.
+Some titles have small gameplay effects; most are cosmetic.
+
+| Title | Earned by | Effect |
+|-------|-----------|--------|
+| First Soul (初心) | First Qi Condensation | None |
+| Tribulation Veteran (历劫) | Survive 5 Tribulations | +3% BT chance |
+| Demon Slayer (伏魔) | 50 demon expedition kills | Expedition power +10% |
+| Azure Disciple | Inner Disciple rank in Azure Sword Sect | Sword Dao BT +5% |
+| Heaven's Favorite (天之骄子) | Roll a Heavenly Root | Qi/s ×1.1 |
+| Ascendant (飞升者) | First ascension | Qi/s ×1.05 per reincarnation |
+
+### 10B — Spirit Pet Companion
+A tiny companion sprite rendered beside the cultivator (position: lower-left of canvas).
+Cosmetic only — the pet reflects your Dao Path element.
+| Dao Path | Pet |
+|----------|-----|
+| Sword | Sword-spirit sprite (floating blade) |
+| Flame | Fire fox kit |
+| Void | Shadow cat |
+| Life | Jade turtle |
+| Heaven | Mini crane |
+| Devil | Phantom wolf cub |
+
+Pets all pass the Asset Pipeline (≥8.0).
+
+### 10C — Cultivation Cave (Home Environment)
+After reaching Foundation Building, unlock a persistent background scene for the sprite area.
+Options earned through gameplay, each gives a small passive bonus:
+- Ancient Mountain Hermitage (+Karma regen)
+- Bamboo Forest (+Life Dao Qi/s)
+- Thunder Peak (+Flame/Sword Dao)
+- Void Star Field (+Void Dao)
+
+---
+
+## Phase 11 — Rival Cultivator & NPC World
+
+### 11A — NPC Rival
+A rival cultivator is procedurally generated at new game start (random name, root, Dao Path).
+Their stage advances at ~80% of your own pace.
+Events reference them: "Chen Xianyu has broken into Core Formation — the heavens tremble."
+Overtaking them: +5% Karma bonus. Being overtaken by them: −5 Karma.
+
+### 11B — Heaven's Will
+A hidden Favor meter (0–100, starts at 50). Separate from Karma.
+High Favor (70+): event pool weighted toward positive, BT always at least 25%.
+Low Favor (<30): Heavenly Tribulation arrives at the next BT, extra lightning wave.
+Building Favor: meditate during dawn, win sect wars, help NPCs in events.
+Draining Favor: Devil Dao techniques, repeated BT failures, inner demon events.
+
+### 11C — Ancient Scripture Lore
+Collectible fragments found in Ancient Ruins expeditions. 12 total.
+Each fragment is a short poetic passage about the cultivation world.
+Displayed in a Lore tab once collected (hidden tab until first fragment found).
+Collecting all 12 grants a unique title and a permanent BT bonus.
+
+---
+
+---
+
+## Phase 12 — Birth Origin & Character Foundation
+
+Fires at the very start of a new game, between the name-entry screen and the first cultivation tick.
+The player picks a **starting region**; the **family type** is then rolled randomly based on that region's
+social-tier weights. This is purely narrative and mechanical setup — no grinding required.
+
+### 12A — Starting Regions
+
+| Region | Flavor | Root Bias | Constitution Bias | Spirit Stone Start |
+|--------|--------|-----------|-------------------|--------------------|
+| Imperial Capital (帝都) | Intrigue, politics | Pure/Dual weighted | Average | 25 |
+| Frontier Wilderness (边疆荒野) | Harsh nature, beasts | Earth/Metal | Strong, high variance | 8 |
+| Ancient Sect Territory (古宗领地) | Discipleship culture | Fire/Wind | Average | 15 |
+| Demon Lands (魔域) | Corruption, ambition | Shadow/Blood (evil-inclined) | Hardy | 10 |
+| Hidden Valley (隐秘山谷) | Hermits, mystery | Rare — Void/Heavenly slightly more likely | Frail but special constitution chance × 2 | 5 |
+| Mortal Village (凡人村) | Common folk | Completely random | Random | 10 |
+
+Region is displayed on the Stats tab and referenced in relevant random events.
+
+### 12B — Family Types
+
+Rolled per region's weights; some types are region-exclusive.
+
+| Family Type | Regions Available | Starting Bonus | Trait |
+|-------------|-------------------|----------------|-------|
+| Noble Family (贵族) | Capital, Sect Territory | +15 Spirit Stones, +1 spiritual root quality tier | Events: political intrigue, arranged-marriage pressure |
+| Cultivator Lineage (修士之家) | Sect Territory, Hidden Valley | 1 technique pre-learned (qi_breathing unlocked free) | Family elder NPC generated |
+| Merchant Clan (商贾) | Capital, Mortal Village | +10 Spirit Stones, 3 random crafting recipes known | Discounts on bought techniques |
+| Mortal Farmer (农户) | Mortal Village, Frontier | Standard; Karma starts at 55 instead of 50 | No special perk |
+| Frontier Warrior (边疆武士) | Frontier, Demon Lands | Body constitution floor D (never rolls F/E) | Combat events fire 30% more often |
+| Orphan (孤儿) | Any (weighted higher in Demon Lands, Mortal Village) | −5 Spirit Stones | **Indomitable Will** perk: BT failure Qi loss −25%, Integrity loss −10 |
+
+**State additions:**
+```js
+origin: {
+  region: 'mortal_village',     // region id
+  family: 'mortal_farmer',      // family type id
+  familyNpcId: null,            // if a family NPC was generated
+}
+```
+
+**New files:** `assets/data/origins.js` — regions and family type tables with weights
+
+### 12C — Special Constitutions (rare, rolled at character creation)
+
+1 in 50 chance to roll a special constitution instead of the standard tier (F–S):
+
+| Constitution | Chinese | Probability | Effect |
+|--------------|---------|-------------|--------|
+| Phoenix Body (凤凰之体) | 1 / 50 | Fire Qi/s ×2; auto-survive one BT failure per day (resets midnight) | |
+| Jade Dragon Body (玉龙之体) | 1 / 80 | Qi cap ×1.5; each realm transition adds +10% cap permanently | |
+| Void Devourer (虚空吞噬体) | 1 / 100 | Expedition enemies drop Qi directly (bonus Qi equal to 5× enemy tier) | |
+| Undying Flesh (不死之躯) | 1 / 200 | Realm Demotion impossible; Realm Integrity never drops below 10 | |
+
+Special constitution shown on Stats tab with golden border. No tempering needed — this is a gift from heaven.
+
+---
+
+## Phase 13 — Alignment & Karmic Path (Good vs Evil)
+
+Not all power is the same. Some spiritual roots carry a heavenly mandate; others carry a demonic hunger.
+Alignment is a second moral axis orthogonal to Karma — it shifts based on *how* you cultivate, not just *how much*.
+
+### 13A — Root Alignment Inclinations
+
+Every spiritual root type is categorized at game start:
+
+| Root Type | Alignment Inclination | Starting Alignment |
+|-----------|----------------------|--------------------|
+| Heavenly (天灵根) | Pure Light | +60 |
+| Pure single root (纯灵根) | Light | +30 |
+| Dual root (双灵根) | Neutral | 0 |
+| Mixed root (杂灵根) | Neutral | 0 |
+| Shadow/Void root | Dark | −30 |
+| Blood/Death root (Demon Lands exclusive) | Dark | −50 |
+
+### 13B — Alignment Meter
+
+Range: −100 (Demonic) to +100 (Celestial). Starts at root inclination value.
+
+Named tiers:
+| Range | Name | Effects |
+|-------|------|---------|
+| 70–100 | Celestial (天道) | Heaven's Favor events, righteous NPCs approach you, sects with evil alignment refuse you |
+| 30–70 | Righteous (正道) | Standard positive event pool, karma gains ×1.2 |
+| −30–30 | Neutral (中立) | No penalty or bonus |
+| −30 to −70 | Sinister (邪道) | Dark event pool unlocked, demonic techniques available, righteous sects refuse you |
+| −70 to −100 | Demonic (魔道) | Demon Lord events, assassination from righteous sects, ×2 Qi/s but constant Integrity drain |
+
+### 13C — Actions That Shift Alignment
+
+Every choice that matters records its alignment weight.
+
+**Increases alignment (toward Celestial):**
+- Help NPC event choice: +5
+- Donate to Mortal Village (event): +8
+- Defend sect in war (not aggressor): +3 per war
+- Choose Heaven Dao path: +20 one-time
+- Earn "Heaven's Favorite" title: +5 one-time
+- Spare enemy during expedition (choice event): +10
+
+**Decreases alignment (toward Demonic):**
+- Rob NPC: −15
+- Kill surrendering enemy (choice event): −20
+- Choose Devil Dao path: −30 one-time
+- Attack another sect unprovoked: −5 per war you start
+- Use Blood cultivation technique: −8 per use
+- Demonic inner demon event resolved badly: −10
+
+### 13D — Alignment-Locked Content
+
+| Feature | Requires |
+|---------|---------|
+| Heaven Dao path | Alignment ≥ 0 |
+| Sect: Void Moon Pavilion join | Alignment > −20 |
+| Righteous NPC will court player (marriage) | Alignment > 10 |
+| Blood cultivation techniques | Alignment < −30 |
+| Devil Dao path | Any alignment (but pushes you toward Demonic) |
+| Demonic Sect (魔教) join | Alignment < −50 |
+| Demon Lord encounter event | Alignment < −70 |
+| Celestial Mandate event (auto-advance 1 layer) | Alignment > 80 |
+
+**State additions:**
+```js
+alignment: 0,            // −100 to 100
+alignmentLabel: '',      // computed in _recalc
+```
+
+---
+
+## Phase 14 — Body Constitution & Physical Tempering (Deep)
+
+*Supersedes the simpler Body Cultivation sketched in Phase 7B — Phase 7B is now expanded into this.*
+
+The body is a second cultivation path running in parallel to Qi cultivation.
+You were born into a constitution tier; you can forge it higher through discipline.
+
+### 14A — Constitution Tiers
+
+| Tier | Name | Qi Cap Mult | BT Failure Qi Loss Reduction | Expedition HP |
+|------|------|-------------|------------------------------|---------------|
+| F | Frail Body (体弱) | ×1.0 | 0% | 50 |
+| E | Mortal Body (凡躯) | ×1.05 | 5% | 75 |
+| D | Hardened Body (强躯) | ×1.1 | 10% | 100 |
+| C | Steel Body (铁躯) | ×1.2 | 20% | 150 |
+| B | Diamond Body (金刚体) | ×1.35 | 30% | 200 |
+| A | Immortal Body (不朽体) | ×1.5 | 40% | 300 |
+| S | Heaven-Forged Body (天锻体) | ×1.75 | 55% | 500 |
+
+Starting tier is rolled at character creation per region:
+- Hidden Valley: rolls D–A
+- Frontier, Demon Lands: rolls D–C
+- Others: rolls F–C
+
+XP required to advance one tier (cumulative):
+`F→E: 200 | E→D: 1000 | D→C: 5000 | C→B: 20000 | B→A: 80000 | A→S: 250000`
+
+### 14B — Physical Tempering Methods
+
+All tempering runs in real-time; only one can be active at a time.
+
+**Tier 1 — Basic Training**
+
+| Method | Duration | Cost | Constitution XP | Cooldown |
+|--------|----------|------|-----------------|----------|
+| Morning Exercise (朝练) | 5 min | Free | 5 | None |
+| Iron Fist Training (铁拳修炼) | 30 min | 1 Beast Core | 40 | 1 hour |
+| Boulder Carrying (负重) | 2 hr | 3 Beast Cores | 200 | 4 hours |
+
+**Tier 2 — Spirit Tempering** *(unlocks at Qi Condensation L3)*
+
+| Method | Duration | Cost | Constitution XP | Side Effect |
+|--------|----------|------|-----------------|-------------|
+| Spirit Forge (灵力淬体) | 4 hr | 5 Beast Cores + 2 Iron Ore | 600 | Qi gain −50% during tempering |
+| Ten-Thousand Strikes (万拳) | 8 hr | 10 Iron Ore | 1500 | Same |
+
+**Tier 3 — Extreme Ordeals** *(unlock per stage requirement)*
+
+| Method | Unlock Stage | Duration | Cost | Constitution XP | Bonus Effect |
+|--------|-------------|----------|------|-----------------|--------------|
+| Icy Waterfall Meditation (冰瀑禅修) | Foundation L1 | 12 hr | 10 Ice Crystals | 4000 | Water root Qi/s ×1.4 for 48h |
+| Volcanic Immersion (火山淬体) | Foundation L2 | 12 hr | 10 Fire Cores | 4000 | Fire root Qi/s ×1.4 for 48h; unlocks fire-aligned events |
+| Thunder Peak Endurance (雷峰忍耐) | Nascent Soul L1 | 24 hr | 30 Thunder Stones | 15000 | BT chance +5% permanently after each completion |
+| Void Pressure Chamber (虚空压力) | Spirit Severing L1 | 48 hr | 20 Void Crystals + 5 Chaos Essence | 60000 | Grants +1 Dao Seed on completion; only completable once |
+
+**Tier 4 — Tribulation Tempering** *(post-Tribulation only)*
+
+After surviving a Heavenly Tribulation (Phase 7C), the tribulation lightning can be channeled back into the body:
+
+| Method | Requirement | Duration | Constitution XP | Effect |
+|--------|-------------|----------|-----------------|--------|
+| Absorb Tribulation Lightning (渡劫炼体) | Just survived a Tribulation | 30 min | 25000 | Body tier +1 if < A; caps at A unless special constitution |
+
+### 14C — Constitution & Alignment Interaction
+
+High alignment (Celestial) cultivators purify their body differently from low alignment ones:
+
+- Celestial alignment: all tempering XP ×1.25; extreme ordeals have a 5% chance to auto-raise one tier
+- Demonic alignment: Volcanic Immersion XP ×2; gains a demonic variant (Blood Forging) that deals alignment damage for faster XP
+
+**State additions:**
+```js
+body: {
+  tier: 'F',              // F E D C B A S or special id
+  constitutionXp: 0,
+  specialConstitution: null,  // null or special constitution id
+  activeTemperingId: null,
+  temperingEndsAt: null,
+}
+```
+
+**New files:** `assets/data/tempering.js` — tempering method definitions + tier thresholds
+
+**UI:** New sub-tab inside "Stats" tab → "Body" panel. Shows tier badge, XP bar, list of available tempering methods with timers.
+
+---
+
+## Phase 15 — NPC World Simulation
+
+The world breathes without you. Other cultivators are rising or falling while you meditate.
+Their personalities drive behavior — not scripts, but trait-weighted decision tables.
+
+### 15A — NPC Generation
+
+On new game start, 5–8 NPCs are generated in your starting region, plus 2–3 in distant regions.
+More spawn as you reach new cultivation milestones (world grows with your power).
+
+Each NPC has:
+- **Name** — generated from region-appropriate name tables (`assets/data/npc-names.js`)
+- **Spiritual Root** — rolled same as player, includes alignment inclination
+- **2–3 Personality Traits** — drawn from the trait pool
+- **Starting Stage** — rolls within ±3 stages of player at generation time
+- **Relationship to Player** — starts at 0 (neutral)
+
+**Personality Trait Pool:**
+
+| Trait | Behavioral Rules |
+|-------|-----------------|
+| Ambitious (野心勃勃) | Seeks most powerful sect available. Will found own sect at Core Formation if not in one. May betray weaker sects for stronger ones. |
+| Loyal (忠义) | Stays with first sect joined. Fights for sect even at disadvantage. Never betrays, cannot be bribed. |
+| Greedy (贪婪) | Can always be bribed with spirit stones. Prioritizes resource gain. May steal from sects. |
+| Righteous (正义) | Only joins positive-alignment sects. Helps players/NPCs in need. Cannot be bribed. Actively opposes Demonic cultivators. |
+| Cowardly (怯懦) | Avoids conflict. Flees from wars. Won't duel. Easy to bully but remembers slights. |
+| Vengeful (复仇) | Never forgets harm done to them. Waits for power advantage before retaliating. Events reference past wrongs. |
+| Curious (好奇心) | Explores ruins and new locations frequently. Shares rare information with allies. May get in trouble. |
+| Serene (淡泊) | Cultivates steadily. Not interested in sects unless invited. Makes a calm, reliable ally. |
+| Ruthless (冷酷) | Attacks rivals at advantage. Purges weak disciples from sects they control. Highly effective in wars. |
+| Compassionate (慈悲) | Heals injured cultivators in events (including enemies). Low alignment change possible even on bad acts. |
+| Proud (傲慢) | Refuses to join sects they see as beneath them. Will duel anyone who disrespects them. |
+| Humble (谦逊) | Accepts mentorship. Improves faster when in a sect. Good disciple material. |
+
+### 15B — NPC-Sect Decision Logic
+
+Every 4–8 hours (real-time), each unaffiliated NPC runs a sect evaluation pass:
+
+1. List all available sects in their region
+2. Filter by alignment compatibility (Righteous trait won't join evil-aligned sects)
+3. Score each sect: fame score + personality match score
+4. If best score > 60: join that sect
+5. If Ambitious and stageIndex ≥ 12 (Core Formation) and no sect has score > 40: spawn **new NPC-founded sect**
+
+NPC-founded sects:
+- Automatically named from name tables (Founder's surname + Hall/Pavilion/Sect)
+- Start with founder as Sect Master
+- Other NPCs can then evaluate and join this sect
+- These sects can go to war with player's sect and other NPC sects
+
+### 15C — Player-NPC Interaction
+
+Interactions happen through event choices and a new "World" tab (visible from Foundation Building onward).
+
+**World tab shows:** known NPCs, their current sect, stage, relationship value, last interaction.
+
+**Direct interaction options (cost AP — Action Points, 1 per hour passive regen):**
+| Action | AP Cost | Effect |
+|--------|---------|--------|
+| Send Gift | 1 | +10 Relationship; greedy NPCs get +20 |
+| Challenge to Duel | 2 | Combat minigame; winner +prestige, loser −10 Relationship |
+| Offer Mentorship | 3 | If relationship > 30 and your stage ≥ their stage+3: +20 Relationship, they advance faster |
+| Recruit to Sect | 2 | If relationship > 50 and you have a sect: they evaluate joining |
+| Negotiate Alliance | 3 | Requires relationship > 70; sects become allies for wars |
+| Denounce Rival (public) | 1 | Target −15 Relationship with all NPCs; you −5 alignment |
+
+**Relationship tiers:**
+| Value | Label | Passive Effect |
+|-------|-------|----------------|
+| > 80 | Sworn Ally (盟友) | Fights in your wars; occasional spirit stone gifts |
+| 50–80 | Friend (朋友) | Discounted sect missions; shares event intel |
+| 10–50 | Acquaintance (相识) | No passive effect |
+| −10–10 | Neutral | No effect |
+| −10 to −50 | Rival (对手) | Competes with you in breakthrough events; may recruit against you |
+| < −50 | Enemy (仇敌) | Assassination events; sect war ally against you |
+
+**State additions:**
+```js
+world: {
+  npcs: [],           // array of NPC objects
+  activeSects: [],    // NPC-founded sects
+  actionPoints: 5,    // max 10; +1/hr
+  lastApRegen: null,
+}
+```
+
+**New files:**
+- `assets/data/npc-names.js` — region-appropriate name tables (surname + given name pools)
+- `assets/data/npc-personalities.js` — trait definitions and decision weights
+- `renderer/game/npc-world.js` — NPC simulation tick, sect logic, world tab rendering
+
+---
+
+## Phase 16 — Marriage & Family
+
+The cultivation path is lonely by necessity — but it does not have to be walked alone.
+
+### 16A — Courtship
+
+Courtship becomes available once you have an NPC with relationship ≥ 60 and you are both at
+Foundation Building or above. Same-alignment proximity is required (can't marry Celestial + Demonic).
+
+**Courtship actions** (all cost AP):
+| Action | AP Cost | Romance Gain | Notes |
+|--------|---------|--------------|-------|
+| Send Spirit Flower (灵花) | 1 | +8 | Costs 3 Spirit Herbs from inventory |
+| Share Technique Fragment | 2 | +15 | Gives them a technique scroll (crafted item) |
+| Invite to Co-Cultivate | 2 | +12 | +1 stage for them; Qi/s ×1.1 for 1 hour for you |
+| Declare Intent (表白) | 3 | Requires Romance ≥ 80 — triggers proposal event | One chance; rejection possible if personality mismatch |
+
+**Proposal can be rejected if:**
+- Proud NPC and player stage < their stage
+- Righteous NPC and player alignment < 20
+- NPC already has a marriage event queued with another NPC
+
+### 16B — Marriage Bonuses
+
+Active while spouse is alive and relationship ≥ 0:
+
+- Spouse's cultivation stage affects your Qi/s: each stage above Foundation Building adds +0.5% Qi/s (max +10%)
+- If spouse is in your sect: their resource contribution ×1.5, morale boost for all disciples
+- Daily event pool: spouse-flavored positive events (rare technique fragments, crafted gifts)
+- Harmony Bonus: when both player and spouse advance a stage in the same week: +10% Qi/s for 7 days
+
+**Complications:**
+- Spouse being attacked by an enemy NPC triggers "Protect Spouse" event (combat)
+- If spouse is killed in sect war: deep Karma penalty −30, alignment shift −10, but "Grief-Born Resolve" perk: BT chance +8% for 30 days
+- Divorce (choice event) costs −20 Karma, ends bonuses; can remarry after 7 real days
+
+### 16C — Children
+
+After marriage, a "Child Event" fires ~once every 14 real days (random roll each day at midnight).
+
+**Child trait inheritance:**
+- Spiritual root: weighted blend of both parents' root types. 40% each parent, 20% random mutation
+- Constitution: average of both parents' tiers ± 1 (capped at either parent's tier + 1)
+- Personality: 1 trait from each parent, 1 completely random
+- Alignment inclination: averaged from parents
+
+**Child lifecycle:**
+- Infant (0–3 real days): No effect; flavor events ("Your child takes their first steps")
+- Young (3–10 real days): Small Karma bonus from family events
+- Adult (10+ real days): Can be recruited to sect. Shows in World tab as a named NPC.
+
+**Adult child bonuses (if recruited to your sect):**
+- Disciple contribution ×2 vs random disciple (family loyalty)
+- May inherit sect mastery after you ascend (Reincarnation): sect "Founding Legacy" title added, buildings stay intact
+
+**Orphan player interaction:**
+Players born as Orphans (Phase 12) gain a special event chain when they reach relationship ≥ 70 with
+any NPC: "Sworn Sibling Bond" (结义). This creates a pseudo-family relationship with all the loyalty
+benefits of a Cultivator Lineage family. Orphan players may also adopt a child NPC found in events
+(rather than through marriage), at the cost of 20 AP and 30 Spirit Stones.
+
+**State additions:**
+```js
+marriage: {
+  spouseNpcId: null,
+  romanceMeter: 0,       // 0–100; only one courtship at a time
+  marriedAt: null,       // timestamp
+  harmonyStreak: 0,      // days both cultivated
+},
+children: [],            // array of child NPC ids (subset of world.npcs)
+```
+
+**New files:** `renderer/game/family.js` — courtship tick, marriage events, child generation
+
+---
+
+---
+
+## Phase 17 — Secret Realm Dungeons (ASCII Map Grid Exploration, Timed Events)
+
+Secret Realms are unstable dimensional pockets that tear open near regions of dense Qi.
+Unlike expeditions (which are idle timers), entering a realm replaces the main canvas with a
+navigable ASCII grid — the most active, real-time gameplay in the game.
+
+### 17A — Realm Map
+
+The canvas view switches to a grid layout when a realm is entered. Map is rendered as ASCII characters:
+
+```
+  ░░░░░░░░░░░░░░░
+  ░ ? ─── T   E ░
+  ░ │         │ ░
+  ░ S ─── P ─── B ░
+  ░     │       ░
+  ░ E ─── ?     ░
+  ░░░░░░░░░░░░░░░
+```
+
+Cell legend (revealed as player explores; `?` = fog of war):
+| Symbol | Room Type |
+|--------|-----------|
+| `P` | Player position |
+| `·` | Empty corridor |
+| `T` | Treasure room |
+| `E` | Enemy room |
+| `S` | Spirit shrine (restores Qi/HP) |
+| `B` | Boss room (one per realm) |
+| `!` | Trap room |
+| `∆` | Puzzle room |
+| `─ │` | Corridor connections |
+| `?` | Unexplored (fog of war) |
+
+Navigation: four directional buttons rendered below the canvas (or keyboard N/S/E/W arrows).
+The cultivator's sprite is replaced by the map while inside; particles still run in the background.
+
+### 17B — Realm Tiers
+
+| Realm | Min Stage | Grid | Timer | Boss |
+|-------|-----------|------|-------|------|
+| Ancient Ruins (古遗迹) | Qi Condensation L3 | 6×4 | 15 min | Ruin Guardian (rank 2) |
+| Demon Cavern (妖魔窟) | Foundation Building L1 | 8×5 | 20 min | Demon Lord Fragment (rank 3) |
+| Celestial Grotto (仙人府) | Core Formation L1 | 10×6 | 25 min | Fallen Celestial (rank 4) |
+| Void Tear (虚空裂缝) | Nascent Soul L1 | 12×8 | 30 min | Void Sovereign (rank 5) |
+
+Realms are discovered through:
+- Expedition drops (a "Realm Key" consumable item)
+- Rare random event ("A rift tears open nearby — enter now or it closes forever")
+- Crafting: Void Compass artifact (Phase 2) passively reveals hidden realms
+
+### 17C — Timed Events Inside Realms
+
+Dynamic events fire mid-run to keep the player engaged:
+
+| Event | Trigger | Effect |
+|-------|---------|--------|
+| Collapse Warning | 50% cells explored | "The realm destabilizes — escape in 2 minutes!" Urgency timer overlay |
+| Spirit Beast Pursuer | Random at 30% explored | A pursuer `X` moves toward player each turn; reach B or S to shake it |
+| Formation Flare | Random, once per realm | All fog-of-war revealed for 60 seconds |
+| Qi Surge | Near a Shrine | Adjacent rooms' loot quality upgraded for this visit |
+| Ancestor Echo | If player has 3+ lineage generations | A ghostly `A` appears and opens a sealed room |
+
+### 17D — Room Outcomes
+
+**Enemy Room:** Auto-resolve using `playerPower = stageIndex × 10 + bodyTier + weapon bonus`.
+If power > enemyHP: win, drop loot. If power < enemyHP: lose 20% Qi, can retry or flee (flee costs 5 min from timer).
+
+**Puzzle Room:** 3-option riddle drawn from `realm-puzzles.js`.
+- Correct: bonus loot + 3 min added to timer
+- Wrong: trap fires (−15% Qi) + 1 min removed
+
+**Boss Room:** Special animation plays (boss ASCII sprite on canvas, aura rings). Win = realm cleared bonus. Defeat = ejected from realm, keep all loot collected so far.
+
+**State additions:**
+```js
+secretRealm: {
+  active: false,
+  realmId: null,
+  mapGrid: null,     // 2D array of cell objects
+  playerPos: [0, 0],
+  endsAt: null,
+  loot: [],
+  pursuerPos: null,
+}
+```
+
+**New files:**
+- `assets/data/realm-maps.js` — realm tier definitions, loot tables, puzzle pool
+- `renderer/game/secret-realm.js` — grid renderer, navigation logic, timed event scheduler
+
+---
+
+## Phase 18 — Lineage & Heir Inheritance (Family Trees, Legacy Passives)
+
+Each reincarnation (Phase 8) adds a generation to a persistent family tree. The sins and
+glories of your ancestors accumulate as passive bonuses — or burdens — on the current cultivator.
+
+### 18A — The Lineage Record
+
+Stored in a separate `lineage.json` file (not per-slot). Survives all reincarnations.
+
+Each generation entry records:
+- Cultivator name, spiritual root type, Dao Path chosen, highest stage reached
+- Whether they married and had children
+- Constitution tier at death/ascension
+- Titles earned, special constitution (if any)
+- Whether permadeath ended the line
+
+Displayed in the Ascension Hall (Phase 8) as an ASCII tree:
+
+```
+  洛明 ─── 洛晨 ─── 洛天
+  (Core)    (Nascent)  (YOU)
+```
+
+### 18B — Legacy Passives
+
+Computed at new game start from the full lineage record. Applied before the first tick.
+
+| Ancestor Achievement | Passive Granted (stacks, listed caps) |
+|----------------------|---------------------------------------|
+| Reached Nascent Soul | +0.5% base Qi/s (max +10% from 20 ancestors) |
+| Founded a sect | +1% breakthrough chance (max +10%) |
+| Earned Tribulation Veteran title | Realm Integrity starting value +5 (max +25) |
+| Married and had children | +2 starting Spirit Stones (uncapped) |
+| Had a special constitution | 5% chance current cultivator inherits that constitution |
+| Chose Devil Dao | +2% Qi/s but −2 starting alignment (stacks) |
+| Died in permadeath | "Iron Will" ancestry: BT failure Qi loss −1% per permadeath death (max −15%) |
+
+### 18C — Heir Selection at Reincarnation
+
+When you Ascend (Phase 8), before the new game begins, the heir screen fires:
+
+| Option | Condition | Starting Bonus |
+|--------|-----------|----------------|
+| One of your adult children (Phase 16) | Must exist | Inherits blended root, constitution avg, 1 personality trait from each parent |
+| New soul (random) | Always available | No lineage bonus; full spiritual root re-roll |
+| Child of a sworn ally NPC | Relationship ≥ 80 with an NPC who has a child | Ally NPC starts at relationship 80 with new character; alliance pre-formed |
+
+### 18D — Family Technique (Bloodline Exclusive)
+
+After 5 complete generations (5 reincarnations with recorded lineage), a "Family Technique" is unlocked.
+This technique is unique to your bloodline and cannot be learned by NPCs.
+
+Its properties are generated from the accumulated roots of all ancestors:
+- If ≥ 3 fire root ancestors: technique adds Flame Cultivation bonus
+- If ≥ 3 sword Dao ancestors: technique adds Sword Intent passive
+- If mixed roots dominate: technique grants +15% Qi cap (adaptive root bonus)
+
+The technique grows stronger with each new generation that learns it (not capped).
+
+### 18E — Ancestral Visions
+
+After 3+ generations, deceased ancestors can appear during deep meditation:
+- "Ancestral Guidance" (positive): ancestor with highest stage grants +20% Qi/s for 24h
+- "Ancestor's Warning" (protective): blocks the next negative random event
+- "Blood Debt" (negative if a permadeath ancestor was murdered by an NPC): that NPC becomes a
+  hereditary enemy of the lineage, auto-hostile to every future generation
+
+**State additions (lineage.json, outside slot saves):**
+```js
+lineage: {
+  generations: [],            // array of ancestor summary objects
+  familyTechniqueId: null,    // generated after gen 5
+  legacyPassives: {},         // computed at game load
+  bloodDebts: [],             // NPC ids that are hereditary enemies
+}
+```
+
+**New files:** `assets/data/legacy-passives.js`, `renderer/game/lineage.js`
+
+---
+
+## Phase 19 — World Epochs & Spiritual Tides (Dynamic Global Modifiers)
+
+The cultivation world breathes on grand cycles. A 7-day elemental tide rotates daily.
+World Epochs — longer cataclysmic periods — reshape the strategic landscape for days at a time.
+Both apply globally: to you, to NPCs, to sects.
+
+### 19A — Spiritual Tides (7-Day Cycle)
+
+One element dominates each day (cycle repeats):
+
+| Day | Tide | Cultivator Bonus | World Effect |
+|-----|------|-----------------|--------------|
+| 1 | Fire (炎) | Fire root Qi/s ×1.5; Volcanic Immersion XP ×2 | Fire enemies stronger (+30% HP), drop more |
+| 2 | Water (水) | Icy Waterfall bonus; water-aligned events more common | Rain visual on canvas background |
+| 3 | Metal (金) | Iron Ore drops ×2; weapon craft speed ×1.5 | Frontier region expedition yield ×1.5 |
+| 4 | Wood (木) | Herb drops ×2; Life Dao bonuses | Constitution tempering XP ×1.3 |
+| 5 | Earth (土) | Qi cap ×1.1 (earth root); sect building costs −20% | NPC sects build faster |
+| 6 | Lightning (雷) | BT chance +5% all; Tribulations +1 wave | Tribulation weather: storms on canvas |
+| 7 | Void (虚) | Rare — ~once per 14 days instead of every 7. All hidden locations accessible; Void Devourer ×3 | NPC sect wars more likely during Void tide |
+
+Tide shown in Stats tab with a glyph indicator and time remaining until shift.
+
+**Celestial Calendar** (crafted item from Ancient Scripts): shows the next 3 upcoming tides —
+makes timing breakthroughs around Lightning Tide a meaningful strategy.
+
+### 19B — World Epochs (30-Day Rotation)
+
+Longer periods that reshape global conditions. Sequence is deterministic per save seed but varied
+enough to feel organic. Announced via event log header: bold, gold-colored.
+
+| Epoch | Duration | Global Effect |
+|-------|----------|---------------|
+| Age of Strife (乱世) | 7 days | Sect wars 2× more frequent; resource drops +30%; BT chance −5% |
+| Golden Age (盛世) | 14 days | All Qi/s ×1.2; NPC relationship gains +50%; no sect wars trigger |
+| Demon Tide (魔潮) | 5 days | Expedition enemies +50% stronger; demon drops ×3; all cultivators lose −2 alignment/day |
+| Heavenly Opening (天门开启) | 3 days | BT chance +15%; ascension attempts can trigger one stage early; all tempering XP ×2 |
+| Spiritual Drought (灵气枯竭) | 7 days | Qi/s ×0.7; spirit stone costs +50%; constitution tempering XP halved |
+| Ancestor's Return (先祖归来) | 4 days | All lineage passives doubled; ancestral vision events fire daily |
+| The Silence (虚寂) | 2 days | No events fire; no sect wars; Qi/s ×0.5. Rare — but constitution tempering XP ×5 |
+
+Epoch transitions fire a special full-width event log message in gold. Players who are offline when
+an epoch begins receive a catch-up note in the offline re-entry event ("You returned during the
+Heavenly Opening — the heavens granted X bonus Qi").
+
+### 19C — Strategic Interaction
+
+Tides and Epochs stack. A Lightning Tide during a Heavenly Opening means BT chance +20% — the
+highest possible natural window for a breakthrough. A Spiritual Drought + Void Tide creates a
+paradox of low Qi but high accessibility — ideal for tempering rather than cultivation.
+
+NPCs respond to epochs: during Golden Age, ambitious NPCs pause sect-founding plans. During Demon
+Tide, evil-alignment NPCs gain confidence (relationship aggression increases).
+
+**State additions:**
+```js
+worldState: {
+  currentEpoch: null,
+  epochEndsAt: null,
+  currentTide: 'fire',
+  tideChangesAt: null,
+  celestialCalendarOwned: false,
+}
+```
+
+**New files:** `assets/data/epochs.js` — epoch and tide definitions; `renderer/game/world-state.js` — epoch tick, tide rotation, canvas overlay effects
+
+---
+
+## Phase 20 — Optional Settings & Challenge Modes
+
+All modes are selected at character creation per slot. They cannot be changed after the first tick.
+The Settings tab (⚙ icon added to titlebar) also holds per-session accessibility options that
+*can* be changed at any time.
+
+### 20A — Permadeath (永恒逝世)
+
+When enabled:
+- If Realm Integrity reaches 0 and a Realm Demotion would push the character below Qi Condensation L1
+  (back to Mortal), the character is **permanently destroyed** instead of demoting
+- The save slot is cleared
+- A **Tombstone entry** is written to `tombstones.json` (persists forever):
+  - Cultivator name, region of birth, highest stage reached, total hours played, death cause, epoch at death
+- Tombstones are displayed on the character select screen in a "Fallen Cultivators" section below the 3 active slots
+- Permadeath characters still contribute a full generation to Lineage (their tombstone = an ancestor record)
+
+**Permadeath achievement (cross-slot, permanent):** If a permadeath character reaches 5 generations before
+dying, all new characters on that install gain +5 starting Spirit Stones. Displayed as "Iron Bloodline" legacy.
+
+### 20B — Challenge Modes (pick zero or one)
+
+| Mode | Name | Restriction | Reward on Ascension |
+|------|------|-------------|---------------------|
+| Starved Root (枯根) | Root always Mixed; cannot reroll; BT chance cap 0.60 | +1 Dao Seed bonus; "Starved Root Ascendant" title |
+| Hermit Path (隐士道) | Cannot join any existing sect (can still found own); no NPC ally tier above Acquaintance | Hermit-exclusive techniques unlock; baseline Qi/s +20% |
+| One With Heaven (天人合一) | Tribulations have +1 extra wave; BT failures deal −30 Integrity; time-of-day bonuses disabled | "Heaven's Chosen" title; Dao Seed count ×1.5 on reincarnation |
+| Hungry Ghost (饿鬼道) | Qi cap is fixed at the mortal value for first 3 realms — techniques are the only cap expansion | Unique "Ghost Ascendant" title; breakthrough Qi cost refunded on success |
+
+Challenge mode badge shown on the character select slot card next to the character name.
+
+### 20C — Accessibility Options (changeable any time)
+
+| Option | Values | Default |
+|--------|--------|---------|
+| Number display | Raw / Formatted (K/M/B) / Scientific | Formatted |
+| Animation speed | 0.5× / 1× / 2× | 1× (affects particle speed + sprite fps) |
+| Color blind mode | Off / Deuteranopia / Protanopia | Off |
+| Reduced motion | Off / On | Off (disables particles + aura rings; renders sprite only) |
+| Font size | 11px / 13px / 15px | 13px |
+| Canvas brightness | 70% / 100% / 130% | 100% |
+
+**State additions:**
+```js
+settings: {
+  permadeath: false,
+  challengeMode: null,          // null | 'starved_root' | 'hermit' | 'one_with_heaven' | 'hungry_ghost'
+  displayNumbers: 'formatted',
+  animSpeed: 1,
+  colorblind: 'off',
+  reducedMotion: false,
+  fontSize: 13,
+  canvasBrightness: 1,
+}
+```
+
+**New files:** `assets/data/challenge-modes.js`, `renderer/game/settings.js`
+
+---
+
+## Complete File Structure (after all phases)
+
+```
+START_HERE.md          ← Agent entry point (update every session)
+CLAUDE.md              ← Dev rules
+PLAN.md                ← This file
+GAMEDESIGN.md          ← Game mechanics doc
+
+main.js / preload.js
+renderer/
+  index.html / styles.css / game.js
+  engine/
+    game-state.js       ✅
+    ascii-renderer.js   ✅
+  game/
+    cultivation.js      ✅
+    expedition.js       ✅ Phase 2
+    crafting.js         ✅ Phase 2
+    beasts.js           ✅ Phase 3  (renderer/game/beasts.js)
+    sect.js             ← Phase 4/5
+    dao.js              ← Phase 7
+    tribulation.js      ← Phase 7
+    reincarnation.js    ← Phase 8
+    notifications.js    ← Phase 9
+    npc-world.js        ← Phase 15
+    family.js           ← Phase 16
+    secret-realm.js     ← Phase 17
+    lineage.js          ← Phase 18
+    world-state.js      ← Phase 19
+    settings.js         ← Phase 20
+
+assets/
+  data/
+    stages.js           ✅
+    techniques.js       ✅
+    events.js           ✅
+    items.js            ✅ Phase 2+3 (beast_taming_talisman, pill_heart_calming integrity_restore)
+    recipes.js          ✅ Phase 2+3 (talisman recipe)
+    locations.js        ✅ Phase 2
+    enemies.js          ✅ Phase 2
+    beasts.js           ✅ Phase 3
+    sects.js            ← Phase 4
+    dao-paths.js        ← Phase 7
+    tempering.js        ← Phase 14
+    titles.js           ← Phase 10
+    lore.js             ← Phase 11
+    origins.js          ← Phase 12
+    npc-names.js        ← Phase 15
+    npc-personalities.js ← Phase 15
+    realm-maps.js       ← Phase 17
+    legacy-passives.js  ← Phase 18
+    epochs.js           ← Phase 19
+    challenge-modes.js  ← Phase 20
+  sprites/
+    cultivator-sprites.js  ✅
+    enemy-sprites.js        ← Phase 2 (Asset Pipeline)
+    beast-sprites.js        ✅ Phase 3 (Asset Pipeline — min score 8.0)
+    pet-sprites.js          ← Phase 10 (Asset Pipeline)
+    environment-sprites.js  ← Phase 10 (Asset Pipeline)
+    tribulation-sprites.js  ← Phase 7 (Asset Pipeline)
+```
+
+---
+
+## Build
+
+```bash
+npm run dist      # Windows portable .exe → dist/Cultivator Idle-win32-x64/
+npm run dist:mac  # Mac .dmg → dist/
+```
+
+Build after every completed phase. Tag releases `v0.2.0`, `v0.3.0`, etc.

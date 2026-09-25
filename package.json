@@ -1,0 +1,65 @@
+{
+  "name": "cultivator-idle",
+  "version": "0.1.0",
+  "description": "Desktop wuxia cultivation idle game - a cultivator lives on the side of your screen",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --inspect",
+    "dist": "npx electron-packager . \"Cultivator Idle\" --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\\.git",
+    "dist:mac": "npx electron-packager . \"Cultivator Idle\" --platform=darwin --arch=x64,arm64 --out=dist --overwrite --ignore=\\.git"
+  },
+  "author": "Cultivator Idle",
+  "keywords": [
+    "idle-game",
+    "wuxia",
+    "cultivation",
+    "electron",
+    "desktop"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "git": "^0.1.5"
+  },
+  "devDependencies": {
+    "electron": "^28.3.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.cultivator.idle",
+    "productName": "Cultivator Idle",
+    "copyright": "Cultivator Idle",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    }
+  }
+}
