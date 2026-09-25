@@ -1086,3 +1086,84 @@ body {
 }
 .beast-loc-pick-btn.avail:hover { background: rgba(0,80,40,.3); }
 .beast-loc-pick-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SECT (Phase 4 — Sect tab)
+══════════════════════════════════════════════════════════════════════════ */
+
+.sect-row {
+  display: flex;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 5px;
+}
+.sect-row.locked { opacity: .5; }
+.sect-info { flex: 1; min-width: 0; }
+.sect-name { font-size: 12px; color: var(--gold); }
+.sect-cn   { font-size: 9px; color: var(--dim); }
+.sect-spec { font-size: 10px; color: var(--jade); margin: 2px 0; }
+.sect-desc { font-size: 10px; color: var(--dim); }
+
+.sect-header {
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background: rgba(237,208,80,0.04);
+}
+.sect-rank    { font-size: 11px; color: var(--purple); margin-top: 3px; }
+.sect-contrib { font-size: 10px; color: var(--dim); margin: 2px 0 4px; }
+.sect-btns    { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+.sect-mission-timer { font-size: 10px; color: var(--jade); margin-top: 2px; }
+
+.sect-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: var(--font);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background .1s, color .1s;
+}
+.sect-btn.available { border-color: var(--jade); color: var(--jade); }
+.sect-btn.available:hover:not(:disabled) { background: rgba(0,80,40,.3); }
+.sect-btn:disabled { opacity: .4; cursor: not-allowed; }
+.sect-btn:hover:not(:disabled):not(.available) { color: var(--text); }
+.sect-leave:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+
+/* ── Own sect (Phase 5A) ──────────────────────────────────────────────────── */
+.sect-input {
+  width: 100%;
+  margin-top: 4px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 3px 5px;
+  user-select: text;
+}
+.sect-input:focus { outline: none; border-color: var(--gold); }
+.sect-stars { font-size: 10px; color: var(--gold); margin: 0 4px; }
+.sect-built .loc-name { color: var(--jade); }
+
+/* ── Sect Wars (Phase 5B) ─────────────────────────────────────────────────── */
+.war-banner {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+.war-banner .sect-name { font-size: 12px; }
+.war-banner.scouting  { border-color: var(--gold); background: rgba(237,208,80,0.04); }
+.war-banner.preparing { border-color: var(--red);  background: rgba(200,48,48,0.06); }
+.war-banner.win  { border-color: var(--jade); color: var(--jade); font-size: 10px; }
+.war-banner.loss { border-color: var(--red);  color: var(--red);  font-size: 10px; }
+.war-timer { font-size: 10px; color: var(--dim); margin-top: 3px; }
+.war-timer span { color: var(--gold); }

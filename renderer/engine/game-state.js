@@ -35,11 +35,14 @@ class GameState {
         const gain = elapsed * (this._s.derived?.qiPerSecond || 0)
         this._s.qi = Math.min(this._s.qi + gain, this._s.derived?.qiCap || 100)
         // Integrity regen while offline: +1 per 30 s
-        const intGain = Math.floor(elapsed / 30)
+        const intGain = Math.floor((elapsed / 30) * (this._s.derived?.integrityRegenMult || 1))
         if (intGain > 0) {
           this._ensurePhase3Fields()
           this._s.realmIntegrity = Math.min(100, (this._s.realmIntegrity ?? 100) + intGain)
         }
+        this.tickOwnSect(elapsed)
+        this._ensurePhase5BFields()
+        this.tickSectWar()
         if (gain > 0.5) {
           this._s.events = this._s.events || []
           this._s.events.unshift({
@@ -82,6 +85,12 @@ class GameState {
       _intRegenAcc:     0,
       beasts:           [],
       beastEncounters:  [],
+      // Phase 4
+      sect:             { id: null, rank: 0, contribution: 0, activeMissions: [] },
+      // Phase 5A
+      ownSect:          this._blankOwnSect(),
+      // Phase 5B
+      sectWar:          this._blankSectWar(),
       stats: {
         totalQiGained:      0,
         breakthroughs:      0,
@@ -109,6 +118,58 @@ class GameState {
     if (s._intRegenAcc    === undefined) s._intRegenAcc    = 0
     if (!s.beasts)                       s.beasts           = []
     if (!s.beastEncounters)              s.beastEncounters  = []
+  }
+
+  _ensurePhase4Fields() {
+    const s = this._s
+    if (!s.sect) s.sect = { id: null, rank: 0, contribution: 0, activeMissions: [] }
+    if (!Array.isArray(s.sect.activeMissions)) s.sect.activeMissions = []
+    if (s.sect.rank === undefined)         s.sect.rank         = 0
+    if (s.sect.contribution === undefined) s.sect.contribution = 0
+    if (s.sect.id === undefined)           s.sect.id           = null
+  }
+
+  _blankOwnSect() {
+    return { founded: false, name: '', foundedAt: 0, hallLevel: 1, buildings: {}, disciples: [],
+             recruitPool: [], poolRefreshAt: 0, _incomeAcc: { spirit_stone: 0, spirit_herb: 0 } }
+  }
+
+  _ensurePhase5Fields() {
+    const s = this._s
+    if (!s.ownSect) s.ownSect = this._blankOwnSect()
+    const o = s.ownSect
+    if (!o.buildings)             o.buildings = {}
+    if (!Array.isArray(o.disciples))    o.disciples = []
+    if (!Array.isArray(o.recruitPool))  o.recruitPool = []
+    if (!o._incomeAcc)            o._incomeAcc = { spirit_stone: 0, spirit_herb: 0 }
+    if (!o.hallLevel)             o.hallLevel = 1
+    if (o.poolRefreshAt === undefined) o.poolRefreshAt = 0
+  }
+
+  _blankSectWar() {
+    return { phase: 'none', nextWarAt: 0, scoutEndsAt: 0, prepEndsAt: 0,
+             enemyName: '', enemyTier: 0, allyId: null, reinforced: false,
+             arrayDamagedUntil: 0, warVictories: 0, warDefeats: 0, lastResult: null }
+  }
+
+  _ensurePhase5BFields() {
+    const s = this._s
+    if (!s.sectWar) s.sectWar = this._blankSectWar()
+    const w = s.sectWar
+    if (!w.phase)                     w.phase = 'none'
+    if (w.nextWarAt === undefined)    w.nextWarAt = 0
+    if (w.scoutEndsAt === undefined)  w.scoutEndsAt = 0
+    if (w.prepEndsAt === undefined)   w.prepEndsAt = 0
+    if (w.arrayDamagedUntil === undefined) w.arrayDamagedUntil = 0
+    if (w.warVictories === undefined) w.warVictories = 0
+    if (w.warDefeats === undefined)   w.warDefeats = 0
+    if (w.allyId === undefined)       w.allyId = null
+    if (w.reinforced === undefined)   w.reinforced = false
+  }
+
+  _sectDef() {
+    const id = this._s?.sect?.id
+    return id && typeof SECTS !== 'undefined' ? (SECTS.find(x => x.id === id) || null) : null
   }
 
   _rollRoot() {
@@ -140,6 +201,9 @@ class GameState {
     const s  = this._s
     this._ensurePhase2Fields()
     this._ensurePhase3Fields()
+    this._ensurePhase4Fields()
+    this._ensurePhase5Fields()
+    this._ensurePhase5BFields()
     const st = this._stage()
 
     let qps = st.baseQps * s.root.mult
@@ -195,6 +259,39 @@ class GameState {
     qps      = qps * beastQpsMult + beastPassiveQps
     btBonus += beastBtBonus
 
+    // Sect bonuses (Phase 4)
+    const sectFx = this._sectDef()?.effects || {}
+    if (sectFx.qps_mult)                 qps     *= sectFx.qps_mult
+    if (sectFx.weapon_qps_mult && weapId) qps    *= sectFx.weapon_qps_mult
+    if (sectFx.artifact_qps_mult && artId) qps   *= sectFx.artifact_qps_mult
+    if (sectFx.bt_bonus)                 btBonus += sectFx.bt_bonus
+
+    // Own-sect bonuses (Phase 5A)
+    const own = s.ownSect
+    let discQi = 0, maxBeasts = 3, warDefense = 0, discCap = 0, fame = 0
+    let ownCraft = 0, incomeMult = 1, xpMult = 1, libMult = 1
+    const arrayDamaged = Date.now() < (s.sectWar?.arrayDamagedUntil || 0)
+    if (own.founded) {
+      const bIds = Object.keys(own.buildings).filter(k => own.buildings[k])
+      for (const id of bIds) {
+        const e = SECT_BUILDINGS.find(b => b.id === id)?.effects || {}
+        libMult    *= e.disciple_qi_mult || 1
+        ownCraft   += e.craft_double_chance || 0
+        maxBeasts  += e.beast_slots || 0
+        xpMult     *= e.disciple_xp_mult || 1
+        if (!(id === 'defensive_array' && arrayDamaged)) warDefense += e.war_defense || 0
+        incomeMult *= e.income_mult || 1
+      }
+      for (const d of own.disciples) {
+        discQi += DISCIPLE_QI_FRAC * d.talent * (1 + 0.1 * (d.level - 1))
+        fame   += d.talent * d.level
+      }
+      discQi *= libMult
+      discCap = SECT_HALL_LEVELS[Math.min(own.hallLevel, SECT_HALL_LEVELS.length) - 1].cap
+      fame   += 10 * bIds.length + 25 * own.hallLevel + 5 * (s.sectWar?.warVictories || 0)
+    }
+    qps *= 1 + discQi
+
     // Pill preview bonus (for display only — consumed at BT attempt time)
     let pillBtPreview = 0
     if (s.activePill && ITEMS[s.activePill]) {
@@ -203,7 +300,7 @@ class GameState {
       if (pe.type === 'bt_guarantee') pillBtPreview = 1
     }
 
-    const baseChance = Math.min(0.98, st.breakthroughChance + btBonus + s.karma / 1000)
+    const baseChance = Math.min(0.98, Math.max(sectFx.bt_floor || 0, st.breakthroughChance + btBonus + s.karma / 1000))
 
     s.derived = {
       qiPerSecond:              qps,
@@ -215,9 +312,20 @@ class GameState {
       canBreakthrough:          s.qi >= st.qiCap * capMult * 0.90,
       meditBonus,
       meditSecondsLeft: s.meditating ? Math.max(0, Math.ceil((s.meditationEnds - Date.now()) / 1000)) : 0,
-      lootMult:         weapId && ITEMS[weapId]?.effect?.type === 'void_blade' ? ITEMS[weapId].effect.loot_mult : 1,
-      hiddenLocations:  artId === 'artifact_void_compass',
+      lootMult:         (weapId && ITEMS[weapId]?.effect?.type === 'void_blade' ? ITEMS[weapId].effect.loot_mult : 1) * (sectFx.loot_mult || 1),
+      hiddenLocations:  artId === 'artifact_void_compass' || !!sectFx.hidden_locations,
+      sectHerbMult:     sectFx.herb_mult || 1,
+      sectCraftDouble:  Math.min(1, (sectFx.craft_double_chance || 0) + ownCraft),
+      maxBeasts,
+      warDefense,
+      discipleCap:      discCap,
+      sectFame:         fame,
+      ownSectIncomeMult: incomeMult,
+      discipleXpMult:   xpMult,
+      discipleQiFrac:   discQi,
+      integrityRegenMult: sectFx.integrity_regen_mult || 1,
       realmIntegrity:   s.realmIntegrity ?? 100,
+      arrayDamaged,
     }
   }
 
@@ -273,11 +381,14 @@ class GameState {
     }
 
     // Integrity passive regen: +1 per 30 s
-    s._intRegenAcc = (s._intRegenAcc || 0) + dt
+    s._intRegenAcc = (s._intRegenAcc || 0) + dt * (s.derived.integrityRegenMult || 1)
     if (s._intRegenAcc >= 30) {
       s._intRegenAcc -= 30
       s.realmIntegrity = Math.min(100, (s.realmIntegrity ?? 100) + 1)
     }
+
+    this.tickOwnSect(dt)
+    this.tickSectWar()
 
     this._saveT += dt
     if (this._saveT >= this.SAVE_INT) {
@@ -395,6 +506,14 @@ class GameState {
 
     const drops = this._rollDrops(loc)
 
+    // Sect herb bonus (Myriad Herb Hall)
+    const herbMult = s.derived?.sectHerbMult || 1
+    if (herbMult > 1) {
+      for (const id of Object.keys(drops)) {
+        if (ITEMS[id]?.type === 'resource' && /herb/.test(id)) drops[id] = Math.max(1, Math.round(drops[id] * herbMult))
+      }
+    }
+
     const parts = []
     for (const [itemId, qty] of Object.entries(drops)) {
       if (ITEMS[itemId]?.type === 'currency') {
@@ -460,10 +579,11 @@ class GameState {
       s.inventory[ing.itemId] -= ing.qty
       if (s.inventory[ing.itemId] <= 0) delete s.inventory[ing.itemId]
     }
-    s.inventory[recipe.productId] = (s.inventory[recipe.productId] || 0) + 1
+    const doubled = Math.random() < (s.derived?.sectCraftDouble || 0)
+    s.inventory[recipe.productId] = (s.inventory[recipe.productId] || 0) + (doubled ? 2 : 1)
     const item = ITEMS[recipe.productId]
     this._recalc(); this._notify()
-    return { ok: true, item }
+    return { ok: true, item, doubled }
   }
 
   equipItem(itemId) {
@@ -542,7 +662,7 @@ class GameState {
     const beastType = (typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES : []).find(b => b.id === enc.typeId)
     if (!beastType) return { ok: false, reason: 'unknown_type' }
     if (s.stageIndex < beastType.minStage) return { ok: false, reason: 'stage' }
-    if ((s.beasts || []).length >= 3) return { ok: false, reason: 'max_beasts' }
+    if ((s.beasts || []).length >= (s.derived?.maxBeasts || 3)) return { ok: false, reason: 'max_beasts' }
     if ((s.inventory['beast_taming_talisman'] || 0) < 1) return { ok: false, reason: 'no_talisman' }
 
     s.inventory['beast_taming_talisman']--
@@ -609,14 +729,7 @@ class GameState {
 
     const beastType = (typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES : []).find(b => b.id === beast.typeId)
     const xpGain    = beastType?.xpPerExp || 10
-    beast.xp       += xpGain
-
-    while (beast.xp >= 100 && beast.level < 10) {
-      beast.xp   -= 100
-      beast.level++
-      this.addEvent({ text: `${beast.name} reached level ${beast.level}!`, type: 'positive' })
-    }
-    if (beast.level >= 10) beast.xp = Math.min(beast.xp, 99)
+    this._addBeastXp(beast, xpGain)
 
     beast.expedition = null
 
@@ -627,6 +740,16 @@ class GameState {
     this._recalc(); this._notify()
   }
 
+  _addBeastXp(beast, xp) {
+    beast.xp += xp
+    while (beast.xp >= 100 && beast.level < 10) {
+      beast.xp   -= 100
+      beast.level++
+      this.addEvent({ text: `${beast.name} reached level ${beast.level}!`, type: 'positive' })
+    }
+    if (beast.level >= 10) beast.xp = Math.min(beast.xp, 99)
+  }
+
   dismissBeast(beastId) {
     const s = this._s
     const before = (s.beasts || []).length
@@ -634,6 +757,385 @@ class GameState {
     if (s.beasts.length === before) return { ok: false, reason: 'not_found' }
     this._recalc(); this._notify()
     return { ok: true }
+  }
+
+  // ── Phase 4: Sect System ──────────────────────────────────────────────────
+
+  joinSect(sectId) {
+    const s = this._s
+    const def = SECTS.find(x => x.id === sectId)
+    if (!def)                     return { ok: false, reason: 'unknown' }
+    if (s.sect.id)                return { ok: false, reason: 'in_sect' }
+    if (s.ownSect?.founded)       return { ok: false, reason: 'own_sect' }
+    if (s.stageIndex < def.minStage) return { ok: false, reason: 'stage' }
+    s.sect = { id: def.id, rank: 0, contribution: 0, activeMissions: [] }
+    this.addEvent({ text: `You joined the ${def.name} (${def.nameCN}) as an Outer Disciple.`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true, sect: def }
+  }
+
+  leaveSect() {
+    const s = this._s
+    const def = this._sectDef()
+    if (!def) return { ok: false, reason: 'no_sect' }
+    s.sect  = { id: null, rank: 0, contribution: 0, activeMissions: [] }
+    s.karma = Math.max(0, s.karma - 5)
+    this.addEvent({ text: `You left the ${def.name}. Your rank and contribution are forfeit.`, type: 'negative' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  donateToSect(stones) {
+    const s = this._s
+    stones = Math.floor(stones)
+    if (!s.sect.id)               return { ok: false, reason: 'no_sect' }
+    if (!(stones > 0))            return { ok: false, reason: 'invalid' }
+    if (s.spiritStones < stones)  return { ok: false, reason: 'stones' }
+    const gained = Math.max(1, Math.floor(stones * SECT_DONATE_RATE))
+    s.spiritStones      -= stones
+    s.sect.contribution += gained
+    this._recalc(); this._notify()
+    return { ok: true, gained }
+  }
+
+  rankUpSect() {
+    const s = this._s
+    if (!s.sect.id) return { ok: false, reason: 'no_sect' }
+    const next = SECT_RANKS[s.sect.rank + 1]
+    if (!next)                                   return { ok: false, reason: 'max_rank' }
+    if (s.sect.contribution < next.minContribution) return { ok: false, reason: 'contribution' }
+    s.sect.rank++
+    this.addEvent({ text: `Promoted to ${next.name} (${next.nameCN}) in the ${this._sectDef().name}!`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true, rank: s.sect.rank }
+  }
+
+  startSectMission(missionId) {
+    const s = this._s
+    if (!s.sect.id) return { ok: false, reason: 'no_sect' }
+    const m = SECT_MISSIONS.find(x => x.id === missionId)
+    if (!m)                                  return { ok: false, reason: 'unknown' }
+    if (s.sect.rank < m.minRank)             return { ok: false, reason: 'rank' }
+    if (s.sect.activeMissions.some(a => a.missionId === missionId)) return { ok: false, reason: 'busy' }
+    if (s.sect.activeMissions.length >= SECT_MAX_MISSIONS)          return { ok: false, reason: 'full' }
+    s.sect.activeMissions.push({
+      uid: `${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      missionId,
+      endsAt: Date.now() + m.duration * 1000,
+    })
+    this._notify()
+    return { ok: true, mission: m }
+  }
+
+  resolveSectMission(uid) {
+    const s = this._s
+    const idx = s.sect.activeMissions.findIndex(a => a.uid === uid)
+    if (idx < 0) return
+    const active = s.sect.activeMissions[idx]
+    s.sect.activeMissions.splice(idx, 1)
+    const m = SECT_MISSIONS.find(x => x.id === active.missionId)
+    if (!m || !s.sect.id) { this._notify(); return }
+
+    const mult  = SECT_RANKS[s.sect.rank]?.rewardMult || 1
+    const parts = []
+    for (const r of m.rewards) {
+      const qty = Math.max(1, Math.round((r.minQty + Math.random() * (r.maxQty - r.minQty)) * mult))
+      if (ITEMS[r.itemId]?.type === 'currency') {
+        s.spiritStones += qty
+        parts.push(`${qty}× Spirit Stone`)
+      } else {
+        s.inventory[r.itemId] = (s.inventory[r.itemId] || 0) + qty
+        parts.push(`${qty}× ${ITEMS[r.itemId]?.name || r.itemId}`)
+      }
+    }
+    const contrib = Math.round(m.contribution * mult)
+    s.sect.contribution += contrib
+    parts.push(`${contrib} Contribution`)
+
+    if (m.beastXp > 0) {
+      const idle = (s.beasts || []).filter(b => !b.expedition)
+      for (const b of idle) this._addBeastXp(b, m.beastXp)
+      if (idle.length) parts.push(`${m.beastXp} Beast XP each`)
+    }
+
+    this.addEvent({ text: `Mission complete — ${m.name}: ${parts.join(', ')}.`, type: 'positive' })
+    this._recalc(); this._notify()
+  }
+
+  // ── Phase 5A: Own Sect ────────────────────────────────────────────────────
+
+  _genRecruit() {
+    const w = RECRUIT_TALENT_WEIGHTS
+    let r = Math.random() * w.reduce((a, b) => a + b, 0), talent = 1
+    for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) { talent = i + 1; break } }
+    const pick = a => a[Math.floor(Math.random() * a.length)]
+    return { id: `d${Date.now()}_${Math.floor(Math.random() * 99999)}`, name: `${pick(DISCIPLE_SURNAMES)} ${pick(DISCIPLE_GIVEN)}`, talent }
+  }
+
+  _refreshRecruitPool() {
+    const o = this._s.ownSect
+    o.recruitPool = Array.from({ length: RECRUIT_POOL_SIZE }, () => this._genRecruit())
+    o.poolRefreshAt = Date.now() + RECRUIT_REFRESH_SECONDS * 1000
+  }
+
+  foundOwnSect(name) {
+    const s = this._s
+    const F = SECT_FOUNDING
+    if (s.stageIndex < F.minStage)  return { ok: false, reason: 'stage' }
+    if (s.sect.id)                  return { ok: false, reason: 'in_sect' }
+    if (s.ownSect.founded)          return { ok: false, reason: 'founded' }
+    if (s.spiritStones < F.stones)  return { ok: false, reason: 'stones' }
+    for (const [id, q] of Object.entries(F.items)) {
+      if ((s.inventory[id] || 0) < q) return { ok: false, reason: 'crystals' }
+    }
+    s.spiritStones -= F.stones
+    for (const [id, q] of Object.entries(F.items)) {
+      s.inventory[id] -= q
+      if (s.inventory[id] <= 0) delete s.inventory[id]
+    }
+    const clean = String(name || '').trim().slice(0, F.maxNameLen) || 'Nameless Sect'
+    s.ownSect = { ...this._blankOwnSect(), founded: true, name: clean, foundedAt: Date.now() }
+    s.sectWar = this._blankSectWar()
+    this._refreshRecruitPool()
+    this._scheduleNextWar()
+    this.addEvent({ text: `You founded the ${clean}! Its Sect Hall stands, awaiting disciples.`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  buildSectBuilding(id) {
+    const s = this._s, o = s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const b = SECT_BUILDINGS.find(x => x.id === id)
+    if (!b)            return { ok: false, reason: 'unknown' }
+    if (o.buildings[id]) return { ok: false, reason: 'built' }
+    if (s.spiritStones < b.stones) return { ok: false, reason: 'stones' }
+    for (const [iid, q] of Object.entries(b.items)) {
+      if ((s.inventory[iid] || 0) < q) return { ok: false, reason: 'items' }
+    }
+    s.spiritStones -= b.stones
+    for (const [iid, q] of Object.entries(b.items)) {
+      s.inventory[iid] -= q
+      if (s.inventory[iid] <= 0) delete s.inventory[iid]
+    }
+    o.buildings[id] = true
+    this.addEvent({ text: `${b.name} (${b.nameCN}) completed in ${o.name}.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true, building: b }
+  }
+
+  upgradeSectHall() {
+    const s = this._s, o = s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const cost = SECT_HALL_LEVELS[o.hallLevel - 1]?.upgradeStones
+    if (cost == null) return { ok: false, reason: 'max_level' }
+    if (s.spiritStones < cost) return { ok: false, reason: 'stones' }
+    s.spiritStones -= cost
+    o.hallLevel++
+    this.addEvent({ text: `Sect Hall upgraded to level ${o.hallLevel}. Disciple capacity is now ${SECT_HALL_LEVELS[o.hallLevel - 1].cap}.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true, level: o.hallLevel }
+  }
+
+  recruitDisciple(candidateId) {
+    const s = this._s, o = s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const c = o.recruitPool.find(x => x.id === candidateId)
+    if (!c) return { ok: false, reason: 'not_found' }
+    if (o.disciples.length >= (s.derived?.discipleCap || 0)) return { ok: false, reason: 'full' }
+    const cost = DISCIPLE_RECRUIT_COST * c.talent * c.talent
+    if (s.spiritStones < cost) return { ok: false, reason: 'stones' }
+    s.spiritStones -= cost
+    o.recruitPool = o.recruitPool.filter(x => x.id !== candidateId)
+    const disciple = { id: c.id, name: c.name, talent: c.talent, level: 1, xp: 0 }
+    o.disciples.push(disciple)
+    this.addEvent({ text: `${c.name} (${'★'.repeat(c.talent)}) joined ${o.name} as a disciple.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true, disciple }
+  }
+
+  rerollRecruitPool() {
+    const s = this._s
+    if (!s.ownSect.founded) return { ok: false, reason: 'no_sect' }
+    if (s.spiritStones < RECRUIT_REROLL_COST) return { ok: false, reason: 'stones' }
+    s.spiritStones -= RECRUIT_REROLL_COST
+    this._refreshRecruitPool()
+    this._notify()
+    return { ok: true }
+  }
+
+  dismissDisciple(id) {
+    const o = this._s.ownSect
+    const before = o.disciples.length
+    o.disciples = o.disciples.filter(d => d.id !== id)
+    if (o.disciples.length === before) return { ok: false, reason: 'not_found' }
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  disbandOwnSect() {
+    const s = this._s
+    if (!s.ownSect.founded) return { ok: false, reason: 'no_sect' }
+    const n = s.ownSect.name
+    s.ownSect = this._blankOwnSect()
+    s.sectWar = this._blankSectWar()
+    s.karma   = Math.max(0, s.karma - 10)
+    this.addEvent({ text: `You disbanded the ${n}. Its halls fall silent.`, type: 'negative' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  // Income, disciple XP and recruit-pool refresh. dt in seconds (also used for offline catch-up).
+  tickOwnSect(dt) {
+    const s = this._s
+    const o = s?.ownSect
+    if (!o?.founded) return
+    const d = s.derived || {}
+    const inc = d.ownSectIncomeMult || 1
+    const xpMult = d.discipleXpMult || 1
+    let stones = 0, herbs = 0
+    for (const dc of o.disciples) {
+      const lm = 1 + 0.1 * (dc.level - 1)
+      stones += DISCIPLE_STONE_RATE * dc.talent * lm
+      herbs  += DISCIPLE_HERB_RATE  * dc.talent * lm
+      if (dc.level < DISCIPLE_MAX_LEVEL) {
+        dc.xp += (DISCIPLE_XP_BASE + DISCIPLE_XP_PER_TALENT * dc.talent) * xpMult * dt
+        while (dc.level < DISCIPLE_MAX_LEVEL && dc.xp >= DISCIPLE_XP_PER_LEVEL * dc.level) {
+          dc.xp -= DISCIPLE_XP_PER_LEVEL * dc.level
+          dc.level++
+          this.addEvent({ text: `${dc.name} of ${o.name} reached level ${dc.level}.`, type: 'positive' })
+        }
+        if (dc.level >= DISCIPLE_MAX_LEVEL) dc.xp = 0
+      }
+    }
+    o._incomeAcc.spirit_stone += stones * inc * dt
+    o._incomeAcc.spirit_herb  += herbs  * inc * dt
+    const wholeStones = Math.floor(o._incomeAcc.spirit_stone)
+    const wholeHerbs  = Math.floor(o._incomeAcc.spirit_herb)
+    if (wholeStones > 0) { s.spiritStones += wholeStones; o._incomeAcc.spirit_stone -= wholeStones }
+    if (wholeHerbs  > 0) { s.inventory.spirit_herb = (s.inventory.spirit_herb || 0) + wholeHerbs; o._incomeAcc.spirit_herb -= wholeHerbs }
+
+    if (Date.now() >= o.poolRefreshAt) {
+      this._refreshRecruitPool()
+      this._notify()   // non-tick notify so the Sect tab redraws with the new candidates
+    }
+  }
+
+  // ── Phase 5B: Sect Wars ───────────────────────────────────────────────────
+
+  _scheduleNextWar(baseTs) {
+    const s = this._s, w = s.sectWar
+    const fame = s.derived?.sectFame || 0
+    const frac = Math.min(1, fame / WAR_FAME_SOFTCAP)
+    const hours = WAR_MAX_INTERVAL_HOURS - frac * (WAR_MAX_INTERVAL_HOURS - WAR_MIN_INTERVAL_HOURS)
+    w.nextWarAt = (baseTs || Date.now()) + hours * 3600 * 1000
+  }
+
+  // Advances the war state machine by exactly one phase transition, if one is due.
+  // Returns true if a transition happened (caller loops to fast-forward offline catch-up).
+  _advanceSectWarStep() {
+    const s = this._s, w = s.sectWar
+    if (!s.ownSect.founded) return false
+    const now = Date.now()
+
+    if (w.phase === 'none') {
+      if (!w.nextWarAt) { this._scheduleNextWar(); return false }
+      if (now < w.nextWarAt) return false
+      w.phase = 'scouting'
+      w.scoutEndsAt = w.nextWarAt + WAR_SCOUT_SECONDS * 1000
+      const pick = a => a[Math.floor(Math.random() * a.length)]
+      w.enemyName = `${pick(RIVAL_SECT_PREFIXES)} ${pick(RIVAL_SECT_SUFFIXES)}`
+      w.enemyTier = Math.max(1, Math.min(5, Math.round((s.derived?.sectFame || 0) / 100) + Math.floor(Math.random() * 3) - 1))
+      w.allyId = null
+      w.reinforced = false
+      this.addEvent({ text: `Scouts report the ${w.enemyName} massing near your borders.`, type: 'negative' })
+      return true
+    }
+
+    if (w.phase === 'scouting') {
+      if (now < w.scoutEndsAt) return false
+      w.phase = 'preparing'
+      w.prepEndsAt = w.scoutEndsAt + WAR_PREP_SECONDS * 1000
+      this.addEvent({ text: `The ${w.enemyName} will strike soon — prepare your defenses!`, type: 'negative' })
+      return true
+    }
+
+    if (w.phase === 'preparing') {
+      if (now < w.prepEndsAt) return false
+      this._resolveSectWar()
+      return true
+    }
+
+    return false
+  }
+
+  _resolveSectWar() {
+    const s = this._s, w = s.sectWar, d = s.derived || {}
+    const fame = d.sectFame || 0
+    let playerPower = (fame + 20) * (1 + (d.warDefense || 0))
+    if (w.reinforced) playerPower *= 1 + WAR_REINFORCE_POWER_BONUS
+    if (w.allyId)     playerPower *= 1 + WAR_ALLY_POWER_BONUS
+    const enemyPower = (fame + 20) * (0.6 + Math.random() * 0.8)
+    const win = Math.random() < playerPower / (playerPower + enemyPower)
+    const enemyName = w.enemyName
+
+    if (win) {
+      const stones = Math.round((WAR_SPOILS_STONE_BASE + fame * WAR_SPOILS_STONE_FRAC) * (0.7 + Math.random() * 0.6))
+      const herbs  = Math.round((WAR_SPOILS_HERB_BASE  + fame * WAR_SPOILS_HERB_FRAC)  * (0.7 + Math.random() * 0.6))
+      s.spiritStones += stones
+      s.inventory.spirit_herb = (s.inventory.spirit_herb || 0) + herbs
+      w.warVictories++
+      w.lastResult = { win: true, enemyName, spoils: { spirit_stone: stones, spirit_herb: herbs }, ts: Date.now() }
+      this.addEvent({ text: `Victory! Your sect repelled the ${enemyName}, seizing ${stones} Spirit Stones and ${herbs} Spirit Herbs.`, type: 'special' })
+    } else {
+      const lost = Math.round(s.spiritStones * WAR_LOSS_RESOURCE_FRAC)
+      s.spiritStones = Math.max(0, s.spiritStones - lost)
+      w.warDefeats++
+      const arrayHit = !!s.ownSect.buildings.defensive_array
+      if (arrayHit) w.arrayDamagedUntil = Date.now() + WAR_ARRAY_DAMAGE_HOURS * 3600 * 1000
+      w.lastResult = { win: false, enemyName, spoilsLost: lost, arrayHit, ts: Date.now() }
+      this.addEvent({ text: `Defeat — the ${enemyName} broke through, plundering ${lost} Spirit Stones${arrayHit ? ' and damaging your Defensive Array' : ''}.`, type: 'negative' })
+    }
+
+    w.phase = 'none'
+    this._scheduleNextWar()
+    this._recalc(); this._notify()
+  }
+
+  // Fast-forwards the sect-war state machine (regular ticks and offline catch-up alike).
+  tickSectWar() {
+    if (!this._s?.ownSect?.founded) return
+    let guard = 0
+    while (this._advanceSectWarStep() && guard++ < 50) {}
+  }
+
+  reinforceForWar() {
+    const s = this._s, w = s.sectWar
+    if (!s.ownSect.founded)      return { ok: false, reason: 'no_sect' }
+    if (w.phase !== 'preparing') return { ok: false, reason: 'no_war' }
+    if (w.reinforced)            return { ok: false, reason: 'already' }
+    const cost = Math.round(Math.max(20, (s.derived?.sectFame || 0) * WAR_REINFORCE_COST_PER_FAME))
+    if (s.spiritStones < cost)   return { ok: false, reason: 'stones' }
+    s.spiritStones -= cost
+    w.reinforced = true
+    this._notify()
+    return { ok: true, cost }
+  }
+
+  requestWarAlly(sectId) {
+    const s = this._s, w = s.sectWar
+    if (!s.ownSect.founded)                        return { ok: false, reason: 'no_sect' }
+    if (w.phase !== 'scouting' && w.phase !== 'preparing') return { ok: false, reason: 'no_war' }
+    if (w.allyId)                                  return { ok: false, reason: 'already' }
+    const def = SECTS.find(x => x.id === sectId)
+    if (!def)                                      return { ok: false, reason: 'unknown' }
+    const cost = Math.round(WAR_ALLY_COST_BASE + (s.derived?.sectFame || 0) * WAR_ALLY_COST_PER_FAME)
+    if (s.spiritStones < cost)                     return { ok: false, reason: 'stones' }
+    s.spiritStones -= cost
+    w.allyId = sectId
+    this.addEvent({ text: `The ${def.name} agreed to send aid against the ${w.enemyName}.`, type: 'positive' })
+    this._notify()
+    return { ok: true, cost, ally: def }
   }
 
   addEvent(ev) {

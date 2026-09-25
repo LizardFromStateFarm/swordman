@@ -8,7 +8,7 @@ _Covers: game-state.js · beasts.js · beast-sprites.js · index.html · styles.
 - `_intRegenAcc: 0` — tick accumulator for passive regen. Internal; not displayed.
 
 ### 3B — Spiritual Beasts
-- `beasts: []` — tamed beast objects (max 3).
+- `beasts: []` — tamed beast objects (max `derived.maxBeasts`: 3, or 5 with the Phase 5A Spirit Beast Pen).
   - `{ id, typeId, name, level, xp, traits: [traitId, ...], expedition: null | { locationId, endsAt } }`
 - `beastEncounters: []` — pending encounter events from expeditions (max 3 queued).
   - `{ id, typeId, traits: [traitId, ...], seenAt }`
@@ -45,7 +45,7 @@ Heaven Defying Pill guarantees success → integrity block never reached.
 
 1. `realmIntegrity` stays in [0, 100].
 2. `stageIndex` never goes below 0 on demotion.
-3. `s.beasts.length ≤ 3` at all times.
+3. `s.beasts.length ≤ derived.maxBeasts` (3 base, +2 Spirit Beast Pen) at all times.
 4. `s.beastEncounters.length ≤ 3` at all times.
 5. Beast `level` stays in [1, 10]; `xp` resets at each level-up.
 

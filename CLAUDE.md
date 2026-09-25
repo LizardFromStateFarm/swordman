@@ -49,6 +49,9 @@ docs/
     core-loop.md        ← Qi, stages, roots, breakthroughs, techniques
     expedition.md       ← Expedition timer, inventory, drops (Phase 2)
     crafting.md         ← Recipes, equipment, pills, elixirs (Phase 2)
+    sects.md            ← Sect join/rank/missions/bonuses (Phase 4)
+    own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
+    sect-war.md         ← Sect war timer, scouting/prep, auto-resolve, alliances (Phase 5B)
     ui-layout.md        ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
@@ -61,7 +64,7 @@ capacitor.config.json     ← Capacitor (iOS) config — webDir "www"
 scripts/
   build-ios-web.js      ← Builds www/ (gitignored) from renderer/ + assets/ for Capacitor
 renderer/
-  index.html            ← All HTML — charselect + app, 5 tabs
+  index.html            ← All HTML — charselect + app, 6 tabs
   styles.css            ← All CSS — CSS vars at top, add new components here
   game.js               ← Boot, tick loop, all UI wiring and render functions
   engine/
@@ -72,6 +75,8 @@ renderer/
     cultivation.js      ← Random event scheduler (fires every 30–120s)
     expedition.js       ← ExpeditionSystem — tick-based expedition resolution
     crafting.js         ← CraftingSystem — thin UI wrapper for craft/equip/pill/elixir
+    sect.js             ← SectSystem — resolves timed sect missions (Phase 4)
+    sect-war.js         ← SectWarSystem — advances the sect war state machine (Phase 5B)
 assets/
   data/
     stages.js           ← CULTIVATION_STAGES[23]
@@ -81,6 +86,9 @@ assets/
     locations.js        ← LOCATIONS — expedition destinations + drop tables
     enemies.js          ← ENEMIES — tier definitions
     recipes.js          ← RECIPES — all crafting recipes
+    sects.js            ← SECTS, SECT_RANKS, SECT_MISSIONS (Phase 4)
+    sect-buildings.js   ← Own-sect founding cost, Sect Hall levels, buildings, disciple constants (Phase 5A)
+    sect-war.js         ← War timer scaling, rival name pools, reinforcement/alliance/spoils constants (Phase 5B)
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
 ```

@@ -10,9 +10,9 @@
 Phase 1  ✅  Core idle loop (Qi, stages, techniques, events, slots, particle renderer)
 Phase 2  ✅  Explore / Combat / Resources / Crafting
 Phase 3  ✅  Breakthrough Integrity + Spiritual Beasts
-Phase 4  ⬜  Sect System — join existing sects
-Phase 5  ⬜  Build your own sect + Sect Wars
-Phase 6  ⬜  Animation Overhaul
+Phase 4  ✅  Sect System — join existing sects
+Phase 5  ✅  Build Your Own Sect (5A ✅ done) + Sect Wars (5B ✅ done)
+Phase 6  ⬜  Animation & Visual Overhaul (incl. 6E window/layout modes)
 Phase 7  ⬜  Dao Paths + Body Cultivation + Heavenly Tribulation
 Phase 8  ⬜  Ascension & Reincarnation (New Game+)
 Phase 9  ⬜  Desktop Integration (tray, notifications, time-of-day)
@@ -27,6 +27,8 @@ Phase 17 ⬜  Secret Realm Dungeons (ASCII Map Grid Exploration, Timed Events)
 Phase 18 ⬜  Lineage & Heir Inheritance (Family Trees, Legacy Passives)
 Phase 19 ⬜  World Epochs & Spiritual Tides (Dynamic Global Modifiers)
 Phase 20 ⬜  Optional Settings & Challenge Modes (Permadeath, Accessibility)
+Phase 21 ⬜  Backpack & Inventory Tab (unified item/currency view)
+Phase 22 ⬜  Active / Idle Mode Toggle + Mid-Late Automation
 ```
 
 ---
@@ -144,7 +146,9 @@ All beast sprites must pass the Asset Pipeline (≥8.0).
 
 ---
 
-## Phase 4 — Sect System (Join Existing)
+## Phase 4 — Sect System (Join Existing) ✅
+
+> **Status: implemented 2026-09-25.** See `docs/systems/sects.md`. Divergences: Myriad Herb Hall "Crafting ×2" is a 35% double-output chance; Azure Sword weapon buff = ×1.15 Qi/s with a weapon equipped; Heaven Defying artifact bonus = ×1.2 Qi/s with an artifact equipped. Missions run max 2 at once; ranks unlock missions and raise reward multipliers; rank-up is a manual button; donate 10 Stones = 5 Contribution; leaving forfeits rank/contribution (−5 karma).
 
 **Available sects:**
 | Sect | minStage | Specialty |
@@ -174,7 +178,9 @@ Rank up via Sect Contribution Points earned through missions and donations.
 
 ## Phase 5 — Build Your Own Sect + Sect Wars
 
-### 5A — Found a Sect
+### 5A — Found a Sect ✅
+
+> **Status: implemented 2026-09-25.** See `docs/systems/own-sect.md`. Divergences: crafting is instant, so Pill Hall = +40% double-output chance instead of "craft speed ×2"; Sect Hall is upgradeable Lv1–3 (100/250/500 stones, +5 cap each; Lv1 cap 5, max 20); recruiting picks from a refreshing 3-candidate pool (15×talent² stones, reroll 10); Spirit Beast Pen raises beast cap 3→5; Defensive Array's war defense is computed but unused until 5B. Founding requires not being in a Phase 4 sect. Fame (`derived.sectFame`) is computed for 5B scaling.
 Unlocks at Nascent Soul (stageIndex ≥ 18). Cost: 500 Spirit Stones + 50 Void Crystals.
 
 **Buildings:**
@@ -190,7 +196,14 @@ Unlocks at Nascent Soul (stageIndex ≥ 18). Cost: 500 Spirit Stones + 50 Void C
 
 **Disciples:** recruit up to 20 NPCs with 1–5 star talent. Higher talent = more resources generated.
 
-### 5B — Sect Wars
+### 5B — Sect Wars ✅
+
+> **Status: implemented 2026-09-25.** See `docs/systems/sect-war.md`. Divergences: no NPC-sect
+> simulation exists yet (Phase 15), so "enemy contribution loss" became a probabilistic
+> win/loss roll (`playerPower / (playerPower+enemyPower)`, powers scaled from `sectFame` +
+> `warDefense`/reinforcement/alliance bonuses) with resource spoils on win, a Spirit Stone
+> penalty + temporary Defensive Array disable on loss; alliances are bought from the existing
+> Phase 4 `SECTS` roster (one-war power bonus) rather than a full NPC relationship system.
 Trigger every 2–6 hours (real time), scaled by sect fame.
 Phases: Scouting (5 min) → Preparation (10 min) → Auto-resolve.
 Win = spoils + enemy contribution loss. Lose = resource penalty + array damage.
@@ -227,6 +240,43 @@ All new frames must pass the Asset Pipeline (≥8.0).
 | Core Formation | Slow golden rotating halo |
 | Nascent Soul | Stars drifting outward |
 | Spirit Severing+ | Void rifts — animated cracks in the background |
+
+### 6E — Window & Layout Modes
+
+The player can choose how the game sits on their screen. Mode is stored in `settings` (persists across sessions) and can be changed any time from the titlebar.
+
+**Four modes:**
+
+| Mode | Description | Window Size | Always-on-top |
+|------|-------------|-------------|---------------|
+| Overlay (default) | Narrow side-panel, current behavior | 300 × 700 px | Yes |
+| Expanded | Wider panel; two-column tab layout, more content visible at once | 480 × 800 px | Yes |
+| Desktop | Full resizable window, standard OS chrome, taskbar presence | 700 × 900 px min | No |
+| Banner | Horizontal strip pinned to top or bottom of screen; sprite left, key stats right, no tabs — just the essentials at a glance | Full screen width × 120 px | Yes |
+
+**Banner mode specifics:**
+- Shows: sprite (40×80 canvas), cultivation stage label, Qi bar, Qi/s, spirit stones, active expedition timer (if running), breakthrough button when ready.
+- A small ⬡ icon on the right edge opens the full window (Overlay mode) as a floating popup for tab access without switching modes.
+- Spirit stone and Qi values auto-format via `fmt()` to stay readable at small size.
+
+**Expanded mode specifics:**
+- Two-column layout: left column = canvas + stats, right column = active tab content.
+- Tabs become a compact icon row at the top of the right column instead of the full-width tab bar.
+- All existing tab content reflows; no content is hidden that isn't hidden in Overlay.
+
+**Implementation notes:**
+- Mode switching resizes the Electron window via `window.electron.setWindowSize(w, h)` IPC call — add to `preload.js` + `main.js` and the iOS shim in `platform-storage.js` (shim = no-op since iOS is always full-screen).
+- CSS: add a `data-layout` attribute on `<body>` (`overlay` / `expanded` / `desktop` / `banner`). All layout variants are CSS-only off that attribute — no JS branching in render functions.
+- Banner mode hides `#app` tabs and renders a `#banner-strip` element instead. The canvas is resized to 40×80 for banner; full-size for all other modes.
+- Existing 300px-wide styles stay as the `[data-layout="overlay"]` baseline; don't delete or break them.
+
+**State additions:**
+```js
+settings.layoutMode: 'overlay',   // 'overlay' | 'expanded' | 'desktop' | 'banner'
+settings.bannerEdge: 'top',        // 'top' | 'bottom' — only used in banner mode
+```
+
+**New files:** none — changes live in `renderer/styles.css` (layout CSS variants), `renderer/game.js` (mode switch wiring), `main.js` / `preload.js` (IPC resize), `renderer/engine/platform-storage.js` (shim).
 
 ---
 
@@ -1072,6 +1122,147 @@ settings: {
 
 ---
 
+## Phase 21 — Backpack & Inventory Tab
+
+Right now items live inside the Explore and Craft tabs with no unified view. The Backpack tab gives the player one place to see everything they own, including spirit stones as a first-class currency display.
+
+### 21A — Backpack Tab
+
+New tab "Pack" (袋) added between Craft and Sect in the tab row.
+
+**Layout:**
+
+```
+┌──────────────────────────────┐
+│ 💰 Spirit Stones: 1,240      │  ← always at top, large
+│ 💎 Void Crystals: 3          │  ← secondary hard currency
+├──────────────────────────────┤
+│ [ All ] [ Mats ] [ Pills ]   │  ← filter tabs
+│ [ Equip ] [ Rare ] [ Keys ]  │
+├──────────────────────────────┤
+│ ▸ Spirit Herb        ×14     │
+│   Iron Ore           ×7      │
+│   Beast Core         ×2      │
+│   …                          │
+├──────────────────────────────┤
+│ Sort: [Name ▾] [Qty] [Type]  │
+└──────────────────────────────┘
+```
+
+**Currency row** (always visible, not filterable):
+- Spirit Stones — the main soft currency; show with `,` formatting and a ± delta indicator that fades after 3s when it changes.
+- Void Crystals — hard currency for founding sects and late recipes; shown below Stones.
+
+**Item categories (filter tabs):**
+| Tab | Shows |
+|-----|-------|
+| All | Every item in inventory |
+| Mats | Herbs, ores, essences, cores — crafting ingredients |
+| Pills | Consumable pills and elixirs |
+| Equip | Weapons and artifacts (currently equipped items highlighted) |
+| Rare | Void Crystals, Chaos Essence, Realm Keys, Ancient Scripts — items with qty < 10 that are hard to obtain |
+| Keys | Realm Keys + Celestial Calendar — items that unlock content |
+
+**Item row:**
+- Item name + quantity right-aligned.
+- Tap/click a row to expand: shows description, "Use" button (pills/elixirs), "Equip" button (weapons/artifacts), "Discard ×1" button (with confirmation prompt).
+- Currently equipped gear shows a ◆ badge on its row.
+
+**Sort options:** Name A–Z, Quantity (high→low), Recently Acquired.
+
+**Spirit Stones delta indicator:** When stones change by any amount, show a small `+N` / `-N` in green/red that floats up and fades — makes the currency feel alive without requiring a separate event log entry.
+
+**Implementation notes:**
+- Spirit Stones and Void Crystals live in `_s.spiritStones` and `_s.inventory['void_crystal']` today; the display just needs to surface them prominently. No new state shape required.
+- The delta indicator needs a `_lastStonesSnapshot` in the render layer (not in game-state), tracked in `game.js`.
+- Item metadata (descriptions, categories) comes from `ITEMS` in `assets/data/items.js` — add a `category` field to each item definition (`'mat' | 'pill' | 'equip' | 'rare' | 'key'`).
+
+**State additions:** none (inventory already exists; only items.js needs `category` field added to each entry).
+
+**New files:** none — tab HTML in `renderer/index.html`, styles in `renderer/styles.css`, render + wiring in `renderer/game.js`.
+
+---
+
+## Phase 22 — Active / Idle Mode Toggle + Mid-Late Automation
+
+Two fundamentally different ways to play — the player can toggle between them freely at any time from the HUD. One prioritizes hands-off progression; the other rewards attention and clicking.
+
+### 22A — The Toggle
+
+A mode button lives in the titlebar next to the layout mode icon:
+
+```
+[⚙ Layout] [⚡ Active | 💤 Idle]
+```
+
+Switching is immediate and affects the next tick. Persists across sessions.
+
+**State additions:**
+```js
+settings.playMode: 'idle',   // 'idle' | 'active'
+```
+
+---
+
+### 22B — Idle Mode
+
+The default. Everything works exactly as it does today, plus automation unlocks progressively through cultivation.
+
+**Automation unlocks (Idle Mode only):**
+
+| Feature | Unlock Stage | Behavior |
+|---------|-------------|---------|
+| Auto-Explore | Core Formation L1 (stageIndex 12) | Automatically relaunches the last used expedition when it returns. Can be paused per-location with a toggle in the Explore tab. |
+| Auto-Sect Missions | Elder rank (rank 4) in any sect, or own sect Sect Hall Lv2 | Automatically re-queues completed missions of the same type if a slot is open. |
+| Auto-Craft | Spirit Severing L1 (stageIndex 19) | Repeats the last crafted recipe as long as materials are available. Toggle per recipe in Craft tab. |
+| Auto-Breakthrough | Nascent Soul L1 (stageIndex 18) | Automatically triggers a breakthrough attempt when Qi reaches the configured threshold (slider: 80%–100% of cap). Respects active pills. |
+
+Each automation has an on/off toggle visible in its respective tab. Toggling one in Idle Mode does not affect Active Mode state.
+
+Auto tasks emit a brief event-log line when they fire: `"[Auto] Expedition to Demon Marsh launched."` — same style as manual entries but prefixed `[Auto]`.
+
+---
+
+### 22C — Active Mode
+
+No automation whatsoever — every expedition launch, mission queue, breakthrough attempt, and craft must be manually clicked. In exchange:
+
+**Active Mode bonuses:**
+- All expedition timers −35% (faster returns).
+- Sect mission timers −25%.
+- Crafting time −20% (where crafting has a time cost in future phases).
+- Breakthrough attempt Qi loss on failure −10% extra (you're paying attention, you can course-correct sooner).
+
+**Active Mode interaction bonuses (rewards actually clicking):**
+- **Expedition push:** a "Push Harder" button appears for the last 20% of any expedition timer. Clicking it spends 10 Spirit Stones to add one extra roll on the drop table. Can only be used once per expedition.
+- **Breakthrough focus:** during a breakthrough attempt a small 3s click-window appears (pulsing ring around the Qi bar). Clicking within the window adds +5% success chance for that attempt only. Missing the window has no penalty.
+- **Craft attentiveness:** in Active Mode, each craft has a 10% chance to proc "Master's Touch" — doubles the output of that craft. Requires the player to have clicked the Craft tab within the last 60 seconds (i.e., you're watching).
+
+**Active Mode constraints:**
+- All automation toggles are greyed out and inert.
+- Auto-Explore, Auto-Missions, Auto-Craft, and Auto-Breakthrough do nothing even if they were turned on in Idle Mode.
+- The mode badge on the titlebar turns orange to make the state unmistakable.
+
+---
+
+### 22D — Mid/Late Automation Unlock Display
+
+In Idle Mode, the Explore and Sect tabs show a small "Automation" section near the top listing what's unlocked and what unlocks next:
+
+```
+Automation
+  ✅ Auto-Explore (Core Formation) — [ON] [OFF]
+  ✅ Auto-Missions (Elder rank)   — [ON] [OFF]
+  🔒 Auto-Craft — unlocks at Spirit Severing L1
+  🔒 Auto-Breakthrough — unlocks at Nascent Soul L1
+```
+
+This gives mid-game players a concrete automation roadmap to look forward to.
+
+**New files:** none — logic in `renderer/engine/game-state.js` (mode flag), automation dispatch in `renderer/game/expedition.js`, `renderer/game/sect.js`, `renderer/game/crafting.js`; UI wiring and Active Mode interaction windows in `renderer/game.js`.
+
+---
+
 ## Complete File Structure (after all phases)
 
 ```
@@ -1091,7 +1282,7 @@ renderer/
     expedition.js       ✅ Phase 2
     crafting.js         ✅ Phase 2
     beasts.js           ✅ Phase 3  (renderer/game/beasts.js)
-    sect.js             ← Phase 4/5
+    sect.js             ✅ Phase 4  (renderer/game/sect.js — 5B war logic → renderer/game/sect-war.js)
     dao.js              ← Phase 7
     tribulation.js      ← Phase 7
     reincarnation.js    ← Phase 8
@@ -1102,6 +1293,7 @@ renderer/
     lineage.js          ← Phase 18
     world-state.js      ← Phase 19
     settings.js         ← Phase 20
+    active-mode.js      ← Phase 22 (Active Mode interaction windows)
 
 assets/
   data/
@@ -1113,7 +1305,7 @@ assets/
     locations.js        ✅ Phase 2
     enemies.js          ✅ Phase 2
     beasts.js           ✅ Phase 3
-    sects.js            ← Phase 4
+    sects.js            ✅ Phase 4
     dao-paths.js        ← Phase 7
     tempering.js        ← Phase 14
     titles.js           ← Phase 10

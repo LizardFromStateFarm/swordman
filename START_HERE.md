@@ -21,7 +21,10 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Windows portable build → `dist/Cultivator Idle-win32-x64/` | ✅ Done |
 | Expedition / Combat / Crafting | ✅ Phase 2 |
 | Breakthrough Integrity + Spiritual Beasts | ✅ Phase 3 |
-| Sect system | ⬜ Phase 4–5 |
+| Sect system — join existing (5 sects, ranks, missions) | ✅ Phase 4 |
+| Found own sect (buildings, disciples, income) | ✅ Phase 5A |
+| Sect wars + alliances | ✅ Phase 5B |
+| Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
 | Dao Paths, Reincarnation, Tribulation | ⬜ Phase 7–8 |
 | Desktop notifications, tray, time-of-day | ⬜ Phase 9 |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
@@ -33,6 +36,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Lineage & Heir Inheritance | ⬜ Phase 18 |
 | World Epochs & Spiritual Tides | ⬜ Phase 19 |
 | Challenge Modes + Permadeath + Settings | ⬜ Phase 20 |
+| Backpack & Inventory Tab (unified item/currency view) | ⬜ Phase 21 |
+| Active / Idle Mode Toggle + Mid-Late Automation | ⬜ Phase 22 |
 
 ---
 
@@ -40,53 +45,43 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ```
 Date: 2026-09-25
-Agent: iOS port — process/docs update + release pipeline scaffolding
+Agent: Phase 5B — Sect Wars (Phase 5A finished earlier same day, see docs/systems/own-sect.md)
 What was done:
-  - Updated house rules so future agents don't accidentally break the iOS shim while adding
-    game features:
-      · CLAUDE.md — new Architecture Rule #7: window.electron.* changes must update BOTH
-        preload.js/main.js AND renderer/engine/platform-storage.js together; warns against adding
-        new desktop-window-only CSS assumptions. Also added an iOS-web-bundle check to the
-        "A task is NOT done until" list.
-      · START_HERE.md "Adding a New System" checklist — added the same platform-storage.js
-        reminder, plus points at `npm run release` as the one-command way to validate + ship.
-      · Rewrote docs/systems/ios-port.md — now documents the actual state (ios/ exists, Capacitor
-        packages really installed), the release pipeline, and the CI setup checklist.
-  - Built the release pipeline an agent can just run:
-      · scripts/check-syntax.js (npm test) — node --check over every first-party .js file
-        (skips node_modules/dist/out/www/ios). 23 files, passing.
-      · scripts/release.js (npm run release) — chains: npm test -> npm run dist (Windows build)
-        -> npm run cap:sync (iOS web bundle sync) -> git commit+push (only if something changed
-        and everything above passed; pushes gracefully degrade to "commit succeeded, push it
-        yourself" if run somewhere without network) -> triggers the Codemagic iOS build via its
-        REST API, but ONLY if CODEMAGIC_API_TOKEN + CODEMAGIC_APP_ID are set — a clean no-op until
-        then, not an error.
-      · codemagic.yaml — the actual CI workflow definition (macOS runner, builds ios/, publishes
-        to TestFlight via App Store Connect integration "cultivator_idle_asc"). Deliberately has no
-        automatic push-triggers — only scripts/release.js's API call starts it, so CI minutes
-        aren't spent on every commit. NOT ACTIVE — see "what's left" below.
-  - Recap of last session's actual iOS scaffolding (already pushed): ios/ Xcode project exists
-    (Capacitor 8, Swift Package Manager, no CocoaPods), @capacitor/core+cli+ios are real installed
-    devDependencies. Also documented: this machine's NODE_ENV=production silently makes npm skip
-    devDependencies (bit us once already — always `npm install --include=dev` here).
+  - Wrote docs/systems/sect-war.md first (Rule #6), then implemented Phase 5B:
+      · assets/data/sect-war.js — war interval scaling (2–6h by sectFame), scout(5m)/prep(10m) durations,
+        reinforcement/alliance costs+bonuses, loss/array-damage constants, rival sect name pools
+      · game-state.js — `sectWar` state (+ _ensurePhase5BFields migration); tickSectWar() (Date.now()-chained
+        state machine: none→scouting→preparing→auto-resolve, loops internally so offline catch-up fast-forwards
+        through any number of missed wars in one initSlot() call); reinforceForWar() / requestWarAlly(sectId);
+        _resolveSectWar() rolls playerPower/(playerPower+enemyPower) using derived.warDefense + fame, pays
+        spoils or a Spirit Stone penalty + Defensive Array disable (derived.arrayDamaged excludes its
+        war_defense effect in _recalc() while damaged); fame now includes +5×warVictories
+      · renderer/game/sect-war.js — SectWarSystem.tick() thin wrapper, wired into the main loop
+      · Sect tab: renderSectWarPanel() — idle/scouting/preparing/resolved banners, alliance request list
+        (buys a one-war power bonus from the existing Phase 4 SECTS roster), reinforce button; live countdown
+        via updateSectTimersInPlace(); Stats tab shows W/L record
+      · Docs: PLAN.md, CLAUDE.md tree, docs/index.md, own-sect.md cross-ref
+  - Verified: `npm test` (28 files), `npm run build:web`, `npm run dist` (real win32 build — we're on native
+    Windows this session, not the Linux sandbox from last time), a headless vm-sandboxed logic test (phase
+    transitions, ally/reinforce gating, forced-win and forced-loss resolves, array damage, offline
+    fast-forward across a full missed war cycle in one call, migration, disband reset — all passed), AND a
+    full Playwright `_electron` UI round-trip against the real packaged app: founded a sect, force-advanced
+    the war through all four states via the live `gameState` global, clicked the real Ally/Reinforce buttons,
+    screenshotted each state, confirmed only the pre-existing CSP style-src console noise appeared (no new
+    errors). Playwright was a throwaway dev install (--no-save), removed after.
 What was NOT finished / left for next session:
-  - Apple Developer Program enrollment still pending Apple's approval — this blocks literally
-    everything CI/TestFlight-related below. Nothing to do here but wait.
-  - Once approved: register the app in App Store Connect (bundle ID com.cultivator.idle), create
-    an App Store Connect API key, set up a Codemagic account + connect this repo + add the
-    App Store Connect integration (name it "cultivator_idle_asc" or edit codemagic.yaml to match),
-    and set CODEMAGIC_API_TOKEN / CODEMAGIC_APP_ID env vars wherever `npm run release` runs. Full
-    step list in docs/systems/ios-port.md's "CI / TestFlight" section.
-  - codemagic.yaml is a template — never actually run yet (no Codemagic account exists), so treat
-    the first real run as a debugging pass, not a sure thing.
-  - The responsive/mobile CSS pass (300px-fixed layout) is still not started — still the biggest
-    real remaining port work, independent of the CI blocker.
+  - Phase 4 + 5A + 5B are all still uncommitted (this session did not commit — ask before committing).
+  - No real NPC-sect simulation exists (Phase 15), so rival sects/allies are flavor + a Phase-4-roster
+    alliance purchase, not a persistent relationship system — documented as a deliberate divergence.
+  - Balance is first-pass across 4/5A/5B (disciple rates, building costs, war power formula, spoils/penalty
+    sizes, reinforce/ally costs) — needs real playtesting/tuning together, not just correctness-verified.
+  - Pre-existing: CSP `style-src 'self'` blocks inline `style="width:…"` in innerHTML (Explore expedition bar,
+    beast XP bar initial render) — unrelated to 5B, new Sect War UI has no bars so it didn't need a workaround.
+  - iOS items unchanged: blocked on Apple Developer approval; responsive/mobile CSS pass not started.
 Next recommended task:
-  - Nothing iOS-side can move until the Apple Developer account clears — go back to Phase 4
-    (Sect System) on PC in the meantime; docs/systems/ios-port.md + CLAUDE.md Rule #7 mean that
-    work is safe to do without derailing the iOS port
-  - When the Apple account clears: work through the CI checklist above, then try `npm run release`
-    for real and see what breaks
+  - Playtest Phases 4/5A/5B together on a real save and tune numbers (disciple income, building costs, war
+    power/spoils/costs) — nothing mechanically is blocking this, only real play data is missing.
+  - Or move on to Phase 6 (Animation & Visual Overhaul) per PLAN.md.
 ```
 
 **When you finish a session, update this block** — date, what you did, what's next.
@@ -109,6 +104,8 @@ docs/
     expedition.md      ← Expedition timer, inventory, drops (Phase 2)
     crafting.md        ← Recipes, equipment, pills, elixirs (Phase 2)
     integrity.md       ← Realm Integrity, Spiritual Beasts (Phase 3)
+    sects.md           ← Sect join/rank/missions/bonuses (Phase 4)
+    own-sect.md        ← Found a sect: buildings, disciples, income (Phase 5A)
     ui-layout.md       ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md           ← Always-on rules (docs, style, Electron security)
@@ -129,6 +126,7 @@ renderer/
     expedition.js      ← ExpeditionSystem — tick-based expedition resolution
     crafting.js        ← CraftingSystem — thin wrapper for craft/equip/pill/elixir
     beasts.js          ← BeastSystem — tick-based beast expedition resolution (Phase 3)
+    sect.js            ← SectSystem — sect mission timers (Phase 4)
 assets/
   data/
     stages.js          ← CULTIVATION_STAGES[23] — every layer of the cultivation path
@@ -139,6 +137,8 @@ assets/
     enemies.js         ← ENEMIES — tier definitions
     recipes.js         ← RECIPES — all crafting recipes (incl. Phase 3 talisman recipe)
     beasts.js          ← BEAST_TYPES + BEAST_TRAITS — spiritual beast definitions (Phase 3)
+    sects.js           ← SECTS + SECT_RANKS + SECT_MISSIONS (Phase 4)
+    sect-buildings.js  ← Own-sect founding/buildings/disciple constants (Phase 5A)
   sprites/
     cultivator-sprites.js  ← CULTIVATOR_SPRITES — all animated ASCII frames
     beast-sprites.js       ← BEAST_SPRITES — spirit fox, thunder eagle, void hound (Phase 3)

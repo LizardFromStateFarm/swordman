@@ -11,6 +11,9 @@ Never load all docs at session start — that defeats the purpose.
 | [expedition.md](systems/expedition.md) | Expedition timer, inventory, drop resolution, offline catch-up | expedition.js · locations.js · enemies.js · items.js (expedition side) |
 | [crafting.md](systems/crafting.md) | Recipes, equipping, pills, elixirs, root rerolls | crafting.js · recipes.js · items.js (craft side) · game-state.js (craftItem, equipItem, etc.) |
 | [integrity.md](systems/integrity.md) | Realm Integrity bar, demotion, Spiritual Beasts (tame/level/expedition) | game-state.js · beasts.js (data) · beast-sprites.js · game.js (renderExplore) |
+| [sects.md](systems/sects.md) | Sect joining, ranks, contribution, missions, per-sect bonuses | sects.js · renderer/game/sect.js · game-state.js (sect API, _recalc) · game.js (renderSect) |
+| [own-sect.md](systems/own-sect.md) | Founding your own sect, buildings, disciples, recruit pool, income, beast slots, war-defense/fame | sect-buildings.js · game-state.js (own-sect API, _recalc, tickOwnSect) · game.js (renderOwnSect) |
+| [sect-war.md](systems/sect-war.md) | Sect war timer, scouting/preparation phases, auto-resolve, reinforcement, alliances, array damage | sect-war.js · game-state.js (war API, _recalc, tickSectWar) · renderer/game/sect-war.js · game.js (renderSectWarPanel) |
 | [ui-layout.md](systems/ui-layout.md) | Window structure, tab pattern, CSS vars, render helpers | game.js · index.html · styles.css |
 | [ios-port.md](systems/ios-port.md) | Capacitor iOS shell, platform storage shim, www/ build | capacitor.config.json · scripts/build-ios-web.js · renderer/engine/platform-storage.js |
 
