@@ -25,6 +25,9 @@
     "git": "^0.1.5"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
     "electron": "^28.3.0",
     "electron-builder": "^24.13.3"
   },
