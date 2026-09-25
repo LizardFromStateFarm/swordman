@@ -95,6 +95,17 @@ assets/
 4. **New sprites → Asset Pipeline first.** Minimum score 8.0/10. See `.agents/rules/assets.md`.
 5. **New state fields** → add to `_newGame()` AND to `_ensurePhase2Fields()` (or add a new `_ensurePhaseNFields()` method) for save-migration safety.
 6. **New Phase → new system doc** → create `docs/systems/<system>.md` before writing code.
+7. **PC + iOS share one renderer.** `renderer/` and `assets/` are the single source of truth for
+   BOTH platforms (Electron desktop + Capacitor iOS) — see `docs/systems/ios-port.md` before
+   touching anything platform-related. Concretely:
+   - If you add/change a `window.electron.*` method, update it in BOTH `preload.js`/`main.js`
+     (the real Electron implementation) AND `renderer/engine/platform-storage.js` (the iOS/browser
+     fallback) in the same change. Never call Node/Electron APIs from renderer code any other way —
+     rule #3 already requires this, and it's now also what makes the iOS shim work at all.
+   - Don't add new hard-coded desktop-window assumptions (fixed pixel sizes, `-webkit-app-region`,
+     hover-only interactions) without a thought for how it'll look full-screen on a phone. The
+     existing 300px-width CSS is a known, tracked exception (see `docs/systems/ios-port.md`), not a
+     pattern to extend.
 
 ---
 
@@ -152,6 +163,9 @@ Documentation is part of implementation. "I'll update it after" means it never g
 - `PLAN.md` reflects the new state
 - Relevant system doc is current
 - `npm run dist` produces a working build (for any user-facing changes)
+- If `renderer/` or `assets/` changed: `npm run build:web` (or `npm run cap:sync`) still succeeds —
+  confirms the iOS web bundle still assembles cleanly, even though there's no Mac to build the
+  actual `.ipa` yet. See `docs/systems/ios-port.md`.
 
 ---
 

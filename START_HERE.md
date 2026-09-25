@@ -40,46 +40,53 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ```
 Date: 2026-09-25
-Agent: iOS port — initial plumbing (Capacitor shell)
+Agent: iOS port — process/docs update + release pipeline scaffolding
 What was done:
-  - Set up the Electron+Capacitor dual-shell split (Electron/PC untouched, Capacitor added alongside):
-      · Created renderer/engine/platform-storage.js — window.electron fallback shim (localStorage-backed)
-        that activates only when Electron's real contextBridge one isn't present. game.js / game-state.js
-        call window.electron.* exactly as before; no changes needed there.
-      · Wired it into renderer/index.html (script tag right before engine/game-state.js).
-      · Created capacitor.config.json (appId com.cultivator.idle, webDir "www").
-      · Created scripts/build-ios-web.js + npm run build:web — assembles www/ (gitignored, fully
-        generated) from renderer/ + assets/, rewriting the "../assets/" sibling-dir path (Electron's
-        on-disk layout) to "assets/" (required for a Capacitor webDir, which only bundles one folder).
-        Verified it runs and produces a correct www/ tree.
-      · Added npm scripts: build:web, cap:sync (build:web + cap sync ios), ios:open (+ cap open ios).
-      · Created docs/systems/ios-port.md (full reference — read this before touching anything
-        iOS/Capacitor-related) and added it to docs/index.md.
-  - Confirmed via grep that window.electron is called from exactly 6 methods across game.js /
-    game-state.js — all covered by the shim, nothing else Electron-specific in the renderer.
-  - Did NOT touch main.js, preload.js, or anything under renderer/ or assets/ other than the one
-    index.html script-tag insertion — PC/Electron build path is unaffected.
+  - Updated house rules so future agents don't accidentally break the iOS shim while adding
+    game features:
+      · CLAUDE.md — new Architecture Rule #7: window.electron.* changes must update BOTH
+        preload.js/main.js AND renderer/engine/platform-storage.js together; warns against adding
+        new desktop-window-only CSS assumptions. Also added an iOS-web-bundle check to the
+        "A task is NOT done until" list.
+      · START_HERE.md "Adding a New System" checklist — added the same platform-storage.js
+        reminder, plus points at `npm run release` as the one-command way to validate + ship.
+      · Rewrote docs/systems/ios-port.md — now documents the actual state (ios/ exists, Capacitor
+        packages really installed), the release pipeline, and the CI setup checklist.
+  - Built the release pipeline an agent can just run:
+      · scripts/check-syntax.js (npm test) — node --check over every first-party .js file
+        (skips node_modules/dist/out/www/ios). 23 files, passing.
+      · scripts/release.js (npm run release) — chains: npm test -> npm run dist (Windows build)
+        -> npm run cap:sync (iOS web bundle sync) -> git commit+push (only if something changed
+        and everything above passed; pushes gracefully degrade to "commit succeeded, push it
+        yourself" if run somewhere without network) -> triggers the Codemagic iOS build via its
+        REST API, but ONLY if CODEMAGIC_API_TOKEN + CODEMAGIC_APP_ID are set — a clean no-op until
+        then, not an error.
+      · codemagic.yaml — the actual CI workflow definition (macOS runner, builds ios/, publishes
+        to TestFlight via App Store Connect integration "cultivator_idle_asc"). Deliberately has no
+        automatic push-triggers — only scripts/release.js's API call starts it, so CI minutes
+        aren't spent on every commit. NOT ACTIVE — see "what's left" below.
+  - Recap of last session's actual iOS scaffolding (already pushed): ios/ Xcode project exists
+    (Capacitor 8, Swift Package Manager, no CocoaPods), @capacitor/core+cli+ios are real installed
+    devDependencies. Also documented: this machine's NODE_ENV=production silently makes npm skip
+    devDependencies (bit us once already — always `npm install --include=dev` here).
 What was NOT finished / left for next session:
-  - @capacitor/core, @capacitor/cli, @capacitor/ios are not installed in this repo yet, and the
-    ios/ native Xcode project hasn't been generated — this dev sandbox has no package-registry
-    network access. Needs to be run from a terminal with real internet access:
-      npm install @capacitor/core @capacitor/cli @capacitor/ios --save-dev
-      npx cap init "Cultivator Idle" com.cultivator.idle --web-dir=www
-      npm run build:web
-      npx cap add ios
-  - renderer/styles.css is hard-coded to the 300px desktop-overlay width (-webkit-app-region: drag
-    etc.) — iOS will currently render as a small fixed box, not full-screen. A real responsive/
-    mobile-layout pass is needed but was deliberately deferred (separate from this plumbing work).
-  - No CI/TestFlight pipeline yet — blocked on the Apple Developer account (in progress). Once
-    that's active: cloud macOS CI (Codemagic free tier) building ios/ and pushing to TestFlight.
-  - This repo's origin (github.com/LizardFromStateFarm/swordman) wasn't pushed to from this session
-    — the dev sandbox this ran in has no network access to GitHub either. Local commit only; push
-    needs to happen from a terminal with network access.
+  - Apple Developer Program enrollment still pending Apple's approval — this blocks literally
+    everything CI/TestFlight-related below. Nothing to do here but wait.
+  - Once approved: register the app in App Store Connect (bundle ID com.cultivator.idle), create
+    an App Store Connect API key, set up a Codemagic account + connect this repo + add the
+    App Store Connect integration (name it "cultivator_idle_asc" or edit codemagic.yaml to match),
+    and set CODEMAGIC_API_TOKEN / CODEMAGIC_APP_ID env vars wherever `npm run release` runs. Full
+    step list in docs/systems/ios-port.md's "CI / TestFlight" section.
+  - codemagic.yaml is a template — never actually run yet (no Codemagic account exists), so treat
+    the first real run as a debugging pass, not a sure thing.
+  - The responsive/mobile CSS pass (300px-fixed layout) is still not started — still the biggest
+    real remaining port work, independent of the CI blocker.
 Next recommended task:
-  - Run the capacitor install + cap add ios commands above (needs real internet access)
-  - Then npm run ios:open to check it actually launches in Xcode/Simulator on a Mac
-  - After that: either start the mobile-responsive CSS pass, or continue Phase 4 (Sect System) on
-    PC and revisit iOS again in a few phases — see chat history for the reasoning on that tradeoff
+  - Nothing iOS-side can move until the Apple Developer account clears — go back to Phase 4
+    (Sect System) on PC in the meantime; docs/systems/ios-port.md + CLAUDE.md Rule #7 mean that
+    work is safe to do without derailing the iOS port
+  - When the Apple account clears: work through the CI checklist above, then try `npm run release`
+    for real and see what breaks
 ```
 
 **When you finish a session, update this block** — date, what you did, what's next.
@@ -173,6 +180,10 @@ Save files: `%APPDATA%\Roaming\cultivator-idle\` (Windows)
 - [ ] Wire into `renderer/game.js` boot + tick
 - [ ] Add UI to `renderer/index.html` + `renderer/styles.css`
 - [ ] If new sprites needed: run Asset Pipeline (`.agents/rules/assets.md`)
+- [ ] If you touched `window.electron.*`: update BOTH `preload.js`/`main.js` and
+      `renderer/engine/platform-storage.js` (see `docs/systems/ios-port.md`)
 - [ ] Update PLAN.md phase status (mark items done)
 - [ ] Update START_HERE.md "Last Session" block
-- [ ] Rebuild: `npm run dist`
+- [ ] Rebuild: `npm run dist` (PC) and `npm run build:web` (confirms iOS web bundle still assembles)
+- [ ] Or just run `npm run release` — does the syntax check, `npm run dist`, `npm run build:web` +
+      `cap sync`, and commits/pushes in one go once everything passes. See `scripts/release.js`.

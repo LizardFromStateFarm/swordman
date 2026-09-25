@@ -1,0 +1,55 @@
+# Codemagic CI — builds ios/ and publishes to TestFlight.
+#
+# NOT ACTIVE YET. Needs, once the Apple Developer account is approved:
+#   1. A Codemagic account (free tier covers this) with this repo connected.
+#   2. In Codemagic → Team settings → Integrations → App Store Connect: add an integration
+#      named "cultivator_idle_asc" (or change the name below to match) using an App Store
+#      Connect API key (App Store Connect → Users and Access → Keys). That key needs the
+#      "App Manager" role.
+#   3. In App Store Connect: register the app with bundle ID com.cultivator.idle and create
+#      a TestFlight record for it.
+#   4. An API token from Codemagic (Team settings → Integrations → Codemagic API) and this
+#      workflow's App ID (shown in the app's Codemagic URL once the repo is added) set as
+#      CODEMAGIC_API_TOKEN / CODEMAGIC_APP_ID wherever `npm run release` runs — see
+#      docs/systems/ios-port.md.
+#
+# This workflow has NO automatic triggers on purpose (no `triggering:` section) — it only starts
+# via the Codemagic API, which is exactly what scripts/release.js calls after the Windows build +
+# local checks pass, so CI minutes aren't spent on every push, only on ones actually worth shipping.
+
+workflows:
+  ios-workflow:
+    name: iOS TestFlight (Cultivator Idle)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: cultivator_idle_asc
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.cultivator.idle
+      vars:
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+      node: 22
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+      - name: Build web bundle for Capacitor
+        script: npm run build:web
+      - name: Sync Capacitor iOS project
+        script: npx cap sync ios
+      - name: Set up code signing (automatic via App Store Connect integration)
+        script: xcode-project use-profiles
+      - name: Build .ipa
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

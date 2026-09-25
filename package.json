@@ -10,7 +10,9 @@
     "dist:mac": "npx electron-packager . \"Cultivator Idle\" --platform=darwin --arch=x64,arm64 --out=dist --overwrite --ignore=\\.git",
     "build:web": "node scripts/build-ios-web.js",
     "cap:sync": "npm run build:web && npx cap sync ios",
-    "ios:open": "npm run cap:sync && npx cap open ios"
+    "ios:open": "npm run cap:sync && npx cap open ios",
+    "test": "node scripts/check-syntax.js",
+    "release": "node scripts/release.js"
   },
   "author": "Cultivator Idle",
   "keywords": [
