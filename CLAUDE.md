@@ -57,11 +57,15 @@ docs/
 
 main.js                 ← Electron window, IPC, slot save/load
 preload.js              ← contextBridge — only way renderer talks to Node
+capacitor.config.json     ← Capacitor (iOS) config — webDir "www"
+scripts/
+  build-ios-web.js      ← Builds www/ (gitignored) from renderer/ + assets/ for Capacitor
 renderer/
   index.html            ← All HTML — charselect + app, 5 tabs
   styles.css            ← All CSS — CSS vars at top, add new components here
   game.js               ← Boot, tick loop, all UI wiring and render functions
   engine/
+    platform-storage.js ← window.electron fallback (Capacitor/browser) — see docs/systems/ios-port.md
     game-state.js       ← ALL state mutations — _newGame(), _recalc(), tick()
     ascii-renderer.js   ← Canvas renderer — sprites + particles + aura rings
   game/

@@ -39,44 +39,47 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
-Date: 2026-09-24
-Agent: Phase 3 implementation
+Date: 2026-09-25
+Agent: iOS port — initial plumbing (Capacitor shell)
 What was done:
-  - Implemented Phase 3A (Realm Integrity) and Phase 3B (Spiritual Beasts) in full
-  - Created docs/systems/integrity.md — system reference doc
-  - Created assets/data/beasts.js — BEAST_TYPES (3 types) + BEAST_TRAITS (6 traits)
-  - Created assets/sprites/beast-sprites.js — 3 beast sprites (Spirit Fox 8.2, Thunder Eagle 8.4, Void Hound 8.6) — all pass Asset Pipeline
-  - Updated assets/data/items.js — added beast_taming_talisman; updated pill_heart_calming to include integrity_restore: 30
-  - Updated assets/data/recipes.js — added talisman recipe (category: talismans)
-  - Updated renderer/engine/game-state.js:
-      · _newGame(): added realmIntegrity, _intRegenAcc, beasts, beastEncounters fields
-      · _ensurePhase3Fields(): save migration safety
-      · _recalc(): beast passive bonuses (soul_bond, qi_devour, heavenly_instinct); integrity in derived
-      · tick(): +1 integrity per 30s via _intRegenAcc accumulator; offline catch-up on init
-      · attemptBreakthrough(): −20 integrity on fail; demotion at 0; Heart Calming Pill restores +30 integrity; returns demoted: bool
-      · resolveExpedition(): beast encounter roll (8–14% chance scaled by tier; queues beastEncounters)
-      · New methods: tameEncounteredBeast, sendBeastExpedition, resolveBeastExpedition, dismissBeast
-      · _rollDrops(): accepts optional lootMultOverride for beast expeditions
-  - Created renderer/game/beasts.js — BeastSystem (ticks beast expedition timers)
-  - Updated renderer/game.js:
-      · BeastSystem wired into bootGame loop
-      · updateHUD: integrity bar fill + color + offline regen
-      · Breakthrough fail handler: shake animation + demotion message
-      · renderExplore: Beast Encounters section + Active Beasts section with expedition picker
-      · renderStats: shows Realm Integrity + Beasts count
-      · renderCraft: Talismans sub-tab added (5th category)
-      · Inventory groups: added talisman type
-      · renderBeastSpriteHTML helper
-  - Updated renderer/index.html — integrity bar block added; 2 new script tags (beasts.js, beast-sprites.js)
-  - Updated renderer/styles.css — integrity bar, shake animation, full beast UI styles
-  - All files pass node --check; Electron launches without errors
+  - Set up the Electron+Capacitor dual-shell split (Electron/PC untouched, Capacitor added alongside):
+      · Created renderer/engine/platform-storage.js — window.electron fallback shim (localStorage-backed)
+        that activates only when Electron's real contextBridge one isn't present. game.js / game-state.js
+        call window.electron.* exactly as before; no changes needed there.
+      · Wired it into renderer/index.html (script tag right before engine/game-state.js).
+      · Created capacitor.config.json (appId com.cultivator.idle, webDir "www").
+      · Created scripts/build-ios-web.js + npm run build:web — assembles www/ (gitignored, fully
+        generated) from renderer/ + assets/, rewriting the "../assets/" sibling-dir path (Electron's
+        on-disk layout) to "assets/" (required for a Capacitor webDir, which only bundles one folder).
+        Verified it runs and produces a correct www/ tree.
+      · Added npm scripts: build:web, cap:sync (build:web + cap sync ios), ios:open (+ cap open ios).
+      · Created docs/systems/ios-port.md (full reference — read this before touching anything
+        iOS/Capacitor-related) and added it to docs/index.md.
+  - Confirmed via grep that window.electron is called from exactly 6 methods across game.js /
+    game-state.js — all covered by the shim, nothing else Electron-specific in the renderer.
+  - Did NOT touch main.js, preload.js, or anything under renderer/ or assets/ other than the one
+    index.html script-tag insertion — PC/Electron build path is unaffected.
 What was NOT finished / left for next session:
-  - npm run dist not yet run (user-facing changes made)
-  - Phase 4 (Sect System) is the next implementation target
+  - @capacitor/core, @capacitor/cli, @capacitor/ios are not installed in this repo yet, and the
+    ios/ native Xcode project hasn't been generated — this dev sandbox has no package-registry
+    network access. Needs to be run from a terminal with real internet access:
+      npm install @capacitor/core @capacitor/cli @capacitor/ios --save-dev
+      npx cap init "Cultivator Idle" com.cultivator.idle --web-dir=www
+      npm run build:web
+      npx cap add ios
+  - renderer/styles.css is hard-coded to the 300px desktop-overlay width (-webkit-app-region: drag
+    etc.) — iOS will currently render as a small fixed box, not full-screen. A real responsive/
+    mobile-layout pass is needed but was deliberately deferred (separate from this plumbing work).
+  - No CI/TestFlight pipeline yet — blocked on the Apple Developer account (in progress). Once
+    that's active: cloud macOS CI (Codemagic free tier) building ios/ and pushing to TestFlight.
+  - This repo's origin (github.com/LizardFromStateFarm/swordman) wasn't pushed to from this session
+    — the dev sandbox this ran in has no network access to GitHub either. Local commit only; push
+    needs to happen from a terminal with network access.
 Next recommended task:
-  - Run npm run dist to produce a new portable build
-  - Start Phase 4: create assets/data/sects.js, sect join UI, contribution system
-  - See PLAN.md §Phase 4 for full spec
+  - Run the capacitor install + cap add ios commands above (needs real internet access)
+  - Then npm run ios:open to check it actually launches in Xcode/Simulator on a Mac
+  - After that: either start the mobile-responsive CSS pass, or continue Phase 4 (Sect System) on
+    PC and revisit iOS again in a few phases — see chat history for the reasoning on that tradeoff
 ```
 
 **When you finish a session, update this block** — date, what you did, what's next.

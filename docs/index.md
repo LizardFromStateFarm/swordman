@@ -12,6 +12,7 @@ Never load all docs at session start — that defeats the purpose.
 | [crafting.md](systems/crafting.md) | Recipes, equipping, pills, elixirs, root rerolls | crafting.js · recipes.js · items.js (craft side) · game-state.js (craftItem, equipItem, etc.) |
 | [integrity.md](systems/integrity.md) | Realm Integrity bar, demotion, Spiritual Beasts (tame/level/expedition) | game-state.js · beasts.js (data) · beast-sprites.js · game.js (renderExplore) |
 | [ui-layout.md](systems/ui-layout.md) | Window structure, tab pattern, CSS vars, render helpers | game.js · index.html · styles.css |
+| [ios-port.md](systems/ios-port.md) | Capacitor iOS shell, platform storage shim, www/ build | capacitor.config.json · scripts/build-ios-web.js · renderer/engine/platform-storage.js |
 
 ## Rules for agents
 
