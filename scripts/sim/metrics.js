@@ -193,6 +193,22 @@ class Recorder {
         if (!CATS.includes(it.category)) this.violate('item_category_invalid', `${id}=${it.category}`)
       }
     }
+    // Phase 22: Active/Idle mode + automation. "Fires only when unlocked" is guaranteed at the code level —
+    // setAutomation() refuses to enable a toggle before automationUnlocked(), and every dispatch point
+    // (_maybeAutoExplore/_maybeAutoSectMission/_tickAutomation) re-checks automationUnlocked() again right
+    // before acting — so it's not re-checked here as a state spot-check: a toggle can legitimately read
+    // "enabled" while its unlock condition is transiently not met (e.g. a founder bot leaves its sect,
+    // zeroing sect.rank, after autoSectMissions unlocked via rank) without ever having fired out of turn;
+    // see docs/systems/automation.md Gotchas.
+    if (!['idle', 'active'].includes(s.playMode)) this.violate('play_mode_invalid', s.playMode)
+    const auto = s.automation
+    if (!auto) this.violate('automation_invalid', 'missing')
+    else {
+      for (const key of ['autoExplore', 'autoSectMissions', 'autoCraft', 'autoBreakthrough'])
+        if (typeof auto[key] !== 'boolean') this.violate('automation_invalid', `${key}=${auto[key]}`)
+      if (!(auto.breakthroughThreshold >= this.D.AUTO_BREAKTHROUGH_THRESHOLD_MIN && auto.breakthroughThreshold <= this.D.AUTO_BREAKTHROUGH_THRESHOLD_MAX))
+        this.violate('automation_invalid', `breakthroughThreshold=${auto.breakthroughThreshold}`)
+    }
     if (!(s.karma >= 0 && s.karma <= 100)) this.violate('karma_out_of_range', s.karma)
     if (d.breakthroughChance > 0.98 || d.breakthroughChanceDisplay > 0.98) this.violate('bt_chance_over_0.98', d.breakthroughChanceDisplay)
     if (s.stageIndex < 0 || s.stageIndex >= this.D.CULTIVATION_STAGES.length) this.violate('stage_out_of_range', s.stageIndex)

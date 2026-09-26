@@ -26,10 +26,21 @@ class GameState {
 
     if (saved && saved.version === 2) {
       this._s = saved
-      // Auto-resolve any expedition that completed while offline
+      // Auto-resolve any expedition that completed while offline. Phase 22: if Auto-Explore relaunches it,
+      // chain the new endsAt off the just-missed one (not real "now") so a bounded loop fast-forwards
+      // through the whole offline gap, same trick tickSectWar() already uses for its own phase chain.
       if (this._s.expedition?.active && Date.now() >= this._s.expedition.endsAt) {
         this._ensurePhase2Fields()
-        this.resolveExpedition()
+        this._ensurePhase22Fields()
+        let guard = 0
+        while (this._s.expedition.active && Date.now() >= this._s.expedition.endsAt && guard++ < 50) {
+          const prevEndsAt = this._s.expedition.endsAt
+          this.resolveExpedition()
+          if (this._s.expedition.active) {
+            const loc = LOCATIONS.find(l => l.id === this._s.expedition.locationId)
+            this._s.expedition.endsAt = prevEndsAt + (loc?.duration || 0) * 1000 * this._activeTimeMult('expedition')
+          }
+        }
       }
       const elapsed = Math.min((Date.now() - (saved.lastSave || 0)) / 1000, 8 * 3600)
       if (elapsed > 1) {
@@ -47,6 +58,14 @@ class GameState {
         if (healthGain > 0) {
           this._ensurePhase23Fields()
           this._s.health = Math.min(100, (this._s.health ?? 100) + healthGain)
+        }
+        // Side-fix (Phase 22 task, flagged by Phase 32): resolve any pending Phase 4 sect missions BEFORE
+        // the war fast-forward, so a Standing Orders chestStones donation during offline catch-up sees an
+        // up-to-date Spirit Stone balance — missions used to only resolve on the next LIVE tick (SectSystem
+        // only ticks live), which ran after tickSectWar(false) already read a stale balance. See sect-war.md.
+        this._ensurePhase4Fields()
+        for (const m of [...(this._s.sect.activeMissions || [])]) {
+          if (Date.now() >= m.endsAt) this.resolveSectMission(m.uid)
         }
         this.tickOwnSect(elapsed)
         this._ensurePhase5BFields()
@@ -87,7 +106,7 @@ class GameState {
       meditating:    false,
       meditationEnds:0,
       // Phase 2
-      expedition:    { active: false, locationId: null, endsAt: null },
+      expedition:    { active: false, locationId: null, endsAt: null, pushed: false },
       inventory:     {},
       equipped:      { weapon: null, artifact: null },
       activePill:    null,
@@ -104,6 +123,9 @@ class GameState {
       sectWar:          this._blankSectWar(),
       // Phase 32
       warOrders:        { ...WAR_ORDERS_DEFAULT },
+      // Phase 22
+      playMode:         PLAY_MODE_DEFAULT,
+      automation:       this._blankAutomation(),
       // Phase 23A/B/C
       health:            100,
       _healthRegenAcc:   0,
@@ -228,6 +250,39 @@ class GameState {
     if (!(typeof o.reinforceKeep === 'number' && isFinite(o.reinforceKeep) && o.reinforceKeep >= 0)) o.reinforceKeep = WAR_ORDERS_DEFAULT.reinforceKeep
   }
 
+  _blankAutomation() {
+    return {
+      autoExplore: false, autoExplorePaused: {}, lastExploreLocationId: null,
+      autoSectMissions: false,
+      autoCraft: false, autoCraftRecipes: {},
+      autoBreakthrough: false, breakthroughThreshold: AUTO_BREAKTHROUGH_THRESHOLD_DEFAULT,
+      _craftAcc: 0,
+    }
+  }
+
+  // Phase 22: Active/Idle mode + automation. Fills defaults, resets invalid values — same pattern as
+  // _ensurePhase20CFields()/_ensurePhase32Fields(). playMode is its OWN field (not s.settings) because it
+  // changes game balance (timers, bonuses, automation) — settings.md invariant #2 requires s.settings stay
+  // presentation-only.
+  _ensurePhase22Fields() {
+    const s = this._s
+    if (s.playMode !== 'idle' && s.playMode !== 'active') s.playMode = PLAY_MODE_DEFAULT
+    if (!s.automation || typeof s.automation !== 'object') s.automation = this._blankAutomation()
+    const a = s.automation
+    if (typeof a.autoExplore !== 'boolean') a.autoExplore = false
+    if (!a.autoExplorePaused || typeof a.autoExplorePaused !== 'object') a.autoExplorePaused = {}
+    if (a.lastExploreLocationId === undefined) a.lastExploreLocationId = null
+    if (typeof a.autoSectMissions !== 'boolean') a.autoSectMissions = false
+    if (typeof a.autoCraft !== 'boolean') a.autoCraft = false
+    if (!a.autoCraftRecipes || typeof a.autoCraftRecipes !== 'object') a.autoCraftRecipes = {}
+    if (typeof a.autoBreakthrough !== 'boolean') a.autoBreakthrough = false
+    if (!(typeof a.breakthroughThreshold === 'number' && isFinite(a.breakthroughThreshold) &&
+          a.breakthroughThreshold >= AUTO_BREAKTHROUGH_THRESHOLD_MIN && a.breakthroughThreshold <= AUTO_BREAKTHROUGH_THRESHOLD_MAX))
+      a.breakthroughThreshold = AUTO_BREAKTHROUGH_THRESHOLD_DEFAULT
+    if (!(a._craftAcc >= 0)) a._craftAcc = 0
+    if (s.expedition && s.expedition.pushed === undefined) s.expedition.pushed = false
+  }
+
   _ensurePhase23Fields() {
     const s = this._s
     if (s.health === undefined)           s.health           = 100
@@ -319,6 +374,7 @@ class GameState {
     this._ensurePhase5Fields()
     this._ensurePhase5BFields()
     this._ensurePhase32Fields()
+    this._ensurePhase22Fields()
     this._ensurePhase23Fields()
     this._ensurePhase20CFields()
     this._ensurePhase29Fields()
@@ -516,6 +572,7 @@ class GameState {
 
     this.tickOwnSect(dt)
     this.tickSectWar()
+    this._tickAutomation(dt)
 
     this._saveT += dt
     if (this._saveT >= this.SAVE_INT) {
@@ -527,9 +584,13 @@ class GameState {
     this._notify(true)
   }
 
-  attemptBreakthrough() {
+  // Phase 22: opts.minQiFrac overrides the default 0.90 gate (used only by the auto-breakthrough dispatch,
+  // whose slider ranges 80-100% — manual UI clicks never pass this, so their behavior is unchanged).
+  // opts.focusBonus adds ACTIVE_BT_FOCUS_BONUS to this one attempt only (Active Mode click-window, 22C).
+  attemptBreakthrough(opts = {}) {
     const s = this._s
-    if (!s.derived.canBreakthrough) return { success: false, reason: 'insufficient_qi' }
+    const minQiFrac = opts.minQiFrac ?? 0.90
+    if (!(s.qi >= s.derived.qiCap * minQiFrac)) return { success: false, reason: 'insufficient_qi' }
     if (s.stageIndex >= CULTIVATION_STAGES.length - 1) return { success: false, reason: 'ascended' }
     // The last mortal stage no longer breaks through automatically — it's a chance-based Ascension
     // Trial instead (Phase 23C). Callers should use attemptAscension() when they hit this reason.
@@ -549,12 +610,14 @@ class GameState {
     if (!guaranteed) {
       let btChance = s.derived.breakthroughChance
       if (pillEffect?.type === 'bt_bonus') btChance = Math.min(0.98, btChance + pillEffect.value)
+      if (opts.focusBonus) btChance = Math.min(0.98, btChance + ACTIVE_BT_FOCUS_BONUS)   // 22C: click-window bonus, this attempt only
 
       if (Math.random() > btChance) {
         // Qi loss — default keep 50%, pills reduce the loss
         let qiKeep = 0.5
         if (pillEffect?.type === 'qi_loss_reduce') qiKeep = 0.5 + 0.5 * pillEffect.value
         if (pillEffect?.qi_loss_reduce != null)    qiKeep = 0.5 + 0.5 * pillEffect.qi_loss_reduce
+        if (s.playMode === 'active') qiKeep = Math.min(1, qiKeep + ACTIVE_BT_QI_LOSS_BONUS)   // 22C: -10% extra loss kept in Active Mode
         s.qi    *= qiKeep
         s.karma  = Math.max(0, s.karma - 8)
         s.stats.failed++
@@ -653,6 +716,8 @@ class GameState {
     const priorDeaths = s.deaths || 0
     const settings    = s.settings
     const warOrders   = s.warOrders   // standing orders belong to the player, not the life (Phase 32)
+    const playMode    = s.playMode    // Active/Idle mode + automation belong to the player, not the life (Phase 22)
+    const automation  = s.automation
 
     const summary = {
       cause, maxStageReached: maxStage, generation: priorGen,
@@ -666,6 +731,8 @@ class GameState {
     this._s.lastReincarnation = summary
     if (settings) this._s.settings = settings   // presentation prefs belong to the player, not the life
     if (warOrders) this._s.warOrders = warOrders
+    if (playMode) this._s.playMode = playMode
+    if (automation) this._s.automation = automation
     this._recalc(); this._notify()
     this._emit('reborn')
   }
@@ -695,15 +762,44 @@ class GameState {
 
   // ── Phase 2: Expedition ───────────────────────────────────────────────────
 
-  startExpedition(locationId) {
+  // Phase 22: opts.endsAt lets offline catch-up chain a relaunch off the missed cycle's timestamp instead of
+  // real "now", so auto-explore fast-forwards through the whole offline gap (see initSlot()).
+  startExpedition(locationId, opts = {}) {
     const s = this._s
     if (s.expedition.active) return { ok: false, reason: 'active' }
     const loc = LOCATIONS.find(l => l.id === locationId)
     if (!loc) return { ok: false, reason: 'unknown' }
     if (s.stageIndex < loc.minStage) return { ok: false, reason: 'stage' }
-    s.expedition = { active: true, locationId, endsAt: Date.now() + loc.duration * 1000 }
+    const endsAt = opts.endsAt ?? (Date.now() + loc.duration * 1000 * this._activeTimeMult('expedition'))
+    s.expedition = { active: true, locationId, endsAt, pushed: false }
+    s.automation.lastExploreLocationId = locationId
     this._notify()
     return { ok: true, loc }
+  }
+
+  // Phase 22: Active Mode's "Push Harder" — spends stones for one extra drop-table roll on this expedition.
+  pushExpedition() {
+    const s = this._s
+    if (s.playMode !== 'active')  return { ok: false, reason: 'not_active' }
+    if (!s.expedition.active)     return { ok: false, reason: 'no_expedition' }
+    if (s.expedition.pushed)      return { ok: false, reason: 'already' }
+    const loc = LOCATIONS.find(l => l.id === s.expedition.locationId)
+    if (!loc) return { ok: false, reason: 'unknown' }
+    const msLeft = s.expedition.endsAt - Date.now()
+    if (msLeft > loc.duration * 1000 * ACTIVE_PUSH_HARDER_WINDOW_FRAC) return { ok: false, reason: 'too_early' }
+    if (s.spiritStones < ACTIVE_PUSH_HARDER_COST) return { ok: false, reason: 'stones' }
+    s.spiritStones -= ACTIVE_PUSH_HARDER_COST
+    s.expedition.pushed = true
+    this._notify()
+    return { ok: true }
+  }
+
+  // Phase 22: modest Active Mode timer reductions (22C) — 1 outside Active Mode, always.
+  _activeTimeMult(kind) {
+    if (this._s.playMode !== 'active') return 1
+    if (kind === 'expedition')   return ACTIVE_EXPEDITION_TIME_MULT
+    if (kind === 'sect_mission') return ACTIVE_SECT_MISSION_TIME_MULT
+    return 1
   }
 
   resolveExpedition() {
@@ -716,6 +812,10 @@ class GameState {
     }
 
     const drops = this._rollDrops(loc)
+    if (s.expedition.pushed) {   // 22C: Push Harder — one extra drop-table roll, merged in
+      const extra = this._rollDrops(loc)
+      for (const [id, qty] of Object.entries(extra)) drops[id] = (drops[id] || 0) + qty
+    }
 
     // Sect herb bonus (Myriad Herb Hall)
     const herbMult = s.derived?.sectHerbMult || 1
@@ -787,12 +887,38 @@ class GameState {
     }
 
     if ((s.health ?? 100) <= 0) { this._die('expedition'); return }
+    this._maybeAutoExplore()
     this._recalc(); this._notify()
+  }
+
+  // Phase 22: relaunches the last manually-chosen location if Auto-Explore is on, unlocked, unpaused for
+  // this location, and still reachable at the current stage. Fires live and during offline catch-up.
+  _maybeAutoExplore() {
+    const s = this._s
+    if (s.playMode !== 'idle' || !s.automation.autoExplore) return
+    if (!this.automationUnlocked('autoExplore')) return
+    const locId = s.automation.lastExploreLocationId
+    if (!locId || s.automation.autoExplorePaused[locId]) return
+    const loc = LOCATIONS.find(l => l.id === locId)
+    if (!loc || s.stageIndex < loc.minStage) return
+    // Never auto-walk a wounded cultivator into a zone that outclasses them (live or offline).
+    const outclass = loc.enemyTier - (1 + Math.floor(s.stageIndex / 5))
+    if (outclass > 0 && (s.health ?? 100) < AUTO_EXPLORE_MIN_HEALTH_OUTCLASSED) {
+      this.addEvent({ text: `[Auto] Too wounded to return to ${loc.name} — Auto-Explore stops here; send the next expedition yourself once healed.`, type: 'neutral' })
+      return
+    }
+    const res = this.startExpedition(locId)
+    if (res.ok) {
+      this.addEvent({ text: `[Auto] Expedition to ${loc.name} launched.`, type: 'neutral' })
+      this._emit('auto_fire', { system: 'explore' })
+    }
   }
 
   // ── Phase 2: Crafting ─────────────────────────────────────────────────────
 
-  craftItem(recipeId) {
+  // Phase 22: opts.watched (game.js passes true when the Craft tab was viewed within the last minute) lets
+  // Active Mode roll an independent "Master's Touch" double-output chance — see docs/systems/automation.md.
+  craftItem(recipeId, opts = {}) {
     const s = this._s
     const recipe = RECIPES.find(r => r.id === recipeId)
     if (!recipe) return { ok: false, reason: 'unknown' }
@@ -803,11 +929,15 @@ class GameState {
       s.inventory[ing.itemId] -= ing.qty
       if (s.inventory[ing.itemId] <= 0) delete s.inventory[ing.itemId]
     }
-    const doubled = Math.random() < (s.derived?.sectCraftDouble || 0)
+    let doubled = Math.random() < (s.derived?.sectCraftDouble || 0)
+    let masterTouch = false
+    if (!doubled && s.playMode === 'active' && opts.watched && Math.random() < ACTIVE_CRAFT_TOUCH_CHANCE) {
+      doubled = true; masterTouch = true
+    }
     s.inventory[recipe.productId] = (s.inventory[recipe.productId] || 0) + (doubled ? 2 : 1)
     const item = ITEMS[recipe.productId]
     this._recalc(); this._notify()
-    return { ok: true, item, doubled }
+    return { ok: true, item, doubled, masterTouch }
   }
 
   equipItem(itemId) {
@@ -1069,10 +1199,27 @@ class GameState {
     s.sect.activeMissions.push({
       uid: `${Date.now()}_${Math.floor(Math.random() * 9999)}`,
       missionId,
-      endsAt: Date.now() + m.duration * 1000,
+      endsAt: Date.now() + m.duration * 1000 * this._activeTimeMult('sect_mission'),
     })
     this._notify()
     return { ok: true, mission: m }
+  }
+
+  // Phase 22: re-queues the same mission type if Auto-Sect-Missions is on, unlocked, and a slot is free.
+  // Live only — Phase 4 sect missions have never fast-forwarded during offline catch-up (SectSystem only
+  // ticks live); see docs/systems/automation.md Offline Catch-Up.
+  _maybeAutoSectMission(missionId) {
+    const s = this._s
+    if (s.playMode !== 'idle' || !s.automation.autoSectMissions) return
+    if (!s.sect.id || !this.automationUnlocked('autoSectMissions')) return
+    if (s.sect.activeMissions.length >= SECT_MAX_MISSIONS) return
+    const m = SECT_MISSIONS.find(x => x.id === missionId)
+    if (!m || s.sect.rank < m.minRank) return
+    const res = this.startSectMission(missionId)
+    if (res.ok) {
+      this.addEvent({ text: `[Auto] ${m.name} re-queued.`, type: 'neutral' })
+      this._emit('auto_fire', { system: 'sect_mission' })
+    }
   }
 
   resolveSectMission(uid) {
@@ -1107,6 +1254,7 @@ class GameState {
     }
 
     this.addEvent({ text: `Mission complete — ${m.name}: ${parts.join(', ')}.`, type: 'positive' })
+    this._maybeAutoSectMission(active.missionId)
     this._recalc(); this._notify()
   }
 
@@ -1680,6 +1828,103 @@ class GameState {
     }
     this._save(); this._notify()
     return { ok: true }
+  }
+
+  // ── Phase 22: Active/Idle Mode + Automation ────────────────────────────────
+
+  setPlayMode(mode) {
+    const s = this._s
+    if (mode !== 'idle' && mode !== 'active') return { ok: false, reason: 'invalid' }
+    s.playMode = mode
+    this._save(); this._notify()
+    return { ok: true }
+  }
+
+  // key: unlock condition per AUTOMATION_UNLOCKS. autoSectMissions unlocks via EITHER a joined sect's rank
+  // OR (independently) the player's own founded sect's Hall level — whichever applies to how they're playing.
+  automationUnlocked(key) {
+    const s = this._s
+    const u = AUTOMATION_UNLOCKS[key]
+    if (!s || !u) return false
+    if (key === 'autoSectMissions') {
+      return !!(s.sect.id && s.sect.rank >= u.sectRank) || !!(s.ownSect.founded && s.ownSect.hallLevel >= u.hallLevel)
+    }
+    return s.stageIndex >= u.stageIndex
+  }
+
+  setAutomation(key, value) {
+    const s = this._s
+    if (!s) return { ok: false, reason: 'no_state' }
+    const a = s.automation
+    if (['autoExplore', 'autoSectMissions', 'autoCraft', 'autoBreakthrough'].includes(key)) {
+      if (typeof value !== 'boolean') return { ok: false, reason: 'invalid' }
+      if (value && !this.automationUnlocked(key)) return { ok: false, reason: 'locked' }
+      a[key] = value
+    } else if (key === 'breakthroughThreshold') {
+      const n = Number(value)
+      if (!isFinite(n)) return { ok: false, reason: 'invalid' }
+      a.breakthroughThreshold = Math.min(AUTO_BREAKTHROUGH_THRESHOLD_MAX, Math.max(AUTO_BREAKTHROUGH_THRESHOLD_MIN, n))
+    } else {
+      return { ok: false, reason: 'unknown' }
+    }
+    this._save(); this._notify()
+    return { ok: true }
+  }
+
+  setAutoExplorePaused(locationId, paused) {
+    const s = this._s
+    if (!s) return { ok: false, reason: 'no_state' }
+    if (paused) s.automation.autoExplorePaused[locationId] = true
+    else delete s.automation.autoExplorePaused[locationId]
+    this._notify()
+    return { ok: true }
+  }
+
+  setAutoCraftRecipe(recipeId, enabled) {
+    const s = this._s
+    if (!s) return { ok: false, reason: 'no_state' }
+    if (enabled) s.automation.autoCraftRecipes[recipeId] = true
+    else delete s.automation.autoCraftRecipes[recipeId]
+    this._notify()
+    return { ok: true }
+  }
+
+  // Auto-Craft (continuous, ticked) + Auto-Breakthrough. Both live-only — see docs/systems/automation.md
+  // "Offline Catch-Up". Deliberately excludes the Ascension Trial (last mortal stage) from auto-breakthrough:
+  // that's a permanent-death gamble with its own manual confirmation overlay (Phase 23C).
+  _tickAutomation(dt) {
+    const s = this._s
+    if (s.playMode !== 'idle') return
+    const a = s.automation
+
+    if (a.autoBreakthrough && this.automationUnlocked('autoBreakthrough')) {
+      const lastMortal = CULTIVATION_STAGES.length - 2
+      if (s.stageIndex < lastMortal) {
+        const res = this.attemptBreakthrough({ minQiFrac: a.breakthroughThreshold })
+        if (res.success) this.addEvent({ text: `[Auto] Breakthrough — ${res.newStage.realm} · ${res.newStage.layer}.`, type: 'positive' })
+        else if (res.reason === 'failed') this.addEvent({ text: '[Auto] Breakthrough attempt failed.', type: 'negative' })
+        if (res.success || res.reason === 'failed') this._emit('auto_fire', { system: 'breakthrough' })
+      }
+    }
+
+    if (a.autoCraft && this.automationUnlocked('autoCraft')) {
+      a._craftAcc = (a._craftAcc || 0) + dt
+      if (a._craftAcc >= AUTO_CRAFT_CHECK_SECONDS) {
+        a._craftAcc = 0
+        for (const recipeId of Object.keys(a.autoCraftRecipes)) {
+          if (!a.autoCraftRecipes[recipeId]) continue
+          const r = RECIPES.find(x => x.id === recipeId)
+          if (!r) continue
+          if (r.ingredients.every(ing => (s.inventory[ing.itemId] || 0) >= ing.qty)) {
+            const res = this.craftItem(recipeId)
+            if (res.ok) {
+              this.addEvent({ text: `[Auto] Crafted ${res.item?.name || recipeId}.`, type: 'neutral' })
+              this._emit('auto_fire', { system: 'craft' })
+            }
+          }
+        }
+      }
+    }
   }
 
   // ── Dev tools: late-game test characters (assets/data/dev-presets.js) ─────

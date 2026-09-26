@@ -13,7 +13,7 @@ class CraftingSystem {
     return r.ingredients.every(i => (s.inventory[i.itemId] || 0) >= i.qty)
   }
 
-  craft(recipeId)    { return this._gs.craftItem(recipeId)    }
+  craft(recipeId, watched = false) { return this._gs.craftItem(recipeId, { watched }) }
   equip(itemId)      { return this._gs.equipItem(itemId)      }
   unequip(slot)      { return this._gs.unequipItem(slot)      }
   setPill(itemId)    { return this._gs.setActivePill(itemId)  }

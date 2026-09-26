@@ -64,6 +64,7 @@ docs/
     notifications.md    ← System tray + opt-in desktop notifications (Phase 9A-B)
     life-loop.md        ← M2 build spec: lifespan, heirs, Ancestral Hall, clan legacies (Phases 30/31)
     backpack.md          ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
+    automation.md        ← Active/Idle Mode + staged automation unlocks, Active Mode bonuses (Phase 22)
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
   assets.md             ← ASCII art pipeline (create → review → gate ≥8.0)
@@ -109,6 +110,7 @@ assets/
     sect-buildings.js   ← Own-sect founding cost, Sect Hall levels, buildings, disciple constants (Phase 5A)
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
     bloodline.js        ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
+    automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)
     banter-lines.js     ← BANTER_LINES — 1,579 lines, personality × trigger + generic pool (Phase 29)

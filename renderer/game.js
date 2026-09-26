@@ -154,6 +154,10 @@
   window.electron.onRequestSave?.(() => gameState.forceSave())   // main.js asks for a flush before a real quit
   let tickRunning = false
   let _trayName = null, _trayStage = null
+  // Phase 22 (22C): Active Mode's breakthrough focus click-window — client-side only, not persisted.
+  let _btFocusReadyAt = null, _prevCanBreakthrough = false
+  // Phase 22 (22C): Active Mode's craft Master's Touch — "watching" = viewed the Craft tab within 60s.
+  let _craftTabViewedAt = 0
 
   function bootGame() {
     tickRunning = true
@@ -215,6 +219,7 @@
     const st = d.stage
 
     document.getElementById('cultivator-name').textContent = s.name
+    updateModeButton(s)
 
     document.getElementById('stage-realm').textContent = `${st.realm} — ${st.realmCN}`
     document.getElementById('stage-realm').style.color = st.color || 'var(--gold)'
@@ -273,6 +278,13 @@
         : `${Math.round(pct)}% qi filled`
     }
 
+    // Phase 22 (22C): Active Mode breakthrough focus window — 3s pulse the moment canBreakthrough flips true.
+    if (s.playMode === 'active' && d.canBreakthrough && !_prevCanBreakthrough) _btFocusReadyAt = Date.now()
+    if (!d.canBreakthrough) _btFocusReadyAt = null
+    _prevCanBreakthrough = d.canBreakthrough
+    const inFocusWindow = s.playMode === 'active' && _btFocusReadyAt && (Date.now() - _btFocusReadyAt) <= ACTIVE_BT_FOCUS_WINDOW_SECONDS * 1000
+    btnBt.classList.toggle('bt-focus', !!inFocusWindow)
+
     document.getElementById('meditate-badge').classList.toggle('hidden', !s.meditating)
 
     // Integrity bar: lerp color from indigo (#6060C0) at 100 to red (#C83030) at 0
@@ -323,6 +335,16 @@
     const pct    = Math.max(0, Math.min(100, 100 - (msLeft / ((loc?.duration || 1) * 1000)) * 100))
     line.textContent    = `${loc?.name || '?'} — ${fmtTime(Math.ceil(msLeft / 1000))} remaining`
     bar.style.width     = pct + '%'
+
+    // Phase 22 (22C): Push Harder button — last ACTIVE_PUSH_HARDER_WINDOW_FRAC of the timer, Active Mode only.
+    const pushBtn = document.getElementById('_exp_push')
+    if (pushBtn) {
+      const inWindow = pct >= (100 - ACTIVE_PUSH_HARDER_WINDOW_FRAC * 100)
+      pushBtn.classList.toggle('hidden', !inWindow || !!s.expedition.pushed)
+      pushBtn.disabled = s.expedition.pushed || s.spiritStones < ACTIVE_PUSH_HARDER_COST
+      pushBtn.classList.toggle('available', !pushBtn.disabled)
+      pushBtn.textContent = s.expedition.pushed ? 'Pushed ✓' : `Push Harder (-${ACTIVE_PUSH_HARDER_COST})`
+    }
   }
 
   function updateSprite(s) {
@@ -462,6 +484,7 @@
     const el = document.getElementById('tab-sect')
     el.innerHTML = ''
     if (s.ownSect?.founded) { renderOwnSect(s); return }
+    renderAutomationPanel(s, el)
     const sect = s.sect || { id: null }
     const def  = SECTS.find(x => x.id === sect.id)
 
@@ -728,6 +751,90 @@
     }))
   }
 
+  // ── Automation panel (Phase 22, section 22D) ───────────────────────────────
+  // Shown near the top of the Explore tab and both branches of the Sect tab — a roadmap of what's
+  // unlocked and what unlocks next. Reuses the ⚙ Settings panel's .set-row/.set-label/.set-seg/.set-opt
+  // CSS (same trick as renderWarOrdersPanel below) so it needs no new stylesheet.
+  function renderAutomationPanel(s, el) {
+    const box = document.createElement('div')
+    const title = document.createElement('div')
+    title.className = 'section-title'
+    title.textContent = 'Automation'
+    box.appendChild(title)
+
+    if (s.playMode === 'active') {
+      const note = document.createElement('div')
+      note.className = 'sect-desc'
+      note.textContent = 'Inert in Active Mode — switch to Idle Mode (titlebar) to use automation.'
+      box.appendChild(note)
+      el.appendChild(box)
+      return
+    }
+
+    const ROWS = [
+      ['autoExplore', 'Auto-Explore'],
+      ['autoSectMissions', 'Auto-Missions'],
+      ['autoCraft', 'Auto-Craft'],
+      ['autoBreakthrough', 'Auto-Breakthrough'],
+    ]
+    for (const [key, name] of ROWS) {
+      const unlocked = gameState.automationUnlocked(key)
+      const row = document.createElement('div')
+      row.className = 'set-row'
+      const label = document.createElement('div')
+      label.className = 'set-label'
+      label.textContent = `${unlocked ? '✅' : '🔒'} ${name}`
+      row.appendChild(label)
+      if (unlocked) {
+        const seg = document.createElement('div')
+        seg.className = 'set-seg'
+        for (const [val, lab] of [[true, 'ON'], [false, 'OFF']]) {
+          const b = document.createElement('button')
+          b.className = 'set-opt' + (s.automation[key] === val ? ' active' : '')
+          b.textContent = lab
+          b.addEventListener('click', () => {
+            const res = gameState.setAutomation(key, val)
+            if (!res.ok) flashMessage('Cannot change automation', 'negative')
+          })
+          seg.appendChild(b)
+        }
+        row.appendChild(seg)
+      } else {
+        const hint = document.createElement('div')
+        hint.className = 'set-label'
+        hint.style.color = 'var(--dim)'
+        hint.style.fontSize = '9px'
+        hint.textContent = `unlocks at ${AUTOMATION_UNLOCKS[key].label}`
+        row.appendChild(hint)
+      }
+      box.appendChild(row)
+
+      if (key === 'autoBreakthrough' && unlocked && s.automation.autoBreakthrough) {
+        const tr = document.createElement('div')
+        tr.className = 'set-row'
+        const trLabel = document.createElement('div')
+        trLabel.className = 'set-label'
+        trLabel.textContent = '…at Qi ≥'
+        tr.appendChild(trLabel)
+        const wrap = document.createElement('div')
+        wrap.className = 'set-range'
+        const input = document.createElement('input')
+        input.type = 'range'
+        input.min = AUTO_BREAKTHROUGH_THRESHOLD_MIN; input.max = AUTO_BREAKTHROUGH_THRESHOLD_MAX; input.step = AUTO_BREAKTHROUGH_THRESHOLD_STEP
+        input.value = s.automation.breakthroughThreshold
+        const val = document.createElement('span')
+        val.className = 'set-range-val'
+        val.textContent = Math.round(s.automation.breakthroughThreshold * 100) + '%'
+        input.addEventListener('input', () => { val.textContent = Math.round(input.value * 100) + '%' })
+        input.addEventListener('change', () => gameState.setAutomation('breakthroughThreshold', Number(input.value)))
+        wrap.append(input, val)
+        tr.appendChild(wrap)
+        box.appendChild(tr)
+      }
+    }
+    el.appendChild(box)
+  }
+
   // ── War Standing Orders (Phase 32) ─────────────────────────────────────────
   // Compact section shown in both the member view (renderSect) and the own-sect view (renderOwnSect).
   // Reuses the ⚙ Settings panel's .set-row/.set-label/.set-seg/.set-opt CSS so it fits 300px without
@@ -895,6 +1002,7 @@
     el.innerHTML = ''
     el.appendChild(head)
 
+    renderAutomationPanel(s, el)
     renderSectWarPanel(s, el)
     renderWarOrdersPanel(s, el, 'own')
 
@@ -1057,6 +1165,7 @@
   function renderExplore(s) {
     const el = document.getElementById('tab-explore')
     el.innerHTML = ''
+    renderAutomationPanel(s, el)
 
     // Expedition status block
     const statusDiv = document.createElement('div')
@@ -1072,6 +1181,7 @@
         <div class="exp-status-label">Expedition</div>
         <div id="_exp_timer_line">${escHtml(loc?.name || '?')} — ${fmtTime(sLeft)} remaining</div>
         <div class="exp-timer-bar-wrap"><div class="exp-timer-bar" id="_exp_timer_bar" style="width:${pct}%"></div></div>
+        ${s.playMode === 'active' ? `<button class="loc-btn hidden" id="_exp_push">Push Harder</button>` : ''}
       `
     } else {
       statusDiv.innerHTML = `
@@ -1080,6 +1190,11 @@
       `
     }
     el.appendChild(statusDiv)
+    document.getElementById('_exp_push')?.addEventListener('click', () => {
+      const r = gameState.pushExpedition()
+      if (r.ok) flashMessage('Pushed harder — an extra roll awaits at return.', 'positive')
+      else flashMessage(r.reason === 'stones' ? 'Not enough Spirit Stones' : 'Cannot push', 'negative')
+    })
 
     // Locations list
     const locTitle = document.createElement('div')
@@ -1101,11 +1216,14 @@
         ? `${Math.floor(loc.duration/60)}m`
         : `${loc.duration}s`
 
+      const showAutoToggle = unlocked && s.playMode === 'idle' && s.automation.autoExplore && gameState.automationUnlocked('autoExplore')
+      const paused = !!s.automation.autoExplorePaused[loc.id]
       row.innerHTML = `
         <div class="loc-info">
           <div class="loc-name">${escHtml(loc.name)} <span style="color:var(--dim);font-size:9px">${escHtml(loc.nameCN)}</span></div>
           <div class="loc-meta">${durText} · Tier ${loc.enemyTier}${unlocked ? '' : ` · Stage ${loc.minStage}+`}</div>
         </div>
+        ${showAutoToggle ? `<button class="pack-chip${paused ? '' : ' active'}" data-autoloc="${loc.id}" title="Auto-Explore relaunch for this location">${paused ? '⏸ Paused' : '▶ Auto'}</button>` : ''}
         <button class="loc-btn${unlocked && !s.expedition.active ? ' available' : ''}"
                 ${(!unlocked || s.expedition.active) ? 'disabled' : ''}
                 data-locid="${loc.id}">
@@ -1114,6 +1232,13 @@
       `
       el.appendChild(row)
     }
+
+    el.querySelectorAll('[data-autoloc]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const locId = btn.dataset.autoloc
+        gameState.setAutoExplorePaused(locId, !s.automation.autoExplorePaused[locId])
+      })
+    })
 
     // Wire Send buttons
     el.querySelectorAll('.loc-btn[data-locid]').forEach(btn => {
@@ -1301,6 +1426,7 @@
   function renderCraft(s) {
     const el = document.getElementById('tab-craft')
     el.innerHTML = ''
+    _craftTabViewedAt = Date.now()   // Phase 22 (22C): "watching" the Craft tab, for Master's Touch
 
     // Equipped slots
     const equipDiv = document.createElement('div')
@@ -1395,6 +1521,12 @@
         btnsHTML += `<button class="recipe-equip-btn can-equip" data-useelixir="${recipe.productId}">Use</button>`
       }
 
+      // Phase 22 (22B/22D): per-recipe Auto-Craft toggle, once unlocked.
+      if (gameState.automationUnlocked('autoCraft')) {
+        const autoOn = !!s.automation.autoCraftRecipes[recipe.id]
+        btnsHTML += `<button class="pack-chip${autoOn ? ' active' : ''}" data-autocraft="${recipe.id}" title="Auto-repeat this recipe while materials allow">${autoOn ? '✓ Auto' : 'Auto'}</button>`
+      }
+
       row.innerHTML = `
         <div class="recipe-header">
           <span class="recipe-name">${escHtml(item.name)}<span class="recipe-namecn">${escHtml(item.nameCN)}</span></span>
@@ -1410,9 +1542,12 @@
     // Wire craft buttons
     el.querySelectorAll('[data-recipe]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const res = craftSys.craft(btn.dataset.recipe)
+        // Phase 22 (22C): "watching" = viewed the Craft tab within the last minute — Master's Touch chance.
+        const watched = Date.now() - _craftTabViewedAt <= ACTIVE_CRAFT_TOUCH_WINDOW_SECONDS * 1000
+        const res = craftSys.craft(btn.dataset.recipe, watched)
         if (res.ok) {
-          flashMessage(res.doubled ? `Crafted: ${res.item.name} ×2 (Herb Hall bonus!)` : `Crafted: ${res.item.name}`, 'positive')
+          const bonus = res.masterTouch ? ` ×2 (Master's Touch!)` : res.doubled ? ` ×2 (Herb Hall bonus!)` : ''
+          flashMessage(`Crafted: ${res.item.name}${bonus}`, 'positive')
         } else {
           flashMessage(res.reason === 'ingredients' ? 'Not enough materials' : 'Cannot craft', 'negative')
         }
@@ -1451,6 +1586,14 @@
         } else {
           flashMessage('Cannot use elixir', 'negative')
         }
+      })
+    })
+
+    // Wire per-recipe Auto-Craft toggles (Phase 22)
+    el.querySelectorAll('[data-autocraft]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.autocraft
+        gameState.setAutoCraftRecipe(id, !s.automation.autoCraftRecipes[id])
       })
     })
   }
@@ -1676,7 +1819,9 @@
     if (!s?.derived?.canBreakthrough) return
     if (s.stageIndex === CULTIVATION_STAGES.length - 2) { openAscensionOverlay(); return }
     renderer.setState('breakthrough')
-    const res = gameState.attemptBreakthrough()
+    // Phase 22 (22C): Active Mode's breakthrough focus click-window — bonus applies to this attempt only.
+    const focusBonus = s.playMode === 'active' && _btFocusReadyAt && (Date.now() - _btFocusReadyAt) <= ACTIVE_BT_FOCUS_WINDOW_SECONDS * 1000
+    const res = gameState.attemptBreakthrough({ focusBonus })
     if (res.success) {
       renderer.triggerBreakthroughBurst()
       flashMessage(`Breakthrough! ${res.newStage.realm} · ${res.newStage.layer}`, 'special')
@@ -1768,6 +1913,19 @@
   })
 
   document.getElementById('btn-settings').addEventListener('click', () => settingsUI.open())
+
+  // ── Active / Idle Mode toggle (Phase 22) ───────────────────────────────────
+  document.getElementById('btn-mode').addEventListener('click', () => {
+    const cur = gameState.get()?.playMode || 'idle'
+    gameState.setPlayMode(cur === 'idle' ? 'active' : 'idle')
+  })
+  function updateModeButton(s) {
+    const btn = document.getElementById('btn-mode')
+    const active = s.playMode === 'active'
+    btn.textContent = active ? '⚡' : '💤'
+    btn.classList.toggle('mode-active', active)
+    btn.title = active ? 'Active Mode (click for Idle Mode)' : 'Idle Mode (click for Active Mode)'
+  }
 
   document.getElementById('btn-pin').addEventListener('click', async () => {
     const btn = document.getElementById('btn-pin')

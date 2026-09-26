@@ -29,14 +29,54 @@ class Bot {
   checkIn() {
     this.rec.checkIn(this.s)
     this.warOrders()
+    this.automationSetup()
+    this.automation()
     for (let i = 0; i < 40; i++) {
       const before = this.s.spiritStones
       const acted = this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
-        this.elixirs() || this.memberWar() || this.beasts() || this.sect() || this.ownSect() || this.war() || this.expedition()
+        this.elixirs() || this.memberWar() || this.beasts() || this.sect() || this.ownSect() || this.war() ||
+        this.pushExpedition() || this.expedition()
       if (!acted) break
       this.rec.stones(this.rec.lastAction, this.s.spiritStones - before)
     }
     if (!this.s.meditating) { this.gs.startMeditation(30); this.rec.act('meditate', false) }
+  }
+
+  // ── Phase 22: Active/Idle Mode + Automation ─────────────────────────────
+  // Set once: 'active' plays in Active Mode (no automation, manual clicks + interaction bonuses below);
+  // 'casual'/'afk' stay in Idle Mode and rely on automation, mirroring how Phase 32's warOrders() split
+  // manual-vs-standing-order behavior by profile (see qa-sim.md).
+  automationSetup() {
+    if (this._autoModeSet) return false
+    this._autoModeSet = true
+    this.gs.setPlayMode(this.profile === 'active' ? 'active' : 'idle')
+    return false
+  }
+
+  // Turns on each automation the moment it unlocks (idle profiles only) — a real player who set this up
+  // once wouldn't revisit it every session, but would reasonably flip a new one on shortly after noticing
+  // it in the Automation panel. Enables a modest, not-maxed set of Auto-Craft recipes (mirrors
+  // craftAndEquip()'s own pill-stocking preference), never counts as a "meaningful" player action itself.
+  automation() {
+    if (this.profile === 'active') return false
+    const s = this.s, a = s.automation
+    let did = false
+    for (const key of ['autoExplore', 'autoSectMissions', 'autoCraft', 'autoBreakthrough']) {
+      if (!a[key] && this.gs.automationUnlocked(key)) { this.gs.setAutomation(key, true); did = true }
+    }
+    if (a.autoCraft) {
+      for (const productId of [...BT_PILLS, 'pill_heart_calming']) {
+        const r = this.recipe(productId)
+        if (r && !a.autoCraftRecipes[r.id]) { this.gs.setAutoCraftRecipe(r.id, true); did = true }
+      }
+    }
+    return did
+  }
+
+  // Active Mode's Push Harder — opportunistic, only when the window/affordability lines up.
+  pushExpedition() {
+    if (this.profile !== 'active' || !this.s.expedition.active || this.s.expedition.pushed) return false
+    return this.do('push_expedition', this.gs.pushExpedition())
   }
 
   // ── Phase 32: War Standing Orders ────────────────────────────────────────
@@ -87,7 +127,8 @@ class Bot {
     }
     this.rec.waitingIntegrity = false
     this.gs.setActivePill(pill)
-    const res = this.gs.attemptBreakthrough()
+    // Phase 22 (22C): 'active' always "clicks within the window" — a min-maxer never misses it.
+    const res = this.gs.attemptBreakthrough({ focusBonus: this.profile === 'active' })
     this.rec.breakthrough(res, chance, pill, s.stageIndex)
     return true
   }
@@ -135,18 +176,18 @@ class Bot {
     for (const r of RECIPES.filter(r => r.category === 'weapons' || r.category === 'artifacts')) {
       const slot = ITEMS[r.productId].type
       if (itemScore(ITEMS, r.productId) > itemScore(ITEMS, s.equipped[slot]) && !this.inv(r.productId) && this.canCraft(r))
-        return this.do('craft_equipment', this.gs.craftItem(r.id))
+        return this.do('craft_equipment', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
     }
     // Keep a small stock of the best breakthrough pill we can make, plus heart-calming insurance
     for (const p of this.ascended ? [] : [...BT_PILLS, 'pill_heart_calming', 'pill_heaven_defying']) {
       const r = this.recipe(p)
       const cap = p === 'pill_heart_calming' ? 2 : p === 'pill_heaven_defying' ? 1 : 3
-      if (r && this.inv(p) < cap && this.canCraft(r)) return this.do('craft_pill', this.gs.craftItem(r.id))
+      if (r && this.inv(p) < cap && this.canCraft(r)) return this.do('craft_pill', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
     }
     // Taming talisman when a beast is waiting and there's room
     if (s.beastEncounters.length && !this.inv('beast_taming_talisman') && s.beasts.length < s.derived.maxBeasts) {
       const r = this.recipe('beast_taming_talisman')
-      if (this.canCraft(r)) return this.do('craft_talisman', this.gs.craftItem(r.id))
+      if (this.canCraft(r)) return this.do('craft_talisman', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
     }
     return false
   }
@@ -158,7 +199,7 @@ class Bot {
     for (const e of plan) {
       if (this.inv(e)) return this.do('use_elixir', this.gs.useElixir(e))
       const r = this.recipe(e)
-      if (this.canCraft(r)) return this.do('craft_elixir', this.gs.craftItem(r.id))
+      if (this.canCraft(r)) return this.do('craft_elixir', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
     }
     return false
   }

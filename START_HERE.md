@@ -46,7 +46,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | World Epochs & Spiritual Tides | ⬜ Phase 19 |
 | Challenge Modes + Permadeath + Settings | ⬜ Phase 20 |
 | Backpack & Inventory Tab (unified item/currency view) | ✅ Phase 21 (M1 1.5) |
-| Active / Idle Mode Toggle + Mid-Late Automation | ⬜ Phase 22 |
+| Active / Idle Mode Toggle + Mid-Late Automation | ✅ Phase 22 (M1 1.6) |
 | Immortal Realms content + Secret Arts (post-Ascension endgame) | ⬜ Phase 23D–E |
 | Immortal Paths: Tyrant / Devourer / Celestial Deity / Heaven's Executioner | ⬜ Phase 24 (planned) |
 | Doctrine (道统) | ⬜ Phase 25 (planned) |
@@ -63,6 +63,100 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 overnight
+Agent: overnight autonomous run, task 1.6 — Roadmap M1 task 1.6, Phase 22: Active/Idle Mode Toggle + Mid-Late
+  Automation. Ran unattended (pre-approved assessment/scope); user was asleep. Picks up right after the 1.5
+  (Backpack tab) session below.
+  - New titlebar button `#btn-mode` (between ◀ and ⚙): toggles `s.playMode` ('idle'|'active', its own field —
+    NOT `s.settings`, since it changes balance and settings.md's invariant #2 requires settings stay
+    presentation-only). New `s.automation` object (4 on/off toggles + per-location/per-recipe sub-toggles +
+    breakthrough threshold). Both in `_newGame()` + new `_ensurePhase22Fields()` migration, carried across
+    reincarnation in `_die()` like `s.settings`/`s.warOrders`. New data file `assets/data/automation.js`
+    (`AUTOMATION_UNLOCKS`, `ACTIVE_*` bonus constants) — top-of-file comment per Rule 5.
+  - Unlock stageIndex values are the REAL current `stages.js` indices for each named realm (Core Formation
+    Early=13, Nascent Soul Early=16, Spirit Severing Early=19), not the PLAN.md Phase 22 draft's numbers
+    (12/18/19), which predate a later pacing-tuning pass and drifted from the actual stage list — documented
+    in automation.md and PLAN.md's Phase 22 status note so nobody "fixes" it back to the wrong numbers.
+  - Automation dispatch lives entirely in game-state.js (Rule 1: only mutator), calling the exact same public
+    methods a manual click would (`startExpedition`/`startSectMission`/`craftItem`/`attemptBreakthrough`) —
+    no duplicated logic. Auto-Explore relaunches on `resolveExpedition()`; Auto-Sect-Missions re-queues on
+    `resolveSectMission()`; Auto-Craft (per-recipe toggle) and Auto-Breakthrough are ticked every frame in a
+    new `_tickAutomation(dt)`. Every fire adds a `[Auto] …` event-log line and emits `auto_fire` (onGameEvent)
+    for the sim. Auto-Breakthrough deliberately excludes the Ascension Trial (last mortal stage) — that stays
+    a manual, permanent-death decision with its own confirm overlay (Phase 23C).
+  - Offline catch-up: only Auto-Explore fast-forwards through the whole gap — `initSlot()` now loops
+    (bounded, 50 max) chaining a relaunch's `endsAt` off the just-missed cycle (not real "now"), same trick
+    `tickSectWar` already used. Auto-Sect-Missions/-Craft/-Breakthrough are live-only, documented with the
+    honest reasons why (sect missions never fast-forwarded offline before this phase either; crafting/
+    breakthroughs have no existing offline-simulation hook to attach to without much bigger changes).
+  - Active Mode (22C): `_activeTimeMult()` cuts expedition/sect-mission timers (-35%/-25%) at start time;
+    `attemptBreakthrough(opts)` gained optional `minQiFrac` (auto-breakthrough's slider, manual clicks keep
+    the old 0.90 default) and `focusBonus` (+5%, one attempt only); `craftItem(recipeId, opts)` gained
+    `watched` → independent 10% Master's Touch double-output roll. Push Harder (`pushExpedition()`, one extra
+    drop-table roll for 10 stones, last-20%-of-timer window) and the breakthrough focus click-window (3s pulse
+    on the button, tracked client-side in game.js, no new persisted state) are both new and fully wired.
+  - UI: shared `renderAutomationPanel(s, el)` (22D) in Explore tab, both branches of Sect tab — lists all 4
+    automations (✅ ON/OFF via reused `.set-row`/`.set-seg`/`.set-opt` CSS, 🔒 unlock hint), shows an inert
+    notice in Active Mode. Per-location Auto-Explore pause chip (Explore), per-recipe Auto-Craft chip (Craft),
+    both reuse `.pack-chip` — zero new CSS classes needed for any of that. New CSS: `.tb-btn.mode-active`
+    (orange) and `.act-btn.bt-focus` (fast pulse), ~20 lines total.
+  - Side-fix (task's own item, flagged by the 1.4 Phase 32 session): `initSlot()`'s offline catch-up now
+    resolves pending Phase 4 sect missions *before* `tickOwnSect`/`tickSectWar(false)`, so a Standing Orders
+    `chestStones` donation sees an accurate balance instead of one stale-by-one-mission. Removed the old
+    "known gap" note from sect-war.md, replaced with a "fixed" note (the sim's afk/casual-vs-active member-war
+    gap narrowed but didn't fully close — see below).
+  - Sim: `scripts/sim/bot.js` — new `automationSetup()`/`automation()` (idle profiles turn on automations the
+    moment they unlock, enable a modest Auto-Craft recipe set mirroring `craftAndEquip()`'s own pill-stocking
+    preference; 'active' sets Active Mode instead and never touches automation), `pushExpedition()`,
+    `tryBreakthrough()` passes `focusBonus` for 'active', craft calls pass `watched` for 'active'.
+    `scripts/sim/run.js` wires `onGameEvent('auto_fire', …)` → `rec.act()` so automation's own progress counts
+    toward "meaningful actions/hour" (it isn't bot-initiated, so it wouldn't otherwise be counted — this is
+    what actually makes the metric move for afk/casual). New invariants `play_mode_invalid`/
+    `automation_invalid` (shape/bounds only — deliberately NOT a state spot-check of "enabled flag vs. live
+    unlock condition", since a founder bot leaving its joined sect to found one legitimately re-locks
+    `autoSectMissions` without ever having fired out of turn; a first attempt at that spot-check produced 831
+    false-positive violations and was reverted — see automation.md Gotchas).
+  - **Sim results** (full `npm run sim`, founder + member paths, 200h, before via `git stash` of the tracked
+    changes / after on this code, same seed base):
+    - **Founder, actions/h (median, 200h):** casual 11.3→22.3 (~2×), afk 96→296 (~3×), active 239→265. This is
+      the headline goal and it landed clearly.
+    - **New flag:** casual now hits "Hoarding" (47.6k unspent stones) at 200h, which it didn't before.
+      Diagnosed, not blindly retuned: automation makes casual reach "nothing left to buy" (all techniques,
+      all buildings) much faster than before, so it now runs into the *pre-existing* late-game stone-sink gap
+      (already flagged in the QA Sim Harness section's history) sooner, rather than automation creating a new
+      problem. Left as a known follow-up (M2/M7 give late-game sinks; not this task's scope to invent one).
+    - **Member path, war parity (Phase 32):** the afk/casual-vs-active win-rate gap that prompted the side-fix
+      narrowed after it, but didn't fully close, and a contribution/war gap remains. Active Mode's own new
+      stochastic bonuses (Master's Touch, Push Harder rolls) consume `Math.random()` at different points than
+      before, which shifts the ENTIRE downstream random sequence for the 'active' profile specifically (same
+      seed, different draws) — so part of the before/after delta here is RNG-stream noise, not signal. Not
+      chased further given only 3 seeds and the project's own documented Ascension-metric noise at this
+      sample size.
+    - 0 errors / 0 invariant violations in every run (founder + member, all horizons) both before and after.
+  - Verified: `npm test` (45 files), `npm run sim:quick` (0/0), full `npm run sim --path=founder` and
+    `--path=member` before (via `git stash`) and after, `npm run build:web`, `npm run dist` (portable build
+    succeeded). Drove the real Electron app over CDP four times (`--user-data-dir` → a scratch temp folder,
+    confirmed `%APPDATA%\Roaming\Cultivator Idle\` still doesn't exist on this machine afterward): fresh
+    "New Cultivator" (mode button toggles, Automation panel shows all 4 locked with correct unlock hints at
+    stage 0, Active Mode shows the inert notice, `setAutomation` correctly rejects 'locked' then accepts once
+    unlocked), and the `founder` DEV preset (all 4 automations correctly read as unlocked at stage 19/rank 3;
+    per-location and per-recipe toggle chips render and set state; Push Harder appears only in the last 20% of
+    an expedition timer in Active Mode, clicking it sets `pushed:true` and charges 10 stones; the breakthrough
+    focus pulse (`bt-focus` class) appears the instant `canBreakthrough` flips true in Active Mode).
+    Screenshotted the 300px layout (5 titlebar buttons + Automation panel all fit). Zero console errors across
+    all four runs. Killed every scratch `electron.exe` afterward (`taskkill`, confirmed via `tasklist`).
+  Not done / known gaps: the Craft-tab Master's Touch roll and the breakthrough focus window were verified by
+    directly forcing state over CDP (qi=cap, near-end timer), not by literally timing a physical click within
+    the 3s/60s windows — the underlying logic is the same either way, but a human playtester should confirm
+    the *feel* of the windows (3s might be tight, 60s might be generous — both are first-pass numbers, not
+    sim-tuned since neither affects the sim's balance metrics). Didn't attempt to close the remaining
+    member-war contribution/war gap (see Sim results above) — would need either a larger-seed rerun to
+    separate signal from RNG noise, or decoupling the RNG streams active-mode bonuses consume from the rest of
+    the sim (a bigger change than this task's scope). iOS/touch not checked on a real device (same caveat as
+    every prior UI session).
+  Next: M1 task 1.7 (optional — window/layout modes) — or M2 2.1 (Life Loop) if the user wants that first, per
+    PLAN.md's Development Roadmap. M1 is now fully done except the optional 1.7.
+
 Date: 2026-09-26 overnight
 Agent: overnight autonomous run, task 1.5 — Roadmap M1 task 1.5, Phase 21: Backpack & Inventory Tab. Ran
   unattended (pre-approved assessment/scope); user was asleep. Picks up right after the 1.4 (War Standing

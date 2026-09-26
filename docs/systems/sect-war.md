@@ -181,14 +181,14 @@ the as-built reference.
 - No real NPC sects exist yet (Phase 15 is unbuilt) — rival sects and allies are flavor/mechanic only; alliance is bought from the existing Phase 4 `SECTS` roster, not a relationship system.
 - Offline catch-up relies on `tickSectWar()` being timestamp-based (`Date.now()` comparisons, no `dt` accumulation), so it fast-forwards correctly across any number of missed cycles in one `initSlot()` call.
 - Member war numbers are first-pass (sim-checked for health and engagement, not hand-playtested).
-- **Phase 32 known gap (found by the QA sim, not fixed this session):** an `afk` profile's member-war win rate and
-  contribution/war still trail `active`/`casual` by more than the sim's 10% comparison band (see qa-sim.md), even
-  with identical standing orders. Root cause: `tickSectWar(false)` (and its `_applyWarOrders()` call) runs inside
-  `initSlot()`'s offline catch-up *before* pending Sect missions are resolved — those only resolve on the next live
-  tick once `SectSystem.tick()` runs again. So a `chestStones` order fired during a long offline gap can see a
-  thinner Spirit Stone balance than the player will have moments later, once mission income catches up. `casual`
-  never closes the game, so it never hits this ordering gap. Fixing it would mean resolving pending sect missions
-  during offline catch-up too (a broader change to `initSlot()`'s income ordering) — out of scope for this task.
+- **Phase 32 gap fixed (Phase 22 task, 2026-09-26):** `initSlot()`'s offline catch-up now resolves any
+  pending Phase 4 sect missions *before* `tickOwnSect`/`tickSectWar(false)`, so a Standing Orders
+  `chestStones` donation fired during offline catch-up sees an up-to-date Spirit Stone balance instead of
+  one that's stale-by-one-mission-cycle. See `docs/systems/automation.md` for the full fix and
+  `game-state.js initSlot()`. The QA sim's afk/casual-vs-active member-war win-rate/contribution gap
+  (qa-sim.md) narrowed but did not fully close after this fix — other factors (differing income timing,
+  and RNG-stream shifts introduced by Active Mode's own new stochastic bonuses) also contribute; not
+  chased further this session.
 - The event-log line for a resolved-while-away-but-engaged war ("Your standing orders acted in your stead.") only
   appears when `engaged` is true; an unseen loss with zero commitment still reads like a normal defeat line (no
   "acted in your stead", since nothing did) — see `_resolveMemberWar()`'s `awayNote`.

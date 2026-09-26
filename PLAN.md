@@ -58,7 +58,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 20C | Settings tab + accessibility | ✅ | M1 |
 | 9A–B | Tray + opt-in desktop notifications | ✅ | M1 |
 | 21 | Backpack & Inventory tab | ✅ | M1 |
-| 22 | Active / Idle toggle + automation | ⬜ | M1 |
+| 22 | Active / Idle toggle + automation | ✅ | M1 |
 | 32 | War Standing Orders (absence never punished) | ✅ | M1 |
 | 6E | Window & layout modes | ⬜ | M1 (optional) |
 | 30 | Lifespan & Game Time (寿元 · 岁月) | ⬜ | M2 |
@@ -115,7 +115,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 1.3 ✅ | System tray + **opt-in** desktop notifications (per-type toggles in ⚙; BT ready, expedition back, war news, death) | 9A–B | 1.1 | Both platforms: Electron real, iOS shim no-op (Rule 7). Nothing in the game *requires* notifications |
 | 1.4 ✅ | War Standing Orders: calls are answered by a preset order, and being present only adds optional choices | 32 | — | Sim: afk/casual war outcomes within ~10% of active; the "missed war window" flags are retired |
 | 1.5 ✅ | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
-| 1.6 | Active / Idle toggle + staged automation unlocks | 22 | 1.1 | Bot uses automation; sim shows afk/casual actions/h up |
+| 1.6 ✅ | Active / Idle toggle + staged automation unlocks | 22 | 1.1 | Bot uses automation; sim shows afk/casual actions/h up |
 | 1.7 | *(optional)* Window & layout modes | 6E | 1.1 | 4 modes CSS-only off `data-layout` |
 
 > The old optional task "Immortal ladder filled by Qi (23D-lite)" was cut. The M2 Ascended-Ancestor ending
@@ -765,6 +765,34 @@ New tab "Pack" (袋) added between Craft and Sect in the tab row.
 ---
 
 ## Phase 22 — Active / Idle Mode Toggle + Mid-Late Automation
+
+> **Status: ✅ implemented 2026-09-26 (roadmap 1.6, overnight autonomous run).** See `docs/systems/automation.md`
+> for the full reference. Built close to the design below, with these divergences:
+> - **Unlock `stageIndex` values don't match this section's original draft numbers.** They were written before
+>   the pacing pass that tuned `stages.js`'s realm boundaries; `AUTOMATION_UNLOCKS` in `assets/data/automation.js`
+>   uses the *actual* current indices for the named realms (Core Formation Early = 13, Nascent Soul Early = 16,
+>   Spirit Severing Early = 19) — see that file's top comment.
+> - **`playMode` is its own state field, not `s.settings`** — it changes balance (timers, bonuses, automation),
+>   and `settings.md`'s invariant #2 requires `s.settings` stay presentation-only. Carried across reincarnation
+>   like `s.warOrders`.
+> - **Auto-Breakthrough excludes the Ascension Trial** (the last mortal stage) by design — that's a permanent-death
+>   gamble with its own manual confirmation overlay (Phase 23C); automating it would remove the game's one
+>   deliberate life-ending checkpoint.
+> - **Offline catch-up**: only Auto-Explore fast-forwards through the whole offline gap (chained `endsAt`, bounded
+>   loop, same trick `tickSectWar` uses). Auto-Sect-Missions/Auto-Craft/Auto-Breakthrough are live-only — sect
+>   missions have never fast-forwarded offline at all (pre-existing, not new), and crafting/breakthroughs have no
+>   natural offline-chaining hook without a much larger simulate-the-whole-queue change. See automation.md's
+>   "Offline Catch-Up" section for the full reasoning per automation.
+> - **Side-fix (same task, flagged by Phase 32):** `initSlot()` now resolves pending Phase 4 sect missions before
+>   `tickOwnSect`/`tickSectWar(false)`, fixing the stale-balance bug in `sect-war.md`'s Standing Orders gotcha.
+> - Sim: `npm run sim` before/after (founder + member paths, 200h). Casual/afk meaningful actions/hour roughly
+>   doubled-to-tripled (casual 11.3→22.3/h, afk 96→296/h at 200h) — the headline goal. New flag: casual now hits
+>   a "Hoarding" flag (47.6k unspent stones) it didn't before — automation accelerates casual into the
+>   pre-existing late-game stone-sink gap (nothing left to buy) sooner than it used to reach it, not a new
+>   problem this phase introduced. The afk/casual-vs-active member-war parity gap (Phase 32) narrowed but didn't
+>   fully close — active mode's own new stochastic bonuses (Master's Touch, Push Harder) shift the RNG stream
+>   for every run, so some of the before/after difference is noise rather than a clean signal; not chased further
+>   this session. 0 errors/invariant violations in every run.
 
 Two fundamentally different ways to play — the player can toggle between them freely at any time from the HUD. One prioritizes hands-off progression; the other rewards attention and clicking.
 

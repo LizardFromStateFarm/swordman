@@ -45,6 +45,10 @@ async function runOne({ profile, hours, seed, path: sectPath, dt, set }) {
   const rec = new Recorder(sim.data, hours * 3600)
   const bot = new Bot(sim, rec, { path: sectPath, actEverySec: prof.actEverySec, profile })
   const guard = (fn, where) => { try { return fn() } catch (e) { rec.error(e, where) } }
+  // Phase 22: automation fires from inside game-state.js itself (not the bot), so it needs its own hook
+  // into the Recorder's action tally — otherwise afk/casual's automated progress wouldn't show up in
+  // "meaningful actions/h" at all, hiding exactly the improvement this phase is meant to make.
+  sim.gs.onGameEvent((type, ctx) => { if (type === 'auto_fire') rec.act(`auto_${ctx.system}`, true) })
 
   await sim.boot(0)
   const stones0 = sim.gs.get().spiritStones
