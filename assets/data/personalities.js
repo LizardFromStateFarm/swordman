@@ -21,7 +21,7 @@ const PERSONALITIES = [
 
 // Every personality (and the generic pool) needs lines for each of these.
 const BANTER_TRIGGERS = ['idle', 'bt_success', 'bt_fail', 'bt_fail_streak', 'rare_drop', 'expedition_return',
-  'low_health', 'war_call', 'war_won', 'war_lost', 'reborn', 'ascension_trial', 'welcome_back', 'morning', 'night']
+  'low_health', 'war_call', 'war_won', 'war_lost', 'reborn', 'twilight', 'ascension_trial', 'welcome_back', 'morning', 'night']
 const BANTER_MIN_LINES = { idle: 25, other: 4, genericIdle: 20, genericOther: 2 }
 
 // Idle chatter interval (seconds, min–max) per banterFreq setting. 'off' = silent (no contextual lines either).

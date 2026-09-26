@@ -218,7 +218,7 @@ function buildReport(runs, args) {
     L.push(tot ? `| ${p} | ${f(tot)} | ${f(med(m.map(x => x.wins)))}/${f(med(m.map(x => x.losses)))} | ${f(med(m.map(x => x.engagedPct)))}% | ${f(med(m.map(x => x.ignored)))} | ${f(med(m.map(x => x.unseen)))} | ${f(med(m.map(x => x.contribNet)))} |` : `| ${p} | 0 | — | — | — | — | — |`)
   }
   L.push(``)
-  L.push(`## Ascension & Bloodline — Phase 23A-C (median, ${longest}h runs)`)
+  L.push(`## Ascension & Bloodline — Phase 23A-C (cumulative across the whole run; median, ${longest}h runs)`)
   L.push(`| Profile | Attempts | Survived | Generations | Deaths | Bloodline Quality (end) | Deaths by cause |`)
   L.push(`|---|---|---|---|---|---|---|`)
   for (const p of profiles) {
@@ -227,6 +227,22 @@ function buildReport(runs, args) {
     for (const l of lin) for (const [c, n] of Object.entries(l.deathsByCause || {})) causes[c] = (causes[c] || 0) + n
     const causesStr = Object.entries(causes).sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} ${n}`).join(', ') || '—'
     L.push(`| ${p} | ${f(med(lin.map(l => l.ascensionAttempts)))} | ${f(med(lin.map(l => l.ascensions)))} | ${f(med(lin.map(l => l.generation)))} | ${f(med(lin.map(l => l.deaths)))} | ${f(med(lin.map(l => l.bloodlineQuality)))} | ${causesStr} |`)
+  }
+  L.push(``)
+  L.push(`## Life Loop — Phase 30 (M2 task 2.3; heirs/legacies land in tasks 2.5-2.7) (${longest}h runs)`)
+  L.push(`| Profile | Lives | Lives/100h | Median life (open h) | Age at death | Twilight: seclusion/mantle | Deaths by cause (n × median open h) |`)
+  L.push(`|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const g = group(p, longest)
+    const lives = g.flatMap(r => r.lifeLoop?.lifeLengths || [])
+    const livesPer100h = med(g.map(r => r.lifeLoop?.livesPer100h))
+    const seclusion = g.reduce((a, r) => a + (r.actions.final_seclusion || 0), 0)
+    const mantle    = g.reduce((a, r) => a + (r.actions.pass_mantle || 0), 0)
+    const byCause = {}
+    for (const l of lives) (byCause[l.cause] ||= []).push(l.openHours)
+    const causeStr = Object.entries(byCause).sort((a, b) => b[1].length - a[1].length)
+      .map(([c, hs]) => `${c} ${hs.length}× (${fmtH(med(hs))})`).join(', ') || '—'
+    L.push(`| ${p} | ${lives.length} | ${f(livesPer100h)} | ${fmtH(med(lives.map(l => l.openHours)))} | ${f(med(lives.map(l => l.ageAtDeath)))} | ${seclusion}/${mantle} | ${causeStr} |`)
   }
   L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)

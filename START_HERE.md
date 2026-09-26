@@ -34,7 +34,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
-| Lifespan & Game Time (age passes only while open) | ⬜ Phase 30 (M2) — shared generators (task 2.2) built |
+| Lifespan & Game Time (age passes only while open) | ◐ Phase 30 (M2) — game clock + lifespan + Final Seclusion/Pass the Mantle built (task 2.3); pacing compression (2.4) still ⬜ |
 | Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — clan skeleton (task 2.2) built |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
@@ -63,6 +63,75 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 overnight
+Agent: overnight autonomous run, task 2.3 — Roadmap M2 task 2.3, Phase 30 game clock + lifespan. Ran
+  unattended (pre-approved: the user pre-authorized all of M2 with life-loop.md's draft values); user was
+  asleep. Picks up right after the 2.2 (shared generators + person record) session below.
+  - New `assets/data/lifespan.js`: the full life-loop.md §3.1 constants table (game clock, per-realm
+    lifespan, Final Seclusion, plus the task-2.5 marriage/children timing constants written now since the
+    spec listed them in the same file) — only the game-clock/lifespan/Final-Seclusion constants are
+    consumed by code yet.
+  - `game-state.js`: `_newGame()` gains `age` (starts `AWAKENING_AGE`=16), `gameYear` (starts 1),
+    `finalSeclusion`, `twilightNoticed`. New `_baseLifespan(maxStage)` (realm of `maxStageThisLife` →
+    `LIFESPAN_BY_REALM`). `_ensurePhase30Fields()` now also backfills the 4 new fields for old saves (a
+    migrated age is capped at 0.8× lifespan so an old save can't load straight into twilight or an instant
+    death). `_recalc()` adds `derived.lifespan`/`.inTwilight`/`.ageFrac` and applies Final Seclusion's Qi/s
+    ×1.5 + breakthrough +10% (before the 0.98 cap). `tick()` advances `age`/`gameYear` (ONLY there — never
+    `initSlot()`/offline catch-up, pillar 4), fires `_die('old_age')` at the lifespan, and logs + emits a
+    one-shot `twilight` event on crossing into the last 10%. `attemptBreakthrough()` auto-ends Final
+    Seclusion if a new realm's lifespan lifts the character back out of twilight. New public
+    `enterFinalSeclusion()`/`dismissTwilight()`/`passTheMantle()` (the last just calls `_die('passed_mantle')`
+    for now — task 2.6 replaces it with the real heir-selection flow). `startExpedition`/`startSectMission`/
+    `answerWarCall` now return `{ok:false, reason:'final_seclusion'}` while secluded (beast expeditions still
+    work). `_die()`'s `lastReincarnation` summary gained `openHours`/`ageAtDeath`/`lifespan` (additive, for
+    the sim's life-length metrics).
+  - UI: new age bar in the HUD (under Health, pulses amber in twilight) and a `#twilight-overlay` card
+    (Final Seclusion / Pass the Mantle / Not Yet), wired in `game.js`. Stats tab gained an Age/Clan Year row
+    and a "Pass the Mantle" button (confirm dialog, reuses the existing generic confirm overlay). Death
+    overlay's `DEATH_CAUSE_TEXT` gained `old_age`/`passed_mantle`. Banter's `isBlocked` selector gained
+    `#twilight-overlay`.
+  - Banter: new `twilight` trigger added to `BANTER_TRIGGERS` (`personalities.js`) + 58 new lines written
+    in-voice (2 generic + 4 × 14 personalities) in `banter-lines.js`, following banter-writing-guide.md.
+  - Sim: `loader.js` (`lifespan` added to `DATA_FILES`; the 6 consumed constants exposed to `sim.data`).
+    `bot.js` gained `twilight()` (first in the `checkIn` chain — Final Seclusion if there's plausibly enough
+    time left to fill the stage's Qi cap at boosted Qi/s, else Pass the Mantle). `metrics.js` gained
+    `lifeLengths` tracking + `age_over_lifespan`/`age_offline` invariants. `report.js` gained a "Life Loop"
+    section (life length/age-at-death/twilight-choice/deaths-by-cause per profile); the older "Ascension &
+    Bloodline" section was kept (relabeled "cumulative across the whole run") rather than replaced — see
+    life-loop.md §12 for why.
+  - **Verification:** `npm test` (48 files, was 47). `npm run sim:quick` + full `npm run sim`
+    (50/100/200h × active/casual/afk × 3 seeds): **0 errors, 0 invariant violations**. Confirms the spec's
+    own prediction: **casual** gen-1 now dies of old age (34× at 200h) around age ~400 (Core Formation's
+    lifespan) — i.e. before reaching Nascent Soul/Spirit Severing, exactly as expected *before* task 2.4's
+    pacing compression. **active** mostly ends life via a bot-chosen Pass the Mantle (29× at 200h) around
+    age 594 (= 0.9 × 660, the Spirit Severing/Ascension lifespan — confirms the twilight-threshold math is
+    exact). `npm run build:web` (confirmed `lifespan.js` lands in `www/`), `npm run dist` (portable build
+    succeeded). CDP smoke test against a fresh `--user-data-dir` scratch profile (never the user's real
+    slots — confirmed the 3 real `slot_*.json` mtimes were byte-identical before/after): created a new
+    cultivator, confirmed age/year advance live over real ticks, confirmed the HUD age bar and Stats rows
+    render, force-set age to 95% of lifespan (a state field, not a public API — the only way to reach
+    twilight in under a minute of real time) and confirmed the twilight card auto-opened with the amber
+    pulse; clicked Final Seclusion (Qi/s multiplied, `startExpedition()` correctly blocked); used the new
+    Stats "Pass the Mantle" button → confirm → full reincarnation (`generation` 1→2, `deaths` 0→1, age reset
+    to 16, death overlay showed "You laid down the path"); zero console errors throughout. Killed all 4
+    scratch Electron processes afterward (confirmed via `Get-CimInstance Win32_Process`, all matched the
+    scratch `--user-data-dir` before killing).
+  - **Please confirm (flagged in life-loop.md §10):** "the game is open" for aging/lifespan purposes already
+    meant "the process is running, tray included" since Phase 9A (task 1.3) added the tray fallback ticker —
+    NOT "visible on screen". A cultivator left running in the system tray for hours still ages and can still
+    die of old age there. This matches the letter of pillar 4 (age never passes while the app isn't running
+    at all) but is a bigger "open" window than "visible" would be — worth a quick gut-check that this is the
+    intended reading before task 2.4 tunes pacing around it.
+  Not done / known gaps (out of 2.3's scope): pacing compression (task 2.4 — casual dying of old age before
+    NS/SS is the expected, called-out state right now); marriage/children/heir-selection/legacies/catch-up
+    (tasks 2.5-2.7) — `family`, `lifeMerit`, `inheritedManual`, `succession`, `clan.bestStageIndex`/`tree`/
+    `firsts`/`merit`/`legacies` are all still absent or task-2.2 skeleton; `gameYear` still resets to 1 each
+    new life (not yet clan-persistent — waits on task 2.6's `CLAN_CARRY_KEYS`, same known gap `clan` itself
+    has had since task 2.2).
+  Next: M2 task 2.4 (pacing compression — retune `stages.js` FB-SS `qiCap` values, `PACING_TARGETS_MIN`,
+    `LIFE_TARGETS_H`, check `OFFLINE_QI_MULT`) so a casual mortal life lands in the 10-20h band instead of
+    dying of old age mid-Qi-Condensation/Core-Formation. Read life-loop.md §6 first.
+
 Date: 2026-09-26 overnight
 Agent: overnight autonomous run, task 2.2 — Roadmap M2 task 2.2, shared generators + minimal person record.
   Ran unattended (pre-approved: the user pre-authorized all of M2 with life-loop.md's draft values); user

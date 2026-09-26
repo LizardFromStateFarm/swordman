@@ -38,6 +38,7 @@ class Recorder {
     this._lastSlow = -Infinity
     this._lastDeathTs = null         // Phase 23A/B: dedupe s.lastReincarnation across ticks
     this.deathsByCause = {}
+    this.lifeLengths = []            // Phase 30 (M2 task 2.3): [{cause, openHours, ageAtDeath, lifespan}]
   }
 
   // ── Hooks from the bot ───────────────────────────────────────────────────
@@ -85,7 +86,9 @@ class Recorder {
     this.trackWars(s.sectWar)
     if (s.lastReincarnation && s.lastReincarnation.ts !== this._lastDeathTs) {
       this._lastDeathTs = s.lastReincarnation.ts
-      this.deathsByCause[s.lastReincarnation.cause] = (this.deathsByCause[s.lastReincarnation.cause] || 0) + 1
+      const lr = s.lastReincarnation
+      this.deathsByCause[lr.cause] = (this.deathsByCause[lr.cause] || 0) + 1
+      if (lr.openHours != null) this.lifeLengths.push({ cause: lr.cause, openHours: lr.openHours, ageAtDeath: lr.ageAtDeath, lifespan: lr.lifespan })
       this.milestone('first_death')
     }
     if (open) {
@@ -154,6 +157,10 @@ class Recorder {
     if (!(s.health >= 0 && s.health <= 100)) this.violate('health_out_of_range', s.health)
     if (!(s.bloodlineQuality >= 0 && s.bloodlineQuality <= this.D.BLOODLINE_CAP)) this.violate('bloodline_out_of_range', s.bloodlineQuality)
     if (!(s.generation >= 1)) this.violate('generation_invalid', s.generation)
+    // Phase 30 (M2 task 2.3): age never exceeds lifespan in live play (old-age death fires the same
+    // tick age crosses it, before this invariant sees it again) — no `succession`-pending exemption yet
+    // (task 2.6), since that state doesn't exist.
+    if (!(s.age <= (d.lifespan ?? Infinity) + 1e-6)) this.violate('age_over_lifespan', `${s.age} > ${d.lifespan}`)
     for (const def of this.D.SETTINGS_DEFS) {
       const v = s.settings?.[def.id]
       const ok = def.type === 'range' ? (v >= def.min && v <= def.max) : def.options.some(o => o.value === v)
@@ -231,6 +238,10 @@ class Recorder {
     if (before.beasts.length !== after.beasts.length) this.violate('save_roundtrip_beasts', `${before.beasts.length} → ${after.beasts.length}`)
     if (before.sect.id !== after.sect.id || before.ownSect.founded !== after.ownSect.founded) this.violate('save_roundtrip_sect', '')
     if (after.qi < before.qi - 1e-6 && after.stageIndex === before.stageIndex) this.violate('offline_lost_qi', `${before.qi} → ${after.qi}`)
+    // Phase 30 (M2 task 2.3): age/gameYear never advance while closed (pillar 4) — exact equality, since
+    // initSlot() never touches either field.
+    if (after.age !== before.age) this.violate('age_offline', `${before.age} → ${after.age}`)
+    if (after.gameYear !== before.gameYear) this.violate('age_offline', `gameYear ${before.gameYear} → ${after.gameYear}`)
   }
 
   // ── Final result (plain JSON) ────────────────────────────────────────────
@@ -281,6 +292,9 @@ class Recorder {
       lineage: { generation: s.generation, deaths: s.deaths, bloodlineQuality: Math.round(s.bloodlineQuality || 0),
                  ascensionAttempts: this.actions.ascend || 0, ascensions: this.milestones.first_ascend_success != null ? 1 : 0,
                  deathsByCause: this.deathsByCause },
+      // Phase 30 (M2 task 2.3): per-life length. Heir kind/marriages/children/Merit/legacies land 2.5-2.7.
+      lifeLoop: { lifeLengths: this.lifeLengths,
+                  livesPer100h: +(this.lifeLengths.length / Math.max(1e-9, this.t / 3600) * 100).toFixed(1) },
       health: { violations: this.violations, errors: this.errors, saveRoundtrips: this.saveChecks },
       ...extra,
     }

@@ -61,7 +61,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 22 | Active / Idle toggle + automation | ✅ | M1 |
 | 32 | War Standing Orders (absence never punished) | ✅ | M1 |
 | 6E | Window & layout modes | ⬜ | M1 (optional) |
-| 30 | Lifespan & Game Time (寿元 · 岁月) | ⬜ | M2 |
+| 30 | Lifespan & Game Time (寿元 · 岁月) | ◐ (game clock + lifespan, Final Seclusion/Pass the Mantle built — task 2.3; pacing compression 2.4 still ⬜) | M2 |
 | 31 | Ancestral Hall & Clan Legacies (祖祠) — meta progression; absorbs 8 and 18B | ⬜ | M2 |
 | 16 (lite) | Marriage & children, lite version (spouse/child as person records) | ⬜ | M2 |
 | 18C | Heir selection at death | ⬜ | M2 |
@@ -127,7 +127,7 @@ When an older design section below conflicts with these, the pillars win. The se
 |---|---|---|---|---|
 | 2.1 | `docs/systems/life-loop.md`: game clock, lifespan table, heir flow, Ancestral Hall unlocks, pacing targets. **Review with the user before code** | 30, 31 | — | User signs off on lifespan numbers + the legacy list |
 | 2.2 ✅ | **Shared generators + `powerScore()` + minimal person record** (the schema 28A later extends): root, personality, name, stage, age | 28A/28J prep | 2.1 | Player creation uses them; sim numbers unchanged |
-| 2.3 | Game clock + **lifespan (寿元)**: age passes only while open, per-realm lifespan, old-age warning (seclusion scene), death by old age | 30 | 2.2 | Sim metrics: life length, deaths by cause; age never advances in offline catch-up (invariant) |
+| 2.3 ✅ | Game clock + **lifespan (寿元)**: age passes only while open, per-realm lifespan, old-age warning (seclusion scene), death by old age | 30 | 2.2 | Sim metrics: life length, deaths by cause; age never advances in offline catch-up (invariant) |
 | 2.4 | **Pacing compression**: retune the realm caps/costs so a casual mortal life is 10–20h. Rewrite `PACING_TARGETS_MIN` | 30 | 2.3 | `npm run sim`: casual life median within 10–20h, active ≥ ~5h, afk not trivial (check offline Qi vs no aging) |
 | 2.5 | **Marriage & children (lite)**: a proposal choice event from Foundation Building, spouse = person record, children born in game years, partner term in bloodline growth | 16 lite, 23 family hooks | 2.3 | Children exist before the typical death; family `carry 1.0` path works in sim |
 | 2.6 | **Heir selection at death** (child / new soul), inherited roots + bloodline, a death → hall → heir screen flow | 18C | 2.5 | Generations continue in one slot; sim runs span generations |
@@ -953,6 +953,16 @@ This gives mid-game players a concrete automation roadmap to look forward to.
 ---
 
 ## Phase 30 — Lifespan & Game Time (寿元 · 岁月)
+
+> **Built overnight 2026-09-26 (task 2.3) — see `docs/systems/life-loop.md` §12 for what actually landed.**
+> The draft numbers below predate life-loop.md's task 2.1 review pass and were superseded before code was
+> written: `GAME_YEARS_PER_OPEN_HOUR` shipped as **30**, not 60 (at 60, a casual player dies of old age inside
+> Qi Condensation — the cadence-floor math in life-loop.md §6.1), and the per-realm lifespan table shipped as
+> Mortal 70 / QC 250 / FB 300 / CF 400 / NS 520 / SS 660 (life-loop.md §3.1), not the table in 30B below. State
+> field names also differ slightly from this draft: `s.age`/`s.gameYear` exist as drafted, but `s.lifespan` is
+> **not stored** — it's `derived.lifespan`, recomputed every `_recalc()` from `maxStageThisLife` (so future
+> legacy purchases can't desync it). Treat life-loop.md as the source of truth for exact values from here on;
+> this section is kept for the original design reasoning (twilight choices, extenders concept).
 
 ### 30A — The game clock
 

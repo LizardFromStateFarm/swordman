@@ -114,6 +114,13 @@ class GameState {
       // Phase 30/31 (M2 task 2.2)
       clan,
       self,
+      // Phase 30 (M2 task 2.3): game clock + lifespan. age/gameYear advance ONLY in tick() (never
+      // initSlot()/offline catch-up — life-loop.md pillar 4). gameYear is the clan calendar; it resets
+      // to 1 each new life until task 2.6's CLAN_CARRY_KEYS lands (same known gap as `clan` itself, §11).
+      age:              AWAKENING_AGE,
+      gameYear:         1,
+      finalSeclusion:   false,
+      twilightNoticed:  false,
       // Phase 2
       expedition:    { active: false, locationId: null, endsAt: null, pushed: false },
       inventory:     {},
@@ -346,15 +353,32 @@ class GameState {
     if (!(typeof s.clan.nextId === 'number' && isFinite(s.clan.nextId) && s.clan.nextId >= 1)) s.clan.nextId = 1
   }
 
-  // Phase 30 (M2 task 2.2): backfill `self` for saves from before this field existed. Must run AFTER
-  // _ensurePhase31Fields() (needs s.clan for the id + surname). age/gameYear/finalSeclusion/twilightNoticed
-  // are task 2.3 — not filled here yet.
+  // Phase 30 (M2 task 2.2/2.3): backfill `self` for saves from before this field existed, plus (2.3)
+  // age/gameYear/finalSeclusion/twilightNoticed for saves from before the game clock existed. Must run
+  // AFTER _ensurePhase31Fields() (needs s.clan for the id + surname).
   _ensurePhase30Fields() {
     const s = this._s
     if (!s.self || typeof s.self !== 'object') {
       const given = (s.name && s.name !== 'Unnamed Cultivator') ? s.name.trim().split(/\s+/).pop() : ''
       s.self = Persons.make({ id: this._newPersonId(s.clan), given, family: s.clan.name, role: 'self', alive: true })
     }
+    // Migration (life-loop.md §2.5): an old save never had `age`. Approximate it from time played so it
+    // never loads straight into Twilight or an instant old-age death. Uses _baseLifespan() directly
+    // (not s.derived.lifespan) since this can run before the first post-load _recalc() has a fresh value.
+    if (!(typeof s.age === 'number' && isFinite(s.age))) {
+      const lifespan = this._baseLifespan(s.maxStageThisLife)
+      s.age = Math.min(AWAKENING_AGE + (s.stats.timePlayed / 3600) * GAME_YEARS_PER_OPEN_HOUR, 0.8 * lifespan)
+    }
+    if (!(typeof s.gameYear === 'number' && isFinite(s.gameYear))) s.gameYear = 1 + (s.age - AWAKENING_AGE)
+    if (typeof s.finalSeclusion !== 'boolean')  s.finalSeclusion  = false
+    if (typeof s.twilightNoticed !== 'boolean') s.twilightNoticed = false
+  }
+
+  // Phase 30 (M2 task 2.3): base lifespan (years) for the realm of maxStageThisLife, before any legacy
+  // extenders (task 2.7's longevity_blood, capped by LIFESPAN_EXT_CAP_FRAC, isn't built yet).
+  _baseLifespan(maxStage) {
+    const st = CULTIVATION_STAGES[Math.min(Math.max(maxStage || 0, 0), CULTIVATION_STAGES.length - 1)]
+    return LIFESPAN_BY_REALM[st.realm] || LIFESPAN_BY_REALM['Mortal']
   }
 
   _rollPersonality() { return Persons.rollPersonality() }
@@ -486,6 +510,10 @@ class GameState {
     }
     qps *= 1 + discQi
 
+    // Phase 30 (M2 task 2.3): Final Seclusion — traded expeditions/sect calls for a Qi/s + breakthrough
+    // boost. Catch-up/Refined Meridians/blessing multipliers (task 2.7) will chain in at this same point.
+    if (s.finalSeclusion) { qps *= FINAL_SECLUSION_QPS_MULT; btBonus += FINAL_SECLUSION_BT_BONUS }
+
     // Pill preview bonus (for display only — consumed at BT attempt time)
     let pillBtPreview = 0
     if (s.activePill && ITEMS[s.activePill]) {
@@ -495,6 +523,12 @@ class GameState {
     }
 
     const baseChance = Math.min(0.98, Math.max(sectFx.bt_floor || 0, st.breakthroughChance + btBonus + s.karma / 1000))
+
+    // Phase 30 (M2 task 2.3): lifespan/twilight, keyed off maxStageThisLife (not the current stage —
+    // demotions shouldn't shorten a life that already earned a longer one). Not stored on `s` (life-loop.md
+    // §2.1) — recomputed here so legacy buys (task 2.7) can't desync it.
+    const lifespan  = this._baseLifespan(s.maxStageThisLife)
+    const inTwilight = s.age >= lifespan * (1 - TWILIGHT_FRAC)
 
     s.derived = {
       qiPerSecond:              qps,
@@ -521,6 +555,10 @@ class GameState {
       realmIntegrity:   s.realmIntegrity ?? 100,
       arrayDamaged,
       sectBuffSuppressed,
+      // Phase 30 (M2 task 2.3)
+      lifespan,
+      inTwilight,
+      ageFrac:          lifespan > 0 ? Math.min(1, s.age / lifespan) : 0,
     }
   }
 
@@ -565,6 +603,22 @@ class GameState {
   tick(dt) {
     const s = this._s
     if (!s) return
+
+    // Phase 30 (M2 task 2.3): game clock. Age/gameYear advance ONLY here — never in initSlot()/offline
+    // catch-up (life-loop.md pillar 4; §10 gotcha: "open" means the process is running, tray included,
+    // since Phase 9A keeps ticking while hidden — only the app not running at all skips aging).
+    // Uses last frame's derived.lifespan (at most one tick stale — only a breakthrough changes it, and
+    // that calls _recalc() immediately), falling back to a fresh compute before the very first tick.
+    const years = dt * GAME_YEARS_PER_OPEN_HOUR / 3600
+    s.age      += years
+    s.gameYear += years
+    const lifespan = s.derived.lifespan || this._baseLifespan(s.maxStageThisLife)
+    if (s.age >= lifespan) { this._die('old_age'); return }
+    if (s.age >= lifespan * (1 - TWILIGHT_FRAC) && !s._twilightLogged) {
+      s._twilightLogged = true
+      this.addEvent({ text: `Year ${Math.floor(s.gameYear)}: the twilight of this life has come.`, type: 'neutral' })
+      this._emit('twilight')
+    }
 
     const gain = s.derived.qiPerSecondBoosted * dt
     s.qi = Math.min(s.qi + gain, s.derived.qiCap)
@@ -671,9 +725,45 @@ class GameState {
     s.stats.breakthroughs++
     s.maxStageThisLife = Math.max(s.maxStageThisLife || 0, s.stageIndex)
     if (s.banter) s.banter.failStreak = 0
+    // Phase 30 (M2 task 2.3): a new realm can outrun Twilight — end Final Seclusion automatically if so.
+    // clan.bestStageIndex/realm firsts/seclusion_bt (task 2.7) aren't built yet.
+    if (s.finalSeclusion && s.age < this._baseLifespan(s.maxStageThisLife) * (1 - TWILIGHT_FRAC)) {
+      s.finalSeclusion = false
+      this.addEvent({ text: `${s.name} emerges from seclusion — the new realm has bought back the years.`, type: 'positive' })
+    }
     this._recalc(); this._notify()
     this._emit('bt_success')
     return { success: true, newStage: this._stage() }
+  }
+
+  // ── Phase 30 (M2 task 2.3): Twilight choices ────────────────────────────────
+  // 'life_over' reasons are listed in life-loop.md §4.2 for after task 2.6's succession/lifeOver() lands;
+  // there's no such state yet, so these three simply act (any time twilight/not applies).
+
+  enterFinalSeclusion() {
+    const s = this._s
+    if (!s.derived.inTwilight) return { ok: false, reason: 'not_twilight' }
+    if (s.finalSeclusion)      return { ok: false, reason: 'already' }
+    s.finalSeclusion  = true
+    s.twilightNoticed = true
+    this.addEvent({ text: `${s.name} enters Final Seclusion — every remaining year spent chasing one last breakthrough.`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  // "Not yet" on the twilight card — acknowledges it without committing to seclusion.
+  dismissTwilight() {
+    const s = this._s
+    s.twilightNoticed = true
+    this._notify()
+    return { ok: true }
+  }
+
+  // Ends the life peacefully, any time (not only in twilight) — life-loop.md §9.3. Routed through the
+  // existing _die() for now; task 2.6 replaces this with _endLife() + the heir-selection flow.
+  passTheMantle() {
+    this._die('passed_mantle')
+    return { ok: true }
   }
 
   // ── Phase 23A/B/C: Health, Bloodline Quality, Ascension Trial ──────────────
@@ -741,6 +831,11 @@ class GameState {
     const summary = {
       cause, maxStageReached: maxStage, generation: priorGen,
       parentBloodlineQuality: parentBQ, newBloodlineQuality: heirBQ, ts: Date.now(),
+      // Phase 30 (M2 task 2.3): life-length metrics (sim + future UI). Additive only — existing
+      // consumers (death overlay, sim dedupe) only ever read the keys above.
+      openHours:  +(s.stats.timePlayed / 3600).toFixed(2),
+      ageAtDeath: s.age,
+      lifespan:   s.derived?.lifespan ?? null,
     }
 
     this._s = this._newGame()
@@ -785,6 +880,7 @@ class GameState {
   // real "now", so auto-explore fast-forwards through the whole offline gap (see initSlot()).
   startExpedition(locationId, opts = {}) {
     const s = this._s
+    if (s.finalSeclusion)     return { ok: false, reason: 'final_seclusion' }
     if (s.expedition.active) return { ok: false, reason: 'active' }
     const loc = LOCATIONS.find(l => l.id === locationId)
     if (!loc) return { ok: false, reason: 'unknown' }
@@ -1209,6 +1305,7 @@ class GameState {
 
   startSectMission(missionId) {
     const s = this._s
+    if (s.finalSeclusion) return { ok: false, reason: 'final_seclusion' }
     if (!s.sect.id) return { ok: false, reason: 'no_sect' }
     const m = SECT_MISSIONS.find(x => x.id === missionId)
     if (!m)                                  return { ok: false, reason: 'unknown' }
@@ -1758,6 +1855,7 @@ class GameState {
 
   answerWarCall() {
     const s = this._s, w = s.sectWar
+    if (s.finalSeclusion) return { ok: false, reason: 'final_seclusion' }
     if (!this._memberWarActive()) return { ok: false, reason: 'no_war' }
     if (w.answered)               return { ok: false, reason: 'already' }
     w.answered = true

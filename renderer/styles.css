@@ -459,6 +459,45 @@ body {
   transition: width .6s linear, background .6s linear;
 }
 
+/* ── Age bar (Phase 30, M2 task 2.3) ─────────────────────────────────────── */
+
+#age-block {
+  flex-shrink: 0;
+  padding: 0 12px 6px;
+}
+
+#age-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--dim);
+  margin-bottom: 2px;
+}
+
+#age-track {
+  height: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+#age-fill {
+  height: 100%;
+  width: 16%;
+  background: var(--gold);
+  border-radius: 2px;
+  transition: width .6s linear, background .6s linear;
+}
+
+/* Twilight: age bar pulses amber (class toggled by game.js when derived.inTwilight) */
+#age-block.twilight #age-fill { background: var(--gold); animation: age-pulse 1.6s ease-in-out infinite; }
+#age-block.twilight #age-numbers { color: var(--gold); }
+@keyframes age-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
 /* ── Shake animation (realm demotion) ───────────────────────────────────── */
 
 @keyframes shake {
@@ -881,6 +920,65 @@ body {
   cursor: pointer;
 }
 #death-ok:hover { background: rgba(90,40,8,.9); }
+
+/* ── Twilight overlay (Phase 30, M2 task 2.3) ─────────────────────────────── */
+
+#twilight-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,4,14,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+#twilight-box {
+  background: var(--bg2);
+  border: 1px solid var(--gold);
+  border-radius: 5px;
+  padding: 18px 20px;
+  width: 250px;
+  text-align: center;
+}
+
+#twilight-title {
+  font-size: 13px;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+
+#twilight-desc {
+  font-size: 10px;
+  color: var(--dim);
+  margin-bottom: 12px;
+}
+
+#twilight-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#twilight-btns button {
+  background: rgba(24,10,4,.9);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  min-height: 32px;
+}
+#twilight-btns button:hover { border-color: var(--gold); color: var(--gold); }
+
+.twilight-sub {
+  display: block;
+  font-size: 9px;
+  color: var(--dim);
+  margin-top: 2px;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    EXPLORE TAB

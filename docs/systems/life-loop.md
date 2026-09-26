@@ -1,12 +1,12 @@
 # Life Loop — Reference & Build Spec
-_Covers: lifespan.js · clan-legacies.js · names.js (new data, ✅ built) · renderer/engine/persons.js (✅ built) · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-26 (task 2.2)_
+_Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ built) · renderer/engine/persons.js (✅ built) · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-26 (task 2.3)_
 
-> **Status: build spec, written overnight (task 2.1). Task 2.2 (shared generators + minimal person record)
-> is now BUILT overnight — see §8's row and §11 below for what landed and how it diverges.** Tasks 2.3–2.8
-> are still spec only. The user pre-authorized building M2 with these draft values. Every value marked
-> **(P)** is *provisional, decided overnight* (see §9). Once M2 ships, cut this doc down to a normal
-> <120-line reference (index.md rule). Until then it is deliberately longer because it is the spec for
-> tasks 2.3–2.8.
+> **Status: build spec, written overnight (task 2.1). Tasks 2.2 (shared generators + minimal person record)
+> and 2.3 (game clock + lifespan) are now BUILT overnight — see §8's rows and §11/§12 below for what landed
+> and how each diverges.** Tasks 2.4–2.8 are still spec only. The user pre-authorized building M2 with these
+> draft values. Every value marked **(P)** is *provisional, decided overnight* (see §9). Once M2 ships, cut
+> this doc down to a normal <120-line reference (index.md rule). Until then it is deliberately longer
+> because it is the spec for tasks 2.4–2.8.
 
 ## 1. Overview
 
@@ -402,7 +402,7 @@ Dead zone / stage wall / progression stall are computed per life. Run the life-l
 | Task | Scope | Done when |
 |---|---|---|
 | **2.2** ✅ Shared generators + person record | `persons.js`, `names.js`, delegate `_rollRoot`/`_rollSpecificRoot`/`_rollPersonality`, `s.self`, `clan` skeleton `{name:'', nextId}`, `_ensurePhase30Fields` (self only) / `_ensurePhase31Fields` (skeleton). **No new `Math.random()` calls in `_newGame()`** | `npm test`; `npm run sim` report **identical** to baseline except timestamps; a node check that `Persons.make()` fills every schema key |
-| **2.3** Game clock + lifespan | `lifespan.js`, age/gameYear in `tick()`, `derived.lifespan/inTwilight`, old-age death, twilight card, Final Seclusion, Pass the Mantle (via current `_die`), HUD age bar + Stats, `twilight` banter lines, sim life metrics + invariants 1–2 | invariants hold; report shows life length + deaths by cause. (Before 2.4, casual gen-1 dies of old age around NS — expected.) |
+| **2.3** ✅ Game clock + lifespan | `lifespan.js`, age/gameYear in `tick()`, `derived.lifespan/inTwilight/ageFrac`, old-age death, twilight card, Final Seclusion, Pass the Mantle (via current `_die`), HUD age bar + Stats, `twilight` banter lines (58), sim life metrics + invariants 1–2 | invariants hold; report shows life length + deaths by cause. (Before 2.4, casual gen-1 dies of old age around NS/CF — confirmed, see §12.) |
 | **2.4** Pacing compression | `stages.js` caps, `PACING_TARGETS_MIN`, `LIFE_TARGETS_H`, `OFFLINE_QI_MULT` check | §6.3 step 4 |
 | **2.5** Marriage & children lite | `_ensurePhase16Fields`, `_tickFamily`, proposal overlay, `acceptSuitor`/`declineProposal`, partner term in `_die` growth, `married`/`child_born` banter lines, bot `family()` | sim: ≥ 1 adult child before the median death in casual; BQ growth includes partner term |
 | **2.6** Heir selection + succession flow | `_endLife`/`_beginNewLife`/`chooseHeir`, `CLAN_CARRY_KEYS`, ending → Hall (tree + records only) → heir overlays, system `lifeOver()` guards, clan name + charselect, generation-aware metrics, bot `succession()` | 500h casual sim spans ≥ 3 generations in one slot; heir kinds reported; `family carry 1.0` path used; no dead-zone false flags |
@@ -434,9 +434,16 @@ New files go into index.html script order (data after `bloodline.js`; `persons.j
     bot/player be pushed to wait and prepare (e.g. Final Seclusion adds Ascension chance)? Tuned in 2.8.
 
 ## 10. Gotchas
-- **"Open" means rendering.** The loop is `requestAnimationFrame` with `dt` capped at 2s, so a minimized/hidden
-  window freezes age *and* Qi (no offline catch-up either, since nothing reloads). Pre-existing behavior; don't "fix"
-  age alone.
+- **"Open" means the process is running, not "visible."** Corrected 2026-09-26 (task 2.3): since task 1.3
+  (Phase 9A, system tray), `main.js` sets `backgroundThrottling:false` and `game.js`'s `bootGame()` runs a 1s
+  fallback `setInterval` that calls `step()` whenever `requestAnimationFrame` has stalled ≥900ms — so the
+  game keeps ticking (Qi **and** age) while the window is hidden to the tray, not just while it's visible and
+  focused. Only the app **not running at all** (fully quit, or not yet reopened) skips aging — that's the
+  `initSlot()` offline-catch-up path, which still never touches `age`/`gameYear`. **Flagged for the user to
+  confirm**: this means "open" for pillar 4/lifespan purposes already meant "running in the tray counts", not
+  "visible on screen" — worth double-checking that's the intended reading, since a cultivator sitting in the
+  tray for hours still ages and can still die of old age. (The original text here undersold this — it said a
+  hidden window "freezes age and Qi", which stopped being true once Phase 9A shipped, before this doc existed.)
 - `_endLife` must be idempotent and must not reassign `this._s`. Existing callers `return` after `_die()`; with the
   pending flow they'd keep mutating the dead life, which is harmless but pointless. `checkDeath` fires after every
   event, which is why the `lifeOver()` guard in systems matters.
@@ -505,3 +512,95 @@ not a bug); `_die()` still resets `clan`/`self` to a fresh blank skeleton on eve
 §4.4's "2.2–2.5: unchanged" — clan persistence across lives is explicitly 2.6's `CLAN_CARRY_KEYS` work, not built
 here) — until then, generation-to-generation clan identity doesn't actually persist, which is expected and will be
 fixed when `CLAN_CARRY_KEYS` lands.
+
+## 12. Task 2.3 — what actually got built (overnight, 2026-09-26)
+
+**Files:** `assets/data/lifespan.js` (new — the full §3.1 table written now, even though only
+`GAME_YEARS_PER_OPEN_HOUR`/`AWAKENING_AGE`/`LIFESPAN_BY_REALM`/`TWILIGHT_FRAC`/`FINAL_SECLUSION_QPS_MULT`/
+`FINAL_SECLUSION_BT_BONUS` are consumed by code yet — the rest wait on task 2.5), `game-state.js` (`_newGame()`
+gains `age`/`gameYear`/`finalSeclusion`/`twilightNoticed`; new `_baseLifespan()`; `_ensurePhase30Fields()` now
+also backfills the 4 new fields for migrated saves; `_recalc()` computes `derived.lifespan`/`.inTwilight`/
+`.ageFrac` and applies the Final Seclusion Qi/s + breakthrough-chance bonus; `tick()` advances `age`/`gameYear`,
+fires `_die('old_age')`, and logs+emits `twilight` once per life; `attemptBreakthrough()` auto-ends Final
+Seclusion when a new realm's lifespan lifts the character back out of twilight; new `enterFinalSeclusion()`/
+`dismissTwilight()`/`passTheMantle()`; `startExpedition`/`startSectMission`/`answerWarCall` gain the
+`final_seclusion` guard; `_die()`'s `lastReincarnation` summary gained `openHours`/`ageAtDeath`/`lifespan`),
+`renderer/index.html` (age HUD block, `#twilight-overlay`, `lifespan.js` script tag), `renderer/styles.css`
+(`#age-block` + pulse animation, `#twilight-overlay`), `assets/data/personalities.js` (`twilight` added to
+`BANTER_TRIGGERS`), `assets/data/banter-lines.js` (58 new `twilight` lines: 2 generic + 4 × 14 personalities),
+`renderer/game.js` (age bar render + auto-open twilight card, twilight overlay button wiring, `DEATH_CAUSE_TEXT`
+gains `old_age`/`passed_mantle`, Stats tab gains an Age/Clan Year row + a "Pass the Mantle" button, banter
+`isBlocked` selector gains `#twilight-overlay`), `scripts/sim/loader.js` (`lifespan` in `DATA_FILES`, new
+constants exposed to `sim.data`), `scripts/sim/bot.js` (new `twilight()` method, first in the `checkIn` action
+chain), `scripts/sim/metrics.js` (`lifeLengths` array + `age_over_lifespan`/`age_offline` invariants),
+`scripts/sim/report.js` (new "Life Loop" section; the older "Ascension & Bloodline" section is kept, relabeled
+"cumulative across the whole run", rather than deleted — see below), `CLAUDE.md` tree.
+
+**Decisions where the spec was ambiguous (picked the simplest option, consistent with 2.4–2.7):**
+- **`gameYear` is not yet clan-persistent.** §2.2 lists `gameYear` as a "per clan, carried across lives" field,
+  but `_die()` is explicitly "2.2–2.5: unchanged" (§4.4) — it still resets the whole state via `_newGame()` and
+  only selectively carries `settings`/`warOrders`/`playMode`/`automation` forward. Rather than jump ahead to
+  task 2.6's `CLAN_CARRY_KEYS`, `gameYear` resets to `1` each new life for now, same as `clan` itself already
+  does (documented gap since task 2.2, §11). It will start actually persisting when `CLAN_CARRY_KEYS` lands.
+- **`_die()`'s `lastReincarnation` summary gained 3 additive fields** (`openHours`, `ageAtDeath`, `lifespan`) —
+  needed for the sim's life-length metrics (§7) and with no `_endLife()`/`succession` yet, this is the only
+  place that information exists before the life is reset. Purely additive: every existing reader (death overlay,
+  the sim's death-dedupe) only ever touched the pre-existing keys, so this isn't a behavior change for them.
+- **`enterFinalSeclusion()`/`dismissTwilight()`/`passTheMantle()` skip the `'life_over'` reason** listed in
+  §4.2 — that reason describes rejecting the call after task 2.6's `succession`/`lifeOver()` exist; since
+  neither exists yet, there's nothing to check. `passTheMantle()` just calls `_die('passed_mantle')` directly,
+  per the task's own instruction to route it through the current `_die()` "for now".
+- **Final Seclusion's Qi/s and breakthrough-chance bonuses are applied alone** — the spec's full multiplier
+  chain ("Qi/s × Final Seclusion × catch-up × Refined Meridians × blessing") includes three more multipliers
+  that are task 2.7 (clan legacies) content that doesn't exist yet. The code comment at the insertion point in
+  `_recalc()` says where they'll chain in.
+- **Twilight-entry log/emit dedupe uses a new, unlisted state key `s._twilightLogged`** (boolean, not in the
+  §2.1 schema) rather than reusing `twilightNoticed` — the latter means "the player answered the prompt card"
+  (§5.2), which is a different, independent thing from "has the once-per-life log line/banter event already
+  fired". It follows the same convention as other implementation-only accumulators not in the schema doc
+  (`_intRegenAcc`, `_healthRegenAcc`, `_craftAcc`). It resets naturally each life since `_newGame()` never sets it.
+- **The twilight overlay auto-opens from `updateHUD()`**, not from a `subscribe()` watcher diffing a timestamp
+  (the pattern the death/ascension overlays use) — there's no natural "this just happened" timestamp for
+  twilight the way `lastReincarnation.ts` or a manual button click provides one. Guarding on
+  `d.inTwilight && !s.twilightNoticed && overlay-is-currently-hidden` is cheap (checked every frame) and can't
+  reopen itself after "Not Yet"/Final Seclusion set `twilightNoticed = true`.
+- **Report: kept "Ascension & Bloodline" alongside the new "Life Loop" section** instead of replacing it (§7
+  says "new 'Life Loop' section replacing 'Ascension & Bloodline'") — the old section's cumulative
+  generation/deaths/BQ-at-end numbers across the *whole run* are still meaningful and now more interesting
+  (a 200h run spans 10-17 generations instead of 1-2), while "Life Loop" adds the *per-life* breakdown (length,
+  age at death, twilight choice, deaths by cause with per-cause median length) that didn't exist before. Full
+  replacement is more sensible once 2.5-2.7 add heir-kind/marriage/Merit columns to "Life Loop" — deferred.
+- **Pacing note, not a bug:** with Ascension existing but 23D/2.7's "Ascended Ancestor ending" not built, a
+  character who successfully ascends keeps aging in the `ascension` stage stub (lifespan 660, same as Spirit
+  Severing) and will eventually still die of old age and reincarnate. This is a harmless, arguably beneficial
+  side effect of layering the game clock under the existing Phase 23 Ascension stub — it naturally bounds what
+  bloodline.md documents as the "post-Ascension dead zone" a little, rather than leaving it open forever. Not
+  something this task needed to fix.
+
+**Verification:** `npm test` (48 files, was 47). `npm run sim:quick` and full `npm run sim` (50/100/200h ×
+active/casual/afk × 3 seeds): **0 errors, 0 invariant violations** in both. The new "Life Loop" section
+confirms the expected pacing: **casual** median life 12.8 open-hours, dying of `old_age` (34× at 200h) at age
+~400 (Core Formation's `LIFESPAN_BY_REALM`) — i.e. casual gen-1 is dying of old age around Core
+Formation/Nascent Soul, exactly as §8's row predicted for before task 2.4's pacing compression. **active**
+median life 19.3h, mostly ending via bot-chosen `passed_mantle` (29× at 200h) around age 594 (= 0.9 × 660, the
+Spirit Severing/Ascension lifespan — confirms the twilight threshold math), with a couple of `old_age` deaths
+too. **afk** has far fewer lives (its 8h-closed/15m-open sessions mean little open-clock time accrues per real
+run). `npm run build:web` (confirmed `lifespan.js` lands in `www/`), `npm run dist` (portable build succeeded).
+CDP smoke test against a fresh `--user-data-dir` scratch profile (never the user's real slots — confirmed the
+3 real `slot_*.json` mtimes were byte-identical before/after): created a new cultivator, confirmed `age`/
+`gameYear` advance live over real ticks, confirmed the HUD age bar/numbers and Stats "Age"/"Clan Year" rows
+render correctly, force-set `age` to 95% of `derived.lifespan` (a state field, not a public API — the only way
+to reach twilight in under a minute of real time) and confirmed the twilight card auto-opened with the correct
+amber pulse; clicked Final Seclusion (confirmed `finalSeclusion:true`, Qi/s multiplied, `startExpedition()` then
+correctly returns `{ok:false, reason:'final_seclusion'}`); used the Stats tab's new "Pass the Mantle" button →
+confirm dialog → confirmed a full reincarnation (`generation` 1→2, `deaths` 0→1, age reset to 16, death overlay
+showed "You laid down the path"); zero console errors/exceptions throughout. Killed all 4 scratch Electron
+processes afterward (confirmed via `Get-CimInstance Win32_Process`, all matched the scratch `--user-data-dir`
+before killing).
+
+**Gaps / not done (out of 2.3's scope, next task's job):** pacing compression (`stages.js` caps, task 2.4) —
+casual dying of old age before Nascent Soul/Spirit Severing is the *expected, called-out* state before that
+task, not a bug to fix here; marriage/children/heir-selection/legacies/catch-up (tasks 2.5-2.7) — `family`,
+`lifeMerit`, `inheritedManual`, `succession`, `clan.bestStageIndex`/`tree`/`firsts`/`merit`/`legacies` are all
+still their task-2.2 skeleton/absent; realm-firsts claiming and `seclusion_bt` (both task 2.7, clan legacies)
+aren't wired into `attemptBreakthrough()` yet.

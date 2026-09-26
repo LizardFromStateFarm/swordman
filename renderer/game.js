@@ -147,7 +147,7 @@
   const sectSys   = new SectSystem(gameState)
   const sectWarSys = new SectWarSystem(gameState)
   const settingsUI = new SettingsUI(gameState, renderer)
-  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden)'))
+  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #twilight-overlay:not(.hidden)'))
   // Phase 9A/B: window "active" = visible AND focused; notifications only fire otherwise (news, not a summons).
   const notifSys   = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(),
     (title, body) => window.electron.notify(title, body))
@@ -308,6 +308,17 @@
     document.getElementById('health-fill').style.background = `rgb(${hr},${hg},${hb})`
     document.getElementById('health-numbers').textContent   = `${Math.round(health)} / 100`
 
+    // Age bar (Phase 30, M2 task 2.3) — pulses amber in twilight
+    const ageBlock = document.getElementById('age-block')
+    ageBlock.classList.toggle('twilight', !!d.inTwilight)
+    document.getElementById('age-fill').style.width    = Math.min(100, (d.ageFrac || 0) * 100) + '%'
+    document.getElementById('age-numbers').textContent = `${Math.round(s.age)} / ${Math.round(d.lifespan)}`
+
+    // Twilight card (Phase 30, M2 task 2.3) — pops once per life unless already dismissed/answered
+    if (d.inTwilight && !s.twilightNoticed && document.getElementById('twilight-overlay').classList.contains('hidden')) {
+      document.getElementById('twilight-overlay').classList.remove('hidden')
+    }
+
     const activeTab = document.querySelector('.tab.active')?.dataset?.tab
     if (fromTick) {
       // On every tick: only update the live expedition timer without re-rendering
@@ -426,6 +437,8 @@
       ${sr('Breakthrough Chance', Math.round(d.breakthroughChance*100)+'%')}
       ${sr('Realm Integrity', `<span style="color:${integColor}">${Math.round(integ)}</span>`)}
       ${sr('Health', `<span style="color:${healthColor}">${Math.round(health)}</span>`)}
+      ${sr('Age', `${Math.round(s.age)} / ${Math.round(d.lifespan)}${d.inTwilight ? ` <span style="color:var(--gold)">(twilight)</span>` : ''}`)}
+      ${sr('Clan Year', Math.floor(s.gameYear))}
       ${sr('Breakthroughs', s.stats.breakthroughs)}
       ${sr('Failed BTs', s.stats.failed)}
       ${sr('Meditation Sessions', s.stats.meditationSessions)}
@@ -443,8 +456,14 @@
       ${(s.deaths || 0) > 0 ? sr('Deaths', s.deaths) : ''}
       ${s.stats.ascensionAttempts > 0 ? sr('Bloodline Quality', `${Math.round(s.bloodlineQuality || 0)} / 100`) : ''}
       ${s.stats.ascensions > 0 ? sr('Ascensions', s.stats.ascensions) : ''}
+      <button id="_pass-mantle" class="sect-btn" style="width:100%;margin:6px 0 2px;">Pass the Mantle</button>
       ${renderBanterLog(s)}
     `
+    document.getElementById('_pass-mantle')?.addEventListener('click', () => {
+      showConfirm('Pass the Mantle?', 'This ends your life peacefully, now. Cannot be undone.', () => {
+        gameState.passTheMantle()
+      })
+    })
   }
 
   // ── Banter (Phase 29) ─────────────────────────────────────────────────────
@@ -1877,6 +1896,8 @@
     sect_war:           'Fallen defending the sect',
     event:              'Claimed by a cultivation mishap',
     ascension_failed:   'The Ascension Trial claimed your life',
+    old_age:            'Your years ran out',
+    passed_mantle:      'You laid down the path',
   }
 
   function showDeathOverlay(summary) {
@@ -1891,6 +1912,26 @@
 
   document.getElementById('death-ok').addEventListener('click', () => {
     document.getElementById('death-overlay').classList.add('hidden')
+  })
+
+  // ── Twilight overlay (Phase 30, M2 task 2.3) ────────────────────────────────
+
+  document.getElementById('twilight-seclusion').addEventListener('click', () => {
+    const res = gameState.enterFinalSeclusion()
+    if (res.ok) flashMessage('Entering Final Seclusion.', 'special')
+    document.getElementById('twilight-overlay').classList.add('hidden')
+  })
+
+  document.getElementById('twilight-mantle').addEventListener('click', () => {
+    document.getElementById('twilight-overlay').classList.add('hidden')
+    showConfirm('Pass the Mantle?', 'This ends your life peacefully, now. Cannot be undone.', () => {
+      gameState.passTheMantle()
+    })
+  })
+
+  document.getElementById('twilight-wait').addEventListener('click', () => {
+    gameState.dismissTwilight()
+    document.getElementById('twilight-overlay').classList.add('hidden')
   })
 
   document.querySelectorAll('.tab').forEach(btn => {

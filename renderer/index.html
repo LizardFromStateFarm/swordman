@@ -77,6 +77,15 @@
     <div id="health-track"><div id="health-fill"></div></div>
   </div>
 
+  <!-- Age bar (Phase 30, M2 task 2.3) — pulses amber in twilight -->
+  <div id="age-block">
+    <div id="age-labels">
+      <span class="lbl">歲 Age</span>
+      <span id="age-numbers">16 / 70</span>
+    </div>
+    <div id="age-track"><div id="age-fill"></div></div>
+  </div>
+
   <div id="actions">
     <button id="btn-meditate" class="act-btn">
       <span class="act-icon">🧘</span>
@@ -168,6 +177,19 @@
   </div>
 </div>
 
+<!-- Twilight overlay (Phase 30, M2 task 2.3) — shown once when age crosses into twilight -->
+<div id="twilight-overlay" class="hidden">
+  <div id="twilight-box">
+    <div id="twilight-title">Twilight of This Life 暮年</div>
+    <div id="twilight-desc">The years are catching up. How do you wish to spend what remains?</div>
+    <div id="twilight-btns">
+      <button id="twilight-seclusion">Final Seclusion 死关<span class="twilight-sub">×1.5 Qi/s, +10% breakthrough — no expeditions or sect calls</span></button>
+      <button id="twilight-mantle">Pass the Mantle 传位<span class="twilight-sub">End this life now, peacefully</span></button>
+      <button id="twilight-wait">Not Yet</button>
+    </div>
+  </div>
+</div>
+
 <script src="../assets/data/stages.js"></script>
 <script src="../assets/data/techniques.js"></script>
 <script src="../assets/data/events.js"></script>
@@ -180,6 +202,7 @@
 <script src="../assets/data/sect-buildings.js"></script>
 <script src="../assets/data/sect-war.js"></script>
 <script src="../assets/data/bloodline.js"></script>
+<script src="../assets/data/lifespan.js"></script>
 <script src="../assets/data/automation.js"></script>
 <script src="../assets/data/settings.js"></script>
 <script src="../assets/data/personalities.js"></script>

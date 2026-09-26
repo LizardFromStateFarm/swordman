@@ -1,6 +1,6 @@
 // BANTER_LINES — what the cultivator says, per personality × trigger, plus a shared generic pool (Phase 29).
 // Used by renderer/game/banter.js; sim checks for holes (scripts/sim/metrics.js). Brief: docs/systems/banter-writing-guide.md.
-// 1579 lines. Tokens: {name} {stage} anywhere; {item} rare_drop; {hours} welcome_back; {enemy} {sect} war_*.
+// 1637 lines (58 added for `twilight`, Phase 30 M2 task 2.3). Tokens: {name} {stage} anywhere; {item} rare_drop; {hours} welcome_back; {enemy} {sect} war_*.
 
 const BANTER_LINES = {
   // ── generic ───────────────────────────────────────────────────────────────
@@ -80,6 +80,10 @@ const BANTER_LINES = {
       "A new life? I remember nothing. Except a strong urge to slap some young master.",
       "Reborn! Is this transmigration? Do I have a system? ...No system. Damn.",
       "Did I just reincarnate? Vague memory of dying. Vaguer memory of deserving it.",
+    ],
+    twilight: [
+      "The years pile up like unpaid debts. Heaven, I'd like an extension on this lease, please.",
+      "My hair's gone silver and my knees creak louder than my Dao heart. Twilight, apparently. Fun.",
     ],
     ascension_trial: [
       "The Ascension Trial. Immortality or death. No pressure. None at all. Fuck.",
@@ -212,6 +216,12 @@ const BANTER_LINES = {
       "Reincarnated as a nobody? Impossible. I refuse. File an appeal with the underworld.",
       "I remember... being magnificent. And then something rude happened. Probably jealousy.",
       "Fresh body, same face. Well. Hopefully the same face. Somebody bring me a mirror.",
+    ],
+    twilight: [
+      "Twilight? Nonsense. This young master doesn't age. He merely becomes a rarer vintage.",
+      "My hair has silvered. Distinguished, obviously. Old is a word for lesser cultivators.",
+      "The years dare approach me? Hmph. Even Time should know its place.",
+      "Fine. I am old. I remain, however, devastatingly handsome about it.",
     ],
     ascension_trial: [
       "Immortality or death. How dramatic. Heaven finally threw a party worthy of me.",
@@ -353,6 +363,12 @@ const BANTER_LINES = {
       "Last life I must have been brave once. This time I'll skip that part.",
       "I have a strange feeling I owe someone money and they had a sword. Moving on. Fast.",
     ],
+    twilight: [
+      "Old age is coming for me. Finally, an opponent I can outrun without shame.",
+      "They say face your mortality. I say: flee from it, wisely, at great speed.",
+      "Twilight years. Perfect. Even Death respects a graceful retreat.",
+      "I've survived this long by running from everything. Why stop for Death?",
+    ],
     ascension_trial: [
       "Survive and become immortal, or die. Can I pick 'neither' and go home?",
       "The Ascension Trial has no exit. No exit! What kind of sick architect made this?!",
@@ -493,6 +509,12 @@ const BANTER_LINES = {
       "I have a strange memory of yelling at lightning. PAST ME HAD THE RIGHT IDEA!",
       "A BRAND NEW BODY! WITH BRAND NEW BONES TO BREAK! LET'S GOOOO!",
     ],
+    twilight: [
+      "OLD AGE?! FINE! I'LL PUNCH TIME ITSELF! ...After I catch my breath. Give me a second.",
+      "They say my years are numbered! GOOD! I FIGHT BETTER UNDER A DEADLINE!",
+      "Twilight, huh? SOUNDS LIKE A BOSS FIGHT! LET'S GOOOO! ...slower than before, but still!",
+      "My body's slowing down but my SPIRIT is still SCREAMING AT THE SKY!",
+    ],
     ascension_trial: [
       "SURVIVE OR DIE?! THAT'S THE SAME DEAL AS EVERY FIGHT I'VE EVER HAD!",
       "The Ascension Trial? GIVE IT TO ME! I'LL FIGHT IT! I'LL FIGHT THE CONCEPT OF IT!",
@@ -632,6 +654,12 @@ const BANTER_LINES = {
       "New body, new start. Zero debt. Also zero stones. Mixed feelings. Mostly rage.",
       "I think I died because I wouldn't buy a healing pill. ...Still wouldn't. No regrets.",
       "Reincarnation is free, at least. Finally, the universe does something right.",
+    ],
+    twilight: [
+      "Old age, for free?! Outrageous! At least give me a discount on the coffin.",
+      "Twilight years. Time to start hoarding pills like they're going out of stock. They are.",
+      "I've spent decades hoarding stones. Turns out you can't take spirit stones to the grave. Robbery.",
+      "Dying is the most expensive thing I'll ever do and I don't even get a refund.",
     ],
     ascension_trial: [
       "Immortality or death. What's the entry fee? ...Free? It's a trap. Free is always a trap.",
@@ -774,6 +802,12 @@ const BANTER_LINES = {
       "I died last life. I think it was the pufferfish. Somehow I know it was worth it.",
       "Reincarnated as {name}. My soul remembers one thing only. A noodle stall. Somewhere.",
     ],
+    twilight: [
+      "They say my years are running low, like the last dumpling on the plate. Tragic. Eat faster.",
+      "Twilight of life, huh. Better make peace with the universe and also eat one more bowl.",
+      "My body's aging like fine wine. My stomach, sadly, still craves like a teenager.",
+      "If these are my final years, I refuse to die on an empty stomach. Bring the feast.",
+    ],
     ascension_trial: [
       "Survive the trial and become immortal. Immortals don't need to eat. …I'm having doubts.",
       "Is there food in the Immortal Realm? Nobody will give me a straight answer. Suspicious.",
@@ -914,6 +948,12 @@ const BANTER_LINES = {
       "I remember… a past life… a plum tree… a very bad review of my poetry.",
       "Reborn as {name}. My soul carries ten thousand sorrows. My body carries colic.",
       "Waaah! That's not crying, that's my first poem. It's about the cold air. Harsh critics.",
+    ],
+    twilight: [
+      "The autumn of my life has come, and oh, how the leaves of my dantian do wither.",
+      "I feel the frost of twilight upon my brow. Also upon my back. My back specifically.",
+      "Time, that cruelest of poets, writes wrinkles where once there was verse.",
+      "The sun sets on my mortal chapter. I shall compose an epic about my own knees.",
     ],
     ascension_trial: [
       "The Ascension Trial. Immortality or death. What a delicious, terrifying metaphor.",
@@ -1058,6 +1098,12 @@ const BANTER_LINES = {
       "Born as {name}. The midwife dropped me. I did not cry. She did.",
       "I seem to have died. And returned. Interesting. Where is my sword.",
     ],
+    twilight: [
+      "I am aging. Noted. Proceeding with cultivation.",
+      "Twilight has arrived. My face has not changed expression. It never does.",
+      "Old age approaches. I remain unbothered. My back, less so.",
+      "Fact: I am closer to death than yesterday. Also fact: breakfast was adequate.",
+    ],
     ascension_trial: [
       "The Ascension Trial. Survive or die. My schedule is open.",
       "Immortality or death. Both are permanent. I prefer the one with fewer lightning bolts.",
@@ -1199,6 +1245,12 @@ const BANTER_LINES = {
       "The Demon Lord is reincarnated! Kneel, parents! …They're cooing at me. Humiliating.",
       "Reborn as {name}. This body is weak. But the darkness remembers. The darkness is teething.",
       "I have returned from death! My dark vow endures! My teeth, however, did not.",
+    ],
+    twilight: [
+      "The mortal coil weakens?! Even a Demon King's vessel is bound by lesser Time. How embarrassing.",
+      "Twilight falls upon this humble abode of darkness. My sealed arm aches. Arthritis. Also darkness.",
+      "Death itself dares summon ME? Tell it to take a number. I am very busy being ominous.",
+      "My power grows ancient and unknowable. Also my knees. Ancient and unknowable knees.",
     ],
     ascension_trial: [
       "The Ascension Trial! The heavens tremble at the thought of my immortality! As they should!",
@@ -1342,6 +1394,12 @@ const BANTER_LINES = {
       "Something killed me last time. I don't know what. I'll start by distrusting the midwife.",
       "Heaven gave me a second chance. Why? What's the catch? There's always a catch.",
     ],
+    twilight: [
+      "Old age? Or a poison, slowly administered by my enemies over decades? I'm onto them.",
+      "Twilight of life. Suspicious timing. Who benefits from my death? Make a list. Start with the crane.",
+      "They say everyone dies eventually. 'They' being, suspiciously, everyone who wants me gone.",
+      "My hair is turning gray. Is that natural, or a curse? I'm testing several suspects.",
+    ],
     ascension_trial: [
       "Survive and become immortal, or die. It's obviously a trap. Sign me up. Carefully.",
       "Heaven invites me up. Suspicious. Nobody gets invited up. People get invited down. Into holes.",
@@ -1481,6 +1539,12 @@ const BANTER_LINES = {
       "Can't remember my past life, but I'm sure it was better. Everything used to be better.",
       "They named me {name}? In my day we had proper names. Like... hm. Forgot. But proper.",
       "Being young again is horrible. Everyone's so patronizing. I'm ancient, lady, give me my porridge.",
+    ],
+    twilight: [
+      "Twilight, they call it. In my day we called it 'Tuesday' and kept cultivating anyway.",
+      "Old age? Kids these days act like it's a tragedy. Back in my day we aged uphill.",
+      "My joints creak louder than the young folks' terrible music. At least I'm consistent.",
+      "So this is twilight. Feels like every other decade, just with worse knees and less patience.",
     ],
     ascension_trial: [
       "Eternal life. Great. An eternity of listening to young people. Pass. ...Fine. FINE.",
@@ -1625,6 +1689,12 @@ const BANTER_LINES = {
       "Born again as {name}. Great. Can I skip to the part where I'm already strong?",
       "A fresh start. Goal one: find a comfy tree. Goal two: see goal one.",
     ],
+    twilight: [
+      "Twilight of life, apparently. Guess I'll take my final nap a little more seriously now.",
+      "They say my years are numbered. Good. Fewer years to bother getting out of bed for.",
+      "Old age sounds like a great excuse to do even less. I accept this new life stage.",
+      "If I die mid-nap, technically I never noticed. Efficient. I call that a win.",
+    ],
     ascension_trial: [
       "Ascension Trial? Can I ascend lying down? Is there, like, a moving staircase to Heaven?",
       "Survive and become immortal, or die. Either way I never have to work again. Win-win.",
@@ -1765,6 +1835,12 @@ const BANTER_LINES = {
       "Oh, a new body. Hi, body! I'll take better care of you. I vaguely remember the last one.",
       "New life! I dreamed I was a cultivator who complimented his own murderer. Weird dream.",
       "Reincarnated. The soup lady in the underworld was so sweet. I tipped her in memories.",
+    ],
+    twilight: [
+      "Getting older, huh? Well, I've had a wonderful run, and I'm grateful for every wrinkle.",
+      "Twilight years already? Time really flies when you're kind to everyone, even the tribulation.",
+      "My body's slowing down, but hey — more time to appreciate the little things. And naps.",
+      "I suppose this is aging. Bit scary, honestly. But I've made peace with it. Mostly. Shit — sorry, I meant gosh.",
     ],
     ascension_trial: [
       "Ascend or die, huh? No pressure. I'll do my best and be very polite to the lightning.",
@@ -1907,6 +1983,12 @@ const BANTER_LINES = {
       "Wow, a new body! Clean hands! Weird. They feel like they should be busier.",
       "I'm reborn and I feel so peaceful. Pure. Innocent. Hehe. That won't last.",
     ],
+    twilight: [
+      "Twilight already? Wonderful. More time to remember every single face I've ever met. Hehe.",
+      "They say old age comes for everyone. I've been coming for everyone first. We're even now.",
+      "My body ages, my collection grows. A fair trade, I think. Don't you think? You'd better think so.",
+      "Death is finally interested in me. Flattering. I've been interested in it for years. Hehe.",
+    ],
     ascension_trial: [
       "Ascension or death? Ooh, both sound fun! Can I pick both?",
       "If I become immortal, I get to hold grudges FOREVER. Forever! Hehehehe!",
@@ -2047,6 +2129,12 @@ const BANTER_LINES = {
       "Blink. Blink. New life, who dis. I have a faint memory of a spoon. A dear friend.",
       "I have been reincarnated. Before: a cultivator. Now: a cultivator. Big change. Huge.",
       "Mweh. I'm a baby soul. I feel like I owe someone a bean. Several beans.",
+    ],
+    twilight: [
+      "Twilight of the borgin. The gorgin grows old. Time is a soup and I am the noodle in it.",
+      "My years are numbered, says the wrinkly calendar goblin in my skull. Rude little guy.",
+      "Old age is just Tuesday wearing a spooky hat. I have decided this. It is now canon.",
+      "The dantian creaks like Gerald's saddle. Gerald says: neigh, but wise.",
     ],
     ascension_trial: [
       "Ascension Trial? I will ascend like a balloon. Balloons ascend. Checkmate, Heaven.",
