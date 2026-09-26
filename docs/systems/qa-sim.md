@@ -22,7 +22,7 @@ invariant violations, 2 = harness crashed / bad `--set`.
 | File | Role |
 |---|---|
 | `run.js` | CLI, session model (open/close/reopen), per-run loop, parallel worker pool (`--jobs`, default cores−1) |
-| `loader.js` | Loads data + `game-state.js` + `game/*.js` into a `vm` context with fake `Date`, seeded `Math.random`, in-memory `window.electron` (saves are JSON strings → every load is a real round-trip) |
+| `loader.js` | Loads data + `game-state.js` + `game/*.js` into a `vm` context with fake `Date`, seeded `Math.random`, in-memory `window.electron` (saves are JSON strings → every load is a real round-trip). Includes `NotificationSystem` (Phase 9B) — its default `isWindowActive => true` means it always gates closed here, so this is a load/no-throw check, not a behavior test (docs/systems/notifications.md) |
 | `bot.js` | Greedy rule-based player; only calls public `gameState` methods |
 | `metrics.js` | `Recorder`: timeline, milestones, fun signals, invariants, errors → plain-JSON result |
 | `report.js` | Aggregates seeds (median + min–max), generates ⚠ flags, renders markdown |

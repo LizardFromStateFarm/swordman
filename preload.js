@@ -8,4 +8,9 @@ contextBridge.exposeInMainWorld('electron', {
   isDev:             ()        => ipcRenderer.invoke('is-dev'),
   quit:              ()        => ipcRenderer.send('quit-app'),
   toggleAlwaysOnTop: ()        => ipcRenderer.invoke('toggle-always-on-top'),
+  // Phase 9A/B: system tray + opt-in desktop notifications (see docs/systems/notifications.md).
+  hideToTray:        ()             => ipcRenderer.send('hide-to-tray'),
+  updateTrayInfo:    (name, stage)  => ipcRenderer.send('update-tray-info', name, stage),
+  notify:            (title, body) => ipcRenderer.send('show-notification', title, body),
+  onRequestSave:     (cb)          => ipcRenderer.on('request-save', () => cb()),
 })

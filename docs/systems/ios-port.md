@@ -15,8 +15,10 @@ No game state changes. This only adds a platform layer.
 
 ## API
 
-`window.electron` — same 6-method surface `game.js` / `game-state.js` already call
-(`loadAllSlots`, `loadSlot`, `saveSlot`, `deleteSlot`, `quit`, `toggleAlwaysOnTop`).
+`window.electron` — same surface `game.js` / `game-state.js` already call: `loadAllSlots`,
+`loadSlot`, `saveSlot`, `deleteSlot`, `isDev`, `quit`, `toggleAlwaysOnTop`, plus Phase 9A/B's
+`hideToTray`, `updateTrayInfo`, `notify`, `onRequestSave` (system tray + opt-in notifications —
+all four are no-ops on this shim, see docs/systems/notifications.md).
 Electron's `preload.js` still provides the real one via contextBridge; on any other shell
 (Capacitor iOS, or a plain browser) `renderer/engine/platform-storage.js` installs a fallback
 backed by `localStorage`, only when `window.electron` isn't already present. **Never call

@@ -16,7 +16,7 @@ const DATA_FILES = ['stages', 'techniques', 'events', 'items', 'locations', 'ene
                     'beasts', 'sects', 'sect-buildings', 'sect-war', 'bloodline', 'settings', 'personalities', 'banter-lines']
   .map(f => `assets/data/${f}.js`)
 const LOGIC_FILES = ['renderer/engine/game-state.js',
-  ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war', 'banter'].map(f => `renderer/game/${f}.js`)]
+  ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war', 'banter', 'notifications'].map(f => `renderer/game/${f}.js`)]
 
 function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } = {}) {
   const clock = { now: startMs }
@@ -55,9 +55,12 @@ function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } 
 
   const ev = code => vm.runInContext(code, ctx)
   const gs = ev('gameState')
+  // NotificationSystem's default isWindowActive (=> true) means _send() always gates closed here —
+  // this only exercises "loads + ticks without throwing" (see docs/systems/qa-sim.md), not behavior.
   const systems = ev(`[new CultivationSystem(gameState), new ExpeditionSystem(gameState),
-    new BeastSystem(gameState), new SectSystem(gameState), new SectWarSystem(gameState), new BanterSystem(gameState)]`)
-  const SYSTEM_SOURCES = ['events', 'expeditions', 'beast_expeditions', 'sect_missions', 'war', 'banter']
+    new BeastSystem(gameState), new SectSystem(gameState), new SectWarSystem(gameState), new BanterSystem(gameState),
+    new NotificationSystem(gameState)]`)
+  const SYSTEM_SOURCES = ['events', 'expeditions', 'beast_expeditions', 'sect_missions', 'war', 'banter', 'notifications']
 
   return {
     ctx, clock, gs, systems, saves, ev,

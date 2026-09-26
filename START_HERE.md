@@ -32,7 +32,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
-| Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ⬜ Phase 9 |
+| Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ⬜ Phase 32 (M1) |
 | Lifespan & Game Time (age passes only while open) | ⬜ Phase 30 (M2) |
 | Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) |
@@ -63,6 +63,62 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 overnight
+Agent: overnight autonomous run, task 1.3 — Roadmap M1 task 1.3, Phase 9A-B: system tray + opt-in
+  desktop notifications. Ran unattended (pre-approved assessment/scope); user was asleep.
+  - Tray (main.js): Tray built from a new static icon `assets/icons/tray-icon.png` (32x32, hand-written
+    PNG via `scripts/gen-tray-icon.js` — no image deps, no python; jade fill/gold ring/dark qi-swirl,
+    self-reviewed 8.6/10, full two-agent Asset Pipeline judged overkill for one tray glyph per the
+    task's own carve-out). Tooltip + a disabled menu line show "<name> — <stage label>", kept live via
+    a new `updateTrayInfo` IPC call the renderer sends only when name/stage actually change (in
+    `updateHUD`). Menu: label, separator, Open, Quit. Left-click/double-click both toggle show/hide.
+  - Close-to-tray: new setting `closeAction` (tray default / quit) in SETTINGS_DEFS — the ✕ button now
+    branches on it (`forceSave()` always runs first either way). `main.js` also intercepts the
+    window's native `close` event as a backstop (hide instead, unless a real quit is already in
+    flight via a new `isQuitting` flag set from `before-quit`) so "quit only via tray Quit" holds
+    even outside the in-app button. `before-quit` also asks the renderer to flush a save
+    (`request-save` IPC, ~200ms grace) before a tray-triggered quit, since that path has no
+    button-click round-trip to piggyback a `forceSave()` on.
+  - Notifications: new `renderer/game/notifications.js` (`NotificationSystem`, DOM-free like
+    `BanterSystem` — the sim loads it). 5 opt-in types, ALL OFF by default: breakthrough ready (edge-
+    triggers off the existing `s.derived.canBreakthrough`, no new state), expedition returned, war
+    news (reuses the existing `war_call`/`war_won`/`war_lost` onGameEvent emits — no new "15 min
+    warning" timer built, see PLAN.md Phase 9 status note for why), beast tamed (new `beast_tamed`
+    emit in `tameEncounteredBeast()`), life ended (new `death` emit at the top of `_die()`, fired
+    before state resets — `reborn` still fires after, unchanged, for banter). Per-type cooldown
+    (10-300s) lives in-memory in the system, not the save. Only fires while the window is
+    hidden/minimized/unfocused (`!document.hidden && document.hasFocus()`). Clicking a notification
+    shows+focuses the window (main.js). 6 new SETTINGS_DEFS entries needed **zero** new migration
+    code — `_ensurePhase20CFields()` already generically fills/validates anything in SETTINGS_DEFS.
+  - Rule 7 (both platforms): `hideToTray`, `updateTrayInfo`, `notify`, `onRequestSave` added to
+    preload.js/main.js (real) AND platform-storage.js (iOS/browser no-ops) in the same change.
+  - Sim: `notifications.js` added to `scripts/sim/loader.js` LOGIC_FILES + systems array (tick order
+    matches game.js) so a throw/syntax regression there fails `sim:quick`. No new invariant/bot
+    behavior — there's no player action to teach the bot and no new state to bound-check (the
+    system never mutates `s`); the sim's default `isWindowActive => true` means it always gates
+    closed there, so this is a load/no-throw check only, documented as such in qa-sim.md.
+  - Docs written first per Rule 6: `docs/systems/notifications.md` (new), + updated docs/index.md,
+    settings.md, banter.md (onGameEvent types list), ios-port.md (window.electron surface),
+    qa-sim.md, CLAUDE.md tree, PLAN.md (Phase Index, roadmap 1.3, Phase 9 status/divergences note).
+  - Verified: `npm test` (44 files), `npm run sim:quick` (0 exceptions, 0 invariant violations — same
+    pre-existing flags as before, not new), `npm run build:web` (notifications.js + tray-icon.png
+    both land in `www/`), `npm run dist` (portable build succeeds). Smoke-tested the real Electron
+    app via its CDP remote-debugging port with `--user-data-dir` pointed at a scratch temp folder
+    (never the user's real slots): 0 console errors/warnings, all new `window.electron.*` methods
+    present, `NotificationSystem`/new `SETTINGS_DEFS` entries load; called `updateTrayInfo`,
+    `hideToTray`, `notify` directly — no throw, and the app process stayed alive after
+    `hideToTray()` (confirms hide-not-quit). Killed the scratch process afterward, no leftovers.
+  Not done / known gaps: didn't verify the tray icon's on-screen appearance in the Windows system
+    tray by eye (no interactive desktop session in this environment — only CDP-driven, and Tray()
+    itself constructing without throwing was the only signal available). Didn't verify actual OS
+    toast notifications appear (`Notification.isSupported()` + construction didn't throw, but no
+    visual confirmation). Didn't add a per-type "deep link to a tab" on notification click — always
+    just shows+focuses the window. charselect's own quit button (✕ on the character-select screen)
+    still always does a real quit — left alone since there's no settings context there yet and no
+    task guidance either way. 9C/9D (day/night, seasons) untouched, still parked in M8.
+  Next: M1 task 1.4 (War Standing Orders) or 1.5 (Backpack tab) — or M2 2.1 (Life Loop) if the user
+    wants that first; see the session-12 entry below for the open life-loop review still pending.
+
 Date: 2026-09-25 (session 12) — PLANNING ONLY, no code changed
 Agent: User redirected the design: "just an enjoyable single player game … not the profit". Part of the fun is
   dying, making a new character, continuing the family and meta progression. Nobody should spend 100+ h on one

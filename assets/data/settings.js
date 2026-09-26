@@ -23,4 +23,23 @@ const SETTINGS_DEFS = [
     hint: 'Hides particles and aura rings' },
   { id: 'canvasBrightness', label: 'Sprite glow', group: 'Motion', type: 'choice', default: 1,
     options: [{ value: 0.7, label: '70%' }, { value: 1, label: '100%' }, { value: 1.3, label: '130%' }] },
+  // Phase 9A: close-button behavior (main.js reads this indirectly — the renderer branches on it).
+  // Own group (not 'Window') so it doesn't reopen that section non-contiguously in the panel — see
+  // renderer/game/settings.js render(): a group header prints whenever def.group differs from the
+  // previous entry's, so appending to a name already used earlier in the array duplicates the header.
+  { id: 'closeAction', label: 'Close button', group: 'Desktop', type: 'choice', default: 'tray',
+    options: [{ value: 'tray', label: 'Hide to tray' }, { value: 'quit', label: 'Quit' }],
+    hint: 'Quit fully only from the tray icon\'s Quit, or here' },
+  // Phase 9B: opt-in desktop notifications, ALL off by default (pillar 4 — never punish absence).
+  // Only fire while the window is hidden/minimized/unfocused; see renderer/game/notifications.js.
+  { id: 'notifyBreakthrough', label: 'Breakthrough ready', group: 'Notifications', type: 'choice', default: false,
+    options: [{ value: false, label: 'Off' }, { value: true, label: 'On' }] },
+  { id: 'notifyExpedition', label: 'Expedition returned', group: 'Notifications', type: 'choice', default: false,
+    options: [{ value: false, label: 'Off' }, { value: true, label: 'On' }] },
+  { id: 'notifyWar', label: 'War news', group: 'Notifications', type: 'choice', default: false,
+    options: [{ value: false, label: 'Off' }, { value: true, label: 'On' }] },
+  { id: 'notifyBeastTamed', label: 'Beast tamed', group: 'Notifications', type: 'choice', default: false,
+    options: [{ value: false, label: 'Off' }, { value: true, label: 'On' }] },
+  { id: 'notifyDeath', label: 'Life has ended', group: 'Notifications', type: 'choice', default: false,
+    options: [{ value: false, label: 'Off' }, { value: true, label: 'On' }] },
 ]

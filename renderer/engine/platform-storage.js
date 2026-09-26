@@ -42,5 +42,13 @@ if (!window.electron) {
     // real window to pin/unpin here, and the pin button reads this to show state.
     quit: () => {},
     toggleAlwaysOnTop: async () => true,
+
+    // Phase 9A/B: no system tray, no native OS notifications, and no quit flow to protect with a
+    // save flush on iOS/browser — all safe no-ops (see docs/systems/notifications.md). Nothing else
+    // in the renderer needs to branch on platform to call these.
+    hideToTray: () => {},
+    updateTrayInfo: () => {},
+    notify: () => {},
+    onRequestSave: () => {},
   }
 }

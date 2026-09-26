@@ -626,6 +626,8 @@ class GameState {
   _die(cause) {
     const s = this._s
     const maxStage  = Math.max(s.maxStageThisLife || 0, s.stageIndex)
+    // Phase 9B: fired before this._s is replaced so a listener can still read the dying life's stage.
+    this._emit('death', { cause, maxStage })
     const selfTerm  = Math.pow(maxStage / (CULTIVATION_STAGES.length - 1), 2)
     const growth    = BLOODLINE_G_BASE + BLOODLINE_G_SELF * selfTerm   // no partner term yet (Phase 16)
     const parentBQ  = s.bloodlineQuality || 0
@@ -886,6 +888,7 @@ class GameState {
     s.beasts.push(beast)
 
     this._recalc(); this._notify()
+    this._emit('beast_tamed', { name: beastType.name })
     return { ok: true, beast }
   }
 

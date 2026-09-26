@@ -56,7 +56,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 23A–C | Health & Death, Bloodline Quality, Ascension Trial | ✅ | M0 (section lives in M7) |
 | 29 | Character Personality & Banter | ✅ (29A/B/D; 29C later) | M1 |
 | 20C | Settings tab + accessibility | ✅ | M1 |
-| 9A–B | Tray + opt-in desktop notifications | ⬜ | M1 |
+| 9A–B | Tray + opt-in desktop notifications | ✅ | M1 |
 | 21 | Backpack & Inventory tab | ⬜ | M1 |
 | 22 | Active / Idle toggle + automation | ⬜ | M1 |
 | 32 | War Standing Orders (absence never punished) | ⬜ | M1 |
@@ -112,7 +112,7 @@ When an older design section below conflicts with these, the pillars win. The se
 |---|---|---|---|---|
 | 1.1 ✅ | Settings tab shell (⚙) + accessibility options | 20C | — | Settings persist per slot; later tasks add their toggles here |
 | 1.2 ✅ | Banter engine + 12 personalities, speech bubble, banter log, frequency setting | 29 | 1.1 | Every personality × trigger has lines (sim invariant); bubble fits 300 px + iOS |
-| 1.3 | System tray + **opt-in** desktop notifications (per-type toggles in ⚙; BT ready, expedition back, war news, death) | 9A–B | 1.1 | Both platforms: Electron real, iOS shim no-op (Rule 7). Nothing in the game *requires* notifications |
+| 1.3 ✅ | System tray + **opt-in** desktop notifications (per-type toggles in ⚙; BT ready, expedition back, war news, death) | 9A–B | 1.1 | Both platforms: Electron real, iOS shim no-op (Rule 7). Nothing in the game *requires* notifications |
 | 1.4 | War Standing Orders: calls are answered by a preset order, and being present only adds optional choices | 32 | — | Sim: afk/casual war outcomes within ~10% of active; the "missed war window" flags are retired |
 | 1.5 | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
 | 1.6 | Active / Idle toggle + staged automation unlocks | 22 | 1.1 | Bot uses automation; sim shows afk/casual actions/h up |
@@ -618,9 +618,31 @@ settings: {
 
 ## Phase 9 — Desktop Integration
 
+> **Status 2026-09-26 (task 1.3, overnight):** 9A/9B built. See `docs/systems/notifications.md` for
+> the full reference. Divergences from the design text below:
+> - Tray icon is one static glyph (jade/gold circle, self-reviewed 8.6/10 — full two-agent Asset
+>   Pipeline judged overkill for a single tray glyph, per the task's own carve-out), **not**
+>   per-stage icons — out of scope, noted as a possible future refinement.
+> - "Realm Demotion (urgent)" notification was dropped per the 2026-09-25 pillars note below (never
+>   punish absence); demotion isn't a notification type. "Sect War incoming (15 min warning)" became
+>   "War news" using the *existing* `war_call`/`war_won`/`war_lost` onGameEvent emits (declared +
+>   resolved, both sides) rather than a new pre-war timer — simpler, and matches "news, not a
+>   summons" better than a countdown would.
+> - Added "a life has ended" (death) as its own opt-in type, per the note below — it did **not**
+>   need Phase 30 (game-time lifespan); it just reuses the existing Phase 23 death flow
+>   (`_die()` now also emits `death` before resetting state).
+> - Close button now defaults to **hide to tray** (own setting `closeAction`, tray/quit) rather than
+>   always quitting — this was implied by "system tray" but made an explicit user-facing choice
+>   since some players will still want ✕ to fully quit.
+> - Per-type cooldowns + the "only while hidden/minimized/unfocused" gate live in a new
+>   `renderer/game/notifications.js` (`NotificationSystem`), not in `main.js` — main.js only knows
+>   *how* to show a native notification/tray, not *when*; the decision logic lives with the rest of
+>   the DOM-free game systems (same split as `BanterSystem`) so the sim can load it too.
+
 ### 9A — System Tray
 - App minimizes to system tray (not taskbar close)
-- Tray icon updates with cultivation stage (mortal, qi condensation, foundation, etc.)
+- Tray icon updates with cultivation stage (mortal, qi condensation, foundation, etc.) — built as a
+  live-updating **tooltip + menu label**, not a redrawn icon image (see status note above)
 - Right-click menu: "Wei Longshan — Qi Condensation L3", "Open", "Quit"
 
 ### 9B — Desktop Notifications
@@ -632,9 +654,10 @@ settings: {
 Push notifications (Windows/Mac native) for:
 - Breakthrough ready (Qi at 90%+ of cap)
 - Expedition returned
-- Sect War incoming (15 min warning)
-- Realm Demotion occurred (urgent — user should log in)
+- Sect War incoming (15 min warning) — built as war declared/resolved instead, see status note above
+- ~~Realm Demotion occurred (urgent — user should log in)~~ — dropped, see status note above
 - Beast tamed
+- A life has ended (death) — added per the pillars note above, built this session
 
 ### 9C — Time-of-Day Bonuses
 
@@ -2732,7 +2755,7 @@ renderer/
     dao.js              ← Phase 7
     tribulation.js      ← Phase 7
     life-loop.js        ← Phase 30/31 (death flow, heir selection, Ancestral Hall; replaces Phase 8 reincarnation.js)
-    notifications.js    ← Phase 9
+    notifications.js    ✅ Phase 9A-B (NotificationSystem — opt-in desktop notifications, DOM-free)
     world-sim.js        ← Phase 28 (replaces planned Phase 15 npc-world.js)
     immortal-path.js    ← Phase 24
     doctrine.js         ← Phase 25

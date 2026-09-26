@@ -16,9 +16,12 @@ Writers: see `banter-writing-guide.md` (voice, tokens, triggers, the 14 personal
 ## API (game-state.js)
 - `onGameEvent(fn) → unsubscribe` calls `fn(type, ctx)` for game moments. This is a listener list, not state.
   Types: `bt_success` · `bt_fail {streak}` · `expedition_return {rareItem?}` · `war_call {enemy, sect}` ·
-  `war_won {enemy, sect}` · `war_lost {enemy, sect}` · `reborn` · `welcome_back {hours}`.
+  `war_won {enemy, sect}` · `war_lost {enemy, sect}` · `reborn` · `welcome_back {hours}` ·
+  `beast_tamed {name}` · `death {cause, maxStage}` (Phase 9B, notifications.md; banter doesn't
+  currently have lines for these two, only `NotificationSystem` consumes them).
   Emitted only on live play, except `welcome_back`, which fires from `initSlot()`'s offline catch-up.
-  War events only fire if `w.seen`.
+  War events only fire if `w.seen`. `death` fires at the top of `_die()`, immediately before `reborn`
+  (the state reset happens in between — `reborn`'s listener sees the new life, `death`'s doesn't).
 - `recordBanter(text, trigger)` pushes to `recent`/`log`, sets `last`/`lastAt`, then notifies. It's the only writer of `s.banter`.
 - `markTimeOfDay(key)` sets `todSaid`.
 

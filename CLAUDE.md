@@ -61,16 +61,19 @@ docs/
     banter.md           ← Personalities + banter engine, bubble, log (Phase 29)
     banter-writing-guide.md ← Voice/tokens/triggers brief for writing banter lines
     ui-layout.md        ← Window layout, tab pattern, CSS vars
+    notifications.md    ← System tray + opt-in desktop notifications (Phase 9A-B)
+    life-loop.md        ← M2 build spec: lifespan, heirs, Ancestral Hall, clan legacies (Phases 30/31)
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
   assets.md             ← ASCII art pipeline (create → review → gate ≥8.0)
   game-design.md        ← Design rules (pacing, flavor text, event structure)
 
-main.js                 ← Electron window, IPC, slot save/load
+main.js                 ← Electron window, IPC, slot save/load, system tray + notifications (Phase 9A-B)
 preload.js              ← contextBridge — only way renderer talks to Node
 capacitor.config.json     ← Capacitor (iOS) config — webDir "www"
 scripts/
   build-ios-web.js      ← Builds www/ (gitignored) from renderer/ + assets/ for Capacitor
+  gen-tray-icon.js      ← One-off generator for assets/icons/tray-icon.png (Phase 9A, not run at boot)
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt
 renderer/
@@ -89,7 +92,10 @@ renderer/
     sect-war.js         ← SectWarSystem — advances the sect war state machine, own + member wars (Phase 5B/5C)
     settings.js         ← SettingsUI — ⚙ overlay rendered from SETTINGS_DEFS + applies prefs (Phase 20C, UI only)
     banter.js           ← BanterSystem — picks lines on game events + idle timer, DOM-free (Phase 29)
+    notifications.js    ← NotificationSystem — opt-in desktop notification triggers + cooldowns, DOM-free (Phase 9A-B)
 assets/
+  icons/
+    tray-icon.png       ← System tray icon (Phase 9A) — see scripts/gen-tray-icon.js
   data/
     stages.js           ← CULTIVATION_STAGES[23]
     techniques.js       ← TECHNIQUES

@@ -140,7 +140,12 @@
   const sectWarSys = new SectWarSystem(gameState)
   const settingsUI = new SettingsUI(gameState, renderer)
   const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden)'))
+  // Phase 9A/B: window "active" = visible AND focused; notifications only fire otherwise (news, not a summons).
+  const notifSys   = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(),
+    (title, body) => window.electron.notify(title, body))
+  window.electron.onRequestSave?.(() => gameState.forceSave())   // main.js asks for a flush before a real quit
   let tickRunning = false
+  let _trayName = null, _trayStage = null
 
   function bootGame() {
     tickRunning = true
@@ -168,8 +173,7 @@
     if (s) { settingsUI.apply(s.settings); updateHUD(s); updateSprite(s) }
 
     let lastTick = performance.now()
-    function loop(now) {
-      if (!tickRunning) return
+    function step(now) {
       const dt = Math.min((now - lastTick) / 1000, 2)
       lastTick = now
       gameState.tick(dt)
@@ -179,9 +183,21 @@
       sectSys.tick(dt)
       sectWarSys.tick(dt)
       banterSys.tick(dt)
+      notifSys.tick()
+    }
+    function loop(now) {
+      if (!tickRunning) return
+      step(now)
       requestAnimationFrame(loop)
     }
     requestAnimationFrame(loop)
+    // Phase 9A: rAF stops while the window is hidden to the tray, so a 1s timer keeps the game ticking
+    // whenever frames stall (main.js sets backgroundThrottling:false so this timer isn't throttled).
+    const bgTimer = setInterval(() => {
+      if (!tickRunning) { clearInterval(bgTimer); return }
+      const now = performance.now()
+      if (now - lastTick > 900) step(now)
+    }, 1000)
   }
 
   // ── HUD updates ───────────────────────────────────────────────────────────
@@ -196,6 +212,14 @@
     document.getElementById('stage-realm').style.color = st.color || 'var(--gold)'
     document.getElementById('stage-layer').textContent = `${st.layer} · ${st.layerCN}`
     document.getElementById('stage-desc').textContent  = st.desc
+
+    // Phase 9A: keep the tray tooltip/menu label in sync, but only send the (cheap but not-free) IPC
+    // when the name or stage label actually changed — this runs every frame while the tab is live.
+    const stageLabel = `${st.realm} ${st.layer}`.trim()
+    if (s.name !== _trayName || stageLabel !== _trayStage) {
+      _trayName = s.name; _trayStage = stageLabel
+      window.electron.updateTrayInfo(s.name, stageLabel)
+    }
 
     const cap = isFinite(d.qiCap) ? d.qiCap : 1e15
     const pct = Math.min(100, (s.qi / cap) * 100)
@@ -1466,7 +1490,11 @@
 
   document.getElementById('btn-quit').addEventListener('click', () => {
     gameState.forceSave()
-    window.electron.quit()
+    // Phase 9A: default hides to tray (the app keeps running, tray icon remains); the ⚙ setting
+    // 'closeAction' can switch this button back to a real quit. Real quit is otherwise only via the
+    // tray's own "Quit" item. See docs/systems/notifications.md.
+    if (gameState.getSettings().closeAction === 'quit') window.electron.quit()
+    else window.electron.hideToTray()
   })
 
   document.getElementById('cultivator-name').addEventListener('click', () => {
