@@ -24,6 +24,7 @@ New files:  [any new files needed]
 Complexity: Low | Medium | High | Very High
 Model rec:  Haiku | Sonnet | Opus
 Reason:     [one line]
+Depth:      [gameplay tasks: the hooks + choice/consequence loops from the Design Depth Pass; else "n/a"]
 ───────────────────────────────────────
 ```
 
@@ -35,6 +36,27 @@ Reason:     [one line]
 | Cross-system architecture change, deep multi-system bug, Phase planning | Very High | Opus |
 
 If you assess High/Very High and you are not on Sonnet or Opus — say so before doing any work.
+
+---
+
+## ══ DESIGN DEPTH PASS (REQUIRED for any gameplay feature) ══
+
+The user wants **deep, interconnected, choice-driven mechanics** — a living cultivation novel, not a checklist
+of isolated features. The minimal version of a spec is a starting point, not the deliverable. Before speccing or
+building any gameplay feature, write a **"Depth pass"** into the spec/plan and show it to the user:
+
+1. **Memory** — what does the new thing remember and change over time? (affection, grudges, loyalty, reputation)
+2. **Choices** — random events with 2–3 choices whose outcomes read existing data (PERSONALITIES, root, karma,
+   stage, affection) so the same event plays differently for different characters.
+3. **Hooks** — name ≥3 existing systems it reads from or writes to (breakthroughs, health/death, bloodline/heirs,
+   family, sects/wars, expeditions, random events, banter, crafting, beasts).
+4. **Drama** — the best and the worst thing that can happen. Include story-making failure (betrayal, rivalry,
+   loss, revenge), not only bonuses.
+5. **Feedback** — how does the player's past behavior change future events?
+
+If the user asks for one mechanic, propose 2–3 connected ones alongside it. Example of the expected depth:
+marriage (Phase 16-lite) → spouse affection, personality-driven marriage events, affairs, discovery reactions
+ranging from acceptance to a duel to the death — see `docs/systems/family.md`.
 
 ---
 

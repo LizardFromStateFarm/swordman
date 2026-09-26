@@ -36,6 +36,10 @@ This is a single-player game made for the love of the game, not a monetized live
    only appear as cosmetic flavor, never as bonuses.
 6. **No store logic.** There are no premium or "hard" currencies, no leaderboards and no online requirement.
    Rare materials are just rare materials.
+7. **Systems talk to each other** (user, 2026-09-26). Every mechanic has state that changes over time, choices
+   whose outcomes depend on who you are (personality, stage, karma, relationships), and consequences that spill
+   into other systems — including dramatic failure (betrayal, rivalry, loss). The minimal version is never the
+   whole design; see the Design Depth Pass in CLAUDE.md.
 
 ---
 

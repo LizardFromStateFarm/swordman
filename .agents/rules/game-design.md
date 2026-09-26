@@ -5,6 +5,11 @@
 The game should feel like a living cultivation novel playing out on the edge of the screen.
 Numbers grow. Breakthroughs feel momentous. Failure stings but doesn't devastate.
 
+**Systems talk to each other.** Every gameplay feature gets a Design Depth Pass (CLAUDE.md): what it remembers
+over time, choices whose outcomes depend on personality/stage/karma/relationships, ≥3 hooks into existing
+systems, the best and worst dramatic outcomes, and how past behavior shapes future events. Don't ship the
+minimal version of a mechanic when a connected one is within reach — propose it to the user.
+
 ---
 
 ## Idle loop invariants

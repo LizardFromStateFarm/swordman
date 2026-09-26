@@ -6,15 +6,19 @@
 
 This is a single-player game made for the love of the game, not a live-service cash grab. Every phase below must fit:
 
-1. **A mortal life is a run of ~10–20h of open play.** Long play belongs to the Immortal era.
+1. **A mortal life is a run of ~20–40h of open play** (was 10–20h; widened 2026-09-26 when old age was removed).
+   Long play belongs to the Immortal era.
 2. **Death is part of the fun.** A save slot is a **family line**. Death hands the game to an heir.
 3. **Meta progression across generations**, mostly unlocks rather than multipliers. Later lives replay the early
    realms faster.
 4. **Never punish absence.** No real-calendar/time-of-day bonuses, no daily logins, no windows you can miss
    while the game is closed. Use **standing orders** instead. Notifications are opt-in.
-5. **Two clocks.** Idle jobs use wall-clock timers. **Age, lifespan and world history use game time**, which
-   only passes while the game is open (Phase 30).
+5. **Two clocks.** Idle jobs use wall-clock timers. **Age and world history use game time**, which only passes
+   while the game is open (Phase 30). Age never kills (2026-09-26).
 6. **No store logic.** No premium currencies, no leaderboards, no online requirement.
+7. **Systems talk to each other** (user, 2026-09-26). Every mechanic has state that changes over time, choices
+   whose outcomes depend on who you are (personality, stage, karma, relationships), and consequences that spill
+   into other systems — including dramatic failure. Specs must include the Design Depth Pass (CLAUDE.md).
 
 When an older design section below conflicts with these, the pillars win. The sections carry
 "**Changed 2026-09-25 (pillars)**" notes where they were converted.
