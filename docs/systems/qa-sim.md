@@ -49,12 +49,19 @@ invariant violations, 2 = harness crashed / bad `--set`.
   **Family depth (family.md):** a pending duel → fight at ≥ 60% odds, else flee; a marriage event → `active` picks the choice its
   spouse likes most, `casual`/`afk` pick randomly (exercises the crisis pool); crises → forgive / beg; lover encounters →
   seduce 25%, else leave; never ends an affair.
-- **Children (2.6b):** the bot sets Family Planning once (active 'some', casual/afk 'many') and answers child events
+- **Children (2.6b):** the bot sets Family Planning once per life (active 'some', casual/afk 'many'; was once per
+  *run* until 2.6d — later lives silently fell back to 'many') and answers child events
   (active: the choice that child likes most, always fetches a runaway; casual/afk: random via `this.rand()`). A
   "Children" report table follows Family (born, strongest child's stage, mean bond/morality, events, runaways).
 - **Succession (2.6c):** a running tournament is fought strongest-vs-weakest; 'active' hosts one per life (6+ adult
   children, from Nascent Soul); otherwise every profile names the strongest adult child heir. "Succession" report
   table: heirs named (chosen · tournament), heir stage, heirs forged in blood, tournament deaths, mean BQ heir term.
+- **Between lives (2.6d):** `run.js` calls `bot.interlude()` right after any step that ends a life (the interlude
+  pauses the game, so it is resolved in the same step). Bet: 'active' bets on the strongest candidate, casual/afk
+  guess at random. Rebirth: 'casual' picks orphan 10% of the time, everyone else a clan birth. Upbringing event:
+  'active' picks what its own personality likes, casual/afk random. "Between lives" report table: deaths, died as
+  head, bets (won), who got the seat (named · tournament · clan · regency), the new head's style, rebirth position
+  (eldest · younger · branch · rival · orphan), sect fortunes, extinct clans.
 - **Bot randomness is seeded** (fixed 2026-09-26, 2.6a): any bot coin flip must use `this.rand()` (its own
   `mulberry32` stream), never `Math.random()` — Node's global is unseeded, which silently made runs unreproducible.
 
@@ -123,7 +130,16 @@ inventory counts not positive integers · integrity ∉ [0,100] · karma ∉ [0,
 stageIndex out of range · beasts > maxBeasts · disciples > cap · invalid war phase · sect rank out of range ·
 joined AND founded · war side ≠ joined/founded state · war-committed mission slot over cap or not released after
 the war · beast stuck at war · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi ·
-health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap` · `item_category_invalid` (Phase 21: every `ITEMS[id].category` must be one of `currency|mat|pill|equip|rare|key`, checked once per run) · `family_children_over_cap` / `family_spouse_dead` / `family_proposal_invalid` (M2 2.5, life-loop.md §7 invariant 5: children ≤ `CHILD_CAP`, spouse null or alive, proposal only when unmarried and past `PROPOSAL_MIN_STAGE`) · `family_affection_range` / `family_pending_unmarried` / `family_child_parents` / `family_encounters_over_cap` / `family_lover_is_spouse` (family.md; `family_children_over_cap` was retired with the child cap) · `world_invalid` / `world_self_duplicated` / `world_player_clan_missing` / `world_player_not_on_roster` / `world_past_lives_mismatch` + a world save round-trip check (clan-succession.md 2.6a) · `family_planning_invalid` / `child_bond_range` / `morality_range` / `child_stage_over_parent` / `child_event_orphaned` (2.6b) · `heir_invalid` / `tournament_too_many_deaths` / `tournament_pool_invalid` (2.6c) · `age_below_awakening` (replaced `age_over_lifespan` when lifespan was removed, 2026-09-26) · `age_offline` (age/gameYear unchanged by offline catch-up). The sim also runs `BanterSystem` (source `banter`, 0 stones).
+health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap` · `item_category_invalid` (Phase 21: every `ITEMS[id].category` must be one of `currency|mat|pill|equip|rare|key`, checked once per run) · `family_children_over_cap` / `family_spouse_dead` / `family_proposal_invalid` (M2 2.5, life-loop.md §7 invariant 5: children ≤ `CHILD_CAP`, spouse null or alive, proposal only when unmarried and past `PROPOSAL_MIN_STAGE`) · `family_affection_range` / `family_pending_unmarried` / `family_child_parents` / `family_encounters_over_cap` / `family_lover_is_spouse` (family.md; `family_children_over_cap` was retired with the child cap) · `world_invalid` / `world_self_duplicated` / `world_player_clan_missing` / `world_player_not_on_roster` / `world_past_lives_mismatch` + a world save round-trip check (clan-succession.md 2.6a) · `family_planning_invalid` / `child_bond_range` / `morality_range` / `child_stage_over_parent` / `child_event_orphaned` (2.6b) · `heir_invalid` / `tournament_too_many_deaths` / `tournament_pool_invalid` (2.6c) · `interlude_stuck` / `clan_head_invalid` (a non-extinct clan whose head is missing or dead) / `clan_too_many_branches` / `birth_position_invalid` / `birth_clan_mismatch` / `head_bond_range` (2.6d) · `age_below_awakening` (replaced `age_over_lifespan` when lifespan was removed, 2026-09-26) · `age_offline` (age/gameYear unchanged by offline catch-up). The sim also runs `BanterSystem` (source `banter`, 0 stones).
+
+## Real-app smoke (`scripts/smoke/`)
+`node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` launches the real Electron app against a throwaway
+`--user-data-dir` (never your real slots), drives it over the Chrome DevTools Protocol (`ev` / `click` / `wait` /
+`shot` / `assert`), fails on any console error or uncaught exception, and writes screenshots to `scripts/smoke/out/`
+(gitignored). Use it for UI changes the headless sim can't see. Scenarios:
+| File | Covers |
+|---|---|
+| `scenarios/succession.js` | 2.6d — death card → heir bet → reign chronicle → clan birth → birth card; Stats clan rows + Clan Chronicle; upbringing card; a mid-interlude save resumed from the character select |
 
 ## Scenario checks (`scripts/sim/checks/`, `npm run checks`)
 The sim only sees what the bot happens to do. Scenario checks force a specific situation through the same
@@ -137,7 +153,8 @@ check script goes here (not in a temp folder) and is listed below in the same ch
 | `family-marriage.js` | family.md A — affection, marriage + crisis events, duel win/lose/flee, sabotage, partner BQ term | 21 |
 | `family-affairs.js` | family.md B — encounters, lovers, discovery, every spouse reaction, tolerant spouse | 19 |
 | `children.js` | 2.6b — Family Planning, child growth + cap, child events, runaways, neglect drift, morality | 22 |
-| `tournament.js` | 2.6c — field-size rules, deaths, trauma, bonds, BQ heir term, pending succession, heir rules | 31 |
+| `tournament.js` | 2.6c — field-size rules, deaths, trauma, bonds, BQ heir term (now at rebirth), heir takes the seat + branches, heir rules | 32 |
+| `succession.js` | 2.6d — named heir (no bet), the bet as a non-head, style roll, branches, sect fortunes + stipend, positions by bet, orphan + return, extinct clan, rival-family rebirth, interlude pause + save/load, upbringing, head-only heir naming, 30-generation chain | 45 |
 
 **Writing one:** `const { createSim } = require('../loader.js')`, build a sim (`await createSim({ seed })`,
 `await sim.boot(0)`), set up state directly, call public/private `gs` methods, `assert(cond, msg)` printing

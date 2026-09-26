@@ -94,7 +94,11 @@ class Recorder {
         childrenAlive: lr.childrenAlive ?? lr.children ?? 0, formerSpouses: lr.formerSpouses || 0, tally: lr.familyTally || null,
         childMaxStage: lr.childMaxStage ?? 0, childMeanBond: lr.childMeanBond ?? null, childMeanMorality: lr.childMeanMorality ?? null,
         heirKind: lr.heirKind ?? null, heirStage: lr.heirStage ?? null, heirTrauma: !!lr.heirTrauma, heirTerm: lr.heirTerm || 0,
-        tournamentDeaths: lr.tournamentDeaths || 0 })
+        tournamentDeaths: lr.tournamentDeaths || 0,
+        // 2.6d: how the succession + rebirth went
+        wasHead: !!lr.wasHead, birth: lr.birth ? { position: lr.birth.position, style: lr.birth.style, headStyle: lr.birth.headStyle,
+          betWon: lr.birth.betWon, rival: !!lr.birth.rival, extinct: !!lr.birth.extinct, stipend: lr.birth.stipend || 0,
+          successorKind: lr.birth.successorKind, sectFate: lr.birth.sectFate || null } : null })
       this.milestone('first_death')
     }
     if (open) {
@@ -169,11 +173,24 @@ class Recorder {
     const wd = s.world
     if (!wd || !(isFinite(wd.year) && wd.year >= 1)) this.violate('world_invalid', `year=${wd?.year}`)
     else {
+      if (s.interlude) this.violate('interlude_stuck', `step ${s.interlude.step}`)   // the bot resolves it in the same step
       if (wd.persons[s.self.id]) this.violate('world_self_duplicated', s.self.id)
       const clan = wd.playerClanId ? wd.clans[wd.playerClanId] : null
       if (wd.playerClanId && !clan) this.violate('world_player_clan_missing', wd.playerClanId)
       if (clan && !clan.lines.some(l => l.memberIds.includes(s.self.id))) this.violate('world_player_not_on_roster', s.self.id)
       if (wd.pastLives.length !== (s.deaths || 0)) this.violate('world_past_lives_mismatch', `${wd.pastLives.length} vs deaths ${s.deaths}`)
+      // 2.6d: every living clan has a living head (or none only once extinct); ≤ 3 branches; birth record consistent.
+      for (const c of Object.values(wd.clans)) {
+        const h = c.headId === s.self.id ? s.self : wd.persons[c.headId]
+        if (!c.extinct && (!h || h.alive === false)) this.violate('clan_head_invalid', `${c.id} head ${c.headId}`)
+        if (c.lines.length > 4) this.violate('clan_too_many_branches', `${c.id}: ${c.lines.length - 1}`)
+      }
+      const b = s.birth
+      if (b) {
+        if (!['eldest', 'younger', 'branch', 'rival', 'orphan'].includes(b.position)) this.violate('birth_position_invalid', b.position)
+        if ((b.position === 'orphan') !== !b.clanId) this.violate('birth_clan_mismatch', `${b.position} / ${b.clanId}`)
+        if (b.headBond != null && !(b.headBond >= 0 && b.headBond <= 100)) this.violate('head_bond_range', b.headBond)
+      }
     }
     // Phase 16-lite + family.md invariants (no child cap since 2026-09-26).
     const fam = s.family

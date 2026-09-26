@@ -31,11 +31,13 @@ class Bot {
 
   // One check-in: keep acting until nothing more to do.
   checkIn() {
+    this.interlude()   // 2.6d: a life that ended between check-ins (or during the last one) is resolved first
     this.rec.checkIn(this.s)
     this.warOrders()
     this.automationSetup()
     this.automation()
     for (let i = 0; i < 40; i++) {
+      this.interlude()   // an action this check-in may have ended the life — never act on an unborn one
       const before = this.s.spiritStones
       const acted = this.family() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
         this.elixirs() || this.memberWar() || this.beasts() || this.sect() || this.ownSect() || this.war() ||
@@ -43,6 +45,7 @@ class Bot {
       if (!acted) break
       this.rec.stones(this.rec.lastAction, this.s.spiritStones - before)
     }
+    this.interlude()
     if (!this.s.meditating) { this.gs.startMeditation(30); this.rec.act('meditate', false) }
   }
 
@@ -115,8 +118,20 @@ class Bot {
   family() {
     const f = this.s.family
     if (!f) return false
-    // 2.6b Family Planning, set once: 'active' keeps families small ('some'), casual/afk go big ('many').
-    if (!this._planned) { this._planned = true; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : 'many') }
+    // 2.6b Family Planning, set once per life: 'active' keeps families small ('some'), casual/afk go big ('many').
+    // (Was once per run until 2.6d — every later life silently fell back to the default 'many'.)
+    if (this._plannedFor !== this.s.self.id) { this._plannedFor = this.s.self.id; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : 'many') }
+    // 2.6d upbringing (you are the child): 'active' picks what its own personality likes; casual/afk pick at random.
+    const up = this.s.upbringing?.event
+    if (up) {
+      const def = this.gs.upbringingEventDef(up), me = this.s.personality?.id
+      let i = Math.floor(this.rand() * def.choices.length)
+      if (this.profile === 'active') {
+        const val = c => c.bond ? (c.bond[me] ?? c.bond.default ?? 0) : 0
+        i = def.choices.map((c, k) => ({ v: val(c), k })).sort((a, b) => b.v - a.v)[0].k
+      }
+      return this.do('upbringing', this.gs.resolveUpbringingEvent(i))
+    }
     // 2.6c heirs: a tournament in progress is fought to the end (strongest paired with weakest — the bot
     // protects its best). 'active' hosts one per life once it has 6+ adult children and reaches Nascent Soul;
     // everyone else (and 'active' until then) simply names the strongest adult child heir.
@@ -170,6 +185,27 @@ class Bot {
     const score = p => p.stageIndex * 100 + Math.round((p.root?.mult ?? 0) * 10)
     const best = [...prop.suitors].sort((a, b) => score(b) - score(a))[0]
     return this.do('marry', this.gs.acceptSuitor(best.id))
+  }
+
+  // ── 2.6d: between lives (called by run.js right after the step that ended a life) ──────────────────
+  // Bet: 'active' bets on the strongest candidate (a reasonable read of the elders), casual/afk guess at random.
+  // Rebirth: 'casual' is born an orphan 10% of the time (exercises orphan lives + returning to the last clan).
+  // Self-attributing in the stone ledger: the rebirth can grant a clan stipend ('clan_stipend').
+  interlude() {
+    if (!this.s.interlude) return
+    const before = this.s.spiritStones
+    for (let i = 0; i < 3 && this.s.interlude; i++) {
+      const info = this.gs.interludeInfo()
+      if (info.step === 'bet') {
+        const c = info.candidates
+        const pick = this.profile === 'active' ? [...c].sort((a, b) => b.stageIndex - a.stageIndex)[0] : c[Math.floor(this.rand() * c.length)]
+        this.do('heir_bet', this.gs.placeBet(pick.id), false)
+      } else {
+        const orphan = !info.canJoinClan || (this.profile === 'casual' && this.rand() < 0.1)
+        this.do('rebirth', this.gs.chooseRebirth(orphan ? 'orphan' : 'clan'), false)
+      }
+    }
+    this.rec.stones('clan_stipend', this.s.spiritStones - before)
   }
 
   do(name, res, meaningful = true) {

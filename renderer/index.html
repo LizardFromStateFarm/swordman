@@ -167,12 +167,25 @@
 </div>
 
 <!-- Death / reincarnation overlay (Phase 23A/D) -->
+<!-- Death → between lives (clan-succession.md 2.6d): heir bet → reign chronicle + clan/orphan choice → birth card -->
 <div id="death-overlay" class="hidden">
   <div id="death-box">
     <div id="death-title">This Life Ends</div>
     <div id="death-cause"></div>
     <div id="death-stats"></div>
-    <button id="death-ok">Begin Anew</button>
+    <div id="interlude-head"></div>
+    <div id="interlude-body"></div>
+    <div id="interlude-choices"></div>
+    <button id="death-ok" class="hidden">Begin Anew</button>
+  </div>
+</div>
+
+<!-- Clan chronicle (2.6d) — clan.history, newest first; opened from Stats -->
+<div id="chronicle-overlay" class="hidden">
+  <div id="chronicle-box">
+    <div id="chronicle-title">Clan Chronicle 族谱</div>
+    <div id="chronicle-lines"></div>
+    <button id="chronicle-close">Close</button>
   </div>
 </div>
 
@@ -242,6 +255,7 @@
 <script src="../assets/data/bloodline.js"></script>
 <script src="../assets/data/lifespan.js"></script>
 <script src="../assets/data/family.js"></script>
+<script src="../assets/data/succession.js"></script>
 <script src="../assets/data/automation.js"></script>
 <script src="../assets/data/settings.js"></script>
 <script src="../assets/data/personalities.js"></script>

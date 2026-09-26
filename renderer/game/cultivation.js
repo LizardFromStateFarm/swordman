@@ -10,6 +10,7 @@ class CultivationSystem {
   _roll() { return 30 + Math.random() * 90 }  // 30–120s between events
 
   tick(dt) {
+    if (this.gs.get()?.interlude) return   // 2.6d: no events between lives
     this.eventT += dt
     if (this.eventT >= this.nextIn) {
       this.eventT = 0

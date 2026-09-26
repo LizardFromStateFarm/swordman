@@ -43,7 +43,7 @@ class GameState {
         }
       }
       const elapsed = Math.min((Date.now() - (saved.lastSave || 0)) / 1000, 8 * 3600)
-      if (elapsed > 1) {
+      if (elapsed > 1 && !this._s.interlude) {   // 2.6d: an unborn life gains nothing offline
         this._recalc()
         // Phase 30 (M2 task 2.4): OFFLINE_QI_MULT tempers the afk lever. Age never passes offline (pillar 4),
         // so afk lives are cheap in Qi-per-open-hour unless offline gain is throttled relative to live Qi/s.
@@ -97,9 +97,11 @@ class GameState {
   // A new LIFE. `world` (clan-succession.md 2.6a) survives deaths and is passed in by _die(); a fresh slot
   // builds a new world with a founding clan. Neither path touches Math.random(), so _rollRoot()/
   // _rollPersonality()'s draw order below is unchanged (life-loop.md §10).
-  _newGame(world = null) {
+  // `unborn` (2.6d): a life created by _die() that waits in s.interlude (heir bet → chronicle → rebirth choice) —
+  // it joins no clan yet; _beginLife() places it once the player has chosen.
+  _newGame(world = null, unborn = false) {
     const w    = world || this._newWorld()
-    const clan = this._playerClan(w)
+    const clan = unborn ? null : this._playerClan(w)
     const self = Persons.make({ id: this._newPersonId(w), family: clan ? clan.name : '', role: 'self', alive: true })
     if (clan) this._joinClan(w, clan, self.id, w.playerLineId)
     return {
@@ -152,6 +154,10 @@ class GameState {
       deaths:            0,
       ascended:          false,
       lastReincarnation: null,
+      // 2.6d (clan-succession.md): between lives (null while alive), where you were born, the upbringing event
+      interlude:         null,
+      birth:             null,
+      upbringing:        null,
       // Phase 20C
       settings:          this.defaultSettings(),
       // Phase 29
@@ -352,7 +358,9 @@ class GameState {
 
   _blankWorld() {
     return { v: 1, year: 1, nextId: 1, nextClanId: 1, persons: {}, clans: {}, playerClanId: null,
-             playerLineId: null, pastLives: [] }
+             playerLineId: null, pastLives: [],
+             // 2.6d: people/sects that wronged you (rare rival-family rebirth) + the clan an orphan life came from
+             enemies: [], lastClanId: null }
   }
 
   // A fresh slot: a new world with one founding clan (unnamed until a later task gives clans surnames).
@@ -397,6 +405,9 @@ class GameState {
   _recordLifeInWorld(cause, maxStage, generation) {
     const s = this._s, w = s.world, yr = Math.floor(w.year), f = s.family || {}
     const clan = this._playerClan(w)
+    // 2.6d: a still-unnamed founding clan takes your surname (the fallback your children already carry).
+    if (clan && !clan.name) clan.name = this._clanSurname()
+    const wasHead = !!clan && clan.headId === s.self.id
     const me = {
       ...s.self, given: s.self.given || (s.name && s.name !== 'Unnamed Cultivator' ? s.name : ''),
       root: s.root, personality: s.personality?.id || null, stageIndex: s.stageIndex, maxStage,
@@ -407,7 +418,7 @@ class GameState {
     w.persons[me.id] = me
     const keep = (p, role) => {
       if (!p?.id) return
-      w.persons[p.id] = { ...p, role }
+      w.persons[p.id] = { ...p, role, grownYear: yr }   // 2.6d: NPC growth continues from here (_advancePersons)
       if (clan && p.alive !== false) this._joinClan(w, clan, p.id, w.playerLineId)
     }
     if (f.spouse) keep(f.spouse, 'spouse')
@@ -420,9 +431,11 @@ class GameState {
     if (clan && clan.headId === me.id) clan.headId = null
     // 2.6c: what 2.6d's reign sim needs — who takes over, who founds the branches, and the sect they inherit.
     if (clan) {
-      const heir = f.heirId && (f.children || []).find(c => c.id === f.heirId && c.alive && !c.estranged)
-      clan.pendingSuccession = { fromPersonId: me.id, year: yr, heirId: heir ? heir.id : null,
-        branchFounderIds: heir && f.lastTournament?.ranking?.[0] === heir.id
+      const heir = wasHead && f.heirId && (f.children || []).find(c => c.id === f.heirId && c.alive && !c.estranged)
+      const viaTournament = !!heir && f.lastTournament?.ranking?.[0] === heir.id
+      clan.pendingSuccession = { fromPersonId: me.id, year: yr, wasHead, heirId: heir ? heir.id : null,
+        heirKind: heir ? (viaTournament ? 'tournament' : 'chosen') : null,
+        branchFounderIds: viaTournament
           ? f.lastTournament.ranking.slice(1).filter(id => (f.children || []).some(c => c.id === id && c.alive && !c.estranged)) : [] }
       if (s.ownSect?.founded) clan.sect = { ...JSON.parse(JSON.stringify(s.ownSect)), inheritedYear: yr, heirId: heir ? heir.id : null }
     }
@@ -471,13 +484,18 @@ class GameState {
       const given = (s.name && s.name !== 'Unnamed Cultivator') ? s.name.trim().split(/\s+/).pop() : ''
       s.self = Persons.make({ id: this._newPersonId(), given, family: clan ? clan.name : '', role: 'self', alive: true })
     }
-    if (clan) this._joinClan(s.world, clan, s.self.id, s.world.playerLineId)
+    if (clan && !s.interlude) this._joinClan(s.world, clan, s.self.id, s.world.playerLineId)   // unborn lives join at _beginLife()
     // Migration (life-loop.md §2.5): an old save never had `age` — approximate it from time played.
     if (!(typeof s.age === 'number' && isFinite(s.age))) {
       s.age = AWAKENING_AGE + (s.stats.timePlayed / 3600) * GAME_YEARS_PER_OPEN_HOUR
     }
     // Lifespan/twilight/Final Seclusion were removed 2026-09-26 (age never kills) — drop their leftovers.
     delete s.finalSeclusion; delete s.twilightNoticed; delete s._twilightLogged
+    // 2.6d (clan-succession.md): between-lives state + birth record + upbringing event. Old saves: born before 2.6d.
+    if (s.interlude === undefined) s.interlude = null
+    if (s.birth === undefined)     s.birth = null
+    if (s.upbringing === undefined) s.upbringing = null
+    if (!Array.isArray(s.world.enemies)) s.world.enemies = []
   }
 
   // Phase 16-lite (M2 task 2.5) + family depth (docs/systems/family.md). spouseStageYear is the gameYear of
@@ -728,6 +746,7 @@ class GameState {
     } else if (reaction === 'duel') {
       f.event = null
       f.duel = { year: yr, reason: 'affair' }
+      this._noteEnemy({ kind: 'person', personId: sp.id, name: spName, surname: sp.family, why: 'dueled you over an affair' })   // 2.6d
       this.addEvent({ text: `${spName} draws a blade in the courtyard and names the terms: to the death.`, type: 'negative' })
       this._emit('duel', { spouse: spName })
     } else if (reaction === 'suicide') {
@@ -760,6 +779,18 @@ class GameState {
   // floor(gameYear) changes (so ~every 2 open minutes), never offline — families age with the player.
   _tickFamily() {
     const s = this._s, f = s.family, y = s.world.year, yr = Math.floor(y)
+
+    // 2.6d: one upbringing event from the head's style, a few years into a life born into a clan (never expires).
+    const up = s.upbringing
+    if (up && !up.event && !up.done && y >= up.due) {
+      const pool = UPBRINGING_EVENTS[up.style] || []
+      if (pool.length) {
+        const ev = pool[Math.floor(Math.random() * pool.length)]
+        up.event = { id: ev.id, style: up.style, year: yr }
+        this.addEvent({ text: `Year ${yr}: ${ev.title} — ${this.upbringingText(ev.text)}`, type: 'neutral' })
+        this._emit('upbringing_event', { id: ev.id })
+      } else up.done = true
+    }
 
     // Spouse: gains a stage every SPOUSE_YEARS_PER_STAGE married years (never ascends, never dies of age).
     const sp = f.spouse
@@ -1080,7 +1111,7 @@ class GameState {
 
   tick(dt) {
     const s = this._s
-    if (!s) return
+    if (!s || s.interlude) return   // 2.6d: between lives the clock stops until the player chooses
 
     // Phase 30 (M2 task 2.3): game clock. Age/gameYear advance ONLY here — never in initSlot()/offline
     // catch-up (life-loop.md pillar 4; §10 gotcha: "open" means the process is running, tray included,
@@ -1208,7 +1239,7 @@ class GameState {
   // ── Phase 30 (M2 task 2.3): Pass the Mantle ────────────────────────────────
   // Ends the life peacefully, any time — the player's way to move to the next generation, since nothing
   // dies of age (life-loop.md §9.3; twilight/Final Seclusion removed 2026-09-26). Routed through the
-  // existing _die() for now; task 2.6 replaces this with _endLife() + the heir-selection flow.
+  // regular _die() → the 2.6d interlude (heir bet, reign chronicle, rebirth choice).
   passTheMantle() {
     this._die('passed_mantle')
     return { ok: true }
@@ -1278,6 +1309,7 @@ class GameState {
       this._changeAffection(FORGIVE_AFFECTION); outcome = 'forgiven'
     } else if (ch.outcome === 'duel') {
       f.duel = { year: Math.floor(s.world.year), reason: 'betrayal' }; outcome = 'duel'
+      this._noteEnemy({ kind: 'person', personId: f.spouse.id, name: Persons.fullName(f.spouse), surname: f.spouse.family, why: 'betrayed you' })   // 2.6d
       this._emit('duel', { spouse: Persons.fullName(f.spouse) })
     } else if (ch.outcome === 'divorce') {
       this._spouseEnds('divorced', `you and ${Persons.fullName(f.spouse)} part ways. The marriage is over.`); outcome = 'divorced'
@@ -1394,6 +1426,7 @@ class GameState {
   chooseHeir(childId) {
     const f = this._s.family
     if (f.tournament) return { ok: false, reason: 'tournament' }
+    if (!this.isClanHead()) return { ok: false, reason: 'not_head' }   // 2.6d: only the head names an heir
     const c = f.children.find(x => x.id === childId)
     if (!c) return { ok: false, reason: 'unknown' }
     if (!this._heirEligible(c)) return { ok: false, reason: 'not_eligible' }
@@ -1422,6 +1455,7 @@ class GameState {
   startTournament() {
     const s = this._s, f = s.family
     if (f.tournament) return { ok: false, reason: 'already' }
+    if (!this.isClanHead()) return { ok: false, reason: 'not_head' }   // 2.6d: only the head hosts one
     const entrants = this.eligibleHeirs()
     if (entrants.length < 2) return { ok: false, reason: 'too_few' }
     f.tournament = { year: Math.floor(s.world.year), round: 1, pool: entrants.map(c => c.id), eliminated: [],
@@ -1592,12 +1626,14 @@ class GameState {
     return false
   }
 
-  // Ends the current life: grows the family's Bloodline Quality from what this life achieved, then
-  // resets to a fresh save carrying only bloodlineQuality/generation/deaths forward (Phase 23B/D).
-  // Reincarnating into family (full carry) needs an heir — Phase 16/18, not built yet, so every life
-  // today reincarnates as a "new soul" (BLOODLINE_CARRY_NEW_SOUL).
+  // Ends the current life: grows the family's Bloodline Quality from what this life achieved, records the life in
+  // the world (2.6a), then starts an UNBORN next life held in s.interlude (2.6d, clan-succession.md): the heir bet
+  // (if the clan must pick), the heir's reign + chronicle, then clan-or-orphan → _beginLife(). Every life still
+  // reincarnates as a "new soul" for Bloodline carry (BLOODLINE_CARRY_NEW_SOUL); the heir term is added when the
+  // new head is known (_beginLife), because it's whoever actually takes the seat.
   _die(cause) {
     const s = this._s
+    if (s.interlude) return   // already between lives
     const maxStage  = Math.max(s.maxStageThisLife || 0, s.stageIndex)
     // Phase 9B: fired before this._s is replaced so a listener can still read the dying life's stage.
     this._emit('death', { cause, maxStage })
@@ -1607,13 +1643,9 @@ class GameState {
     const partner   = fam.spouse || (fam.formerSpouses || [])[(fam.formerSpouses || []).length - 1] || null
     const spouseMaxStage = partner ? partner.maxStage || 0 : 0
     const partnerTerm = Math.pow(spouseMaxStage / (CULTIVATION_STAGES.length - 1), 2)
-    // 2.6c: the heir who takes over — their strength, plus a flat bonus if they were forged in a lethal tournament.
-    const successor = fam.heirId ? (fam.children || []).find(c => c.id === fam.heirId && this._heirEligible(c)) || null : null
-    const heirTerm  = successor ? BLOODLINE_G_HEIR * Math.pow((successor.stageIndex || 0) / (CULTIVATION_STAGES.length - 1), 2) +
-                                  (successor.trauma ? BLOODLINE_G_TRAUMA_HEIR : 0) : 0
-    const growth    = BLOODLINE_G_BASE + BLOODLINE_G_SELF * selfTerm + BLOODLINE_G_PARTNER * partnerTerm + heirTerm
+    const growth    = BLOODLINE_G_BASE + BLOODLINE_G_SELF * selfTerm + BLOODLINE_G_PARTNER * partnerTerm
     const parentBQ  = s.bloodlineQuality || 0
-    const heirBQ    = Math.min(BLOODLINE_CAP, parentBQ * BLOODLINE_CARRY_NEW_SOUL + growth)
+    const baseBQ    = parentBQ * BLOODLINE_CARRY_NEW_SOUL + growth
     const priorGen  = s.generation || 1
     const priorDeaths = s.deaths || 0
     const settings    = s.settings
@@ -1623,7 +1655,7 @@ class GameState {
 
     const summary = {
       cause, maxStageReached: maxStage, generation: priorGen,
-      parentBloodlineQuality: parentBQ, newBloodlineQuality: heirBQ, ts: Date.now(),
+      parentBloodlineQuality: parentBQ, newBloodlineQuality: Math.min(BLOODLINE_CAP, baseBQ), ts: Date.now(),
       // Phase 30 (M2 task 2.3): life-length metrics (sim + future UI). Additive only — existing
       // consumers (death overlay, sim dedupe) only ever read the keys above.
       openHours:  +(s.stats.timePlayed / 3600).toFixed(2),
@@ -1641,30 +1673,478 @@ class GameState {
       adultChildren: (fam.children || []).filter(c => c.alive && !c.estranged && s.world.year - c.bornYear >= ADULT_AGE).length,
       spouseMaxStage,
       growth,
-      // 2.6c
-      heirStage:  successor ? successor.stageIndex : null,
-      heirTrauma: !!successor?.trauma,
-      heirKind:   successor ? (fam.lastTournament?.ranking?.[0] === successor.id ? 'tournament' : 'chosen') : null,
-      heirTerm,
+      // 2.6c/2.6d: filled in by _beginLife() once the new head is known (heir = whoever takes the seat)
+      heirStage: null, heirTrauma: false, heirKind: null, heirTerm: 0,
       tournamentDeaths: fam.tally?.tournamentDeaths || 0,
+      wasHead: false, birth: null,
     }
 
     // 2.6a: the world survives. The dying life's person, spouse(s) and children are written into the registry
-    // (living children and a living spouse stay on the clan roster — 2.6c/d will pick heirs from them).
+    // (living children and a living spouse stay on the clan roster — the succession below picks from them).
+    const deadId = s.self.id
     const world = this._recordLifeInWorld(cause, maxStage, priorGen)
-    // Placeholder until 2.6d (reign sim + rebirth as a descendant): _recordLifeInWorld() vacates the head
-    // seat and _newGame()'s _joinClan() hands it to the new life, as before.
-    this._s = this._newGame(world)
-    this._s.bloodlineQuality  = heirBQ
+    const deathClan = this._playerClan(world)
+    summary.wasHead = !!deathClan?.pendingSuccession?.wasHead
+    this._s = this._newGame(world, true)
+    this._s.bloodlineQuality  = Math.min(BLOODLINE_CAP, baseBQ)
     this._s.generation        = priorGen + 1
     this._s.deaths            = priorDeaths + 1
     this._s.lastReincarnation = summary
+    this._s._baseBQ           = baseBQ   // the heir term is added on top in _beginLife()
     if (settings) this._s.settings = settings   // presentation prefs belong to the player, not the life
     if (warOrders) this._s.warOrders = warOrders
     if (playMode) this._s.playMode = playMode
     if (automation) this._s.automation = automation
+    this._beginInterlude(cause, deadId)
     this._recalc(); this._notify()
-    this._emit('reborn')
+  }
+
+  // ── 2.6d (clan-succession.md): between lives — succession, reign, rebirth ─────────────────────────────
+
+  // Coarse NPC growth up to `year` for every living person in the registry (never the living player, who isn't
+  // in it). Stage progress only counts years past AWAKENING_AGE; capped at NPC_STAGE_CAP. No Math.random().
+  _advancePersons(w, year) {
+    for (const p of Object.values(w.persons)) {
+      if (p.alive === false) continue
+      const from = Math.max(p.grownYear ?? year, (p.bornYear ?? 0) + AWAKENING_AGE)
+      p.grownYear = year
+      if (year <= from || (p.stageIndex || 0) >= NPC_STAGE_CAP) continue
+      p.npcXp = (p.npcXp || 0) + (year - from) * (p.root?.mult || 1) / NPC_YEARS_PER_STAGE
+      const gain = Math.floor(p.npcXp)
+      if (gain > 0) {
+        p.npcXp -= gain
+        p.stageIndex = Math.min(NPC_STAGE_CAP, (p.stageIndex || 0) + gain)
+        p.maxStage = Math.max(p.maxStage || 0, p.stageIndex)
+      }
+    }
+  }
+
+  _clanMemberIds(clan) { return clan ? clan.lines.flatMap(l => l.memberIds) : [] }
+  _lineOf(clan, personId) { return clan?.lines.find(l => l.memberIds.includes(personId)) || null }
+
+  // Succession score: stage×100 (× SUCCESSION_BLOODY_STAGE_MULT when the clan's tradition is bloody) + root×10
+  // + bond with the old head × SUCCESSION_BOND_WEIGHT.
+  _successionScore(clan, p) {
+    const bloody = (clan.tradition?.lethalTournaments || 0) > (clan.tradition?.peacefulSuccessions || 0)
+    return (p.stageIndex || 0) * 100 * (bloody ? SUCCESSION_BLOODY_STAGE_MULT : 1) + Math.round((p.root?.mult || 1) * 10) +
+           (p.bond ?? 50) * SUCCESSION_BOND_WEIGHT
+  }
+
+  // Who could follow `outgoingId`: their living adult children on the roster, else their minor children
+  // (a regency), else any living adult of the clan, else anyone living in it. Sorted by score, best first.
+  _successionCandidates(clan, outgoingId, year) {
+    const w = this._s.world
+    const alive = [...new Set(this._clanMemberIds(clan))].map(id => w.persons[id])
+      .filter(p => p && p.alive !== false && !p.estranged && p.id !== outgoingId)
+    const adult = p => year - (p.bornYear ?? 0) >= ADULT_AGE
+    const kids = alive.filter(p => (p.parents || []).includes(outgoingId))
+    const pool = kids.some(adult) ? kids.filter(adult) : kids.length ? kids : alive.some(adult) ? alive.filter(adult) : alive
+    return pool.sort((a, b) => this._successionScore(clan, b) - this._successionScore(clan, a))
+  }
+
+  // Sets up s.interlude for the clan you died in (or, for an orphan death, the clan you last came from).
+  _beginInterlude(cause, deadId) {
+    const s = this._s, w = s.world, yr = Math.floor(w.year)
+    const clan = this._playerClan(w) || (w.lastClanId && w.clans[w.lastClanId] && !w.clans[w.lastClanId].extinct ? w.clans[w.lastClanId] : null)
+    const it = s.interlude = { step: 'bet', cause, year: yr, deadId, clanId: clan?.id || null, outgoingId: null,
+      candidates: [], designatedId: null, heirKind: null, bet: null, betWon: null, successorId: null, spouseId: null,
+      style: null, traumaPath: null, reignYears: 0, nChildren: 0, sectFate: null, extinct: false, chronicle: [],
+      orphanDeath: !this._playerClan(w) }
+    if (it.orphanDeath) it.chronicle.push(this._fillClan(CHRONICLE_ORPHAN_DEATH, { year: yr }))
+    if (!clan) { it.extinct = true; it.step = 'chronicle'; return }   // never belonged anywhere, nowhere to return
+    this._advancePersons(w, yr)
+    const pend = clan.pendingSuccession && clan.pendingSuccession.fromPersonId === deadId ? clan.pendingSuccession : null
+    it.outgoingId = pend?.wasHead ? deadId : clan.headId
+    const cands = this._successionCandidates(clan, it.outgoingId, yr)
+    const designated = pend?.heirId && cands.find(p => p.id === pend.heirId)
+    if (designated) { it.designatedId = designated.id; it.heirKind = pend.heirKind || 'chosen' }
+    it.candidates = cands.map(p => p.id)
+    if (!cands.length || designated || cands.length === 1) { this._runSuccession(); return }
+    it.step = 'bet'
+  }
+
+  _fillClan(str, vals) { return String(str || '').replace(/\{(\w+)\}/g, (m, k) => vals[k] ?? m) }
+
+  // Public (UI/sim/checks): everything the between-lives overlay shows.
+  interludeInfo() {
+    const s = this._s, it = s.interlude
+    if (!it) return null
+    const w = s.world, clan = it.clanId ? w.clans[it.clanId] : null
+    return { step: it.step, cause: it.cause, year: it.year, clanName: clan?.name || '', extinct: it.extinct,
+             candidates: it.step === 'bet' ? it.candidates.slice(0, BET_MAX_CANDIDATES).map(id => w.persons[id]) : [],
+             bet: it.bet, betWon: it.betWon, successor: it.successorId ? w.persons[it.successorId] : null,
+             style: it.style, heirKind: it.heirKind, reignYears: it.reignYears, chronicle: [...it.chronicle],
+             canJoinClan: !!clan && !it.extinct, summary: s.lastReincarnation }
+  }
+
+  // The heir bet: pick who you think the clan raises to the head seat; then the clan picks.
+  placeBet(personId) {
+    const it = this._s.interlude
+    if (!it || it.step !== 'bet') return { ok: false, reason: 'no_bet' }
+    if (!it.candidates.slice(0, BET_MAX_CANDIDATES).includes(personId)) return { ok: false, reason: 'bad_candidate' }
+    it.bet = personId
+    this._runSuccession()
+    this._recalc(); this._notify()
+    return { ok: true, won: it.betWon, successorId: it.successorId }
+  }
+
+  // Weighted pick among candidates: exp((score − best) / SUCCESSION_SPREAD). One Math.random().
+  _clanPick(clan, ids) {
+    const w = this._s.world, ps = ids.map(id => w.persons[id])
+    const sc = ps.map(p => this._successionScore(clan, p)), best = Math.max(...sc)
+    const wt = sc.map(x => Math.exp((x - best) / SUCCESSION_SPREAD)), total = wt.reduce((a, b) => a + b, 0)
+    let r = Math.random() * total
+    for (let i = 0; i < ps.length; i++) { r -= wt[i]; if (r <= 0) return ps[i] }
+    return ps[ps.length - 1]
+  }
+
+  // A new head's parenting style — rolled from their bond with the old head, morality, personality, trauma.
+  _rollStyle(p) {
+    const bond = p.bond ?? 50, m = p.morality ?? 0
+    const wt = { nurturing: STYLE_BASE_WEIGHT, strict: STYLE_BASE_WEIGHT, neglectful: STYLE_BASE_WEIGHT, ruthless: STYLE_BASE_WEIGHT }
+    wt.nurturing  += (bond - 50) * 0.8 + Math.max(0, m) * 0.3
+    wt.neglectful += Math.max(0, 50 - bond) * 0.5
+    wt.ruthless   += Math.max(0, -m) * 0.4
+    for (const [k, v] of Object.entries(STYLE_PERSONALITY_BIAS[p.personality] || {})) wt[k] += v
+    let traumaPath = null
+    if (p.trauma) {
+      traumaPath = Math.random() < 0.5 ? 'never_again' : 'cycle'
+      if (traumaPath === 'never_again') wt.nurturing += TRAUMA_STYLE_SHIFT
+      else { wt.ruthless += TRAUMA_STYLE_SHIFT; wt.strict += TRAUMA_STYLE_SHIFT / 2 }
+    }
+    return { style: this._weighted(wt), traumaPath }
+  }
+
+  // Picks a key from {key: weight} (weights ≤ 0 skipped). One Math.random().
+  _weighted(wt) {
+    const e = Object.entries(wt).filter(([, v]) => v > 0), total = e.reduce((a, [, v]) => a + v, 0)
+    let r = Math.random() * total
+    for (const [k, v] of e) { r -= v; if (r <= 0) return k }
+    return e[e.length - 1][0]
+  }
+
+  // A generated NPC (spouse / kin / rival head). Stage and birth year are passed in; morality from personality.
+  _genPerson({ family, bornYear, stage, role, parents = [], root = null }) {
+    const personality = Persons.rollPersonality()
+    const p = Persons.make({ id: this._newPersonId(), given: Persons.rollGiven(), family, bornYear,
+      root: root || Persons.rollRoot(), personality, stageIndex: stage, maxStage: stage, role, alive: true, parents })
+    p.morality = this._rollMorality(personality)
+    p.grownYear = Math.floor(this._s.world.year)
+    return p
+  }
+
+  // Resolves who takes the seat, their style, branch founding, sect fortunes and the reign chronicle.
+  _runSuccession() {
+    const s = this._s, w = s.world, it = s.interlude, clan = w.clans[it.clanId], yr = it.year
+    it.step = 'chronicle'
+    if (!it.candidates.length) {
+      it.extinct = true
+      const line = this._fillClan(CHRONICLE_EXTINCT, { year: yr, clan: clan.name || 'nameless' })
+      it.chronicle.push(line); clan.history.push({ year: yr, text: line })
+      clan.headId = null; clan.extinct = true
+      delete clan.pendingSuccession
+      return
+    }
+    const succ = it.designatedId ? w.persons[it.designatedId] : this._clanPick(clan, it.candidates)
+    it.successorId = succ.id
+    if (it.bet) it.betWon = it.bet === succ.id
+    const minor = yr - (succ.bornYear ?? 0) < ADULT_AGE
+    it.heirKind = it.heirKind || (minor ? 'regency' : 'clan')
+    // The old head (an NPC who reigned through your last life) steps down into seclusion — nobody dies of age.
+    const old = it.outgoingId && it.outgoingId !== it.deadId ? w.persons[it.outgoingId] : null
+    if (old && old.alive !== false) old.role = 'elder'
+    if (it.heirKind !== 'tournament') clan.tradition.peacefulSuccessions++
+    // Seat: the successor moves to the main line (a branch they led passes to its strongest remaining member).
+    const main = clan.lines[0], fromLine = this._lineOf(clan, succ.id)
+    if (fromLine && fromLine !== main) {
+      fromLine.memberIds = fromLine.memberIds.filter(id => id !== succ.id)
+      if (fromLine.headId === succ.id) {
+        const next = fromLine.memberIds.map(id => w.persons[id]).filter(p => p && p.alive !== false).sort((a, b) => (b.stageIndex || 0) - (a.stageIndex || 0))[0]
+        fromLine.headId = next ? next.id : null
+      }
+    }
+    if (!main.memberIds.includes(succ.id)) main.memberIds.push(succ.id)
+    clan.headId = succ.id; main.headId = succ.id; succ.role = 'head'
+    const { style, traumaPath } = this._rollStyle(succ)
+    succ.parentingStyle = style; succ.headSince = yr
+    it.style = style; it.traumaPath = traumaPath
+    const fill = extra => ({ year: yr, head: succ.given, clan: clan.name || 'nameless', ...extra })
+    const lines = [this._fillClan(CHRONICLE_ACCESSION[it.heirKind] || CHRONICLE_ACCESSION.clan, fill())]
+    if (traumaPath) lines.push(this._fillClan(TRAUMA_PATH_TEXT[traumaPath], fill()))
+    lines.push(this._fillClan(CHRONICLE_STYLE[style], fill()))
+    // Branches: a tournament's places 2–4, otherwise the strongest adult main-line sibling — while there's room.
+    const pend = clan.pendingSuccession && clan.pendingSuccession.fromPersonId === it.deadId ? clan.pendingSuccession : null
+    let founders = pend?.branchFounderIds?.length
+      ? pend.branchFounderIds.map(id => w.persons[id]).filter(p => p && p.alive !== false && !p.estranged)
+      : it.candidates.filter(id => id !== succ.id).map(id => w.persons[id])
+          .filter(p => yr - (p.bornYear ?? 0) >= ADULT_AGE && this._lineOf(clan, p.id) === main).slice(0, 1)
+    founders = founders.filter(p => p.id !== succ.id).slice(0, Math.max(0, MAX_BRANCHES - (clan.lines.length - 1)))
+    for (const f of founders) {
+      const used = new Set(clan.lines.map(l => l.name))
+      const name = BRANCH_NAMES.find(n => !used.has(n)) || `Branch ${clan.lines.length}`
+      for (const l of clan.lines) l.memberIds = l.memberIds.filter(id => id !== f.id)
+      clan.lines.push({ id: `${clan.id}-b${yr}-${f.id}`, name, headId: f.id, memberIds: [f.id], foundedYear: yr })
+      f.role = 'branch_head'
+      lines.push(`${f.given} leaves the main line to found the ${name}.`)
+    }
+    // The reign: marriage, children (generated at rebirth, _beginLife), sect fortunes, one story.
+    it.reignYears = Math.round(this._randRange(REIGN_YEARS))
+    it.nChildren = this._randInt(HEIR_CHILDREN[style])
+    let spouse = (succ.spouseIds || []).map(id => w.persons[id]).find(p => p && p.alive !== false) || null
+    if (!spouse) {
+      spouse = this._genPerson({ family: Persons.rollSurname(), bornYear: (succ.bornYear ?? yr - 20) + this._randInt([-10, 10]),
+        stage: Math.max(1, Math.min(NPC_STAGE_CAP, (succ.stageIndex || 1) + this._randInt([-3, 1]))), role: 'spouse' })
+      w.persons[spouse.id] = spouse
+      succ.spouseIds = [...(succ.spouseIds || []), spouse.id]; spouse.spouseIds = [succ.id]
+      main.memberIds.push(spouse.id)
+      lines.push(`${succ.given} marries ${Persons.fullName(spouse)}.`)
+    }
+    it.spouseId = spouse.id
+    lines.push(`${it.nChildren} children are born to the head’s household over the next ${it.reignYears} years.`)
+    if (clan.sect) {
+      const fate = this._weighted(SECT_FORTUNE[style])
+      const sect = clan.sect, enemy = fate === 'lost' ? this._rivalSectName() : ''
+      if (fate === 'grow') sect.hallLevel = Math.min(SECT_HALL_LEVELS.length, (sect.hallLevel || 1) + 1)
+      if (fate === 'decline') { sect.hallLevel = Math.max(1, (sect.hallLevel || 1) - 1); (sect.disciples || []).pop() }
+      lines.push(this._fillClan(CHRONICLE_SECT[fate], fill({ sect: sect.name || 'clan sect', enemy })))
+      if (fate === 'lost') { this._noteEnemy({ kind: 'sect', name: `the ${enemy}`, why: `took the ${sect.name}` }); clan.sect = null }
+      else sect.heirId = succ.id
+      it.sectFate = fate
+    }
+    const pool = CHRONICLE_EVENTS[style]
+    lines.push(this._fillClan(pool[Math.floor(Math.random() * pool.length)], fill()))
+    it.chronicle.push(...lines)
+    for (const l of lines) clan.history.push({ year: yr, text: l })
+    if (clan.history.length > CLAN_HISTORY_MAX) clan.history.splice(0, clan.history.length - CLAN_HISTORY_MAX)
+    delete clan.pendingSuccession
+  }
+
+  _rivalSectName() {
+    const pick = a => a[Math.floor(Math.random() * a.length)]
+    return `${pick(RIVAL_SECT_PREFIXES)} ${pick(RIVAL_SECT_SUFFIXES)}`
+  }
+
+  // Someone who wronged you (a spouse you dueled, a sect you warred with, a sect that took the clan's). One entry
+  // per name, newest last, capped. Read only by the rare rival-family rebirth for now (Phase 28K extends it).
+  _noteEnemy(e) {
+    const w = this._s.world
+    w.enemies = (w.enemies || []).filter(x => x.name !== e.name)
+    w.enemies.push({ ...e, year: Math.floor(w.year) })
+    if (w.enemies.length > ENEMIES_MAX) w.enemies.splice(0, w.enemies.length - ENEMIES_MAX)
+  }
+
+  // Public (UI/sim): 'clan' or 'orphan'. Places the unborn life, advances the world a generation, starts it.
+  chooseRebirth(choice) {
+    const it = this._s.interlude
+    if (!it || it.step !== 'chronicle') return { ok: false, reason: 'not_ready' }
+    if (choice !== 'clan' && choice !== 'orphan') return { ok: false, reason: 'bad_choice' }
+    if (choice === 'clan' && (it.extinct || !it.clanId)) return { ok: false, reason: 'no_clan' }
+    this._beginLife(choice)
+    return { ok: true, birth: this._s.birth }
+  }
+
+  // Checks/dev convenience: resolve a pending interlude with defaults (bet on the likeliest, clan birth if possible).
+  finishInterlude(choice = null) {
+    const it = this._s.interlude
+    if (!it) return null
+    if (it.step === 'bet') this.placeBet(it.candidates[0])
+    const now = this._s.interlude
+    return this.chooseRebirth(choice || (now.extinct || !now.clanId ? 'orphan' : 'clan'))
+  }
+
+  // Children of `parents` spread over the reign, ~6–12 years apart; the slot at `youIdx` (if any) is yours and is
+  // skipped here. Children not yet born by `yearNow` are dropped.
+  _genChildren(clan, line, parents, n, yourBorn, youIdx, yearNow) {
+    const w = this._s.world, [pa, pb] = parents, style = PARENTING_STYLES[pa.parentingStyle] || PARENTING_STYLES.strict
+    const gap = 6 + Math.random() * 6, kids = []
+    for (let i = 0; i < n; i++) {
+      const born = Math.round(yourBorn + (i - (youIdx ?? 0)) * gap)
+      if (i === youIdx || born > yearNow) continue
+      const c = this._genPerson({ family: clan.name, bornYear: born, stage: 0, role: 'kin', parents: [pa.id, pb.id],
+                                  root: Persons.blendRoot(pa.root || Persons.rollRoot(), pb.root || Persons.rollRoot()) })
+      c.bond = this._randInt(style.childBond)
+      c.morality = Math.max(-100, Math.min(100, c.morality + (style.morality || 0)))
+      c.grownYear = born
+      w.persons[c.id] = c
+      line.memberIds.push(c.id)
+      kids.push(c)
+    }
+    this._advancePersons(w, yearNow)
+    return kids
+  }
+
+  // A rival house for the rare rival-family rebirth: reuse the clan already founded for this enemy, else found one.
+  _rivalClan(enemy, fromClan) {
+    const w = this._s.world, yr = Math.floor(w.year)
+    let clan = Object.values(w.clans).find(c => c.rivalOf?.enemyName === enemy.name && !c.extinct && c.headId)
+    if (!clan) {
+      if (!enemy.surname) enemy.surname = Persons.rollSurname()
+      clan = this._foundClan(w, enemy.surname)
+      clan.rivalOf = { clanId: fromClan?.id || null, enemyName: enemy.name }
+      const head = this._genPerson({ family: clan.name, bornYear: yr - this._randInt([60, 200]), stage: this._randInt([10, 18]), role: 'head' })
+      w.persons[head.id] = head
+      this._joinClan(w, clan, head.id)
+      head.parentingStyle = this._rollStyle(head).style
+    }
+    if (fromClan) { clan.relations[fromClan.id] = RIVAL_CLAN_RELATION; fromClan.relations[clan.id] = RIVAL_CLAN_RELATION }
+    return clan
+  }
+
+  // The spouse of `head` on `line`, generated if they have none.
+  _spouseFor(head, line, yourBorn) {
+    const w = this._s.world
+    let sp = (head.spouseIds || []).map(id => w.persons[id]).find(p => p && p.alive !== false)
+    if (!sp) {
+      sp = this._genPerson({ family: Persons.rollSurname(), bornYear: head.bornYear ?? yourBorn - 30, stage: Math.max(1, (head.stageIndex || 1) - 2), role: 'spouse' })
+      w.persons[sp.id] = sp; head.spouseIds = [...(head.spouseIds || []), sp.id]; sp.spouseIds = [head.id]
+      line.memberIds.push(sp.id)
+    }
+    return sp
+  }
+
+  // Places the unborn life (2.6d). The world clock jumps a generation; NPCs grow; you're born into the chosen place.
+  _beginLife(choice) {
+    const s = this._s, w = s.world, it = s.interlude
+    const target = it.clanId ? w.clans[it.clanId] : null
+    const newYear = it.year + (it.extinct ? this._randInt(REIGN_YEARS) : it.reignYears)
+    w.year = newYear
+    this._advancePersons(w, newYear)
+    const yourBorn = newYear - AWAKENING_AGE
+    const succ = it.successorId ? w.persons[it.successorId] : null
+    const spouse = it.spouseId ? w.persons[it.spouseId] : null
+    let clan = null, line = null, position = 'orphan', head = null, parents = null, enemy = null, rival = false
+
+    // Very rarely: the house of someone who wronged you (only when you chose a clan birth and an enemy is known).
+    if (choice === 'clan') {
+      const known = (w.enemies || []).filter(e => !e.surname || e.surname !== target.name)
+      if (known.length && Math.random() < RIVAL_REBIRTH_CHANCE) { rival = true; enemy = known[Math.floor(Math.random() * known.length)] }
+    }
+    if (choice === 'clan' && !rival) {
+      clan = target
+      const branches = clan.lines.slice(1).filter(l => l.headId && w.persons[l.headId] && w.persons[l.headId].alive !== false)
+      const betMod = it.betWon === true ? POSITION_BET_WON : it.betWon === false ? POSITION_BET_LOST : null
+      const wt = {}
+      for (const k of Object.keys(POSITION_BASE)) wt[k] = POSITION_BASE[k] * (betMod ? betMod[k] : 1) * (POSITION_STYLE[it.style]?.[k] ?? 1)
+      if (!branches.length) wt.branch = 0
+      if (it.nChildren < 2) wt.younger = 0
+      position = this._weighted(wt)
+      if (position === 'branch') { line = branches[Math.floor(Math.random() * branches.length)]; head = w.persons[line.headId] }
+      else { line = clan.lines[0]; head = succ }
+    }
+    // The main-line household is generated whether or not you're born into it — the clan lives on either way.
+    if (succ && spouse) {
+      const mine = clan === target && (position === 'eldest' || position === 'younger')
+      const youIdx = mine ? (position === 'eldest' ? 0 : this._randInt([1, Math.max(1, it.nChildren - 1)])) : null
+      this._genChildren(target, target.lines[0], [succ, spouse], it.nChildren, mine ? yourBorn : yourBorn - 10, youIdx, newYear)
+      if (mine) parents = [succ, spouse]
+    }
+    if (position === 'branch') {
+      if (!head.parentingStyle) head.parentingStyle = this._rollStyle(head).style
+      const bSpouse = this._spouseFor(head, line, yourBorn), n = this._randInt(BRANCH_CHILDREN)
+      this._genChildren(clan, line, [head, bSpouse], n, yourBorn, this._randInt([0, n - 1]), newYear)
+      parents = [head, bSpouse]
+    }
+    if (rival) {
+      clan = this._rivalClan(enemy, target)
+      line = clan.lines[0]; head = w.persons[clan.headId]; position = 'rival'
+      const rSpouse = this._spouseFor(head, line, yourBorn), n = this._randInt(HEIR_CHILDREN[head.parentingStyle] || [2, 5])
+      this._genChildren(clan, line, [head, rSpouse], n, yourBorn, this._randInt([0, n - 1]), newYear)
+      parents = [head, rSpouse]
+    }
+
+    // You.
+    const me = s.self
+    me.family = clan ? clan.name : ''
+    me.given = Persons.rollGiven()
+    me.bornYear = yourBorn
+    me.parents = parents ? parents.map(p => p.id) : []
+    if (parents) s.root = Persons.blendRoot(parents[0].root || Persons.rollRoot(), parents[1].root || Persons.rollRoot())
+    s.name = Persons.fullName(me)
+    if (clan) {
+      w.playerClanId = clan.id; w.playerLineId = line.id
+      this._joinClan(w, clan, me.id, line.id)
+    } else {
+      if (target && !it.extinct) w.lastClanId = target.id
+      w.playerClanId = null; w.playerLineId = null
+    }
+    const style = head?.parentingStyle || null
+    const headBond = head ? Math.max(0, Math.min(100, this._randInt(PARENTING_STYLES[style]?.headBond || [40, 60]) + (POSITION_TEXT[position]?.headBondBonus || 0))) : null
+    // The clan stipend from the clan sect, if the reign kept it (your own clan only, not a rival house).
+    const sect = clan && clan === target ? clan.sect : null
+    const stipend = sect ? Math.round(STIPEND_BASE * (sect.hallLevel || 1) * (PARENTING_STYLES[style]?.stipendMult || 1) * (STIPEND_POSITION_MULT[position] || 0)) : 0
+    s.spiritStones += stipend
+    s.birth = { position, year: newYear, clanId: clan?.id || null, lineId: line?.id || null, lineName: line?.name || null,
+                headId: head?.id || null, headStyle: style, headBond, betWon: it.betWon, rival,
+                enemyName: enemy?.name || null, stipend, fromClanId: target?.id || null }
+    s.upbringing = head && style ? { due: newYear + this._randRange(UPBRINGING_DELAY_YEARS), event: null, style } : null
+
+    const birthLine = this._fillClan(CHRONICLE_BIRTH[position], { year: newYear, head: head?.given || '', line: line?.name || '',
+      clan: clan?.name || '', enemy: enemy?.name || '' })
+    it.chronicle.push(birthLine)
+    if (clan) clan.history.push({ year: newYear, text: birthLine })
+
+    // Bloodline: + the heir term — whoever took the seat of the clan you died in (2.6c formula, now any successor).
+    const heirTerm = succ ? BLOODLINE_G_HEIR * Math.pow((succ.stageIndex || 0) / (CULTIVATION_STAGES.length - 1), 2) +
+                            (succ.trauma ? BLOODLINE_G_TRAUMA_HEIR : 0) : 0
+    s.bloodlineQuality = Math.min(BLOODLINE_CAP, (s._baseBQ ?? s.bloodlineQuality) + heirTerm)
+    delete s._baseBQ
+    const lr = s.lastReincarnation
+    if (lr) Object.assign(lr, { heirStage: succ ? succ.stageIndex : null, heirTrauma: !!succ?.trauma, heirKind: succ ? it.heirKind : null,
+      heirTerm, newBloodlineQuality: s.bloodlineQuality, growth: (lr.growth || 0) + heirTerm,
+      birth: { position, style: it.style, headStyle: style, betWon: it.betWon, rival, extinct: it.extinct, stipend,
+               successorKind: succ ? it.heirKind : null, sectFate: it.sectFate, chronicle: [...it.chronicle] } })
+    this._pruneWorld(w)
+    s.interlude = null
+    const pt = POSITION_TEXT[position]
+    this.addEvent({ text: birthLine, type: 'special' })
+    this.addEvent({ text: `You are ${s.name}${clan ? ` of the ${clan.name} clan` : ''} — ${this._fillClan(pt.name, { line: line?.name || '' }).toLowerCase()}.${stipend ? ` The clan sect grants you a stipend of ${stipend} Spirit Stones.` : ''}`, type: 'positive' })
+    this._recalc(); this._notify()
+    this._emit('reborn', { position })
+  }
+
+  // Drops long-dead persons (not heads, founders or past lives) from the registry and the rosters.
+  _pruneWorld(w) {
+    const keep = new Set(w.pastLives.map(l => l.personId))
+    for (const c of Object.values(w.clans)) { keep.add(c.founderId); keep.add(c.headId); for (const l of c.lines) keep.add(l.headId) }
+    const cutoff = w.year - WORLD_PRUNE_YEARS
+    const drop = Object.values(w.persons).filter(p => p.alive === false && (p.diedYear ?? w.year) < cutoff && !keep.has(p.id)).map(p => p.id)
+    if (!drop.length) return
+    const gone = new Set(drop)
+    for (const id of drop) delete w.persons[id]
+    for (const c of Object.values(w.clans)) for (const l of c.lines) l.memberIds = l.memberIds.filter(id => !gone.has(id))
+  }
+
+  // ── 2.6d upbringing: one event from the head's style, early in a life born into a clan ─────────────
+  upbringingEventDef(ev) {
+    return (UPBRINGING_EVENTS[ev?.style] || []).find(e => e.id === ev?.id) || null
+  }
+
+  upbringingText(str) {
+    const s = this._s, head = s.birth?.headId ? this.person(s.birth.headId) : null
+    const vals = { head: head?.given || 'the head', name: s.name, clan: this._playerClan()?.name || '' }
+    return String(str || '').replace(/\{(\w+)\}/g, (m, k) => vals[k] ?? m)
+  }
+
+  // Bond with the head moves by YOUR personality (the same event plays differently for different characters).
+  resolveUpbringingEvent(i) {
+    const s = this._s, ev = s.upbringing?.event
+    if (!ev) return { ok: false, reason: 'no_event' }
+    const def = this.upbringingEventDef(ev), ch = def?.choices?.[i]
+    if (!ch) return { ok: false, reason: 'bad_choice' }
+    this._applyFamilyEffect(ch.effect)
+    const delta = ch.bond ? (ch.bond[s.personality?.id] ?? ch.bond.default ?? 0) : 0
+    if (s.birth && s.birth.headBond != null) s.birth.headBond = Math.max(0, Math.min(100, s.birth.headBond + delta))
+    s.upbringing = { ...s.upbringing, event: null, done: ev.id }
+    const heart = delta ? ` (bond with the head ${delta > 0 ? '+' : ''}${delta})` : ''
+    if (ch.result) this.addEvent({ text: this.upbringingText(`${def.title}: ${ch.result}${heart}`), type: delta < 0 ? 'negative' : 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true, headBond: s.birth?.headBond ?? null }
+  }
+
+  // True when the living player heads their clan (only the head names an heir / hosts a Tournament of Heirs).
+  isClanHead() {
+    const clan = this._playerClan()
+    return !!clan && clan.headId === this._s.self.id
   }
 
   startMeditation(duration = 30) {
@@ -2398,6 +2878,7 @@ class GameState {
       w.scoutEndsAt = w.nextWarAt + (member ? MEMBER_WAR_SCOUT_SECONDS : WAR_SCOUT_SECONDS) * 1000
       const pick = a => a[Math.floor(Math.random() * a.length)]
       w.enemyName = `${pick(RIVAL_SECT_PREFIXES)} ${pick(RIVAL_SECT_SUFFIXES)}`
+      this._noteEnemy({ kind: 'sect', name: `the ${w.enemyName}`, why: 'went to war with your sect' })   // 2.6d
       const baseTier = member ? this._sectTier() : Math.round((s.derived?.sectFame || 0) / 100)
       w.enemyTier = Math.max(1, Math.min(5, baseTier + Math.floor(Math.random() * 3) - 1))
       w.allyId = null
@@ -2636,7 +3117,7 @@ class GameState {
   // live=false only for offline catch-up in initSlot(): a war that starts and ends while closed stays "unseen".
   tickSectWar(live = true) {
     const w = this._s?.sectWar
-    if (!w?.side) return
+    if (!w?.side || this._s.interlude) return   // 2.6d: nothing happens between lives
     let guard = 0
     this._warLive = live
     try { while (this._advanceSectWarStep() && guard++ < 50) {} } finally { this._warLive = true }

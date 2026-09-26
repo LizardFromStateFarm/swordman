@@ -74,6 +74,7 @@ async function runOne({ profile, hours, seed, path: sectPath, dt, set }) {
 
     const t0 = process.hrtime.bigint()
     guard(() => sim.step(dt, onStones), 'tick')
+    if (sim.gs.get().interlude) guard(() => bot.interlude(), 'bot')   // 2.6d: a life ended this step — bet + rebirth now
     const us = Number(process.hrtime.bigint() - t0) / 1000
     if (us > maxTickUs) maxTickUs = us
     ticks++

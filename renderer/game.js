@@ -176,6 +176,8 @@
       if (s.lastReincarnation && s.lastReincarnation.ts !== _lastDeathTs) {
         _lastDeathTs = s.lastReincarnation.ts
         showDeathOverlay(s.lastReincarnation)
+      } else if (s.interlude && document.getElementById('death-overlay').classList.contains('hidden')) {
+        showDeathOverlay(s.lastReincarnation)   // 2.6d: never leave an interlude without its card
       }
       if (s.banter?.last && s.banter.last.ts !== _lastBanterTs) {
         _lastBanterTs = s.banter.last.ts
@@ -185,6 +187,7 @@
 
     const s = gameState.get()
     if (s) { settingsUI.apply(s.settings); updateHUD(s); updateSprite(s) }
+    if (s?.interlude) showDeathOverlay(s.lastReincarnation)   // 2.6d: a save closed mid-interlude resumes it
 
     let lastTick = performance.now()
     function step(now) {
@@ -448,10 +451,7 @@
       ${sr('Realm Integrity', `<span style="color:${integColor}">${Math.round(integ)}</span>`)}
       ${sr('Health', `<span style="color:${healthColor}">${Math.round(health)}</span>`)}
       ${sr('Age', Math.floor(s.age))}
-      ${(() => { const c = s.world.playerClanId ? s.world.clans[s.world.playerClanId] : null
-        if (!c) return sr('Clan', 'None — an orphan of the world')
-        const members = c.lines.reduce((n, l) => n + l.memberIds.length, 0)
-        return sr('Clan', `${escHtml(c.name || 'Unnamed')} clan · ${members} member${members === 1 ? '' : 's'}${c.headId === s.self.id ? ' · you lead it' : ''}`) })()}
+      ${renderClanRows(s)}
       ${sr('World Year', Math.floor(s.world.year))}
       ${sr('Breakthroughs', s.stats.breakthroughs)}
       ${sr('Failed BTs', s.stats.failed)}
@@ -477,6 +477,7 @@
     document.getElementById('_matchmaker')?.addEventListener('click', () => openProposalOverlay(gameState.get()))
     document.getElementById('_family-matter')?.addEventListener('click', () => openFamilyOverlay(gameState.get()))
     document.getElementById('_choose-heir')?.addEventListener('click', () => openHeirOverlay())
+    document.getElementById('_chronicle')?.addEventListener('click', () => openChronicleOverlay())
     document.getElementById('_tournament')?.addEventListener('click', () => {
       if (gameState.get().family.tournament) return openTournamentOverlay()
       showConfirm('Host a Tournament of Heirs?', 'Every adult child fights. Rounds are to the death until four remain. It cannot be stopped once blood is spilled.', () => {
@@ -492,6 +493,31 @@
         gameState.passTheMantle()
       })
     })
+  }
+
+  // 2.6d: clan, your place in it, the head (their style + your bond), and the clan chronicle.
+  function renderClanRows(s) {
+    const w = s.world, c = w.playerClanId ? w.clans[w.playerClanId] : null
+    const chron = (c || w.lastClanId) ? '<button id="_chronicle" class="sect-btn" style="width:100%;margin:4px 0 2px;">Clan Chronicle</button>' : ''
+    if (!c) return sr('Clan', 'None — an orphan of the world') + chron
+    const members = new Set(c.lines.flatMap(l => l.memberIds)).size
+    const mine = c.lines.find(l => l.id === w.playerLineId)
+    let html = sr('Clan', `${escHtml(c.name || 'Unnamed')} clan · ${members} member${members === 1 ? '' : 's'}${c.lines.length > 1 ? ` · ${c.lines.length - 1} branch${c.lines.length > 2 ? 'es' : ''}` : ''}`)
+    if (c.headId === s.self.id) html += sr('Standing', 'You lead the clan')
+    else {
+      const pos = s.birth ? POSITION_TEXT[s.birth.position] : null
+      html += sr('Standing', `${escHtml(mine?.name || 'Main Line')}${pos ? ` · ${pos.short}` : ''}`)
+      const head = c.headId ? gameState.person(c.headId) : null
+      if (head) {
+        const st = head.parentingStyle ? PARENTING_STYLES[head.parentingStyle] : null
+        html += sr('Clan Head', `${escHtml(Persons.fullName(head))} · ${personStageLabel(head.stageIndex)}${st ? ` · <span title="${escHtml(st.blurb)}">${st.name}</span>` : ''}`)
+      }
+      if (s.birth?.headBond != null && s.birth.headId) {
+        const bh = gameState.person(s.birth.headId), bl = bondLabel(s.birth.headBond)
+        html += sr(s.birth.headId === c.headId ? 'Your Bond' : `Bond · ${escHtml(bh?.given || '')}`, `<span style="color:${bl.color}">${bl.word} · ${Math.round(s.birth.headBond)}</span>`)
+      }
+    }
+    return html + chron
   }
 
   // Affection tiers (family.md) — UI only; the number is shown alongside.
@@ -549,7 +575,7 @@
     // 2.6c: heir + Tournament of Heirs
     const heir = f.heirId ? f.children.find(c => c.id === f.heirId) : null
     const adults = gameState.eligibleHeirs().length
-    if (adults || heir || f.tournament) {
+    if (gameState.isClanHead() && (adults || heir || f.tournament)) {
       html += sr('Heir', heir ? `${escHtml(Persons.fullName(heir))}${heir.trauma ? ' <span style="color:var(--red)">· forged in blood</span>' : ''}` : '<span style="color:var(--dim)">None named</span>')
       html += `<div style="display:flex;gap:6px;margin:6px 0 2px">
         <button id="_choose-heir" class="sect-btn" style="flex:1" ${adults && !f.tournament ? '' : 'disabled'}>Name an Heir</button>
@@ -2023,19 +2049,96 @@
     spouse_duel:        'Slain by your spouse in a duel to the death',
   }
 
+  // 2.6d (clan-succession.md): the death card walks through the interlude — heir bet (if the clan must pick),
+  // the reign chronicle + clan/orphan choice, then the birth card. All state lives in s.interlude; this only renders.
   function showDeathOverlay(summary) {
+    if (!summary) return
+    renderInterlude()
+    document.getElementById('death-overlay').classList.remove('hidden')
+  }
+
+  const HEIR_KIND_TEXT = { chosen: 'your named heir', tournament: 'the victor of the Tournament of Heirs', clan: 'the elders’ choice', regency: 'a child, ruling through a regent' }
+
+  // Cause + stats; re-rendered each step — the Bloodline heir term only lands once the new head is known.
+  function renderDeathStats(summary) {
     document.getElementById('death-cause').textContent = DEATH_CAUSE_TEXT[summary.cause] || 'This life has ended'
     const reachedStage = CULTIVATION_STAGES[Math.min(summary.maxStageReached, CULTIVATION_STAGES.length - 1)]
     document.getElementById('death-stats').innerHTML =
       `Reached ${reachedStage.realm} · ${reachedStage.layer}<br>` +
       `Generation ${summary.generation} → ${summary.generation + 1}<br>` +
-      `Bloodline Quality: ${Math.round(summary.parentBloodlineQuality)} → ${Math.round(summary.newBloodlineQuality)}`
-    document.getElementById('death-overlay').classList.remove('hidden')
+      `Bloodline Quality: ${Math.round(summary.parentBloodlineQuality)} → ${Math.round(summary.newBloodlineQuality)}${summary.heirTerm ? ` (heir +${summary.heirTerm.toFixed(1)})` : ''}`
+  }
+
+  function renderInterlude() {
+    const lr = gameState.get()?.lastReincarnation
+    if (lr) renderDeathStats(lr)
+    const info = gameState.interludeInfo()
+    const head = document.getElementById('interlude-head'), body = document.getElementById('interlude-body')
+    const choices = document.getElementById('interlude-choices'), ok = document.getElementById('death-ok')
+    const s = gameState.get()
+    if (!info) {   // the life has begun — birth card
+      const b = s.birth, lr = s.lastReincarnation
+      const pos = b ? POSITION_TEXT[b.position] : null
+      head.textContent = pos ? pos.name.replace('{line}', b.lineName || 'branch') : ''
+      const last = lr?.birth?.chronicle?.slice(-1) || []
+      body.innerHTML = last.map(l => `<div class="chron-line">${escHtml(l)}</div>`).join('') +
+        (b ? `<div class="chron-line">You are <b>${escHtml(s.name)}</b> · ${escHtml(s.root.name)}.${b.stipend ? ` The clan sect grants a stipend of ${b.stipend} Spirit Stones.` : ''}</div>` : '')
+      choices.innerHTML = ''
+      ok.classList.remove('hidden')
+      return
+    }
+    ok.classList.add('hidden')
+    if (info.step === 'bet') {
+      head.textContent = `The head seat of the ${info.clanName || 'nameless'} clan stands empty. Who will the elders raise to it?`
+      body.innerHTML = '<div class="chron-line" style="color:var(--dim)">Place your bet. Guess right and the wheel of rebirth favors the main line; guess wrong and it may not.</div>'
+      choices.innerHTML = info.candidates.map(p => {
+        const pers = PERSONALITIES.find(x => x.id === p.personality)
+        const age = Math.max(0, Math.floor(info.year - (p.bornYear ?? info.year)))
+        const bl = bondLabel(p.bond ?? 50)
+        return `<button data-bet="${escHtml(p.id)}">${escHtml(Persons.fullName(p))}<span class="family-sub">age ${age} · ${personStageLabel(p.stageIndex)} · ${escHtml(pers?.name || '')} · ${bl.word}${p.trauma ? ' · scarred' : ''}</span></button>`
+      }).join('')
+      choices.querySelectorAll('[data-bet]').forEach(btn => btn.addEventListener('click', () => { gameState.placeBet(btn.dataset.bet); renderInterlude() }))
+      return
+    }
+    // The reign chronicle + the rebirth choice
+    const succ = info.successor
+    const style = info.style ? PARENTING_STYLES[info.style] : null
+    head.textContent = succ ? `The Reign of ${Persons.fullName(succ)}${style ? ` · ${style.name} ${style.nameCN}` : ''}` : 'The Wheel Turns'
+    let html = info.chronicle.map(l => `<div class="chron-line">${escHtml(l)}</div>`).join('')
+    if (succ && info.heirKind) html += `<div class="chron-line" style="color:var(--dim)">${escHtml(Persons.fullName(succ))}: ${HEIR_KIND_TEXT[info.heirKind] || ''}.</div>`
+    if (info.bet) {
+      const betP = gameState.person(info.bet)
+      html += `<div class="chron-line chron-bet${info.betWon ? '' : ' lost'}">Your bet on ${escHtml(Persons.fullName(betP))}: ${info.betWon ? 'you called it.' : 'the elders chose otherwise.'}</div>`
+    }
+    body.innerHTML = html
+    const clanBtn = info.canJoinClan
+      ? `<button data-rebirth="clan">Be born into the ${escHtml(info.clanName || 'nameless')} clan<span class="family-sub">Eldest, a younger child or a branch child: the wheel decides. You will not remember, and no one will know.</span></button>`
+      : ''
+    choices.innerHTML = clanBtn +
+      '<button data-rebirth="orphan">Be born an orphan<span class="family-sub">No clan, no name, no expectations. The clan lives on without you.</span></button>'
+    choices.querySelectorAll('[data-rebirth]').forEach(btn => btn.addEventListener('click', () => {
+      if (gameState.chooseRebirth(btn.dataset.rebirth).ok) renderInterlude()
+    }))
   }
 
   document.getElementById('death-ok').addEventListener('click', () => {
     document.getElementById('death-overlay').classList.add('hidden')
+    const s = gameState.get()
+    if (s?.birth) flashMessage(`${s.name} awakens. A new life begins.`, 'special')
   })
+
+  // ── Clan chronicle (2.6d): clan.history, newest first ───────────────────
+  function openChronicleOverlay() {
+    const s = gameState.get(), w = s.world
+    const clan = w.playerClanId ? w.clans[w.playerClanId] : (w.lastClanId ? w.clans[w.lastClanId] : null)
+    document.getElementById('chronicle-title').textContent = clan ? `Chronicle of the ${clan.name || 'nameless'} clan 族谱` : 'Chronicle 族谱'
+    const hist = clan ? [...clan.history].reverse() : []
+    document.getElementById('chronicle-lines').innerHTML = hist.length
+      ? hist.map(h => `<div class="chron-line">${escHtml(h.text)}</div>`).join('')
+      : '<div class="chron-line" style="color:var(--dim)">Nothing is written yet.</div>'
+    document.getElementById('chronicle-overlay').classList.remove('hidden')
+  }
+  document.getElementById('chronicle-close').addEventListener('click', () => document.getElementById('chronicle-overlay').classList.add('hidden'))
 
   // ── Proposal overlay (Phase 16-lite, M2 task 2.5) ───────────────────────────
 
@@ -2075,6 +2178,7 @@
     if (f.spouse && f.duel)  return `duel:${f.duel.year}`
     if (f.spouse && f.event) return `ev:${f.event.id}:${f.event.year}`
     if (f.childEvent) return `child:${f.childEvent.id}:${f.childEvent.childId}:${f.childEvent.year}`   // 2.6b
+    if (s.upbringing?.event) return `up:${s.upbringing.event.id}:${s.upbringing.event.year}`   // 2.6d
     return null
   }
 
@@ -2094,6 +2198,17 @@
         document.getElementById('family-overlay').classList.add('hidden')
         const res = gameState.resolveDuel(btn.dataset.duel)
         if (res.outcome === 'won') flashMessage('You survived the duel.', 'negative')
+      }))
+    } else if (!(f.spouse && f.event) && !f.childEvent && s.upbringing?.event) {   // 2.6d upbringing (you are the child)
+      const ev = s.upbringing.event, def = gameState.upbringingEventDef(ev)
+      box.classList.remove('crisis')
+      document.getElementById('family-title').textContent = def.title
+      const bl = s.birth?.headBond != null ? bondLabel(s.birth.headBond) : null
+      document.getElementById('family-desc').textContent = gameState.upbringingText(def.text) + (bl ? ` (your bond with the head: ${bl.word.toLowerCase()})` : '')
+      choicesEl.innerHTML = def.choices.map((ch, i) => `<button data-uchoice="${i}">${escHtml(gameState.upbringingText(ch.label))}</button>`).join('')
+      choicesEl.querySelectorAll('[data-uchoice]').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('family-overlay').classList.add('hidden')
+        gameState.resolveUpbringingEvent(+btn.dataset.uchoice)
       }))
     } else if (!(f.spouse && f.event) && f.childEvent) {   // 2.6b child event (after duel/marriage matters)
       const ev = f.childEvent, def = gameState.childEventDef(ev)

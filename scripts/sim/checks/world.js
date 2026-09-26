@@ -35,13 +35,14 @@ const years = (sim, n) => { for (let i = 0; i < n * 120 + 5; i++) sim.step(1) }
     for (let i = 0; i < 3; i++) { gs.get().family.nextChildYear = gs.get().world.year - 1; gs._tickFamily() }
     years(sim, 10); s = gs.get()
     const me = s.self.id, spouse = s.family.spouse.id, kids = s.family.children.map(c => c.id), yearAtDeath = s.world.year
-    gs.passTheMantle(); s = gs.get()
-    const w = s.world, clan = w.clans[w.playerClanId], roster = clan.lines[0].memberIds
+    gs.passTheMantle(); gs.finishInterlude('clan'); s = gs.get()
+    const w = s.world, clan = w.clans[w.playerClanId], roster = clan.lines.flatMap(l => l.memberIds)
     assert(w.persons[me]?.role === 'ancestor' && w.persons[me].alive === false && w.persons[me].maxStage === 12 && w.persons[me].root, 'past self snapshotted with root/stage into the registry')
     assert(kids.every(id => w.persons[id] && roster.includes(id)) && roster.includes(spouse), `spouse + ${kids.length} children kept on the clan roster`)
     assert(w.pastLives.length === 1 && w.pastLives[0].personId === me && w.pastLives[0].cause === 'passed_mantle', 'pastLives entry written')
-    assert(Math.abs(w.year - yearAtDeath) < 1e-9 && s.age === 16, `world clock continues (${yearAtDeath.toFixed(2)} → ${w.year.toFixed(2)}); new life age 16`)
-    assert(clan.headId === s.self.id && s.self.id !== me && !w.persons[s.self.id], 'new life leads the clan (placeholder until 2.6d), not duplicated in registry')
+    const jump = w.year - Math.floor(yearAtDeath)
+    assert(jump >= 40 && jump <= 80 && s.age === 16, `world clock continues and jumps a generation (${yearAtDeath.toFixed(2)} → ${w.year}); new life age 16`)
+    assert(kids.includes(clan.headId) && s.self.id !== me && !w.persons[s.self.id] && roster.includes(s.self.id), 'a child took the head seat (2.6d); new life on the roster, not duplicated in registry')
     assert(s.family.children.length === 0 && s.generation === 2, 'life state reset (family, generation 2)')
   }
   // 5. Orphan life: no clan anywhere — must not throw through marriage, children, lovers, events, death
@@ -52,7 +53,7 @@ const years = (sim, n) => { for (let i = 0; i < n * 120 + 5; i++) sim.step(1) }
     gs.get().family.nextChildYear = gs.get().world.year - 1; gs._tickFamily()
     years(sim, 60)
     assert(gs.get().family.children.length >= 1 && gs.get().family.children[0].family === '', 'orphan: children born, no clan surname')
-    gs.passTheMantle(); s = gs.get()
+    gs.passTheMantle(); gs.finishInterlude(); s = gs.get()
     assert(s.world.playerClanId === null && s.world.pastLives[0].clanId === null && Object.keys(s.world.clans).length === 1, 'orphan death: no clan joined; old clan still exists in the world')
   }
 })()

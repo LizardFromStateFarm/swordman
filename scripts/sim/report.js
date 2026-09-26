@@ -290,6 +290,17 @@ function buildReport(runs, args) {
     L.push(`| ${p} | ${lives.length} | ${withHeir.length} (${lives.filter(l => l.heirKind === 'chosen').length} · ${lives.filter(l => l.heirKind === 'tournament').length}) | ${f(med(withHeir.map(l => l.heirStage)))} | ${lives.filter(l => l.heirTrauma).length} | ${lives.reduce((a, l) => a + (l.tournamentDeaths || 0), 0)} | ${(lives.reduce((a, l) => a + (l.heirTerm || 0), 0) / n).toFixed(2)} |`)
   }
   L.push(``)
+  // 2.6d: what happened between lives
+  L.push(`## Between lives — succession, reign, rebirth (${longest}h runs)`)
+  L.push(`| Profile | Deaths | Died as head | Bets (won) | Seat went to: named · tournament · clan · regency | New head's style: nurt · strict · negl · ruth | Reborn: eldest · younger · branch · rival · orphan | Sect: grow · hold · decline · lost | Extinct |`)
+  L.push(`|---|---|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const lives = group(p, longest).flatMap(r => r.lifeLoop?.lifeLengths || []), b = lives.map(l => l.birth).filter(Boolean)
+    const cnt = (arr, k, vals) => vals.map(v => arr.filter(x => x[k] === v).length).join(' · ')
+    const bets = b.filter(x => x.betWon !== null && x.betWon !== undefined)
+    L.push(`| ${p} | ${lives.length} | ${lives.filter(l => l.wasHead).length} | ${bets.length} (${bets.filter(x => x.betWon).length}) | ${cnt(b, 'successorKind', ['chosen', 'tournament', 'clan', 'regency'])} | ${cnt(b, 'style', ['nurturing', 'strict', 'neglectful', 'ruthless'])} | ${cnt(b, 'position', ['eldest', 'younger', 'branch', 'rival', 'orphan'])} | ${cnt(b, 'sectFate', ['grow', 'hold', 'decline', 'lost'])} | ${b.filter(x => x.extinct).length} |`)
+  }
+  L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)
   for (const p of profiles) {
     const g = group(p, longest), by = {}

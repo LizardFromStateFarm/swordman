@@ -50,12 +50,19 @@ const pairUp = (gs, strongestVsWeakest = true) => {
     // BQ term + pending succession + sect snapshot at death
     const s = gs.get(); s.ownSect.founded = true; s.ownSect.name = 'Azure Peak'
     const heirStage = heir.stageIndex
+    const clanId = gs.get().world.playerClanId
     gs.passTheMantle()
-    const lr = gs.get().lastReincarnation, w = gs.get().world, c2 = w.clans[w.playerClanId]
-    const expectTerm = 4 * (heirStage / 22) ** 2 + 2
-    assert(Math.abs(lr.heirTerm - expectTerm) < 1e-9 && lr.heirKind === 'tournament' && lr.heirTrauma, `BQ heir term ${lr.heirTerm.toFixed(3)} = 4×(${heirStage}/22)² + 2 (trauma)`)
-    assert(c2.pendingSuccession.heirId === heir.id && c2.pendingSuccession.branchFounderIds.length === 3, 'clan.pendingSuccession: heir + 3 branch founders')
-    assert(c2.sect?.name === 'Azure Peak' && c2.sect.heirId === heir.id, 'founded sect snapshotted on the clan for the heir') }
+    // 2.6d: a named heir needs no bet — the interlude goes straight to the chronicle
+    const info = gs.interludeInfo(), c2 = gs.get().world.clans[clanId]
+    assert(info.step === 'chronicle' && info.successor?.id === heir.id && info.heirKind === 'tournament', 'named heir takes the seat, no bet (2.6d)')
+    assert(c2.headId === heir.id && c2.lines.length === 4 && c2.lines.slice(1).every(l => l.headId && gs.get().world.persons[l.headId].alive), 'places 2–4 found the 3 branches')
+    const fate = gs.get().interlude.sectFate
+    assert(fate === 'lost' ? !c2.sect : (c2.sect?.name === 'Azure Peak' && c2.sect.heirId === heir.id), `founded sect went to the heir (reign fate: ${fate})`)
+    gs.finishInterlude('clan')
+    const lr = gs.get().lastReincarnation
+    const heirNow = gs.get().world.persons[heir.id]
+    const expectTerm = 4 * (heirNow.stageIndex / 22) ** 2 + 2
+    assert(Math.abs(lr.heirTerm - expectTerm) < 1e-9 && lr.heirKind === 'tournament' && lr.heirTrauma, `BQ heir term ${lr.heirTerm.toFixed(3)} = 4×(${heirNow.stageIndex}/22)² + 2 (trauma; heir grew ${heirStage} → ${heirNow.stageIndex} before the seat)`) }
   // Coward yields in a lethal round
   { const { sim, gs, kids } = await family(31, 5, { pers: 'coward' })
     gs.startTournament()
@@ -84,7 +91,9 @@ const pairUp = (gs, strongestVsWeakest = true) => {
     assert(gs.chooseHeir(kids[0].id).ok && gs.get().family.heirId === kids[0].id, 'name an adult heir')
     kids[0].estranged = true; gs._recalc()
     assert(gs.get().family.heirId === null, 'a runaway heir is cleared')
-    gs.passTheMantle(); assert(gs.get().lastReincarnation.heirTerm === 0 && gs.get().lastReincarnation.heirKind === null, 'no heir → no BQ heir term') }
+    gs.passTheMantle(); gs.finishInterlude('clan')
+    const lr = gs.get().lastReincarnation, reg = gs.get().world.persons[minor.id]
+    assert(lr.heirKind === 'regency' && Math.abs(lr.heirTerm - 4 * (reg.stageIndex / 22) ** 2) < 1e-9, `no adult heir → the minor takes the seat under regency (grew to stage ${reg.stageIndex} over the reign; term ${lr.heirTerm.toFixed(3)})`) }
   // A tournament whose field shrinks to one ends with that child
   { const { gs, kids } = await family(71, 2)
     gs.startTournament(); kids[1].estranged = true; gs._recalc(); gs.get().world.year += 1; gs._tickFamily()

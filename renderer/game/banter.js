@@ -31,7 +31,7 @@ class BanterSystem {
 
   tick(dt) {
     const s = this.gs.get()
-    if (!s) return
+    if (!s || s.interlude) return   // 2.6d: silent between lives
     if (this._freq() === 'off') { this.pending = null; return }
 
     if (this.pending) {

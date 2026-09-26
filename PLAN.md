@@ -139,7 +139,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 2.6a ✅ | World vs life save split (`s.world`: clans, persons, world clock), orphan-capable life | — | 2.5 | old saves migrate; save round-trip holds |
 | 2.6b ✅ | Family planning (None/Some/Many), children cultivate, child bond + child events, morality field | 16 | 2.6a | children reach stages in sim |
 | 2.6c ✅ | Choose heir / Tournament of Heirs (you pick matchups; lethal to Top 4), heir-strength Bloodline term, sect to head | 18C | 2.6b | tournament paths verified |
-| 2.6d | Heir parenting styles, reign sim + chronicle, rebirth position (eldest / younger / branch), heir bet, orphan option | 18C | 2.6c | 500h sim spans ≥3 generations |
+| 2.6d ✅ | Heir parenting styles, reign sim + chronicle, rebirth position (eldest / younger / branch), heir bet, orphan option (+ upbringing event, clan stipend, rare rival-family rebirth — user 2026-09-26) | 18C | 2.6c | 500h sim spans ≥3 generations |
 | 2.6e | Challenge the head (head decides lethality), challenges when you're head, step-down mass tournament | — | 2.6d | all paths reachable in sim |
 | 2.6f | Branch wars, secession → new clan, clan relations (rival/ally) | — | 2.6e | seceded clan persists in the world |
 | 2.7 | **Ancestral Hall + Clan Legacies**: family tree view, Ancestral Merit earned per life, unlocks (heirlooms, family manual, clan legacies), **ancestral catch-up** (realms below the family best go faster). **Ascended Ancestor** ending for a successful Ascension. Cuts Phase 8's Dao Seeds | 31, 8, 18B | 2.6 | Gen 2+ reaches the family best faster; the sim's post-Ascension dead zone is gone; bot spends Merit |
@@ -169,6 +169,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 4.8 | **Heavenly Rankings** (in-world, not an online leaderboard): Heaven Ranking + Rising Dragon (young cultivators, by game-time age) + **Your Class board**, published each game year | 28J | 4.3, 2.2 | Player row always visible; Class board keeps fallen/ascended; your heirs appear on it |
 | 4.9 | **Encounters** on expeditions + sect missions, stance setting, choice cards | 28I | 4.4, 4.5 | Bot has a stance; encounters/h by type in report |
 | 4.10 | Memory & reputation + 15C direct interactions (gift, duel, mentor, recruit…). Grudges and debts can pass to heirs | 28E, 15C | 4.9 | Memories change NPC behavior toward the player |
+| 4.10b | **Your Rival (宿敌)**: one same-generation, non-family cohort genius per life, a rivalry record (heat, meetings, history), recurring encounters, feud across lives via the rival's clan | 28K | 4.9, 4.10 | Rival appears ≥ N times per casual life in sim; heat moves both ways |
 | 4.11 | Perf pass: Heavy tick ≤ 2 ms, batched Light step, capped offline catch-up | 28B | all M4 | Sim perf section within budget on desktop; spot-check iOS build |
 
 ### M5 — Deep Sect Management
@@ -1650,6 +1651,32 @@ compare to your wave, long after Rising Dragon eligibility ends.
   default. It shows the top 20, **your row and ±2 neighbours** (always visible), and ▲▼ movement arrows. Clicking
   a name opens the inspector. It must fit the 300 px overlay.
 - **Later:** an **Immortal Ranking (仙榜)** for the Immortal Realm population (after 23D), and a Sect Ranking.
+
+### 28K — Your Rival (宿敌) *(user request, 2026-09-26)*
+One named cultivator **from your own generation and never from your family** becomes *the* rival of a life. They're a
+recurring character across your playtime and the natural anchor for a future story mode. This builds on 28H (the
+rival is picked from your cohort's Heaven's Chosen) and replaces the old 11A numbers.
+- **Who:** at awakening (or the first cohort wave you share), one cohort genius from outside your clan is marked
+  `rivalOf: <your personId>`. It has its own root, personality and morality, and a clan of its own (an NPC clan in
+  `world.clans`).
+- **Memory:** a rivalry record `{rivalId, heat (−100 bitter … +100 respectful), meetings, wins, losses, history[]}`.
+  Heat moves with how you treat them: mercy, humiliation, stolen chances, saving their life.
+- **Recurring:** the rival advances on the light/heavy sim and **seeks you out on purpose** (28I lets rivals bypass
+  the "same person twice" throttle). They show up at expeditions, sect tournaments, secret realms, breakthroughs
+  ("Chen Xianyu has broken into Core Formation — the heavens tremble") and banter (`{rival}` token).
+- **Choices:** duel or decline, spare or kill, sabotage or help, and even sworn-sibling or marriage paths from high
+  respect. Outcomes read both personalities and morality.
+- **Hooks:** rankings (the Your Class board duel), sect wars (the rival leads the enemy side), family (the rival's
+  children meet yours, and a feud can pass to heirs as a 4.10 grudge), breakthroughs (overtaking them costs or
+  gives Karma, which is the old 11A rule), and death (a rival duel can end a life, with a cause).
+- **Across lives:** the rival's **clan outlives them**. Your next life inherits the feud as a clan grudge, and the
+  rival's descendant may become the next life's rival. **Already live from M2 2.6d:** a very small chance to be
+  reborn *into a rival's family* (for now the rival is any enemy the game already knows about; 28K makes it this
+  person's line).
+- **Drama:** best, a lifelong rival who becomes your sworn brother and dies holding the pass for you. Worst, the
+  rival kills your heir, and you're reborn as that rival's grandchild.
+- **Story mode later:** the rivalry history is structured (beats with year, place, outcome), so a story layer can
+  quote it.
 
 - New files: `assets/data/npc-names.js`, `assets/data/npc-personalities.js` (both already planned in 15),
   `assets/data/world-population.js` (band targets, cohort size, wave cadence, encounter rates),

@@ -898,6 +898,46 @@ body {
 }
 #death-ok:hover { background: rgba(90,40,8,.9); }
 
+/* 2.6d between lives: bet list, chronicle, rebirth choice (clan-succession.md) */
+#death-box { max-height: 92vh; overflow-y: auto; width: min(260px, calc(100vw - 32px)); box-sizing: border-box; }
+#interlude-head { font-size: 11px; color: var(--gold); margin: 4px 0 6px; line-height: 1.5; }
+#interlude-body { font-size: 10px; color: var(--text); text-align: left; line-height: 1.55; margin-bottom: 8px; }
+#interlude-body .chron-line { margin-bottom: 5px; }
+#interlude-body .chron-bet { color: var(--gold); margin-top: 6px; }
+#interlude-body .chron-bet.lost { color: var(--red); }
+#interlude-choices { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+#interlude-choices button,
+#chronicle-close {
+  background: rgba(24,10,4,.9);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  min-height: 32px;
+  width: 100%;
+  text-align: left;
+}
+#interlude-choices button:hover,
+#chronicle-close:hover { border-color: var(--gold); color: var(--gold); }
+
+/* Clan chronicle overlay (2.6d) */
+#chronicle-overlay {
+  position: fixed; inset: 0; background: rgba(8,4,14,0.9);
+  display: flex; align-items: center; justify-content: center; z-index: 190;
+}
+#chronicle-box {
+  background: var(--bg2); border: 1px solid var(--gold); border-radius: 5px;
+  padding: 14px 16px; width: min(260px, calc(100vw - 32px)); max-height: 88vh; overflow-y: auto; box-sizing: border-box;
+}
+#chronicle-title { font-size: 13px; color: var(--gold); margin-bottom: 8px; text-align: center; }
+#chronicle-lines { font-size: 10px; color: var(--text); line-height: 1.55; margin-bottom: 10px; }
+#chronicle-lines .chron-line { margin-bottom: 5px; }
+#chronicle-close { text-align: center; }
+
+
 /* ── Proposal overlay (Phase 16-lite, M2 task 2.5) ─────────────────── */
 
 #proposal-overlay {
