@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..', '..')
 // Load order mirrors renderer/index.html (sprites, platform-storage, ascii-renderer, game.js skipped:
 // they're UI/Node-bridge only and the logic never references them).
 const DATA_FILES = ['stages', 'techniques', 'events', 'items', 'locations', 'enemies', 'recipes',
-                    'beasts', 'sects', 'sect-buildings', 'sect-war']
+                    'beasts', 'sects', 'sect-buildings', 'sect-war', 'bloodline']
   .map(f => `assets/data/${f}.js`)
 const LOGIC_FILES = ['renderer/engine/game-state.js',
   ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war'].map(f => `renderer/game/${f}.js`)]
@@ -63,7 +63,8 @@ function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } 
     ctx, clock, gs, systems, saves, ev,
     data: ev(`({ CULTIVATION_STAGES, TECHNIQUES, ITEMS, LOCATIONS, RECIPES, SECTS, SECT_RANKS,
       SECT_MISSIONS, SECT_MAX_MISSIONS, SECT_FOUNDING, SECT_BUILDINGS, SECT_HALL_LEVELS,
-      DISCIPLE_RECRUIT_COST, BEAST_TYPES, WAR_REINFORCE_COST_PER_FAME, WAR_ALLY_COST_BASE, WAR_ALLY_COST_PER_FAME, MEMBER_WAR_MAX_PILLS })`),
+      DISCIPLE_RECRUIT_COST, BEAST_TYPES, WAR_REINFORCE_COST_PER_FAME, WAR_ALLY_COST_BASE, WAR_ALLY_COST_PER_FAME, MEMBER_WAR_MAX_PILLS,
+      BLOODLINE_CAP })`),
     // One frame of the real game loop (renderer/game.js), minus rendering.
     // onStones(source, delta) — optional Spirit Stone ledger hook (who produced/consumed stones this frame).
     step(dt, onStones) {

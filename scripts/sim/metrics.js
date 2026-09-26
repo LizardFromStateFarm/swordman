@@ -36,6 +36,8 @@ class Recorder {
     this.errors = {}                 // message → { count, firstAt, where }
     this.saveChecks = 0
     this._lastSlow = -Infinity
+    this._lastDeathTs = null         // Phase 23A/B: dedupe s.lastReincarnation across ticks
+    this.deathsByCause = {}
   }
 
   // ── Hooks from the bot ───────────────────────────────────────────────────
@@ -81,6 +83,11 @@ class Recorder {
   sample(s, dt, open) {
     this.t += dt
     this.trackWars(s.sectWar)
+    if (s.lastReincarnation && s.lastReincarnation.ts !== this._lastDeathTs) {
+      this._lastDeathTs = s.lastReincarnation.ts
+      this.deathsByCause[s.lastReincarnation.cause] = (this.deathsByCause[s.lastReincarnation.cause] || 0) + 1
+      this.milestone('first_death')
+    }
     if (open) {
       this.openSec += dt
       if (s.qi >= s.derived.qiCap * 0.999 && isFinite(s.derived.qiCap)) this.cappedSec += dt
@@ -144,6 +151,9 @@ class Recorder {
       if (!(q > 0) || !Number.isInteger(q)) this.violate('inventory_bad_count', `${id}=${q}`)
     const integ = s.realmIntegrity
     if (!(integ >= 0 && integ <= 100)) this.violate('integrity_out_of_range', integ)
+    if (!(s.health >= 0 && s.health <= 100)) this.violate('health_out_of_range', s.health)
+    if (!(s.bloodlineQuality >= 0 && s.bloodlineQuality <= this.D.BLOODLINE_CAP)) this.violate('bloodline_out_of_range', s.bloodlineQuality)
+    if (!(s.generation >= 1)) this.violate('generation_invalid', s.generation)
     if (!(s.karma >= 0 && s.karma <= 100)) this.violate('karma_out_of_range', s.karma)
     if (d.breakthroughChance > 0.98 || d.breakthroughChanceDisplay > 0.98) this.violate('bt_chance_over_0.98', d.breakthroughChanceDisplay)
     if (s.stageIndex < 0 || s.stageIndex >= this.D.CULTIVATION_STAGES.length) this.violate('stage_out_of_range', s.stageIndex)
@@ -212,6 +222,10 @@ class Recorder {
               fame: Math.round(s.derived.sectFame || 0) },
       wars: warSummary(this.wars.own),
       memberWars: { ...warSummary(this.wars.member), ignored: this.wars.member.ignored, unseen: this.wars.member.unseen, contribNet: this.wars.member.contribNet },
+      // Cumulative across the whole run (not final s.stats, which is per-life and resets on reincarnation).
+      lineage: { generation: s.generation, deaths: s.deaths, bloodlineQuality: Math.round(s.bloodlineQuality || 0),
+                 ascensionAttempts: this.actions.ascend || 0, ascensions: this.milestones.first_ascend_success != null ? 1 : 0,
+                 deathsByCause: this.deathsByCause },
       health: { violations: this.violations, errors: this.errors, saveRoundtrips: this.saveChecks },
       ...extra,
     }

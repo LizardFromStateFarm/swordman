@@ -70,4 +70,8 @@ color            — hex string for UI tinting
 - Root multiplier is applied at qps calculation, not at qiCap — Heavenly Root makes you gain faster, not cap more
 - `breakthroughChanceDisplay` includes queued pill bonus and is used only for the button label; `breakthroughChance` is the actual roll input
 - `stageIndex >= CULTIVATION_STAGES.length - 1` guard in `attemptBreakthrough` prevents advancing past ascension
+- **`stageIndex === CULTIVATION_STAGES.length - 2` (the last mortal stage) no longer breaks through via
+  `attemptBreakthrough` at all** — it returns `{ reason: 'ascension_required' }`. That transition is now a
+  chance-based Ascension Trial (`attemptAscension()` / `ascensionChance()`); see `docs/systems/bloodline.md`
+  (Phase 23A–C) for the survival curve, Bloodline Quality, and death/reincarnation.
 - `_ensurePhase2Fields()` is called at the top of every `_recalc` for save-migration safety; add Phase N fields there when new phases are implemented

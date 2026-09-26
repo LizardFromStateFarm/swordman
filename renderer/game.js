@@ -139,10 +139,17 @@
   function bootGame() {
     tickRunning = true
 
+    // Seed with the loaded save's existing value so a prior-session death doesn't re-pop the overlay.
+    let _lastDeathTs = gameState.get()?.lastReincarnation?.ts ?? null
+
     gameState.subscribe((s, fromTick) => {
       if (!s) return
       updateHUD(s, fromTick)
       updateSprite(s)
+      if (s.lastReincarnation && s.lastReincarnation.ts !== _lastDeathTs) {
+        _lastDeathTs = s.lastReincarnation.ts
+        showDeathOverlay(s.lastReincarnation)
+      }
     })
 
     const s = gameState.get()
@@ -200,13 +207,22 @@
     const btnBt  = document.getElementById('btn-breakthrough')
     const btPct  = Math.round(d.breakthroughChanceDisplay * 100)
     const pillName = s.activePill ? ITEMS[s.activePill]?.name : null
+    const lastMortalIdx = CULTIVATION_STAGES.length - 2
     if (st.id === 'ascension') {
       btnBt.disabled = true
       btnBt.querySelector('.act-name').textContent = 'Ascended'
       btnBt.querySelector('.act-sub').textContent  = ''
+    } else if (s.stageIndex === lastMortalIdx) {
+      btnBt.disabled = !d.canBreakthrough
+      btnBt.classList.toggle('ready', d.canBreakthrough)
+      btnBt.querySelector('.act-name').textContent = 'Ascension Trial'
+      btnBt.querySelector('.act-sub').textContent = d.canBreakthrough
+        ? 'Attempt to transcend'
+        : `${Math.round(pct)}% qi filled`
     } else {
       btnBt.disabled = !d.canBreakthrough
       btnBt.classList.toggle('ready', d.canBreakthrough)
+      btnBt.querySelector('.act-name').textContent = 'Breakthrough'
       btnBt.querySelector('.act-sub').textContent = d.canBreakthrough
         ? `${btPct}% chance${pillName ? ' (pill)' : ''}`
         : `${Math.round(pct)}% qi filled`
@@ -223,6 +239,16 @@
     document.getElementById('integrity-fill').style.width      = Math.min(100, integ) + '%'
     document.getElementById('integrity-fill').style.background = `rgb(${ir},${ig},${ib})`
     document.getElementById('integrity-numbers').textContent   = `${Math.round(integ)} / 100`
+
+    // Health bar: lerp jade (full) to red (empty) (Phase 23A)
+    const health = s.health ?? 100
+    const ht = health / 100
+    const hr = Math.round(200 + ht * (48  - 200))
+    const hg = Math.round(48  + ht * (184 - 48))
+    const hb = Math.round(48  + ht * (120 - 48))
+    document.getElementById('health-fill').style.width      = Math.min(100, health) + '%'
+    document.getElementById('health-fill').style.background = `rgb(${hr},${hg},${hb})`
+    document.getElementById('health-numbers').textContent   = `${Math.round(health)} / 100`
 
     const activeTab = document.querySelector('.tab.active')?.dataset?.tab
     if (fromTick) {
@@ -318,6 +344,8 @@
     const d     = s.derived
     const integ = d.realmIntegrity ?? 100
     const integColor = integ >= 70 ? 'var(--jade)' : integ >= 30 ? 'var(--gold)' : 'var(--red)'
+    const health = s.health ?? 100
+    const healthColor = health >= 70 ? 'var(--jade)' : health >= 30 ? 'var(--gold)' : 'var(--red)'
     document.getElementById('tab-stats').innerHTML = `
       <div class="root-badge">⚗ ${s.root.name} · ×${s.root.mult} Qi</div>
       ${sr('Realm', d.stage.realm)} ${sr('Layer', d.stage.layer)}
@@ -326,6 +354,7 @@
       ${sr('Qi Cap', fmt(d.qiCap))}
       ${sr('Breakthrough Chance', Math.round(d.breakthroughChance*100)+'%')}
       ${sr('Realm Integrity', `<span style="color:${integColor}">${Math.round(integ)}</span>`)}
+      ${sr('Health', `<span style="color:${healthColor}">${Math.round(health)}</span>`)}
       ${sr('Breakthroughs', s.stats.breakthroughs)}
       ${sr('Failed BTs', s.stats.failed)}
       ${sr('Meditation Sessions', s.stats.meditationSessions)}
@@ -339,6 +368,10 @@
       ${sr('Time Cultivating', fmtTime(s.stats.timePlayed))}
       ${s.equipped.weapon   ? sr('Weapon',   ITEMS[s.equipped.weapon]?.name   || s.equipped.weapon)   : ''}
       ${s.equipped.artifact ? sr('Artifact', ITEMS[s.equipped.artifact]?.name || s.equipped.artifact) : ''}
+      ${sr('Generation', s.generation || 1)}
+      ${(s.deaths || 0) > 0 ? sr('Deaths', s.deaths) : ''}
+      ${s.stats.ascensionAttempts > 0 ? sr('Bloodline Quality', `${Math.round(s.bloodlineQuality || 0)} / 100`) : ''}
+      ${s.stats.ascensions > 0 ? sr('Ascensions', s.stats.ascensions) : ''}
     `
   }
 
@@ -1285,6 +1318,7 @@
   document.getElementById('btn-breakthrough').addEventListener('click', () => {
     const s = gameState.get()
     if (!s?.derived?.canBreakthrough) return
+    if (s.stageIndex === CULTIVATION_STAGES.length - 2) { openAscensionOverlay(); return }
     renderer.setState('breakthrough')
     const res = gameState.attemptBreakthrough()
     if (res.success) {
@@ -1308,6 +1342,53 @@
       }
       setTimeout(() => renderer.setState(gameState.get()?.derived?.stage?.spriteState || 'meditating'), 1500)
     }
+  })
+
+  // ── Ascension Trial overlay (Phase 23C) ─────────────────────────────────────
+
+  function openAscensionOverlay() {
+    const s = gameState.get()
+    const chance = gameState.ascensionChance()
+    document.getElementById('asc-bloodline').textContent = `${Math.round(s.bloodlineQuality || 0)} / 100`
+    document.getElementById('asc-chance').textContent = `${Math.round(chance * 100)}%`
+    document.getElementById('ascension-overlay').classList.remove('hidden')
+  }
+
+  document.getElementById('ascend-wait').addEventListener('click', () => {
+    document.getElementById('ascension-overlay').classList.add('hidden')
+  })
+
+  document.getElementById('ascend-now').addEventListener('click', () => {
+    document.getElementById('ascension-overlay').classList.add('hidden')
+    const res = gameState.attemptAscension()
+    if (res.success) {
+      renderer.setState('transcending')
+      flashMessage('You have Ascended! Welcome to the Immortal Realms.', 'special')
+    }
+    // Failure/death is reported by the lastReincarnation watcher (see bootGame)
+  })
+
+  // ── Death / reincarnation overlay (Phase 23A/D) ─────────────────────────────
+
+  const DEATH_CAUSE_TEXT = {
+    expedition:        'Slain on an expedition',
+    sect_war:           'Fallen defending the sect',
+    event:              'Claimed by a cultivation mishap',
+    ascension_failed:   'The Ascension Trial claimed your life',
+  }
+
+  function showDeathOverlay(summary) {
+    document.getElementById('death-cause').textContent = DEATH_CAUSE_TEXT[summary.cause] || 'This life has ended'
+    const reachedStage = CULTIVATION_STAGES[Math.min(summary.maxStageReached, CULTIVATION_STAGES.length - 1)]
+    document.getElementById('death-stats').innerHTML =
+      `Reached ${reachedStage.realm} · ${reachedStage.layer}<br>` +
+      `Generation ${summary.generation} → ${summary.generation + 1}<br>` +
+      `Bloodline Quality: ${Math.round(summary.parentBloodlineQuality)} → ${Math.round(summary.newBloodlineQuality)}`
+    document.getElementById('death-overlay').classList.remove('hidden')
+  }
+
+  document.getElementById('death-ok').addEventListener('click', () => {
+    document.getElementById('death-overlay').classList.add('hidden')
   })
 
   document.querySelectorAll('.tab').forEach(btn => {

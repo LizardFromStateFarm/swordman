@@ -27,6 +27,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Member wars (joined sects go to war, you get pulled in) | ✅ Phase 5C |
 | QA sim harness (`npm run sim` → bot playtest report) | ✅ Tooling |
 | Dev late-game test characters (charselect, `npm start` only) | ✅ Tooling |
+| Health & Death, Bloodline Quality, chance-based Ascension Trial | ✅ Phase 23A–C |
 | Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
 | Dao Paths, Reincarnation, Tribulation | ⬜ Phase 7–8 |
 | Desktop notifications, tray, time-of-day | ⬜ Phase 9 |
@@ -41,13 +42,67 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Challenge Modes + Permadeath + Settings | ⬜ Phase 20 |
 | Backpack & Inventory Tab (unified item/currency view) | ⬜ Phase 21 |
 | Active / Idle Mode Toggle + Mid-Late Automation | ⬜ Phase 22 |
-| Immortal Progression (bloodline, ascension trial, health/death, immortal realms, secret arts) | ⬜ Phase 23 |
+| Immortal Realms content + Secret Arts (post-Ascension endgame) | ⬜ Phase 23D–E |
 
 ---
 
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-25/26 (session 8)
+Agent: Phase 23A+B+C — Health & Death, Bloodline Quality, chance-based Ascension Trial. User picked this
+  from START_HERE's recommendations, then chose scope "23A+23B+23C" (not just 23A) and confirmed the
+  proposed survival curve, parking lifespan, and "keep playing the Immortal" (informs future 23D) via
+  AskUserQuestion before any code. Replaces the old "reach the top stage → auto-ascend" ending: the last
+  mortal stage (Spirit Severing Late) is now a real gamble.
+  - New: `health` (0-100, regen +1/45s, mirrors realmIntegrity's pattern incl. offline catch-up), hidden
+    `bloodlineQuality` (0-100, revealed only after this life's first Ascension attempt), `generation`,
+    `deaths`, `lastReincarnation` (drives the death overlay). All in `_ensurePhase23Fields()`.
+  - `attemptBreakthrough()` now refuses at the last mortal stage (`reason:'ascension_required'`) — that
+    transition is `attemptAscension()`: survival = base 7% + up to +60% at BQ100 + small full-Health/
+    Integrity prep bonus, capped 95%. Fail → `_die()`: grows bloodlineQuality from this life's max stage
+    reached (squared term, no partner yet), resets to a fresh `_newGame()` carrying only
+    bloodlineQuality/generation/deaths forward (always "new soul" carry 0.25 — no family system to
+    reincarnate into yet). Success just flips `ascended=true` and continues at the existing `ascension`
+    stage stub (Immortal Realms content is 23D, NOT built this session — documented as the accepted scope
+    boundary, not a bug).
+  - Other death sources (23A, minor): outclassed expedition zones, sect-war losses you fought in (own war,
+    or member war only if `engaged`), and the `inner_demon` event at Nascent Soul+. All end with
+    `if (health<=0) this._die(cause) else recalc/notify` — never mutate `s`/`w` locals after calling
+    `_die()`, it reassigns `this._s`. `cultivation.js` calls the new public `checkDeath()` after every
+    event since events.js can't call `_die()` itself.
+  - UI: health bar (mirrors integrity bar), breakthrough button relabels to "Ascension Trial" at the last
+    mortal stage and opens a new overlay (reveals BQ + chance, Ascend Now / Keep Cultivating) instead of
+    attacking attemptBreakthrough directly. A `subscribe()` watcher diffs `s.lastReincarnation.ts` and pops
+    a death/reincarnation overlay on ANY cause (not just from the Ascend button) — see bloodline.md Wiring.
+    Stats tab: Health always shown, Bloodline Quality/Ascensions only after first attempt (matches "hidden"
+    design), Deaths only once >0.
+  - Sim: bot redirects to `tryAscension()` at the last mortal stage (attempts as soon as ready — no in-life
+    lever to wait for, matches the bot's existing "greedy not optimal" philosophy); new invariants (health/
+    bloodlineQuality/generation bounds); death detection in `Recorder.sample()` (dedupes via
+    `lastReincarnation.ts`, same pattern death itself uses in the UI); new report section "Ascension &
+    Bloodline" (attempts, survived, generations, deaths, BQ, deaths-by-cause).
+  - Files: assets/data/bloodline.js (new), events.js (inner_demon), cultivation.js, game-state.js (health/
+    ascension/death + all 3 war/expedition resolvers), game.js, index.html, styles.css, scripts/sim/
+    {loader,bot,metrics,report}.js. Docs: docs/systems/bloodline.md (new), docs/index.md, core-loop.md,
+    qa-sim.md, PLAN.md (Phase 23 section + Phase 8 superseded note + open questions), CLAUDE.md tree.
+  - Verified: npm test, npm run sim:quick, full `npm run sim` (27 runs, 0 errors, 0 violations — see
+    baseline below), npm run dist, npm run build:web. Also drove the real Electron app via its CDP
+    remote-debugging port (no Playwright dep needed — Node's native WebSocket) and screenshotted the
+    health bar, Ascension Trial button, Ascension overlay and death overlay with sample data — found and
+    fixed one bug this way: the "飞升劫" title wrapped mid-glyph at 14px, fixed by dropping to 12px +
+    nowrap. Did NOT drive it through the real charselect DEV-preset click flow — all 3 save slots on this
+    machine are occupied by the user's own real characters, and I didn't want to load/tick/risk-autosaving
+    over them. If you need to test the actual charselect → DEV preset → in-game click path end to end, free
+    a slot first (or ask the user) — the underlying attemptAscension()/attemptBreakthrough()/_die() logic
+    itself is already exercised thousands of times by `npm run sim`, just not through game.js's DOM wiring.
+  - Known gap flagged in bloodline.md: the sim's dead-zone/stage-wall metrics aren't generation-aware, so a
+    mid-run reincarnation can produce a misleading "stuck at stage N" flag — check `lineage.generation`.
+  - Open tuning question for the user: is the pacing fun or too punishing? A failed Ascension attempt means
+    a full mortal-realm replay (often 30-90h) before the next attempt; `npm run sim` shows 2-5
+    reincarnations per long run at the proposed curve. Re-tune `ASCENSION_BASE_CHANCE`/`ASCENSION_BQ_COEF`/
+    `BLOODLINE_G_SELF` in assets/data/bloodline.js with `--set` if it should be more/less forgiving.
+
 Date: 2026-09-25 (session 7)
 Agent: Overlay fullscreen fix (user report): "pin" wasn't surviving over fullscreen games and clicking it could
   strand the window behind one with no way back. Root cause: `alwaysOnTop: true` in main.js uses Electron's
@@ -105,6 +160,10 @@ CURRENT BASELINE (npm run sim, 200h medians; Ascension is noisy — 8 seeds on o
   Member path (--path=member) — Ascension: active ~19–41h across reruns (noisy) · casual ~41–60h · afk ~50h.
   Member wars: active/casual answer 100% of ~32 calls, win ~60–75%, contribution net +0.5k–2.4k; afk answers
   ~15–25% (opens 15 min per 8h). Health: 0 errors, 0 violations on both paths.
+  Phase 23A-C (session 8, founder path, 200h): ascension attempts 5/2/1 (active/casual/afk), survived to
+  Immortal 1/0/0, generations 5/3/2, lifetime deaths 4/2/1, end Bloodline Quality ~8-11, all deaths from
+  failed Ascension (expedition/war/event injuries never killed anyone at these constants — health regen
+  outpaces them). Health: 0 errors, 0 violations.
 
 READY FOR DEV WORK — how a new agent should start:
   1. Read START_HERE.md (this) + CLAUDE.md; load only the docs/systems/*.md for the system you touch.
@@ -114,18 +173,25 @@ READY FOR DEV WORK — how a new agent should start:
      (docs/systems/qa-sim.md → "Extending") or the sim can't see it.
 
 Open design gaps the sim still flags (numbers can't fix these):
-  - Nothing to do after Ascension → long dead zones for every profile (Phases 7–8).
+  - Nothing to do AFTER a successful Ascension → still a dead zone on `active` past ~70h (Phase 23D, not
+    built this session — see docs/systems/bloodline.md). This is now a rarer, later dead zone than before
+    (most runs spend their time in the pre-Ascension gamble/reincarnation loop instead), but it's still open.
   - OWN-sect wars still use the 15-min window: casual sees ~50%, afk ~0%, casual still banks ~4–8k. Member wars
     (2h window) fixed this for joined sects. Option: give own-sect wars a longer window too (try --set
     WAR_SCOUT_SECONDS / WAR_PREP_SECONDS) — a 5B balance change, ask the user. Afk needs Phase 9 notifications.
   - Member-path bot donates everything above 300 stones to its sect, which is why member Ascension (active ~39h)
     lags founder (~11h). It's the bot's policy, not a game wall — worth a smarter bot before tuning from it.
   - weapon_soul_spear (expedition_power) / weapon_thunder_staff (enemy_hp_reduce): effects nothing reads.
+  - Sim's dead-zone/stage-wall metrics aren't generation-aware (see bloodline.md gotchas) — a mid-run
+    reincarnation can misreport as "stuck", check `lineage.generation` before trusting those flags now.
 Next recommended tasks (pick one):
-  - Phase 6 Animation & Visual Overhaul, or Phase 7 → Phase 23 (post-Ascension content — biggest sim flag).
-    Phase 23 (added 2026-09-25) is the planned post-Ascension system: hidden Bloodline Quality, chance-based
-    Ascension, Health/death → reincarnation, Immortal Realms, Secret Arts. Its 23A–C sub-phases work without
-    the family system. Resolve its "Open questions" with the user before building.
+  - Phase 23D Immortal Realms — the natural follow-up: gives a successful Ascension somewhere to go instead
+    of the old dead-end stub. Needs the "keep playing the Immortal" direction from session 8 fleshed out
+    (new realm ladder + sprites via Asset Pipeline, watch-over-family passive once Phase 16 exists).
+  - Tune the Phase 23A-C curve first if the pacing (30-90h mortal-realm replay per failed Ascension) feels
+    too punishing after playing it — see the open tuning question in session 8's notes above.
+  - Phase 6 Animation & Visual Overhaul, or Phase 7 (Dao Paths/Tribulation — note Tribulation is one of
+    23A's planned damage sources, currently not wired since 7C doesn't exist yet).
   - Optional: add `npm run sim:quick` as a gate in scripts/release.js (it's healthy now; ask the user first).
 ```
 
@@ -154,6 +220,7 @@ docs/
     sect-war.md        ← Sect wars: own-sect (5B) + member wars for joined sects (5C)
     dev-presets.md     ← Dev-only late-game test characters (npm start charselect)
     qa-sim.md          ← QA sim harness — `npm run sim`, report flags, extending the bot
+    bloodline.md       ← Health & Death, Bloodline Quality, Ascension Trial (Phase 23A-C)
     ui-layout.md       ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md           ← Always-on rules (docs, style, Electron security)
@@ -188,6 +255,7 @@ assets/
     beasts.js          ← BEAST_TYPES + BEAST_TRAITS — spiritual beast definitions (Phase 3)
     sects.js           ← SECTS + SECT_RANKS + SECT_MISSIONS (Phase 4)
     sect-buildings.js  ← Own-sect founding/buildings/disciple constants (Phase 5A)
+    bloodline.js       ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
     dev-presets.js     ← DEV_PRESETS — late-game test characters (npm start only)
   sprites/
     cultivator-sprites.js  ← CULTIVATOR_SPRITES — all animated ASCII frames

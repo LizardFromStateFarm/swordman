@@ -12,7 +12,7 @@ const fmtH = h => h == null ? '—' : h < 1 ? `${Math.round(h * 60)}m` : `${h.to
 // Features a well-rounded player should touch; "never used" is a strong design signal.
 const FEATURES = ['expedition', 'craft_equipment', 'craft_pill', 'use_elixir', 'tame_beast', 'beast_expedition',
   'join_sect', 'sect_mission', 'sect_rank_up', 'found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce',
-  'war_answer_call', 'war_chest', 'war_beast']
+  'war_answer_call', 'war_chest', 'war_beast', 'ascend']
 
 const KEY_MILESTONES = [
   ['Qi Condensation L1', r => r.stageTimes.find(x => x.stage === 1)?.atH],
@@ -30,6 +30,8 @@ const KEY_MILESTONES = [
   ['first call answered', r => r.milestones.first_war_answer_call],
   ['all techniques', r => r.milestones.all_techniques],
   ['all buildings', r => r.milestones.all_buildings],
+  ['first ascension attempt', r => r.milestones.first_ascend],
+  ['first Immortal (ascended)', r => r.milestones.first_ascend_success],
 ]
 function topSource(g) {
   const sums = {}; let tot = 0
@@ -190,6 +192,17 @@ function buildReport(runs, args) {
     const m = group(p, longest).map(r => r.memberWars).filter(Boolean)
     const tot = med(m.map(x => x.total))
     L.push(tot ? `| ${p} | ${f(tot)} | ${f(med(m.map(x => x.wins)))}/${f(med(m.map(x => x.losses)))} | ${f(med(m.map(x => x.engagedPct)))}% | ${f(med(m.map(x => x.ignored)))} | ${f(med(m.map(x => x.unseen)))} | ${f(med(m.map(x => x.contribNet)))} |` : `| ${p} | 0 | — | — | — | — | — |`)
+  }
+  L.push(``)
+  L.push(`## Ascension & Bloodline — Phase 23A-C (median, ${longest}h runs)`)
+  L.push(`| Profile | Attempts | Survived | Generations | Deaths | Bloodline Quality (end) | Deaths by cause |`)
+  L.push(`|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const g = group(p, longest), lin = g.map(r => r.lineage).filter(Boolean)
+    const causes = {}
+    for (const l of lin) for (const [c, n] of Object.entries(l.deathsByCause || {})) causes[c] = (causes[c] || 0) + n
+    const causesStr = Object.entries(causes).sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} ${n}`).join(', ') || '—'
+    L.push(`| ${p} | ${f(med(lin.map(l => l.ascensionAttempts)))} | ${f(med(lin.map(l => l.ascensions)))} | ${f(med(lin.map(l => l.generation)))} | ${f(med(lin.map(l => l.deaths)))} | ${f(med(lin.map(l => l.bloodlineQuality)))} | ${causesStr} |`)
   }
   L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)

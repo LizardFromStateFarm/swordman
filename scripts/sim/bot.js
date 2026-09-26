@@ -47,6 +47,8 @@ class Bot {
   // ── Breakthrough ─────────────────────────────────────────────────────────
   tryBreakthrough() {
     const s = this.s, d = s.derived
+    // The last mortal stage is a chance-based Ascension Trial, not a normal breakthrough (Phase 23C).
+    if (s.stageIndex === this.D.CULTIVATION_STAGES.length - 2) return this.tryAscension()
     if (!d.canBreakthrough || s.stageIndex >= this.D.CULTIVATION_STAGES.length - 1) return false
     let chance = d.breakthroughChance, pill = null
     if (this.inv('pill_heaven_defying') && chance < 0.5) pill = 'pill_heaven_defying'
@@ -64,6 +66,18 @@ class Bot {
     this.gs.setActivePill(pill)
     const res = this.gs.attemptBreakthrough()
     this.rec.breakthrough(res, chance, pill, s.stageIndex)
+    return true
+  }
+
+  // ── Ascension Trial (Phase 23C) ──────────────────────────────────────────
+  // No in-life lever raises survival chance much beyond passive Health/Integrity regen, so — like the
+  // rest of this bot — it's greedy, not optimal: attempt as soon as ready, accepting the gamble.
+  tryAscension() {
+    const s = this.s, d = s.derived
+    if (!d.canBreakthrough) return false
+    const res = this.gs.attemptAscension()
+    this.rec.act('ascend', true)
+    if (res.success) this.rec.milestone('first_ascend_success')
     return true
   }
 

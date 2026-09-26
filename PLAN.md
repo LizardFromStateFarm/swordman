@@ -30,7 +30,7 @@ Phase 19 ⬜  World Epochs & Spiritual Tides (Dynamic Global Modifiers)
 Phase 20 ⬜  Optional Settings & Challenge Modes (Permadeath, Accessibility)
 Phase 21 ⬜  Backpack & Inventory Tab (unified item/currency view)
 Phase 22 ⬜  Active / Idle Mode Toggle + Mid-Late Automation
-Phase 23 ⬜  Immortal Progression — Bloodline Quality, Ascension Trial, Health/Death, Immortal Realms, Secret Arts
+Phase 23 ◐  Immortal Progression (23A Health/Death ✅, 23B Bloodline Quality ✅, 23C Ascension Trial ✅ — 23D Immortal Realms ⬜, 23E Secret Arts ⬜)
 ```
 
 ---
@@ -391,9 +391,12 @@ This is a major event — the most dramatic animation in the game.
 
 ## Phase 8 — Ascension & Reincarnation (New Game+)
 
-> ⚠ **Superseded in part by Phase 23 (2026-09-25):** Ascension is now a chance-based trial driven by hidden
-> Bloodline Quality, success leads to the Immortal Realms and failure/death leads to reincarnation. Dao Seeds /
-> Ascension Hall / Sect Legacy below still apply but must be rebalanced alongside Phase 23.
+> ⚠ **Superseded in part by Phase 23 (23A–C built 2026-09-25):** Ascension is now a chance-based trial driven by
+> hidden Bloodline Quality (`attemptAscension()` in game-state.js) — success moves to the `ascension` stage stub
+> (Immortal Realms content is 23D, not built yet), failure/death reincarnates as a new soul (no Dao Seeds granted:
+> this section's Dao Seeds / Ascension Hall / Sect Legacy mechanics are NOT wired into the new death/reincarnation
+> flow yet). Whichever gets built next (Phase 8's cross-save Dao Seeds vs. Phase 23D's Immortal Realms) should
+> reconcile the two "what happens after Ascension" ideas rather than building both independently.
 
 When you reach Ascension (stageIndex 22), the game doesn't end — you **Reincarnate**.
 
@@ -1356,6 +1359,16 @@ This gives mid-game players a concrete automation roadmap to look forward to.
 > Also answers the QA sim's #1 flag: every profile currently hits a long dead zone after Ascension
 > (`npm run sim`). Cross-refs: Phase 8 (superseded parts), 16C (children), 18 (lineage tree / heirs),
 > 20A (permadeath), 17 (bosses).
+>
+> **23A + 23B + 23C built 2026-09-25** (this covers new-soul reincarnation only — no family system exists
+> yet, so `carry` is always `BLOODLINE_CARRY_NEW_SOUL`; partner growth term is always 0). See
+> `docs/systems/bloodline.md` for state/API/invariants/gotchas. **Not built:** 23D (Immortal Realms content
+> — successful Ascension still lands on the old single `ascension` stage stub), 23E (Secret Arts), and the
+> "Family hooks" step below. `npm run sim` (2026-09-25, healthy, 0 violations) shows the mechanic working as
+> designed — most Ascension attempts fail at low Bloodline Quality, driving 2–5 reincarnations per long run
+> — but whether that pacing (often a 30–90h mortal-realm replay per failed attempt) is fun or too punishing
+> is an open tuning question; re-run the sim with `--set` before changing `ASCENSION_BASE_CHANCE`/
+> `ASCENSION_BQ_COEF`/`BLOODLINE_G_SELF` in `assets/data/bloodline.js`.
 
 ### 23A — Health & Death (生死)
 
@@ -1501,12 +1514,16 @@ Suggested sub-phase order:
 - Add invariants: BQ within 0–cap, never lower after a family reincarnation, health within 0–100,
   survival chance ≤ 0.95.
 
-**Open questions for the user before building:**
-1. Survival chance: exact curve and cap (proposed max 95%)?
+**Open questions — resolved 2026-09-25 for 23A–C:**
+1. ✅ Survival chance curve/cap: proposed formula used as-is (base 7% + up to +60% at BQ100, cap 95%) —
+   pending a re-tune pass with `npm run sim` (see build note above).
+4. ✅ Lifespan (寿元): parked, not in this pass.
+
+**Still open — needed before 23D/23E:**
 2. Should successful Immortals also be able to have heirs? Should players keep playing the Immortal while the
-   heir plays, or switch between them?
+   heir plays, or switch between them? — user's initial lean (2026-09-25): keep playing the same Immortal
+   character, with the Immortal optionally supporting/watching over an heir, rather than switching control.
 3. How long should studying an Art take (hours vs days)? Should Arts be lost on a new-soul reincarnation?
-4. Does lifespan (寿元) belong in v1 of Health or later?
 5. Does the Solitary Lineage Art need a cost or drawback (e.g. health/lifespan, or a lower-quality heir)?
 
 ---

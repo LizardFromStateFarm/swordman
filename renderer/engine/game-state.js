@@ -40,6 +40,12 @@ class GameState {
           this._ensurePhase3Fields()
           this._s.realmIntegrity = Math.min(100, (this._s.realmIntegrity ?? 100) + intGain)
         }
+        // Health regen while offline (Phase 23A)
+        const healthGain = Math.floor((elapsed / HEALTH_REGEN_SECONDS) * HEALTH_REGEN_AMOUNT)
+        if (healthGain > 0) {
+          this._ensurePhase23Fields()
+          this._s.health = Math.min(100, (this._s.health ?? 100) + healthGain)
+        }
         this.tickOwnSect(elapsed)
         this._ensurePhase5BFields()
         this.tickSectWar(false)   // offline catch-up: wars fully resolved while closed are "unseen" (no ignore penalty)
@@ -91,12 +97,23 @@ class GameState {
       ownSect:          this._blankOwnSect(),
       // Phase 5B
       sectWar:          this._blankSectWar(),
+      // Phase 23A/B/C
+      health:            100,
+      _healthRegenAcc:   0,
+      maxStageThisLife:  0,
+      bloodlineQuality:  0,
+      generation:        1,
+      deaths:            0,
+      ascended:          false,
+      lastReincarnation: null,
       stats: {
         totalQiGained:      0,
         breakthroughs:      0,
         failed:             0,
         meditationSessions: 0,
         timePlayed:         0,
+        ascensionAttempts:  0,
+        ascensions:         0,
       },
       events:   [],
       lastSave: Date.now(),
@@ -185,6 +202,20 @@ class GameState {
     }
   }
 
+  _ensurePhase23Fields() {
+    const s = this._s
+    if (s.health === undefined)           s.health           = 100
+    if (s._healthRegenAcc === undefined)  s._healthRegenAcc  = 0
+    if (s.maxStageThisLife === undefined) s.maxStageThisLife = s.stageIndex
+    if (s.bloodlineQuality === undefined) s.bloodlineQuality = 0
+    if (s.generation === undefined)       s.generation       = 1
+    if (s.deaths === undefined)           s.deaths           = 0
+    if (s.ascended === undefined)         s.ascended         = s.stageIndex >= CULTIVATION_STAGES.length - 1
+    if (s.lastReincarnation === undefined) s.lastReincarnation = null
+    if (s.stats.ascensionAttempts === undefined) s.stats.ascensionAttempts = 0
+    if (s.stats.ascensions === undefined)        s.stats.ascensions        = 0
+  }
+
   _sectDef() {
     const id = this._s?.sect?.id
     return id && typeof SECTS !== 'undefined' ? (SECTS.find(x => x.id === id) || null) : null
@@ -222,6 +253,7 @@ class GameState {
     this._ensurePhase4Fields()
     this._ensurePhase5Fields()
     this._ensurePhase5BFields()
+    this._ensurePhase23Fields()
     const st = this._stage()
 
     let qps = st.baseQps * s.root.mult
@@ -407,6 +439,13 @@ class GameState {
       s.realmIntegrity = Math.min(100, (s.realmIntegrity ?? 100) + 1)
     }
 
+    // Health passive regen (Phase 23A)
+    s._healthRegenAcc = (s._healthRegenAcc || 0) + dt
+    if (s._healthRegenAcc >= HEALTH_REGEN_SECONDS) {
+      s._healthRegenAcc -= HEALTH_REGEN_SECONDS
+      s.health = Math.min(100, (s.health ?? 100) + HEALTH_REGEN_AMOUNT)
+    }
+
     this.tickOwnSect(dt)
     this.tickSectWar()
 
@@ -424,6 +463,9 @@ class GameState {
     const s = this._s
     if (!s.derived.canBreakthrough) return { success: false, reason: 'insufficient_qi' }
     if (s.stageIndex >= CULTIVATION_STAGES.length - 1) return { success: false, reason: 'ascended' }
+    // The last mortal stage no longer breaks through automatically — it's a chance-based Ascension
+    // Trial instead (Phase 23C). Callers should use attemptAscension() when they hit this reason.
+    if (s.stageIndex === CULTIVATION_STAGES.length - 2) return { success: false, reason: 'ascension_required' }
 
     // Consume queued pill (if valid and in inventory)
     let pillEffect = null
@@ -475,8 +517,78 @@ class GameState {
     s.qi    = 0
     s.karma = Math.min(100, s.karma + 10)
     s.stats.breakthroughs++
+    s.maxStageThisLife = Math.max(s.maxStageThisLife || 0, s.stageIndex)
     this._recalc(); this._notify()
     return { success: true, newStage: this._stage() }
+  }
+
+  // ── Phase 23A/B/C: Health, Bloodline Quality, Ascension Trial ──────────────
+
+  // Hidden from the player except on the Ascension screen and after the first attempt (Phase 23B).
+  ascensionChance() {
+    const s = this._s
+    const bq = s.bloodlineQuality || 0
+    let prep = 0
+    if ((s.realmIntegrity ?? 100) >= 100) prep += ASCENSION_PREP_INTEGRITY
+    if ((s.health ?? 100) >= 100)         prep += ASCENSION_PREP_HEALTH
+    const chance = ASCENSION_BASE_CHANCE + bq * ASCENSION_BQ_COEF + prep
+    return Math.max(0, Math.min(ASCENSION_CHANCE_CAP, chance))
+  }
+
+  attemptAscension() {
+    const s = this._s
+    const lastMortal = CULTIVATION_STAGES.length - 2
+    if (s.stageIndex !== lastMortal)  return { success: false, reason: 'not_ready' }
+    if (!s.derived.canBreakthrough)   return { success: false, reason: 'insufficient_qi' }
+
+    const chance = this.ascensionChance()
+    s.stats.ascensionAttempts++
+
+    if (Math.random() < chance) {
+      s.stageIndex++
+      s.qi       = 0
+      s.ascended = true
+      s.maxStageThisLife = s.stageIndex
+      s.stats.ascensions++
+      this._recalc(); this._notify()
+      return { success: true, chance, newStage: this._stage() }
+    }
+
+    this._die('ascension_failed')
+    return { success: false, reason: 'died', chance }
+  }
+
+  // Public so cultivation.js (random events) can check for health-related death after mutating s.health.
+  checkDeath(cause = 'event') {
+    if ((this._s.health ?? 100) <= 0) { this._die(cause); return true }
+    return false
+  }
+
+  // Ends the current life: grows the family's Bloodline Quality from what this life achieved, then
+  // resets to a fresh save carrying only bloodlineQuality/generation/deaths forward (Phase 23B/D).
+  // Reincarnating into family (full carry) needs an heir — Phase 16/18, not built yet, so every life
+  // today reincarnates as a "new soul" (BLOODLINE_CARRY_NEW_SOUL).
+  _die(cause) {
+    const s = this._s
+    const maxStage  = Math.max(s.maxStageThisLife || 0, s.stageIndex)
+    const selfTerm  = Math.pow(maxStage / (CULTIVATION_STAGES.length - 1), 2)
+    const growth    = BLOODLINE_G_BASE + BLOODLINE_G_SELF * selfTerm   // no partner term yet (Phase 16)
+    const parentBQ  = s.bloodlineQuality || 0
+    const heirBQ    = Math.min(BLOODLINE_CAP, parentBQ * BLOODLINE_CARRY_NEW_SOUL + growth)
+    const priorGen  = s.generation || 1
+    const priorDeaths = s.deaths || 0
+
+    const summary = {
+      cause, maxStageReached: maxStage, generation: priorGen,
+      parentBloodlineQuality: parentBQ, newBloodlineQuality: heirBQ, ts: Date.now(),
+    }
+
+    this._s = this._newGame()
+    this._s.bloodlineQuality  = heirBQ
+    this._s.generation        = priorGen + 1
+    this._s.deaths            = priorDeaths + 1
+    this._s.lastReincarnation = summary
+    this._recalc(); this._notify()
   }
 
   startMeditation(duration = 30) {
@@ -583,6 +695,16 @@ class GameState {
       }
     }
 
+    // Health risk: zones whose enemy tier outclasses the player's current stage (Phase 23A)
+    const expectedTier = 1 + Math.floor(s.stageIndex / 5)
+    const outclass = Math.max(0, loc.enemyTier - expectedTier)
+    if (outclass > 0 && Math.random() < EXPEDITION_INJURY_CHANCE_PER_TIER * outclass) {
+      const dmg = EXPEDITION_INJURY_BASE + EXPEDITION_INJURY_PER_TIER * outclass
+      s.health = Math.max(0, (s.health ?? 100) - dmg)
+      this.addEvent({ text: `The foes at ${loc.name} outmatched you — you return injured. Health -${dmg}.`, type: 'negative' })
+    }
+
+    if ((s.health ?? 100) <= 0) { this._die('expedition'); return }
     this._recalc(); this._notify()
   }
 
@@ -1143,12 +1265,18 @@ class GameState {
       w.warDefeats++
       const arrayHit = !!s.ownSect.buildings.defensive_array
       if (arrayHit) w.arrayDamagedUntil = Date.now() + WAR_ARRAY_DAMAGE_HOURS * 3600 * 1000
-      w.lastResult = { win: false, enemyName, spoilsLost: lost, arrayHit, ts: Date.now() }
-      this.addEvent({ text: `Defeat — the ${enemyName} broke through, plundering ${lost} Spirit Stones${arrayHit ? ' and damaging your Defensive Array' : ''}.`, type: 'negative' })
+      let injured = 0
+      if (Math.random() < WAR_INJURY_CHANCE) {
+        injured = WAR_INJURY_AMOUNT
+        s.health = Math.max(0, (s.health ?? 100) - injured)
+      }
+      w.lastResult = { win: false, enemyName, spoilsLost: lost, arrayHit, injured, ts: Date.now() }
+      this.addEvent({ text: `Defeat — the ${enemyName} broke through, plundering ${lost} Spirit Stones${arrayHit ? ' and damaging your Defensive Array' : ''}${injured ? `. You were injured (Health -${injured})` : ''}.`, type: 'negative' })
     }
 
     w.phase = 'none'
     this._scheduleNextWar()
+    if ((s.health ?? 100) <= 0) { this._die('sect_war'); return }
     this._recalc(); this._notify()
   }
 
@@ -1228,6 +1356,12 @@ class GameState {
       w.buffSuppressedUntil = Date.now() + MEMBER_WAR_BUFF_SUPPRESS_HOURS * 3600 * 1000
       res.suppressed = true
       if (w.seen) parts.push(`−${loseContrib(MEMBER_WAR_LOSS_CONTRIB)} Contribution`)
+      // Only personal injury if you actually answered the call and fought (Phase 23A)
+      if (engaged && Math.random() < WAR_INJURY_CHANCE) {
+        res.injured = WAR_INJURY_AMOUNT
+        s.health = Math.max(0, (s.health ?? 100) - res.injured)
+        parts.push(`you were injured (Health -${res.injured})`)
+      }
     }
 
     const ignored = w.seen && !engaged
@@ -1250,6 +1384,7 @@ class GameState {
 
     w.phase = 'none'
     this._scheduleNextWar()
+    if ((s.health ?? 100) <= 0) { this._die('sect_war'); return }
     this._recalc(); this._notify()
   }
 

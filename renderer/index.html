@@ -67,6 +67,14 @@
     <div id="integrity-track"><div id="integrity-fill"></div></div>
   </div>
 
+  <div id="health-block">
+    <div id="health-labels">
+      <span class="lbl">♥ Health</span>
+      <span id="health-numbers">100 / 100</span>
+    </div>
+    <div id="health-track"><div id="health-fill"></div></div>
+  </div>
+
   <div id="actions">
     <button id="btn-meditate" class="act-btn">
       <span class="act-icon">🧘</span>
@@ -118,6 +126,30 @@
   </div>
 </div>
 
+<!-- Ascension Trial overlay (Phase 23C) -->
+<div id="ascension-overlay" class="hidden">
+  <div id="ascension-box">
+    <div id="ascension-title">The Ascension Trial 飞升劫</div>
+    <div id="ascension-desc">Attempt to transcend mortality and enter the Immortal Realms. Failure means death.</div>
+    <div class="ascension-row"><span>Bloodline Quality</span><span id="asc-bloodline">0 / 100</span></div>
+    <div class="ascension-row"><span>Survival Chance</span><span id="asc-chance">0%</span></div>
+    <div id="ascension-btns">
+      <button id="ascend-now">Ascend Now</button>
+      <button id="ascend-wait">Keep Cultivating</button>
+    </div>
+  </div>
+</div>
+
+<!-- Death / reincarnation overlay (Phase 23A/D) -->
+<div id="death-overlay" class="hidden">
+  <div id="death-box">
+    <div id="death-title">This Life Ends</div>
+    <div id="death-cause"></div>
+    <div id="death-stats"></div>
+    <button id="death-ok">Begin Anew</button>
+  </div>
+</div>
+
 <script src="../assets/data/stages.js"></script>
 <script src="../assets/data/techniques.js"></script>
 <script src="../assets/data/events.js"></script>
@@ -129,6 +161,7 @@
 <script src="../assets/data/sects.js"></script>
 <script src="../assets/data/sect-buildings.js"></script>
 <script src="../assets/data/sect-war.js"></script>
+<script src="../assets/data/bloodline.js"></script>
 <script src="../assets/data/dev-presets.js"></script>
 <script src="../assets/sprites/cultivator-sprites.js"></script>
 <script src="../assets/sprites/beast-sprites.js"></script>

@@ -56,7 +56,14 @@ const RANDOM_EVENTS = [
       const lost = Math.min(s.qi, s.derived.qiPerSecond * 120)
       s.karma = Math.max(0, s.karma - 12)
       s.qi -= lost
-      return { text: `An inner demon rises from suppressed desires, gnawing at your dantian. Karma -12, Qi -${fmtQi(lost)}.`, type: 'negative' }
+      // At high realms (Nascent Soul+) the inner demon can wound the body, not just the cultivation (Phase 23A).
+      let healthNote = ''
+      if (s.stageIndex >= 16) {
+        const dmg = 4 + Math.floor(Math.random() * 5)
+        s.health = Math.max(0, (s.health ?? 100) - dmg)
+        healthNote = ` Health -${dmg}.`
+      }
+      return { text: `An inner demon rises from suppressed desires, gnawing at your dantian. Karma -12, Qi -${fmtQi(lost)}.${healthNote}`, type: 'negative' }
     }
   },
   {

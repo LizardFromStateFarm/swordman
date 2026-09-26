@@ -49,6 +49,10 @@ invariant violations, 2 = harness crashed / bad `--set`.
   ignored (seen, no commitment), fought without you (resolved while closed), contribution net. Tallied per side by
   `Recorder.trackWars()` (diffs `sectWar` counters each tick, so a founder's pre-founding member wars aren't mixed
   into its own-sect wars). `runs[i].wars` = own side, `runs[i].memberWars` = member side.
+- **Ascension & Bloodline** (Phase 23A–C): ascension attempts (cumulative `actions.ascend`, not the per-life
+  `s.stats.ascensionAttempts`), whether it ever succeeded, generations, lifetime deaths, end-of-run Bloodline
+  Quality, deaths by cause. `runs[i].lineage`. See `docs/systems/bloodline.md` gotchas — the dead-zone/stage-wall
+  metrics are NOT generation-aware, so a mid-run reincarnation can produce a misleading "stuck at stage N" flag.
 - **Slowest stage-ups**: top 3 stage transitions per profile.
 - **⚠ Flags** (thresholds in `THRESHOLDS`): dead zone, difficulty wall (stage ≥4× previous and ≥1h; afk ignores
   waits ≤1.5 sessions), progression stalls, content exhausted, qi-capped %, frustration (fail streak),
@@ -68,7 +72,8 @@ Non-finite numbers anywhere in state (except `derived.qiCap` at Ascension) · qi
 inventory counts not positive integers · integrity ∉ [0,100] · karma ∉ [0,100] · breakthrough chance >0.98 ·
 stageIndex out of range · beasts > maxBeasts · disciples > cap · invalid war phase · sect rank out of range ·
 joined AND founded · war side ≠ joined/founded state · war-committed mission slot over cap or not released after
-the war · beast stuck at war · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi.
+the war · beast stuck at war · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi ·
+health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1.
 
 ## Extending
 - **New system/phase:** add bot behaviour in `bot.js` (new method + add to the `checkIn` chain), new
@@ -83,3 +88,7 @@ the war · beast stuck at war · save round-trip changes stage/techniques/equipp
 - Game code must keep using `Date.now()` / `Math.random()` (not `performance.now()`, `crypto`) or the sim
   loses determinism/time control. `game.js` (UI) is never loaded — UI-wiring bugs need a Playwright pass.
 - dt defaults to 1s (real game caps frame dt at 2s). Random-event and integrity timers are dt-accumulated.
+- A system that resets `this._s` mid-run (Phase 23's `_die()` reincarnation) needs its own dedupe in
+  `Recorder.sample()` (a timestamp diff, see `_lastDeathTs`/`deathsByCause`) — `stageReached`/`maxStage` don't
+  reset on it, so existing progress-timeline metrics silently stop reflecting reality after a reset (see
+  `docs/systems/bloodline.md` gotchas). Any future full-state-reset feature should read that pattern first.

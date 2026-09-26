@@ -54,6 +54,7 @@ docs/
     sect-war.md         ← Sect wars: own-sect (5B) + member wars for joined sects (5C)
     qa-sim.md           ← QA sim harness: flags, metrics, profiles, how to extend
     dev-presets.md      ← Dev-only late-game test characters (npm start charselect)
+    bloodline.md        ← Health & Death, Bloodline Quality, Ascension Trial (Phase 23A-C)
     ui-layout.md        ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
@@ -93,6 +94,7 @@ assets/
     sects.js            ← SECTS, SECT_RANKS, SECT_MISSIONS (Phase 4)
     sect-buildings.js   ← Own-sect founding cost, Sect Hall levels, buildings, disciple constants (Phase 5A)
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
+    bloodline.js        ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors

@@ -34,6 +34,7 @@ class CultivationSystem {
         try {
           const result = ev.apply(s, this.gs)
           this.gs.addEvent({ text: result.text, type: result.type || 'neutral' })
+          this.gs.checkDeath('event')
         } catch {}
         return
       }
