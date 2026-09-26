@@ -31,13 +31,16 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
-| Dao Paths, Reincarnation, Tribulation | ⬜ Phase 7–8 |
-| Desktop notifications, tray, time-of-day | ⬜ Phase 9 |
+| Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
+| Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ⬜ Phase 9 |
+| War Standing Orders (absence never punished) | ⬜ Phase 32 (M1) |
+| Lifespan & Game Time (age passes only while open) | ⬜ Phase 30 (M2) |
+| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
-| NPC World Simulation (personalities, sects) | ⬜ Phase 15 → superseded by Phase 28 (M3) |
-| Marriage & Family system | ⬜ Phase 16 |
+| NPC World Simulation (personalities, sects) | ⬜ Phase 15 → superseded by Phase 28 (M4) |
+| Marriage & Family system | ⬜ Phase 16 (lite in M2, full in M6) |
 | Secret Realm Dungeons (ASCII map grid) | ⬜ Phase 17 |
 | Lineage & Heir Inheritance | ⬜ Phase 18 |
 | World Epochs & Spiritual Tides | ⬜ Phase 19 |
@@ -51,14 +54,41 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Deep Sect Management (offices, Recruiter, manual recruiting) | ⬜ Phase 27 (planned) |
 | Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ⬜ Phase 28 (planned) |
 
-> **Build order lives in PLAN.md → "Development Roadmap" (milestones M1–M7).** The table above is by feature,
-> not by order.
+> **Build order lives in PLAN.md → "Development Roadmap" (milestones M1–M8).** The table above is by feature,
+> not by order. **Design pillars** (GAMEDESIGN.md, top of PLAN.md) override older design text: single-player,
+> ~10–20h mortal lives, death → heir → meta progression, never punish absence, no store logic.
 
 ---
 
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-25 (session 12) — PLANNING ONLY, no code changed
+Agent: User redirected the design: "just an enjoyable single player game … not the profit". Part of the fun is
+  dying, making a new character, continuing the family and meta progression. Nobody should spend 100+ h on one
+  character unless they reach the late-game Immortal era, where progression changes.
+  User decisions: mortal life ≈ 10–20h (casual); age passes ONLY while the game is open (offline still gives Qi);
+  the life loop moves up to M2; real-time features are converted to game time, not cut.
+  - GAMEDESIGN.md: new Design Pillars (6) + Pacing Targets (life loop). Leaderboard / NG+ multiplier removed.
+  - PLAN.md: pillars summary at the top. Roadmap rewritten and milestones RENUMBERED (M1–M8; old M2 = new M3 …
+    old M7 = new M8; START_HERE history before this entry uses the old numbers). New phases:
+      30 Lifespan & Game Time (1 game yr / open minute, lifespan per realm, Twilight: Final Seclusion or Pass
+         the Mantle, one unified end-of-life flow)
+      31 Ancestral Hall & Clan Legacies (slot = clan; Ancestral Merit mostly from clan firsts; legacies are mostly
+         unlocks; ancestral catch-up below the clan best; Ascended Ancestor ending fixes the dead zone;
+         absorbs Phase 8 — Dao Seeds CUT — and 18B)
+      32 War Standing Orders (replaces war call windows; absence never punished) — M1 task 1.4
+    + "M2 family (lite)": proposal event, spouse/children as minimal person records (the schema M4 extends),
+      heir selection with a distant-cousin fallback. Next free phase number: 33.
+  - "Changed 2026-09-25 (pillars)" notes on 7, 8, 9B–D (time-of-day/seasons → cosmetic only), 14, 16, 18, 19
+    (epochs on game time, shifting between generations), 20B, 21 (Void Crystals ≠ hard currency), 23, 28
+    (throttle/rankings on game time), and the open questions.
+  Not done: all numbers in 30/31 are starting values. Task 2.1 must write docs/systems/life-loop.md and REVIEW the
+    lifespan table + legacy list with the user before any code.
+  Next: M1 1.3 (tray + opt-in notifications) — the assessment from this session still applies, minus the
+    "afk war-window flag" goal (moved to 1.4 Standing Orders). Or jump to M2 2.1 if the user wants the life loop
+    first.
+
 Date: 2026-09-25 (session 11, part 2)
 Agent: Roadmap M1 task 1.2, Phase 29 Personality & Banter. Committed 1.1 first (8b0b568). User asked for parallel
   writing agents with short personality guides, plus a nonsense one ("borgin and gorgin"), a nice guy and a psychotic

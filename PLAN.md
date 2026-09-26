@@ -2,15 +2,35 @@
 
 **→ Always check START_HERE.md first for current build state and last session summary.**
 
+## Design pillars (decided 2026-09-25, full text in GAMEDESIGN.md)
+
+This is a single-player game made for the love of the game, not a live-service cash grab. Every phase below must fit:
+
+1. **A mortal life is a run of ~10–20h of open play.** Long play belongs to the Immortal era.
+2. **Death is part of the fun.** A save slot is a **family line**. Death hands the game to an heir.
+3. **Meta progression across generations**, mostly unlocks rather than multipliers. Later lives replay the early
+   realms faster.
+4. **Never punish absence.** No real-calendar/time-of-day bonuses, no daily logins, no windows you can miss
+   while the game is closed. Use **standing orders** instead. Notifications are opt-in.
+5. **Two clocks.** Idle jobs use wall-clock timers. **Age, lifespan and world history use game time**, which
+   only passes while the game is open (Phase 30).
+6. **No store logic.** No premium currencies, no leaderboards, no online requirement.
+
+When an older design section below conflicts with these, the pillars win. The sections carry
+"**Changed 2026-09-25 (pillars)**" notes where they were converted.
+
 ## How this plan is organized (read once)
 
 - **Phase numbers are stable IDs, not build order.** Code comments, `docs/systems/*.md`, save-migration methods
   (`_ensurePhase23Fields`…) and git history all cite them ("Phase 5C", "23A"), so they are never renumbered.
-- **Build order is the Development Roadmap below.** Work goes by milestone (M1 → M7). Inside a milestone, tasks are
+- **Build order is the Development Roadmap below.** Work goes by milestone (M1 → M8). Inside a milestone, tasks are
   listed in dependency order, and each task is sized to be one agent session / one commit.
+- **Milestone and task numbers are NOT stable.** They were renumbered 2026-09-25 (session 12) when the Life Loop
+  became M2. START_HERE history entries before that date use the old numbers (old M2 = new M3, …, old M7 = new M8).
+  Cite phase numbers in code and docs, never task numbers.
 - **The design sections after the roadmap are grouped by milestone in the same order.** Built phases are in the
   M0 archive.
-- **New ideas** get a new phase number (next free: **30**) and are then *placed* into a milestone. A slot is never
+- **New ideas** get a new phase number (next free: **33**) and are then *placed* into a milestone. A slot is never
   renumbered.
 
 **Definition of done (every task, from CLAUDE.md):**
@@ -33,50 +53,58 @@
 | 4 | Sect System — join existing | ✅ | M0 |
 | 5 | Own Sect (5A) + Sect Wars (5B) + Member Wars (5C) | ✅ | M0 |
 | — | Tooling: QA Sim Harness, Dev presets | ✅ | M0 |
-| 23A–C | Health & Death, Bloodline Quality, Ascension Trial | ✅ | M0 (section lives in M6) |
+| 23A–C | Health & Death, Bloodline Quality, Ascension Trial | ✅ | M0 (section lives in M7) |
 | 29 | Character Personality & Banter | ✅ (29A/B/D; 29C later) | M1 |
 | 20C | Settings tab + accessibility | ✅ | M1 |
-| 9A–B | Tray + desktop notifications | ⬜ | M1 |
+| 9A–B | Tray + opt-in desktop notifications | ⬜ | M1 |
 | 21 | Backpack & Inventory tab | ⬜ | M1 |
 | 22 | Active / Idle toggle + automation | ⬜ | M1 |
+| 32 | War Standing Orders (absence never punished) | ⬜ | M1 |
 | 6E | Window & layout modes | ⬜ | M1 (optional) |
-| 12 | Birth Origin | ⬜ | M2 |
-| 13 | Alignment & Karmic Path | ⬜ | M2 |
-| 14 | Body Constitution & Tempering (supersedes 7B) | ⬜ | M2 |
-| 7A, 7C | Dao Paths, Heavenly Tribulation | ⬜ | M2 |
-| 28 | Persistent Living World (supersedes 15 and 11A) | ⬜ | M3 |
-| 15 | NPC World Simulation | ↪ superseded by 28 (kept as design input) | M3 |
-| 27 | Deep Sect Management | ⬜ | M4 |
-| 16 | Marriage & Family | ⬜ | M5 |
-| 18 | Lineage & Heir Inheritance | ⬜ | M5 |
-| 8 | Ascension & Reincarnation (New Game+) | ◐ partly superseded by 23 — reconcile | M5 |
-| 23D | Immortal Realms | ⬜ | M6 |
-| 24 | Immortal Paths (Tyrant / Devourer / Deity / Executioner) | ⬜ | M6 |
-| 26 | Immortal Island + ascension petitions | ⬜ | M6 |
-| 25 | Doctrine | ⬜ | M6 |
-| 23E | Secret Arts | ⬜ | M6 |
-| 19 | World Epochs & Spiritual Tides | ⬜ | M7 |
-| 17 | Secret Realm Dungeons | ⬜ | M7 |
-| 6A–D | Animation & visual overhaul | ⬜ | M7 |
-| 10 | Cosmetics (titles, pet, cave) | ⬜ | M7 |
-| 11B–C | Heaven's Will, Scripture Lore | ⬜ | M7 |
-| 20A–B | Permadeath, Challenge modes | ⬜ | M7 |
-| 9C–D | Time-of-day, seasons | ⬜ | M7 |
+| 30 | Lifespan & Game Time (寿元 · 岁月) | ⬜ | M2 |
+| 31 | Ancestral Hall & Clan Legacies (祖祠) — meta progression; absorbs 8 and 18B | ⬜ | M2 |
+| 16 (lite) | Marriage & children, lite version (spouse/child as person records) | ⬜ | M2 |
+| 18C | Heir selection at death | ⬜ | M2 |
+| 8 | Ascension & Reincarnation (New Game+) | ↪ superseded by 23 + 31 (Dao Seeds cut) | M2 |
+| 12 | Birth Origin | ⬜ | M3 |
+| 13 | Alignment & Karmic Path | ⬜ | M3 |
+| 14 | Body Constitution & Tempering (supersedes 7B) | ⬜ | M3 |
+| 7A, 7C | Dao Paths, Heavenly Tribulation | ⬜ | M3 |
+| 28 | Persistent Living World (supersedes 15 and 11A) | ⬜ | M4 |
+| 15 | NPC World Simulation | ↪ superseded by 28 (kept as design input) | M4 |
+| 27 | Deep Sect Management | ⬜ | M5 |
+| 16 (full) | Courtship & family with living-world persons | ⬜ | M6 |
+| 18A, 18D–E | Lineage tree view, Family Technique, Ancestral Visions | ⬜ | M6 |
+| 23D | Immortal Realms | ⬜ | M7 |
+| 24 | Immortal Paths (Tyrant / Devourer / Deity / Executioner) | ⬜ | M7 |
+| 26 | Immortal Island + ascension petitions | ⬜ | M7 |
+| 25 | Doctrine | ⬜ | M7 |
+| 23E | Secret Arts | ⬜ | M7 |
+| 19 | World Epochs & Spiritual Tides (game time, change between generations) | ⬜ | M8 |
+| 17 | Secret Realm Dungeons | ⬜ | M8 |
+| 6A–D | Animation & visual overhaul | ⬜ | M8 |
+| 10 | Cosmetics (titles, pet, cave) | ⬜ | M8 |
+| 11B–C | Heaven's Will, Scripture Lore | ⬜ | M8 |
+| 20A–B | Permadeath, Challenge modes | ⬜ | M8 |
+| 9C–D | Day/night + seasons, **cosmetic ambience only** (no bonuses) | ⬜ | M8 |
 
 ---
 
 ## Development Roadmap
 
-**Why this order:**
-- **M1** is independent, low-risk and improves play today.
-- **M2** builds the character rolls (origin, alignment, constitution, Dao) *for the player first*, as shared
-  generators. **M3** then reuses them for thousands of NPCs.
-- **M3's persons are the foundation for everything after it:** sect disciples (M4), spouses and heirs (M5), and the
-  beings an Immortal blesses, enslaves or devours (M6).
-- **M7** is flavor that gets richer the more systems exist.
-
-> **The post-Ascension dead zone** (the sim's top open flag) is fixed properly in M6. If it has to be fixed sooner,
-> task **1.7** ships a stopgap Immortal ladder early.
+**Why this order (revised 2026-09-25, session 12):**
+- **M1** is independent, low-risk and improves play today. It now also removes the one existing "punish absence"
+  mechanic: war call windows (Phase 32).
+- **M2 (the Life Loop) is the heart of the game** and is built next: lifespan, heirs, the Ancestral Hall and
+  pacing compressed to ~10–20h lives. It also fixes the post-Ascension dead zone. A successful Ascension becomes
+  an "Ascended Ancestor" ending, and play continues with the heir until M7 makes the Immortal playable.
+- **M3** adds the character rolls (origin, alignment, constitution, Dao). Every new generation rolls them again,
+  which gives each life a distinct start. They're built as shared generators so **M4** can reuse them for NPCs.
+- **M4's persons are the foundation for everything after it:** sect disciples (M5), real spouses and children in
+  the world (M6), and the beings an Immortal blesses, enslaves or devours (M7).
+- **M2's spouse and child are minimal person records** using the same schema M4 extends. They are *upgraded* in
+  M6, not rebuilt. This is the lesson from the Phase 27 reorder: don't build persons twice.
+- **M8** is flavor that gets richer the more systems exist.
 
 ### M1 — Quality of life & charm (no dependencies)
 
@@ -84,93 +112,107 @@
 |---|---|---|---|---|
 | 1.1 ✅ | Settings tab shell (⚙) + accessibility options | 20C | — | Settings persist per slot; later tasks add their toggles here |
 | 1.2 ✅ | Banter engine + 12 personalities, speech bubble, banter log, frequency setting | 29 | 1.1 | Every personality × trigger has lines (sim invariant); bubble fits 300 px + iOS |
-| 1.3 | System tray + desktop notifications (wars, BT ready, expedition back) | 9A–B | — | Both platforms: Electron real, iOS shim no-op (Rule 7); afk war-window flag improves in sim |
-| 1.4 | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
-| 1.5 | Active / Idle toggle + staged automation unlocks | 22 | 1.1 | Bot uses automation; sim shows afk/casual actions/h up |
-| 1.6 | *(optional)* Window & layout modes | 6E | 1.1 | 4 modes CSS-only off `data-layout` |
-| 1.7 | *(optional stopgap)* Immortal realm ladder filled by Qi | 23D-lite | — | Post-Ascension dead zone gone in sim; swapped to Essence in 6.2 |
+| 1.3 | System tray + **opt-in** desktop notifications (per-type toggles in ⚙; BT ready, expedition back, war news, death) | 9A–B | 1.1 | Both platforms: Electron real, iOS shim no-op (Rule 7). Nothing in the game *requires* notifications |
+| 1.4 | War Standing Orders: calls are answered by a preset order, and being present only adds optional choices | 32 | — | Sim: afk/casual war outcomes within ~10% of active; the "missed war window" flags are retired |
+| 1.5 | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
+| 1.6 | Active / Idle toggle + staged automation unlocks | 22 | 1.1 | Bot uses automation; sim shows afk/casual actions/h up |
+| 1.7 | *(optional)* Window & layout modes | 6E | 1.1 | 4 modes CSS-only off `data-layout` |
 
-### M2 — Character foundation (the rolls NPCs will reuse)
+> The old optional task "Immortal ladder filled by Qi (23D-lite)" was cut. The M2 Ascended-Ancestor ending
+> (task 2.7) fixes the dead zone in a way that fits the pillars.
 
-| # | Task | Phase | Needs | Done when |
-|---|---|---|---|---|
-| 2.1 | **Shared generators + `powerScore()`**: extract root/origin/constitution/alignment rolls and one power formula into reusable engine functions | 28A/28J prep | — | Player creation uses them; sim numbers unchanged |
-| 2.2 | Birth Origin: regions, family types, special constitutions | 12 | 2.1 | Regions become the world map for M3 |
-| 2.3 | Alignment meter, tiers, shift sources, gating table | 13 | 2.1 | Choice events shift alignment; gates enforced |
-| 2.4 | Body Constitution & tempering | 14 | 2.2 | Parallel track, one tempering at a time |
-| 2.5 | Dao Paths | 7A | 2.3 | Path chosen at Foundation Building |
-| 2.6 | Heavenly Tribulation (+ wire it as a 23A health-damage source) | 7C | — | Tribulation animation passes Asset Pipeline; bot faces it |
-
-### M3 — The Living World (foundation for M4–M6)
+### M2 — The Life Loop (lifespan, heirs, meta progression)
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
-| 3.1 | `docs/systems/living-world.md` + data files (names, personalities, population targets) | 28 | M2 | Doc reviewed with user before code |
-| 3.2 | Person record + world store + **per-slot world save file** (IPC on both platforms) + migration of 5A disciples / `SECTS` / rival pools | 28A, 28G | 3.1 | Old saves load with a generated world; save ≤ budget |
-| 3.3 | Light sim step (aging, progress, lifespan death, NPC Ascension) + **starting cohort** + pre-existing population | 28B–C, 28H | 3.2 | Cohort grows alongside the player in sim |
-| 3.4 | Heavy sim: utility AI, activities, NPC sects rise/split/war (15B logic) | 28D | 3.3 | NPC sects form without the player |
-| 3.5 | Tier promotion/demotion, **familiarity, known-first casting, new-name throttle** | 28B | 3.4 | Distinct-names-per-day metric within target |
-| 3.6 | **Replacement controller** (births, awakening waves, wanderers, hidden masters, succession) + Chronicle | 28H | 3.3 | Band populations flat over 500h sim, no extinction/explosion |
-| 3.7 | World tab: person inspector, Known People (★ pins), Chronicle, clickable names in the log | 28F | 3.2 | Fits 300 px overlay + iOS |
-| 3.8 | **Heavenly Rankings**: Heaven Ranking + Rising Dragon Ranking (≤ 30 days) + **Your Class board**, daily publication event | 28J | 3.3, 2.1 | Player row always visible; Class board keeps fallen/ascended; sim reports player rank on all three |
-| 3.9 | **Encounters** on expeditions + sect missions, stance setting, choice cards | 28I | 3.4, 3.5 | Bot has a stance; encounters/h by type in report |
-| 3.10 | Memory & reputation + 15C direct interactions (gift, duel, mentor, recruit…) | 28E, 15C | 3.9 | Memories change NPC behavior toward the player |
-| 3.11 | Perf pass: Heavy tick ≤ 2 ms, batched Light step, capped offline catch-up | 28B | all M3 | Sim perf section within budget on desktop; spot-check iOS build |
+| 2.1 | `docs/systems/life-loop.md`: game clock, lifespan table, heir flow, Ancestral Hall unlocks, pacing targets. **Review with the user before code** | 30, 31 | — | User signs off on lifespan numbers + the legacy list |
+| 2.2 | **Shared generators + `powerScore()` + minimal person record** (the schema 28A later extends): root, personality, name, stage, age | 28A/28J prep | 2.1 | Player creation uses them; sim numbers unchanged |
+| 2.3 | Game clock + **lifespan (寿元)**: age passes only while open, per-realm lifespan, old-age warning (seclusion scene), death by old age | 30 | 2.2 | Sim metrics: life length, deaths by cause; age never advances in offline catch-up (invariant) |
+| 2.4 | **Pacing compression**: retune the realm caps/costs so a casual mortal life is 10–20h. Rewrite `PACING_TARGETS_MIN` | 30 | 2.3 | `npm run sim`: casual life median within 10–20h, active ≥ ~5h, afk not trivial (check offline Qi vs no aging) |
+| 2.5 | **Marriage & children (lite)**: a proposal choice event from Foundation Building, spouse = person record, children born in game years, partner term in bloodline growth | 16 lite, 23 family hooks | 2.3 | Children exist before the typical death; family `carry 1.0` path works in sim |
+| 2.6 | **Heir selection at death** (child / new soul), inherited roots + bloodline, a death → hall → heir screen flow | 18C | 2.5 | Generations continue in one slot; sim runs span generations |
+| 2.7 | **Ancestral Hall + Clan Legacies**: family tree view, Ancestral Merit earned per life, unlocks (heirlooms, family manual, clan legacies), **ancestral catch-up** (realms below the family best go faster). **Ascended Ancestor** ending for a successful Ascension. Cuts Phase 8's Dao Seeds | 31, 8, 18B | 2.6 | Gen 2+ reaches the family best faster; the sim's post-Ascension dead zone is gone; bot spends Merit |
+| 2.8 | Tuning pass: generations to first Ascension ~3–5, meta progression feels meaningful, Merit sinks | 30, 31 | 2.7 | `npm run sim` 500h+ horizon: first Ascension ≈ 40–80h casual |
 
-### M4 — Deep Sect Management
+### M3 — Character foundation (the rolls every generation and NPCs reuse)
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
-| 4.1 | Offices + personality fit | 27A | M3 | Bot appoints offices |
-| 4.2 | Recruiter + Recruitment Policy filters | 27B | 4.1 | Candidates match policy; strictness trades volume for quality |
-| 4.3 | Manual recruitment methods + **Sect Tier** candidate-quality table | 27C | 4.2 | Tier visibly changes candidate mix |
-| 4.4 | Disciple lifecycle: loyalty, ranks, defection, sect policies, tournaments (cohort encounters) | 27D | 4.3 | Defections/succession appear in Chronicle |
-| 4.5 | Sect-war upgrade: wars against real NPC sects with named champions (replaces rival name pools) | 5B/5C + 28D | 4.4 | Old war invariants still hold |
+| 3.1 | Birth Origin: regions, family types, special constitutions. An heir's origin comes from the clan | 12 | 2.2, 2.6 | Regions become the world map for M4 |
+| 3.2 | Alignment meter, tiers, shift sources, gating table | 13 | 2.2 | Choice events shift alignment; gates enforced |
+| 3.3 | Body Constitution & tempering | 14 | 3.1 | Parallel track, one tempering at a time |
+| 3.4 | Dao Paths | 7A | 3.2 | Path chosen at Foundation Building |
+| 3.5 | Heavenly Tribulation (+ wire it as a 23A health-damage source) | 7C | — | Tribulation animation passes Asset Pipeline; bot faces it |
 
-### M5 — Family & Lineage
-
-| # | Task | Phase | Needs | Done when |
-|---|---|---|---|---|
-| 5.1 | Courtship & marriage (spouse is a person) | 16A–B | M3 | — |
-| 5.2 | Children + 23 family hooks (reincarnate into child, partner growth term) | 16C, 23 | 5.1 | Family carry = 1.0 path works in sim |
-| 5.3 | Cross-slot lineage record, legacy passives, heir selection (IPC on both platforms) | 18A–C | 5.2 | — |
-| 5.4 | **Reconcile Phase 8** (Dao Seeds / Ascension Hall / Sect Legacy) with 23's reincarnation — decide keep/cut with the user | 8 | 5.3 | One coherent "after death" flow |
-| 5.5 | Family technique + ancestral visions | 18D–E | 5.3 | — |
-
-### M6 — The Immortal Era
+### M4 — The Living World (foundation for M5–M7)
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
-| 6.1 | Immortal realm ladder + sprites (Asset Pipeline) + ascended-NPC population you meet again | 23D, 28C | M3 | Dead zone gone; add realms to `PACING_TARGETS_MIN` |
-| 6.2 | Immortal Essence, **Path Mastery + Point of No Return**, Fall / Redemption | 24A | 6.1, 2.3 | Lock at mastery 60 with warning at 45 |
-| 6.3 | Devourer (impurity, corruption, heart-demon rampage) | 24C | 6.2 | Per-path bot policy |
-| 6.4 | Celestial Deity (believers, faith, blessings, returns, saints, prayers) | 24D | 6.2 | — |
-| 6.5 | Tyrant (capture, fear/resentment, assignments, revolts, crusades) | 24B | 6.2 | — |
-| 6.6 | Heaven's Executioner (bounty board, investigate, merit) | 24E | 6.3 | — |
-| 6.7 | Immortal Island: tiers, plot grid, core ~10 buildings | 26A–B | 6.2 | — |
-| 6.8 | Island residents, offices at scale, Lower Sect link, **ascension petitions** | 26C, 26E–F | 6.7, M4 | Ascending disciples petition |
-| 6.9 | Remaining ~20 buildings + island wars / crusades / rival deities | 26B, 26D | 6.8 | — |
-| 6.10 | Doctrine: tenets, spread, schisms, scriptures | 25 | 6.8 | — |
-| 6.11 | Secret Arts (boss stand-in first; family library) | 23E | 5.3 | — |
-| 6.12 | Immortal Ranking (仙榜) | 28J | 6.1 | — |
+| 4.1 | `docs/systems/living-world.md` + data files (names, personalities, population targets) | 28 | M3 | Doc reviewed with user before code |
+| 4.2 | Extend the 2.2 person record + world store + **per-slot world save file** (IPC on both platforms) + migration of 5A disciples / `SECTS` / rival pools / M2 spouses & children | 28A, 28G | 4.1 | Old saves load with a generated world; save ≤ budget |
+| 4.3 | Light sim step (aging on game time, progress, lifespan death, NPC Ascension) + **starting cohort** + pre-existing population | 28B–C, 28H | 4.2 | Cohort grows alongside the player in sim |
+| 4.4 | Heavy sim: utility AI, activities, NPC sects rise/split/war (15B logic) | 28D | 4.3 | NPC sects form without the player |
+| 4.5 | Tier promotion/demotion, **familiarity, known-first casting, new-name throttle** | 28B | 4.4 | Distinct-names-per-open-hour metric within target |
+| 4.6 | **Replacement controller** (births, awakening waves, wanderers, hidden masters, succession) + Chronicle | 28H | 4.3 | Band populations flat over 500h sim, no extinction/explosion |
+| 4.7 | World tab: person inspector, Known People (★ pins), Chronicle, clickable names in the log | 28F | 4.2 | Fits 300 px overlay + iOS |
+| 4.8 | **Heavenly Rankings** (in-world, not an online leaderboard): Heaven Ranking + Rising Dragon (young cultivators, by game-time age) + **Your Class board**, published each game year | 28J | 4.3, 2.2 | Player row always visible; Class board keeps fallen/ascended; your heirs appear on it |
+| 4.9 | **Encounters** on expeditions + sect missions, stance setting, choice cards | 28I | 4.4, 4.5 | Bot has a stance; encounters/h by type in report |
+| 4.10 | Memory & reputation + 15C direct interactions (gift, duel, mentor, recruit…). Grudges and debts can pass to heirs | 28E, 15C | 4.9 | Memories change NPC behavior toward the player |
+| 4.11 | Perf pass: Heavy tick ≤ 2 ms, batched Light step, capped offline catch-up | 28B | all M4 | Sim perf section within budget on desktop; spot-check iOS build |
 
-### M7 — World flavor & polish
+### M5 — Deep Sect Management
+
+| # | Task | Phase | Needs | Done when |
+|---|---|---|---|---|
+| 5.1 | Offices + personality fit | 27A | M4 | Bot appoints offices |
+| 5.2 | Recruiter + Recruitment Policy filters | 27B | 5.1 | Candidates match policy; strictness trades volume for quality |
+| 5.3 | Manual recruitment methods + **Sect Tier** candidate-quality table | 27C | 5.2 | Tier visibly changes candidate mix |
+| 5.4 | Disciple lifecycle: loyalty, ranks, defection, sect policies, tournaments (cohort encounters). **Clan sect succession**: your heir inherits the sect | 27D, 31 | 5.3 | Defections/succession appear in Chronicle |
+| 5.5 | Sect-war upgrade: wars against real NPC sects with named champions (replaces rival name pools). Standing orders still apply | 5B/5C + 28D + 32 | 5.4 | Old war invariants still hold |
+
+### M6 — Family depth (upgrades M2's lite family to living-world persons)
+
+| # | Task | Phase | Needs | Done when |
+|---|---|---|---|---|
+| 6.1 | Courtship with living-world persons (relationship, proposals, rejection), with the spouse as a full person | 16A–B | M4, 2.5 | M2 lite marriages migrate cleanly |
+| 6.2 | Children as world persons: they grow, cultivate, join sects, and can become rivals or allies. Adopted heirs, sworn siblings | 16C | 6.1 | Heirs have a history when you take them over |
+| 6.3 | Family Technique + Ancestral Visions | 18D–E | 2.7 | — |
+| 6.4 | Cross-slot **Hall of the Fallen** (tombstones of lines that ended) | 18A, 20A | 2.7 | IPC on both platforms (Rule 7) |
+
+### M7 — The Immortal Era (where long play belongs)
+
+| # | Task | Phase | Needs | Done when |
+|---|---|---|---|---|
+| 7.1 | Immortal realm ladder + sprites (Asset Pipeline) + ascended-NPC population you meet again. An Ascended Ancestor (2.7) becomes playable; resolve Phase 23 open Q2 (how the mortal line continues beside it) first | 23D, 28C | M4, 2.7 | Immortal era pacing in sim; the mortal line still works |
+| 7.2 | Immortal Essence, **Path Mastery + Point of No Return**, Fall / Redemption | 24A | 7.1, 3.2 | Lock at mastery 60 with warning at 45 |
+| 7.3 | Devourer (impurity, corruption, heart-demon rampage) | 24C | 7.2 | Per-path bot policy |
+| 7.4 | Celestial Deity (believers, faith, blessings, returns, saints, prayers) | 24D | 7.2 | — |
+| 7.5 | Tyrant (capture, fear/resentment, assignments, revolts, crusades) | 24B | 7.2 | — |
+| 7.6 | Heaven's Executioner (bounty board, investigate, merit) | 24E | 7.3 | — |
+| 7.7 | Immortal Island: tiers, plot grid, core ~10 buildings | 26A–B | 7.2 | — |
+| 7.8 | Island residents, offices at scale, Lower Sect link, **ascension petitions** (including your own descendants) | 26C, 26E–F | 7.7, M5 | Ascending disciples petition |
+| 7.9 | Remaining ~20 buildings + island wars / crusades / rival deities | 26B, 26D | 7.8 | — |
+| 7.10 | Doctrine: tenets, spread, schisms, scriptures | 25 | 7.8 | — |
+| 7.11 | Secret Arts (boss stand-in first; family library passes Arts to heirs) | 23E | 2.7 | — |
+| 7.12 | Immortal Ranking (仙榜) | 28J | 7.1 | — |
+
+### M8 — World flavor & polish
 
 | # | Task | Phase | Needs |
 |---|---|---|---|
-| 7.1 | World Epochs & Spiritual Tides (they affect NPCs too) | 19 | M3 |
-| 7.2 | Secret Realm Dungeons (+ NPC parties as encounters) | 17 | 3.9 |
-| 7.3 | Animation & visual overhaul | 6A–D | — |
-| 7.4 | Cosmetics: titles, spirit pet, cultivation cave | 10 | — |
-| 7.5 | Heaven's Will, Scripture Lore | 11B–C | — |
-| 7.6 | Permadeath + challenge modes | 20A–B | 5.3 |
-| 7.7 | Time-of-day + seasonal bonuses | 9C–D | — |
+| 8.1 | World Epochs & Spiritual Tides on **game time**. An epoch shifts between generations ("the age your heir is born into") | 19 | M4, 2.3 |
+| 8.2 | Secret Realm Dungeons (+ NPC parties as encounters) | 17 | 4.9 |
+| 8.3 | Animation & visual overhaul | 6A–D | — |
+| 8.4 | Cosmetics: titles, spirit pet, cultivation cave | 10 | — |
+| 8.5 | Heaven's Will, Scripture Lore | 11B–C | — |
+| 8.6 | Permadeath + challenge modes (per clan, chosen at founding) | 20A–B | 2.7 |
+| 8.7 | Day/night + seasonal **canvas ambience** from the game clock or local time: cosmetic only, no bonuses | 9C–D | 8.3 |
 
 ---
 
 # M0 — Built (archive)
 
-> Finished phases, kept for reference. Their live docs are in `docs/systems/`. 23A–C are also built; see the Phase 23 section under M6.
+> Finished phases, kept for reference. Their live docs are in `docs/systems/`. 23A–C are also built; see the Phase 23 section under M7.
 
 ---
 
@@ -428,7 +470,7 @@ Alliance system: ally with other sects for defensive help.
 
 # M1 — Quality of life & charm
 
-> Roadmap tasks 1.1–1.7. The Phase 20 section also holds 20A–B (permadeath, challenge modes); those are built in M7 (task 7.6), and only 20C is M1.
+> Roadmap tasks 1.1–1.7. The Phase 20 section also holds 20A–B (permadeath, challenge modes); those are built in M8 (task 8.6), and only 20C is M1. Phase 32 (War Standing Orders) follows Phase 22.
 
 ---
 
@@ -532,9 +574,9 @@ dying, all new characters on that install gain +5 starting Spirit Stones. Displa
 
 | Mode | Name | Restriction | Reward on Ascension |
 |------|------|-------------|---------------------|
-| Starved Root (枯根) | Root always Mixed; cannot reroll; BT chance cap 0.60 | +1 Dao Seed bonus; "Starved Root Ascendant" title |
+| Starved Root (枯根) | Root always Mixed; cannot reroll; BT chance cap 0.60 | Ancestral Merit ×1.5 for this life; "Starved Root Ascendant" title |
 | Hermit Path (隐士道) | Cannot join any existing sect (can still found own); no NPC ally tier above Acquaintance | Hermit-exclusive techniques unlock; baseline Qi/s +20% |
-| One With Heaven (天人合一) | Tribulations have +1 extra wave; BT failures deal −30 Integrity; time-of-day bonuses disabled | "Heaven's Chosen" title; Dao Seed count ×1.5 on reincarnation |
+| One With Heaven (天人合一) | Tribulations have +1 extra wave; BT failures deal −30 Integrity | "Heaven's Chosen" title; Ancestral Merit ×1.5 for this life (Dao Seeds cut, Phase 31) |
 | Hungry Ghost (饿鬼道) | Qi cap is fixed at the mortal value for first 3 realms — techniques are the only cap expansion | Unique "Ghost Ascendant" title; breakthrough Qi cost refunded on success |
 
 Challenge mode badge shown on the character select slot card next to the character name.
@@ -582,6 +624,11 @@ settings: {
 - Right-click menu: "Wei Longshan — Qi Condensation L3", "Open", "Quit"
 
 ### 9B — Desktop Notifications
+
+> **Changed 2026-09-25 (pillars):** opt-in, with a per-type toggle in ⚙, and nothing in the game depends on them. War decisions use
+> standing orders (Phase 32), so a war notification is news, not a summons. The "Realm Demotion (urgent — user
+> should log in)" framing is dropped. Add "a life has ended" as a type (only possible while open, Phase 30).
+
 Push notifications (Windows/Mac native) for:
 - Breakthrough ready (Qi at 90%+ of cap)
 - Expedition returned
@@ -590,6 +637,11 @@ Push notifications (Windows/Mac native) for:
 - Beast tamed
 
 ### 9C — Time-of-Day Bonuses
+
+> **Changed 2026-09-25 (pillars):** **no bonuses.** Real clock bonuses reward checking in at set hours (pillar 4). 9C/9D survive only as
+> cosmetic canvas ambience (night sky, dawn light, seasonal particles), driven by the game clock or local time,
+> in M8 task 8.7. The tables below are kept only as mood references.
+
 Real-world local time affects cultivation:
 | Time | Effect |
 |------|--------|
@@ -620,7 +672,7 @@ New tab "Pack" (袋) added between Craft and Sect in the tab row.
 ```
 ┌──────────────────────────────┐
 │ 💰 Spirit Stones: 1,240      │  ← always at top, large
-│ 💎 Void Crystals: 3          │  ← secondary hard currency
+│ 💎 Void Crystals: 3          │  ← rare material, shown for convenience
 ├──────────────────────────────┤
 │ [ All ] [ Mats ] [ Pills ]   │  ← filter tabs
 │ [ Equip ] [ Rare ] [ Keys ]  │
@@ -636,7 +688,7 @@ New tab "Pack" (袋) added between Craft and Sect in the tab row.
 
 **Currency row** (always visible, not filterable):
 - Spirit Stones — the main soft currency; show with `,` formatting and a ± delta indicator that fades after 3s when it changes.
-- Void Crystals — hard currency for founding sects and late recipes; shown below Stones.
+- Void Crystals — a rare late-game material (founding sects, late recipes), shown below Stones. It is *not* a premium currency (pillar 6).
 
 **Item categories (filter tabs):**
 | Tab | Shows |
@@ -748,9 +800,207 @@ This gives mid-game players a concrete automation roadmap to look forward to.
 
 ---
 
-# M2 — Character foundation
+## Phase 32 — War Standing Orders (军令) — *pillar 4: never punish absence*
 
-> Roadmap tasks 2.1–2.6. Phase 6E (layout modes, optional task 1.6) lives in the Phase 6 section under M7.
+> **Added 2026-09-25 (session 12).** Today a member-war call is a 2h window and an own-sect war is a 15-min window.
+> Wars that resolve while you're away are "unseen": no penalty, but no reward either, so absent players miss
+> out on the war sink. That's check-in pressure. This phase replaces those windows with orders you set in
+> advance. The existing state machine (`tickSectWar`, `docs/systems/sect-war.md`) stays; only the commitment
+> step changes.
+
+**Standing orders** (Sect tab, a per-slot setting that applies to every future war):
+
+| Side | Order | Options |
+|---|---|---|
+| Member (5C) | Answer calls | Always / Only defensive wars / Stay out |
+| Member | War chest | Donate up to N stones per war (0 = off) |
+| Member | Lend beast | Never / Strongest idle beast |
+| Own sect (5B) | Reinforce | Never / If affordable and it keeps ≥ N stones banked |
+| Own sect | Request ally | Never / Cheapest available / Best available |
+
+- The orders are applied **at the moment each phase opens**, the same in live play and in offline catch-up
+  (`tickSectWar(false)`). Resolution then gives the normal rewards/penalties whether you watched or not.
+  The `seen` flag becomes presentation-only (log wording).
+- **Being present adds optional choices, never necessary ones.** For example, you can override the order for this
+  war, or take a flavor choice card ("Lead the vanguard yourself: small extra contribution, small health risk").
+- **"Stay out"** is an explicit choice, so it keeps the small ignore cost (karma/contribution). It's never
+  applied to a player who simply wasn't there, because the default order is "Always".
+- Defaults: Answer = Always, chest = 0, lend beast = Never, Reinforce = Never, Ally = Never. New players are
+  never charged stones they didn't agree to.
+- Sim: retire the "wars resolving unseen" and "member wars ignored" flags. Add a check that afk/casual war W/L and
+  contribution stay within ~10% of the active profile with the same orders. Teach the bot to set orders.
+- Notifications (9B) may *announce* a war, but they're opt-in and nothing depends on them.
+
+---
+
+# M2 — The Life Loop
+
+> Roadmap tasks 2.1–2.8. **Added 2026-09-25 (session 12)** after the user set the design pillars: a mortal life is
+> a ~10–20h run, death hands the game to an heir, and the clan grows through meta progression. This milestone
+> contains Phase 30 (lifespan + game time), Phase 31 (Ancestral Hall + clan legacies, which absorbs Phase 8 and 18B),
+> and the lite versions of 16 (marriage/children) and 18C (heir selection). Write `docs/systems/life-loop.md` first
+> (task 2.1) and review the numbers with the user before any code.
+
+---
+
+## Phase 30 — Lifespan & Game Time (寿元 · 岁月)
+
+### 30A — The game clock
+
+- **Game time passes only while the game is open** (user decision 2026-09-25). `tick(dt)` advances it in live
+  play. `initSlot()` offline catch-up **never** does. Offline time still gives Qi/resources (8h cap as today).
+- Starting rate: **1 game year per minute of open play** (`GAME_YEARS_PER_OPEN_HOUR = 60`, in a new data file
+  `assets/data/lifespan.js`). This is tuned in task 2.4.
+- State: `s.age` (years, float), `s.lifespan` (years), `s.gameYear` (clan calendar, for the Chronicle and Hall
+  dates: "Year 212 of the Lin Clan").
+- Display: Stats shows `Age 47 / 120`, and the age bar turns amber in the last 10%.
+- All former "real day" timers in the plan (family, rankings, epochs) are expressed in game years.
+
+### 30B — Lifespan by realm
+
+Lifespan is set by the highest realm reached (classic xianxia: breaking through buys you time). Starting values,
+to be tuned together with pacing in 2.4:
+
+| Realm reached | Lifespan (years) | ≈ open hours at 1 yr/min |
+|---|---|---|
+| Mortal | 70 | 1.2h |
+| Qi Condensation | 120 | 2h |
+| Foundation Building | 200 | 3.3h |
+| Core Formation | 400 | 6.7h |
+| Nascent Soul | 800 | 13h |
+| Spirit Severing | 1,200 | 20h |
+
+- A life starts at age 16 (awakening). A character who keeps breaking through naturally lands in the 10–20h
+  band. One who stalls in a realm dies of old age there. That's the natural end of a run, and it's what gives
+  stalling a cost without a hard fail screen.
+- **Lifespan extenders** (small, diminishing): longevity pills (a new recipe, once per realm), 14's constitution
+  (M3), 23E's Tortoise Breath Art, and a clan legacy (31). Each source is capped, so a life can't become endless.
+
+### 30C — Twilight and the end of a life
+
+- **Twilight years** (last 10% of lifespan): a log + banter trigger, and the age bar pulses. The player can choose:
+  - **Final Seclusion (死关):** for the rest of the life, BT chance +10% and Qi/s ×1.5, but no expeditions/missions.
+    It's a last push for one more realm.
+  - **Pass the Mantle (传位):** end the life now, peacefully. It counts as a full life for bloodline growth and Merit
+    (31). This lets a player who is done with a character move on without waiting.
+- **Death by old age** only ever happens while the game is open (a consequence of 30A), so there's a proper death
+  scene, never a surprise on login.
+- Every way a life ends (old age, health 0, failed tribulation, failed Ascension, Pass the Mantle, successful
+  Ascension) goes through one flow: **death/ending scene → Ancestral Hall (Merit, legacies) → heir selection → new life.**
+
+### 30D — Sim
+
+- Metrics: life length (open hours) by cause, age at death, realm at death, lives per 100h, Twilight choice.
+- Invariants: `age` never increases during offline catch-up; `age ≤ lifespan` except inside the death flow;
+  lifespan extenders stay within their caps.
+- Bot policy: take Final Seclusion when the next BT is within reach, otherwise Pass the Mantle.
+- **Afk check:** with no aging offline, the afk profile gets lots of Qi per open hour. If afk lives are trivially
+  easy, lower the offline Qi rate (for example ×0.5), don't make age pass offline.
+
+---
+
+## Phase 31 — Ancestral Hall & Clan Legacies (祖祠) — *absorbs Phase 8 and 18B*
+
+### 31A — A save slot is a clan
+
+- At slot creation you name the **clan** (a surname). Migrated saves take the surname from the character's name.
+- Everything the family keeps lives **in the slot save**: Bloodline Quality (already there, 23B), the tree,
+  Merit, legacies. There's **no new cross-slot file**, so no new IPC (Rule 7 stays simple). The cross-slot Hall
+  of the Fallen is optional polish in M6 (task 6.4).
+- Charselect cards show the clan name, generation and current heir.
+
+### 31B — The Ancestral Hall
+
+An overlay (like ⚙) that opens after every life ends, and from a button in Stats at any time.
+- **Family tree:** each generation's name, spouse, highest realm, cause of death, age, titles and a generated
+  epitaph line ("Lin Qiu, who broke Core Formation at 212 and died laughing at the heavens.").
+- **Clan records:** best realm reached, firsts, total generations, Ascended Ancestors.
+- **Bloodline Quality** is revealed here after the clan's first Ascension attempt (23B rule unchanged).
+
+### 31C — Ancestral Merit (祖荫)
+
+Earned once, at the end of each life:
+- **Stage term:** `MERIT_STAGE × (maxStage/22)²`, the same shape as bloodline growth, so early deaths give little.
+- **Clan firsts (the big source):** the first time anyone in the clan reaches a realm, founds a sect, tames a beast
+  tier, wins a war, attempts or survives Ascension… Each first pays once per clan. That rewards trying new
+  things over replaying the same life.
+- **Deeds:** smaller repeatable amounts (wars won, rare drops, disciples trained), capped per life.
+
+### 31D — Clan Legacies (spent in the Hall between lives)
+
+Mostly **unlocks and options** (pillar 3). Starting list, to be finalized with the user in task 2.1:
+
+| Group | Legacy | Effect |
+|---|---|---|
+| Heritage | Family Manual | The heir starts knowing one technique of the clan's choice (tier grows with levels) |
+| Heritage | Heirloom | One equipped item passes to the heir (more slots with levels) |
+| Heritage | Ancestral Stipend | Starting spirit stones |
+| Heritage | Beast Lineage | The offspring of your strongest tamed beast joins the heir |
+| Heritage | Clan Estate | A small herb garden that yields materials over time |
+| Knowledge | Clan Recipe Book | Recipes the clan has crafted stay known |
+| Knowledge | Sect Continuity | Your founded sect survives. The heir starts as its Young Master (full version in 5.4) |
+| Knowledge | New origins / challenge modes | Unlock birth origins (M3) and challenge modes (M8) for future heirs |
+| Blood | Longevity Blood | +lifespan % (capped) |
+| Blood | Refined Meridians | Small Qi/s % (capped, deliberately modest) |
+
+### 31E — Ancestral catch-up (祖荫加持)
+
+Realms **below the clan's best-reached stage** cultivate much faster (starting value: Qi/s ×2.5 and BT chance +10%
+below the clan best, normal at/above it). Generation 5 blows through the realms their great-grandmother already
+walked and spends the life on new ground. This is what keeps short lives from turning into a grind.
+
+### 31F — The Ascended Ancestor ending (fixes the post-Ascension dead zone)
+
+- A **successful Ascension** ends the mortal life with its own scene. The character joins the Hall as an
+  **Ascended Ancestor**: a large Merit award, the permanent clan blessing "Watched Over by an Immortal" (small,
+  capped), and play continues with the heir.
+- M7 (23D) makes Ascended Ancestors **playable** in the Immortal realms. How that sits beside the continuing
+  mortal line is Phase 23 open question 2 (the user's lean: keep playing the Immortal, who watches over the heir).
+- Until then, the `ascension` stage stub is no longer reachable as a place to idle.
+
+### 31G — What this replaces
+
+- **Phase 8 (Dao Seeds, Ascension Hall, Sect Legacy):** Dao Seeds are **cut**; they were pure multipliers. The
+  Ascension Hall becomes the Ancestral Hall. Sect Legacy becomes the Sect Continuity legacy.
+- **Phase 18B (Legacy Passives):** folded into Merit + Legacies (achievement → currency → choice, rather than
+  automatic stacking bonuses). The 18B rows are design input for the legacy list.
+
+### 31H — State, files, sim
+
+- State: `s.clan = { name, merit, legacies: {id: level}, tree: [ancestor summary], bestStageIndex, firsts: {},
+  ascendedAncestors }`. `generation`/`bloodlineQuality` stay where 23B put them. Add `_ensurePhase30Fields()` /
+  `_ensurePhase31Fields()` (Rule 5). Existing saves become generation-N clans with a one-ancestor tree.
+- New data: `assets/data/lifespan.js`, `assets/data/clan-legacies.js`. New logic: `renderer/game/life-loop.js`
+  (death flow + Hall UI glue, DOM-free where the sim needs it).
+- Sim: runs continue across generations (500h+ horizon). Metrics: Merit per life, legacies bought, time to reach the
+  clan best per generation (should fall), generations to first Ascension. The bot needs a Merit spending policy.
+  **Fix the known gotcha** in `docs/systems/bloodline.md`: dead-zone and stage-wall metrics must become
+  generation-aware.
+
+---
+
+## M2 family (lite) — Phase 16 lite + 18C
+
+The minimum family needed for heirs, built on the 2.2 person record so M6 upgrades it rather than replacing it.
+
+- **Marriage:** from Foundation Building, a rare **proposal choice event** offers 1–3 generated suitors (person
+  records: name, root, stage, personality). Accept, decline, or wait. A Solitary Lineage Art (23E) or adoption
+  covers players who never marry.
+- **Spouse:** cultivates on a simple curve. Their highest stage feeds the 23B partner term. Banter/log flavor
+  lines. They can die (and remarry becomes possible after a mourning period in game years).
+- **Children:** born every ~15–30 game years while married (15–30 min of open play), up to a cap. Roots blend
+  from both parents (16C rule). They age on the game clock and reach adulthood at 16.
+- **Heir selection (18C):** at the end of a life, pick any adult child (full `carry`) or a new soul (weak carry).
+  With no adult child, the options are new soul or a **distant cousin** (half carry, always available). That way
+  one bad life never wipes out the clan's progress.
+- The heir starts at 16 as a Mortal, with inherited root, clan legacies and ancestral catch-up. The spouse and the
+  other children stay as person records in the tree (M4 turns them into living-world persons).
+
+---
+
+# M3 — Character foundation
+
+> Roadmap tasks 3.1–3.5. Every new generation rolls these again, so they make each life start differently. Phase 6E (layout modes, optional task 1.7) lives in the Phase 6 section under M8.
 
 ---
 
@@ -803,7 +1053,7 @@ origin: {
 
 | Constitution | Chinese | Probability | Effect |
 |--------------|---------|-------------|--------|
-| Phoenix Body (凤凰之体) | 1 / 50 | Fire Qi/s ×2; auto-survive one BT failure per day (resets midnight) | |
+| Phoenix Body (凤凰之体) | 1 / 50 | Fire Qi/s ×2; auto-survive one BT failure per game year (Phase 30 clock; was "per day, resets midnight") | |
 | Jade Dragon Body (玉龙之体) | 1 / 80 | Qi cap ×1.5; each realm transition adds +10% cap permanently | |
 | Void Devourer (虚空吞噬体) | 1 / 100 | Expedition enemies drop Qi directly (bonus Qi equal to 5× enemy tier) | |
 | Undying Flesh (不死之躯) | 1 / 200 | Realm Demotion impossible; Realm Integrity never drops below 10 | |
@@ -940,7 +1190,7 @@ All tempering runs in real-time; only one can be active at a time.
 | Icy Waterfall Meditation (冰瀑禅修) | Foundation L1 | 12 hr | 10 Ice Crystals | 4000 | Water root Qi/s ×1.4 for 48h |
 | Volcanic Immersion (火山淬体) | Foundation L2 | 12 hr | 10 Fire Cores | 4000 | Fire root Qi/s ×1.4 for 48h; unlocks fire-aligned events |
 | Thunder Peak Endurance (雷峰忍耐) | Nascent Soul L1 | 24 hr | 30 Thunder Stones | 15000 | BT chance +5% permanently after each completion |
-| Void Pressure Chamber (虚空压力) | Spirit Severing L1 | 48 hr | 20 Void Crystals + 5 Chaos Essence | 60000 | Grants +1 Dao Seed on completion; only completable once |
+| Void Pressure Chamber (虚空压力) | Spirit Severing L1 | 48 hr | 20 Void Crystals + 5 Chaos Essence | 60000 | Grants a clan first (Ancestral Merit, Phase 31) on completion; only completable once per life (Dao Seeds cut) |
 
 **Tier 4 — Tribulation Tempering** *(post-Tribulation only)*
 
@@ -986,7 +1236,7 @@ This is a permanent choice per save (reroll costs a Heavenly Root Elixir).
 | Flame Dao (炎道) | Qi/s ×1.4 | Heart Flame Sutra (enhanced) |
 | Void Dao (虚道) | Hidden locations always accessible | Phase Step: skip one failed BT per hour |
 | Life Dao (生道) | Realm Integrity regen ×3, herb drops ×2 | Undying Roots: never demote below current realm |
-| Heaven Dao (天道) | All bonuses ×1.2, BT always ≥ 30% | Heavenly Will: 1/day auto-advance layer |
+| Heaven Dao (天道) | All bonuses ×1.2, BT always ≥ 30% | Heavenly Will: once per realm, auto-advance one layer (was "1/day", converted to fit pillar 4) |
 | Devil Dao (魔道) | Qi/s ×2.5, BT chance −15%, Karma slowly drains | Demonic Possession: temporarily ×5 Qi/s |
 
 Devil Dao adds the "Qi Deviation" event pool (higher damage negative events).
@@ -1011,9 +1261,9 @@ This is a major event — the most dramatic animation in the game.
 
 ---
 
-# M3 — The Living World
+# M4 — The Living World
 
-> Roadmap tasks 3.1–3.11. Phase 28 is the build spec. Phases 15 and 11 follow as superseded / partly-folded design input.
+> Roadmap tasks 4.1–4.11. Phase 28 is the build spec. Phases 15 and 11 follow as superseded / partly-folded design input.
 
 ---
 
@@ -1063,7 +1313,7 @@ rise, fall, die or ascend alongside you.
 | **Background** | Unnamed regional populations as *statistics* (counts by realm band/alignment) | Aggregate; only feeds 28H replacement + materialization | n/a |
 
 - **Promotion and demotion between tiers is automatic.** A **relevance score** (familiarity + relation strength +
-  rank + role near you) is recomputed daily. It promotes a person to Heavy when you start to care about them and
+  rank + role near you) is recomputed every game year (Phase 30 clock). It promotes a person to Heavy when you start to care about them and
   demotes them to Light when you haven't crossed paths in a while. **Nobody named is ever deleted** while alive.
 - **Cohort reservation (user, 2026-09-25):** at least **40%** of the Heavy budget (≈ 60–120 slots) is reserved for
   your starting cohort (28H).
@@ -1078,7 +1328,7 @@ rise, fall, die or ascend alongside you.
   - **Known-first casting:** when any system needs "an NPC" (encounter, war champion, prayer, recruit, bounty,
     event text), it picks an **already-named person ~75% of the time**, weighted by familiarity. It rolls a fresh
     one only ~25% of the time.
-  - **New-name throttle:** at most ~5 brand-new named people are introduced per real day in the early game, rising
+  - **New-name throttle:** at most ~5 brand-new named people are introduced per open hour (was "per real day", converted to game time) in the early game, rising
     later, so the player isn't flooded with names they can't track.
 - **Materialize on observation:** when a system needs someone who doesn't exist yet, one is rolled from the
   Background statistics for that region/realm band, and **from then on is permanent**.
@@ -1150,7 +1400,7 @@ rise, fall, die or ascend alongside you.
     from your own region is the old Phase 11A rival.
 - Cohort members start **Heavy** and keep the reserved Heavy share (28B). Those outside it stay at least
   **Light** while alive. They are the core "familiar faces":
-  - The **Rising Dragon Ranking (28J)** is largely them for the first 30 days.
+  - The **Rising Dragon Ranking (28J)** is largely them while they are young (cultivation age ≤ the Rising Dragon limit in game years).
   - The **Your Class board (28J)** tracks them for the rest of your life.
 - **Pre-existing world:** a few hundred established people at varied stages (sect masters, elders, old monsters,
   a few near-Ascension figures) so the **Heaven Ranking** top isn't empty on day one.
@@ -1215,7 +1465,7 @@ Three boards over everyone the world tracks (Heavy + Light persons + the player)
 | Ranking | Who | Metric |
 |---|---|---|
 | **Heaven Ranking (天榜)** — the strongest | Every living person in the mortal world (incl. old monsters) | `powerScore` |
-| **Rising Dragon Ranking (潜龙榜)** — fastest-growing newcomers | Anyone whose *cultivation age* is **≤ 30 real days** (user, 2026-09-25) — your cohort + awakening waves | Growth: progress gained over a trailing window (~3 sim-days), blended with average progress/day since starting |
+| **Rising Dragon Ranking (潜龙榜)** — fastest-growing newcomers | Anyone whose *cultivation age* is **≤ ~60 game years** (was "30 real days", user 2026-09-25, converted to the Phase 30 clock in session 12; each heir is a new newcomer) — your cohort + awakening waves | Growth: progress gained over a trailing window (~3 sim-days), blended with average progress/day since starting |
 | **Your Class (同届榜)** — you vs. the people you started with | Your starting cohort (28H), **alive, fallen and ascended**; never ages out | `powerScore`, with a 7-day ▲▼ movement column |
 
 **Your Class board (user, 2026-09-25)** is a private board, not a public ranking, so you can *always* see how you
@@ -1236,9 +1486,9 @@ compare to your wave, long after Rising Dragon eligibility ends.
   in 5B/17D/28I where sensible.
 - **Updates:**
   - Positions are recomputed hourly.
-  - A daily **"the rankings are published"** event lists notable moves ("Lin Xue rises to #7 on the Rising Dragon
+  - A yearly (game-year) **"the rankings are published"** event lists notable moves ("Lin Xue rises to #7 on the Rising Dragon
     Ranking!").
-  - Aging out of the Rising Dragon Ranking (30 days) moves you to its honor roll.
+  - Aging out of the Rising Dragon Ranking (game-year limit) moves you to its honor roll.
   - After a reincarnation, a new soul is eligible for the Rising Dragon Ranking again: its cultivation age restarts.
 - **Consequences of being ranked:**
   - +fame, which feeds sect tier (27C) and recruiter pulls.
@@ -1259,7 +1509,7 @@ compare to your wave, long after Rising Dragon eligibility ends.
   - Metrics: population per band over time, births/deaths/ascensions per sim-day, cohort survival curve, **player
     rank on all three boards over time** (key fun signals: does a casual player ever crack the Rising Dragon top 10?
     where in the class does each profile land at 50/200/500h?), cohort share of the Heavy tier,
-    encounters/h by type, distinct names seen per day, **tick cost ms**, world save size.
+    encounters/h by type, distinct names seen per open hour, **tick cost ms**, world save size.
   - Invariants: no dead person in an active role or on the Heaven/Rising Dragon boards (the Class board keeps them
     by design), cohort Heavy share ≥ 40% while enough classmates live, Heavy-tier count ≤ budget, each band within its
     controller bounds, no name reused for a new person.
@@ -1390,9 +1640,9 @@ Collecting all 12 grants a unique title and a permanent BT bonus.
 
 ---
 
-# M4 — Deep Sect Management
+# M5 — Deep Sect Management
 
-> Roadmap tasks 4.1–4.5.
+> Roadmap tasks 5.1–5.5.
 
 ---
 
@@ -1491,13 +1741,20 @@ distribution of *every* recruitment source:
 
 ---
 
-# M5 — Family & Lineage
+# M6 — Family depth
 
-> Roadmap tasks 5.1–5.5.
+> Roadmap tasks 6.1–6.4. The **lite** parts of Phases 16 and 18 (marriage via a proposal event, children, heir selection, legacy passives) are built early in **M2** (Phases 30/31 above). This milestone upgrades them to living-world persons. Phase 8 is superseded by 23 + 31.
 
 ---
 
 ## Phase 16 — Marriage & Family
+
+> **Changed 2026-09-25 (pillars):** a **lite** version (proposal event, spouse/children as minimal person records, heir selection)
+> is built in **M2** (see "M2 family (lite)"). This section is the full M6 version on living-world persons. Every
+> "real day/week" timer below is converted to **game years** on the Phase 30 clock (e.g. child every ~15–30
+> years, adult at 16, remarry after a mourning period in years). "Daily event pool" becomes a normal event-pool
+> weight. Timed buffs ("for 7/30 days") become "for N game years".
+
 
 The cultivation path is lonely by necessity — but it does not have to be walked alone.
 
@@ -1577,6 +1834,12 @@ children: [],            // array of child NPC ids (subset of world.npcs)
 ---
 
 ## Phase 18 — Lineage & Heir Inheritance (Family Trees, Legacy Passives)
+
+> **Changed 2026-09-25 (pillars):** the lineage lives **in the slot save** (a slot = a clan, Phase 31A), not in a cross-slot
+> `lineage.json`. **18B Legacy Passives are folded into Phase 31** (Ancestral Merit → Clan Legacies). **18C heir
+> selection is built in M2** (task 2.6, including the "distant cousin" fallback). 18D–E stay in M6. References to
+> "Ascension Hall (Phase 8)" mean the Ancestral Hall (31B).
+
 
 Each reincarnation (Phase 8) adds a generation to a persistent family tree. The sins and
 glories of your ancestors accumulate as passive bonuses — or burdens — on the current cultivator.
@@ -1662,6 +1925,11 @@ lineage: {
 
 ## Phase 8 — Ascension & Reincarnation (New Game+)
 
+> **Changed 2026-09-25 (pillars):** **superseded by Phase 23 + Phase 31.** Dao Seeds are cut (pure multipliers, pillar 3). The Ascension
+> Hall becomes the Ancestral Hall (31B), and Sect Legacy becomes the Sect Continuity legacy (31D). The note below is
+> kept for history.
+
+
 > ⚠ **Superseded in part by Phase 23 (23A–C built 2026-09-25):** Ascension is now a chance-based trial driven by
 > hidden Bloodline Quality (`attemptAscension()` in game-state.js) — success moves to the `ascension` stage stub
 > (Immortal Realms content is 23D, not built yet), failure/death reincarnates as a new soul (no Dao Seeds granted:
@@ -1685,9 +1953,9 @@ Disciples slowly cultivate on their own between sessions.
 
 ---
 
-# M6 — The Immortal Era
+# M7 — The Immortal Era
 
-> Roadmap tasks 6.1–6.12. Phase 23 (A–C built, D–E planned) opens this milestone.
+> Roadmap tasks 7.1–7.12. Phase 23 (A–C built, D–E planned) opens this milestone.
 
 ---
 
@@ -1707,7 +1975,7 @@ Disciples slowly cultivate on their own between sessions.
 > "Family hooks" step below. `npm run sim` (2026-09-25, healthy, 0 violations) shows the mechanic working as
 > designed — most Ascension attempts fail at low Bloodline Quality, driving 2–5 reincarnations per long run
 > — but whether that pacing (often a 30–90h mortal-realm replay per failed attempt) is fun or too punishing
-> is an open tuning question; re-run the sim with `--set` before changing `ASCENSION_BASE_CHANCE`/
+> is an open tuning question — **answered by the pillars (session 12): a life should be 10–20h, see Phase 30 + task 2.4**; re-run the sim with `--set` before changing `ASCENSION_BASE_CHANCE`/
 > `ASCENSION_BQ_COEF`/`BLOODLINE_G_SELF` in `assets/data/bloodline.js`.
 
 ### 23A — Health & Death (生死)
@@ -1723,7 +1991,7 @@ A body can die. Realm Integrity stays what it is (the stability of your *cultiva
   deletes the save line; **Permadeath (20A)** still ends the line with a tombstone.
 - **Early death barely grows the bloodline** — growth scales with the highest stage reached (23B), so dying
   as a Qi Condensation disciple is a restart, not a shortcut.
-- Optional later: **lifespan (寿元)** per realm (classic xianxia: if you don't break through before your
+- ~~Optional later~~ **Now core — Phase 30 (session 12):** **lifespan (寿元)** per realm (classic xianxia: if you don't break through before your
   lifespan runs out, you die of old age). Park until the base health loop feels right in the sim.
 
 ### 23B — Bloodline Quality (血脉品质)
@@ -1780,7 +2048,7 @@ Reaching the peak of Spirit Severing no longer ascends automatically.
 | Reincarnate into your family | An adult child (16C) or a Solitary-Lineage heir (23E) exists | Full (`carry 1.0` + family bonus) |
 | New soul | Always | Weak (`carry ≈ 0.25`) |
 
-What carries over otherwise follows Phase 8 (Dao Seeds, sect legacy, etc.), which will need rebalancing
+What carries over otherwise follows **Phase 31** (Ancestral Merit, Clan Legacies, ancestral catch-up; Dao Seeds cut), which will need rebalancing
 alongside this.
 
 **Immortal Realms (post-Ascension progression)** give the endgame instead of an empty Ascension:
@@ -1793,7 +2061,7 @@ alongside this.
   risk, so dying and reincarnating stays possible at every level.
 - An Immortal can **watch over the family line**: small passive boosts to the current generation. This gives
   a reason to keep the old immortal save meaningful.
-- Pacing target: extend the GAMEDESIGN.md doubling curve (realms = days of idle). Add the new realms to
+- Pacing target: the Immortal era is where long play belongs (pillar 1), so pace it by Immortal Path activity rather than raw idle days. Add the new realms to
   `PACING_TARGETS_MIN` in `scripts/sim/profiles.js` when built.
 
 ### 23E — Secret Arts (秘术)
@@ -1859,10 +2127,10 @@ Suggested sub-phase order:
 **Open questions — resolved 2026-09-25 for 23A–C:**
 1. ✅ Survival chance curve/cap: proposed formula used as-is (base 7% + up to +60% at BQ100, cap 95%) —
    pending a re-tune pass with `npm run sim` (see build note above).
-4. ✅ Lifespan (寿元): parked, not in this pass.
+4. ✅ Lifespan (寿元): parked in 23A–C. **Now Phase 30 (M2), with age passing only while the game is open.**
 
 **Still open — needed before 23D/23E:**
-2. Should successful Immortals also be able to have heirs? Should players keep playing the Immortal while the
+2. *(M2 interim: a successful Ascension becomes an **Ascended Ancestor** and play continues with the heir, Phase 31F.)* Should successful Immortals also be able to have heirs? Should players keep playing the Immortal while the
    heir plays, or switch between them? — user's initial lean (2026-09-25): keep playing the same Immortal
    character, with the Immortal optionally supporting/watching over an heir, rather than switching control.
 3. How long should studying an Art take (hours vs days)? Should Arts be lost on a new-soul reincarnation?
@@ -2128,13 +2396,20 @@ It unlocks at the first Immortal stage and is the long-term "tech tree" of the I
 
 ---
 
-# M7 — World flavor & polish
+# M8 — World flavor & polish
 
-> Roadmap tasks 7.1–7.7.
+> Roadmap tasks 8.1–8.7.
 
 ---
 
 ## Phase 19 — World Epochs & Spiritual Tides (Dynamic Global Modifiers)
+
+> **Changed 2026-09-25 (pillars):** **game time, not the real calendar.** Tides rotate on the Phase 30 clock (e.g. one tide per ~10 game
+> years), and **epochs change between generations**. The heir screen announces "the age your heir is born into",
+> so each life has its own weather, and a long-lived character may see one shift mid-life. Durations below written
+> as "days" read as game-year spans. "Fire daily" becomes "fire often". Offline catch-up notes about epochs are
+> dropped, since game time doesn't pass offline.
+
 
 The cultivation world breathes on grand cycles. A 7-day elemental tide rotates daily.
 World Epochs — longer cataclysmic periods — reshape the strategic landscape for days at a time.
@@ -2416,7 +2691,7 @@ Options earned through gameplay, each gives a small passive bonus:
   (28B familiar-faces rules). Budget targets are Heavy ~150–300 and Light ~1.5–3k, confirmed by the sim when built.
 - ✅ **New systems requested:** starting cohort + natural replacement (28H), encounters on missions/exploration
   (28I), and two rankings, strongest overall + fastest-growing newcomers (28J).
-- ✅ **Rising Dragon limit:** 30 real days. A **Your Class board** always compares you with your starting wave, and
+- ✅ **Rising Dragon limit:** 30 real days → converted to **~60 game years** in session 12 (pillar 5). A **Your Class board** always compares you with your starting wave, and
   a new soul restarts Rising Dragon eligibility (28J).
 - ✅ **Cohort in the Heavy sim:** ≥ 40% of the Heavy budget is reserved for your starting wave, and the cohort was
   raised to ~80–120 (28B/28H).
@@ -2427,7 +2702,7 @@ Options earned through gameplay, each gives a small passive bonus:
 2. **26:** Is plot-grid placement with adjacency the right depth, or should it be a simpler slot list like 5A?
 3. **29:** Is the personality purely random with no reroll, or is there one free reroll at creation? Should it
    ever change during a life (e.g. after a Fall)?
-4. **28C:** NPCs age and die of lifespan (寿元). Should the *player* get a lifespan too (parked in 23A), so the
+4. ✅ *(resolved session 12: yes, Phase 30; age passes only while the game is open)* **28C:** NPCs age and die of lifespan (寿元). Should the *player* get a lifespan too (parked in 23A), so the
    player and the cohort live under the same rule?
 5. **28I:** How often is "often enough" for encounters? The proposed ~15–25% per expedition gets tuned by the
    distinct-names-per-day sim metric.
@@ -2456,7 +2731,7 @@ renderer/
     sect.js             ✅ Phase 4  (renderer/game/sect.js — 5B war logic → renderer/game/sect-war.js)
     dao.js              ← Phase 7
     tribulation.js      ← Phase 7
-    reincarnation.js    ← Phase 8
+    life-loop.js        ← Phase 30/31 (death flow, heir selection, Ancestral Hall; replaces Phase 8 reincarnation.js)
     notifications.js    ← Phase 9
     world-sim.js        ← Phase 28 (replaces planned Phase 15 npc-world.js)
     immortal-path.js    ← Phase 24
@@ -2498,9 +2773,11 @@ assets/
     personalities.js    ← Phase 29
     banter-lines.js     ← Phase 29
     realm-maps.js       ← Phase 17
-    legacy-passives.js  ← Phase 18
+    lifespan.js         ← Phase 30
+    clan-legacies.js    ← Phase 31 (absorbs Phase 18B legacy-passives.js)
     epochs.js           ← Phase 19
     challenge-modes.js  ← Phase 20
+    war-orders          ← Phase 32 (constants go in the existing sect-war.js)
   sprites/
     cultivator-sprites.js  ✅
     enemy-sprites.js        ← Phase 2 (Asset Pipeline)
