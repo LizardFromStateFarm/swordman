@@ -71,7 +71,9 @@ const RANDOM_EVENTS = [
     name: 'Stray Heavenly Lightning',
     apply(s, gs) {
       if (Math.random() < 0.5) {
-        s.qi = Math.min(s.qi + s.derived.qiCap * 0.25, s.derived.qiCap)
+        // Ascension has qiCap = Infinity — surge by 5 min of Qi instead of 25% of an infinite cap
+        const surge = isFinite(s.derived.qiCap) ? s.derived.qiCap * 0.25 : s.derived.qiPerSecond * 300
+        s.qi = Math.min(s.qi + surge, s.derived.qiCap)
         return { text: 'Stray heavenly lightning strikes you! Somehow you absorb it. Qi surges +25%.', type: 'special' }
       } else {
         s.qi *= 0.70
