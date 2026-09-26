@@ -62,6 +62,11 @@ color            — hex string for UI tinting
 4. `s.meditating` is auto-cleared in `_recalc` when `meditationEnds` passes; don't clear it anywhere else
 
 ## Gotchas
+- Stage `qiCap`s from Foundation Building on were tuned with `npm run sim` (2026-09-25) against the
+  GAMEDESIGN.md pacing table, assuming a casual player's typical multipliers (~8× through CF, ~12× NS,
+  ~30–40× SS once disciples kick in). Changing any Qi/s multiplier shifts pacing — re-run the sim.
+- Random-event Qi losses/gains are time-based (`qiPerSecond × N`), never % of qi/qiCap — see
+  `.agents/rules/game-design.md` for why (% losses made long stages impossible to finish).
 - Root multiplier is applied at qps calculation, not at qiCap — Heavenly Root makes you gain faster, not cap more
 - `breakthroughChanceDisplay` includes queued pill bonus and is used only for the button label; `breakthroughChance` is the actual roll input
 - `stageIndex >= CULTIVATION_STAGES.length - 1` guard in `attemptBreakthrough` prevents advancing past ascension

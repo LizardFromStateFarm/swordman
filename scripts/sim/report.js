@@ -1,11 +1,12 @@
 // Turns raw sim runs into a compact markdown report (+ summary object) with auto-generated balance/fun flags.
 // Used by: scripts/sim/run.js. Thresholds live in scripts/sim/profiles.js. See docs/systems/qa-sim.md.
 
-const { PROFILES, THRESHOLDS: T } = require('./profiles')
+const { PROFILES, THRESHOLDS: T, PACING_TARGETS_MIN, PACING_PROFILE } = require('./profiles')
 
 const med = xs => { const a = xs.filter(x => x != null && !isNaN(x)).sort((x, y) => x - y); return a.length ? a[Math.floor((a.length - 1) / 2)] : null }
 const rng = xs => { const a = xs.filter(x => x != null); if (!a.length) return '—'; const lo = Math.min(...a), hi = Math.max(...a), m = med(a); return lo === hi ? f(m) : `${f(m)} (${f(lo)}–${f(hi)})` }
 const f = x => x == null ? '—' : Math.abs(x) >= 1000 ? `${(x / 1000).toFixed(1)}k` : Number.isInteger(x) ? String(x) : x.toFixed(1)
+const fmtMin = m => m == null ? '—' : m < 1 ? `${Math.round(m * 60)}s` : m < 60 ? `${m.toFixed(m < 10 ? 1 : 0)}m` : `${(m / 60).toFixed(1)}h`
 const fmtH = h => h == null ? '—' : h < 1 ? `${Math.round(h * 60)}m` : `${h.toFixed(1)}h`
 
 // Features a well-rounded player should touch; "never used" is a strong design signal.
@@ -92,6 +93,28 @@ function buildReport(runs, args) {
     if (T.unusedFeature && unused.length) flags.push(`${tag} Never used: ${unused.join(', ')}`)
   }
 
+  // ── Pacing vs design targets (per realm: median over seeds of each stage's fill time) ──
+  const stageRealm = i => runs[0].stageRealms?.[i]
+  const pacing = {}   // realm → profile → { med, lo, hi }
+  for (const p of profiles) {
+    const g = group(p, longest), perStage = {}
+    for (const r of g) for (const [i, m] of Object.entries(r.fillMin)) (perStage[i] ||= []).push(m)
+    for (const [i, ms] of Object.entries(perStage)) {
+      const realm = stageRealm(i); if (!PACING_TARGETS_MIN[realm]) continue
+      const x = ((pacing[realm] ||= {})[p] ||= [])
+      x.push(med(ms))
+    }
+  }
+  if (profiles.includes(PACING_PROFILE)) {
+    const off = []
+    for (const [realm, [lo, hi]] of Object.entries(PACING_TARGETS_MIN)) {
+      const xs = pacing[realm]?.[PACING_PROFILE]; if (!xs?.length) continue
+      const m = med(xs)
+      if (m < lo / 2 || m > hi * 2) off.push(`${realm} ${fmtMin(m)} (target ${fmtMin(lo)}–${fmtMin(hi)})`)
+    }
+    if (off.length) flags.unshift(`[${PACING_PROFILE} ${longest}h] Off design pacing (>2× outside GAMEDESIGN band): ${off.join('; ')}`)
+  }
+
   // ── Markdown ─────────────────────────────────────────────────────────────
   const totalWall = runs.reduce((a, r) => a + r.perf.wallMs, 0)
   L.push(`# QA Sim Report`)
@@ -121,6 +144,14 @@ function buildReport(runs, args) {
       return fmtH(med(vals)) + (vals.length < g.length ? ` (${vals.length}/${g.length})` : '')
     })
     L.push(`| ${label} | ${cells.join(' | ')} |`)
+  }
+  L.push(``)
+  L.push(`## Pacing vs GAMEDESIGN.md (idle minutes to fill Qi cap per stage, unboosted; realm median [fastest–slowest stage])`)
+  L.push(`| Realm | Target | ${profiles.join(' | ')} |`)
+  L.push(`|---|---|${profiles.map(() => '---').join('|')}|`)
+  for (const [realm, [lo, hi]] of Object.entries(PACING_TARGETS_MIN)) {
+    const cells = profiles.map(p => { const xs = pacing[realm]?.[p]; return xs?.length ? `${fmtMin(med(xs))} [${fmtMin(Math.min(...xs))}–${fmtMin(Math.max(...xs))}]` : '—' })
+    L.push(`| ${realm} | ${fmtMin(lo)}–${fmtMin(hi)} | ${cells.join(' | ')} |`)
   }
   L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)

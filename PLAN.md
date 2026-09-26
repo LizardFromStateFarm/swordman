@@ -241,6 +241,11 @@ Alliance system: ally with other sects for defensive help.
 > and write `scripts/sim/out/report.md`: pacing (time to each realm/milestone), fun signals (dead zones,
 > difficulty walls, fail streaks, hoarding, actions/hour, qi-capped %, unused features), health (exceptions,
 > invariants, save round-trips) and tick performance. See `docs/systems/qa-sim.md`.
+> **First pacing pass 2026-09-25:** Foundation Building+ `qiCap`s retuned to the GAMEDESIGN.md table
+> (casual player now reaches Ascension ~72h, was ~24h; active ~10h, was ~2h); random-event Qi losses made
+> time-based (the old % losses capped Qi below the breakthrough threshold on long stages). Still open from
+> the sim: late-game stone hoarding (no sinks), nothing to do after Ascension (Phases 7–8), afk players
+> can't afford founding, casual/afk miss most war windows (Phase 9 notifications / 5C).
 > Not yet: Playwright UI-level pass (would need a swappable clock seam in game.js); an LLM-driven policy
 > tier for qualitative "does this feel good" feedback; wiring `sim:quick` into `npm run release` (blocked
 > until the current health failure — see START_HERE — is fixed, or it would block every release).

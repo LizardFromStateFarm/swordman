@@ -27,4 +27,17 @@ const THRESHOLDS = {
   unusedFeature:     true,    // flag systems a profile never touched in its longest run
 }
 
-module.exports = { PROFILES, DEFAULT_PATH, THRESHOLDS }
+// GAMEDESIGN.md "Progression pacing": idle minutes to fill the Qi cap, per stage, by realm.
+// Mortal→Core Formation are from the design doc; Nascent Soul / Spirit Severing extrapolate its
+// "many hours … rough doubling per realm tier" rule.
+const PACING_TARGETS_MIN = {
+  'Mortal':              [1, 4],
+  'Qi Condensation':     [2, 15],
+  'Foundation Building': [20, 45],
+  'Core Formation':      [60, 180],
+  'Nascent Soul':        [180, 480],
+  'Spirit Severing':     [480, 1200],
+}
+const PACING_PROFILE = 'casual'   // flags are raised for this profile only (the representative idle player)
+
+module.exports = { PROFILES, DEFAULT_PATH, THRESHOLDS, PACING_TARGETS_MIN, PACING_PROFILE }

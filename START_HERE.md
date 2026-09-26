@@ -46,44 +46,32 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
-Date: 2026-09-25 (session 2)
-Agent: QA Sim Harness (tooling) + planned Phase 5C (Member Wars)
+Date: 2026-09-25 (session 3)
+Agent: QA sim harness committed + Infinity bug fix + first pacing pass (branch: qa-sim-harness)
 What was done:
-  - Built scripts/sim/ — headless bot playtesting harness. `npm run sim` (full: active/casual/afk profiles ×
-    50/100/200h × 3 seeds, ~16s on 16 cores, parallel worker processes) / `npm run sim:quick` (~1s).
-    Loads the REAL game logic (data + game-state.js + game/*.js) into a Node vm with fake Date, seeded
-    Math.random (deterministic: same seed = identical result) and in-memory window.electron. Bots only call
-    public gameState methods. afk profile closes/reopens the game through the real save → initSlot() path.
-  - Output: scripts/sim/out/report.md (~60 lines, AI-friendly) + report.json. Metrics: time to each realm
-    and milestone, slowest stage-ups, dead zones, difficulty walls, fail streaks, hoarding, actions/hour,
-    qi-capped %, wars W/L + % seen, unused features, invariants, exceptions, save round-trips, tick µs.
-    `--set="CONST=value"` tries balance changes without editing data files. Exit 1 on health failures.
-  - Docs: docs/systems/qa-sim.md (new), docs/index.md, CLAUDE.md (tree + balance rule), PLAN.md (Tooling
-    entry + new Phase 5C "Member Wars" plan, per user request), package.json scripts, .gitignore (sim out/).
-  - Verified: npm test (syntax) passes; full suite runs; determinism checked; --set, --path=member,
-    bad-override error path all checked.
-FIRST FINDINGS from the harness (nothing below has been fixed — balance/bug work for next session):
-  - BUG: assets/data/events.js:74 'heavenly_lightning' does `qi + qiCap*0.25`; at Ascension qiCap=Infinity
-    → s.qi = Infinity. This is why `npm run sim` currently exits 1 (non_finite_number violation).
-  - Pacing is far too fast: active player reaches Ascension in ~2h, casual (checks every 30m) ~24h,
-    afk ~58h; after that nothing new for the rest of the run (content-exhausted + huge dead-zone flags).
-    Technique multipliers stack to ~19× (×3 meditating) vs. stage caps from Foundation Building on.
-  - Economy: active hoards ~47k Spirit Stones by 200h, casual ~28k — nothing to spend on late game.
-  - afk players never found a sect in 200h: stone income ~2.5/h and they sit just under the 500 cost.
-  - Founding needs stage 18 but void_crystal only drops at void_rift (stage 19) → founding really gated at 19.
-  - Beast taming talisman needs beast_core (only early zones) → late players must backtrack to tame.
-  - Casual players see only ~50% of sect wars (15-min scouting+prep window vs 30-min check-ins).
-  - weapon_soul_spear (expedition_power) / weapon_thunder_staff (enemy_hp_reduce) effects aren't read by any
-    logic — dead items. artifact_void_compass only reveals locked locations in the Explore UI (game.js:779).
-What was NOT finished / left for next session:
-  - None of the balance findings above are fixed. This session's harness + doc changes are uncommitted (ask before committing).
-  - sim:quick is NOT wired into `npm run release` yet (it would fail until the Infinity bug is fixed).
-  - No Playwright UI-level pass, no LLM-driven bot policy tier (both documented as next tiers in qa-sim.md).
-  - npm run dist / build:web not re-run: no renderer/ or assets/ files changed this session.
+  - Branch `qa-sim-harness` (off main), 3 commits: harness (session 2 work), heavenly_lightning Qi=Infinity
+    fix, pacing pass. Not pushed / not merged to main.
+  - Harness: added "Pacing vs GAMEDESIGN.md" section — per realm, idle minutes to fill Qi cap vs the design
+    table (targets in scripts/sim/profiles.js PACING_TARGETS_MIN; NS/SS extrapolated by the doc's doubling rule).
+  - DESIGN BUG found + fixed: demon_disturbance / inner_demon / heavenly_lightning took 12/20/30% of current
+    Qi every 30–120s → equilibrium below the 90% breakthrough threshold once a stage takes >~30 min to fill
+    (casual players stuck at stage 20 for 117h in the sim). Now time-based: −60s / −120s / −180s of Qi/s,
+    lightning bonus +300s of Qi/s (was +25% of cap). Rule added to .agents/rules/game-design.md.
+  - stages.js: Foundation Building → Spirit Severing qiCaps retuned (FB Early was 8,000 — LOWER than QC L9's
+    110k). Casual fill times now all inside GAMEDESIGN bands: FB 26m, CF 1.5h, NS 3.3h, SS 11.4h.
+    Time to Ascension: active 2h→10h, casual 24h→72h, afk 58h→132h. Mortal/QC unchanged (already on target).
+  - Docs: core-loop.md gotchas, game-design.md rules/checklists, qa-sim.md, PLAN.md tooling note.
+  - Verified: npm test, npm run sim (healthy, exit 0, 135 save round-trips), npm run build:web, npm run dist.
+Still flagged by the sim (NOT addressed — design decisions, not tuning):
+  - Nothing to do after Ascension → long dead zones for everyone (needs Phases 7–8 content).
+  - Stone hoarding: ~31k (casual) / ~47k (active) unspent at 200h — no late-game sinks.
+  - afk players reach sect founding only ~180h in (2/3 seeds) — stone income too low for 15-min sessions.
+  - Casual sees ~50% of wars, afk ~0% (15-min war window) — consider Phase 9 notifications or longer prep.
+  - Founding needs stage 18 but void_crystal only drops at stage 19 (void_rift). Two items (soul spear,
+    thunder staff) have effects nothing reads.
 Next recommended task:
-  - Fix events.js:74 (clamp when qiCap is Infinity), then a pacing pass driven by `npm run sim` (use --set
-    first; target e.g. casual Ascension ≫ 24h, no dead zone > 3h for casual).
-  - Then Phase 5C Member Wars (PLAN.md) — add member-war behaviour to the sim bot at the same time.
+  - Merge qa-sim-harness → main after a real playtest of the new pacing feels right.
+  - Economy pass with the sim (stone sinks / late technique costs / afk income), then Phase 5C Member Wars.
 ```
 
 **When you finish a session, update this block** — date, what you did, what's next.

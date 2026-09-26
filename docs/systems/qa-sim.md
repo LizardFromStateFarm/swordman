@@ -26,7 +26,7 @@ invariant violations, 2 = harness crashed / bad `--set`.
 | `bot.js` | Greedy rule-based player; only calls public `gameState` methods |
 | `metrics.js` | `Recorder`: timeline, milestones, fun signals, invariants, errors → plain-JSON result |
 | `report.js` | Aggregates seeds (median + min–max), generates ⚠ flags, renders markdown |
-| `profiles.js` | **Tuning knobs**: player profiles + flag thresholds |
+| `profiles.js` | **Tuning knobs**: player profiles, flag thresholds, pacing targets |
 | `rng.js` | mulberry32 seeded PRNG |
 
 ## Profiles (profiles.js)
@@ -39,6 +39,10 @@ invariant violations, 2 = harness crashed / bad `--set`.
 - **Summary** per horizon×profile: final stage, breakthrough success, worst fail streak, longest dead zone,
   meaningful actions per open hour (meditate excluded), % time Qi sat at cap, stones at end, wars W/L (seen %).
 - **Time to reach**: realm entries + key milestones (median hours; `k/n` if only some seeds got there).
+- **Pacing vs GAMEDESIGN.md**: per realm, unboosted idle minutes to fill the Qi cap (qiCap ÷ the stage's
+  time-averaged Qi/s) vs `PACING_TARGETS_MIN` in profiles.js. Flag only for `PACING_PROFILE` (casual), and
+  only when >2× outside the band. Tuning recipe used 2026-09-25: newCap = cap × target ÷ measured fill,
+  via `--set`, 2–3 iterations to converge (multipliers shift as later stages arrive at different times).
 - **Slowest stage-ups**: top 3 stage transitions per profile.
 - **⚠ Flags** (thresholds in `THRESHOLDS`): dead zone, difficulty wall (stage ≥4× previous and ≥1h; afk ignores
   waits ≤1.5 sessions), progression stalls, content exhausted, qi-capped %, frustration (fail streak),

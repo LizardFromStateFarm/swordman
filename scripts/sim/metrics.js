@@ -17,6 +17,7 @@ class Recorder {
     this.openSec = 0; this.cappedSec = 0; this.integrityWaitSec = 0
     this.waitingIntegrity = false
     this.peakStones = 0
+    this.fill = {}                   // stageIndex → { q: Σ qps·dt, sec, cap } — for "idle time to fill cap"
     this.qps = {}                    // checkpoint hour → qi/s
     this.warsSeen = new Set()        // nextWarAt keys of wars the player checked in during
     this.violations = {}             // type → { count, firstAt, example }
@@ -51,6 +52,8 @@ class Recorder {
       this.openSec += dt
       if (s.qi >= s.derived.qiCap * 0.999 && isFinite(s.derived.qiCap)) this.cappedSec += dt
       if (this.waitingIntegrity) this.integrityWaitSec += dt
+      const f = this.fill[s.stageIndex] || (this.fill[s.stageIndex] = { q: 0, sec: 0, cap: 0 })
+      f.q += s.derived.qiPerSecond * dt; f.sec += dt; f.cap = s.derived.qiCap
     }
     if (s.stageIndex > this.maxStage) {
       for (let i = this.maxStage + 1; i <= s.stageIndex; i++) this.stageReached[i] = this.t
@@ -148,7 +151,7 @@ class Recorder {
     const wars = w.warVictories + w.warDefeats
     return {
       simHours: H(this.t),
-      stageCount: this.D.CULTIVATION_STAGES.length, finalStage: s.stageIndex, finalStageName: this.stageName(s.stageIndex), maxStage: this.maxStage,
+      stageCount: this.D.CULTIVATION_STAGES.length, stageRealms: this.D.CULTIVATION_STAGES.map(st => st.realm), finalStage: s.stageIndex, finalStageName: this.stageName(s.stageIndex), maxStage: this.maxStage,
       stageTimes,
       milestones: Object.fromEntries(Object.entries(this.milestones).map(([k, t]) => [k, H(t)])),
       deadZone: dead,
@@ -156,6 +159,9 @@ class Recorder {
       checkIns: this.checkIns,
       actions: this.actions,
       breakthroughs: { ...this.bt, successRate: this.bt.attempts ? +((this.bt.attempts - this.bt.fails) / this.bt.attempts).toFixed(2) : null },
+      // Unboosted idle minutes to fill the Qi cap, using the stage's time-averaged Qi/s (GAMEDESIGN pacing metric)
+      fillMin: Object.fromEntries(Object.entries(this.fill).filter(([, f]) => isFinite(f.cap) && f.q > 0)
+        .map(([i, f]) => [i, +(f.cap / (f.q / f.sec) / 60).toFixed(2)])),
       qiCappedPct: +(100 * this.cappedSec / Math.max(1, this.openSec)).toFixed(1),
       integrityWaitPct: +(100 * this.integrityWaitSec / Math.max(1, this.openSec)).toFixed(1),
       qpsAt: this.qps,

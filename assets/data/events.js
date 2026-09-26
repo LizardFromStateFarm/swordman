@@ -24,9 +24,11 @@ const RANDOM_EVENTS = [
     id: 'demon_disturbance', weight: 6, minStage: 2,
     name: 'Demon Disturbance',
     apply(s, gs) {
-      const lost = s.qi * 0.12
+      // Losses are "seconds of cultivation", never % of current Qi — % losses create a ceiling below the
+      // breakthrough threshold once a stage takes longer than ~30 min to fill (found by npm run sim).
+      const lost = Math.min(s.qi, s.derived.qiPerSecond * 60)
       s.qi -= lost
-      return { text: `A demon beast disturbs your meditation. Lost ${fmtQi(lost)} Qi.`, type: 'negative' }
+      return { text: `A demon beast's roar shatters your meditation. ${fmtQi(lost)} Qi scatters into the wind.`, type: 'negative' }
     }
   },
   {
@@ -51,9 +53,10 @@ const RANDOM_EVENTS = [
     id: 'inner_demon', weight: 5, minStage: 5,
     name: 'Inner Demon Manifestation',
     apply(s, gs) {
+      const lost = Math.min(s.qi, s.derived.qiPerSecond * 120)
       s.karma = Math.max(0, s.karma - 12)
-      s.qi *= 0.80
-      return { text: 'An inner demon arises from suppressed desires. Karma -12, Qi -20%.', type: 'negative' }
+      s.qi -= lost
+      return { text: `An inner demon rises from suppressed desires, gnawing at your dantian. Karma -12, Qi -${fmtQi(lost)}.`, type: 'negative' }
     }
   },
   {
@@ -71,13 +74,14 @@ const RANDOM_EVENTS = [
     name: 'Stray Heavenly Lightning',
     apply(s, gs) {
       if (Math.random() < 0.5) {
-        // Ascension has qiCap = Infinity — surge by 5 min of Qi instead of 25% of an infinite cap
-        const surge = isFinite(s.derived.qiCap) ? s.derived.qiCap * 0.25 : s.derived.qiPerSecond * 300
+        // Time-based (5 min of Qi), not % of cap — also safe at Ascension where qiCap = Infinity
+        const surge = s.derived.qiPerSecond * 300
         s.qi = Math.min(s.qi + surge, s.derived.qiCap)
-        return { text: 'Stray heavenly lightning strikes you! Somehow you absorb it. Qi surges +25%.', type: 'special' }
+        return { text: `Stray heavenly lightning strikes you! Somehow you drink it down. Qi surges +${fmtQi(surge)}.`, type: 'special' }
       } else {
-        s.qi *= 0.70
-        return { text: 'Stray heavenly lightning scatters your Qi. Lost 30% Qi.', type: 'negative' }
+        const lost = Math.min(s.qi, s.derived.qiPerSecond * 180)
+        s.qi -= lost
+        return { text: `Stray heavenly lightning tears through your meridians. ${fmtQi(lost)} Qi is scattered.`, type: 'negative' }
       }
     }
   },

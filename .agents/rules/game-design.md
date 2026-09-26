@@ -48,6 +48,9 @@ If adding new stages, maintain this rough doubling of time per realm tier.
 
 - Every 30–120 seconds an event triggers
 - Events must have both positive (Qi bonus, Karma, stones) and negative (Qi loss, disruption) outcomes
+- **Qi gains/losses are "N seconds of Qi/s", never a % of current Qi or of qiCap.** % losses every
+  30–120s create an equilibrium below the 90% breakthrough threshold once a stage takes >~30 min to
+  fill (players get stuck forever); % of qiCap breaks at Ascension (qiCap = Infinity).
 - Special events (gold/white border) should be rare and feel magical
 - Event text should read like a xianxia novel: dramatic, poetic, slightly formal
 
@@ -66,11 +69,13 @@ Bad:  "A demon attacked and you lost qi."
 ### New cultivation stage
 - [ ] Entry in `assets/data/stages.js` with `spriteState` pointing to an existing or new sprite
 - [ ] If new `spriteState`, run the Asset Pipeline from `CLAUDE.md`
-- [ ] Verify `qiCap` follows the pacing table above
+- [ ] Verify `qiCap` follows the pacing table above — `npm run sim` measures this directly
+      ("Pacing vs GAMEDESIGN.md" section; targets live in `scripts/sim/profiles.js`)
 - [ ] Verify `breakthroughChance` is lower than the previous stage
 
 ### New technique
 - [ ] Entry in `assets/data/techniques.js`
+- [ ] New Qi/s multipliers shift every later stage's fill time — re-run `npm run sim` and check pacing
 - [ ] Effect type is one of: `qps_mult`, `qi_cap_mult`, `breakthrough_bonus`, `karma_gain`
 - [ ] `minStage` is set so it unlocks at a meaningful moment in progression
 - [ ] Flavor quote is included and sounds like xianxia
