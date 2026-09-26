@@ -1341,6 +1341,13 @@ body {
 .sect-stars { font-size: 10px; color: var(--gold); margin: 0 4px; }
 .sect-built .loc-name { color: var(--jade); }
 
+/* ── War Standing Orders (Phase 32) — reuses .set-row/.set-label/.set-seg/.set-opt from Settings ── */
+.warord-input {
+  width: 56px;
+  margin-top: 0;
+  text-align: right;
+}
+
 /* ── Sect Wars (Phase 5B) ─────────────────────────────────────────────────── */
 .war-banner {
   border: 1px solid var(--border);

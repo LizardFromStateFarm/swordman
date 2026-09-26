@@ -159,6 +159,21 @@ class Recorder {
       const ok = def.type === 'range' ? (v >= def.min && v <= def.max) : def.options.some(o => o.value === v)
       if (!ok) this.violate('settings_invalid', `${def.id}=${v}`)
     }
+    // Phase 32: War Standing Orders must always be one of the valid options / a non-negative number.
+    const wo = s.warOrders
+    if (!wo || !this.D.WAR_ORDER_ANSWER_OPTIONS.includes(wo.answer)) this.violate('war_orders_invalid', `answer=${wo?.answer}`)
+    if (wo && !this.D.WAR_ORDER_LEND_BEAST_OPTIONS.includes(wo.lendBeast)) this.violate('war_orders_invalid', `lendBeast=${wo.lendBeast}`)
+    if (wo && !this.D.WAR_ORDER_REINFORCE_OPTIONS.includes(wo.reinforce)) this.violate('war_orders_invalid', `reinforce=${wo.reinforce}`)
+    if (wo && !this.D.WAR_ORDER_ALLY_OPTIONS.includes(wo.ally)) this.violate('war_orders_invalid', `ally=${wo.ally}`)
+    if (wo && !(wo.chestStones >= 0)) this.violate('war_orders_invalid', `chestStones=${wo.chestStones}`)
+    if (wo && !(wo.reinforceKeep >= 0)) this.violate('war_orders_invalid', `reinforceKeep=${wo.reinforceKeep}`)
+    // No stones spent beyond what a war's own cap allows — chest never exceeds the rank-scaled room,
+    // whether it was filled by standing orders, a manual click, or both (no double-charge, Phase 32).
+    if (s.sectWar?.side === 'member') {
+      const chestFull = this.D.MEMBER_WAR_CHEST_BASE + (s.sect.rank || 0) * this.D.MEMBER_WAR_CHEST_PER_RANK
+      if (s.sectWar.chestStones > chestFull) this.violate('war_chest_over_cap', `${s.sectWar.chestStones} > ${chestFull}`)
+    }
+    if (s.sectWar?.pillsGiven > this.D.MEMBER_WAR_MAX_PILLS) this.violate('war_pills_over_cap', s.sectWar.pillsGiven)
     if (!this.D.PERSONALITIES.some(p => p.id === s.personality?.id)) this.violate('personality_invalid', s.personality?.id)
     if (!(s.banter?.recent.length <= this.D.BANTER_RECENT_MAX) || !(s.banter?.log.length <= this.D.BANTER_LOG_MAX))
       this.violate('banter_buffer_over_cap', `${s.banter?.recent.length}/${s.banter?.log.length}`)

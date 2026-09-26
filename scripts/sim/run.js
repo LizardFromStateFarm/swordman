@@ -43,7 +43,7 @@ async function runOne({ profile, hours, seed, path: sectPath, dt, set }) {
   const wall0 = process.hrtime.bigint()
   const sim = createSim({ seed, overrides: set })
   const rec = new Recorder(sim.data, hours * 3600)
-  const bot = new Bot(sim, rec, { path: sectPath, actEverySec: prof.actEverySec })
+  const bot = new Bot(sim, rec, { path: sectPath, actEverySec: prof.actEverySec, profile })
   const guard = (fn, where) => { try { return fn() } catch (e) { rec.error(e, where) } }
 
   await sim.boot(0)

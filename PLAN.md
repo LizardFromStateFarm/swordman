@@ -59,7 +59,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 9A–B | Tray + opt-in desktop notifications | ✅ | M1 |
 | 21 | Backpack & Inventory tab | ⬜ | M1 |
 | 22 | Active / Idle toggle + automation | ⬜ | M1 |
-| 32 | War Standing Orders (absence never punished) | ⬜ | M1 |
+| 32 | War Standing Orders (absence never punished) | ✅ | M1 |
 | 6E | Window & layout modes | ⬜ | M1 (optional) |
 | 30 | Lifespan & Game Time (寿元 · 岁月) | ⬜ | M2 |
 | 31 | Ancestral Hall & Clan Legacies (祖祠) — meta progression; absorbs 8 and 18B | ⬜ | M2 |
@@ -113,7 +113,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 1.1 ✅ | Settings tab shell (⚙) + accessibility options | 20C | — | Settings persist per slot; later tasks add their toggles here |
 | 1.2 ✅ | Banter engine + 12 personalities, speech bubble, banter log, frequency setting | 29 | 1.1 | Every personality × trigger has lines (sim invariant); bubble fits 300 px + iOS |
 | 1.3 ✅ | System tray + **opt-in** desktop notifications (per-type toggles in ⚙; BT ready, expedition back, war news, death) | 9A–B | 1.1 | Both platforms: Electron real, iOS shim no-op (Rule 7). Nothing in the game *requires* notifications |
-| 1.4 | War Standing Orders: calls are answered by a preset order, and being present only adds optional choices | 32 | — | Sim: afk/casual war outcomes within ~10% of active; the "missed war window" flags are retired |
+| 1.4 ✅ | War Standing Orders: calls are answered by a preset order, and being present only adds optional choices | 32 | — | Sim: afk/casual war outcomes within ~10% of active; the "missed war window" flags are retired |
 | 1.5 | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
 | 1.6 | Active / Idle toggle + staged automation unlocks | 22 | 1.1 | Bot uses automation; sim shows afk/casual actions/h up |
 | 1.7 | *(optional)* Window & layout modes | 6E | 1.1 | 4 modes CSS-only off `data-layout` |
@@ -853,6 +853,37 @@ This gives mid-game players a concrete automation roadmap to look forward to.
 - Sim: retire the "wars resolving unseen" and "member wars ignored" flags. Add a check that afk/casual war W/L and
   contribution stay within ~10% of the active profile with the same orders. Teach the bot to set orders.
 - Notifications (9B) may *announce* a war, but they're opt-in and nothing depends on them.
+
+> **Status: ✅ implemented 2026-09-26 (roadmap 1.4, overnight autonomous run).** See `docs/systems/sect-war.md`
+> ("Phase 32 — War Standing Orders") for the full reference. Built essentially as designed above, with two
+> documented divergences:
+> - **"Only defensive wars" behaves identically to "Always"** — Phase 15 (NPC sect simulation) doesn't exist, so
+>   there's no attacker/defender distinction in the current member-war model to hook different behavior to (every
+>   member war is already "your sect being attacked"). Kept as a separate enum value, not dropped, so it's ready to
+>   diverge once Phase 15 or the 5.5 sect-war upgrade gives wars a real side.
+> - **"Cheapest" vs "Best" ally also behave identically** for the same reason: `WAR_ALLY_COST_BASE`/
+>   `WAR_ALLY_POWER_BONUS` don't vary by which `SECTS` entry is asked yet. `'cheapest'` picks `SECTS[0]`, `'best'`
+>   the roster's last entry — flavor only until sects have distinct power/cost.
+> - The "Reinforce"/"Request ally" orders only apply once `ownSect.founded` (there's no own-side war before that).
+> - Orders are applied via the exact same public commit methods a present player's buttons call
+>   (`answerWarCall()`, `donateWarChest()`, …), refactoring only the shared cost formulas
+>   (`_warReinforceCost()`/`_warAllyCost()`) into internal helpers — no mutation logic is duplicated, and every
+>   commit method's existing guards (`already`, room, affordability) already prevent a manual click on top of an
+>   order from double-charging.
+> - **Loss-contribution behavior changed**, not just presentation: a member-war defeat used to skip the
+>   contribution penalty entirely when `seen` was false; it now always applies (seen only changes the log
+>   wording). This is required by the pillar-4 design above ("resolution gives normal rewards/penalties whether
+>   seen or not") but is a real balance change worth knowing about if re-reading old `sect-war.md` history.
+> - Sim: bot sets modest (not maxed) orders once, on its first check-in; `casual`/`afk` rely on orders alone
+>   (manual war clicks are `active`-only now, to actually exercise the standing-order path). The "wars mostly
+>   resolve unseen" flags are retired; a new afk/casual-vs-active member-war parity check replaces them (>10pt
+>   win-rate or >10% contribution/war gap). New invariants: `war_orders_invalid`, `war_chest_over_cap` (proves no
+>   double-charge), `war_pills_over_cap`.
+> - **Known gap, not fixed this session:** `afk` still trails `active`/`casual` on member-war win rate (~60% vs
+>   ~74% in a `--path=member` 200h run) and contribution/war (~48 vs ~73), because `tickSectWar(false)` runs during
+>   offline catch-up *before* pending Sect missions resolve (those only resolve on the next live tick), so an afk
+>   `chestStones` order can see a thinner balance than what mission income is about to credit. See sect-war.md
+>   Gotchas. `casual` (never closes) is unaffected and lands within the 10% band.
 
 ---
 

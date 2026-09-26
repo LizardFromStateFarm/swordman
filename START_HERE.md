@@ -33,7 +33,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
-| War Standing Orders (absence never punished) | ⬜ Phase 32 (M1) |
+| War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
 | Lifespan & Game Time (age passes only while open) | ⬜ Phase 30 (M2) |
 | Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
@@ -63,6 +63,65 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 overnight
+Agent: overnight autonomous run, task 1.4 — Roadmap M1 task 1.4, Phase 32: War Standing Orders. Ran unattended
+  (pre-approved assessment/scope); user was asleep. Picks up right after the 1.3 (tray/notifications) session below.
+  - New per-slot `s.warOrders = { answer, chestStones, lendBeast, reinforce, reinforceKeep, ally }` (game-state.js
+    `_newGame()` + new `_ensurePhase32Fields()` migration, carried across reincarnation in `_die()` like
+    `s.settings`). Defaults match the design exactly: Answer=Always (free), everything that costs stones off/never.
+    API: `getWarOrders()` / `setWarOrder(key, value)` (validated like `setSetting`). Constants + defaults in
+    `assets/data/sect-war.js` (data only): `WAR_ORDER_*_OPTIONS`, `WAR_ORDERS_DEFAULT`.
+  - Orders apply the instant a war phase opens (`_applyWarOrders()`, called from `_advanceSectWarStep()` at both
+    the scouting-open and preparing-open transitions), identically live or during `tickSectWar(false)` offline
+    catch-up. It calls the exact same public commit methods a present player's buttons call (`answerWarCall()`,
+    `donateWarChest()`, `sendBeastToWar()`, `requestWarAlly()`, `reinforceForWar()`) — every one of them already
+    self-guards (`already`, room, affordability), so a manual click on top of an order can't double-charge; only
+    added two tiny internal helpers (`_warReinforceCost()`/`_warAllyCost()`) so the "if affordable, keeps ≥N
+    banked" order check doesn't re-derive its own copy of those formulas.
+  - Real behavior change, not just presentation: `_resolveMemberWar()`'s loss-contribution penalty used to be
+    skipped entirely when the war was unseen; it now always applies — `seen` only changes the log wording
+    ("Your standing orders acted in your stead."). The "ignored" penalty (present, zero commitment) still only
+    fires when actually present, since that's the one deliberate "you chose not to help" cost pillar 4 keeps.
+  - Divergences (both documented, not bugs): "Only defensive wars" behaves like "Always" (no Phase 15 NPC-sect
+    sim yet, so there's no attacker/defender distinction to hook to); "Cheapest"/"Best" ally also behave
+    identically today (ally cost/bonus doesn't vary by which `SECTS` entry is asked). Both kept as separate enum
+    values for forward-compat, not dropped.
+  - UI: new "Standing Orders" section (`renderWarOrdersPanel()` in game.js) in both the member Sect view and the
+    own-sect view, reusing the ⚙ Settings panel's `.set-row`/`.set-seg`/`.set-opt` CSS (no new stylesheet) plus a
+    small `.warord-input` number field.
+  - Sim: bot sets modest orders once on its first check-in (chest 50/war, strongest beast, reinforce if it keeps
+    ≥300, cheapest ally — deliberately not maxed, so they don't starve a founder bot's 500-stone founding budget).
+    `casual`/`afk` now rely on orders alone for wars (manual war clicks gated to `profile === 'active'`), so the
+    sim actually exercises the standing-order path instead of masking it with a bot that still clicks every war
+    button regardless of profile. Retired the "own/member wars mostly resolve unseen" flags (presence no longer
+    gates outcome); reworded the "member wars ignored" flag; added a dedicated afk/casual-vs-active member-war
+    parity check (>10pt win-rate or >10% contribution/war gap) replacing them. New invariants: `war_orders_invalid`,
+    `war_chest_over_cap` (proves no double-charge across order + manual), `war_pills_over_cap`.
+  - Docs written first per Rule 6: `docs/systems/sect-war.md` (new "Phase 32" section + updated Member War Outcome
+    + Gotchas), `docs/systems/qa-sim.md` (bot behavior, retired/new flags, new invariants), PLAN.md (roadmap 1.4 ✅,
+    Phase Index, Phase 32 status/divergences note).
+  - Verified: `npm test` (44 files), `npm run sim:quick` (0 exceptions, 0 violations), full `npm run sim` before AND
+    after on both `--path=founder` (default) and `--path=member`, read only report.md. Key numbers (`--path=member`,
+    200h, after): active member wars 20/7 (74% win, 2.0k contrib net, ~73/war) · casual 23/8 (74%, 2.3k, ~77/war —
+    within the 10% band) · afk 12/8 (60%, 967, ~48/war — flagged, see known gap below). Founder path: afk now
+    founds a sect at ~140h (2/3 seeds, was ✗ before retuning the bot's order sizes down from an initial too-greedy
+    500-stone/war default that was starving its founding budget) and reaches Ascension in 1/3 seeds. 0 errors/
+    invariant violations in every run. Also drove the real Electron app over CDP (`--user-data-dir` = a scratch
+    temp folder, never the user's real slots) with both the `founder` and `member_elder` dev presets: Standing
+    Orders panel renders with the right rows per side, `setWarOrder()`/re-render/invalid-value rejection all work,
+    zero console errors. Killed all scratch Electron processes afterward (confirmed via `Get-CimInstance
+    Win32_Process`, none touched the user's real save data). `npm run build:web` and `npm run dist` also verified.
+  Known gap (found by the sim, not fixed this session): `afk` still trails `active`/`casual` on member-war win
+    rate/contribution by more than the 10% band, even with identical orders. Root cause: `tickSectWar(false)`
+    (and its `_applyWarOrders()`) runs during `initSlot()`'s offline catch-up *before* pending Sect missions
+    resolve — those only resolve on the next live tick — so an afk `chestStones` order can see a thinner balance
+    than income that's about to land. `casual` never closes, so it's unaffected. Fixing this needs restructuring
+    `initSlot()`'s offline income ordering (resolve missions before `tickSectWar`), which is a broader change than
+    this task's scope — flagged in sect-war.md Gotchas and PLAN.md's Phase 32 status note for a future session.
+  Next: M1 task 1.5 (Backpack tab) or 1.6 (Active/Idle toggle) — or M2 2.1 (Life Loop) if the user wants that
+    first. The offline-income-ordering gap above would be a good small follow-up before or alongside 1.6
+    (automation), since auto-breakthrough/auto-craft will hit the same "offline order sees a stale balance" shape.
+
 Date: 2026-09-26 overnight
 Agent: overnight autonomous run, task 1.3 — Roadmap M1 task 1.3, Phase 9A-B: system tray + opt-in
   desktop notifications. Ran unattended (pre-approved assessment/scope); user was asleep.

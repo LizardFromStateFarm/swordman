@@ -34,21 +34,37 @@ invariant violations, 2 = harness crashed / bad `--set`.
 - `casual` — overlay always open, acts every 30 min (the realistic "idle on the side of the screen" player)
 - `afk` — opens 15 min, closed 8h → exercises `initSlot()` offline catch-up, 8h cap, war fast-forward
 - `--path=founder|member` — founder leaves its sect to found one as soon as it can; member never founds.
-  Both answer member-war calls while in a joined sect (answer → lend best idle beast → war chest at ≥3× chunk →
-  pills only after Ascension). Founder bots usually found before their first call (~10h after joining at rank 0).
+  Founder bots usually found before their first call (~10h after joining at rank 0).
+- **War Standing Orders (Phase 32):** every bot sets orders once, on its very first `checkIn()` (`Bot.warOrders()`):
+  answer always, chest 50 stones/war, lend the strongest idle beast, reinforce if it keeps ≥300 banked, cheapest
+  ally. Values are deliberately modest ("reasonable, not optimal" — see Gotchas below), not maxed, so they don't
+  starve `founder`'s stone-for-founding budget. `memberWar()`/`war()` (the old manual click logic) only run for
+  `profile === 'active'` now — `casual`/`afk` rely entirely on the orders they set, by design, so the sim actually
+  exercises the "never punish absence" path instead of a bot that manually clicks every button regardless of
+  profile. `active` still clicks manually on top of its own orders (proving the no-double-charge guarantee).
 
 ## Report sections / metrics
 - **Summary** per horizon×profile: final stage, breakthrough success, worst fail streak, longest dead zone,
-  meaningful actions per open hour (meditate excluded), % time Qi sat at cap, stones at end, own-sect wars W/L (seen %).
+  meaningful actions per open hour (meditate excluded), % time Qi sat at cap, stones at end, own-sect wars W/L
+  (present %) — "present" (formerly "seen") is a descriptive stat only since Phase 32; it no longer implies
+  the war's reward/penalty was gated on it.
 - **Time to reach**: realm entries + key milestones (median hours; `k/n` if only some seeds got there).
 - **Pacing vs GAMEDESIGN.md**: per realm, unboosted idle minutes to fill the Qi cap (qiCap ÷ the stage's
   time-averaged Qi/s) vs `PACING_TARGETS_MIN` in profiles.js. Flag only for `PACING_PROFILE` (casual), and
   only when >2× outside the band. Tuning recipe used 2026-09-25: newCap = cap × target ÷ measured fill,
   via `--set`, 2–3 iterations to converge (multipliers shift as later stages arrive at different times).
-- **Member Wars** (Phase 5C): joined-sect wars per profile — count, W/L, % of calls the bot was around to answer,
-  ignored (seen, no commitment), fought without you (resolved while closed), contribution net. Tallied per side by
-  `Recorder.trackWars()` (diffs `sectWar` counters each tick, so a founder's pre-founding member wars aren't mixed
-  into its own-sect wars). `runs[i].wars` = own side, `runs[i].memberWars` = member side.
+- **Member Wars** (Phase 5C, updated by Phase 32): joined-sect wars per profile — count, W/L, "present for" (% of
+  calls the bot's own check-in cadence overlapped an open war phase — a presence stat, not a reward gate), ignored
+  (present, but left uncommitted — usually an explicit `stay_out` order), unseen (resolved while the game was
+  closed — a count only, no longer a penalty case), contribution net. Tallied per side by `Recorder.trackWars()`
+  (diffs `sectWar` counters each tick, so a founder's pre-founding member wars aren't mixed into its own-sect wars).
+  `runs[i].wars` = own side, `runs[i].memberWars` = member side.
+- **Afk/casual-vs-active war parity (Phase 32):** a dedicated check (not per-profile-group like the flags above)
+  compares each non-active profile's member-war win rate and contribution/war against `active`'s, in the longest
+  horizon, and flags a `>10` point win-rate gap or `>10%` contribution/war gap — this is the sim's actual test of
+  "standing orders get afk/casual a comparable outcome to active", replacing the old presence-based flags (below).
+  No-ops when `active` has zero member wars in that run (e.g. `founder` path, where active founds its own sect
+  almost immediately and never sees a member war to compare against — use `--path=member` to exercise this check).
 - **Ascension & Bloodline** (Phase 23A–C): ascension attempts (cumulative `actions.ascend`, not the per-life
   `s.stats.ascensionAttempts`), whether it ever succeeded, generations, lifetime deaths, end-of-run Bloodline
   Quality, deaths by cause. `runs[i].lineage`. See `docs/systems/bloodline.md` gotchas — the dead-zone/stage-wall
@@ -56,8 +72,13 @@ invariant violations, 2 = harness crashed / bad `--set`.
 - **Slowest stage-ups**: top 3 stage transitions per profile.
 - **⚠ Flags** (thresholds in `THRESHOLDS`): dead zone, difficulty wall (stage ≥4× previous and ≥1h; afk ignores
   waits ≤1.5 sessions), progression stalls, content exhausted, qi-capped %, frustration (fail streak),
-  demotions, integrity waiting, hoarding, low engagement, own/member wars resolving unseen, member wars ignored,
-  never-used features.
+  demotions, integrity waiting, hoarding, low engagement, member wars ignored, never-used features, afk/casual
+  member-war parity vs active (Phase 32, see above).
+  **Retired 2026-09-26 (Phase 32):** "own/member wars mostly resolve unseen: player checked in during only X%" —
+  presence no longer gates a war's outcome (own-side never did; member-side doesn't since this phase), so a low
+  "present %" isn't a problem to flag any more. The stat itself stays in the tables. The "member wars ignored"
+  flag's wording changed to reflect the new cause (a `stay_out` order or genuinely zero commitment while present),
+  not the old removed mission-slot friction.
 - **Health**: exceptions (deduped, with stack) + invariant violations + save→load round-trip count.
 - **Economy — Spirit Stones**: a ledger attributes every stone gained/lost to a source (disciples, expeditions,
   beast_expeditions, sect_missions, events, war_spoils, war_losses, offline_catchup) or a bot purchase
@@ -73,7 +94,7 @@ inventory counts not positive integers · integrity ∉ [0,100] · karma ∉ [0,
 stageIndex out of range · beasts > maxBeasts · disciples > cap · invalid war phase · sect rank out of range ·
 joined AND founded · war side ≠ joined/founded state · war-committed mission slot over cap or not released after
 the war · beast stuck at war · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi ·
-health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`). The sim also runs `BanterSystem` (source `banter`, 0 stones).
+health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap`. The sim also runs `BanterSystem` (source `banter`, 0 stones).
 
 ## Extending
 - **New system/phase:** add bot behaviour in `bot.js` (new method + add to the `checkIn` chain), new

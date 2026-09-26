@@ -101,15 +101,39 @@ function buildReport(runs, args) {
     if (topSrc && topSrc.pct > T.singleSourcePct) flags.push(`${tag} One-faucet economy: ${topSrc.src} = ${f(topSrc.pct)}% of all stones earned`)
     const dph = med(g.map(r => r.decisionsPerOpenHour))
     if (dph < T.minDecisionsPerHr[p]) flags.push(`${tag} Low engagement: ${dph} meaningful actions/hour (min ${T.minDecisionsPerHr[p]})`)
-    const eng = med(g.map(r => r.wars.engagedPct))
-    if (eng != null && eng < 50) flags.push(`${tag} Own-sect wars mostly resolve unseen: player checked in during only ${eng}% of wars (15-min window)`)
-    const meng = med(g.map(r => r.memberWars?.engagedPct))
-    if (meng != null && meng < 50) flags.push(`${tag} Member wars mostly resolve unseen: player answered during only ${meng}% of calls (2h window)`)
+    // Phase 32 (War Standing Orders): "checked in during only X%" is retired as a flag — outcomes no
+    // longer depend on presence (own-side never did; member-side rewards/penalties now apply whether
+    // `seen` or not, see sect-war.md). `engagedPct`/"present for" stays in the tables as a descriptive
+    // stat only. The real health check is the afk/casual-vs-active comparison below.
     const mign = med(g.map(r => r.memberWars?.ignored))
-    if (mign > 0) flags.push(`${tag} Member wars ignored ${mign}× (seen but no commitment) — bot couldn't answer; check slot/stone availability`)
+    if (mign > 0) flags.push(`${tag} Member wars ignored ${mign}× (present, but the "stay out" order — or no commitment at all — left the war uncommitted)`)
     const founderOnly = ['found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce']
-    const unused = FEATURES.filter(ft => !(args.path === 'member' && founderOnly.includes(ft)) && g.every(r => !r.actions[ft]))
+    // war_answer_call/chest/beast/ally/reinforce are standing-order-driven for non-active profiles
+    // (Phase 32's bot.js warOrders()) — the sim bot itself never calls them for casual/afk by design,
+    // so "never used" would be a false positive there. Only flag them for 'active', which still clicks manually.
+    const orderDriven = ['war_answer_call', 'war_chest', 'war_beast', 'war_ally', 'war_reinforce']
+    const unused = FEATURES.filter(ft => !(args.path === 'member' && founderOnly.includes(ft)) &&
+      !(p !== 'active' && orderDriven.includes(ft)) && g.every(r => !r.actions[ft]))
     if (T.unusedFeature && unused.length) flags.push(`${tag} Never used: ${unused.join(', ')}`)
+  }
+
+  // ── Phase 32: afk/casual member-war outcomes should track active within ~10% (standing orders) ──
+  {
+    const h = longest
+    const activeMW = group('active', h).map(r => r.memberWars).filter(x => x?.total)
+    const aWinRate = activeMW.length ? med(activeMW.map(x => x.wins / x.total)) : null
+    const aContribPerWar = activeMW.length ? med(activeMW.map(x => x.contribNet / x.total)) : null
+    if (aWinRate != null) for (const p of profiles) {
+      if (p === 'active') continue
+      const g2 = group(p, h).map(r => r.memberWars).filter(x => x?.total)
+      if (!g2.length) continue
+      const pWinRate = med(g2.map(x => x.wins / x.total))
+      const pContribPerWar = med(g2.map(x => x.contribNet / x.total))
+      if (Math.abs(pWinRate - aWinRate) > 0.10)
+        flags.push(`[${p} ${h}h] Member-war win rate ${Math.round(pWinRate * 100)}% vs active ${Math.round(aWinRate * 100)}% (>10pt gap with standing orders set) — check ${p}'s war orders/affordability`)
+      if (aContribPerWar > 0 && Math.abs(pContribPerWar - aContribPerWar) / aContribPerWar > 0.10)
+        flags.push(`[${p} ${h}h] Member-war contribution/war ${f(pContribPerWar)} vs active ${f(aContribPerWar)} (>10% gap with standing orders set)`)
+    }
   }
 
   // ── Pacing vs design targets (per realm: median over seeds of each stage's fill time) ──
@@ -142,7 +166,7 @@ function buildReport(runs, args) {
   L.push(`**Verdict:** ${healthy ? '✅ healthy (no errors / invariant violations)' : `❌ ${Object.keys(errs).length} error type(s), ${Object.keys(viol).length} violation type(s)`} · ${flags.length} balance/fun flag(s) · ${runs.length} runs, ${(totalWall / 1000).toFixed(0)}s CPU / ${args.wallSec ?? '?'}s wall`)
   L.push(``)
   L.push(`## Summary (median across seeds, min–max in parentheses)`)
-  L.push(`| Horizon | Profile | Final stage | BT success | Worst fail streak | Longest dead zone | Actions/h | Qi capped | Stones end | Wars W/L (seen) |`)
+  L.push(`| Horizon | Profile | Final stage | BT success | Worst fail streak | Longest dead zone | Actions/h | Qi capped | Stones end | Wars W/L (present) |`)
   L.push(`|---|---|---|---|---|---|---|---|---|---|`)
   for (const h of horizons) for (const p of profiles) {
     const g = group(p, h)
@@ -186,7 +210,7 @@ function buildReport(runs, args) {
   }
   L.push(``)
   L.push(`## Member Wars — joined-sect wars (median, ${longest}h runs)`)
-  L.push(`| Profile | Wars | W/L | Answered during | Ignored | Fought without you | Contribution net |`)
+  L.push(`| Profile | Wars | W/L | Present for | Ignored | Unseen | Contribution net |`)
   L.push(`|---|---|---|---|---|---|---|`)
   for (const p of profiles) {
     const m = group(p, longest).map(r => r.memberWars).filter(Boolean)

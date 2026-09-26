@@ -102,6 +102,8 @@ class GameState {
       ownSect:          this._blankOwnSect(),
       // Phase 5B
       sectWar:          this._blankSectWar(),
+      // Phase 32
+      warOrders:        { ...WAR_ORDERS_DEFAULT },
       // Phase 23A/B/C
       health:            100,
       _healthRegenAcc:   0,
@@ -212,6 +214,20 @@ class GameState {
     }
   }
 
+  // Phase 32: standing orders. Fills defaults, resets any unknown/invalid value — same pattern as
+  // _ensurePhase20CFields() for s.settings.
+  _ensurePhase32Fields() {
+    const s = this._s
+    if (!s.warOrders || typeof s.warOrders !== 'object') s.warOrders = { ...WAR_ORDERS_DEFAULT }
+    const o = s.warOrders
+    if (!WAR_ORDER_ANSWER_OPTIONS.includes(o.answer))           o.answer        = WAR_ORDERS_DEFAULT.answer
+    if (!WAR_ORDER_LEND_BEAST_OPTIONS.includes(o.lendBeast))    o.lendBeast     = WAR_ORDERS_DEFAULT.lendBeast
+    if (!WAR_ORDER_REINFORCE_OPTIONS.includes(o.reinforce))     o.reinforce     = WAR_ORDERS_DEFAULT.reinforce
+    if (!WAR_ORDER_ALLY_OPTIONS.includes(o.ally))               o.ally          = WAR_ORDERS_DEFAULT.ally
+    if (!(typeof o.chestStones === 'number' && isFinite(o.chestStones) && o.chestStones >= 0)) o.chestStones = WAR_ORDERS_DEFAULT.chestStones
+    if (!(typeof o.reinforceKeep === 'number' && isFinite(o.reinforceKeep) && o.reinforceKeep >= 0)) o.reinforceKeep = WAR_ORDERS_DEFAULT.reinforceKeep
+  }
+
   _ensurePhase23Fields() {
     const s = this._s
     if (s.health === undefined)           s.health           = 100
@@ -302,6 +318,7 @@ class GameState {
     this._ensurePhase4Fields()
     this._ensurePhase5Fields()
     this._ensurePhase5BFields()
+    this._ensurePhase32Fields()
     this._ensurePhase23Fields()
     this._ensurePhase20CFields()
     this._ensurePhase29Fields()
@@ -635,6 +652,7 @@ class GameState {
     const priorGen  = s.generation || 1
     const priorDeaths = s.deaths || 0
     const settings    = s.settings
+    const warOrders   = s.warOrders   // standing orders belong to the player, not the life (Phase 32)
 
     const summary = {
       cause, maxStageReached: maxStage, generation: priorGen,
@@ -647,6 +665,7 @@ class GameState {
     this._s.deaths            = priorDeaths + 1
     this._s.lastReincarnation = summary
     if (settings) this._s.settings = settings   // presentation prefs belong to the player, not the life
+    if (warOrders) this._s.warOrders = warOrders
     this._recalc(); this._notify()
     this._emit('reborn')
   }
@@ -1284,6 +1303,7 @@ class GameState {
       } else {
         this.addEvent({ text: `Scouts report the ${w.enemyName} massing near your borders.`, type: 'negative' })
       }
+      this._applyWarOrders()   // Phase 32: same the moment this phase opens, live or offline
       return true
     }
 
@@ -1294,6 +1314,8 @@ class GameState {
       this.addEvent({ text: member
         ? `The ${this._sectDef().name} musters its disciples at the mountain gate. Battle with the ${w.enemyName} draws near.`
         : `The ${w.enemyName} will strike soon — prepare your defenses!`, type: 'negative' })
+      this._applyWarOrders()   // Phase 32: re-applied here too (reinforce only allowed once 'preparing';
+                                // also catches a beast/chest order that couldn't fire at 'scouting')
       return true
     }
 
@@ -1304,6 +1326,47 @@ class GameState {
     }
 
     return false
+  }
+
+  // Cost helpers shared by reinforceForWar()/requestWarAlly() and _applyWarOrders() (Phase 32), so the
+  // "if affordable" order check never re-derives its own copy of these formulas.
+  _warReinforceCost() {
+    return Math.round(Math.max(20, (this._s.derived?.sectFame || 0) * WAR_REINFORCE_COST_PER_FAME))
+  }
+  _warAllyCost() {
+    return Math.round(WAR_ALLY_COST_BASE + (this._s.derived?.sectFame || 0) * WAR_ALLY_COST_PER_FAME)
+  }
+
+  // Phase 32: apply standing orders the moment a war phase opens (called from _advanceSectWarStep(),
+  // identically for live ticks and offline catch-up). Every action here goes through the same public
+  // commit method a present player would click (answerWarCall(), donateWarChest(), …), so costs/caps/
+  // "already done" guards are never duplicated, and a later manual click on top of an order can't
+  // double-charge — the guards just report `already`/no-op.
+  _applyWarOrders() {
+    const s = this._s, w = s.sectWar, o = s.warOrders
+    if (!o || !w.side) return
+    if (w.side === 'member') {
+      if (!w.answered && o.answer !== 'stay_out') this.answerWarCall()
+      if (!w.beastId && o.lendBeast === 'strongest') {
+        const beast = (s.beasts || []).filter(b => !b.expedition).sort((a, b) => b.level - a.level)[0]
+        if (beast) this.sendBeastToWar(beast.id)
+      }
+      if (o.chestStones > 0) {
+        const room = this.memberWarChestFull() - w.chestStones
+        const want = Math.min(o.chestStones, room, Math.floor(s.spiritStones))
+        if (want > 0) this.donateWarChest(want)
+      }
+    } else if (w.side === 'own') {
+      if (!w.allyId && o.ally !== 'never' && (w.phase === 'scouting' || w.phase === 'preparing')) {
+        // Cost/power don't vary by which SECTS entry is asked yet (see sect-war.js comment), so
+        // 'cheapest' and 'best' just pick opposite ends of the roster — flavor only for now.
+        const pick = o.ally === 'cheapest' ? SECTS[0] : SECTS[SECTS.length - 1]
+        if (pick && s.spiritStones >= this._warAllyCost()) this.requestWarAlly(pick.id)
+      }
+      if (w.phase === 'preparing' && !w.reinforced && o.reinforce === 'if_affordable') {
+        if (s.spiritStones - this._warReinforceCost() >= o.reinforceKeep) this.reinforceForWar()
+      }
+    }
   }
 
   _resolveSectWar() {
@@ -1421,7 +1484,11 @@ class GameState {
       w.warDefeats++
       w.buffSuppressedUntil = Date.now() + MEMBER_WAR_BUFF_SUPPRESS_HOURS * 3600 * 1000
       res.suppressed = true
-      if (w.seen) parts.push(`−${loseContrib(MEMBER_WAR_LOSS_CONTRIB)} Contribution`)
+      // Phase 32: the outcome is real whether the war was seen or not — `seen` only changes the log
+      // wording below, never whether the penalty applies (a war that happened while you were away
+      // still happened; standing orders are what decided whether you were engaged in it).
+      const lostContrib = loseContrib(MEMBER_WAR_LOSS_CONTRIB)
+      if (lostContrib > 0) parts.push(`−${lostContrib} Contribution`)
       // Only personal injury if you actually answered the call and fought (Phase 23A)
       if (engaged && Math.random() < WAR_INJURY_CHANCE) {
         res.injured = WAR_INJURY_AMOUNT
@@ -1437,16 +1504,19 @@ class GameState {
       s.karma = Math.max(0, s.karma - MEMBER_WAR_IGNORE_KARMA)
       parts.push(`−${lost} Contribution and −${MEMBER_WAR_IGNORE_KARMA} karma for ignoring the call`)
     }
-    if (!w.seen && !engaged) w.warsUnseen++
+    if (!w.seen) w.warsUnseen++   // descriptive count only (Phase 32) — no longer gates reward/penalty
     w.contribNet += res.contribDelta
     if (beast) parts.push(`${beast.name} returned with ${MEMBER_WAR_BEAST_XP} XP`)
     w.lastResult = res
     w.answered = false
 
+    // Phase 32: `seen` is presentation-only — an unseen-but-engaged war (standing orders acted for
+    // you) gets the same reward/penalty as a watched one, just a line noting orders did the work.
+    const awayNote = (!w.seen && engaged) ? ' Your standing orders acted in your stead.' : ''
     const tail = parts.length ? ` ${parts.join(', ')}.` : ''
-    if (win && engaged)      this.addEvent({ text: `Victory! The ${def.name} crushed the ${enemyName}, and the elders remember who answered the call:${tail}`, type: 'special' })
+    if (win && engaged)      this.addEvent({ text: `Victory! The ${def.name} crushed the ${enemyName}, and the elders remember who answered the call:${tail}${awayNote}`, type: 'special' })
     else if (win)            this.addEvent({ text: `The ${def.name} defeated the ${enemyName} — though you played no part in it.${tail}`, type: ignored ? 'negative' : 'positive' })
-    else                     this.addEvent({ text: `Defeat — the ${enemyName} routed the ${def.name}. The sect's blessings wane for ${MEMBER_WAR_BUFF_SUPPRESS_HOURS} hours.${tail}`, type: 'negative' })
+    else                     this.addEvent({ text: `Defeat — the ${enemyName} routed the ${def.name}. The sect's blessings wane for ${MEMBER_WAR_BUFF_SUPPRESS_HOURS} hours.${tail}${awayNote}`, type: 'negative' })
 
     w.phase = 'none'
     this._scheduleNextWar()
@@ -1471,7 +1541,7 @@ class GameState {
     if (!s.ownSect.founded)      return { ok: false, reason: 'no_sect' }
     if (w.phase !== 'preparing') return { ok: false, reason: 'no_war' }
     if (w.reinforced)            return { ok: false, reason: 'already' }
-    const cost = Math.round(Math.max(20, (s.derived?.sectFame || 0) * WAR_REINFORCE_COST_PER_FAME))
+    const cost = this._warReinforceCost()
     if (s.spiritStones < cost)   return { ok: false, reason: 'stones' }
     s.spiritStones -= cost
     w.reinforced = true
@@ -1486,7 +1556,7 @@ class GameState {
     if (w.allyId)                                  return { ok: false, reason: 'already' }
     const def = SECTS.find(x => x.id === sectId)
     if (!def)                                      return { ok: false, reason: 'unknown' }
-    const cost = Math.round(WAR_ALLY_COST_BASE + (s.derived?.sectFame || 0) * WAR_ALLY_COST_PER_FAME)
+    const cost = this._warAllyCost()
     if (s.spiritStones < cost)                     return { ok: false, reason: 'stones' }
     s.spiritStones -= cost
     w.allyId = sectId
@@ -1556,6 +1626,43 @@ class GameState {
     this.addEvent({ text: `${beast.name} joins the ${this._sectDef().name}'s war host against the ${w.enemyName}.`, type: 'positive' })
     this._notify()
     return { ok: true, beast }
+  }
+
+  // ── Phase 32: War Standing Orders ──────────────────────────────────────────
+
+  getWarOrders() { return this._s?.warOrders || { ...WAR_ORDERS_DEFAULT } }
+
+  setWarOrder(key, value) {
+    const s = this._s
+    if (!s?.warOrders) return { ok: false, reason: 'no_state' }
+    const o = s.warOrders
+    switch (key) {
+      case 'answer':
+        if (!WAR_ORDER_ANSWER_OPTIONS.includes(value)) return { ok: false, reason: 'invalid' }
+        o.answer = value; break
+      case 'lendBeast':
+        if (!WAR_ORDER_LEND_BEAST_OPTIONS.includes(value)) return { ok: false, reason: 'invalid' }
+        o.lendBeast = value; break
+      case 'reinforce':
+        if (!WAR_ORDER_REINFORCE_OPTIONS.includes(value)) return { ok: false, reason: 'invalid' }
+        o.reinforce = value; break
+      case 'ally':
+        if (!WAR_ORDER_ALLY_OPTIONS.includes(value)) return { ok: false, reason: 'invalid' }
+        o.ally = value; break
+      case 'chestStones': {
+        const n = Math.floor(Number(value))
+        if (!isFinite(n) || n < 0) return { ok: false, reason: 'invalid' }
+        o.chestStones = n; break
+      }
+      case 'reinforceKeep': {
+        const n = Math.floor(Number(value))
+        if (!isFinite(n) || n < 0) return { ok: false, reason: 'invalid' }
+        o.reinforceKeep = n; break
+      }
+      default: return { ok: false, reason: 'unknown' }
+    }
+    this._save(); this._notify()
+    return { ok: true }
   }
 
   // ── Dev tools: late-game test characters (assets/data/dev-presets.js) ─────

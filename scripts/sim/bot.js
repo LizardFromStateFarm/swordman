@@ -17,9 +17,9 @@ function itemScore(ITEMS, id) {
 }
 
 class Bot {
-  constructor(sim, rec, { path = 'founder', actEverySec = 10 } = {}) {
+  constructor(sim, rec, { path = 'founder', actEverySec = 10, profile = 'active' } = {}) {
     this.sim = sim; this.gs = sim.gs; this.D = sim.data; this.rec = rec
-    this.path = path; this.actEverySec = actEverySec
+    this.path = path; this.actEverySec = actEverySec; this.profile = profile
   }
 
   get s() { return this.gs.get() }
@@ -28,6 +28,7 @@ class Bot {
   // One check-in: keep acting until nothing more to do.
   checkIn() {
     this.rec.checkIn(this.s)
+    this.warOrders()
     for (let i = 0; i < 40; i++) {
       const before = this.s.spiritStones
       const acted = this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
@@ -36,6 +37,28 @@ class Bot {
       this.rec.stones(this.rec.lastAction, this.s.spiritStones - before)
     }
     if (!this.s.meditating) { this.gs.startMeditation(30); this.rec.act('meditate', false) }
+  }
+
+  // ── Phase 32: War Standing Orders ────────────────────────────────────────
+  // Set once, as soon as the bot exists (mirrors a real player configuring orders on day one).
+  // 'active' still handles wars manually below (memberWar()/war()) — orders here are just its
+  // fallback for the (rare) phase its own actEverySec cadence misses. 'casual'/'afk' rely on
+  // orders entirely: memberWar()/war() below no-op for them, by design, to prove the standing-order
+  // path alone gets them a comparable outcome to 'active' (see report.js's afk/casual-vs-active check).
+  warOrders() {
+    if (this._orderedWars) return false
+    this._orderedWars = true
+    // Modest, not maxed — "reasonable, not optimal" (see qa-sim.md gotchas): a real player who sets
+    // orders once and forgets them wouldn't blank-check every war chest, or they'd never save enough
+    // to found a sect. 50 stones/war is a meaningful chunk of an early chest (MEMBER_WAR_CHEST_BASE
+    // 150) without crowding out SECT_FOUNDING's 500-stone cost the way a larger flat order would.
+    this.gs.setWarOrder('answer', 'always')
+    this.gs.setWarOrder('chestStones', 50)
+    this.gs.setWarOrder('lendBeast', 'strongest')
+    this.gs.setWarOrder('reinforce', 'if_affordable')
+    this.gs.setWarOrder('reinforceKeep', 300)
+    this.gs.setWarOrder('ally', 'cheapest')
+    return false   // never counts as a meaningful action; doesn't block the rest of checkIn()
   }
 
   do(name, res, meaningful = true) {
@@ -224,10 +247,14 @@ class Bot {
   }
 
   // ── Member war (Phase 5C): answer the call, lend a beast, fill the war chest when comfortably affordable ──
+  // Manual actions here are 'active'-only (Phase 32) — casual/afk rely entirely on warOrders() above,
+  // by design, so the sim actually exercises the "never punish absence" path instead of masking it
+  // with a bot that still clicks every button on its own.
   memberWar() {
     const s = this.s, w = s.sectWar, D = this.D
     if (w.side !== 'member' || (w.phase !== 'scouting' && w.phase !== 'preparing')) return false
     this.rec.warSeen(w)
+    if (this.profile !== 'active') return false
     if (!w.answered && s.sect.activeMissions.length < D.SECT_MAX_MISSIONS) return this.do('war_answer_call', this.gs.answerWarCall())
     if (!w.beastId) {
       const b = s.beasts.filter(b => !b.expedition).sort((a, b) => b.level - a.level)[0]
@@ -270,6 +297,7 @@ class Bot {
     const s = this.s, w = s.sectWar
     if (!s.ownSect.founded || (w.phase !== 'scouting' && w.phase !== 'preparing')) return false
     this.rec.warSeen(w)
+    if (this.profile !== 'active') return false
     // Buy war boosts only when comfortably affordable (≥ 3× cost) — mirrors game-state.js cost formulas.
     const fame = s.derived.sectFame || 0, D = this.D
     const allyCost = Math.round(D.WAR_ALLY_COST_BASE + fame * D.WAR_ALLY_COST_PER_FAME)

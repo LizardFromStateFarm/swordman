@@ -517,6 +517,7 @@
     const rankBar = head.querySelector('#_sect_rank_bar')
     if (rankBar) rankBar.style.width = Math.min(100, (sect.contribution - rank.minContribution) / (nextRank.minContribution - rank.minContribution) * 100) + '%'
     renderMemberWarPanel(s, el)
+    renderWarOrdersPanel(s, el, 'member')
     // Mission bars: set via JS (CSP blocks inline style attributes in innerHTML)
     const mt = document.createElement('div')
     mt.className = 'section-title'
@@ -717,6 +718,71 @@
     }))
   }
 
+  // ── War Standing Orders (Phase 32) ─────────────────────────────────────────
+  // Compact section shown in both the member view (renderSect) and the own-sect view (renderOwnSect).
+  // Reuses the ⚙ Settings panel's .set-row/.set-label/.set-seg/.set-opt CSS so it fits 300px without
+  // its own stylesheet (see docs/systems/settings.md).
+  function renderWarOrdersPanel(s, el, side) {
+    const o = s.warOrders
+    if (!o) return
+    const title = document.createElement('div')
+    title.className = 'section-title'
+    title.textContent = 'Standing Orders'
+    el.appendChild(title)
+
+    const segRow = (label, key, options, hint) => {
+      const row = document.createElement('div')
+      row.className = 'set-row'
+      const lab = document.createElement('div')
+      lab.className = 'set-label'
+      lab.textContent = label
+      if (hint) lab.title = hint
+      row.appendChild(lab)
+      const wrap = document.createElement('div')
+      wrap.className = 'set-seg'
+      for (const opt of options) {
+        const b = document.createElement('button')
+        b.className = 'set-opt' + (opt.value === o[key] ? ' active' : '')
+        b.textContent = opt.label
+        b.addEventListener('click', () => gameState.setWarOrder(key, opt.value))
+        wrap.appendChild(b)
+      }
+      row.appendChild(wrap)
+      el.appendChild(row)
+    }
+
+    const numRow = (label, key, hint) => {
+      const row = document.createElement('div')
+      row.className = 'set-row'
+      const lab = document.createElement('div')
+      lab.className = 'set-label'
+      lab.textContent = label
+      if (hint) lab.title = hint
+      row.appendChild(lab)
+      const input = document.createElement('input')
+      input.type = 'number'
+      input.className = 'sect-input warord-input'
+      input.min = 0
+      input.step = 10
+      input.value = o[key]
+      input.addEventListener('change', () => gameState.setWarOrder(key, input.value))
+      row.appendChild(input)
+      el.appendChild(row)
+    }
+
+    if (side === 'member') {
+      segRow('Answer calls', 'answer', [
+        { value: 'always', label: 'Always' }, { value: 'defensive', label: 'Defensive' }, { value: 'stay_out', label: 'Stay out' },
+      ], 'Defensive behaves like Always for now — every member war today is your sect being attacked.')
+      numRow('War chest (stones/war)', 'chestStones', '0 = never donate automatically; capped by the chest and what you can afford')
+      segRow('Lend beast', 'lendBeast', [{ value: 'never', label: 'Never' }, { value: 'strongest', label: 'Strongest' }])
+    } else if (side === 'own') {
+      segRow('Reinforce', 'reinforce', [{ value: 'never', label: 'Never' }, { value: 'if_affordable', label: 'If affordable' }])
+      numRow('…and keeps at least', 'reinforceKeep', 'Only reinforce if this many Spirit Stones remain banked afterward')
+      segRow('Request ally', 'ally', [{ value: 'never', label: 'Never' }, { value: 'cheapest', label: 'Cheapest' }, { value: 'best', label: 'Best' }])
+    }
+  }
+
   function renderSectWarPanel(s, el) {
     const w = s.sectWar
     if (!w) return
@@ -820,6 +886,7 @@
     el.appendChild(head)
 
     renderSectWarPanel(s, el)
+    renderWarOrdersPanel(s, el, 'own')
 
     // Buildings
     const bt = document.createElement('div')

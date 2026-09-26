@@ -1,5 +1,6 @@
-// Sect Wars data (Phase 5B own-sect wars + Phase 5C member wars): timers, rival name pools, prep/commitment bonuses, spoils, penalties.
-// Depends on: items.js (MEMBER_WAR_RARE_ITEMS ids). Used by: game-state.js (sect-war logic, _recalc), renderer/game/sect-war.js, game.js (Sect tab war panels), scripts/sim.
+// Sect Wars data (Phase 5B own-sect wars + Phase 5C member wars + Phase 32 War Standing Orders): timers,
+// rival name pools, prep/commitment bonuses, spoils, penalties, standing-order option lists + defaults.
+// Depends on: items.js (MEMBER_WAR_RARE_ITEMS ids). Used by: game-state.js (sect-war logic, _recalc), renderer/game/sect-war.js, game.js (Sect tab war panels + Standing Orders), scripts/sim.
 
 const WAR_MIN_INTERVAL_HOURS = 2
 const WAR_MAX_INTERVAL_HOURS = 6
@@ -58,3 +59,27 @@ const MEMBER_WAR_LOSS_CONTRIB       = 30   // defeat (war was seen): lose this �
 const MEMBER_WAR_IGNORE_CONTRIB     = 40   // saw the call, committed nothing: lose this × rewardMult too…
 const MEMBER_WAR_IGNORE_KARMA        = 2    // …and this much karma
 const MEMBER_WAR_DESERT_KARMA        = 5    // leaving the sect mid-war, on top of the normal −5 leave cost
+
+// ── Standing Orders (Phase 32, roadmap M1 1.4) — pillar 4: absence is never punished ─────────────────
+// Applied the moment each war phase opens (_applyWarOrders() in game-state.js), live or offline
+// (tickSectWar(false)), by calling the same commit methods a present player would click — so costs,
+// caps and "already done" guards can never be duplicated or double-charged.
+const WAR_ORDER_ANSWER_OPTIONS      = ['always', 'defensive', 'stay_out']
+// 'defensive' == 'always' today: Phase 15 (NPC sect sim) doesn't exist, so every member war is already
+// your sect being attacked (no offensive-war concept to distinguish) — kept as a separate option for
+// forward-compat once Phase 15/5.5 gives wars a real attacker/defender side.
+const WAR_ORDER_LEND_BEAST_OPTIONS  = ['never', 'strongest']
+const WAR_ORDER_REINFORCE_OPTIONS   = ['never', 'if_affordable']
+const WAR_ORDER_ALLY_OPTIONS        = ['never', 'cheapest', 'best']
+// 'cheapest' vs 'best' also pick identically-priced/-powered allies today (WAR_ALLY_* costs/bonuses
+// don't vary by which SECTS entry is asked) — 'cheapest' takes SECTS[0], 'best' the last entry, both
+// flavor-only until Phase 15 gives sects distinct power. Kept for forward-compat, same reasoning as above.
+
+const WAR_ORDERS_DEFAULT = {
+  answer:        'always',    // never charges anything — pillar 4: absence is never punished
+  chestStones:   0,           // stones to auto-donate to the war chest per war (0 = off, the default)
+  lendBeast:     'never',
+  reinforce:     'never',
+  reinforceKeep: 200,         // only used once reinforce !== 'never'
+  ally:          'never',
+}
