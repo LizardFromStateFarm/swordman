@@ -252,6 +252,10 @@ reviewer agent, never the creator.
 ## Game Design Rules
 
 - Numbers should feel satisfying to watch grow — use `fmt()` to keep them readable
+- **No emoji, ever** (user rule, 2026-09-26): not in UI, sprites, canvas art, data, or log text. Emoji render as
+  full-color platform images that break the ink-and-glyph look (Chromium even draws ⚡ ☯ as color emoji on the
+  canvas). Use text glyphs, CJK marks (石 歷 煉 功 封 …) or box/line characters. If a symbol has an emoji-default
+  presentation, don't use it. (Roadmap A1 purges the existing ones and adds a lint.)
 - Every cultivation stage must have a matching `spriteState` in `CULTIVATOR_SPRITES`
 - Breakthrough chance must never exceed 0.98
 - New `RANDOM_EVENTS` must have both positive and negative variants

@@ -76,6 +76,10 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 - No in-game UI to pick the Family Manual technique (only the sim bot calls `setFamilyManual()`) — 2.7
 - ~~Main interaction area is the smallest part of the window~~ — 1.7: Overlay tab body 105 → 305px, Expanded/Desktop
   656–696px. Still open: 7 tabs at 9px in Overlay, banner has no attention strip yet — 1.8b
+- **Art (→ Phase 34 art track, A1–A5):** plain grid ASCII rarely clears the 8/10 gate. 116 emoji in the game (63 inside
+  the sprites: ⚡ ×38, ☯ ×25 render as color emoji on canvas). Plan: 1.8c art audit → A1 emoji purge + lint → A2
+  bake-off (grid ASCII vs layered glyph compositor vs shape-to-glyph + ink-wash effects; user picks) → A3 engine with
+  swappable parts → A4 re-art. **No-emoji rule** is in CLAUDE.md now.
 - **Family agency (→ 1.8b):** player decisions currently simulated: courtship only via matchmaker, spouse affection
   only drifts/random events, children born on a timer (None/Some/Many), child bond only via random events/neglect,
   affairs discovered by dice and ending on their own, tournament/duel fights auto-rolled. Rule: CLAUDE.md Depth

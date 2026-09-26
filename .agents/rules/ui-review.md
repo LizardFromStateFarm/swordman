@@ -65,6 +65,7 @@ Criteria:
 4. Interaction & ergonomics — obvious what's clickable, adequate target sizes, few clicks, clear feedback
 5. Consistency — uses the design tokens and existing component patterns; no one-off styles
 6. Layout fit — no clipping, overflow, awkward empty space or cramming, in every mode shown
+Automatic cap: any emoji visible in the screenshots caps criteria 1 and 5 at 5/10 (no-emoji rule, CLAUDE.md).
 
 Required output:
   Per criterion: N/10 + one sentence why
