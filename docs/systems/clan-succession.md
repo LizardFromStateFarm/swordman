@@ -1,7 +1,8 @@
-# Clan Succession — Build Spec (M2 tasks 2.6a–2.6f)
+# Clan Succession — Build Spec (M2 tasks 2.6a–2.6f, 2.7 plan)
 _Covers: world/life save split · clan registry (main line + ≤3 branches) · children who cultivate · bond + morality ·
 Tournament of Heirs · reign simulation · rebirth as a descendant (or orphan) · head challenges · succession tournaments
-· branch wars · secession · Phase: 16/18C/31 rework (M2) · Updated: 2026-09-26 · **Status: 2.6a–f built**_
+· branch wars · secession · Ancestral Hall + Clan Legacies (plan) · Phase: 16/18C/31 rework (M2) · Updated:
+2026-09-26 · **Status: 2.6a–f built; 2.7 is a reconciled plan, not yet built**_
 
 **Replaces the old task 2.6** ("choose an heir at death and play as them", life-loop.md §4.3/§5.1/§7 heir parts).
 User-designed 2026-09-26. You never *play as* your heir. The heir (an NPC) takes over the clan; the world simulates
@@ -417,3 +418,171 @@ is always the one in motion, and always the attacker in a war (never the defendi
 - **Evidence:** `npm test` (59 files), `npm run checks` (222, was 189). Full `npm run sim --hours=200 --seeds=2`:
   0 errors/0 violations, 50 save round-trips; branch wars fired for real in every profile (active declared once;
   afk pushed once) without being forced. `npm run build:web`, `npm run dist`.
+
+## 2.7 — Ancestral Hall & Clan Legacies (plan, reconciles life-loop.md's pre-2.6-redesign draft)
+
+`life-loop.md` §2.1/§2.2/§3.2/§4.2–4.4/§5.1/§7/§31A–H were written **before** the 2.6 redesign above existed —
+they assume a single `s.clan` with `merit`/`legacies`/`tree`/`firsts`/`bestStageIndex` living directly on it, and a
+death flow (`_endLife`/`_beginNewLife`) that no longer exists (`_die` → `_recordLifeInWorld` → the interlude →
+`_beginLife`, this doc's 2.6a/2.6d). This section is the authoritative plan for task 2.7, written against the real
+`s.world`/`Clan`/`Person`/interlude architecture 2.6a–f actually built. **life-loop.md keeps its numbers** (§3.1/§3.2's
+constant tables — `MERIT_STAGE`, `CATCHUP_QPS_MULT`, the legacy cost/value table, etc.) — only the **state shape and
+hooks** below supersede it. Not yet built; sign-off needed before code (same as 2.1's own "review before code" rule).
+
+### Depth pass
+- **Memory:** `clan.merit`/`meritEarned`/`firsts`/`legacies`/`bestStageIndex`/`ascendedAncestors` persist on the
+  **Clan object** across every life lived in that clan; `lifeMerit`/`inheritedManual` are per-life.
+- **Choices:** which legacies to buy and when (any time, per life-loop.md §4.2), which known technique becomes the
+  Family Manual, whether to grind a cleared realm manually instead of letting catch-up auto-breakthrough carry you
+  through it (no toggle needed — pillar 3, unlocks not automation-only).
+- **Hooks (≥3):** Bloodline (bloodline.md's growth formula sits beside the new Merit/catch-up formulas, both keyed
+  by `maxStage`) · succession/clan (this doc's `tradition`/`relations`/`pendingSuccession` — Merit/firsts attach to
+  the SAME Clan object those already mutate) · sect (own-sect fortune is already decided in the 2.6d reign sim —
+  the `sect_continuity` legacy is cut, not duplicated) · random events/banter (a new `ascended_ancestor` trigger) ·
+  automation (catch-up auto-BT reuses `_tickAutomation()`'s dispatch shape but is a base mechanic, not one of Phase
+  22's opt-in unlocks).
+- **Drama:** best — five generations deep, a clan with a stacked Family Manual + Heirloom + an Ascended Ancestor
+  blessing breezes to the frontier stage in under an hour and reaches for a genuinely new first. Worst — Merit
+  hoarded on the wrong legacy for a clan that then secedes or goes extinct and the ledger resets to zero, or an
+  Ascended Ancestor who — for the first time in M2 — simply cannot act anymore: a real ending, not a dead zone
+  wearing a costume.
+- **Feedback:** what you claim as firsts and how you spend Merit shapes how fast every FUTURE life in that same
+  clan clears realms you already broke.
+
+### State — extends the real `Clan`/per-life shapes from 2.6a, not the old `s.clan`
+Add to `Clan` (in `_foundClan()`'s object, plus a new `_ensurePhase34Fields()` migration that back-fills every clan
+already in `w.clans` for old saves — next free `_ensurePhaseN` number after 33):
+```
+merit:            number                    — unspent Ancestral Merit
+meritEarned:      number                    — lifetime total (UI/stats only)
+firsts:           { [firstId]: {gen, year} } — claimed once per CLAN (see "per-clan" note)
+legacies:         { [legacyId]: level }
+manualTechId:     string|null               — Family Manual pick, from `techniquesEver`
+techniquesEver:   string[]                  — every technique any member of this clan has learned
+bestStageIndex:   number                    — highest stage anyone in this clan has ever reached (catch-up gate)
+ascendedAncestors: number                   — successful Ascensions from this clan
+blessingStacks:   number                    — ≤ ANCESTOR_BLESSING_QPS_MAX, one per Ascended Ancestor (31F)
+```
+Add to per-life state (`_newGame()` + `_ensurePhase34Fields()`):
+```
+lifeMerit:        [{id, label, merit}]      — firsts/deeds claimed THIS life; credited to clan.merit at death
+inheritedManual:  string|null               — Family Manual technique id inherited from the clan; free to learn
+```
+**No new `clan.tree` array.** The family tree reads data 2.6a already writes: `world.pastLives` (filtered to the
+clan/line chain the slot has belonged to, across secession/rival-rebirth) joined against `world.persons[personId]`
+for name/root/personality/spouse/children/epitaph. A second copy of the same data would just be a sync bug waiting
+to happen.
+
+**Per-clan, not per-world (flag to confirm before 2.7a):** `firsts`/`merit`/`legacies`/`bestStageIndex` all live on
+the Clan object, so a branch that secedes (2.6f) or the rare rival-rebirth into an enemy's house starts that new
+clan's ledger at zero — no carry-over of catch-up or unlocked legacies into a different clan. This costs nothing to
+build (it's just where the fields live) and reads thematically fine (a new lineage, a new legacy), but is a real
+behavior change worth confirming.
+
+### API / hooks
+- `_claimFirst(id)`: idempotent, operates on `this._playerClan()` — the CURRENT clan, so a mid-life secession claims
+  firsts on the NEW clan from then on. Pushes `{id, label, merit}` to `s.lifeMerit`. Wired into: `attemptBreakthrough()`
+  (realm firsts, on entering a NEW realm, not every stage), `attemptAscension()` (`asc_attempt` always, `ascended` on
+  success), `joinSect`/`foundOwnSect`, `tameEncounteredBeast`, own + member war win resolvers, `acceptSuitor`
+  (`married`), first child born in `_tickFamily()`.
+- Merit credit moves into `_recordLifeInWorld()` (the real place a life's outcome gets written into the world, née
+  `_endLife`): `MERIT_STAGE × (maxStage/22)² + sum(lifeMerit) + capped deeds` → `clan.merit +=`, `clan.meritEarned +=`.
+  `clan.bestStageIndex = max(clan.bestStageIndex, maxStage)` updates here AND live in `attemptBreakthrough()` (so
+  catch-up kicks in for a still-living sibling immediately, not only at the next death).
+- `buyLegacy(id)` / `setFamilyManual(techId)` / `legacyLevel(id)`: as life-loop.md §4.2 drafted, but read/write
+  `this._playerClan()` instead of the old `s.clan`.
+- Legacies apply at `_beginLife()` (2.6d's rebirth — where the heir/branch/orphan life is actually built):
+  `ancestral_stipend` → starting `spiritStones`; `heirloom`/`beast_lineage` → captured from the DYING life's
+  `equipped`/best beast at `_recordLifeInWorld()` time (a small snapshot field, same pattern as the existing sect
+  snapshot on `clan.pendingSuccession`), applied to the new life's `inventory`/`equipped`/`beasts` at `_beginLife()`;
+  `family_manual` → `inheritedManual = clan.manualTechId`, free once the new life reaches its `minStage` (checked in
+  `attemptBreakthrough()` too, matching life-loop.md's "free once eligible" decision). ~~`sect_continuity`~~ **cut**
+  — already free and unconditional via `clan.sect` + the 2.6d reign sim (noted in 2.6f's build-order table already).
+- **Ascended Ancestor ending (31F — fixes the post-Ascension dead zone):** `attemptAscension()` success currently
+  just sets `stageIndex = 22, ascended = true` and keeps playing at an unreachable stub stage — confirmed still the
+  case (`renderer/engine/game-state.js` attemptAscension()). Change: on success, claim `ascended` (large Merit),
+  `clan.ascendedAncestors++`, `clan.blessingStacks = min(+1, ANCESTOR_BLESSING_QPS_MAX)`, mark the dying person's
+  record `ascendedAncestor: true` (a ★ in the Hall's tree + its own epitaph flavor), then `_die('ascended')` — routes
+  through the **already-built** interlude/rebirth flow exactly like any other death, instead of leaving the
+  character alive at a stage with nothing left to do. `_recalc()` applies `clan.blessingStacks × ANCESTOR_BLESSING_QPS`
+  to Qi/s unconditionally (a permanent clan-wide blessing, not gated by catch-up).
+- **Ancestral catch-up (31E):** in `_recalc()`, while `stageIndex < clan.bestStageIndex`: Qi/s `× CATCHUP_QPS_MULT`,
+  breakthrough chance `+ CATCHUP_BT_BONUS` (still capped at 0.98). Catch-up auto-BT is a small addition to
+  `_tickAutomation()`'s existing dispatch shape — attempt `attemptBreakthrough()` the instant Qi is ready, same
+  Ascension-Trial exclusion (`stageIndex === length − 2`) Auto-Breakthrough already has — but NOT gated behind Phase
+  22's per-stage automation unlocks; it's a base catch-up mechanic, always on below the clan's best.
+
+### UI — the Ancestral Hall
+Expands the existing `#chronicle-overlay` (2.6d, today just `clan.history`) into `#hall-overlay`, opened from the
+same Stats button (relabeled "Ancestral Hall 祖祠"), with the chronicle as one section among several:
+1. **Records** — clan name, generation, best realm reached, lifetime Merit, Ascended Ancestors, unspent Merit.
+2. **Family tree** — built from `world.pastLives` (newest first, per life-loop.md §5.4) joined against
+   `world.persons[personId]` for name/root/spouse/children/epitaph (`EPITAPHS[cause]`, new in `clan-legacies.js`),
+   with a ★ mark for `ascendedAncestor`.
+3. **Legacies** — buy buttons per `CLAN_LEGACIES` (life-loop.md §3.2's list, minus `sect_continuity` (cut here) and
+   `longevity_blood` (already cut, §15) → 5 entries),
+   Family Manual technique picker gated by `clan.techniquesEver`.
+4. **Chronicle** — unchanged, `clan.history`.
+Same 300px-fits / scrollable / ≥32px tap targets / `BanterSystem.isBlocked` selector rule as every other overlay.
+
+### New data file
+`assets/data/clan-legacies.js` — `MERIT_STAGE` / `MERIT_DEED_*` / `CATCHUP_*` / `ANCESTOR_BLESSING_*` /
+`CLAN_FIRSTS` / `CLAN_LEGACIES` (5 — `sect_continuity` and `longevity_blood` both cut) / `EPITAPHS`. Top comment per Rule 5.
+
+### Build order (2.7 sub-tasks — one commit each, same discipline as 2.6a–f)
+| Sub-task | Scope |
+|---|---|
+| 2.7a ✅ | State: Clan fields + `_ensurePhase34Fields()` migration, `clan-legacies.js` data file |
+| 2.7b ✅ | Merit: `_claimFirst` wired into every hook, credited in `_recordLifeInWorld()`, `bestStageIndex` live-updated |
+| 2.7c | Legacies: `buyLegacy`/`setFamilyManual`/`legacyLevel`, applied at `_beginLife()`, heirloom/beast-lineage capture at death |
+| 2.7d | Ascended Ancestor ending: `attemptAscension()` routes to `_die('ascended')`, blessing stacks, dead-zone gone |
+| 2.7e | Ancestral catch-up: Qi/s + BT bonus below clan best, catch-up auto-BT in `_tickAutomation()` |
+| 2.7f | Ancestral Hall UI: `#hall-overlay` (records/tree/legacies/chronicle), Stats button rename |
+Sim + docs + scenario checks every sub-task per CLAUDE.md's rules; full evidence (npm test/checks/sim/dist/build:web/
+smoke) at minimum once at the end of 2.7, npm test + checks + sim:quick after each sub-task.
+
+### Open questions (decide during the relevant sub-task, flag to the user)
+1. **Per-clan Merit/legacies/firsts/bestStageIndex** (default above) — a secession or rival-rebirth starts a fresh
+   ledger in the new clan. Confirm before 2.7a.
+2. Heirloom/Beast Lineage capture-at-death timing: piggybacks on `_recordLifeInWorld()`'s existing sect-snapshot
+   pattern — needs its own small snapshot field. Decide during 2.7c.
+3. Does the Ascended Ancestor ending get its own death-overlay text/epitaph flavor beyond the plain `ascended` cause
+   (life-loop.md §31F implies yes — "a large Merit award... play continues with the heir" should read differently
+   from an ordinary death)? Decide during 2.7d.
+
+Then 2.8 (tuning): Merit costs, catch-up strength, per PLAN.md's roadmap.
+
+### 2.7a/2.7b — as built (2026-09-26)
+- **State:** `_foundClan()` now seeds every new Clan with `merit/meritEarned/firsts/legacies/manualTechId/
+  techniquesEver/bestStageIndex/ascendedAncestors/blessingStacks`; `_ensurePhase34Fields()` (new, runs right after
+  `_ensurePhase33Fields()` in the `_recalc()` chain) backfills those onto every clan already in an old save's
+  `w.clans`, seeds `bestStageIndex` from what the save already knows (`maxStageThisLife`/`stageIndex`/
+  `lastReincarnation.maxStageReached`) so an existing clan's catch-up threshold never regresses to 0, and adds
+  the per-life `lifeMerit`/`inheritedManual` fields. New `assets/data/clan-legacies.js` (`MERIT_STAGE`, deed/
+  catch-up/blessing constants, `REALM_FIRST_ID`, `CLAN_FIRSTS`, `CLAN_LEGACIES` — 5 entries, `sect_continuity` and
+  `longevity_blood` both cut — and `EPITAPHS`), wired into `index.html` + `scripts/sim/loader.js`.
+- **Merit hooks:** `_claimFirst(id)` (idempotent per clan, queues onto `s.lifeMerit`) wired into `attemptBreakthrough()`
+  (realm firsts, on a realm change — also updates `clan.bestStageIndex` live), `attemptAscension()` (`asc_attempt`
+  every call, `ascended` on success), `joinSect`, `foundOwnSect`, `tameEncounteredBeast`, both war-win resolvers
+  (`_resolveSectWar`/`_resolveMemberWar` — gated by `this._warLive`, see gotcha below), `acceptSuitor` (`married`),
+  and the child-birth helper (`first_child`). `learnTechnique()` now also appends to `clan.techniquesEver` (the
+  pool 2.7c's Family Manual picks from). Merit itself (`clan.merit`/`meritEarned`) is credited once, in
+  `_recordLifeInWorld()`: `MERIT_STAGE × (maxStage/22)² + sum(lifeMerit) + capped deeds` (deeds = war wins this
+  life × `MERIT_DEED_WAR_WON` + beasts owned × `MERIT_DEED_BEAST` + disciples × `MERIT_DEED_DISCIPLE`, capped at
+  `MERIT_DEED_CAP`) — matching where the rest of a life's outcome already gets written into the world.
+- **Gotcha found and fixed:** offline catch-up (`initSlot()`'s bounded replay loop) can resolve a sect/member war
+  while the app is closed, and that loop already sets `this._warLive = false` for exactly this reason (it already
+  gated `war_won`/`war_lost` banter/events on it). Claiming `war_won` unconditionally broke the save-round-trip
+  invariant the first time an offline-resolved win was *also* a clan's very first war win ever (`world.clans`
+  changed between a snapshot taken before close and the state after reopening, which the round-trip check treats
+  as a violation — same category of assumption the pre-existing "an offline expedition can mint a person id" note
+  already carves an exception for). Fixed by gating both `_claimFirst('war_won')` calls behind `this._warLive`,
+  same as the banter/event emit right next to them — an offline-only win still counts toward `warVictories` and
+  spoils as before, it just doesn't claim the *first* until a live win does.
+- **Sim:** new invariants `clan_merit_negative`, `clan_best_stage_range`, `clan_first_unknown`/`clan_first_invalid`
+  (added to the existing 2.6f clan loop in `checkInvariants`). `CLAN_FIRSTS`/`CLAN_LEGACIES`/`MERIT_*`/`CATCHUP_*`
+  exposed via `scripts/sim/loader.js`'s `sim.data` for 2.7c–e for use in bot/check code.
+- **Evidence:** `npm test` (60 files, was 59), `npm run checks` (222, unchanged — no player-facing behavior yet).
+  Full `npm run sim --hours=200 --seeds=2`: 0 errors/0 violations, 50 save round-trips, across 26 lives spanning
+  every profile. No new pacing/dead-zone flags beyond the already-known, still-unfixed post-Ascension dead zone
+  (2.7d's job).

@@ -186,6 +186,13 @@ class Recorder {
         if (c.lines.length > 4) this.violate('clan_too_many_branches', `${c.id}: ${c.lines.length - 1}`)
         // 2.6f: clan-to-clan relations (secession, rival rebirth) stay within range.
         for (const v of Object.values(c.relations || {})) if (!(v >= -100 && v <= 100)) this.violate('clan_relation_range', `${c.id}=${v}`)
+        // Phase 31 (M2 task 2.7b): Merit never negative, bestStageIndex stays a valid stage, firsts are known ids.
+        if (!(c.merit >= 0)) this.violate('clan_merit_negative', `${c.id}=${c.merit}`)
+        if (!(c.bestStageIndex >= 0 && c.bestStageIndex <= this.D.CULTIVATION_STAGES.length - 1)) this.violate('clan_best_stage_range', `${c.id}=${c.bestStageIndex}`)
+        for (const [id, rec] of Object.entries(c.firsts || {})) {
+          if (!this.D.CLAN_FIRSTS?.[id]) this.violate('clan_first_unknown', `${c.id}/${id}`)
+          if (!(rec.gen >= 1) || !(rec.year >= 1)) this.violate('clan_first_invalid', `${c.id}/${id}`)
+        }
       }
       const b = s.birth
       if (b) {

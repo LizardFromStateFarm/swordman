@@ -154,6 +154,10 @@ class GameState {
       deaths:            0,
       ascended:          false,
       lastReincarnation: null,
+      // Phase 31 (M2 task 2.7, clan-succession.md §2.7): firsts/deeds claimed THIS life (credited to
+      // clan.merit at death) and the Family Manual technique inherited from the clan, if any.
+      lifeMerit:         [],
+      inheritedManual:   null,
       // 2.6d (clan-succession.md): between lives (null while alive), where you were born, the upbringing event
       interlude:         null,
       birth:             null,
@@ -379,9 +383,36 @@ class GameState {
       lines: [{ id: `${id}-main`, name: 'Main Line', headId: founderId, memberIds: founderId ? [founderId] : [] }],
       sect: null, tradition: { lethalTournaments: 0, peacefulSuccessions: 0, challenges: 0 },
       relations: {}, history: [],
+      // Phase 31 (M2 task 2.7, clan-succession.md §2.7): Ancestral Merit/legacies/firsts/catch-up are per-CLAN —
+      // a seceded or rival-rebirth clan starts its own ledger, never carries the old clan's ledger with it.
+      merit: 0, meritEarned: 0, firsts: {}, legacies: {}, manualTechId: null, techniquesEver: [],
+      bestStageIndex: 0, ascendedAncestors: 0, blessingStacks: 0,
     }
     w.clans[id] = clan
     return clan
+  }
+
+  // Migration (2.7a): backfills the Phase 31 Merit/legacy/catch-up fields onto every clan already in the
+  // registry (old saves predate them) and the per-life lifeMerit/inheritedManual fields. Must run after
+  // _ensurePhase33Fields() (needs s.world.clans). bestStageIndex for the player's own clan is seeded from
+  // what this save already knows was reached, so catch-up doesn't regress an existing clan to 0.
+  _ensurePhase34Fields() {
+    const s = this._s
+    const blank = { merit: 0, meritEarned: 0, firsts: {}, legacies: {}, manualTechId: null, techniquesEver: [],
+                     bestStageIndex: 0, ascendedAncestors: 0, blessingStacks: 0 }
+    for (const clan of Object.values(s.world?.clans || {})) {
+      for (const k of Object.keys(blank)) {
+        if (clan[k] === undefined) clan[k] = Array.isArray(blank[k]) ? [] : (typeof blank[k] === 'object' && blank[k] !== null ? {} : blank[k])
+      }
+    }
+    const own = this._playerClan()
+    if (own) {
+      const known = Math.max(s.maxStageThisLife || 0, s.stageIndex || 0, s.lastReincarnation?.maxStageReached || 0)
+      own.bestStageIndex = Math.max(own.bestStageIndex, known)
+      if (s.techniques?.length && !own.techniquesEver.length) own.techniquesEver = [...s.techniques]
+    }
+    if (!Array.isArray(s.lifeMerit)) s.lifeMerit = []
+    if (s.inheritedManual === undefined) s.inheritedManual = null
   }
 
   // Idempotent: adds personId to the line (main line by default); fills an empty founder/head slot.
@@ -438,10 +469,35 @@ class GameState {
         branchFounderIds: viaTournament
           ? f.lastTournament.ranking.slice(1).filter(id => (f.children || []).some(c => c.id === id && c.alive && !c.estranged)) : [] }
       if (s.ownSect?.founded) clan.sect = { ...JSON.parse(JSON.stringify(s.ownSect)), inheritedYear: yr, heirId: heir ? heir.id : null }
+      // Phase 31 (M2 task 2.7b): Ancestral Merit — stage term + this life's claimed firsts + capped deeds.
+      clan.bestStageIndex = Math.max(clan.bestStageIndex, maxStage)
+      const stageTerm = MERIT_STAGE * Math.pow(maxStage / (CULTIVATION_STAGES.length - 1), 2)
+      const firstsMerit = (s.lifeMerit || []).reduce((a, m) => a + m.merit, 0)
+      const deeds = Math.min(MERIT_DEED_CAP,
+        (s.sectWar?.warVictories || 0) * MERIT_DEED_WAR_WON +
+        (s.beasts || []).length * MERIT_DEED_BEAST +
+        (s.ownSect?.disciples || []).length * MERIT_DEED_DISCIPLE)
+      const meritGained = Math.round(stageTerm + firstsMerit + deeds)
+      clan.merit += meritGained
+      clan.meritEarned += meritGained
     }
     w.pastLives.push({ personId: me.id, clanId: clan?.id || null, lineId: w.playerLineId, cause, year: yr,
                        maxStage, generation, openHours: +(s.stats.timePlayed / 3600).toFixed(2) })
     return w
+  }
+
+  // Phase 31 (M2 task 2.7b, clan-succession.md §2.7): claims a clan first, idempotent, on the CURRENT clan (a
+  // mid-life secession claims on the new clan from then on). Queues the Merit onto s.lifeMerit; credited to
+  // clan.merit at death in _recordLifeInWorld(). No-op for an orphan life (no clan to claim into).
+  _claimFirst(id) {
+    const clan = this._playerClan()
+    if (!clan || clan.firsts[id]) return false
+    const def = CLAN_FIRSTS[id]
+    if (!def) return false
+    const s = this._s
+    clan.firsts[id] = { gen: s.generation || 1, year: Math.floor(s.world.year) }
+    s.lifeMerit.push({ id, label: def.label, merit: def.merit })
+    return true
   }
 
   // A person by id: the living player, or the world registry.
@@ -636,6 +692,7 @@ class GameState {
     child.xp       = 0
     f.children.push(child)
     this.addEvent({ text: `Year ${yr}: a child is born — ${Persons.fullName(child)} (${child.root.name}).`, type: 'special' })
+    this._claimFirst('first_child')
     this._emit('child_born', { child: child.given })
     return child
   }
@@ -992,6 +1049,7 @@ class GameState {
     this._ensurePhase33Fields()   // world first (2.6a) — self/clan roster below depend on it
     this._ensurePhase30Fields()
     this._ensurePhase16Fields()
+    this._ensurePhase34Fields()   // Phase 31 (2.7a) — needs s.world.clans (33), reads maxStageThisLife/techniques
     const st = this._stage()
 
     let qps = st.baseQps * s.root.mult
@@ -1280,13 +1338,19 @@ class GameState {
       }
     }
 
+    const prevRealm = CULTIVATION_STAGES[s.stageIndex].realm
     s.stageIndex++
     s.qi    = 0
     s.karma = Math.min(100, s.karma + 10)
     s.stats.breakthroughs++
     s.maxStageThisLife = Math.max(s.maxStageThisLife || 0, s.stageIndex)
     if (s.banter) s.banter.failStreak = 0
-    // clan.bestStageIndex/realm firsts (task 2.7) aren't built yet.
+    // Phase 31 (M2 task 2.7b): realm firsts + live bestStageIndex, so a still-living sibling gets ancestral
+    // catch-up immediately, not only once this life ends.
+    const newRealm = CULTIVATION_STAGES[s.stageIndex].realm
+    if (newRealm !== prevRealm && REALM_FIRST_ID[newRealm]) this._claimFirst(REALM_FIRST_ID[newRealm])
+    const clan = this._playerClan()
+    if (clan) clan.bestStageIndex = Math.max(clan.bestStageIndex, s.stageIndex)
     this._recalc(); this._notify()
     this._emit('bt_success')
     return { success: true, newStage: this._stage() }
@@ -1322,6 +1386,7 @@ class GameState {
     f.tolerant        = false
     f.nextEventYear   = null
     this.addEvent({ text: `Year ${Math.floor(y)}: ${s.name} and ${Persons.fullName(spouse)} are wed. Two paths become one.`, type: 'special' })
+    this._claimFirst('married')
     this._recalc(); this._notify()
     this._emit('married', { spouse: spouse.given })
     return { ok: true, spouse }
@@ -1661,6 +1726,7 @@ class GameState {
 
     const chance = this.ascensionChance()
     s.stats.ascensionAttempts++
+    this._claimFirst('asc_attempt')   // Phase 31 (2.7b): pays once per clan, every attempt after the first is a no-op
 
     if (Math.random() < chance) {
       s.stageIndex++
@@ -1668,6 +1734,9 @@ class GameState {
       s.ascended = true
       s.maxStageThisLife = s.stageIndex
       s.stats.ascensions++
+      this._claimFirst('ascended')
+      const clan = this._playerClan()
+      if (clan) clan.bestStageIndex = Math.max(clan.bestStageIndex, s.stageIndex)
       this._recalc(); this._notify()
       return { success: true, chance, newStage: this._stage() }
     }
@@ -2718,6 +2787,8 @@ class GameState {
     if (s.spiritStones < t.cost)   return { ok: false, reason: 'stones' }
     s.spiritStones -= t.cost
     s.techniques.push(id)
+    const clan = this._playerClan()
+    if (clan && !clan.techniquesEver.includes(id)) clan.techniquesEver.push(id)   // Phase 31 (2.7b): Family Manual pool
     this._recalc(); this._notify()
     return { ok: true }
   }
@@ -3027,6 +3098,7 @@ class GameState {
     s.beasts = s.beasts || []
     s.beasts.push(beast)
 
+    this._claimFirst('first_beast')
     this._recalc(); this._notify()
     this._emit('beast_tamed', { name: beastType.name })
     return { ok: true, beast }
@@ -3117,6 +3189,7 @@ class GameState {
     s.sect = { id: def.id, rank: 0, contribution: 0, activeMissions: [] }
     s.sectWar = this._blankSectWar('member')   // first call to arms is scheduled on the next tick
     this.addEvent({ text: `You joined the ${def.name} (${def.nameCN}) as an Outer Disciple.`, type: 'special' })
+    this._claimFirst('joined_sect')
     this._recalc(); this._notify()
     return { ok: true, sect: def }
   }
@@ -3269,6 +3342,7 @@ class GameState {
     this._refreshRecruitPool()
     this._scheduleNextWar()
     this.addEvent({ text: `You founded the ${clean}! Its Sect Hall stands, awaiting disciples.`, type: 'special' })
+    this._claimFirst('founded_sect')
     this._recalc(); this._notify()
     return { ok: true }
   }
@@ -3525,6 +3599,7 @@ class GameState {
       s.spiritStones += stones
       s.inventory.spirit_herb = (s.inventory.spirit_herb || 0) + herbs
       w.warVictories++
+      if (this._warLive) this._claimFirst('war_won')   // offline catch-up must not change world.clans (save-roundtrip)
       w.lastResult = { win: true, enemyName, spoils: { spirit_stone: stones, spirit_herb: herbs }, ts: Date.now() }
       this.addEvent({ text: `Victory! Your sect repelled the ${enemyName}, seizing ${stones} Spirit Stones and ${herbs} Spirit Herbs.`, type: 'special' })
     } else {
@@ -3605,6 +3680,7 @@ class GameState {
 
     if (win) {
       w.warVictories++
+      if (this._warLive) this._claimFirst('war_won')   // offline catch-up must not change world.clans (save-roundtrip)
       if (engaged) {
         const contrib = Math.round(MEMBER_WAR_WIN_CONTRIB * rankMult)
         const stones  = Math.round((MEMBER_WAR_SPOILS_STONE_BASE + this._sectTier() * MEMBER_WAR_SPOILS_STONE_PER_TIER) * rankMult * (0.7 + Math.random() * 0.6))

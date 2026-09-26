@@ -19,6 +19,13 @@ _Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ 
 > `docs/systems/clan-succession.md`** (tasks 2.6a–f): you're reborn as a descendant, not played as the heir.
 > Since 2.6a, `s.gameYear` is `s.world.year` (never resets on death) and `s.clan` lives in `s.world.clans`.
 
+> **⚠ 2026-09-26, reconciled for 2.7 — MERIT/LEGACIES/HALL:** everything below that puts `merit`/`legacies`/
+> `firsts`/`bestStageIndex`/`tree` directly on a single `s.clan` (§2.2, §3.2's state shape, §4.2–4.4's `buyLegacy`
+> etc., §31A–H) assumed the pre-2.6 clan model and is **superseded by `docs/systems/clan-succession.md` §2.7**
+> (plan, not yet built) — those fields now live on the real per-`s.world` `Clan` object, and the family tree reads
+> `world.pastLives`/`world.persons` instead of a separate `clan.tree` array. **The constants tables in §3.1/§3.2
+> (Merit/legacy numbers, catch-up multipliers) still stand** — only the state shape and death-flow hooks changed.
+
 ## 1. Overview
 
 A save slot is a **clan**. A character's mortal life is one **run** of ~20–40h of open play (casual; was 10–20h before old age was removed, §15). Age runs on a
