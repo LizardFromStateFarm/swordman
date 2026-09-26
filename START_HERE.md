@@ -29,6 +29,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Dev late-game test characters (charselect, `npm start` only) | ✅ Tooling |
 | Health & Death, Bloodline Quality, chance-based Ascension Trial | ✅ Phase 23A–C |
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
+| Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
 | Dao Paths, Reincarnation, Tribulation | ⬜ Phase 7–8 |
 | Desktop notifications, tray, time-of-day | ⬜ Phase 9 |
@@ -52,13 +53,40 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 > **Build order lives in PLAN.md → "Development Roadmap" (milestones M1–M7).** The table above is by feature,
 > not by order.
-| Character Personality & Banter | ⬜ Phase 29 (planned) |
 
 ---
 
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-25 (session 11, part 2)
+Agent: Roadmap M1 task 1.2, Phase 29 Personality & Banter. Committed 1.1 first (8b0b568). User asked for parallel
+  writing agents with short personality guides, plus a nonsense one ("borgin and gorgin"), a nice guy and a psychotic
+  one, all funny and not afraid to curse.
+  - 14 personalities (assets/data/personalities.js): the 11 from the plan + Unhinged Psycho, Nonsense Gremlin, Genuinely
+    Nice Guy (replaces Naive Optimist). Rolled at new game and on migration (saved immediately so it can't re-roll),
+    re-rolled on reincarnation (new soul). Shown in the Stats badge + on charselect cards.
+  - Content: docs/systems/banter-writing-guide.md is the brief. 4 parallel agents wrote ~100 lines per personality, and I
+    added a swearing pass (the agents under-swore: 0–8 lines each). Total 1,579 lines in assets/data/banter-lines.js,
+    zero holes, zero dups, all ≤ 140 chars. The merge script lived in scratchpad (not committed). Edit
+    banter-lines.js directly from now on.
+  - Engine: renderer/game/banter.js BanterSystem (DOM-free, the sim runs it). game-state.js got onGameEvent() emits
+    (bt_success/bt_fail{streak}/expedition_return{rareItem}/war_call/won/lost (live + seen only)/reborn/welcome_back)
+    + recordBanter() + markTimeOfDay(). Low health, morning/night and ascension_trial are handled engine/UI-side.
+    Rare drop = drop-table weight ≤ 15%.
+  - UI: #banter-bubble (fixed, z 210 above overlays, tap to dismiss, fades after 6s; Asset Pipeline 8.1 on the first
+    pass). Banter log (last 50) at the bottom of Stats. New settings: Chatter Off/Rare/Norm/Chatty + Swearing
+    Uncut/F*** (mask at display time).
+  - Sim: new invariants personality_invalid, banter_buffer_over_cap, banter_pool_holes. sim:quick healthy. The full
+    sim was skipped (cosmetic, no balance impact).
+  - Verified: npm test, sim:quick, a trigger-by-trigger script (low health, war, rare drop, welcome back incl. the real
+    initSlot path, fail streak, reborn, mask, Off = silent), build:web, dist, and the real app over CDP on a scratch
+    profile (bubble, Stats badge, settings rows, charselect label). Fixed 2 bugs found that way: the bubble capped at
+    150px wide, and a migrated personality re-rolled on reload.
+  Not done: 29C (≤2% stat flavor skipped by design; dark/holy variants need 13/24). The line quality was
+    spot-checked, not read line-by-line (1,579 lines), so the user should flag duds. The iOS layout wasn't checked by eye.
+  Next: M1 task 1.3 (tray + desktop notifications) or 1.4 (Backpack tab).
+
 Date: 2026-09-25 (session 11)
 Agent: Roadmap M1 task 1.1 — Phase 20C Settings (⚙). User approved the assessment and asked to add adjustable
   background opacity. Also clarified CLAUDE.md's pre-task rule: orientation reads (START_HERE/CLAUDE/PLAN/GAMEDESIGN/
@@ -333,6 +361,7 @@ docs/
     qa-sim.md          ← QA sim harness — `npm run sim`, report flags, extending the bot
     bloodline.md       ← Health & Death, Bloodline Quality, Ascension Trial (Phase 23A-C)
     settings.md        ← ⚙ Settings panel, per-slot presentation prefs (Phase 20C)
+    banter.md          ← Personalities + banter engine (Phase 29) · banter-writing-guide.md = writers' brief
     ui-layout.md       ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md           ← Always-on rules (docs, style, Electron security)
@@ -356,6 +385,7 @@ renderer/
     beasts.js          ← BeastSystem — tick-based beast expedition resolution (Phase 3)
     sect.js            ← SectSystem — sect mission timers (Phase 4)
     settings.js        ← SettingsUI — ⚙ overlay + applies prefs (Phase 20C)
+    banter.js          ← BanterSystem — what the cultivator says and when (Phase 29)
 assets/
   data/
     stages.js          ← CULTIVATION_STAGES[23] — every layer of the cultivation path
@@ -370,6 +400,8 @@ assets/
     sect-buildings.js  ← Own-sect founding/buildings/disciple constants (Phase 5A)
     bloodline.js       ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
     settings.js        ← SETTINGS_DEFS — ⚙ panel options (Phase 20C)
+    personalities.js   ← PERSONALITIES + banter constants (Phase 29)
+    banter-lines.js    ← BANTER_LINES (Phase 29)
     dev-presets.js     ← DEV_PRESETS — late-game test characters (npm start only)
   sprites/
     cultivator-sprites.js  ← CULTIVATOR_SPRITES — all animated ASCII frames

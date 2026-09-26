@@ -159,6 +159,18 @@ class Recorder {
       const ok = def.type === 'range' ? (v >= def.min && v <= def.max) : def.options.some(o => o.value === v)
       if (!ok) this.violate('settings_invalid', `${def.id}=${v}`)
     }
+    if (!this.D.PERSONALITIES.some(p => p.id === s.personality?.id)) this.violate('personality_invalid', s.personality?.id)
+    if (!(s.banter?.recent.length <= this.D.BANTER_RECENT_MAX) || !(s.banter?.log.length <= this.D.BANTER_LOG_MAX))
+      this.violate('banter_buffer_over_cap', `${s.banter?.recent.length}/${s.banter?.log.length}`)
+    if (!this._banterPoolsChecked) {   // content check, once per run: no personality × trigger holes
+      this._banterPoolsChecked = true
+      const { BANTER_LINES: L, BANTER_TRIGGERS: T, BANTER_MIN_LINES: M } = this.D
+      for (const id of ['generic', ...this.D.PERSONALITIES.map(p => p.id)]) for (const t of T) {
+        const min = id === 'generic' ? (t === 'idle' ? M.genericIdle : M.genericOther) : (t === 'idle' ? M.idle : M.other)
+        const n = L[id]?.[t]?.length || 0
+        if (n < min) this.violate('banter_pool_holes', `${id}.${t}=${n}<${min}`)
+      }
+    }
     if (!(s.karma >= 0 && s.karma <= 100)) this.violate('karma_out_of_range', s.karma)
     if (d.breakthroughChance > 0.98 || d.breakthroughChanceDisplay > 0.98) this.violate('bt_chance_over_0.98', d.breakthroughChanceDisplay)
     if (s.stageIndex < 0 || s.stageIndex >= this.D.CULTIVATION_STAGES.length) this.violate('stage_out_of_range', s.stageIndex)

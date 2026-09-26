@@ -58,6 +58,8 @@ docs/
     dev-presets.md      ← Dev-only late-game test characters (npm start charselect)
     bloodline.md        ← Health & Death, Bloodline Quality, Ascension Trial (Phase 23A-C)
     settings.md         ← ⚙ Settings panel, per-slot presentation prefs (Phase 20C)
+    banter.md           ← Personalities + banter engine, bubble, log (Phase 29)
+    banter-writing-guide.md ← Voice/tokens/triggers brief for writing banter lines
     ui-layout.md        ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
@@ -86,6 +88,7 @@ renderer/
     sect.js             ← SectSystem — resolves timed sect missions (Phase 4)
     sect-war.js         ← SectWarSystem — advances the sect war state machine, own + member wars (Phase 5B/5C)
     settings.js         ← SettingsUI — ⚙ overlay rendered from SETTINGS_DEFS + applies prefs (Phase 20C, UI only)
+    banter.js           ← BanterSystem — picks lines on game events + idle timer, DOM-free (Phase 29)
 assets/
   data/
     stages.js           ← CULTIVATION_STAGES[23]
@@ -100,6 +103,8 @@ assets/
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
     bloodline.js        ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
+    personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)
+    banter-lines.js     ← BANTER_LINES — 1,579 lines, personality × trigger + generic pool (Phase 29)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors

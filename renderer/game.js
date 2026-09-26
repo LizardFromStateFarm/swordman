@@ -29,6 +29,7 @@
         body.innerHTML = `
           <div class="cs-char-name">${escHtml(save.name || 'Unnamed Cultivator')}</div>
           <div class="cs-char-stage" style="color:${stage.color || 'var(--text)'}">${stage.realm} · ${stage.layer}</div>
+          ${(() => { const p = PERSONALITIES.find(x => x.id === save.personality?.id); return p ? `<div class="cs-char-persona">${p.name}</div>` : '' })()}
           <div class="cs-char-meta">
             ${fmtTime(save.stats?.timePlayed || 0)} cultivated
             &nbsp;·&nbsp; ${save.stats?.breakthroughs || 0} breakthroughs
@@ -123,7 +124,8 @@
     document.getElementById('app').classList.add('hidden')
     document.getElementById('charselect').classList.remove('hidden')
     settingsUI.close()
-    settingsUI.apply(gameState.defaultSettings())   // charselect always shows default presentation
+    settingsUI.apply(gameState.defaultSettings())
+    document.getElementById('banter-bubble').classList.add('hidden')   // charselect always shows default presentation
     renderCharSelect()
   })
 
@@ -137,6 +139,7 @@
   const sectSys   = new SectSystem(gameState)
   const sectWarSys = new SectWarSystem(gameState)
   const settingsUI = new SettingsUI(gameState, renderer)
+  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden)'))
   let tickRunning = false
 
   function bootGame() {
@@ -144,6 +147,7 @@
 
     // Seed with the loaded save's existing value so a prior-session death doesn't re-pop the overlay.
     let _lastDeathTs = gameState.get()?.lastReincarnation?.ts ?? null
+    let _lastBanterTs = gameState.get()?.banter?.last?.ts ?? null
 
     gameState.subscribe((s, fromTick) => {
       if (!s) return
@@ -153,6 +157,10 @@
       if (s.lastReincarnation && s.lastReincarnation.ts !== _lastDeathTs) {
         _lastDeathTs = s.lastReincarnation.ts
         showDeathOverlay(s.lastReincarnation)
+      }
+      if (s.banter?.last && s.banter.last.ts !== _lastBanterTs) {
+        _lastBanterTs = s.banter.last.ts
+        showBanterBubble(s.banter.last.text, s)
       }
     })
 
@@ -170,6 +178,7 @@
       beastSys.tick(dt)
       sectSys.tick(dt)
       sectWarSys.tick(dt)
+      banterSys.tick(dt)
       requestAnimationFrame(loop)
     }
     requestAnimationFrame(loop)
@@ -353,6 +362,7 @@
     const healthColor = health >= 70 ? 'var(--jade)' : health >= 30 ? 'var(--gold)' : 'var(--red)'
     document.getElementById('tab-stats').innerHTML = `
       <div class="root-badge">⚗ ${s.root.name} · ×${s.root.mult} Qi</div>
+      ${(() => { const p = PERSONALITIES.find(x => x.id === s.personality?.id); return p ? `<div class="persona-badge" title="${escHtml(p.blurb)}">☯ ${p.name} · ${p.nameCN}<span class="persona-blurb">${escHtml(p.blurb)}</span></div>` : '' })()}
       ${sr('Realm', d.stage.realm)} ${sr('Layer', d.stage.layer)}
       ${sr('Total Qi Gained', fmt(s.stats.totalQiGained))}
       ${sr('Qi / Second', fmt(d.qiPerSecond))}
@@ -377,8 +387,38 @@
       ${(s.deaths || 0) > 0 ? sr('Deaths', s.deaths) : ''}
       ${s.stats.ascensionAttempts > 0 ? sr('Bloodline Quality', `${Math.round(s.bloodlineQuality || 0)} / 100`) : ''}
       ${s.stats.ascensions > 0 ? sr('Ascensions', s.stats.ascensions) : ''}
+      ${renderBanterLog(s)}
     `
   }
+
+  // ── Banter (Phase 29) ─────────────────────────────────────────────────────
+
+  function banterText(text, s) {
+    return (s || gameState.get())?.settings?.profanity === 'masked' ? BanterSystem.mask(text) : text
+  }
+
+  function renderBanterLog(s) {
+    const log = s.banter?.log || []
+    if (!log.length) return ''
+    return `<div class="banter-log-head">Banter 碎碎念</div>
+      ${log.map(l => `<div class="banter-log-line"><span class="banter-log-ago">${fmtAgo(l.ts)}</span> ${escHtml(banterText(l.text, s))}</div>`).join('')}`
+  }
+
+  let _bubbleTimer = null
+  function showBanterBubble(text, s) {
+    const el = document.getElementById('banter-bubble')
+    document.getElementById('banter-text').textContent = banterText(text, s)
+    el.classList.remove('hidden', 'fading')
+    if (_bubbleTimer) clearTimeout(_bubbleTimer)
+    _bubbleTimer = setTimeout(() => {
+      el.classList.add('fading')
+      _bubbleTimer = setTimeout(() => el.classList.add('hidden'), 600)
+    }, BANTER_BUBBLE_SECONDS * 1000)
+  }
+  document.getElementById('banter-bubble').addEventListener('click', () => {
+    if (_bubbleTimer) clearTimeout(_bubbleTimer)
+    document.getElementById('banter-bubble').classList.add('hidden')
+  })
 
   // ── Sect tab (Phase 4) ────────────────────────────────────────────────────
 
@@ -1357,6 +1397,7 @@
     document.getElementById('asc-bloodline').textContent = `${Math.round(s.bloodlineQuality || 0)} / 100`
     document.getElementById('asc-chance').textContent = `${Math.round(chance * 100)}%`
     document.getElementById('ascension-overlay').classList.remove('hidden')
+    banterSys.say('ascension_trial')
   }
 
   document.getElementById('ascend-wait').addEventListener('click', () => {

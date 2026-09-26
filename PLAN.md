@@ -34,7 +34,7 @@
 | 5 | Own Sect (5A) + Sect Wars (5B) + Member Wars (5C) | ✅ | M0 |
 | — | Tooling: QA Sim Harness, Dev presets | ✅ | M0 |
 | 23A–C | Health & Death, Bloodline Quality, Ascension Trial | ✅ | M0 (section lives in M6) |
-| 29 | Character Personality & Banter | ⬜ | M1 |
+| 29 | Character Personality & Banter | ✅ (29A/B/D; 29C later) | M1 |
 | 20C | Settings tab + accessibility | ✅ | M1 |
 | 9A–B | Tray + desktop notifications | ⬜ | M1 |
 | 21 | Backpack & Inventory tab | ⬜ | M1 |
@@ -83,7 +83,7 @@
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
 | 1.1 ✅ | Settings tab shell (⚙) + accessibility options | 20C | — | Settings persist per slot; later tasks add their toggles here |
-| 1.2 | Banter engine + 12 personalities, speech bubble, banter log, frequency setting | 29 | 1.1 | Every personality × trigger has lines (sim invariant); bubble fits 300 px + iOS |
+| 1.2 ✅ | Banter engine + 12 personalities, speech bubble, banter log, frequency setting | 29 | 1.1 | Every personality × trigger has lines (sim invariant); bubble fits 300 px + iOS |
 | 1.3 | System tray + desktop notifications (wars, BT ready, expedition back) | 9A–B | — | Both platforms: Electron real, iOS shim no-op (Rule 7); afk war-window flag improves in sim |
 | 1.4 | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
 | 1.5 | Active / Idle toggle + staged automation unlocks | 22 | 1.1 | Bot uses automation; sim shows afk/casual actions/h up |
@@ -438,6 +438,15 @@ The player's cultivator gets a **random personality** at character creation, sho
 tab. The cultivator then **randomly says goofy, funny things in that personality's voice**, written in the
 cheesy-web-novel-translation xianxia tone. The system is independent of everything else, cheap, and a big
 charm win, which is why it's first in the build order.
+
+> **Status: ✅ 29A/29B/29D implemented 2026-09-25 (roadmap 1.2).** See `docs/systems/banter.md` and
+> `docs/systems/banter-writing-guide.md`. Divergences: **14 personalities**. At the user's request, added
+> **Unhinged Psycho**, **Nonsense Gremlin** ("borgin and gorgin") and **Genuinely Nice Guy**, which replaces Naive
+> Optimist. Swearing is in the voice by design, with a **Swearing: Uncut / F\*\*\*** setting next to banter frequency.
+> 1,579 lines (~100 per personality + 66 generic), written by 4 parallel agents from the guide, then edited. The bubble
+> is a fixed element above overlays (so reborn/Ascension lines show over them), and tapping dismisses it. 29C is not
+> built: the ≤2% stat flavor was skipped (stays purely cosmetic), and dark/holy variants wait for Phases 13/24. Tokens
+> `{rival}` and NPC names wait for Phase 28. `{enemy}` is the war's enemy sect.
 
 ### 29A — Personalities (launch set, ~12)
 

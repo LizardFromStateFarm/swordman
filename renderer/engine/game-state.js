@@ -5,6 +5,8 @@ class GameState {
   constructor() {
     this._s       = null
     this._subs    = []
+    this._eventSubs = []   // Phase 29: onGameEvent listeners (banter). Not state.
+    this._warLive = true
     this._saveT   = 0
     this._slot    = 0
     this.SAVE_INT = 30
@@ -64,6 +66,9 @@ class GameState {
 
     this._recalc()
     this._notify()
+    const awayH = saved?.lastSave ? (Date.now() - saved.lastSave) / 3600000 : 0   // before _save() bumps lastSave
+    if (this._personaRolled) { this._personaRolled = false; this._save() }   // persist a migration-rolled personality now
+    if (awayH >= BANTER_WELCOME_HOURS) this._emit('welcome_back', { hours: Math.floor(awayH) })
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -108,6 +113,9 @@ class GameState {
       lastReincarnation: null,
       // Phase 20C
       settings:          this.defaultSettings(),
+      // Phase 29
+      personality:       { id: this._rollPersonality() },
+      banter:            this._blankBanter(),
       stats: {
         totalQiGained:      0,
         breakthroughs:      0,
@@ -230,6 +238,28 @@ class GameState {
     }
   }
 
+  // Phase 29: personality + banter state. Old saves roll a personality on load.
+  _ensurePhase29Fields() {
+    const s = this._s
+    if (!s.personality || !PERSONALITIES.some(p => p.id === s.personality.id)) { s.personality = { id: this._rollPersonality() }; this._personaRolled = true }
+    if (!s.banter || typeof s.banter !== 'object') s.banter = this._blankBanter()
+    const b = s.banter
+    if (!Array.isArray(b.recent)) b.recent = []
+    if (!Array.isArray(b.log))    b.log    = []
+    if (b.last === undefined)     b.last   = null
+    if (!(b.failStreak >= 0))     b.failStreak = 0
+    if (b.todSaid === undefined)  b.todSaid = null
+    if (!(b.lastAt >= 0))         b.lastAt = 0
+  }
+
+  _blankBanter() { return { lastAt: 0, recent: [], log: [], last: null, failStreak: 0, todSaid: null } }
+
+  _rollPersonality() { return PERSONALITIES[Math.floor(Math.random() * PERSONALITIES.length)].id }
+
+  _emit(type, ctx = {}) {
+    for (const fn of this._eventSubs) { try { fn(type, ctx) } catch {} }
+  }
+
   _settingValid(def, v) {
     if (def.type === 'range') return typeof v === 'number' && isFinite(v) && v >= def.min && v <= def.max
     return def.options.some(o => o.value === v)
@@ -274,6 +304,7 @@ class GameState {
     this._ensurePhase5BFields()
     this._ensurePhase23Fields()
     this._ensurePhase20CFields()
+    this._ensurePhase29Fields()
     const st = this._stage()
 
     let qps = st.baseQps * s.root.mult
@@ -528,7 +559,9 @@ class GameState {
           demoted          = true
         }
 
+        s.banter.failStreak = (s.banter?.failStreak || 0) + 1
         this._recalc(); this._notify()
+        this._emit('bt_fail', { streak: s.banter.failStreak })
         return { success: false, reason: 'failed', demoted }
       }
     }
@@ -538,7 +571,9 @@ class GameState {
     s.karma = Math.min(100, s.karma + 10)
     s.stats.breakthroughs++
     s.maxStageThisLife = Math.max(s.maxStageThisLife || 0, s.stageIndex)
+    if (s.banter) s.banter.failStreak = 0
     this._recalc(); this._notify()
+    this._emit('bt_success')
     return { success: true, newStage: this._stage() }
   }
 
@@ -611,6 +646,7 @@ class GameState {
     this._s.lastReincarnation = summary
     if (settings) this._s.settings = settings   // presentation prefs belong to the player, not the life
     this._recalc(); this._notify()
+    this._emit('reborn')
   }
 
   startMeditation(duration = 30) {
@@ -685,6 +721,9 @@ class GameState {
       text: `Returned from ${loc.name}: ${parts.join(', ')}.`,
       type: 'positive',
     })
+    const tableW = loc.dropTable.reduce((sum, d) => sum + d.weight, 0)
+    const rare   = loc.dropTable.find(d => drops[d.itemId] && ITEMS[d.itemId]?.type !== 'currency' && d.weight <= tableW * BANTER_RARE_WEIGHT_FRAC)
+    this._emit('expedition_return', { rareItem: rare ? (ITEMS[rare.itemId]?.name || rare.itemId) : null })
 
     // Beast encounter roll (at most one per expedition, max 3 queued)
     const eligible = (typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES : [])
@@ -1235,6 +1274,7 @@ class GameState {
       w.allyId = null
       w.reinforced = false
       w.answered = false; w.chestStones = 0; w.pillsGiven = 0; w.beastId = null; w.seen = false
+      if (this._warLive) this._emit('war_call', { enemy: w.enemyName, sect: member ? this._sectDef()?.name : s.ownSect?.name })
       if (member) {
         const def = this._sectDef()
         this.addEvent({ text: `War drums sound across the ${def.name}! The ${w.enemyName} has declared war — the elders call every disciple to arms.`, type: 'negative' })
@@ -1298,6 +1338,7 @@ class GameState {
 
     w.phase = 'none'
     this._scheduleNextWar()
+    if (this._warLive && w.seen) this._emit(win ? 'war_won' : 'war_lost', { enemy: enemyName, sect: s.ownSect?.name })
     if ((s.health ?? 100) <= 0) { this._die('sect_war'); return }
     this._recalc(); this._notify()
   }
@@ -1406,6 +1447,7 @@ class GameState {
 
     w.phase = 'none'
     this._scheduleNextWar()
+    if (this._warLive && w.seen) this._emit(win ? 'war_won' : 'war_lost', { enemy: enemyName, sect: def?.name })
     if ((s.health ?? 100) <= 0) { this._die('sect_war'); return }
     this._recalc(); this._notify()
   }
@@ -1416,7 +1458,8 @@ class GameState {
     const w = this._s?.sectWar
     if (!w?.side) return
     let guard = 0
-    while (this._advanceSectWarStep() && guard++ < 50) {}
+    this._warLive = live
+    try { while (this._advanceSectWarStep() && guard++ < 50) {} } finally { this._warLive = true }
     if (live && w === this._s.sectWar && w.phase !== 'none') w.seen = true
   }
 
@@ -1567,6 +1610,28 @@ class GameState {
   }
 
   forceSave() { this._save() }
+
+  // ── Phase 29: Banter ──────────────────────────────────────────────────────
+
+  onGameEvent(fn) {
+    this._eventSubs.push(fn)
+    return () => { this._eventSubs = this._eventSubs.filter(l => l !== fn) }
+  }
+
+  recordBanter(text, trigger) {
+    const b = this._s?.banter
+    if (!b || !text) return
+    const now = Date.now()
+    b.recent.push(text)
+    if (b.recent.length > BANTER_RECENT_MAX) b.recent.splice(0, b.recent.length - BANTER_RECENT_MAX)
+    b.log.unshift({ text, trigger, ts: now })
+    if (b.log.length > BANTER_LOG_MAX) b.log.length = BANTER_LOG_MAX
+    b.last   = { text, trigger, ts: now }
+    b.lastAt = now
+    this._notify()
+  }
+
+  markTimeOfDay(key) { if (this._s?.banter) this._s.banter.todSaid = key }
 
   // ── Phase 20C: Settings ───────────────────────────────────────────────────
 

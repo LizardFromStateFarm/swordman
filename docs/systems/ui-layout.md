@@ -60,6 +60,7 @@ Types: `'positive'` (jade), `'negative'` (red), `'special'` (gold), `'neutral'` 
 
 ## Overlays
 Overlays in HTML: `#rename-overlay`, `#confirm-overlay`, `#settings-overlay` (Phase 20C), `#ascension-overlay`, `#death-overlay`.
+`#banter-bubble` (Phase 29) is `position: fixed`, z 210, so it sits above overlays. It needs `width: max-content`, because `left:50%` + translate otherwise caps it at half the window.
 Pattern: `.hidden` class toggle. Always `z-index: 200`. Wire buttons directly in the IIFE.
 
 ## Invariants

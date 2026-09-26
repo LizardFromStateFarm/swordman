@@ -23,6 +23,8 @@ _Covers: assets/data/settings.js · renderer/game/settings.js · game-state.js (
 | id | type | values | default | Applied by |
 |----|------|--------|---------|-----------|
 | displayNumbers | choice | raw / formatted / scientific | formatted | `fmt()` in game.js |
+| banterFreq | choice | off / rare / normal / chatty | normal | `BanterSystem` idle interval (`BANTER_FREQ`); off = silent |
+| profanity | choice | uncensored / masked | uncensored | `BanterSystem.mask()` at display time (bubble + log) |
 | animSpeed | choice | 0.5 / 1 / 2 | 1 | `renderer.setSpeed()`: scales dt → particles, rings, sprite fps |
 | reducedMotion | choice | false / true | false | `renderer.setReducedMotion()`: no particles/rings, sprite only |
 | colorblind | choice | off / deuteranopia / protanopia | off | `<html data-cb>` → CSS overrides `--red`/`--jade` |
