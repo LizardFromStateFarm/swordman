@@ -1,0 +1,122 @@
+# Clan Succession — Build Spec (M2 tasks 2.6a–2.6f)
+_Covers: world/life save split · clan registry (main line + ≤3 branches) · children who cultivate · bond + morality ·
+Tournament of Heirs · reign simulation · rebirth as a descendant (or orphan) · head challenges · succession tournaments
+· branch wars · secession · Phase: 16/18C/31 rework (M2) · Updated: 2026-09-26 · **Status: spec, signed off by the user 2026-09-26**_
+
+**Replaces the old task 2.6** ("choose an heir at death and play as them", life-loop.md §4.3/§5.1/§7 heir parts).
+User-designed 2026-09-26. You never *play as* your heir. The heir (an NPC) takes over the clan; the world simulates
+their reign; you are **reborn one generation later as a descendant** who doesn't remember, and nobody knows it's you.
+Everything here respects pillars 4 (nothing progresses offline except idle jobs) and 7 (systems talk to each other).
+
+## Depth pass
+- **Memory:** per-child `bond` (how you treated them), per-person `morality` (−100 ruthless … +100 righteous),
+  lethal-tournament `trauma`, clan `tradition` (how successions have gone), clan-to-clan `relation` (−100…+100).
+- **Choices:** family planning, child events, choose an heir vs host a Tournament of Heirs (you pick matchups), bet on
+  the next head if you die with no heir, orphan vs clan rebirth, challenge the head, sign up for a succession
+  tournament, go to war as a branch, secede and found a new clan, answer challenges when you are head.
+- **Hooks:** family.md (spouses, affection, lovers, children) · Bloodline (heir strength term) · own sect (goes with
+  the head) · breakthroughs/stage (every duel/tournament fight uses stage + root) · Health/death (lethal fights end
+  lives) · personalities (every NPC decision) · random events + banter · life-loop.md 2.7 (Ancestral Hall, legacies).
+- **Drama:** best — you raised a loving, righteous heir who raises a warm family, and you're reborn as the favored
+  eldest who inherits in peace. Worst — you butchered your children in a tournament, your traumatized heir runs the
+  clan with an iron fist, you're reborn into a branch, and the head answers your challenge with a duel to the death.
+- **Feedback:** how you raise children shapes who they become; who they become shapes how they rule, pick *their*
+  heir, and treat *you* in your next life. Not 1:1 — a heir who survived hell can still become a loving parent.
+
+## World vs life (task 2.6a — foundation)
+The save slot = **one world**. Split the current single state object:
+```
+s.world  (persists across lives; never reset by a death)
+  year            — world clock (was per-life s.gameYear; advanced only in tick())
+  persons: {id: Person}           — every NPC that matters (heads, heirs, branch members, spouses, your past selves)
+  clans:   {id: Clan}             — see below; the player's clan and any clans that split off / you founded
+  playerClanId, playerLineId      — null when you were born an orphan
+  pastLives: [{personId, clanId, cause, year, …}]
+  nextId                          — person/clan id counter (moves here from s.clan.nextId)
+s.*      (the current life — everything else, reset on rebirth exactly as _newGame() does today)
+Clan = { id, name, foundedYear, founderId, headId, lines: [Line] (main line first, ≤ 1 + 3 branches),
+         sect: {…ownSect snapshot}|null, tradition: {lethalTournaments, peacefulSuccessions, challenges},
+         relations: {clanId: −100…100}, history: [{year, text}] }
+Line = { id, name ('Main Line' / 'Eastern Branch' …), headId, memberIds: [] }
+```
+`CLAN_CARRY_KEYS` from life-loop.md becomes simply "`world` survives; the life resets". `s.clan` (task 2.2 skeleton) and
+per-life `gameYear` migrate into `s.world` (`_ensurePhase33Fields()`, next free phase number 33). NPC persons never tick
+per frame: they're advanced in coarse steps (see reign sim) or on the yearly `_tickFamily` for your own household.
+Pruning: persons who are dead, not a head/heir, and ≥ 3 generations old are dropped (keep names in `history`).
+
+## Children who cultivate, bond, morality (2.6b)
+- **Family planning** (per marriage, changeable in Stats; also applies to lovers): None / Some (40–70 yrs) / Many
+  (15–30 yrs, today's pace). Big families stay possible, never forced.
+- **Children cultivate:** from `ADULT_AGE` a child gains a stage every `CHILD_YEARS_PER_STAGE / root.mult` years,
+  capped at your own stage (they can't outgrow you while you live), so a tournament has real stakes.
+- **Bond** (0–100, per child, starts 50): child events (like marriage events, keyed by the *child's* personality —
+  teach them, take them adventuring, punish them, favor a sibling, skip their coming-of-age) and big acts (lethal
+  tournament: survivors −30 unless ruthless).
+- **Morality** (new Person field, −100…100): starts at a per-personality base (`PERSONALITY_MORALITY`, e.g. niceguy +50,
+  psycho −60) ± noise, nudged by upbringing (bond, your karma, witnessing a lethal tournament). The M3 alignment
+  phase (13) extends this field later instead of adding a second one.
+
+## Succession while you live (2.6c)
+- **Choose an heir** any time from Stats (an adult living child, incl. lover children), or leave it open.
+- **Tournament of Heirs** (you are clan head): all adult children fight. **You pick each round's matchups.** Rounds
+  are lethal until 4 remain, then the Top 4 fight non-lethally (semis + final). Fights resolve by stage, root,
+  personality (hot-blooded all-in, cowards may yield…) and a little luck; each round is a log + bracket screen.
+  Winner = designated heir; the other three will found the 3 branch families when the heir takes over.
+- Holding one shifts clan `tradition` and survivors' bond/trauma.
+- **Heir strength → Bloodline:** growth gains `BLOODLINE_G_HEIR × (heirStage / 22)²` (heir = whoever becomes head).
+  **Forged in trauma (user, 2026-09-26):** if the heir *won their place through trauma* — survived the lethal rounds of
+  a Tournament of Heirs or a lethal succession tournament, or won a duel to the death for the headship — growth gains
+  an extra flat `BLOODLINE_G_TRAUMA_HEIR` on top (the blood that survives the crucible runs stronger). Recorded as
+  `trauma` on the heir's Person so the reign sim (2.6d) and the Ancestral Hall can show it.
+- **Sect:** the clan head owns the clan's sect. Your founded sect goes to the heir on your death (stored on `clan.sect`).
+
+## Death → the heir's reign → rebirth (2.6d)
+1. **Who takes over:** your designated heir; else the clan picks by its own succession rules (strongest adult child,
+   weighted by bond with the elders and the tradition). If you had no heir chosen, **you bet first**: pick which
+   child you think becomes head. Win the bet → reborn in the main line; lose → reborn in a branch.
+2. **The heir's parenting style** is rolled, not copied: inputs = their bond with you, personality, morality,
+   trauma. Styles: *nurturing* · *strict* · *neglectful* · *ruthless*. A trauma survivor rolls "never again" (warmer)
+   or "the cycle continues" (colder) — so a heir who went through hell can still be a loving parent.
+3. **Reign sim** (one generation, ~ `REIGN_YEARS`): the heir marries, has children (planning drawn from their style),
+   their children get bonds/morality from that style, branches grow, the clan sect's fortunes move a little. Only
+   coarse steps, no per-frame work. A short "chronicle" of the reign is shown before rebirth.
+4. **Rebirth position** (you don't remember; nobody knows): eldest of the main line (young master / heir apparent),
+   a younger main-line child, or a branch child. Weighted by the bet (if any), the head's style, and luck.
+   Or choose **Born an orphan** — outside any clan; the clan lives on in the world without you.
+5. You start at `AWAKENING_AGE` with the new person's root/personality (rolled from the parents, `blendRoot`), a
+   starting bond with the head drawn from the head's style, and the clan's current sect/wealth as context.
+
+## Clan politics in a life (2.6e)
+- **Challenge the head** (from Stats, once your stage is within `CHALLENGE_STAGE_GAP` of theirs): **the head decides**
+  lethal or non-lethal — from their style, morality, bond with you and tradition. Non-lethal loss → cooldown
+  (`CHALLENGE_COOLDOWN_YEARS`) and bond −20; lethal loss → your life ends. Win → you become head (main line), with the
+  clan's sect.
+- **When you're head,** NPC challengers arrive as events (children, branch heads); **you decide** lethal or not.
+- **Head steps down** (random per year, weighted by style/age of reign) → **mass succession tournament**: anyone
+  adult in the family may sign up (you choose to). The head's style decides lethality. Winner = new head, Top 4 lead
+  the main line + 3 branches (branch members stay with their branch; only its leadership changes).
+
+## Branch wars and secession (2.6f)
+- As a **branch member** you can push your branch head toward war; as a **branch head** you can declare a **branch
+  war** on the main line (resolves like sect wars — strength of lines, allies from relations). Win → your branch
+  becomes the main line (you become head if you lead it). Lose → your branch head is deposed or killed.
+- **Secede** (branch head only): leave with your branch and found a **new clan** that starts with one line — yours.
+  The old clan stays in the world as a **rival or ally** (relation from how you left: peaceful exit vs war,
+  heads' morality, bond). The slot follows your new clan; the old clan keeps living as an NPC clan (M4's living
+  world later gives it more to do).
+
+## Build order (one commit each, docs + sim coverage every time)
+| Task | Scope | Done when |
+|---|---|---|
+| 2.6a | `s.world` split + migration, orphan-capable life, world clock | old saves migrate; sim identical except clock bookkeeping; save round-trip holds |
+| 2.6b | Family planning, children cultivate, bond + child events, morality | sim: children reach stages; bond/morality ranges hold |
+| 2.6c | Choose heir, Tournament of Heirs (pick matchups), heir-strength BQ term, sect to head | tournament resolves with correct lethal/non-lethal split; BQ term applied |
+| 2.6d | Parenting styles, reign sim + chronicle, rebirth position, heir bet, orphan option | 500h sim spans ≥3 generations; positions + styles distributed sensibly |
+| 2.6e | Challenge head (head decides lethality), challenged-as-head events, step-down mass tournament | all paths reachable in sim; no life ends without a cause |
+| 2.6f | Branch wars, secession → new clan, clan relations | a seceded clan persists as rival/ally; slot follows the new clan |
+Then life-loop.md 2.7 (Ancestral Hall, legacies — Sect Continuity legacy is superseded by 2.6c) and 2.8 (tuning).
+
+## Open questions (decide during the relevant task, flag to the user)
+- Bet/rebirth weights, `REIGN_YEARS`, challenge gap/cooldown, step-down rate — draft values in each task's data file.
+- Orphan lives: can an orphan later marry into / be adopted by a clan? (Default: no adoption in M2; found your own.)
+- How the heir's chronicle is shown (one overlay card vs. a scroll of log lines).

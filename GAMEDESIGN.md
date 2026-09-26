@@ -21,7 +21,8 @@ This is a single-player game made for the love of the game, not a monetized live
    player shouldn't have to worry about it — age is just a stat.
    Nobody should spend 100+ hours on one mortal character. Long play belongs to the **Immortal era**, where
    progression changes.
-2. **Death is part of the fun, not a fail state.** Dying hands the game to the next generation. A save slot is
+2. **Death is part of the fun, not a fail state.** Dying hands the clan to your heir (an NPC who rules in your place);
+   you're reborn a generation later as an unknowing descendant — or an orphan (see docs/systems/clan-succession.md). A save slot is
    a **family line (clan)**: you pick an heir, the Bloodline carries on, and the Ancestral Hall remembers.
 3. **Meta progression across generations.** Each life earns the clan something permanent: mostly **unlocks and
    options** (heirlooms, family manuals, clan legacies, new origins), with only modest flat multipliers.

@@ -83,7 +83,8 @@ Agent: User asked for deeper family mechanics + guidance so agents design interc
     takes minors, tolerant spouse, unmarried lovers), build:web, dist, CDP smoke test (event → affection, crisis →
     duel card → Stats reopen → flee, Explore encounter → seduce, Stats lover → End affair; zero console errors).
   Open for the user: casual lives average ~49 children (no cap over ~1,100-year lives) — tune intervals by realm?
-  Next: M2 task 2.6 (heir selection). Heirs = any living adult child incl. lover children (family.md).
+  Next: M2 task 2.6 was REDESIGNED by the user → docs/systems/clan-succession.md (2.6a–f). Spec signed off
+    2026-09-26 (incl. a trauma-heir Bloodline bonus); build 2.6a (world vs life save split) first.
 
 Date: 2026-09-26 (day session, user present) — part 2
 Agent: User decision: "the user shouldn't have to worry about age. Have an age stat but age shouldn't kill

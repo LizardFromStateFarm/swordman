@@ -86,6 +86,7 @@ docs/
     notifications.md    ← System tray + opt-in desktop notifications (Phase 9A-B)
     life-loop.md        ← M2 build spec: lifespan, heirs, Ancestral Hall, clan legacies (Phases 30/31)
     family.md           ← Spouse affection, marriage/crisis events, duel, lovers + affair discovery (Phase 16-lite+)
+    clan-succession.md  ← SPEC (M2 2.6a–f): world/life split, heirs as NPCs, rebirth as descendant, tournaments, branch wars
     backpack.md          ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
     automation.md        ← Active/Idle Mode + staged automation unlocks, Active Mode bonuses (Phase 22)
 .agents/rules/

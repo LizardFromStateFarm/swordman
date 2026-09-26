@@ -14,6 +14,10 @@ _Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ 
 > the `full_life` / `seclusion_bt` firsts, the bot's `twilight()` and invariant `age_over_lifespan` is **superseded
 > and removed from code**. Age remains a stat on the game clock. Where older sections below disagree, §15 wins.
 
+> **⚠ 2026-09-26, user redesign — HEIRS:** the heir flow in §2.2 (`succession`/`heirOptions`), §2.3 (`CLAN_CARRY_KEYS`),
+> §4.2–4.4 (`chooseHeir`/`_beginNewLife`), §5.1 (heir overlay) and §7 (`succession()` bot) is **superseded by
+> `docs/systems/clan-succession.md`** (tasks 2.6a–f): you're reborn as a descendant, not played as the heir.
+
 ## 1. Overview
 
 A save slot is a **clan**. A character's mortal life is one **run** of ~20–40h of open play (casual; was 10–20h before old age was removed, §15). Age runs on a

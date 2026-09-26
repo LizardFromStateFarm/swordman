@@ -8,7 +8,8 @@ This is a single-player game made for the love of the game, not a live-service c
 
 1. **A mortal life is a run of ~20–40h of open play** (was 10–20h; widened 2026-09-26 when old age was removed).
    Long play belongs to the Immortal era.
-2. **Death is part of the fun.** A save slot is a **family line**. Death hands the game to an heir.
+2. **Death is part of the fun.** A save slot is a **world** with your clan in it. Death hands the clan to an heir
+   (an NPC); you're reborn a generation later as a descendant — or an orphan (clan-succession.md, 2026-09-26).
 3. **Meta progression across generations**, mostly unlocks rather than multipliers. Later lives replay the early
    realms faster.
 4. **Never punish absence.** No real-calendar/time-of-day bonuses, no daily logins, no windows you can miss
@@ -134,7 +135,13 @@ When an older design section below conflicts with these, the pillars win. The se
 | 2.3 ✅ | Game clock + **lifespan (寿元)**: age passes only while open, per-realm lifespan, old-age warning (seclusion scene), death by old age | 30 | 2.2 | Sim metrics: life length, deaths by cause; age never advances in offline catch-up (invariant) |
 | 2.4 ✅ | **Pacing compression**: retune the realm caps/costs so a casual mortal life is 10–20h. Rewrite `PACING_TARGETS_MIN` | 30 | 2.3 | `npm run sim`: casual life median within 10–20h, active ≥ ~5h, afk not trivial (check offline Qi vs no aging) |
 | 2.5 ✅ | **Marriage & children (lite)**: a proposal choice event from Foundation Building, spouse = person record, children born in game years, partner term in bloodline growth | 16 lite, 23 family hooks | 2.3 | Children exist before the typical death; family `carry 1.0` path works in sim |
-| 2.6 | **Heir selection at death** (child / new soul), inherited roots + bloodline, a death → hall → heir screen flow | 18C | 2.5 | Generations continue in one slot; sim runs span generations |
+| 2.6 | **Clan succession** — REDESIGNED 2026-09-26 by the user, see `docs/systems/clan-succession.md`: you don't play as your heir; the heir (NPC) rules, the world sims their reign, you're reborn as a descendant (or an orphan). Split into 2.6a–f below | 16, 18C, 31 | 2.5 | see 2.6a–f |
+| 2.6a | World vs life save split (`s.world`: clans, persons, world clock), orphan-capable life | — | 2.5 | old saves migrate; save round-trip holds |
+| 2.6b | Family planning (None/Some/Many), children cultivate, child bond + child events, morality field | 16 | 2.6a | children reach stages in sim |
+| 2.6c | Choose heir / Tournament of Heirs (you pick matchups; lethal to Top 4), heir-strength Bloodline term, sect to head | 18C | 2.6b | tournament paths verified |
+| 2.6d | Heir parenting styles, reign sim + chronicle, rebirth position (eldest / younger / branch), heir bet, orphan option | 18C | 2.6c | 500h sim spans ≥3 generations |
+| 2.6e | Challenge the head (head decides lethality), challenges when you're head, step-down mass tournament | — | 2.6d | all paths reachable in sim |
+| 2.6f | Branch wars, secession → new clan, clan relations (rival/ally) | — | 2.6e | seceded clan persists in the world |
 | 2.7 | **Ancestral Hall + Clan Legacies**: family tree view, Ancestral Merit earned per life, unlocks (heirlooms, family manual, clan legacies), **ancestral catch-up** (realms below the family best go faster). **Ascended Ancestor** ending for a successful Ascension. Cuts Phase 8's Dao Seeds | 31, 8, 18B | 2.6 | Gen 2+ reaches the family best faster; the sim's post-Ascension dead zone is gone; bot spends Merit |
 | 2.8 | Tuning pass: generations to first Ascension ~3–5, meta progression feels meaningful, Merit sinks | 30, 31 | 2.7 | `npm run sim` 500h+ horizon: first Ascension ≈ 40–80h casual |
 
