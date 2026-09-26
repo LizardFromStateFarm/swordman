@@ -1,10 +1,12 @@
 # Life Loop — Reference & Build Spec
-_Covers: lifespan.js · clan-legacies.js · names.js (new data) · renderer/engine/persons.js · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-25_
+_Covers: lifespan.js · clan-legacies.js · names.js (new data, ✅ built) · renderer/engine/persons.js (✅ built) · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-26 (task 2.2)_
 
-> **Status: build spec, written overnight (task 2.1). No M2 code exists yet.** The user pre-authorized
-> building M2 with these draft values. Every value marked **(P)** is *provisional, decided overnight*
-> (see §9). Once M2 ships, cut this doc down to a normal <120-line reference (index.md rule). Until then it is
-> deliberately longer because it is the spec for tasks 2.2–2.8.
+> **Status: build spec, written overnight (task 2.1). Task 2.2 (shared generators + minimal person record)
+> is now BUILT overnight — see §8's row and §11 below for what landed and how it diverges.** Tasks 2.3–2.8
+> are still spec only. The user pre-authorized building M2 with these draft values. Every value marked
+> **(P)** is *provisional, decided overnight* (see §9). Once M2 ships, cut this doc down to a normal
+> <120-line reference (index.md rule). Until then it is deliberately longer because it is the spec for
+> tasks 2.3–2.8.
 
 ## 1. Overview
 
@@ -399,7 +401,7 @@ Dead zone / stage wall / progression stall are computed per life. Run the life-l
 
 | Task | Scope | Done when |
 |---|---|---|
-| **2.2** Shared generators + person record | `persons.js`, `names.js`, delegate `_rollRoot`/`_rollSpecificRoot`/`_rollPersonality`, `s.self`, `clan` skeleton `{name:'', nextId}`, `_ensurePhase30Fields` (self only) / `_ensurePhase31Fields` (skeleton). **No new `Math.random()` calls in `_newGame()`** | `npm test`; `npm run sim` report **identical** to baseline except timestamps; a node check that `Persons.make()` fills every schema key |
+| **2.2** ✅ Shared generators + person record | `persons.js`, `names.js`, delegate `_rollRoot`/`_rollSpecificRoot`/`_rollPersonality`, `s.self`, `clan` skeleton `{name:'', nextId}`, `_ensurePhase30Fields` (self only) / `_ensurePhase31Fields` (skeleton). **No new `Math.random()` calls in `_newGame()`** | `npm test`; `npm run sim` report **identical** to baseline except timestamps; a node check that `Persons.make()` fills every schema key |
 | **2.3** Game clock + lifespan | `lifespan.js`, age/gameYear in `tick()`, `derived.lifespan/inTwilight`, old-age death, twilight card, Final Seclusion, Pass the Mantle (via current `_die`), HUD age bar + Stats, `twilight` banter lines, sim life metrics + invariants 1–2 | invariants hold; report shows life length + deaths by cause. (Before 2.4, casual gen-1 dies of old age around NS — expected.) |
 | **2.4** Pacing compression | `stages.js` caps, `PACING_TARGETS_MIN`, `LIFE_TARGETS_H`, `OFFLINE_QI_MULT` check | §6.3 step 4 |
 | **2.5** Marriage & children lite | `_ensurePhase16Fields`, `_tickFamily`, proposal overlay, `acceptSuitor`/`declineProposal`, partner term in `_die` growth, `married`/`child_born` banter lines, bot `family()` | sim: ≥ 1 adult child before the median death in casual; BQ growth includes partner term |
@@ -449,3 +451,57 @@ New files go into index.html script order (data after `bloodline.js`; `persons.j
 - Save size: ~0.5 KB per generation (ancestor + spouse + ≤4 children). 100 generations ≈ 50 KB; fine, no pruning in M2.
 - BQ is hidden: never print the number in heir/Hall UI before `asc_attempt`.
 - Catch-up auto-BT consumes a queued `activePill`, same as a manual BT. The bot shouldn't queue pills below the clan best.
+
+## 11. Task 2.2 — what actually got built (overnight, 2026-09-26)
+
+**Files:** `assets/data/names.js` (new, `SURNAMES` 60 / `GIVEN_NAMES` 205 — pinyin only, no CN glyphs, gender-neutral),
+`renderer/engine/persons.js` (new, global `Persons`), `renderer/engine/game-state.js` (`_newGame()`, `_rollRoot`/
+`_rollSpecificRoot`/`_rollPersonality` delegates, new `_newPersonId()`/`_ensurePhase31Fields()`/`_ensurePhase30Fields()`,
+both new ensures added to the `_recalc()` chain after `_ensurePhase29Fields()`), `renderer/index.html` (script tags),
+`scripts/sim/loader.js` (`DATA_FILES`/`LOGIC_FILES` + the new schema-check block below).
+
+**Decisions where the spec was ambiguous (picked the simplest option, consistent with 2.3–2.7):**
+- **`Persons.make()` for `s.self`:** the schema (§2.4) requires `root`/`personality`/`stageIndex`/`maxStage`, but
+  §2.1 says self does NOT duplicate them (read live off `s.root`/`s.personality`/`s.stageIndex` instead). Resolved
+  by having `Persons.make()` default those four keys to `null`/`0`/`0` when not passed, and `_ensurePhase30Fields()`/
+  `_newGame()` simply never pass them for `role: 'self'`. Every OTHER role (spouse/child/cousin/ancestor, tasks
+  2.5+) is expected to pass real values. `Persons.powerScore()` treats `root: null` as a 0 root bonus so it doesn't
+  throw if ever called on `s.self` before 2.6 exists.
+- **`clan` skeleton scope:** built exactly `{ name: '', nextId: 1 }` — no `bestStageIndex`/`tree`/`firsts`/`merit`/
+  `legacies`/`gameYear`/random-surname-at-creation. Those are explicitly 2.6/2.7 per §2.5's task column; adding them
+  now would mean re-touching `_ensurePhase31Fields()` anyway when `_endLife`/`_beginNewLife` land, so there was
+  nothing to gain by guessing their shape early.
+- **`_newPersonId(clan)` takes `clan` as a parameter** (not `this._s.clan`) — `_newGame()` needs it before `this._s`
+  is assigned (it builds `clan`/`self` as locals first, then returns them in the save object). Called as
+  `this._newPersonId(s.clan)` everywhere `this._s` already exists (e.g. `_ensurePhase30Fields()`).
+- **`Persons.blendRoot(a, b)`** (2.5+ only) was included now since §4.1 lists it as part of `persons.js`'s task-2.2
+  scope, even though nothing calls it yet — it consumes no `Math.random()` until called, so it can't affect the
+  "sim identical" check.
+- **Node schema check** lives in `scripts/sim/loader.js` (inside `createSim()`, right after all files load, before
+  `gameState` is fetched): asserts `Persons.make({})` has all 15 schema keys, throws with a pointer back to this
+  doc's §2.4 if not. Runs automatically on every `npm run sim`/`sim:quick` invocation — no separate npm script
+  needed. It calls no `Math.random()`, so it can't perturb the draw-order check either.
+- **Script/loader order:** `names.js` placed right after `banter-lines.js` in both `index.html` and
+  `DATA_FILES` (still "after `bloodline.js`" per §8's rule, just not immediately after it — `dev-presets.js`,
+  `automation.js` etc. all sit in that same "somewhere after bloodline.js" zone already). `persons.js` goes
+  immediately before `game-state.js` in both `index.html`'s `<script>` order and `LOGIC_FILES`.
+
+**Verification:** `npm test` (47 files, was 45), `npm run sim:quick` (0 exceptions/violations), full `npm run sim`
+before (via a saved copy of `report.md`/`report.json`) and after this change — **identical** except `wallSec`/
+`avgTickUs`/`maxTickUs`/`simHoursPerWallSec`/timestamps (verified by a scratch diff script that strips exactly those
+keys from both `report.json`s and compares the rest byte-for-byte: equal). `npm run build:web` (confirmed
+`persons.js`/`names.js` land in `www/`), `npm run dist` (portable build succeeded). CDP smoke test against a fresh
+`--user-data-dir` scratch profile (never the user's real slots, confirmed `%APPDATA%\Cultivator Idle` still doesn't
+exist afterward): clicked "New Cultivator" for real (exercises `initSlot()` → `_newGame()`), read back
+`gameState.get()` — `clan: {name:'', nextId:2}`, `self: {v:1, id:'p1', given:'', family:'', ..., role:'self', ...}`
+(id `p1` consumed by self, `nextId` correctly advanced to 2), `Persons.make({})` has all 15 keys, `Persons.
+powerScore()`/`rollGiven()`/`rollSurname()` all callable with sane output, zero console errors/exceptions. Killed
+the scratch Electron process afterward (confirmed via `Get-CimInstance Win32_Process`, all 4 PIDs matched the
+scratch `--user-data-dir` before killing).
+
+**Gaps / not done (out of 2.2's scope, next task's job):** no age/gameYear/family/succession fields yet (2.3+); no
+random clan surname on fresh-slot creation yet (`clan.name` stays `''` until 2.6/2.7 — this is correct per §2.5,
+not a bug); `_die()` still resets `clan`/`self` to a fresh blank skeleton on every reincarnation (unchanged, per
+§4.4's "2.2–2.5: unchanged" — clan persistence across lives is explicitly 2.6's `CLAN_CARRY_KEYS` work, not built
+here) — until then, generation-to-generation clan identity doesn't actually persist, which is expected and will be
+fixed when `CLAN_CARRY_KEYS` lands.

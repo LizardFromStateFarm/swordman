@@ -34,8 +34,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
-| Lifespan & Game Time (age passes only while open) | ⬜ Phase 30 (M2) |
-| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) |
+| Lifespan & Game Time (age passes only while open) | ⬜ Phase 30 (M2) — shared generators (task 2.2) built |
+| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — clan skeleton (task 2.2) built |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
@@ -63,6 +63,57 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 overnight
+Agent: overnight autonomous run, task 2.2 — Roadmap M2 task 2.2, shared generators + minimal person record.
+  Ran unattended (pre-approved: the user pre-authorized all of M2 with life-loop.md's draft values); user
+  was asleep. Picks up right after the 1.6 (Active/Idle Mode) session below — M1 is done except optional 1.7.
+  - New `renderer/engine/persons.js` (global `Persons`, DOM-free, loaded before game-state.js): `rollRoot()`/
+    `specificRoot(type)`/`rollPersonality()` (moved verbatim from `GameState._rollRoot`/`_rollSpecificRoot`/
+    `_rollPersonality`, which are now one-line delegates — identical draws, same call order, so no existing
+    caller changed behavior), `blendRoot(a,b)` (2.5+, unused for now), `rollGiven()`/`rollSurname()`, `make(fields)`
+    (fills every Person schema key from life-loop.md §2.4 with a safe default), `powerScore(p)`.
+  - New `assets/data/names.js`: `SURNAMES` (60) + `GIVEN_NAMES` (205), pinyin only, gender-neutral (M2 has no
+    gender field). Reused by M4's living-world names later.
+  - `game-state.js`: `_newGame()` now builds a `clan` skeleton (`{name:'', nextId:1}`) and `s.self` (a
+    Person record for the player, built via `Persons.make()`) as locals before the return object — neither
+    consumes `Math.random()`, so `_rollRoot()`/`_rollPersonality()`'s draw order inside `_newGame()` is
+    unchanged (verified, see below). New `_ensurePhase31Fields()` (clan skeleton only — bestStageIndex/tree/
+    firsts/merit/legacies are 2.6/2.7) and `_ensurePhase30Fields()` (self only — age/gameYear/family are 2.3+)
+    added to the `_recalc()` ensure chain, in that order (self needs `s.clan` for its `family`/id). New
+    `_newPersonId(clan)` helper (`'p' + clan.nextId++`, deterministic, no RNG).
+  - Per life-loop.md §2.1's note, `s.self` deliberately does NOT duplicate `root`/`personality`/`stageIndex`/
+    `maxStage` (those stay live on `s.root`/`s.personality`/`s.stageIndex`) — `Persons.make()` defaults those
+    four keys to `null`/`0`/`0` when a caller doesn't pass them, which only `self` does today. Every other
+    role (spouse/child/cousin/ancestor, from task 2.5 on) is expected to pass real values.
+  - Sim: `scripts/sim/loader.js` DATA_FILES/LOGIC_FILES updated (names.js, persons.js — persons.js loads
+    right before game-state.js, matching index.html). New node check at sim-boot time: asserts
+    `Persons.make({})` has all 15 Person schema keys, throws pointing at life-loop.md §2.4 if not — runs
+    automatically on every `npm run sim`/`sim:quick`, no separate npm script needed.
+  - **Critical verification (the task's own done-when):** ran a full `npm run sim` BEFORE this change (saved
+    report.md/report.json to scratch) and AFTER. The reports are **identical** except `wallSec`/`avgTickUs`/
+    `maxTickUs`/`simHoursPerWallSec`/timestamps — confirmed with a script that strips exactly those keys from
+    both `report.json`s and diffs the rest (equal). This proves the shared-generator refactor didn't perturb
+    `Math.random()`'s draw order anywhere the sim exercises.
+  - Docs written per Rule 6: `docs/systems/life-loop.md` (marked task 2.2 built, new §11 documenting every
+    place the spec was ambiguous and what was picked — read it before touching 2.3), `docs/index.md`,
+    `PLAN.md` (roadmap 2.2 ✅ + a note under the M2 design section), CLAUDE.md tree (persons.js, names.js).
+  - Verified: `npm test` (47 files, was 45), `npm run sim:quick` (0 exceptions/violations), full `npm run sim`
+    before/after (identical, see above), `npm run build:web` (confirmed persons.js/names.js land in `www/`),
+    `npm run dist` (portable build succeeded). CDP smoke test against a fresh `--user-data-dir` scratch
+    profile (never the user's real slots — confirmed `%APPDATA%\Cultivator Idle` still doesn't exist
+    afterward): clicked "New Cultivator" for real, read back `gameState.get()` — `clan:{name:'',nextId:2}`,
+    `self:{v:1,id:'p1',given:'',family:'',...,role:'self'}` (id `p1` consumed by self, `nextId` advanced to
+    2 correctly), `Persons.make({})` has all 15 keys, `powerScore()`/`rollGiven()`/`rollSurname()` all work,
+    zero console errors. Killed all 4 scratch Electron processes afterward (confirmed via
+    `Get-CimInstance Win32_Process`, all matched the scratch `--user-data-dir` before killing).
+  Not done / known gaps (all correctly out of 2.2's scope, see life-loop.md §11 for why): no age/gameYear/
+    family/succession fields yet (2.3+); `clan.name` stays `''` (no random surname at creation yet — that's
+    2.6/2.7); `_die()` still resets `clan`/`self` to a blank skeleton on every reincarnation, unchanged from
+    before — clan persistence across lives is explicitly `CLAN_CARRY_KEYS` work in task 2.6, not this one.
+  Next: M2 task 2.3 (game clock + lifespan — `lifespan.js`, age/gameYear in `tick()`, old-age death, twilight
+    card, Final Seclusion/Pass the Mantle, HUD age bar). Read life-loop.md §3.1/§4.4/§6/§10 gotchas first —
+    especially "only tick() advances age" and "open means rendering, not the process running".
+
 Date: 2026-09-26 overnight
 Agent: overnight autonomous run, task 1.6 — Roadmap M1 task 1.6, Phase 22: Active/Idle Mode Toggle + Mid-Late
   Automation. Ran unattended (pre-approved assessment/scope); user was asleep. Picks up right after the 1.5

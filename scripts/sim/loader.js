@@ -13,9 +13,9 @@ const ROOT = path.join(__dirname, '..', '..')
 // Load order mirrors renderer/index.html (sprites, platform-storage, ascii-renderer, game.js skipped:
 // they're UI/Node-bridge only and the logic never references them).
 const DATA_FILES = ['stages', 'techniques', 'events', 'items', 'locations', 'enemies', 'recipes',
-                    'beasts', 'sects', 'sect-buildings', 'sect-war', 'bloodline', 'automation', 'settings', 'personalities', 'banter-lines']
+                    'beasts', 'sects', 'sect-buildings', 'sect-war', 'bloodline', 'automation', 'settings', 'personalities', 'banter-lines', 'names']
   .map(f => `assets/data/${f}.js`)
-const LOGIC_FILES = ['renderer/engine/game-state.js',
+const LOGIC_FILES = ['renderer/engine/persons.js', 'renderer/engine/game-state.js',
   ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war', 'banter', 'notifications'].map(f => `renderer/game/${f}.js`)]
 
 function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } = {}) {
@@ -54,6 +54,17 @@ function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } 
   for (const o of overrides) vm.runInContext(o, ctx, { filename: 'override' })
 
   const ev = code => vm.runInContext(code, ctx)
+
+  // Task 2.2 invariant: Persons.make() must fill every Person schema key (life-loop.md §2.4) so a role
+  // that doesn't override a field never silently comes back `undefined`. Runs once per sim boot, calls
+  // no Math.random(), so it can't perturb the game's own draw order.
+  const PERSON_SCHEMA_KEYS = ['v', 'id', 'given', 'family', 'bornYear', 'root', 'personality', 'stageIndex',
+    'maxStage', 'alive', 'diedYear', 'cause', 'role', 'parents', 'spouseIds']
+  const madePerson = ev('Persons.make({})')
+  for (const k of PERSON_SCHEMA_KEYS) {
+    if (!(k in madePerson)) throw new Error(`Persons.make() is missing schema key "${k}" — see life-loop.md §2.4`)
+  }
+
   const gs = ev('gameState')
   // NotificationSystem's default isWindowActive (=> true) means _send() always gates closed here —
   // this only exercises "loads + ticks without throwing" (see docs/systems/qa-sim.md), not behavior.

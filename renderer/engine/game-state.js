@@ -93,6 +93,12 @@ class GameState {
   // ── Private helpers ───────────────────────────────────────────────────────
 
   _newGame() {
+    // Phase 30/31 (M2 task 2.2): clan skeleton + the player's own minimal person record. Built as locals
+    // (not inline in the object below) because `self.id` needs `clan.nextId` incremented first — neither
+    // call touches Math.random(), so this can't perturb _rollRoot()/_rollPersonality()'s draw order below.
+    // Full clan state (bestStageIndex/tree/firsts/merit/legacies, random surname at creation) is 2.6/2.7.
+    const clan = { name: '', nextId: 1 }
+    const self = Persons.make({ id: this._newPersonId(clan), family: clan.name, role: 'self', alive: true })
     return {
       version:       2,
       name:          'Unnamed Cultivator',
@@ -105,6 +111,9 @@ class GameState {
       root:          this._rollRoot(),
       meditating:    false,
       meditationEnds:0,
+      // Phase 30/31 (M2 task 2.2)
+      clan,
+      self,
       // Phase 2
       expedition:    { active: false, locationId: null, endsAt: null, pushed: false },
       inventory:     {},
@@ -325,7 +334,30 @@ class GameState {
 
   _blankBanter() { return { lastAt: 0, recent: [], log: [], last: null, failStreak: 0, todSaid: null } }
 
-  _rollPersonality() { return PERSONALITIES[Math.floor(Math.random() * PERSONALITIES.length)].id }
+  // Phase 31 (M2 task 2.2): deterministic person id, no Math.random() (life-loop.md §4.1).
+  _newPersonId(clan) { return 'p' + (clan.nextId++) }
+
+  // Phase 31 (M2 task 2.2): clan skeleton only — bestStageIndex/tree/firsts/merit/legacies/gameYear and
+  // random-surname-at-creation land in tasks 2.6/2.7. This only backfills saves from before `clan` existed.
+  _ensurePhase31Fields() {
+    const s = this._s
+    if (!s.clan || typeof s.clan !== 'object') s.clan = { name: '', nextId: 1 }
+    if (typeof s.clan.name !== 'string') s.clan.name = ''
+    if (!(typeof s.clan.nextId === 'number' && isFinite(s.clan.nextId) && s.clan.nextId >= 1)) s.clan.nextId = 1
+  }
+
+  // Phase 30 (M2 task 2.2): backfill `self` for saves from before this field existed. Must run AFTER
+  // _ensurePhase31Fields() (needs s.clan for the id + surname). age/gameYear/finalSeclusion/twilightNoticed
+  // are task 2.3 — not filled here yet.
+  _ensurePhase30Fields() {
+    const s = this._s
+    if (!s.self || typeof s.self !== 'object') {
+      const given = (s.name && s.name !== 'Unnamed Cultivator') ? s.name.trim().split(/\s+/).pop() : ''
+      s.self = Persons.make({ id: this._newPersonId(s.clan), given, family: s.clan.name, role: 'self', alive: true })
+    }
+  }
+
+  _rollPersonality() { return Persons.rollPersonality() }
 
   _emit(type, ctx = {}) {
     for (const fn of this._eventSubs) { try { fn(type, ctx) } catch {} }
@@ -341,26 +373,11 @@ class GameState {
     return id && typeof SECTS !== 'undefined' ? (SECTS.find(x => x.id === id) || null) : null
   }
 
-  _rollRoot() {
-    const roll     = Math.random()
-    const elements = ['fire','water','earth','wood','metal']
-    const rnd      = () => elements[Math.floor(Math.random() * elements.length)]
-    if (roll < 0.01) return { type:'heavenly', name:'天灵根 Heavenly Root', mult:3.0 }
-    if (roll < 0.05) return { type:'pure',     name:`纯灵根 Pure ${rnd()} Root`, mult:1.8 }
-    if (roll < 0.25) return { type:'dual',     name:'双灵根 Dual Root', mult:1.4 }
-    return                   { type:'mixed',   name:'杂灵根 Mixed Root', mult:1.0 }
-  }
-
-  _rollSpecificRoot(type) {
-    const elements = ['fire','water','earth','wood','metal']
-    const rnd = () => elements[Math.floor(Math.random() * elements.length)]
-    switch (type) {
-      case 'heavenly': return { type:'heavenly', name:'天灵根 Heavenly Root', mult:3.0 }
-      case 'pure':     return { type:'pure',     name:`纯灵根 Pure ${rnd()} Root`, mult:1.8 }
-      case 'dual':     return { type:'dual',     name:'双灵根 Dual Root', mult:1.4 }
-      default:         return { type:'mixed',    name:'杂灵根 Mixed Root', mult:1.0 }
-    }
-  }
+  // Phase 30 (M2 task 2.2): moved to renderer/engine/persons.js (Persons.rollRoot/specificRoot) so M4's
+  // NPCs and M6's spouses/children can share the exact same generator. Kept as thin delegates — identical
+  // draws, same call order — so every existing caller (buildDevSave, etc.) is unaffected.
+  _rollRoot()             { return Persons.rollRoot() }
+  _rollSpecificRoot(type) { return Persons.specificRoot(type) }
 
   _stage() {
     return CULTIVATION_STAGES[Math.min(this._s.stageIndex, CULTIVATION_STAGES.length - 1)]
@@ -378,6 +395,8 @@ class GameState {
     this._ensurePhase23Fields()
     this._ensurePhase20CFields()
     this._ensurePhase29Fields()
+    this._ensurePhase31Fields()
+    this._ensurePhase30Fields()
     const st = this._stage()
 
     let qps = st.baseQps * s.root.mult

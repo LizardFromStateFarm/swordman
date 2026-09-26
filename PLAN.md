@@ -126,7 +126,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
 | 2.1 | `docs/systems/life-loop.md`: game clock, lifespan table, heir flow, Ancestral Hall unlocks, pacing targets. **Review with the user before code** | 30, 31 | — | User signs off on lifespan numbers + the legacy list |
-| 2.2 | **Shared generators + `powerScore()` + minimal person record** (the schema 28A later extends): root, personality, name, stage, age | 28A/28J prep | 2.1 | Player creation uses them; sim numbers unchanged |
+| 2.2 ✅ | **Shared generators + `powerScore()` + minimal person record** (the schema 28A later extends): root, personality, name, stage, age | 28A/28J prep | 2.1 | Player creation uses them; sim numbers unchanged |
 | 2.3 | Game clock + **lifespan (寿元)**: age passes only while open, per-realm lifespan, old-age warning (seclusion scene), death by old age | 30 | 2.2 | Sim metrics: life length, deaths by cause; age never advances in offline catch-up (invariant) |
 | 2.4 | **Pacing compression**: retune the realm caps/costs so a casual mortal life is 10–20h. Rewrite `PACING_TARGETS_MIN` | 30 | 2.3 | `npm run sim`: casual life median within 10–20h, active ≥ ~5h, afk not trivial (check offline Qi vs no aging) |
 | 2.5 | **Marriage & children (lite)**: a proposal choice event from Foundation Building, spouse = person record, children born in game years, partner term in bloodline growth | 16 lite, 23 family hooks | 2.3 | Children exist before the typical death; family `carry 1.0` path works in sim |
@@ -943,6 +943,12 @@ This gives mid-game players a concrete automation roadmap to look forward to.
 > contains Phase 30 (lifespan + game time), Phase 31 (Ancestral Hall + clan legacies, which absorbs Phase 8 and 18B),
 > and the lite versions of 16 (marriage/children) and 18C (heir selection). Write `docs/systems/life-loop.md` first
 > (task 2.1) and review the numbers with the user before any code.
+>
+> **Task 2.2 built 2026-09-26 (overnight):** shared root/personality/name generators moved to
+> `renderer/engine/persons.js`, `assets/data/names.js` added, `s.self`/`s.clan` skeleton added to
+> `_newGame()` + migrations. No divergence from the doc's own decisions — see life-loop.md §11 for the
+> handful of ambiguous calls it made (all consistent with 2.3–2.7). `npm run sim` verified byte-identical
+> to a pre-change baseline (perf fields excluded).
 
 ---
 

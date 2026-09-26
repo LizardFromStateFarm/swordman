@@ -84,6 +84,7 @@ renderer/
   game.js               ← Boot, tick loop, all UI wiring and render functions
   engine/
     platform-storage.js ← window.electron fallback (Capacitor/browser) — see docs/systems/ios-port.md
+    persons.js          ← Persons — shared root/personality/name generators + Person record schema (Phase 30/31, M2 task 2.2)
     game-state.js       ← ALL state mutations — _newGame(), _recalc(), tick()
     ascii-renderer.js   ← Canvas renderer — sprites + particles + aura rings
   game/
@@ -114,6 +115,7 @@ assets/
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)
     banter-lines.js     ← BANTER_LINES — 1,579 lines, personality × trigger + generic pool (Phase 29)
+    names.js            ← SURNAMES (60) + GIVEN_NAMES (205) — pinyin, gender-neutral (Phase 30/31, M2 task 2.2)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
