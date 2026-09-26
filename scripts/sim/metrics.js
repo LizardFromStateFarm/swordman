@@ -4,8 +4,12 @@
 const QPS_CHECKPOINTS_H = [1, 5, 10, 25, 50, 100, 200]
 
 class Recorder {
-  constructor(data) {
+  constructor(data, endSec = Infinity) {
     this.D = data
+    this.endSec = endSec
+    this.ledger = {}                 // source/sink → Σ Spirit Stones (+ earned, − spent)
+    this.lateEarned = 0              // stones earned in the last 25% of the run (end-game income rate)
+    this.lastAction = null
     this.t = 0                       // sim seconds since start
     this.stageReached = { 0: 0 }     // stageIndex → first time reached (s)
     this.maxStage = 0
@@ -30,6 +34,7 @@ class Recorder {
   checkIn() { this.checkIns++ }
   act(name, meaningful) {
     this.actions[name] = (this.actions[name] || 0) + 1
+    this.lastAction = name
     if (meaningful) this.meaningful++
     this.milestone(`first_${name}`)
   }
@@ -37,12 +42,20 @@ class Recorder {
   warSeen(w) { this.warsSeen.add(w.nextWarAt) }
   breakthrough(res, chance, pill, fromStage) {
     const b = this.bt
+    this.lastAction = 'breakthrough'
     b.attempts++
     if (pill) b.pillsUsed++
     if (res.success) { b.streak = 0; return }
     b.fails++; b.streak++
     if (b.streak > b.maxStreak) { b.maxStreak = b.streak; b.maxStreakStage = fromStage }
     if (res.demoted) { b.demotions++; this.milestone('first_demotion') }
+  }
+
+  stones(source, delta) {
+    if (!delta) return
+    if (source === 'war') source = delta > 0 ? 'war_spoils' : 'war_losses'
+    this.ledger[source] = (this.ledger[source] || 0) + delta
+    if (delta > 0 && this.t >= this.endSec * 0.75) this.lateEarned += delta
   }
 
   // ── Per-tick sampling (cheap) ────────────────────────────────────────────
@@ -165,7 +178,12 @@ class Recorder {
       qiCappedPct: +(100 * this.cappedSec / Math.max(1, this.openSec)).toFixed(1),
       integrityWaitPct: +(100 * this.integrityWaitSec / Math.max(1, this.openSec)).toFixed(1),
       qpsAt: this.qps,
-      economy: { stonesEnd: Math.floor(s.spiritStones), stonesPeak: Math.floor(this.peakStones), inventoryEnd: s.inventory,
+      economy: {
+        ledger: Object.fromEntries(Object.entries(this.ledger).map(([k, v]) => [k, Math.round(v)])),
+        earned: Math.round(Object.values(this.ledger).filter(v => v > 0).reduce((a, b) => a + b, 0)),
+        spent: Math.round(-Object.values(this.ledger).filter(v => v < 0).reduce((a, b) => a + b, 0)),
+        lateIncomePerHour: Math.round(this.lateEarned / Math.max(1e-9, (this.t - this.endSec * 0.75) / 3600)),
+        stonesEnd: Math.floor(s.spiritStones), stonesPeak: Math.floor(this.peakStones), inventoryEnd: s.inventory,
                  equipped: s.equipped, root: s.root.type, techniques: s.techniques.length, beasts: s.beasts.map(b => `${b.typeId}:L${b.level}`) },
       sect: { joined: s.sect.id, rank: s.sect.rank, founded: s.ownSect.founded, disciples: s.ownSect.disciples.length,
               buildings: Object.keys(s.ownSect.buildings).filter(k => s.ownSect.buildings[k]).length, hallLevel: s.ownSect.hallLevel,

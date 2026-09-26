@@ -39,6 +39,8 @@ _Covers: sects.js (data) · renderer/game/sect.js · game-state.js · game.js (r
 5. Rank only increases via `rankUpSect()`; it never skips levels.
 
 ## Gotchas
+- Escort / Subdue Demon / Retrieve Artifact pay Spirit Stones (economy pass 2026-09-25): long missions finish
+  while the player is offline, so they're the low-engagement (afk) player's main stone faucet. Re-run `npm run sim`.
 - Phase 5A (`own-sect.md`): founding your own sect requires leaving any joined sect, and `joinSect` rejects `own_sect` while you lead one.
 - Divergences from PLAN.md: logic file is `sect.js` (as planned), data `sects.js`; Myriad Herb Hall
   "Crafting ×2" is implemented as a 35% chance to double output; Azure Sword weapon buff is a Qi/s multiplier

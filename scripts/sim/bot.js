@@ -29,9 +29,11 @@ class Bot {
   checkIn() {
     this.rec.checkIn(this.s)
     for (let i = 0; i < 40; i++) {
+      const before = this.s.spiritStones
       const acted = this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
         this.elixirs() || this.beasts() || this.sect() || this.ownSect() || this.war() || this.expedition()
       if (!acted) break
+      this.rec.stones(this.rec.lastAction, this.s.spiritStones - before)
     }
     if (!this.s.meditating) { this.gs.startMeditation(30); this.rec.act('meditate', false) }
   }
@@ -233,11 +235,15 @@ class Bot {
     const s = this.s, w = s.sectWar
     if (!s.ownSect.founded || (w.phase !== 'scouting' && w.phase !== 'preparing')) return false
     this.rec.warSeen(w)
-    if (!w.allyId && s.spiritStones > 300) {
-      const r = this.gs.requestWarAlly(this.D.SECTS[0].id)
+    // Buy war boosts only when comfortably affordable (≥ 3× cost) — mirrors game-state.js cost formulas.
+    const fame = s.derived.sectFame || 0, D = this.D
+    const allyCost = Math.round(D.WAR_ALLY_COST_BASE + fame * D.WAR_ALLY_COST_PER_FAME)
+    const reinforceCost = Math.round(Math.max(20, fame * D.WAR_REINFORCE_COST_PER_FAME))
+    if (!w.allyId && s.spiritStones >= 3 * allyCost) {
+      const r = this.gs.requestWarAlly(D.SECTS[0].id)
       if (r.ok) return this.do('war_ally', r)
     }
-    if (w.phase === 'preparing' && !w.reinforced && s.spiritStones > 200) return this.do('war_reinforce', this.gs.reinforceForWar())
+    if (w.phase === 'preparing' && !w.reinforced && s.spiritStones >= 3 * reinforceCost) return this.do('war_reinforce', this.gs.reinforceForWar())
     return false
   }
 }

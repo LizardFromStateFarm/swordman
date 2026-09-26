@@ -63,18 +63,18 @@ const SECT_MISSIONS = [
     id: 'escort', name: 'Escort', nameCN: '护送',
     desc: 'Guard a merchant caravan through bandit country. Your beasts learn from the road.',
     duration: 1200, minRank: 1, contribution: 60, beastXp: 15,
-    rewards: [],
+    rewards: [{ itemId: 'spirit_stone', minQty: 10, maxQty: 20 }],   // long missions pay stones: they finish while offline // economy pass 2026-09-25 (npm run sim)
   },
   {
     id: 'subdue_demon', name: 'Subdue Demon', nameCN: '降妖',
     desc: 'A demon stirs beneath the mountain. Seal it before it wakes.',
     duration: 1800, minRank: 2, contribution: 150, beastXp: 0,
-    rewards: [{ itemId: 'demon_essence', minQty: 1, maxQty: 2 }],
+    rewards: [{ itemId: 'demon_essence', minQty: 1, maxQty: 2 }, { itemId: 'spirit_stone', minQty: 15, maxQty: 30 }],
   },
   {
     id: 'retrieve_artifact', name: 'Retrieve Artifact', nameCN: '寻宝',
     desc: 'Recover a relic the sect lost in a ruined cave system long ago.',
     duration: 3600, minRank: 3, contribution: 400, beastXp: 0,
-    rewards: [{ itemId: 'artifact_fragment', minQty: 1, maxQty: 1 }],
+    rewards: [{ itemId: 'artifact_fragment', minQty: 1, maxQty: 1 }, { itemId: 'spirit_stone', minQty: 30, maxQty: 60 }],
   },
 ]

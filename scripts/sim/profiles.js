@@ -22,7 +22,10 @@ const THRESHOLDS = {
   stageWallMinHours: 1,       // …and at least this long (ignore ratios on 30-second stages)
   qiCappedPct:       40,      // % of open-time Qi sat at cap (wasted generation) → "cap too punishing"
   failStreak:        5,       // consecutive failed breakthroughs → "frustration spike"
-  hoardStones:       2000,    // Spirit Stones sitting unspent at end → "nothing to buy"
+  hoardStones:       2000,    // Spirit Stones unspent at end… (both this AND hoardBankHours must trip)
+  hoardBankHours:    12,      // …and the bank is worth more than this many hours of end-game income
+  involuntarySinkPct: 50,     // war losses > this % of all stones leaving the economy → "tax, not choices"
+  singleSourcePct:   80,      // one income source > this % of all stones earned → "one faucet economy"
   minDecisionsPerHr: { active: 6, casual: 1, afk: 1 },  // fewer meaningful actions/hour → "boring stretch"
   unusedFeature:     true,    // flag systems a profile never touched in its longest run
 }

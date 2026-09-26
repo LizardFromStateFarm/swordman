@@ -57,17 +57,24 @@ function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } 
   const gs = ev('gameState')
   const systems = ev(`[new CultivationSystem(gameState), new ExpeditionSystem(gameState),
     new BeastSystem(gameState), new SectSystem(gameState), new SectWarSystem(gameState)]`)
+  const SYSTEM_SOURCES = ['events', 'expeditions', 'beast_expeditions', 'sect_missions', 'war']
 
   return {
     ctx, clock, gs, systems, saves, ev,
     data: ev(`({ CULTIVATION_STAGES, TECHNIQUES, ITEMS, LOCATIONS, RECIPES, SECTS, SECT_RANKS,
       SECT_MISSIONS, SECT_MAX_MISSIONS, SECT_FOUNDING, SECT_BUILDINGS, SECT_HALL_LEVELS,
-      DISCIPLE_RECRUIT_COST, BEAST_TYPES })`),
+      DISCIPLE_RECRUIT_COST, BEAST_TYPES, WAR_REINFORCE_COST_PER_FAME, WAR_ALLY_COST_BASE, WAR_ALLY_COST_PER_FAME })`),
     // One frame of the real game loop (renderer/game.js), minus rendering.
-    step(dt) {
+    // onStones(source, delta) — optional Spirit Stone ledger hook (who produced/consumed stones this frame).
+    step(dt, onStones) {
       clock.now += dt * 1000
-      gs.tick(dt)
-      for (const sys of systems) sys.tick(dt)
+      if (!onStones) { gs.tick(dt); for (const sys of systems) sys.tick(dt); return }
+      const s0 = gs.get(), w0 = s0.sectWar.warVictories + s0.sectWar.warDefeats
+      let before = s0.spiritStones
+      gs.tick(dt)   // own-sect disciple income + war resolution happen inside tick()
+      const s1 = gs.get()
+      onStones(s1.sectWar.warVictories + s1.sectWar.warDefeats !== w0 ? 'war' : 'disciples', s1.spiritStones - before)
+      systems.forEach((sys, i) => { before = gs.get().spiritStones; sys.tick(dt); onStones(SYSTEM_SOURCES[i], gs.get().spiritStones - before) })
     },
     // Real initSlot is async but only awaits the (sync-resolving) stub — drain microtasks.
     async boot(slot = 0) { await gs.initSlot(slot) },

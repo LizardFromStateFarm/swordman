@@ -1,7 +1,8 @@
 // Own-sect (Phase 5A) data: founding requirements, Sect Hall levels, buildings, disciple constants + name pools.
 // Depends on: items.js (item ids). Used by: game-state.js (own-sect logic, _recalc), game.js (Sect tab).
 
-const SECT_FOUNDING = { minStage: 18, stones: 500, items: { void_crystal: 50 }, maxNameLen: 20 }
+// minStage 19 = Spirit Severing, where void_crystal first drops (void_rift) — was 18, an unreachable promise
+const SECT_FOUNDING = { minStage: 19, stones: 500, items: { void_crystal: 50 }, maxNameLen: 20 }
 
 // Index = hallLevel - 1. `cap` = disciple cap at that level; `upgradeStones` = cost to reach the next level.
 const SECT_HALL_LEVELS = [
@@ -52,8 +53,8 @@ const RECRUIT_REFRESH_SECONDS  = 900
 const RECRUIT_TALENT_WEIGHTS   = [40, 30, 20, 8, 2]   // 1★..5★
 
 // Per second, per disciple, × talent × (1 + 0.1×(level−1)):
-const DISCIPLE_STONE_RATE = 0.003
-const DISCIPLE_HERB_RATE  = 0.0015
+const DISCIPLE_STONE_RATE = 0.0004   // was 0.003 (~1,100 stones/h, 90% of all income) // economy pass 2026-09-25 (npm run sim)
+const DISCIPLE_HERB_RATE  = 0.0002   // was 0.0015 (thousands of unused herbs) // economy pass 2026-09-25 (npm run sim)
 const DISCIPLE_QI_FRAC    = 0.004   // fraction of base Qi/s added per disciple
 const DISCIPLE_XP_BASE    = 0.5     // xp/s = BASE + PER_TALENT × talent
 const DISCIPLE_XP_PER_TALENT = 0.25

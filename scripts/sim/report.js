@@ -29,6 +29,12 @@ const KEY_MILESTONES = [
   ['all techniques', r => r.milestones.all_techniques],
   ['all buildings', r => r.milestones.all_buildings],
 ]
+function topSource(g) {
+  const sums = {}; let tot = 0
+  for (const r of g) for (const [k, v] of Object.entries(r.economy.ledger)) if (v > 0) { sums[k] = (sums[k] || 0) + v; tot += v }
+  const [src, v] = Object.entries(sums).sort((a, b) => b[1] - a[1])[0] || []
+  return src ? { src, pct: 100 * v / tot } : null
+}
 function stageAt(r, realm) { return r.stageTimes.find(x => x.name.startsWith(realm))?.atH }
 
 function buildReport(runs, args) {
@@ -83,7 +89,12 @@ function buildReport(runs, args) {
     const iw = med(g.map(r => r.integrityWaitPct))
     if (iw > 5) flags.push(`${tag} Waiting on integrity regen ${iw}% of play time (bot refuses risky breakthroughs ≤20 integrity)`)
     const stones = med(g.map(r => r.economy.stonesEnd))
-    if (stones > T.hoardStones) flags.push(`${tag} Hoarding: ${f(stones)} Spirit Stones unspent at end — nothing worth buying`)
+    const bankH = med(g.map(r => r.economy.stonesEnd / Math.max(1, r.economy.lateIncomePerHour)))
+    if (stones > T.hoardStones && bankH > T.hoardBankHours) flags.push(`${tag} Hoarding: ${f(stones)} Spirit Stones unspent at end (~${f(bankH)}h of income) — nothing worth buying`)
+    const lossPct = med(g.map(r => 100 * -(r.economy.ledger.war_losses || 0) / Math.max(1, r.economy.spent)))
+    if (lossPct > T.involuntarySinkPct) flags.push(`${tag} Economy is a tax: ${f(lossPct)}% of stones leave via war defeats, not player purchases`)
+    const topSrc = topSource(g)
+    if (topSrc && topSrc.pct > T.singleSourcePct) flags.push(`${tag} One-faucet economy: ${topSrc.src} = ${f(topSrc.pct)}% of all stones earned`)
     const dph = med(g.map(r => r.decisionsPerOpenHour))
     if (dph < T.minDecisionsPerHr[p]) flags.push(`${tag} Low engagement: ${dph} meaningful actions/hour (min ${T.minDecisionsPerHr[p]})`)
     const eng = med(g.map(r => r.wars.engagedPct))
@@ -152,6 +163,18 @@ function buildReport(runs, args) {
   for (const [realm, [lo, hi]] of Object.entries(PACING_TARGETS_MIN)) {
     const cells = profiles.map(p => { const xs = pacing[realm]?.[p]; return xs?.length ? `${fmtMin(med(xs))} [${fmtMin(Math.min(...xs))}–${fmtMin(Math.max(...xs))}]` : '—' })
     L.push(`| ${realm} | ${fmtMin(lo)}–${fmtMin(hi)} | ${cells.join(' | ')} |`)
+  }
+  L.push(``)
+  L.push(`## Economy — Spirit Stones (median, ${longest}h runs)`)
+  L.push(`| Profile | Earned | Income/h (last 25%) | Spent by choice | Lost to wars | Bank at end | Top sources | Top purchases |`)
+  L.push(`|---|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const g = group(p, longest), e = g.map(r => r.economy)
+    const share = (pos) => { const sums = {}; let tot = 0
+      for (const x of e) for (const [k, v] of Object.entries(x.ledger)) if ((v > 0) === pos && k !== 'war_losses') { sums[k] = (sums[k] || 0) + Math.abs(v); tot += Math.abs(v) }
+      return Object.entries(sums).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${Math.round(100 * v / Math.max(1, tot))}%`).join(', ') || '—' }
+    const chosen = med(e.map(x => x.spent + (x.ledger.war_losses || 0)))
+    L.push(`| ${p} | ${f(med(e.map(x => x.earned)))} | ${f(med(e.map(x => x.lateIncomePerHour)))} | ${f(chosen)} | ${f(med(e.map(x => -(x.ledger.war_losses || 0))))} | ${f(med(e.map(x => x.stonesEnd)))} | ${share(true)} | ${share(false)} |`)
   }
   L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)

@@ -36,6 +36,9 @@ _Covers: sect-war.js (data) · renderer/game/sect-war.js · game-state.js (own-s
 5. War outcome is probabilistic: `playerPower / (playerPower + enemyPower)`, never a guaranteed win or loss.
 
 ## Gotchas
+- Reinforce/ally costs are deliberately steep (fame × 2 / 100 + fame × 1) — war prep is the game's main
+  repeatable late-game Spirit Stone sink; defeat takes 8% of the bank (was 15%, which made war losses ~80% of
+  all stone outflow). Tuned with `npm run sim` (Economy section) — re-run it after touching these.
 - Wars only run for founded sects today (`tickSectWar()` early-returns otherwise). Phase 5C (PLAN.md) plans member wars for *joined* sects — generalise this state with a `side` field rather than duplicating it.
 - No real NPC sects exist yet (Phase 15 is unbuilt) — rival sects and allies are flavor/mechanic only; alliance is bought from the existing Phase 4 `SECTS` roster, not a relationship system.
 - Offline catch-up relies on `tickSectWar()` being timestamp-based (`Date.now()` comparisons, no `dt` accumulation), so it fast-forwards correctly across any number of missed cycles in one `initSlot()` call — unlike phase durations that would need to be recomputed from "now" if scheduling were dt-based instead.

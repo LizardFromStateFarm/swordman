@@ -246,6 +246,14 @@ Alliance system: ally with other sects for defensive help.
 > time-based (the old % losses capped Qi below the breakthrough threshold on long stages). Still open from
 > the sim: late-game stone hoarding (no sinks), nothing to do after Ascension (Phases 7–8), afk players
 > can't afford founding, casual/afk miss most war windows (Phase 9 notifications / 5C).
+> **Economy pass 2026-09-25:** sim now keeps a Spirit Stone ledger (sources/sinks). Found disciples = ~90% of
+> all income (~1,100/h) and war defeats (15% of bank) = ~80% of all outflow, so a two-speed economy with a wealth
+> tax instead of choices. Fixed with numbers only: disciple stone/herb rates ÷7, war loss 8%, war ally/reinforce
+> costs ×2–4 (the repeatable late sink), long sect missions pay stones (afk faucet), Celestial Orbit 150→600
+> (kept Qi pacing on target), founding minStage 18→19 (void crystals drop at 19). Result: casual bank 31k→6k,
+> active 47k→4k, war losses now a minority of outflow, afk founds a sect at ~132h (never before).
+> Remaining flags are design gaps, not numbers: nothing after Ascension (Phases 7–8), casual/afk rarely see
+> the 15-min war window (Phase 9 notifications / 5C), hence can't use the war sink and still bank ~6k/3.5k.
 > Not yet: Playwright UI-level pass (would need a swappable clock seam in game.js); an LLM-driven policy
 > tier for qualitative "does this feel good" feedback; wiring `sim:quick` into `npm run release` (blocked
 > until the current health failure — see START_HERE — is fixed, or it would block every release).

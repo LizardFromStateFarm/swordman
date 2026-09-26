@@ -13,7 +13,7 @@ computed here, and can zero out Defensive Array's `war_defense` contribution via
   - `_incomeAcc: { spirit_stone, spirit_herb }` — fractional income carried between ticks (internal)
 
 ## API (game-state.js)
-- `foundOwnSect(name)` → `{ ok, reason? }` — reasons: `stage`(<18), `in_sect`, `founded`, `stones`, `crystals`. Costs 500 stones + 50 void crystals; builds Sect Hall Lv1.
+- `foundOwnSect(name)` → `{ ok, reason? }` — reasons: `stage`(<19, Spirit Severing — where void_crystal first drops), `in_sect`, `founded`, `stones`, `crystals`. Costs 500 stones + 50 void crystals; builds Sect Hall Lv1.
 - `buildSectBuilding(id)` → `{ ok, building?, reason? }` — reasons: `no_sect`, `unknown`, `built`, `stones`, `items`
 - `upgradeSectHall()` → `{ ok, level?, reason? }` — reasons: `no_sect`, `max_level`, `stones`
 - `recruitDisciple(candidateId)` → `{ ok, disciple?, reason? }` — reasons: `no_sect`, `not_found`, `full`, `stones`. Cost `DISCIPLE_RECRUIT_COST × talent²`.

@@ -48,7 +48,13 @@ invariant violations, 2 = harness crashed / bad `--set`.
   waits ≤1.5 sessions), progression stalls, content exhausted, qi-capped %, frustration (fail streak),
   demotions, integrity waiting, hoarding, low engagement, wars resolving unseen, never-used features.
 - **Health**: exceptions (deduped, with stack) + invariant violations + save→load round-trip count.
-- **Performance**: avg/worst `gameState.tick()+systems` µs vs 16.7ms frame budget; sim speed.
+- **Economy — Spirit Stones**: a ledger attributes every stone gained/lost to a source (disciples, expeditions,
+  beast_expeditions, sect_missions, events, war_spoils, war_losses, offline_catchup) or a bot purchase
+  (learn_technique, build, war_ally, …). Self-checked: start + Σ ledger must equal end, else a
+  `stone_ledger_mismatch` violation. Flags: hoarding (bank > `hoardStones` AND > `hoardBankHours` of end-game
+  income), economy-is-a-tax (war losses > `involuntarySinkPct` of outflow), one-faucet (a source > `singleSourcePct`).
+- **Performance**: avg/worst `gameState.tick()+systems` µs vs 16.7ms frame budget; sim speed. Includes the
+  ledger's own bookkeeping (~+6µs), so treat it as an upper bound. Use `--jobs=1` for clean numbers.
 
 ## Invariants checked (every sim minute + every reopen)
 Non-finite numbers anywhere in state (except `derived.qiCap` at Ascension) · qi <0 or > cap · stones <0 ·

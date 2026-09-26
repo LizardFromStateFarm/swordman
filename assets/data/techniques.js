@@ -48,7 +48,7 @@ const TECHNIQUES = [
   },
   {
     id: 'celestial_orbit', name: 'Celestial Orbit Technique', nameCN: '天轨功',
-    element: 'any', minStage: 10, cost: 150,
+    element: 'any', minStage: 10, cost: 600,   // was 150 — ×3 Qi/s; price keeps its timing on the pacing curve // economy pass 2026-09-25 (npm run sim)
     desc: 'Cycles Qi through all twelve meridians. Massive Qi gain multiplier.',
     effect: { type: 'qps_mult', value: 3.00 },
     flavor: '"Heaven turns, earth revolves, and so too must your cultivation."',

@@ -46,32 +46,47 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
-Date: 2026-09-25 (session 3)
-Agent: QA sim harness committed + Infinity bug fix + first pacing pass (branch: qa-sim-harness)
+Date: 2026-09-25 (session 4)
+Agent: Merge sim/pacing work to main + economy pass (Spirit Stones) — repo is in a clean HANDOFF state
 What was done:
-  - Branch `qa-sim-harness` (off main), 3 commits: harness (session 2 work), heavenly_lightning Qi=Infinity
-    fix, pacing pass. Not pushed / not merged to main.
-  - Harness: added "Pacing vs GAMEDESIGN.md" section — per realm, idle minutes to fill Qi cap vs the design
-    table (targets in scripts/sim/profiles.js PACING_TARGETS_MIN; NS/SS extrapolated by the doc's doubling rule).
-  - DESIGN BUG found + fixed: demon_disturbance / inner_demon / heavenly_lightning took 12/20/30% of current
-    Qi every 30–120s → equilibrium below the 90% breakthrough threshold once a stage takes >~30 min to fill
-    (casual players stuck at stage 20 for 117h in the sim). Now time-based: −60s / −120s / −180s of Qi/s,
-    lightning bonus +300s of Qi/s (was +25% of cap). Rule added to .agents/rules/game-design.md.
-  - stages.js: Foundation Building → Spirit Severing qiCaps retuned (FB Early was 8,000 — LOWER than QC L9's
-    110k). Casual fill times now all inside GAMEDESIGN bands: FB 26m, CF 1.5h, NS 3.3h, SS 11.4h.
-    Time to Ascension: active 2h→10h, casual 24h→72h, afk 58h→132h. Mortal/QC unchanged (already on target).
-  - Docs: core-loop.md gotchas, game-design.md rules/checklists, qa-sim.md, PLAN.md tooling note.
-  - Verified: npm test, npm run sim (healthy, exit 0, 135 save round-trips), npm run build:web, npm run dist.
-Still flagged by the sim (NOT addressed — design decisions, not tuning):
-  - Nothing to do after Ascension → long dead zones for everyone (needs Phases 7–8 content).
-  - Stone hoarding: ~31k (casual) / ~47k (active) unspent at 200h — no late-game sinks.
-  - afk players reach sect founding only ~180h in (2/3 seeds) — stone income too low for 15-min sessions.
-  - Casual sees ~50% of wars, afk ~0% (15-min war window) — consider Phase 9 notifications or longer prep.
-  - Founding needs stage 18 but void_crystal only drops at stage 19 (void_rift). Two items (soul spear,
-    thunder staff) have effects nothing reads.
-Next recommended task:
-  - Merge qa-sim-harness → main after a real playtest of the new pacing feels right.
-  - Economy pass with the sim (stone sinks / late technique costs / afk income), then Phase 5C Member Wars.
+  - Sessions 2–3 (QA sim harness, Infinity fix, Qi pacing pass) merged to main. This session's economy pass
+    is also on main. Nothing pushed to the remote — push when you're ready.
+  - Harness: Spirit Stone ledger (every stone attributed to a source/sink, self-checked each run), Economy
+    report section + flags (hoarding vs income, war-loss "tax", one-faucet economy). Bot buys war boosts only
+    at ≥3× cost.
+  - Economy findings: disciples were ~90% of all income (~1,100/h); war defeats (15% of bank) were ~80% of all
+    outflow → two-speed economy with a wealth tax instead of player choices; afk players never founded a sect.
+  - Numbers changed (all tagged "economy pass 2026-09-25" in the data files):
+      sect-buildings.js  DISCIPLE_STONE_RATE 0.003→0.0004, DISCIPLE_HERB_RATE 0.0015→0.0002,
+                         SECT_FOUNDING.minStage 18→19 (void crystals first drop at 19)
+      sect-war.js        WAR_LOSS_RESOURCE_FRAC 0.15→0.08; reinforce fame×0.5→×2; ally 50+fame×0.3 → 100+fame×1
+      sects.js           Escort / Subdue Demon / Retrieve Artifact now also pay Spirit Stones
+      techniques.js      Celestial Orbit 150→600 (cheaper stones had pulled it earlier and broke FB pacing)
+  - Result (casual, 200h): bank 31k→6k, stones spent by choice 12k→32k, war losses 137k→15k. Active bank 47k→4k.
+    afk founds a sect at ~132h (never before). Qi pacing still inside every GAMEDESIGN band.
+  - Docs: qa-sim.md, sects.md, sect-war.md, own-sect.md, PLAN.md.
+  - Verified: npm test, npm run sim (healthy, 135 save round-trips, ledger balanced), build:web, dist.
+
+CURRENT BASELINE (npm run sim, 200h medians — a regression if yours differ without a reason):
+  Ascension: active ~11h · casual ~56h · afk ~140h.  Found sect: 6.7h · 33h · 132h.
+  Casual income ~290 stones/h late game, bank ~6k.  Health: 0 errors, 0 violations.
+
+READY FOR DEV WORK — how a new agent should start:
+  1. Read START_HERE.md (this) + CLAUDE.md; load only the docs/systems/*.md for the system you touch.
+  2. `npm test && npm run sim:quick` → both must pass before you change anything (≈5s total).
+  3. For balance work, or any new system that touches Qi/stones: `npm run sim` before AND after, read only
+     scripts/sim/out/report.md, try values with --set first. Teach scripts/sim/bot.js to use any new system
+     (docs/systems/qa-sim.md → "Extending") or the sim can't see it.
+
+Open design gaps the sim still flags (numbers can't fix these):
+  - Nothing to do after Ascension → long dead zones for every profile (Phases 7–8).
+  - Casual players see ~50% of sect wars and afk ~0% (15-min scout+prep window), so they rarely use the war-prep
+    stone sink and still bank ~6k / ~3.5k. Fix via Phase 5C design, Phase 9 notifications, or a longer window.
+  - weapon_soul_spear (expedition_power) / weapon_thunder_staff (enemy_hp_reduce): effects nothing reads.
+Next recommended tasks (pick one):
+  - Phase 5C Member Wars (PLAN.md) — user-requested; also the natural place to fix the war-window gap.
+  - Phase 6 Animation & Visual Overhaul, or Phase 7 (post-Ascension content — biggest sim flag).
+  - Optional: add `npm run sim:quick` as a gate in scripts/release.js (it's healthy now; ask the user first).
 ```
 
 **When you finish a session, update this block** — date, what you did, what's next.

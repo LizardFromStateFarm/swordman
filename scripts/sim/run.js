@@ -42,11 +42,13 @@ async function runOne({ profile, hours, seed, path: sectPath, dt, set }) {
   const prof = PROFILES[profile]
   const wall0 = process.hrtime.bigint()
   const sim = createSim({ seed, overrides: set })
-  const rec = new Recorder(sim.data)
+  const rec = new Recorder(sim.data, hours * 3600)
   const bot = new Bot(sim, rec, { path: sectPath, actEverySec: prof.actEverySec })
   const guard = (fn, where) => { try { return fn() } catch (e) { rec.error(e, where) } }
 
   await sim.boot(0)
+  const stones0 = sim.gs.get().spiritStones
+  const onStones = (src, d) => rec.stones(src, d)
   const endSec = hours * 3600
   let ticks = 0, slowAcc = 60, actAcc = prof.actEverySec, openAcc = 0, maxTickUs = 0
 
@@ -58,14 +60,16 @@ async function runOne({ profile, hours, seed, path: sectPath, dt, set }) {
       const skip = Math.min(prof.closedSec, endSec - rec.t)
       sim.clock.now += skip * 1000
       rec.t += skip
+      const b4 = sim.gs.get().spiritStones
       try { await sim.boot(0) } catch (e) { rec.error(e, 'initSlot') }
+      rec.stones('offline_catchup', sim.gs.get().spiritStones - b4)
       rec.checkSaveRoundtrip(before, sim.gs.get())
       openAcc = 0; actAcc = prof.actEverySec   // player acts right after opening
       if (rec.t >= endSec) break
     }
 
     const t0 = process.hrtime.bigint()
-    guard(() => sim.step(dt), 'tick')
+    guard(() => sim.step(dt, onStones), 'tick')
     const us = Number(process.hrtime.bigint() - t0) / 1000
     if (us > maxTickUs) maxTickUs = us
     ticks++
@@ -76,6 +80,9 @@ async function runOne({ profile, hours, seed, path: sectPath, dt, set }) {
     if ((slowAcc += dt) >= 60) { slowAcc = 0; guard(() => rec.slow(sim.gs.get()), 'invariants') }
   }
 
+  // Ledger self-check: every stone gained/lost must be attributed to some source.
+  const net = Object.values(rec.ledger).reduce((a, b) => a + b, 0)
+  if (Math.abs(stones0 + net - sim.gs.get().spiritStones) > 0.5) rec.violate('stone_ledger_mismatch', `start ${stones0} + ledger ${net} ≠ end ${sim.gs.get().spiritStones}`)
   const wallMs = Number(process.hrtime.bigint() - wall0) / 1e6
   return rec.finish(sim.gs.get(), {
     profile, hours, seed, path: sectPath,
