@@ -17,6 +17,7 @@ _Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ 
 > **⚠ 2026-09-26, user redesign — HEIRS:** the heir flow in §2.2 (`succession`/`heirOptions`), §2.3 (`CLAN_CARRY_KEYS`),
 > §4.2–4.4 (`chooseHeir`/`_beginNewLife`), §5.1 (heir overlay) and §7 (`succession()` bot) is **superseded by
 > `docs/systems/clan-succession.md`** (tasks 2.6a–f): you're reborn as a descendant, not played as the heir.
+> Since 2.6a, `s.gameYear` is `s.world.year` (never resets on death) and `s.clan` lives in `s.world.clans`.
 
 ## 1. Overview
 

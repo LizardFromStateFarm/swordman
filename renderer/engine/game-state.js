@@ -94,13 +94,14 @@ class GameState {
 
   // ── Private helpers ───────────────────────────────────────────────────────
 
-  _newGame() {
-    // Phase 30/31 (M2 task 2.2): clan skeleton + the player's own minimal person record. Built as locals
-    // (not inline in the object below) because `self.id` needs `clan.nextId` incremented first — neither
-    // call touches Math.random(), so this can't perturb _rollRoot()/_rollPersonality()'s draw order below.
-    // Full clan state (bestStageIndex/tree/firsts/merit/legacies, random surname at creation) is 2.6/2.7.
-    const clan = { name: '', nextId: 1 }
-    const self = Persons.make({ id: this._newPersonId(clan), family: clan.name, role: 'self', alive: true })
+  // A new LIFE. `world` (clan-succession.md 2.6a) survives deaths and is passed in by _die(); a fresh slot
+  // builds a new world with a founding clan. Neither path touches Math.random(), so _rollRoot()/
+  // _rollPersonality()'s draw order below is unchanged (life-loop.md §10).
+  _newGame(world = null) {
+    const w    = world || this._newWorld()
+    const clan = this._playerClan(w)
+    const self = Persons.make({ id: this._newPersonId(w), family: clan ? clan.name : '', role: 'self', alive: true })
+    if (clan) this._joinClan(w, clan, self.id, w.playerLineId)
     return {
       version:       2,
       name:          'Unnamed Cultivator',
@@ -113,15 +114,12 @@ class GameState {
       root:          this._rollRoot(),
       meditating:    false,
       meditationEnds:0,
-      // Phase 30/31 (M2 task 2.2)
-      clan,
+      // World (clan-succession.md 2.6a): clans, persons, the world clock — survives every death.
+      world:            w,
       self,
-      // Phase 30 (M2 task 2.3): game clock. age/gameYear advance ONLY in tick() (never initSlot()/offline
-      // catch-up — life-loop.md pillar 4). Age is a harmless stat: no lifespan, nothing dies of age
-      // (user decision 2026-09-26). gameYear is the clan calendar; it resets to 1 each new life until task
-      // 2.6's CLAN_CARRY_KEYS lands (same known gap as `clan` itself, §11).
+      // Phase 30 (M2 task 2.3): age advances ONLY in tick() (never initSlot()/offline catch-up — pillar 4),
+      // together with world.year. Age is a harmless stat: no lifespan, nothing dies of age (2026-09-26).
       age:              AWAKENING_AGE,
-      gameYear:         1,
       // Phase 16-lite (M2 task 2.5): spouse/children/proposal. Advanced only by _tickFamily() (game clock).
       family:           this._blankFamily(),
       // Phase 2
@@ -344,32 +342,127 @@ class GameState {
 
   _blankBanter() { return { lastAt: 0, recent: [], log: [], last: null, failStreak: 0, todSaid: null } }
 
-  // Phase 31 (M2 task 2.2): deterministic person id, no Math.random() (life-loop.md §4.1).
-  _newPersonId(clan) { return 'p' + (clan.nextId++) }
+  // Deterministic person id, no Math.random() (life-loop.md §4.1). The counter lives on the world (2.6a),
+  // so ids stay unique across lives. `w` is passed while a fresh world is being built (before this._s exists).
+  _newPersonId(w = this._s.world) { return 'p' + (w.nextId++) }
 
-  // Phase 31 (M2 task 2.2): clan skeleton only — bestStageIndex/tree/firsts/merit/legacies/gameYear and
-  // random-surname-at-creation land in tasks 2.6/2.7. This only backfills saves from before `clan` existed.
-  _ensurePhase31Fields() {
-    const s = this._s
-    if (!s.clan || typeof s.clan !== 'object') s.clan = { name: '', nextId: 1 }
-    if (typeof s.clan.name !== 'string') s.clan.name = ''
-    if (!(typeof s.clan.nextId === 'number' && isFinite(s.clan.nextId) && s.clan.nextId >= 1)) s.clan.nextId = 1
+  // ── World (clan-succession.md, task 2.6a) ─────────────────────────────────
+  // s.world survives every death; everything else on `s` is the current life. The living player's Person is
+  // s.self (never duplicated into world.persons while alive); _die() snapshots it into the registry.
+
+  _blankWorld() {
+    return { v: 1, year: 1, nextId: 1, nextClanId: 1, persons: {}, clans: {}, playerClanId: null,
+             playerLineId: null, pastLives: [] }
   }
 
-  // Phase 30 (M2 task 2.2/2.3): backfill `self` for saves from before this field existed, plus (2.3)
-  // age/gameYear for saves from before the game clock existed. Must run AFTER _ensurePhase31Fields()
-  // (needs s.clan for the id + surname).
+  // A fresh slot: a new world with one founding clan (unnamed until a later task gives clans surnames).
+  _newWorld() {
+    const w = this._blankWorld()
+    const clan = this._foundClan(w, '')
+    w.playerClanId = clan.id
+    w.playerLineId = clan.lines[0].id
+    return w
+  }
+
+  _foundClan(w, name, founderId = null) {
+    const id = 'c' + (w.nextClanId++)
+    const clan = {
+      id, name, foundedYear: Math.floor(w.year), founderId, headId: founderId,
+      lines: [{ id: `${id}-main`, name: 'Main Line', headId: founderId, memberIds: founderId ? [founderId] : [] }],
+      sect: null, tradition: { lethalTournaments: 0, peacefulSuccessions: 0, challenges: 0 },
+      relations: {}, history: [],
+    }
+    w.clans[id] = clan
+    return clan
+  }
+
+  // Idempotent: adds personId to the line (main line by default); fills an empty founder/head slot.
+  _joinClan(w, clan, personId, lineId = null) {
+    const line = clan.lines.find(l => l.id === lineId) || clan.lines[0]
+    if (!line.memberIds.includes(personId)) line.memberIds.push(personId)
+    if (!line.headId)   line.headId = personId
+    if (!clan.founderId) clan.founderId = personId
+    if (!clan.headId)   clan.headId = personId
+    return line
+  }
+
+  // The player's clan, or null for an orphan life.
+  _playerClan(w = this._s?.world) {
+    return w?.playerClanId ? (w.clans[w.playerClanId] || null) : null
+  }
+
+  // 2.6a: at the end of a life, snapshot the player (full Person: root/personality/stage — s.self doesn't
+  // carry them while alive), their spouses and children into world.persons, add a pastLives entry, and keep
+  // living family on the clan roster. Returns the world for the next life. No Math.random().
+  _recordLifeInWorld(cause, maxStage, generation) {
+    const s = this._s, w = s.world, yr = Math.floor(w.year), f = s.family || {}
+    const clan = this._playerClan(w)
+    const me = {
+      ...s.self, given: s.self.given || (s.name && s.name !== 'Unnamed Cultivator' ? s.name : ''),
+      root: s.root, personality: s.personality?.id || null, stageIndex: s.stageIndex, maxStage,
+      alive: false, diedYear: yr, cause, role: 'ancestor',
+    }
+    w.persons[me.id] = me
+    const keep = (p, role) => {
+      if (!p?.id) return
+      w.persons[p.id] = { ...p, role }
+      if (clan && p.alive !== false) this._joinClan(w, clan, p.id, w.playerLineId)
+    }
+    if (f.spouse) keep(f.spouse, 'spouse')
+    for (const x of f.formerSpouses || []) w.persons[x.id] = { ...x, role: 'former_spouse' }
+    for (const c of f.children || []) keep(c, 'child')
+    if (clan) for (const line of clan.lines) if (line.headId === me.id) line.headId = null   // 2.6d fills it
+    if (clan && clan.headId === me.id) clan.headId = null
+    w.pastLives.push({ personId: me.id, clanId: clan?.id || null, lineId: w.playerLineId, cause, year: yr,
+                       maxStage, generation, openHours: +(s.stats.timePlayed / 3600).toFixed(2) })
+    return w
+  }
+
+  // A person by id: the living player, or the world registry.
+  person(id) {
+    const s = this._s
+    return id === s.self?.id ? s.self : (s.world.persons[id] || null)
+  }
+
+  // Migration (2.6a): builds s.world from the old per-life `s.clan` skeleton (task 2.2) + `s.gameYear`, then
+  // backfills the world's shape. Runs FIRST in the _recalc() ensure chain — _ensurePhase30Fields needs it.
+  _ensurePhase33Fields() {
+    const s = this._s
+    if (!s.world || typeof s.world !== 'object') {
+      const w = this._blankWorld()
+      // Same fallback chain the old per-life clock used: gameYear, else derived from age (itself derived from
+      // time played for pre-clock saves — _ensurePhase30Fields() fills `age` with the same formula).
+      const age = (typeof s.age === 'number' && isFinite(s.age)) ? s.age
+                : AWAKENING_AGE + ((s.stats?.timePlayed || 0) / 3600) * GAME_YEARS_PER_OPEN_HOUR
+      w.year = (typeof s.gameYear === 'number' && isFinite(s.gameYear)) ? s.gameYear : 1 + (age - AWAKENING_AGE)
+      if (s.clan?.nextId >= 1) w.nextId = s.clan.nextId
+      const clan = this._foundClan(w, typeof s.clan?.name === 'string' ? s.clan.name : '')
+      w.playerClanId = clan.id
+      w.playerLineId = clan.lines[0].id
+      s.world = w
+    }
+    delete s.clan; delete s.gameYear
+    const w = s.world, blank = this._blankWorld()
+    for (const k of Object.keys(blank)) if (w[k] === undefined) w[k] = blank[k]
+    if (!(typeof w.year === 'number' && isFinite(w.year))) w.year = 1
+    if (w.playerClanId && !w.clans[w.playerClanId]) { w.playerClanId = null; w.playerLineId = null }
+  }
+
+  // Phase 30 (M2 task 2.2/2.3): backfill `self` for saves from before this field existed, plus `age` for saves
+  // from before the game clock existed. Must run AFTER _ensurePhase33Fields() (needs s.world). Also makes
+  // sure the living player is on their clan's roster (2.6a).
   _ensurePhase30Fields() {
     const s = this._s
+    const clan = this._playerClan()
     if (!s.self || typeof s.self !== 'object') {
       const given = (s.name && s.name !== 'Unnamed Cultivator') ? s.name.trim().split(/\s+/).pop() : ''
-      s.self = Persons.make({ id: this._newPersonId(s.clan), given, family: s.clan.name, role: 'self', alive: true })
+      s.self = Persons.make({ id: this._newPersonId(), given, family: clan ? clan.name : '', role: 'self', alive: true })
     }
+    if (clan) this._joinClan(s.world, clan, s.self.id, s.world.playerLineId)
     // Migration (life-loop.md §2.5): an old save never had `age` — approximate it from time played.
     if (!(typeof s.age === 'number' && isFinite(s.age))) {
       s.age = AWAKENING_AGE + (s.stats.timePlayed / 3600) * GAME_YEARS_PER_OPEN_HOUR
     }
-    if (!(typeof s.gameYear === 'number' && isFinite(s.gameYear))) s.gameYear = 1 + (s.age - AWAKENING_AGE)
     // Lifespan/twilight/Final Seclusion were removed 2026-09-26 (age never kills) — drop their leftovers.
     delete s.finalSeclusion; delete s.twilightNoticed; delete s._twilightLogged
   }
@@ -438,12 +531,12 @@ class GameState {
 
   // A child with `partner` (spouse or lover). No cap — each partner has their own timer (family.md).
   _makeChild(partner) {
-    const s = this._s, f = s.family, yr = Math.floor(s.gameYear)
+    const s = this._s, f = s.family, yr = Math.floor(s.world.year)
     const taken = new Set(f.children.map(c => c.given))
     let given = Persons.rollGiven()
     for (let i = 0; i < 3 && taken.has(given); i++) given = Persons.rollGiven()
     const child = Persons.make({
-      id: this._newPersonId(s.clan), given, family: this._clanSurname(), bornYear: yr,
+      id: this._newPersonId(), given, family: this._clanSurname(), bornYear: yr,
       root: Persons.blendRoot(s.root, partner.root), personality: Persons.rollPersonality(),
       role: 'child', alive: true, parents: [s.self.id, partner.id],
     })
@@ -458,7 +551,7 @@ class GameState {
   _spouseEnds(endCause, text, type = 'negative') {
     const s = this._s, f = s.family, sp = f.spouse
     if (!sp) return
-    const y = s.gameYear, yr = Math.floor(y)
+    const y = s.world.year, yr = Math.floor(y)
     const died = endCause === 'suicide' || endCause === 'murder_suicide' || endCause === 'duel'
     const former = { ...sp, endedYear: yr, endCause }
     if (died) { former.alive = false; former.diedYear = yr; former.cause = endCause }
@@ -497,8 +590,8 @@ class GameState {
     const stage = Math.max(1, Math.min(SPOUSE_STAGE_CAP, s.stageIndex + this._randInt(SUITOR_STAGE_OFFSET)))
     const age   = Math.max(18, s.age + this._randRange(SUITOR_AGE_OFFSET_YEARS))
     return Persons.make({
-      id: this._newPersonId(s.clan), given: Persons.rollGiven(), family: Persons.rollSurname(),
-      bornYear: Math.floor(s.gameYear - age), root: Persons.rollRoot(), personality: Persons.rollPersonality(),
+      id: this._newPersonId(), given: Persons.rollGiven(), family: Persons.rollSurname(),
+      bornYear: Math.floor(s.world.year - age), root: Persons.rollRoot(), personality: Persons.rollPersonality(),
       stageIndex: stage, maxStage: stage, role, alive: true,
     })
   }
@@ -508,7 +601,7 @@ class GameState {
   _discoverAffair(lover, viaChild) {
     const s = this._s, f = s.family, sp = f.spouse
     if (!sp) return
-    const yr = Math.floor(s.gameYear), spName = Persons.fullName(sp), loverName = Persons.fullName(lover.person)
+    const yr = Math.floor(s.world.year), spName = Persons.fullName(sp), loverName = Persons.fullName(lover.person)
     f.tally.discovered++
     this._changeAffection(AFFAIR_DISCOVERED_AFFECTION + (viaChild ? AFFAIR_CHILD_EXTRA_AFFECTION : 0))
     this.addEvent({ text: `Year ${yr}: ${spName} learns of your affair with ${loverName}${viaChild ? ' — and of the child' : ''}.`, type: 'negative' })
@@ -534,7 +627,7 @@ class GameState {
     } else if (reaction === 'suicide') {
       this._spouseEnds('suicide', `${spName} could not bear it. They are found at dawn; they have taken their own life.`)
     } else {
-      const lost = f.children.filter(c => c.alive && c.parents.includes(sp.id) && s.gameYear - c.bornYear < ADULT_AGE)
+      const lost = f.children.filter(c => c.alive && c.parents.includes(sp.id) && s.world.year - c.bornYear < ADULT_AGE)
       for (const c of lost) { c.alive = false; c.diedYear = yr; c.cause = 'murder_suicide' }
       const names = lost.map(c => c.given).join(', ')
       this._spouseEnds('murder_suicide', lost.length
@@ -547,11 +640,12 @@ class GameState {
   _randRange([lo, hi]) { return lo + Math.random() * (hi - lo) }
   _randInt([lo, hi])   { return lo + Math.floor(Math.random() * (hi - lo + 1)) }
 
-  // Surname for new clan members. clan.name stays '' until task 2.6 gives every slot a surname; until then
+  // Surname for new clan members. The clan's name stays '' until a later task gives clans surnames; until then
   // fall back to the first word of a two-word player name ('Lin Mei' → 'Lin'), else none.
   _clanSurname() {
     const s = this._s
-    if (s.clan?.name) return s.clan.name
+    const clan = this._playerClan()
+    if (clan?.name) return clan.name
     const parts = (s.name || '').trim().split(/\s+/)
     return (s.name !== 'Unnamed Cultivator' && parts.length >= 2) ? parts[0] : ''
   }
@@ -559,7 +653,7 @@ class GameState {
   // Phase 16-lite (M2 task 2.5): the family's game-clock step. Called from tick() only when
   // floor(gameYear) changes (so ~every 2 open minutes), never offline — families age with the player.
   _tickFamily() {
-    const s = this._s, f = s.family, y = s.gameYear, yr = Math.floor(y)
+    const s = this._s, f = s.family, y = s.world.year, yr = Math.floor(y)
 
     // Spouse: gains a stage every SPOUSE_YEARS_PER_STAGE married years (never ascends, never dies of age).
     const sp = f.spouse
@@ -670,7 +764,7 @@ class GameState {
     this._ensurePhase23Fields()
     this._ensurePhase20CFields()
     this._ensurePhase29Fields()
-    this._ensurePhase31Fields()
+    this._ensurePhase33Fields()   // world first (2.6a) — self/clan roster below depend on it
     this._ensurePhase30Fields()
     this._ensurePhase16Fields()
     const st = this._stage()
@@ -855,10 +949,10 @@ class GameState {
     // since Phase 9A keeps ticking while hidden — only the app not running at all skips aging).
     // Age is a stat only — nothing dies of age (user decision 2026-09-26).
     const years = dt * GAME_YEARS_PER_OPEN_HOUR / 3600
-    const prevYear = Math.floor(s.gameYear)
+    const prevYear = Math.floor(s.world.year)
     s.age      += years
-    s.gameYear += years
-    if (Math.floor(s.gameYear) !== prevYear) this._tickFamily()   // Phase 16-lite (M2 task 2.5)
+    s.world.year += years
+    if (Math.floor(s.world.year) !== prevYear) this._tickFamily()   // Phase 16-lite (M2 task 2.5)
 
     const gain = s.derived.qiPerSecondBoosted * dt
     s.qi = Math.min(s.qi + gain, s.derived.qiCap)
@@ -990,7 +1084,7 @@ class GameState {
     if (!f.proposal) return { ok: false, reason: 'no_proposal' }
     const suitor = f.proposal.suitors.find(p => p.id === personId)
     if (!suitor) return { ok: false, reason: 'unknown' }
-    const y = s.gameYear
+    const y = s.world.year
     const spouse = { ...suitor, role: 'spouse', spouseIds: [...(suitor.spouseIds || []), s.self.id] }
     s.self.spouseIds = [...(s.self.spouseIds || []), spouse.id]
     f.spouse          = spouse
@@ -1013,7 +1107,7 @@ class GameState {
     const s = this._s, f = s.family
     if (!f.proposal) return { ok: false, reason: 'no_proposal' }
     f.proposal = null
-    f.nextProposalYear = s.gameYear + this._randRange(PROPOSAL_RETRY_YEARS)
+    f.nextProposalYear = s.world.year + this._randRange(PROPOSAL_RETRY_YEARS)
     this.addEvent({ text: `The matchmaker leaves disappointed. Perhaps in a few decades.`, type: 'neutral' })
     this._recalc(); this._notify()
     return { ok: true }
@@ -1052,7 +1146,7 @@ class GameState {
     if (ch.outcome === 'forgive') {
       this._changeAffection(FORGIVE_AFFECTION); outcome = 'forgiven'
     } else if (ch.outcome === 'duel') {
-      f.duel = { year: Math.floor(s.gameYear), reason: 'betrayal' }; outcome = 'duel'
+      f.duel = { year: Math.floor(s.world.year), reason: 'betrayal' }; outcome = 'duel'
       this._emit('duel', { spouse: Persons.fullName(f.spouse) })
     } else if (ch.outcome === 'divorce') {
       this._spouseEnds('divorced', `you and ${Persons.fullName(f.spouse)} part ways. The marriage is over.`); outcome = 'divorced'
@@ -1077,7 +1171,7 @@ class GameState {
     const s = this._s, f = s.family, enc = f.encounters[i]
     if (!enc) return { ok: false, reason: 'unknown' }
     f.encounters.splice(i, 1)
-    const name = Persons.fullName(enc.person), y = s.gameYear
+    const name = Persons.fullName(enc.person), y = s.world.year
     const success = Math.random() < SEDUCE_CHANCE
     if (success) {
       f.lovers.push({ person: { ...enc.person, role: 'lover' }, since: Math.floor(y), nextChildYear: y + this._randRange(FIRST_CHILD_YEARS),
@@ -1138,7 +1232,7 @@ class GameState {
       return { ok: true, outcome: 'won', chance }
     }
     f.tally.duelLost++
-    this.addEvent({ text: `Year ${Math.floor(s.gameYear)}: ${name}'s blade is faster. Your path ends in your own courtyard.`, type: 'negative' })
+    this.addEvent({ text: `Year ${Math.floor(s.world.year)}: ${name}'s blade is faster. Your path ends in your own courtyard.`, type: 'negative' })
     this._die('spouse_duel')
     return { ok: true, outcome: 'lost', chance }
   }
@@ -1223,12 +1317,17 @@ class GameState {
       childrenAlive: (fam.children || []).filter(c => c.alive).length,
       formerSpouses: (fam.formerSpouses || []).length,
       familyTally: fam.tally ? { ...fam.tally } : null,
-      adultChildren: (fam.children || []).filter(c => c.alive && s.gameYear - c.bornYear >= ADULT_AGE).length,
+      adultChildren: (fam.children || []).filter(c => c.alive && s.world.year - c.bornYear >= ADULT_AGE).length,
       spouseMaxStage,
       growth,
     }
 
-    this._s = this._newGame()
+    // 2.6a: the world survives. The dying life's person, spouse(s) and children are written into the registry
+    // (living children and a living spouse stay on the clan roster — 2.6c/d will pick heirs from them).
+    const world = this._recordLifeInWorld(cause, maxStage, priorGen)
+    // Placeholder until 2.6d (reign sim + rebirth as a descendant): _recordLifeInWorld() vacates the head
+    // seat and _newGame()'s _joinClan() hands it to the new life, as before.
+    this._s = this._newGame(world)
     this._s.bloodlineQuality  = heirBQ
     this._s.generation        = priorGen + 1
     this._s.deaths            = priorDeaths + 1
@@ -1384,11 +1483,11 @@ class GameState {
     // Lover encounter (family.md): at most one per expedition, max LOVER_ENCOUNTER_MAX pending, never expire.
     // Skipped for a not-yet-migrated save during initSlot()'s offline catch-up (no encounters/clan yet).
     const fam = s.family
-    if (fam && Array.isArray(fam.encounters) && s.clan && (s.maxStageThisLife || 0) >= PROPOSAL_MIN_STAGE && fam.encounters.length < LOVER_ENCOUNTER_MAX &&
+    if (fam && Array.isArray(fam.encounters) && s.world && (s.maxStageThisLife || 0) >= PROPOSAL_MIN_STAGE && fam.encounters.length < LOVER_ENCOUNTER_MAX &&
         Math.random() < LOVER_ENCOUNTER_CHANCE) {
       const person = this._rollStranger('stranger')
       const flavor = LOVER_ENCOUNTER_TEXT[Math.floor(Math.random() * LOVER_ENCOUNTER_TEXT.length)]
-      fam.encounters.push({ person, place: loc.name, text: flavor, year: Math.floor(s.gameYear) })
+      fam.encounters.push({ person, place: loc.name, text: flavor, year: Math.floor(s.world.year) })
       this.addEvent({ text: `At ${loc.name}, ${Persons.fullName(person)} ${flavor}. (Explore tab)`, type: 'special' })
       this._emit('lover_encounter', { name: Persons.fullName(person) })
     }

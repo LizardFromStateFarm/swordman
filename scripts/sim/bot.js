@@ -1,6 +1,7 @@
 // Rule-based player bot for the QA sim. Each check-in it does everything a reasonable greedy player
 // would: breakthrough, meditate, learn, craft/equip, expeditions, beasts, sect, own sect, war prep.
 // Only calls public gameState methods (never mutates state directly). See docs/systems/qa-sim.md.
+const { mulberry32 } = require('./rng')
 
 const EQUIP_SCORE = {  // how much the bot values each effect type (unknown/no-op effects score 0)
   qps_mult:    v => (v - 1) * 100,
@@ -19,6 +20,9 @@ function itemScore(ITEMS, id) {
 class Bot {
   constructor(sim, rec, { path = 'founder', actEverySec = 10, profile = 'active' } = {}) {
     this.sim = sim; this.gs = sim.gs; this.D = sim.data; this.rec = rec
+    // The bot's own seeded stream — separate from the game's (sim.ctx Math.random) so bot decisions never
+    // shift the game's draw order, and never Node's unseeded Math.random (runs must be reproducible).
+    this.rand = mulberry32(((sim.seed ?? 1) ^ 0x9E3779B9) >>> 0)
     this.path = path; this.actEverySec = actEverySec; this.profile = profile
   }
 
@@ -121,12 +125,12 @@ class Bot {
       else if (this.profile === 'active') {
         const p = f.spouse.personality, val = c => c.aff ? (c.aff[p] ?? c.aff.default ?? 0) : 0
         pick = affordable.sort((a, b) => val(b.c) - val(a.c))[0]
-      } else pick = affordable[Math.floor(Math.random() * affordable.length)]
+      } else pick = affordable[Math.floor(this.rand() * affordable.length)]
       return this.do(f.event.crisis ? 'family_crisis' : 'family_event', this.gs.resolveMarriageEvent(pick.i))
     }
     // Encounters: seduce 1 in 4 (enough to exercise affairs, discovery and every reaction branch).
     if (f.encounters?.length) {
-      return Math.random() < 0.25 ? this.do('seduce', this.gs.seduceEncounter(0)) : this.do('leave_encounter', this.gs.dismissEncounter(0), false)
+      return this.rand() < 0.25 ? this.do('seduce', this.gs.seduceEncounter(0)) : this.do('leave_encounter', this.gs.dismissEncounter(0), false)
     }
     const prop = f.proposal
     if (!prop || f.spouse) return false

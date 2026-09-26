@@ -74,7 +74,7 @@ function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } 
   const SYSTEM_SOURCES = ['events', 'expeditions', 'beast_expeditions', 'sect_missions', 'war', 'banter', 'notifications']
 
   return {
-    ctx, clock, gs, systems, saves, ev,
+    ctx, clock, gs, systems, saves, ev, seed,
     data: ev(`({ CULTIVATION_STAGES, TECHNIQUES, ITEMS, LOCATIONS, RECIPES, SECTS, SECT_RANKS,
       SECT_MISSIONS, SECT_MAX_MISSIONS, SECT_FOUNDING, SECT_BUILDINGS, SECT_HALL_LEVELS,
       DISCIPLE_RECRUIT_COST, BEAST_TYPES, WAR_REINFORCE_COST_PER_FAME, WAR_ALLY_COST_BASE, WAR_ALLY_COST_PER_FAME, MEMBER_WAR_MAX_PILLS,

@@ -162,6 +162,16 @@ class Recorder {
     if (!(s.generation >= 1)) this.violate('generation_invalid', s.generation)
     // Phase 30: age is a stat only (no lifespan since 2026-09-26) — it just never runs below the awakening age.
     if (!(s.age >= this.D.AWAKENING_AGE)) this.violate('age_below_awakening', s.age)
+    // clan-succession.md 2.6a: the world survives deaths; the living player is only ever s.self.
+    const wd = s.world
+    if (!wd || !(isFinite(wd.year) && wd.year >= 1)) this.violate('world_invalid', `year=${wd?.year}`)
+    else {
+      if (wd.persons[s.self.id]) this.violate('world_self_duplicated', s.self.id)
+      const clan = wd.playerClanId ? wd.clans[wd.playerClanId] : null
+      if (wd.playerClanId && !clan) this.violate('world_player_clan_missing', wd.playerClanId)
+      if (clan && !clan.lines.some(l => l.memberIds.includes(s.self.id))) this.violate('world_player_not_on_roster', s.self.id)
+      if (wd.pastLives.length !== (s.deaths || 0)) this.violate('world_past_lives_mismatch', `${wd.pastLives.length} vs deaths ${s.deaths}`)
+    }
     // Phase 16-lite + family.md invariants (no child cap since 2026-09-26).
     const fam = s.family
     if (fam) {
@@ -249,12 +259,16 @@ class Recorder {
     const keys = ['stageIndex', 'name', 'techniques', 'equipped', 'root']
     for (const k of keys) if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) this.violate(`save_roundtrip_${k}`, `${JSON.stringify(before[k])} → ${JSON.stringify(after[k])}`)
     if (before.beasts.length !== after.beasts.length) this.violate('save_roundtrip_beasts', `${before.beasts.length} → ${after.beasts.length}`)
+    // 2.6a: the world (clans, persons, past lives, clock) must survive save → load unchanged (nextId may move:
+    // an offline expedition can roll an encounter, which mints a person id).
+    for (const k of ['year', 'clans', 'persons', 'pastLives', 'playerClanId', 'playerLineId'])
+      if (JSON.stringify(before.world?.[k]) !== JSON.stringify(after.world?.[k])) this.violate('save_roundtrip_world', k)
     if (before.sect.id !== after.sect.id || before.ownSect.founded !== after.ownSect.founded) this.violate('save_roundtrip_sect', '')
     if (after.qi < before.qi - 1e-6 && after.stageIndex === before.stageIndex) this.violate('offline_lost_qi', `${before.qi} → ${after.qi}`)
     // Phase 30 (M2 task 2.3): age/gameYear never advance while closed (pillar 4) — exact equality, since
     // initSlot() never touches either field.
     if (after.age !== before.age) this.violate('age_offline', `${before.age} → ${after.age}`)
-    if (after.gameYear !== before.gameYear) this.violate('age_offline', `gameYear ${before.gameYear} → ${after.gameYear}`)
+    if (after.world.year !== before.world.year) this.violate('age_offline', `world.year ${before.world.year} → ${after.world.year}`)
   }
 
   // ── Final result (plain JSON) ────────────────────────────────────────────

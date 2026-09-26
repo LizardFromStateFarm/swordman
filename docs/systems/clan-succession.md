@@ -108,7 +108,7 @@ Pruning: persons who are dead, not a head/heir, and ≥ 3 generations old are dr
 ## Build order (one commit each, docs + sim coverage every time)
 | Task | Scope | Done when |
 |---|---|---|
-| 2.6a | `s.world` split + migration, orphan-capable life, world clock | old saves migrate; sim identical except clock bookkeeping; save round-trip holds |
+| 2.6a ✅ | `s.world` split + migration, orphan-capable life, world clock | old saves migrate; sim identical except clock bookkeeping; save round-trip holds |
 | 2.6b | Family planning, children cultivate, bond + child events, morality | sim: children reach stages; bond/morality ranges hold |
 | 2.6c | Choose heir, Tournament of Heirs (pick matchups), heir-strength BQ term, sect to head | tournament resolves with correct lethal/non-lethal split; BQ term applied |
 | 2.6d | Parenting styles, reign sim + chronicle, rebirth position, heir bet, orphan option | 500h sim spans ≥3 generations; positions + styles distributed sensibly |
@@ -120,3 +120,32 @@ Then life-loop.md 2.7 (Ancestral Hall, legacies — Sect Continuity legacy is su
 - Bet/rebirth weights, `REIGN_YEARS`, challenge gap/cooldown, step-down rate — draft values in each task's data file.
 - Orphan lives: can an orphan later marry into / be adopted by a clan? (Default: no adoption in M2; found your own.)
 - How the heir's chronicle is shown (one overlay card vs. a scroll of log lines).
+
+## 2.6a — as built (2026-09-26)
+- **Shape:** `s.world = { v, year, nextId, nextClanId, persons, clans, playerClanId, playerLineId, pastLives }`. Clan =
+  `{ id:'c1', name, foundedYear, founderId, headId, lines:[{id:'c1-main', name:'Main Line', headId, memberIds}], sect:null,
+  tradition:{lethalTournaments, peacefulSuccessions, challenges}, relations:{}, history:[] }`. Separate `nextClanId` so
+  person ids stay `p1, p2…` exactly as before.
+- **Code:** `_newGame(world = null)` (fresh slot → `_newWorld()` with a founding, still-unnamed clan), `_blankWorld()`,
+  `_foundClan()`, idempotent `_joinClan()`, `_playerClan()` (null = orphan), public `person(id)`,
+  `_recordLifeInWorld()` (called by `_die()`: snapshots the full past self — root/personality/stage — plus spouse(s)
+  and children into `world.persons`, keeps the living family on the clan roster, vacates the head seat, appends
+  `pastLives`). `_newPersonId(w)` counts on the world. Every `s.gameYear` is now `s.world.year` — it **no longer
+  resets on death**.
+- **Migration:** `_ensurePhase33Fields()` runs first in the ensure chain; builds the world from the old `s.clan` +
+  `s.gameYear` (or derives the year from age / time played), deletes both. `_ensurePhase31Fields()` is gone.
+  `_ensurePhase30Fields()` now also puts the living player on their clan's roster.
+- **Placeholder until 2.6d:** after a death the new life takes the vacated head seat, exactly like before (via
+  `_joinClan`). The living player is never duplicated in `world.persons` (sim invariant).
+- **UI:** Stats shows "Clan: <name> clan · N members · you lead it" (or "None — an orphan of the world") and "World Year".
+- **Sim:** invariants `world_invalid`, `world_self_duplicated`, `world_player_clan_missing`,
+  `world_player_not_on_roster`, `world_past_lives_mismatch`; the save round-trip check now compares the world
+  (except `nextId`, which an offline encounter can advance). **Also fixed:** the bot used Node's *unseeded*
+  `Math.random` for its Family-B coin flips, so sim runs weren't reproducible — it now has its own seeded stream
+  (`mulberry32(seed ^ 0x9E3779B9)`), separate from the game's.
+- **Evidence:** old vs new code (both with the seeded bot) produce **identical** reports over 6h × 3 profiles × 3 seeds
+  (no deaths in that window); two runs of the new code are identical (reproducible). Longer runs diverge only after
+  the first death, because the world clock now carries over (the yearly family tick lands at a different moment).
+  Full `npm run sim`: 0 errors / 0 violations, 135 save round-trips incl. the world. 13 scripted checks (fresh
+  world, 2.5-era + pre-2.2 migrations, death persistence, a full orphan life) + the 40 family checks still pass. Real
+  app: an old-format slot (clan "Lin", year 200) migrated on Continue, re-saved in the new format, zero console errors.

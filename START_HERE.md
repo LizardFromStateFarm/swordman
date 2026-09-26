@@ -35,7 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
 | Game Time & Age (age passes only while open; **age never kills** since 2026-09-26) | ◐ Phase 30 (M2) — game clock + age stat + Pass the Mantle; lifespan/twilight/Final Seclusion removed; pacing (2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
-| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — clan skeleton (task 2.2) built |
+| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — world/clan registry built (2.6a); heirs = clan-succession.md 2.6b–f |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
@@ -63,6 +63,22 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 4
+Agent: ee8b77f spec: user redesigned succession → docs/systems/clan-succession.md (2.6a–f; heir is an NPC, you're
+  reborn as a descendant or orphan; tournaments, challenges, branch wars, secession; trauma-heir BQ bonus).
+  Then built **2.6a — world vs life save split** (this commit):
+  - `s.world` {year, nextId, nextClanId, persons, clans, playerClanId, playerLineId, pastLives} survives death;
+    `s.clan`/`s.gameYear` migrated away (`_ensurePhase33Fields`). World clock no longer resets per life.
+  - `_die()` → `_recordLifeInWorld()`: past self + spouse(s) + children into the registry, living family stays on
+    the clan roster. New life still takes the head seat (placeholder until 2.6d). Orphan lives are null-safe.
+  - Stats: Clan / World Year rows. Sim: 5 world invariants + world save round-trip.
+  - **Fixed a sim bug from Family B:** bot coin flips used unseeded Math.random → runs weren't reproducible; bot now
+    has its own seeded stream. Old-vs-new identical over 6h (no deaths); new-vs-new identical.
+  - Verified: npm test, sim:quick, full sim (0/0, 135 round-trips), 13 world + 40 family scenario checks, build:web,
+    dist, real app migrated an old-format save on Continue (zero console errors).
+  Next: 2.6b (family planning None/Some/Many, children cultivate, child bond + child events, morality). Read
+    clan-succession.md (incl. §2.6a as-built) + family.md first. Needs its own assessment + Depth line.
+
 Date: 2026-09-26 (day session, user present) — part 3
 Agent: User asked for deeper family mechanics + guidance so agents design interconnected systems by default.
   - e204d39 Docs: CLAUDE.md now has a required DESIGN DEPTH PASS (memory, choices, ≥3 hooks, drama, feedback) + a

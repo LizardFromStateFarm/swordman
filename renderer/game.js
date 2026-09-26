@@ -448,7 +448,11 @@
       ${sr('Realm Integrity', `<span style="color:${integColor}">${Math.round(integ)}</span>`)}
       ${sr('Health', `<span style="color:${healthColor}">${Math.round(health)}</span>`)}
       ${sr('Age', Math.floor(s.age))}
-      ${sr('Clan Year', Math.floor(s.gameYear))}
+      ${(() => { const c = s.world.playerClanId ? s.world.clans[s.world.playerClanId] : null
+        if (!c) return sr('Clan', 'None — an orphan of the world')
+        const members = c.lines.reduce((n, l) => n + l.memberIds.length, 0)
+        return sr('Clan', `${escHtml(c.name || 'Unnamed')} clan · ${members} member${members === 1 ? '' : 's'}${c.headId === s.self.id ? ' · you lead it' : ''}`) })()}
+      ${sr('World Year', Math.floor(s.world.year))}
       ${sr('Breakthroughs', s.stats.breakthroughs)}
       ${sr('Failed BTs', s.stats.failed)}
       ${sr('Meditation Sessions', s.stats.meditationSessions)}
@@ -515,7 +519,7 @@
     const shown = kids.slice(-12)   // youngest 12; the rest are summarized
     if (kids.length > shown.length) html += sr('', `<span style="color:var(--dim)">+${kids.length - shown.length} older children</span>`)
     for (const c of shown) {
-      const age = Math.max(0, Math.floor((c.alive ? s.gameYear : c.diedYear) - c.bornYear))
+      const age = Math.max(0, Math.floor((c.alive ? s.world.year : c.diedYear) - c.bornYear))
       html += c.alive
         ? sr('Child', `${escHtml(Persons.fullName(c))} · ${age} · ${escHtml(c.root?.name || '')}`)
         : sr('Child', `<span style="color:var(--dim)">${escHtml(Persons.fullName(c))} · died at ${age}</span>`)
@@ -2016,7 +2020,7 @@
     if (!prop) return
     document.getElementById('proposal-suitors').innerHTML = prop.suitors.map(p => {
       const pers = PERSONALITIES.find(x => x.id === p.personality)
-      const age  = Math.max(0, Math.floor(s.gameYear - p.bornYear))
+      const age  = Math.max(0, Math.floor(s.world.year - p.bornYear))
       return `<div class="suitor-card">
         <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
         <div>${personStageLabel(p.stageIndex)} · age ${age}</div>
