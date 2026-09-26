@@ -83,6 +83,9 @@ ipcMain.handle('delete-slot', (_e, i) => {
   deleteFile(slotPath(i))
 })
 
+// Dev tools (charselect late-game presets) only when running unpackaged — npm start, never the dist build
+ipcMain.handle('is-dev', () => !app.isPackaged)
+
 ipcMain.on('quit-app', () => app.quit())
 
 ipcMain.on('toggle-always-on-top', () => {

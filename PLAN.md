@@ -248,6 +248,14 @@ Alliance system: ally with other sects for defensive help.
 
 ---
 
+## Tooling — Dev Late-Game Test Characters ✅
+
+> **Implemented 2026-09-25.** `npm start` only: empty charselect slots offer DEV presets (Sect Elder / Sect Founder /
+> Pre-Ascension) built by `gameState.buildDevSave()` from `assets/data/dev-presets.js`. Gated by `window.electron.isDev()`
+> (`!app.isPackaged`; always false on iOS). See `docs/systems/dev-presets.md`.
+
+---
+
 ## Tooling — QA Sim Harness ✅
 
 > **Implemented 2026-09-25.** `npm run sim` / `npm run sim:quick` — headless bots (active / casual / afk

@@ -204,6 +204,21 @@ body {
   color: var(--jade);
 }
 
+/* Dev-only late-game preset picker (npm start builds only) */
+.cs-dev { display: flex; gap: 4px; width: 100%; }
+.cs-dev-select, .cs-btn-dev {
+  background: rgba(12, 6, 18, 0.8);
+  border: 1px dashed var(--purple);
+  color: var(--purple);
+  font-family: var(--font);
+  font-size: 10px;
+  padding: 4px;
+  border-radius: 3px;
+}
+.cs-dev-select { flex: 1; min-width: 0; }
+.cs-btn-dev { cursor: pointer; }
+.cs-btn-dev:hover { color: var(--text); border-color: var(--text); }
+
 /* ══════════════════════════════════════════════════════════════════════════
    MAIN GAME
 ══════════════════════════════════════════════════════════════════════════ */

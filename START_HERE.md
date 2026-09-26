@@ -26,6 +26,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Sect wars + alliances | ✅ Phase 5B |
 | Member wars (joined sects go to war, you get pulled in) | ✅ Phase 5C |
 | QA sim harness (`npm run sim` → bot playtest report) | ✅ Tooling |
+| Dev late-game test characters (charselect, `npm start` only) | ✅ Tooling |
 | Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
 | Dao Paths, Reincarnation, Tribulation | ⬜ Phase 7–8 |
 | Desktop notifications, tray, time-of-day | ⬜ Phase 9 |
@@ -48,7 +49,12 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ```
 Date: 2026-09-25 (session 5)
-Agent: Phase 5C Member Wars — joined sects now go to war and call on you. Committed? NO — review, then commit.
+Agent: Phase 5C Member Wars (committed 1ef39a9) + dev late-game test characters.
+Dev presets (user request, after 5C): `npm start` → any EMPTY slot on charselect shows a purple preset picker + DEV
+  button → writes a late-game save and starts it. Presets: Sect Elder (member war in 1 min), Sect Founder (own war in
+  1 min), Pre-Ascension (one breakthrough from Ascension). Hidden in dist (app.isPackaged) and on iOS. See
+  docs/systems/dev-presets.md. Verified: all 3 presets load + tick in the sim engine, Ascension BT works, test,
+  sim:quick, build:web, dist. Not verified by eye in the running app.
 What was done:
   - One sectWar state for both sides: side 'own' (founded, 5B) | 'member' (joined, 5C). _ensurePhase5BFields()
     keeps side in sync with ownSect.founded / sect.id and migrates pre-5C saves (own-sect wars untouched).
@@ -67,8 +73,8 @@ What was done:
   - Docs: sect-war.md (full 5C section), sects.md, qa-sim.md, PLAN.md, CLAUDE.md tree.
   - Verified: npm test, sim:quick, full sim founder + --path=member (healthy, 0 violations), build:web, dist,
     scripted scenario test of every member-war flow incl. save round-trip mid-war and pre-5C save migration.
-  - NOT verified: the new Sect-tab war panel by eye (the sim doesn't load game.js). Check in npm start: join a sect,
-    then either wait for a call or use DevTools: gameState.get().sectWar.nextWarAt = Date.now().
+  - NOT verified: the new Sect-tab war panel by eye (the sim doesn't load game.js). Easiest check now: npm start →
+    DEV preset "Sect Elder" → a call to arms starts within a minute.
 
 CURRENT BASELINE (npm run sim, 200h medians; Ascension is noisy — 8 seeds on old code gave casual 71h, not 56h):
   Founder path — Ascension: active ~11h · casual ~76h · afk ~140h.  Found sect: 6.7h · 36h · ~135h.
@@ -122,6 +128,7 @@ docs/
     sects.md           ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md        ← Found a sect: buildings, disciples, income (Phase 5A)
     sect-war.md        ← Sect wars: own-sect (5B) + member wars for joined sects (5C)
+    dev-presets.md     ← Dev-only late-game test characters (npm start charselect)
     qa-sim.md          ← QA sim harness — `npm run sim`, report flags, extending the bot
     ui-layout.md       ← Window layout, tab pattern, CSS vars
 .agents/rules/
@@ -157,6 +164,7 @@ assets/
     beasts.js          ← BEAST_TYPES + BEAST_TRAITS — spiritual beast definitions (Phase 3)
     sects.js           ← SECTS + SECT_RANKS + SECT_MISSIONS (Phase 4)
     sect-buildings.js  ← Own-sect founding/buildings/disciple constants (Phase 5A)
+    dev-presets.js     ← DEV_PRESETS — late-game test characters (npm start only)
   sprites/
     cultivator-sprites.js  ← CULTIVATOR_SPRITES — all animated ASCII frames
     beast-sprites.js       ← BEAST_SPRITES — spirit fox, thunder eagle, void hound (Phase 3)

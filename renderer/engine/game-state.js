@@ -1362,6 +1362,48 @@ class GameState {
     return { ok: true, beast }
   }
 
+  // ── Dev tools: late-game test characters (assets/data/dev-presets.js) ─────
+  // Returns a complete save object for a slot; game.js writes it with saveSlot() and loads it via initSlot().
+  // Doesn't touch the live state. Charselect only offers this in unpackaged builds (window.electron.isDev()).
+  buildDevSave(presetId) {
+    const p = typeof DEV_PRESETS !== 'undefined' && DEV_PRESETS.find(x => x.id === presetId)
+    if (!p) return null
+    const now = Date.now()
+    const s = this._newGame()
+    s.name         = `[DEV] ${p.name}`
+    s.stageIndex   = p.stageIndex
+    s.spiritStones = p.stones
+    s.karma        = p.karma
+    s.root         = this._rollSpecificRoot(p.root)
+    s.techniques   = p.techniques === 'all' ? TECHNIQUES.filter(t => t.minStage <= p.stageIndex).map(t => t.id) : [...p.techniques]
+    s.inventory    = { ...p.inventory }
+    s.equipped     = { ...p.equipped }
+    s.beasts = p.beasts.map((b, i) => ({
+      id: `dev_${now}_${i}`, typeId: b.typeId, name: BEAST_TYPES.find(t => t.id === b.typeId)?.name || b.typeId,
+      level: b.level, xp: 0, traits: [...b.traits], expedition: null,
+    }))
+    if (p.sect) {
+      s.sect    = { id: p.sect.id, rank: p.sect.rank, contribution: p.sect.contribution, activeMissions: [] }
+      s.sectWar = this._blankSectWar('member')
+    }
+    if (p.ownSect) {
+      const o = p.ownSect
+      s.ownSect = { ...this._blankOwnSect(), founded: true, name: o.name, foundedAt: now, hallLevel: o.hallLevel,
+        buildings: Object.fromEntries(SECT_BUILDINGS.filter(b => o.buildings === 'all' || o.buildings.includes(b.id)).map(b => [b.id, true])),
+        disciples: o.disciples.map(talent => ({ ...this._genRecruit(), talent, level: o.discipleLevel, xp: 0 })) }
+      s.sectWar = this._blankSectWar('own')
+    }
+    if (p.warInMinutes && s.sectWar.side) s.sectWar.nextWarAt = now + p.warInMinutes * 60 * 1000
+    // Qi as a fraction of the *effective* cap (techniques/artifacts multiply it) — run _recalc against the new save
+    const live = this._s
+    this._s = s
+    try { this._recalc() } finally { this._s = live }
+    s.qi = s.derived.qiCap * p.qiFrac
+    s.stats.breakthroughs = p.stageIndex
+    s.lastSave = now
+    return s
+  }
+
   addEvent(ev) {
     this._s.events = this._s.events || []
     this._s.events.unshift({ ...ev, ts: Date.now() })

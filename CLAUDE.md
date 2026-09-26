@@ -53,6 +53,7 @@ docs/
     own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
     sect-war.md         ← Sect wars: own-sect (5B) + member wars for joined sects (5C)
     qa-sim.md           ← QA sim harness: flags, metrics, profiles, how to extend
+    dev-presets.md      ← Dev-only late-game test characters (npm start charselect)
     ui-layout.md        ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
@@ -92,6 +93,7 @@ assets/
     sects.js            ← SECTS, SECT_RANKS, SECT_MISSIONS (Phase 4)
     sect-buildings.js   ← Own-sect founding cost, Sect Hall levels, buildings, disciple constants (Phase 5A)
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
+    dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
 ```

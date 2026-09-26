@@ -5,6 +5,9 @@
   // ── Character Select ───────────────────────────────────────────────────────
 
   let slots = await window.electron.loadAllSlots()
+  // Dev builds (npm start) can create late-game test characters — see assets/data/dev-presets.js
+  let isDev = false
+  try { isDev = !!(await window.electron.isDev?.()) } catch {}
 
   function renderCharSelect() {
     const container = document.getElementById('cs-slots')
@@ -43,6 +46,16 @@
           <div class="cs-empty-label">── Empty ──</div>
           <button class="cs-btn-new" data-slot="${i}">+ New Cultivator</button>
         `
+        if (isDev && typeof DEV_PRESETS !== 'undefined') {
+          const dev = document.createElement('div')
+          dev.className = 'cs-dev'
+          dev.innerHTML = `
+            <select class="cs-dev-select" data-slot="${i}">
+              ${DEV_PRESETS.map(p => `<option value="${p.id}" title="${escHtml(p.desc)}">${escHtml(p.name)}</option>`).join('')}
+            </select>
+            <button class="cs-btn-dev" data-slot="${i}" title="Dev only: create a late-game test character">DEV</button>`
+          empty.appendChild(dev)
+        }
         card.appendChild(empty)
       }
 
@@ -54,6 +67,15 @@
     })
     container.querySelectorAll('.cs-btn-new').forEach(btn => {
       btn.addEventListener('click', () => startGame(parseInt(btn.dataset.slot)))
+    })
+    container.querySelectorAll('.cs-btn-dev').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const i = parseInt(btn.dataset.slot)
+        const save = gameState.buildDevSave(container.querySelector(`.cs-dev-select[data-slot="${i}"]`)?.value)
+        if (!save) return
+        await window.electron.saveSlot(i, save)
+        startGame(i)
+      })
     })
     container.querySelectorAll('.cs-btn-del').forEach(btn => {
       btn.addEventListener('click', () => confirmDelete(parseInt(btn.dataset.slot)))

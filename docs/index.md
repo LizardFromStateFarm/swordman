@@ -13,8 +13,9 @@ Never load all docs at session start — that defeats the purpose.
 | [integrity.md](systems/integrity.md) | Realm Integrity bar, demotion, Spiritual Beasts (tame/level/expedition) | game-state.js · beasts.js (data) · beast-sprites.js · game.js (renderExplore) |
 | [sects.md](systems/sects.md) | Sect joining, ranks, contribution, missions, per-sect bonuses | sects.js · renderer/game/sect.js · game-state.js (sect API, _recalc) · game.js (renderSect) |
 | [own-sect.md](systems/own-sect.md) | Founding your own sect, buildings, disciples, recruit pool, income, beast slots, war-defense/fame | sect-buildings.js · game-state.js (own-sect API, _recalc, tickOwnSect) · game.js (renderOwnSect) |
-| [sect-war.md](systems/sect-war.md) | Sect war timer, scouting/preparation phases, auto-resolve, reinforcement, alliances, array damage | sect-war.js · game-state.js (war API, _recalc, tickSectWar) · renderer/game/sect-war.js · game.js (renderSectWarPanel) |
+| [sect-war.md](systems/sect-war.md) | Sect wars: own-sect (5B: scouting/prep, reinforcement, alliances, array damage) + member wars for joined sects (5C) | sect-war.js · game-state.js (war API, _recalc, tickSectWar) · renderer/game/sect-war.js · game.js (renderSectWarPanel) |
 | [ui-layout.md](systems/ui-layout.md) | Window structure, tab pattern, CSS vars, render helpers | game.js · index.html · styles.css |
+| [dev-presets.md](systems/dev-presets.md) | Dev-only late-game test characters on charselect (npm start only) | dev-presets.js · game-state.js (buildDevSave) · charselect in game.js · isDev IPC |
 | [qa-sim.md](systems/qa-sim.md) | Headless bot harness: `npm run sim` → pacing/fun/health/perf report for balancing | scripts/sim/* · any balance change · adding a new system (bot + invariants) |
 | [ios-port.md](systems/ios-port.md) | Capacitor iOS shell, platform storage shim, www/ build | capacitor.config.json · scripts/build-ios-web.js · renderer/engine/platform-storage.js |
 
