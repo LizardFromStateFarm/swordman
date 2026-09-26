@@ -346,7 +346,6 @@ class GameState {
       realmIntegrity:   s.realmIntegrity ?? 100,
       arrayDamaged,
       sectBuffSuppressed,
-      warSlot:          this._warSlot(),
     }
   }
 
@@ -844,7 +843,7 @@ class GameState {
     if (!m)                                  return { ok: false, reason: 'unknown' }
     if (s.sect.rank < m.minRank)             return { ok: false, reason: 'rank' }
     if (s.sect.activeMissions.some(a => a.missionId === missionId)) return { ok: false, reason: 'busy' }
-    if (s.sect.activeMissions.length + this._warSlot() >= SECT_MAX_MISSIONS) return { ok: false, reason: 'full' }
+    if (s.sect.activeMissions.length >= SECT_MAX_MISSIONS) return { ok: false, reason: 'full' }
     s.sect.activeMissions.push({
       uid: `${Date.now()}_${Math.floor(Math.random() * 9999)}`,
       missionId,
@@ -1159,11 +1158,6 @@ class GameState {
     return Math.max(1, i + 1)
   }
 
-  _warSlot() {
-    const w = this._s.sectWar
-    return w?.side === 'member' && w.answered && w.phase !== 'none' ? 1 : 0
-  }
-
   memberWarChestFull() {
     return MEMBER_WAR_CHEST_BASE + (this._s.sect.rank || 0) * MEMBER_WAR_CHEST_PER_RANK
   }
@@ -1247,7 +1241,7 @@ class GameState {
     w.contribNet += res.contribDelta
     if (beast) parts.push(`${beast.name} returned with ${MEMBER_WAR_BEAST_XP} XP`)
     w.lastResult = res
-    w.answered = false   // the committed mission slot is released with the war
+    w.answered = false
 
     const tail = parts.length ? ` ${parts.join(', ')}.` : ''
     if (win && engaged)      this.addEvent({ text: `Victory! The ${def.name} crushed the ${enemyName}, and the elders remember who answered the call:${tail}`, type: 'special' })
@@ -1309,7 +1303,6 @@ class GameState {
     const s = this._s, w = s.sectWar
     if (!this._memberWarActive()) return { ok: false, reason: 'no_war' }
     if (w.answered)               return { ok: false, reason: 'already' }
-    if (s.sect.activeMissions.length >= SECT_MAX_MISSIONS) return { ok: false, reason: 'full' }
     w.answered = true
     this.addEvent({ text: `You answered the call to arms. Your sword is pledged to the ${this._sectDef().name} until the ${w.enemyName} is dealt with.`, type: 'positive' })
     this._recalc(); this._notify()

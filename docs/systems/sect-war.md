@@ -20,8 +20,8 @@ Phase 4 sect that goes to war and calls on you — 5C). The two can't coexist: f
   - `lastResult` — shown in the Sect tab until the next war resolves.
     Own: `{ win, enemyName, spoils?|spoilsLost, arrayHit?, ts }`.
     Member: `{ side:'member', win, enemyName, engaged, seen, contribDelta, stones?, rareItem?, suppressed?, ts }`.
-  - Member-only, reset when each new call to arms begins: `answered` (one sect-mission slot committed), `chestStones`,
-    `pillsGiven`, `beastId` (beast lent to the war), `seen` (the game was open while this war was active).
+  - Member-only, reset when each new call to arms begins: `answered` (call answered — free, no mission slot cost),
+    `chestStones`, `pillsGiven`, `beastId` (beast lent to the war), `seen` (the game was open while this war was active).
   - `buffSuppressedUntil: ms` — member side: after a defeat, `_recalc()` ignores the joined sect's `effects` until then.
   - `warsIgnored` / `warsUnseen` / `contribNet` — lifetime member-war record for this membership (UI + QA sim metrics).
 
@@ -33,7 +33,7 @@ Phase 4 sect that goes to war and calls on you — 5C). The two can't coexist: f
   - `reinforceForWar()` → `{ ok, cost?, reason? }` — reasons: `no_sect`, `no_war` (not `preparing`), `already`, `stones`. Cost = `max(20, sectFame × WAR_REINFORCE_COST_PER_FAME)`.
   - `requestWarAlly(sectId)` → `{ ok, cost?, ally?, reason? }` — reasons: `no_sect`, `no_war` (not `scouting`/`preparing`), `already`, `unknown`, `stones`. Cost = `WAR_ALLY_COST_BASE + sectFame × WAR_ALLY_COST_PER_FAME`.
 - Member side (5C) — every call rejects with `no_war` unless `side === 'member'` and a war is scouting/preparing:
-  - `answerWarCall()` → `{ ok, reason? }` — commits one sect-mission slot until the war resolves (`startSectMission` counts it). Reasons: `already`, `full`.
+  - `answerWarCall()` → `{ ok, reason? }` — free (doesn't touch mission slots), pledges +`MEMBER_WAR_ANSWER_BONUS` to sect power. Reasons: `already`, `no_war`.
   - `donateWarChest(stones)` → `{ ok, given, gained, reason? }` — stones into the war chest, clamped to what's left of
     `memberWarChestFull()`; also earns `SECT_DONATE_RATE` contribution. Reasons: `invalid`, `stones`, `full`.
   - `offerWarPill(itemId)` → `{ ok, gained, reason? }` — consumes one `type:'pill'` item (max `MEMBER_WAR_MAX_PILLS`). Reasons: `not_pill`, `none`, `full`.
@@ -69,7 +69,7 @@ Phase 4 sect that goes to war and calls on you — 5C). The two can't coexist: f
 - `_ensurePhase5BFields()` keeps `sectWar.side` in sync with `_warSide()`; `joinSect()` / `leaveSect()` / `foundOwnSect()` /
   `disbandOwnSect()` rely on it (join then schedules the first call on the next tick).
 - `_recalc()` adds `fame += 5 × warVictories` (own side only) and computes `derived.arrayDamaged`,
-  `derived.sectBuffSuppressed` (member side), `derived.warSlot` (1 while a mission slot is committed).
+  `derived.sectBuffSuppressed` (member side).
 - `renderer/game/sect-war.js SectWarSystem.tick()` just calls `gameState.tickSectWar()` every frame.
 - `renderer/game/beasts.js` skips beasts with `expedition.war`; `resolveBeastExpedition()` ignores them (the war returns them).
 - `game.js renderOwnSect()` calls `renderSectWarPanel(s, el)` right after the sect header; the member view of `renderSect()`
@@ -81,9 +81,8 @@ Phase 4 sect that goes to war and calls on you — 5C). The two can't coexist: f
    war's scouting phase begins, never mid-war.
 3. Alliance and reinforcement can only be purchased once each per war cycle; answering and sending a beast only once each.
 4. `arrayDamagedUntil` is only set on an own-side defeat, and only if `defensive_array` is built.
-5. Member side: `activeMissions.length + (answered ? 1 : 0) ≤ SECT_MAX_MISSIONS`.
-6. `side === 'own'` ⇔ `ownSect.founded`; `side === 'member'` ⇔ `sect.id` (checked by the QA sim).
-7. War outcome is probabilistic: never a guaranteed win or loss.
+5. `side === 'own'` ⇔ `ownSect.founded`; `side === 'member'` ⇔ `sect.id` (checked by the QA sim).
+6. War outcome is probabilistic: never a guaranteed win or loss.
 
 ## Gotchas
 - Reinforce/ally costs are deliberately steep (fame × 2 / 100 + fame × 1) — war prep is the game's main
@@ -95,6 +94,8 @@ Phase 4 sect that goes to war and calls on you — 5C). The two can't coexist: f
   XP) already treats it as away. Dismissing it mid-war is allowed; resolution just skips a missing beast.
 - The member war window is 2h (vs 15 min for own-sect wars) because the 15-min window was the sim's main "wars resolve
   unseen" flag — casual players checking in every 30 min missed half of them.
+- Answering the call is free (no mission-slot cost) by design — the user found the slot cost unwelcome friction on a
+  system that's already time-gated by the 2h window; sect-mission scheduling stays independent of member wars.
 - No real NPC sects exist yet (Phase 15 is unbuilt) — rival sects and allies are flavor/mechanic only; alliance is bought from the existing Phase 4 `SECTS` roster, not a relationship system.
 - Offline catch-up relies on `tickSectWar()` being timestamp-based (`Date.now()` comparisons, no `dt` accumulation), so it fast-forwards correctly across any number of missed cycles in one `initSlot()` call.
 - Member war numbers are first-pass (sim-checked for health and engagement, not hand-playtested).

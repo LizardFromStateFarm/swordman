@@ -416,16 +416,15 @@
     if (rankBar) rankBar.style.width = Math.min(100, (sect.contribution - rank.minContribution) / (nextRank.minContribution - rank.minContribution) * 100) + '%'
     renderMemberWarPanel(s, el)
     // Mission bars: set via JS (CSP blocks inline style attributes in innerHTML)
-    const warSlot = s.derived.warSlot || 0
     const mt = document.createElement('div')
     mt.className = 'section-title'
-    mt.textContent = `Missions (${sect.activeMissions.length + warSlot}/${SECT_MAX_MISSIONS} active${warSlot ? ', 1 pledged to war' : ''})`
+    mt.textContent = `Missions (${sect.activeMissions.length}/${SECT_MAX_MISSIONS} active)`
     el.appendChild(mt)
 
     for (const m of SECT_MISSIONS) {
       const active   = sect.activeMissions.find(a => a.missionId === m.id)
       const unlocked = sect.rank >= m.minRank
-      const full     = sect.activeMissions.length + warSlot >= SECT_MAX_MISSIONS
+      const full     = sect.activeMissions.length >= SECT_MAX_MISSIONS
       const durText  = m.duration >= 60 ? `${Math.floor(m.duration / 60)}m` : `${m.duration}s`
       const rewards  = [...m.rewards.map(r => `${ITEMS[r.itemId]?.name || r.itemId}`), ...(m.beastXp ? ['Beast XP'] : []), 'Contribution'].join(', ')
       const row = document.createElement('div')
@@ -545,7 +544,6 @@
     const chestFull = gameState.memberWarChestFull()
     const chestLeft = chestFull - w.chestStones
     const give = Math.min(Math.max(10, Math.ceil(chestFull / 4)), chestLeft)
-    const slotsFree = s.sect.activeMissions.length < SECT_MAX_MISSIONS
     const warBeast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
     panel.innerHTML = `
       <div class="sect-name">⚔ ${escHtml(w.enemyName)} ${'★'.repeat(w.enemyTier)}</div>
@@ -554,7 +552,7 @@
       <div class="sect-desc">Your commitment: +${Math.round(bonus * rankMult * 100)}% sect strength · ~${winPct}% to win</div>
       ${bonus ? '' : '<div class="sect-desc war-warn">Ignoring the call costs contribution and karma.</div>'}
       <div class="sect-btns">
-        <button class="sect-btn${!w.answered && slotsFree ? ' available' : ''}" id="_war_answer" ${w.answered || !slotsFree ? 'disabled' : ''}>${w.answered ? 'Answered ✓' : slotsFree ? 'Answer the Call' : 'Answer (free a mission slot)'}</button>
+        <button class="sect-btn${!w.answered ? ' available' : ''}" id="_war_answer" ${w.answered ? 'disabled' : ''}>${w.answered ? 'Answered ✓' : 'Answer the Call'}</button>
         <button class="sect-btn${chestLeft > 0 && s.spiritStones >= give ? ' available' : ''}" id="_war_chest" ${chestLeft <= 0 || s.spiritStones < give ? 'disabled' : ''}>${chestLeft <= 0 ? 'War Chest Full ✓' : `War Chest +${give} (${w.chestStones}/${chestFull})`}</button>
       </div>`
     el.appendChild(panel)
@@ -597,7 +595,7 @@
     const msgs = { already:'Already done', full:'Nothing more needed', stones:'Not enough Spirit Stones', none:'None left', busy:'That beast is busy', no_war:'The war is over' }
     document.getElementById('_war_answer')?.addEventListener('click', () => {
       const r = gameState.answerWarCall()
-      if (!r.ok) flashMessage(r.reason === 'full' ? 'Free a mission slot first' : (msgs[r.reason] || 'Cannot answer'), 'negative')
+      if (!r.ok) flashMessage(msgs[r.reason] || 'Cannot answer', 'negative')
       else flashMessage('You answered the call to arms', 'positive')
     })
     document.getElementById('_war_chest')?.addEventListener('click', () => {

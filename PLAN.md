@@ -217,8 +217,9 @@ Alliance system: ally with other sects for defensive help.
 > one `sectWar` state with `side: 'own' | 'member'`, same Date.now()-chained phase machine, rank-scaled 4–10h interval.
 > Divergences / decisions: the member war window is **2h** (30m Call to Arms + 90m Muster) instead of 15 min, which
 > is the fix for the sim's "wars resolve unseen" flag (casual now answers 100% of member calls; own-sect wars keep
-> 15 min). Commitments: answer (holds a mission slot until the war resolves), war chest (stones, capped per rank,
-> also earns contribution), up to 3 pills, one beast (`beast.expedition = { war: true }`, returns with XP).
+> 15 min). Commitments: answer (free — no mission-slot cost, changed 2026-09-25 per user feedback that it was
+> unwelcome friction), war chest (stones, capped per rank, also earns contribution), up to 3 pills, one beast
+> (`beast.expedition = { war: true }`, returns with XP).
 > Contribution penalties are flat × rank multiplier, not %, since contribution keeps growing past max rank.
 > A war that starts *and* ends while the game is closed is "unseen": no reward, no ignore penalty — afk players
 > aren't punished for calls they could never see (`tickSectWar(live=false)` in offline catch-up). Sect tier = its
@@ -235,9 +236,9 @@ Alliance system: ally with other sects for defensive help.
 - **Same phase machine:** scouting → preparing → auto-resolve, reusing the Date.now()-chained 5B pattern so
   offline catch-up keeps working. Generalise `sectWar` state with a `side: 'own' | 'member'` field rather than
   duplicating it (keep `_ensurePhase5BFields` migration safe).
-- **Member actions during a war (the "pulled in" feel):** answer the call (commit to a war mission that locks
-  one mission slot for the war), donate stones/pills to the war chest, or send a beast. Each adds to sect power.
-  Ignoring the call is allowed but costs contribution/karma.
+- **Member actions during a war (the "pulled in" feel):** answer the call (free — commits nothing else), donate
+  stones/pills to the war chest, or send a beast. Each adds to sect power. Ignoring the call is allowed but costs
+  contribution/karma.
 - **Outcome:** sect power = f(sect tier, your rank, your commitments) vs rival. Win → contribution + rank-scaled
   spoils (maybe a rare item). Loss → contribution loss, sect buff (`effects`) suppressed for a few hours.
   Never demotes rank on its own.

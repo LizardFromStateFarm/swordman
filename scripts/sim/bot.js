@@ -200,7 +200,7 @@ class Bot {
     if (this.path === 'founder' && this.canFound()) return this.do('leave_sect', this.gs.leaveSect())
     if (D.SECT_RANKS[s.sect.rank + 1] && s.sect.contribution >= D.SECT_RANKS[s.sect.rank + 1].minContribution)
       return this.do('sect_rank_up', this.gs.rankUpSect())
-    if (s.sect.activeMissions.length + (s.derived.warSlot || 0) < D.SECT_MAX_MISSIONS) {   // a war call can hold one slot
+    if (s.sect.activeMissions.length < D.SECT_MAX_MISSIONS) {
       const m = D.SECT_MISSIONS.filter(m => m.minRank <= s.sect.rank && !s.sect.activeMissions.some(a => a.missionId === m.id))
         .sort((a, b) => b.contribution / Math.max(b.duration, this.actEverySec) - a.contribution / Math.max(a.duration, this.actEverySec))[0]
       if (m) return this.do('sect_mission', this.gs.startSectMission(m.id))

@@ -48,39 +48,44 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
-Date: 2026-09-25 (session 5)
-Agent: Phase 5C Member Wars (committed 1ef39a9) + dev late-game test characters.
+Date: 2026-09-25 (session 6)
+Agent: Phase 5C Member Wars (1ef39a9) + dev late-game test characters (d0ead45) + answering a war call is now free.
 Dev presets (user request, after 5C): `npm start` → any EMPTY slot on charselect shows a purple preset picker + DEV
   button → writes a late-game save and starts it. Presets: Sect Elder (member war in 1 min), Sect Founder (own war in
   1 min), Pre-Ascension (one breakthrough from Ascension). Hidden in dist (app.isPackaged) and on iOS. See
   docs/systems/dev-presets.md. Verified: all 3 presets load + tick in the sim engine, Ascension BT works, test,
   sim:quick, build:web, dist. Not verified by eye in the running app.
-What was done:
+Follow-up (user feedback, session 6): "Answer the Call" no longer commits a sect-mission slot — it's now free and
+  always available while a war is active (still worth +MEMBER_WAR_ANSWER_BONUS to sect power). Removed
+  `_warSlot()`/`derived.warSlot` and the slot check from `startSectMission`/`answerWarCall`; mission count UI back to
+  plain "n/2 active". Updated bot.js, metrics.js invariants (dropped `war_slot_over_cap`, kept
+  `war_answered_not_reset`), sect-war.md, sects.md, PLAN.md. Verified: test, sim:quick, full sim founder +
+  --path=member (both healthy, 0 violations), build:web, dist, re-ran the scripted member-war scenario test.
+What was done (session 5, Phase 5C):
   - One sectWar state for both sides: side 'own' (founded, 5B) | 'member' (joined, 5C). _ensurePhase5BFields()
     keeps side in sync with ownSect.founded / sect.id and migrates pre-5C saves (own-sect wars untouched).
   - Member war: rank-scaled 4–10h interval, 2h window (30m Call to Arms + 90m Muster — the war-window-gap fix).
-    Commitments: Answer the Call (holds a mission slot until the war resolves), war chest (stones, capped by rank,
-    earns contribution), up to 3 pills, one beast (beast.expedition = { war:true }, comes home with XP).
+    Commitments: Answer the Call (free, see session 6 above), war chest (stones, capped by rank, earns
+    contribution), up to 3 pills, one beast (beast.expedition = { war:true }, comes home with XP).
     Win (engaged) → contribution + stones + 15% rare item. Loss → sect buffs suppressed 3h, −contribution (flat × rank).
     Seen-but-ignored → −contribution −2 karma. Wars resolved entirely while closed = unseen, no penalty.
     Leaving mid-war = deserter (−5 extra karma). Rank is never demoted.
-  - Files: assets/data/sect-war.js (MEMBER_WAR_* constants), game-state.js (war section rewritten for both sides,
-    member API, _recalc suppression/warSlot, join/leave/startSectMission), game/beasts.js (skip war beasts),
-    game.js (renderMemberWarPanel, war slot in mission count, 'At war' beast status), styles.css (.war-warn).
-  - Bug found by the sim and fixed before landing: answered wasn't cleared at resolution → mission slot stayed locked.
+  - Files: assets/data/sect-war.js (MEMBER_WAR_* constants), game-state.js (war section for both sides, member API,
+    _recalc suppression), game/beasts.js (skip war beasts), game.js (renderMemberWarPanel, 'At war' beast status),
+    styles.css (.war-warn).
+  - Bug found by the sim and fixed before landing: answered wasn't cleared at resolution → mission slot stayed locked
+    (moot now that answering doesn't touch slots, but `answered` still must reset — kept as an invariant).
   - Sim: bot memberWar() (answer → beast → chest at ≥3× → pills after Ascension); per-side war tally
-    (Recorder.trackWars), Member Wars report section, 4 new invariants, 3 new FEATURES.
+    (Recorder.trackWars), Member Wars report section, invariants, 3 new FEATURES.
   - Docs: sect-war.md (full 5C section), sects.md, qa-sim.md, PLAN.md, CLAUDE.md tree.
-  - Verified: npm test, sim:quick, full sim founder + --path=member (healthy, 0 violations), build:web, dist,
-    scripted scenario test of every member-war flow incl. save round-trip mid-war and pre-5C save migration.
   - NOT verified: the new Sect-tab war panel by eye (the sim doesn't load game.js). Easiest check now: npm start →
     DEV preset "Sect Elder" → a call to arms starts within a minute.
 
 CURRENT BASELINE (npm run sim, 200h medians; Ascension is noisy — 8 seeds on old code gave casual 71h, not 56h):
   Founder path — Ascension: active ~11h · casual ~76h · afk ~140h.  Found sect: 6.7h · 36h · ~135h.
-  Member path (--path=member) — Ascension: active ~39h · casual ~60h (2/3 seeds). Member wars: active/casual
-  answer 100% of ~32 calls, win ~70%, contribution +2k; afk answers ~15–25% (opens 15 min per 8h).
-  Health: 0 errors, 0 violations.
+  Member path (--path=member) — Ascension: active ~19–41h across reruns (noisy) · casual ~41–60h · afk ~50h.
+  Member wars: active/casual answer 100% of ~32 calls, win ~60–75%, contribution net +0.5k–2.4k; afk answers
+  ~15–25% (opens 15 min per 8h). Health: 0 errors, 0 violations on both paths.
 
 READY FOR DEV WORK — how a new agent should start:
   1. Read START_HERE.md (this) + CLAUDE.md; load only the docs/systems/*.md for the system you touch.

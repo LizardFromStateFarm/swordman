@@ -154,8 +154,7 @@ class Recorder {
     if (s.sect.id && s.ownSect.founded) this.violate('joined_and_founded', s.sect.id)
     const w = s.sectWar, side = s.ownSect.founded ? 'own' : s.sect.id ? 'member' : null
     if (w.side !== side) this.violate('war_side_mismatch', `${w.side} vs ${side}`)
-    if (w.side === 'member' && s.sect.activeMissions.length + (w.answered ? 1 : 0) > this.D.SECT_MAX_MISSIONS) this.violate('war_slot_over_cap', s.sect.activeMissions.length)
-    if (w.answered && w.phase === 'none') this.violate('war_slot_not_released', w.lastResult?.ts)
+    if (w.answered && w.phase === 'none') this.violate('war_answered_not_reset', w.lastResult?.ts)
     for (const b of s.beasts) if (b.expedition?.war && (w.side !== 'member' || w.beastId !== b.id || w.phase === 'none')) this.violate('beast_stuck_at_war', b.id)
   }
 
