@@ -18,4 +18,5 @@ class CraftingSystem {
   unequip(slot)      { return this._gs.unequipItem(slot)      }
   setPill(itemId)    { return this._gs.setActivePill(itemId)  }
   useElixir(itemId)  { return this._gs.useElixir(itemId)      }
+  discard(itemId, n = 1) { return this._gs.discardItem(itemId, n) }   // Phase 21
 }

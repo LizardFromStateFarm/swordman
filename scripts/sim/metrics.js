@@ -186,6 +186,13 @@ class Recorder {
         if (n < min) this.violate('banter_pool_holes', `${id}.${t}=${n}<${min}`)
       }
     }
+    if (!this._itemCategoriesChecked) {   // content check, once per run: every ITEMS entry has a valid category
+      this._itemCategoriesChecked = true
+      const CATS = ['currency', 'mat', 'pill', 'equip', 'rare', 'key']
+      for (const [id, it] of Object.entries(this.D.ITEMS)) {
+        if (!CATS.includes(it.category)) this.violate('item_category_invalid', `${id}=${it.category}`)
+      }
+    }
     if (!(s.karma >= 0 && s.karma <= 100)) this.violate('karma_out_of_range', s.karma)
     if (d.breakthroughChance > 0.98 || d.breakthroughChanceDisplay > 0.98) this.violate('bt_chance_over_0.98', d.breakthroughChanceDisplay)
     if (s.stageIndex < 0 || s.stageIndex >= this.D.CULTIVATION_STAGES.length) this.violate('stage_out_of_range', s.stageIndex)

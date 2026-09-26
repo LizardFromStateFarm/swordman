@@ -876,6 +876,23 @@ class GameState {
     return { ok: true, oldRoot: oldName, newRoot: s.root.name }
   }
 
+  // Phase 21: Pack tab discard. Only unequipped inventory copies can be discarded — equipped
+  // weapon/artifact must be unequipped first (unequipItem returns it to inventory).
+  discardItem(itemId, n = 1) {
+    const s = this._s
+    const item = ITEMS[itemId]
+    if (!item) return { ok: false, reason: 'unknown' }
+    if (item.type === 'currency') return { ok: false, reason: 'currency' }
+    if (!(Number.isInteger(n) && n > 0)) return { ok: false, reason: 'invalid_qty' }
+    const have = s.inventory[itemId] || 0
+    if (have < n) return { ok: false, reason: 'not_owned' }
+    s.inventory[itemId] -= n
+    if (s.inventory[itemId] <= 0) delete s.inventory[itemId]
+    if (s.activePill === itemId && !s.inventory[itemId]) s.activePill = null
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
   // ── Phase 3: Spiritual Beasts ─────────────────────────────────────────────
 
   tameEncounteredBeast(encounterId) {

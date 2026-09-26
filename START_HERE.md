@@ -45,7 +45,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Lineage & Heir Inheritance | ⬜ Phase 18 |
 | World Epochs & Spiritual Tides | ⬜ Phase 19 |
 | Challenge Modes + Permadeath + Settings | ⬜ Phase 20 |
-| Backpack & Inventory Tab (unified item/currency view) | ⬜ Phase 21 |
+| Backpack & Inventory Tab (unified item/currency view) | ✅ Phase 21 (M1 1.5) |
 | Active / Idle Mode Toggle + Mid-Late Automation | ⬜ Phase 22 |
 | Immortal Realms content + Secret Arts (post-Ascension endgame) | ⬜ Phase 23D–E |
 | Immortal Paths: Tyrant / Devourer / Celestial Deity / Heaven's Executioner | ⬜ Phase 24 (planned) |
@@ -63,6 +63,71 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 overnight
+Agent: overnight autonomous run, task 1.5 — Roadmap M1 task 1.5, Phase 21: Backpack & Inventory Tab. Ran
+  unattended (pre-approved assessment/scope); user was asleep. Picks up right after the 1.4 (War Standing
+  Orders) session below.
+  - New "Pack" tab (between Craft and Sect; 7 tabs now, `.tab` font-size 10px→9px so the row still fits at
+    300px — verified by eye via CDP screenshot). No new persisted state at all: item `category` lives in
+    `assets/data/items.js` (data only, Rule 2), and filter/sort/expanded-row selection + the currency delta
+    indicator are render-layer closures in game.js, matching PLAN.md's own Phase 21 implementation notes.
+  - `ITEMS[id].category`: `'currency'|'mat'|'pill'|'equip'|'rare'|'key'` on every entry (top-of-file comment
+    updated per Rule 5's data-file cousin). Pills filter shows both `pill`- and `elixir`-type items per spec.
+    `rare` = `void_crystal`/`chaos_essence`/`ancient_script` (a static tag, not a live qty<10 filter — would
+    make items hop tabs as you spend them). `key` = `beast_taming_talisman` only (Realm Keys/Celestial
+    Calendar from the spec's example don't exist yet). This is a second, independent enum from
+    `RECIPES[i].category` — documented in backpack.md so a future agent doesn't conflate the two.
+  - New game-state.js method `discardItem(itemId, n=1) → {ok, reason?}` (reasons: unknown/currency/
+    invalid_qty/not_owned) — only game-state.js mutates state (Rule 1); mirrors the existing `useElixir`/
+    `offerWarPill` decrement pattern, clears `activePill` if the discarded stack hit 0. `renderer/game/
+    crafting.js` got a thin `discard()` wrapper, same as its existing equip/unequip/useElixir wrappers — no
+    logic duplicated. Use/Equip in the Pack tab call the exact same `craftSys` methods the Craft tab already
+    uses.
+  - `#confirm-overlay` generalized from a hardcoded "delete save slot" flow into `showConfirm(msg, sub,
+    onYes)` (game.js) so Discard could reuse the existing overlay/CSS instead of building a second one;
+    charselect's delete button now calls it too, behavior unchanged (re-verified via CDP).
+  - Currency row: Spirit Stones (fmt()) with a +N/−N delta indicator that floats up and fades over 3s,
+    computed as inline `opacity`/`transform` from elapsed `Date.now()` each rAF tick rather than a CSS
+    `@keyframes` animation (the tab already fully rebuilds on every real inventory/stones change, so no
+    "restart the animation" trick is needed) — tracked via `_packLastStones`/`_packDelta` closures in game.js,
+    per PLAN.md's own note that this belongs in the render layer, not game-state. Void Crystals shown below,
+    labeled "(rare)", explicitly not a premium currency (pillar 6 / GAMEDESIGN.md).
+  - Item rows: real `inventory` entries plus a synthetic row for any equipped weapon/artifact that has no
+    unequipped copy sitting in inventory (equipping moves an item OUT of inventory — see crafting.md).
+    Equipped rows show a ◆ badge and no Discard button (hint: "Unequip in the Craft tab to discard").
+  - Divergence: **dropped "Recently Acquired" sort**, per the task's own escape hatch. It would need a new
+    acquisition-order/timestamp map, and there's no single choke point for inventory gains today — expedition
+    drops, crafting output, sect mission rewards, war spoils and disciple income each mutate `s.inventory`
+    directly at ~6+ separate sites in game-state.js. Adding a `_gainItem()` helper to create one is a
+    reasonable small follow-up, flagged in backpack.md and PLAN.md, but was out of scope to do unattended.
+    Sort is Name A–Z / Qty (high→low) only.
+  - Sim: new invariant `item_category_invalid` (every `ITEMS[id].category` must be one of the 6 valid values,
+    checked once per run like the existing `banter_pool_holes` content check) — passed clean on `sim:quick`.
+    No bot behavior change needed (Pack is presentation-only, per the task); the full `npm run sim` was
+    skipped by design (no balance impact), matching the settings.md/banter.md precedent for UI-only phases.
+  - Docs written first per Rule 6: `docs/systems/backpack.md` (new), `docs/index.md`, `ui-layout.md` (tab
+    count/font-size, generic confirm overlay note), `qa-sim.md` (new invariant), CLAUDE.md tree (items.js
+    line, docs/systems list, "7 tabs"), PLAN.md (roadmap 1.5 ✅, Phase Index, Phase 21 status/divergences note).
+  - Verified: `npm test` (44 files), `npm run sim:quick` (0 exceptions, 0 invariant violations — same
+    pre-existing flags as before, none new), `npm run build:web`, `npm run dist` (portable build succeeded,
+    no locked-exe issue this time). Drove the real Electron app over CDP twice with `--user-data-dir` pointed
+    at a scratch temp folder (never the user's real slots — confirmed `%APPDATA%\Roaming\Cultivator Idle\`
+    doesn't even exist on this machine, so there was nothing to touch): once with a fresh "New Cultivator"
+    (empty pack renders cleanly, no console errors), once with the `member_elder` DEV preset (10 rows,
+    correct A–Z sort, equipped Soul Ring/Spirit Sword show ◆ + no discard, Rare/Keys/Pills chips filter
+    correctly, queuing a pill toggles to "★ Queued (clear)", discarding a Spirit Herb popped the confirm
+    overlay with the right message, confirming dropped qty ×60→×59 and fired the flash toast). Zero console
+    errors/exceptions in either run. Screenshotted both states (300×540 layout holds, 7-tab row legible).
+    Killed all scratch electron.exe processes afterward (confirmed via `Get-CimInstance Win32_Process`, none
+    touched the user's real save data).
+  Not done / known gaps: "Recently Acquired" sort (see divergence above). The `key` filter only ever shows
+    one item today (documented, not a bug). iOS/touch wasn't checked on an actual device — the CDP click-based
+    test exercises the same DOM/tap-target code path Capacitor uses, and there are no hover-only interactions
+    in the new CSS, but a real-device pass would be the only way to fully confirm touch feel.
+  Next: M1 task 1.6 (Active/Idle toggle + automation) or 1.7 (window/layout modes) — or M2 2.1 (Life Loop) if
+    the user wants that first. If task 1.6 builds Auto-Craft/Auto-Breakthrough automation, the Pack tab's
+    Use/Equip buttons are a natural second call site alongside Craft's — reuse `craftSys`, don't duplicate.
+
 Date: 2026-09-26 overnight
 Agent: overnight autonomous run, task 1.4 — Roadmap M1 task 1.4, Phase 32: War Standing Orders. Ran unattended
   (pre-approved assessment/scope); user was asleep. Picks up right after the 1.3 (tray/notifications) session below.

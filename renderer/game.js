@@ -83,24 +83,32 @@
     })
   }
 
-  let _pendingDelete = -1
-  function confirmDelete(slotIndex) {
-    _pendingDelete = slotIndex
+  // Generic confirm overlay (Phase 21: also used by the Pack tab's Discard button — see showConfirm below).
+  let _pendingConfirm = null
+  function showConfirm(msg, sub, onYes) {
+    document.getElementById('confirm-msg').textContent = msg
+    document.getElementById('confirm-sub').textContent = sub
+    _pendingConfirm = onYes
     document.getElementById('confirm-overlay').classList.remove('hidden')
   }
 
+  function confirmDelete(slotIndex) {
+    showConfirm('Delete this cultivator?', 'This cannot be undone.', async () => {
+      await window.electron.deleteSlot(slotIndex)
+      slots[slotIndex] = null
+      renderCharSelect()
+    })
+  }
+
   document.getElementById('confirm-yes').addEventListener('click', async () => {
-    if (_pendingDelete >= 0) {
-      await window.electron.deleteSlot(_pendingDelete)
-      slots[_pendingDelete] = null
-      _pendingDelete = -1
-    }
+    const cb = _pendingConfirm
+    _pendingConfirm = null
     document.getElementById('confirm-overlay').classList.add('hidden')
-    renderCharSelect()
+    if (cb) await cb()
   })
 
   document.getElementById('confirm-no').addEventListener('click', () => {
-    _pendingDelete = -1
+    _pendingConfirm = null
     document.getElementById('confirm-overlay').classList.add('hidden')
   })
 
@@ -293,6 +301,7 @@
       // On every tick: only update the live expedition timer without re-rendering
       if (activeTab === 'explore') updateExpeditionTimerInPlace(s)
       if (activeTab === 'sect')    updateSectTimersInPlace(s)
+      if (activeTab === 'pack')    updatePackDeltaInPlace(s)   // Phase 21: per-frame currency delta fade
     } else {
       // On explicit state changes: full tab re-render (safe, buttons will be stable until next change)
       if (activeTab === 'techniques') renderTechniques(s)
@@ -300,6 +309,7 @@
       if (activeTab === 'events')     renderEvents(s)
       if (activeTab === 'explore')    renderExplore(s)
       if (activeTab === 'craft')      renderCraft(s)
+      if (activeTab === 'pack')       renderPack(s)
       if (activeTab === 'sect')       renderSect(s)
     }
   }
@@ -1445,6 +1455,216 @@
     })
   }
 
+  // ── Pack tab (Phase 21) ────────────────────────────────────────────────────
+  // Filter/sort/expand state is presentation-only (not saved) — see docs/systems/backpack.md.
+
+  let _packFilter      = 'all'
+  let _packSort        = 'name'
+  let _packExpanded    = null
+  let _packLastStones  = null
+  let _packDelta       = null   // { val, ts } — fades via inline opacity computed per-frame, no CSS animation
+
+  const PACK_FILTERS = [
+    ['all', 'All'], ['mat', 'Mats'], ['pill', 'Pills'],
+    ['equip', 'Equip'], ['rare', 'Rare'], ['key', 'Keys'],
+  ]
+
+  // Real inventory rows + a synthetic row for equipped gear that has no unequipped copy in stock
+  // (equipping moves an item OUT of s.inventory — see docs/systems/crafting.md).
+  function packRows(s) {
+    const rows = []
+    for (const [id, qty] of Object.entries(s.inventory)) {
+      if (qty > 0 && ITEMS[id]) rows.push({ id, item: ITEMS[id], qty, equipped: false })
+    }
+    for (const slot of ['weapon', 'artifact']) {
+      const id = s.equipped[slot]
+      if (!id || !ITEMS[id]) continue
+      const existing = rows.find(r => r.id === id)
+      if (existing) existing.equipped = true
+      else rows.push({ id, item: ITEMS[id], qty: 1, equipped: true })
+    }
+    return rows
+  }
+
+  function packDeltaHTML() {
+    if (!_packDelta) return ''
+    const age = Date.now() - _packDelta.ts
+    if (age >= 3000) { _packDelta = null; return '' }
+    const opacity = (1 - age / 3000).toFixed(2)
+    const lift    = ((age / 3000) * 10).toFixed(1)
+    const cls     = _packDelta.val > 0 ? 'pos' : 'neg'
+    const sign    = _packDelta.val > 0 ? '+' : '−'
+    return `<span class="pack-delta ${cls}" style="opacity:${opacity};transform:translateY(${-lift}px)">${sign}${fmt(Math.abs(_packDelta.val))}</span>`
+  }
+
+  // Called every rAF tick while the Pack tab is active — only touches the delta span + stones number,
+  // never rebuilds the row list (that only happens on a real state-change notify, see renderPack).
+  function updatePackDeltaInPlace(s) {
+    if (_packLastStones !== null && s.spiritStones !== _packLastStones) {
+      const diff = s.spiritStones - _packLastStones
+      if (diff !== 0) _packDelta = { val: diff, ts: Date.now() }
+    }
+    _packLastStones = s.spiritStones
+
+    const valEl = document.getElementById('pack-stones-val')
+    if (valEl) valEl.textContent = fmt(s.spiritStones)
+    const host = document.getElementById('pack-delta-host')
+    if (host) host.innerHTML = packDeltaHTML()
+  }
+
+  function renderPack(s) {
+    const el = document.getElementById('tab-pack')
+    el.innerHTML = ''
+
+    if (_packLastStones !== null && s.spiritStones !== _packLastStones) {
+      const diff = s.spiritStones - _packLastStones
+      if (diff !== 0) _packDelta = { val: diff, ts: Date.now() }
+    }
+    _packLastStones = s.spiritStones
+
+    const currency = document.createElement('div')
+    currency.className = 'pack-currency'
+    currency.innerHTML = `
+      <div class="pack-currency-row stones">
+        <span>💰 Spirit Stones</span>
+        <span class="pack-currency-val" id="pack-stones-val">${fmt(s.spiritStones)}</span>
+        <span id="pack-delta-host">${packDeltaHTML()}</span>
+      </div>
+      <div class="pack-currency-row">
+        <span class="pack-currency-label">💎 Void Crystals (rare)</span>
+        <span class="pack-currency-val">×${fmt(s.inventory['void_crystal'] || 0)}</span>
+      </div>
+    `
+    el.appendChild(currency)
+
+    const filterBar = document.createElement('div')
+    filterBar.className = 'pack-filters'
+    for (const [key, label] of PACK_FILTERS) {
+      const btn = document.createElement('button')
+      btn.className = 'pack-chip' + (key === _packFilter ? ' active' : '')
+      btn.textContent = label
+      btn.addEventListener('click', () => { _packFilter = key; renderPack(gameState.get()) })
+      filterBar.appendChild(btn)
+    }
+    el.appendChild(filterBar)
+
+    const sortRow = document.createElement('div')
+    sortRow.className = 'pack-sort-row'
+    sortRow.innerHTML = `<span>Sort:</span>`
+    for (const [key, label] of [['name', 'Name'], ['qty', 'Qty']]) {
+      const btn = document.createElement('button')
+      btn.className = 'pack-sort-btn' + (key === _packSort ? ' active' : '')
+      btn.textContent = label
+      btn.addEventListener('click', () => { _packSort = key; renderPack(gameState.get()) })
+      sortRow.appendChild(btn)
+    }
+    el.appendChild(sortRow)
+
+    let rows = packRows(s).filter(r => r.item.category !== 'currency')
+    if (_packFilter !== 'all') rows = rows.filter(r => r.item.category === _packFilter)
+    rows.sort(_packSort === 'qty'
+      ? (a, b) => b.qty - a.qty
+      : (a, b) => a.item.name.localeCompare(b.item.name))
+
+    if (!rows.length) {
+      const empty = document.createElement('div')
+      empty.className = 'pack-empty'
+      empty.textContent = _packFilter === 'all' ? 'Your pack is empty.' : 'Nothing here yet.'
+      el.appendChild(empty)
+    }
+
+    for (const row of rows) {
+      const { id, item, qty, equipped } = row
+      const invQty = s.inventory[id] || 0   // unequipped, discardable copies only
+
+      const div = document.createElement('div')
+      div.className = 'pack-item-row' + (id === _packExpanded ? ' expanded' : '')
+
+      const main = document.createElement('div')
+      main.className = 'pack-item-main'
+      main.innerHTML = `
+        <span class="pack-item-name">${escHtml(item.name)}${equipped ? '<span class="pack-item-badge">◆</span>' : ''}</span>
+        <span class="pack-item-qty">×${fmt(qty)}</span>
+      `
+      main.addEventListener('click', () => {
+        _packExpanded = (_packExpanded === id) ? null : id
+        renderPack(gameState.get())
+      })
+      div.appendChild(main)
+
+      if (id === _packExpanded) {
+        const isPill   = item.type === 'pill'
+        const isElixir = item.type === 'elixir'
+        const isEquip  = item.type === 'weapon' || item.type === 'artifact'
+
+        let btnsHTML = ''
+        if (isPill && invQty > 0) {
+          btnsHTML += (s.activePill === id)
+            ? `<button class="pack-btn-use" data-clearpill>★ Queued (clear)</button>`
+            : `<button class="pack-btn-use" data-usepill="${id}">Queue for Breakthrough</button>`
+        }
+        if (isElixir && invQty > 0) {
+          btnsHTML += `<button class="pack-btn-use" data-useelixir="${id}">Use</button>`
+        }
+        if (isEquip && !equipped && invQty > 0) {
+          btnsHTML += `<button class="pack-btn-equip" data-equip="${id}">Equip</button>`
+        }
+        if (invQty > 0) {
+          btnsHTML += `<button class="pack-btn-discard" data-discard="${id}">Discard ×1</button>`
+        } else if (equipped) {
+          btnsHTML += `<span class="pack-item-hint">Unequip in the Craft tab to discard.</span>`
+        }
+
+        const detail = document.createElement('div')
+        detail.className = 'pack-item-detail'
+        detail.innerHTML = `
+          <div class="pack-item-desc">${escHtml(item.desc)}</div>
+          <div class="pack-item-btns">${btnsHTML}</div>
+        `
+        div.appendChild(detail)
+      }
+      el.appendChild(div)
+    }
+
+    el.querySelectorAll('[data-usepill]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        craftSys.setPill(btn.dataset.usepill)
+        flashMessage(`${ITEMS[btn.dataset.usepill]?.name} queued for next breakthrough.`, 'positive')
+      })
+    })
+    el.querySelectorAll('[data-clearpill]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        craftSys.setPill(null)
+        flashMessage('Pill removed from queue.', 'neutral')
+      })
+    })
+    el.querySelectorAll('[data-useelixir]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const res = craftSys.useElixir(btn.dataset.useelixir)
+        if (res.ok) flashMessage(`Root changed: ${res.newRoot}`, 'special')
+        else flashMessage('Cannot use elixir', 'negative')
+      })
+    })
+    el.querySelectorAll('[data-equip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const res = craftSys.equip(btn.dataset.equip)
+        if (res.ok) flashMessage(`Equipped: ${ITEMS[btn.dataset.equip]?.name}`, 'positive')
+        else flashMessage('Cannot equip', 'negative')
+      })
+    })
+    el.querySelectorAll('[data-discard]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const iid  = btn.dataset.discard
+        const name = ITEMS[iid]?.name || iid
+        showConfirm(`Discard 1× ${name}?`, 'This cannot be undone.', () => {
+          const res = craftSys.discard(iid, 1)
+          if (res.ok) flashMessage(`Discarded: ${name}`, 'neutral')
+          else flashMessage('Cannot discard', 'negative')
+        })
+      })
+    })
+  }
+
   // ── Game controls ─────────────────────────────────────────────────────────
 
   document.getElementById('btn-meditate').addEventListener('click', () => {
@@ -1541,6 +1761,7 @@
         if (btn.dataset.tab === 'events')     renderEvents(s)
         if (btn.dataset.tab === 'explore')    renderExplore(s)
         if (btn.dataset.tab === 'craft')      renderCraft(s)
+        if (btn.dataset.tab === 'pack')       renderPack(s)
         if (btn.dataset.tab === 'sect')       renderSect(s)
       }
     })

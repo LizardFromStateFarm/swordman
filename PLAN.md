@@ -57,7 +57,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 29 | Character Personality & Banter | ✅ (29A/B/D; 29C later) | M1 |
 | 20C | Settings tab + accessibility | ✅ | M1 |
 | 9A–B | Tray + opt-in desktop notifications | ✅ | M1 |
-| 21 | Backpack & Inventory tab | ⬜ | M1 |
+| 21 | Backpack & Inventory tab | ✅ | M1 |
 | 22 | Active / Idle toggle + automation | ⬜ | M1 |
 | 32 | War Standing Orders (absence never punished) | ✅ | M1 |
 | 6E | Window & layout modes | ⬜ | M1 (optional) |
@@ -114,7 +114,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 1.2 ✅ | Banter engine + 12 personalities, speech bubble, banter log, frequency setting | 29 | 1.1 | Every personality × trigger has lines (sim invariant); bubble fits 300 px + iOS |
 | 1.3 ✅ | System tray + **opt-in** desktop notifications (per-type toggles in ⚙; BT ready, expedition back, war news, death) | 9A–B | 1.1 | Both platforms: Electron real, iOS shim no-op (Rule 7). Nothing in the game *requires* notifications |
 | 1.4 ✅ | War Standing Orders: calls are answered by a preset order, and being present only adds optional choices | 32 | — | Sim: afk/casual war outcomes within ~10% of active; the "missed war window" flags are retired |
-| 1.5 | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
+| 1.5 ✅ | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
 | 1.6 | Active / Idle toggle + staged automation unlocks | 22 | 1.1 | Bot uses automation; sim shows afk/casual actions/h up |
 | 1.7 | *(optional)* Window & layout modes | 6E | 1.1 | 4 modes CSS-only off `data-layout` |
 
@@ -683,6 +683,27 @@ Real calendar month affects passive bonuses:
 ---
 
 ## Phase 21 — Backpack & Inventory Tab
+
+> **Status: ✅ implemented 2026-09-26 (roadmap 1.5, overnight autonomous run).** See `docs/systems/backpack.md`
+> for the full reference. Built essentially as designed below, with documented divergences:
+> - **"Recently Acquired" sort was dropped**, per this section's own escape hatch ("otherwise drop it and
+>   document"). It would need a new acquisition-order/timestamp map, and there's no single choke point for
+>   inventory gains today — expedition drops, crafting output, sect mission rewards, war spoils and disciple
+>   income each mutate `s.inventory` directly (at least 6 separate sites in `game-state.js`). Adding a `_gainItem()`
+>   helper to create one is a reasonable follow-up, but out of scope for an unattended session. Sort is Name A–Z
+>   / Qty (high→low) only.
+> - **"Rare" is a static `category` tag, not a live "qty < 10" filter.** A qty-based tag would make items hop
+>   between Rare and Mats as you spend/gain them. `void_crystal`, `chaos_essence` and `ancient_script` are
+>   permanently `category: 'rare'` instead (matches pillar 6 — Void Crystals are a rare material, and the other
+>   two are the next-lowest drop-weight, highest-tier resources per `locations.js`).
+> - **"Keys" only ever holds one item** (`beast_taming_talisman`, tagged `category: 'key'`) — the spec's example
+>   items ("Realm Keys", "Celestial Calendar") don't exist in `ITEMS` yet.
+> - `#confirm-overlay` was generalized from a hardcoded "delete slot" flow into `showConfirm(msg, sub, onYes)` so
+>   Discard could reuse it without duplicating overlay markup or wiring.
+> - `.tab` font-size dropped 10px → 9px so all 7 tabs (added Pack) still fit at 300px.
+> - No new persisted state at all: `category` lives in `items.js` (data), filter/sort/expanded-row state is a
+>   render-layer closure in `game.js` (not saved, matches the PLAN.md implementation notes below), and the
+>   currency delta indicator is computed per-frame from elapsed time rather than a CSS animation.
 
 Right now items live inside the Explore and Craft tabs with no unified view. The Backpack tab gives the player one place to see everything they own, including spirit stones as a first-class currency display.
 

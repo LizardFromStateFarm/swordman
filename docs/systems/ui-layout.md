@@ -10,7 +10,7 @@ Fixed 300×540px window. Flex column, no scroll on outer container.
 #stage-block       ~55px  realm + layer + desc text, centered
 #qi-block          ~38px  labels + track + rate
 #actions           ~48px  2-column grid: Meditate + Breakthrough buttons
-#tabs              ~26px  5 equal-flex tabs; font-size 10px
+#tabs              ~26px  7 equal-flex tabs; font-size 9px (dropped from 10px in Phase 21 to fit Pack)
 #tab-body          ~169px flex:1; overflow:hidden; active .panel scrolls internally
 ```
 
@@ -33,7 +33,7 @@ Defined in `:root` at top of styles.css — always use these, never raw hex in n
 red/green hex in JS: use `var(--red)` or `settingsUI.palette()` (see settings.md).
 
 ## Tab System
-5 tabs: Techniques · Stats · Explore · Craft · Log
+7 tabs: Techniques · Stats · Explore · Craft · Pack (Phase 21) · Sect · Log
 - Tab buttons: `.tab` class, `data-tab="<name>"` attribute
 - Panels: `#tab-<name>`, `.panel` class; `.panel.active` shown
 - Tab click handler in `game.js` calls the relevant `render<X>(s)` function
@@ -60,6 +60,9 @@ Types: `'positive'` (jade), `'negative'` (red), `'special'` (gold), `'neutral'` 
 
 ## Overlays
 Overlays in HTML: `#rename-overlay`, `#confirm-overlay`, `#settings-overlay` (Phase 20C), `#ascension-overlay`, `#death-overlay`.
+`#confirm-overlay` is a generic one-shot confirm (Phase 21: `showConfirm(msg, sub, onYes)` in game.js) — charselect's
+delete-slot flow and the Pack tab's Discard button both call it. Don't hardcode a new pending-action sentinel if you
+add a third caller.
 `#banter-bubble` (Phase 29) is `position: fixed`, z 210, so it sits above overlays. It needs `width: max-content`, because `left:50%` + translate otherwise caps it at half the window.
 Pattern: `.hidden` class toggle. Always `z-index: 200`. Wire buttons directly in the IIFE.
 

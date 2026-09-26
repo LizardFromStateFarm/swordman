@@ -63,6 +63,7 @@ docs/
     ui-layout.md        ← Window layout, tab pattern, CSS vars
     notifications.md    ← System tray + opt-in desktop notifications (Phase 9A-B)
     life-loop.md        ← M2 build spec: lifespan, heirs, Ancestral Hall, clan legacies (Phases 30/31)
+    backpack.md          ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
   assets.md             ← ASCII art pipeline (create → review → gate ≥8.0)
@@ -77,7 +78,7 @@ scripts/
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt
 renderer/
-  index.html            ← All HTML — charselect + app, 6 tabs
+  index.html            ← All HTML — charselect + app, 7 tabs
   styles.css            ← All CSS — CSS vars at top, add new components here
   game.js               ← Boot, tick loop, all UI wiring and render functions
   engine/
@@ -100,7 +101,7 @@ assets/
     stages.js           ← CULTIVATION_STAGES[23]
     techniques.js       ← TECHNIQUES
     events.js           ← RANDOM_EVENTS
-    items.js            ← ITEMS — all collectable/craftable item types
+    items.js            ← ITEMS — all collectable/craftable item types + Pack tab `category` (Phase 21)
     locations.js        ← LOCATIONS — expedition destinations + drop tables
     enemies.js          ← ENEMIES — tier definitions
     recipes.js          ← RECIPES — all crafting recipes

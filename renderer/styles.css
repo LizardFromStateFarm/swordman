@@ -538,7 +538,7 @@ body {
   border-right: 1px solid var(--border);
   color: var(--dim);
   font-family: var(--font);
-  font-size: 10px;
+  font-size: 9px;   /* Phase 21: dropped from 10px so 7 tabs (added Pack) still fit at 300px */
   padding: 6px 0;
   cursor: pointer;
   transition: color .1s, background .1s;
@@ -1504,3 +1504,115 @@ body {
 }
 .banter-log-line { font-size: 10px; color: var(--text); padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
 .banter-log-ago  { color: var(--dim); font-size: 9px; }
+
+/* ── Pack tab (Phase 21) ───────────────────────────────────────────────────── */
+
+.pack-currency {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+.pack-currency-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+  position: relative;
+}
+.pack-currency-row.stones { font-size: 14px; font-weight: bold; color: var(--gold); }
+.pack-currency-label { color: var(--dim); font-size: 10px; }
+.pack-currency-val   { font-family: var(--font); }
+.pack-delta {
+  position: absolute;
+  right: 0;
+  top: -2px;
+  font-size: 10px;
+  font-weight: bold;
+  pointer-events: none;
+  transition: none;   /* opacity/transform are computed per-frame in JS, not animated by CSS */
+}
+.pack-delta.pos { color: var(--jade); }
+.pack-delta.neg { color: var(--red); }
+
+.pack-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 5px;
+}
+.pack-chip {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: var(--font);
+  font-size: 9px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.pack-chip:hover:not(.active) { color: var(--text); border-color: var(--dim); }
+.pack-chip.active { color: var(--gold); border-color: var(--gold); background: rgba(237,208,80,0.10); }
+
+.pack-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+.pack-sort-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: var(--font);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.pack-sort-btn.active { color: var(--gold); border-color: var(--gold); }
+
+.pack-empty { color: var(--dim); font-size: 11px; font-style: italic; padding: 10px 0; text-align: center; }
+
+.pack-item-row {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+.pack-item-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+}
+.pack-item-name { font-size: 11px; color: var(--text); }
+.pack-item-badge { color: var(--gold); margin-left: 4px; font-size: 10px; }
+.pack-item-qty  { font-size: 11px; color: var(--dim); }
+.pack-item-row.expanded { border-color: var(--gold); }
+.pack-item-row.expanded .pack-item-name { color: var(--gold); }
+
+.pack-item-detail {
+  padding: 0 8px 8px;
+  border-top: 1px solid var(--border);
+}
+.pack-item-desc { font-size: 10px; color: var(--dim); margin: 6px 0; }
+.pack-item-btns { display: flex; flex-wrap: wrap; gap: 5px; }
+.pack-item-btns button {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.pack-btn-use    { border-color: var(--purple) !important; color: var(--purple) !important; }
+.pack-btn-equip  { border-color: var(--jade)   !important; color: var(--jade)   !important; }
+.pack-btn-discard{ border-color: var(--red)    !important; color: var(--red)    !important; }
+.pack-item-btns button:disabled { opacity: .4; cursor: not-allowed; }
+.pack-item-hint { font-size: 9px; color: var(--dim); font-style: italic; }
