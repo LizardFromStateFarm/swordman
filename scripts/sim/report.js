@@ -229,15 +229,13 @@ function buildReport(runs, args) {
     L.push(`| ${p} | ${f(med(lin.map(l => l.ascensionAttempts)))} | ${f(med(lin.map(l => l.ascensions)))} | ${f(med(lin.map(l => l.generation)))} | ${f(med(lin.map(l => l.deaths)))} | ${f(med(lin.map(l => l.bloodlineQuality)))} | ${causesStr} |`)
   }
   L.push(``)
-  L.push(`## Life Loop — Phase 30 (M2 task 2.3; heirs/legacies land in tasks 2.5-2.7) (${longest}h runs)`)
-  L.push(`| Profile | Lives | Lives/100h | Median life (open h) | Age at death | Twilight: seclusion/mantle | Married | Children/life | Adult child at death | Deaths by cause (n × median open h) |`)
-  L.push(`|---|---|---|---|---|---|---|---|---|---|`)
+  L.push(`## Life Loop — Phase 30 + 16-lite (no old age; heirs/legacies land in tasks 2.6-2.7) (${longest}h runs)`)
+  L.push(`| Profile | Lives | Lives/100h | Median life (open h) | Age at death | Married | Children/life | Adult child at death | Deaths by cause (n × median open h) |`)
+  L.push(`|---|---|---|---|---|---|---|---|---|`)
   for (const p of profiles) {
     const g = group(p, longest)
     const lives = g.flatMap(r => r.lifeLoop?.lifeLengths || [])
     const livesPer100h = med(g.map(r => r.lifeLoop?.livesPer100h))
-    const seclusion = g.reduce((a, r) => a + (r.actions.final_seclusion || 0), 0)
-    const mantle    = g.reduce((a, r) => a + (r.actions.pass_mantle || 0), 0)
     const byCause = {}
     for (const l of lives) (byCause[l.cause] ||= []).push(l.openHours)
     const causeStr = Object.entries(byCause).sort((a, b) => b[1].length - a[1].length)
@@ -246,7 +244,7 @@ function buildReport(runs, args) {
     // Phase 16-lite (M2 task 2.5): share of lives married / with ≥1 adult child at death, mean children per life
     const pct = fn => lives.length ? `${Math.round(100 * lives.filter(fn).length / lives.length)}%` : '—'
     const kidsMean = lives.length ? (lives.reduce((a, l) => a + (l.children || 0), 0) / lives.length).toFixed(1) : '—'
-    L.push(`| ${p} | ${lives.length} | ${f(livesPer100h)} | ${fmtH(medLife)} | ${f(med(lives.map(l => l.ageAtDeath)))} | ${seclusion}/${mantle} | ${pct(l => l.married)} | ${kidsMean} | ${pct(l => l.adultChildren > 0)} | ${causeStr} |`)
+    L.push(`| ${p} | ${lives.length} | ${f(livesPer100h)} | ${fmtH(medLife)} | ${f(med(lives.map(l => l.ageAtDeath)))} | ${pct(l => l.married)} | ${kidsMean} | ${pct(l => l.adultChildren > 0)} | ${causeStr} |`)
     // life-loop.md §8 task 2.5 done-when: a casual life should usually leave an adult heir behind.
     if (p === 'casual' && lives.length >= 3 && lives.filter(l => l.adultChildren > 0).length / lives.length < 0.5)
       flags.push(`[${p} ${longest}h] Only ${pct(l => l.adultChildren > 0)} of lives end with an adult child (task 2.5 target: most)`)

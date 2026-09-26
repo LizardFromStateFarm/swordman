@@ -111,11 +111,11 @@ assets/
     sect-buildings.js   ← Own-sect founding cost, Sect Hall levels, buildings, disciple constants (Phase 5A)
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
     bloodline.js        ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
-    lifespan.js         ← Game clock, per-realm lifespan, Final Seclusion, family timing constants (Phase 30, M2 task 2.3)
+    lifespan.js         ← Game clock + family timing constants (Phase 30/16-lite; age is a stat only, no lifespan)
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)
-    banter-lines.js     ← BANTER_LINES — 1,753 lines, personality × trigger + generic pool (Phase 29)
+    banter-lines.js     ← BANTER_LINES — 1,695 lines, personality × trigger + generic pool (Phase 29)
     names.js            ← SURNAMES (60) + GIVEN_NAMES (205) — pinyin, gender-neutral (Phase 30/31, M2 task 2.2)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
   sprites/

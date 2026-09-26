@@ -33,7 +33,7 @@ class Bot {
     this.automation()
     for (let i = 0; i < 40; i++) {
       const before = this.s.spiritStones
-      const acted = this.twilight() || this.family() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
+      const acted = this.family() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
         this.elixirs() || this.memberWar() || this.beasts() || this.sect() || this.ownSect() || this.war() ||
         this.pushExpedition() || this.expedition()
       if (!acted) break
@@ -99,20 +99,6 @@ class Bot {
     this.gs.setWarOrder('reinforceKeep', 300)
     this.gs.setWarOrder('ally', 'cheapest')
     return false   // never counts as a meaningful action; doesn't block the rest of checkIn()
-  }
-
-  // ── Twilight (Phase 30, M2 task 2.3) ──────────────────────────────────────
-  // Decides once, the moment twilight starts: Final Seclusion if there's plausibly enough time left to
-  // fill the current stage's Qi cap at the boosted Qi/s, else Pass the Mantle. Never revisited once
-  // secluded — see life-loop.md §7.
-  twilight() {
-    const s = this.s, d = s.derived
-    if (!d.inTwilight || s.finalSeclusion) return false
-    const openHoursRemaining = (d.lifespan - s.age) / this.D.GAME_YEARS_PER_OPEN_HOUR
-    const qiNeeded  = Math.max(0, d.qiCap - s.qi)
-    const hoursToCap = qiNeeded / Math.max(1e-9, d.qiPerSecond * 1.5) / 3600
-    if (hoursToCap <= 0.8 * openHoursRemaining) return this.do('final_seclusion', this.gs.enterFinalSeclusion())
-    return this.do('pass_mantle', this.gs.passTheMantle())
   }
 
   // ── Family (Phase 16-lite, M2 task 2.5) ───────────────────────────────────

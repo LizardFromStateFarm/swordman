@@ -1,6 +1,6 @@
 // BANTER_LINES — what the cultivator says, per personality × trigger, plus a shared generic pool (Phase 29).
 // Used by renderer/game/banter.js; sim checks for holes (scripts/sim/metrics.js). Brief: docs/systems/banter-writing-guide.md.
-// 1753 lines (58 added for `twilight`, Phase 30 M2 task 2.3; 116 for `married`/`child_born`, M2 task 2.5).
+// 1695 lines (116 for `married`/`child_born`, M2 task 2.5; the 58 `twilight` lines were removed with twilight, 2026-09-26).
 // Tokens: {name} {stage} anywhere; {item} rare_drop; {hours} welcome_back; {enemy} {sect} war_*; {spouse} married; {child} child_born.
 
 const BANTER_LINES = {
@@ -89,10 +89,6 @@ const BANTER_LINES = {
     child_born: [
       "A child is born. The clan continues. Also, I need a nap immediately.",
       "New arrival. Small. Loud. Extremely opinionated about everything already.",
-    ],
-    twilight: [
-      "The years pile up like unpaid debts. Heaven, I'd like an extension on this lease, please.",
-      "My hair's gone silver and my knees creak louder than my Dao heart. Twilight, apparently. Fun.",
     ],
     ascension_trial: [
       "The Ascension Trial. Immortality or death. No pressure. None at all. Fuck.",
@@ -237,12 +233,6 @@ const BANTER_LINES = {
       "A new heir! Finally, someone I can boss around who legally has to listen.",
       "{child} cried the moment they saw me. Overwhelmed by my aura, surely.",
       "I shall mold {child} into a genius. Or at least someone taller than me.",
-    ],
-    twilight: [
-      "Twilight? Nonsense. This young master doesn't age. He merely becomes a rarer vintage.",
-      "My hair has silvered. Distinguished, obviously. Old is a word for lesser cultivators.",
-      "The years dare approach me? Hmph. Even Time should know its place.",
-      "Fine. I am old. I remain, however, devastatingly handsome about it.",
     ],
     ascension_trial: [
       "Immortality or death. How dramatic. Heaven finally threw a party worthy of me.",
@@ -396,12 +386,6 @@ const BANTER_LINES = {
       "{child} cried all night. I fled to the guest room. Strategic retreat.",
       "Parenthood: technically can't run from this one. Still thinking it over.",
     ],
-    twilight: [
-      "Old age is coming for me. Finally, an opponent I can outrun without shame.",
-      "They say face your mortality. I say: flee from it, wisely, at great speed.",
-      "Twilight years. Perfect. Even Death respects a graceful retreat.",
-      "I've survived this long by running from everything. Why stop for Death?",
-    ],
     ascension_trial: [
       "Survive and become immortal, or die. Can I pick 'neither' and go home?",
       "The Ascension Trial has no exit. No exit! What kind of sick architect made this?!",
@@ -554,12 +538,6 @@ const BANTER_LINES = {
       "{child} gripped my finger with SURPRISING FEROCITY. A FIGHTER ALREADY.",
       "I yelled the birth announcement from the rooftop. The whole village heard. Good.",
     ],
-    twilight: [
-      "OLD AGE?! FINE! I'LL PUNCH TIME ITSELF! ...After I catch my breath. Give me a second.",
-      "They say my years are numbered! GOOD! I FIGHT BETTER UNDER A DEADLINE!",
-      "Twilight, huh? SOUNDS LIKE A BOSS FIGHT! LET'S GOOOO! ...slower than before, but still!",
-      "My body's slowing down but my SPIRIT is still SCREAMING AT THE SKY!",
-    ],
     ascension_trial: [
       "SURVIVE OR DIE?! THAT'S THE SAME DEAL AS EVERY FIGHT I'VE EVER HAD!",
       "The Ascension Trial? GIVE IT TO ME! I'LL FIGHT IT! I'LL FIGHT THE CONCEPT OF IT!",
@@ -711,12 +689,6 @@ const BANTER_LINES = {
       "A new heir means one less generation of inheritance tax. Excellent investment.",
       "{child} already grabs at my spirit stone pouch. A prodigy. A thieving prodigy.",
       "I am overjoyed. Also I am recalculating the household budget. Both, at once.",
-    ],
-    twilight: [
-      "Old age, for free?! Outrageous! At least give me a discount on the coffin.",
-      "Twilight years. Time to start hoarding pills like they're going out of stock. They are.",
-      "I've spent decades hoarding stones. Turns out you can't take spirit stones to the grave. Robbery.",
-      "Dying is the most expensive thing I'll ever do and I don't even get a refund.",
     ],
     ascension_trial: [
       "Immortality or death. What's the entry fee? ...Free? It's a trap. Free is always a trap.",
@@ -871,12 +843,6 @@ const BANTER_LINES = {
       "{child} spit up on me. I understand. I too react strongly to being hungry.",
       "The birth banquet had eleven courses. {child} slept through all of them. Rude, but forgivable.",
     ],
-    twilight: [
-      "They say my years are running low, like the last dumpling on the plate. Tragic. Eat faster.",
-      "Twilight of life, huh. Better make peace with the universe and also eat one more bowl.",
-      "My body's aging like fine wine. My stomach, sadly, still craves like a teenager.",
-      "If these are my final years, I refuse to die on an empty stomach. Bring the feast.",
-    ],
     ascension_trial: [
       "Survive the trial and become immortal. Immortals don't need to eat. …I'm having doubts.",
       "Is there food in the Immortal Realm? Nobody will give me a straight answer. Suspicious.",
@@ -1029,12 +995,6 @@ const BANTER_LINES = {
       "A new verse in the family's endless poem, written in a cry no rhyme could capture.",
       "I wept holding {child}. Tears of joy, tears of poetry, mostly just tears.",
       "The moon watched {child}'s first breath. I watched too. We were both moved.",
-    ],
-    twilight: [
-      "The autumn of my life has come, and oh, how the leaves of my dantian do wither.",
-      "I feel the frost of twilight upon my brow. Also upon my back. My back specifically.",
-      "Time, that cruelest of poets, writes wrinkles where once there was verse.",
-      "The sun sets on my mortal chapter. I shall compose an epic about my own knees.",
     ],
     ascension_trial: [
       "The Ascension Trial. Immortality or death. What a delicious, terrifying metaphor.",
@@ -1191,12 +1151,6 @@ const BANTER_LINES = {
       "{child} opened their eyes. I opened mine slightly wider. A dramatic display, for me.",
       "Parenthood status: active. Emotional readout: surprisingly full.",
     ],
-    twilight: [
-      "I am aging. Noted. Proceeding with cultivation.",
-      "Twilight has arrived. My face has not changed expression. It never does.",
-      "Old age approaches. I remain unbothered. My back, less so.",
-      "Fact: I am closer to death than yesterday. Also fact: breakfast was adequate.",
-    ],
     ascension_trial: [
       "The Ascension Trial. Survive or die. My schedule is open.",
       "Immortality or death. Both are permanent. I prefer the one with fewer lightning bolts.",
@@ -1350,12 +1304,6 @@ const BANTER_LINES = {
       "{child} shall inherit my throne, my power, my sealed arm's terrible secrets. Someday.",
       "I declared {child} the Young Sovereign of Darkness. They responded by falling asleep.",
       "My bloodline continues! Tremble, future enemies of {child}, an infant who is napping.",
-    ],
-    twilight: [
-      "The mortal coil weakens?! Even a Demon King's vessel is bound by lesser Time. How embarrassing.",
-      "Twilight falls upon this humble abode of darkness. My sealed arm aches. Arthritis. Also darkness.",
-      "Death itself dares summon ME? Tell it to take a number. I am very busy being ominous.",
-      "My power grows ancient and unknowable. Also my knees. Ancient and unknowable knees.",
     ],
     ascension_trial: [
       "The Ascension Trial! The heavens tremble at the thought of my immortality! As they should!",
@@ -1511,12 +1459,6 @@ const BANTER_LINES = {
       "{child} stared at me for a long time. What do they know. WHAT DO THEY KNOW.",
       "I've already hidden three decoy cribs. You can't be too careful with an heir.",
     ],
-    twilight: [
-      "Old age? Or a poison, slowly administered by my enemies over decades? I'm onto them.",
-      "Twilight of life. Suspicious timing. Who benefits from my death? Make a list. Start with the crane.",
-      "They say everyone dies eventually. 'They' being, suspiciously, everyone who wants me gone.",
-      "My hair is turning gray. Is that natural, or a curse? I'm testing several suspects.",
-    ],
     ascension_trial: [
       "Survive and become immortal, or die. It's obviously a trap. Sign me up. Carefully.",
       "Heaven invites me up. Suspicious. Nobody gets invited up. People get invited down. Into holes.",
@@ -1668,12 +1610,6 @@ const BANTER_LINES = {
       "A new generation, and already they've got opinions. Where do they learn this.",
       "I held {child} and felt something. Probably my back. Also maybe joy.",
       "Kids today are born practically demanding spirit herbs. In my day we ate dirt and liked it.",
-    ],
-    twilight: [
-      "Twilight, they call it. In my day we called it 'Tuesday' and kept cultivating anyway.",
-      "Old age? Kids these days act like it's a tragedy. Back in my day we aged uphill.",
-      "My joints creak louder than the young folks' terrible music. At least I'm consistent.",
-      "So this is twilight. Feels like every other decade, just with worse knees and less patience.",
     ],
     ascension_trial: [
       "Eternal life. Great. An eternity of listening to young people. Pass. ...Fine. FINE.",
@@ -1830,12 +1766,6 @@ const BANTER_LINES = {
       "{child} sleeps sixteen hours a day. I respect this child enormously.",
       "Parenthood, from a reclining position. Still counts.",
     ],
-    twilight: [
-      "Twilight of life, apparently. Guess I'll take my final nap a little more seriously now.",
-      "They say my years are numbered. Good. Fewer years to bother getting out of bed for.",
-      "Old age sounds like a great excuse to do even less. I accept this new life stage.",
-      "If I die mid-nap, technically I never noticed. Efficient. I call that a win.",
-    ],
     ascension_trial: [
       "Ascension Trial? Can I ascend lying down? Is there, like, a moving staircase to Heaven?",
       "Survive and become immortal, or die. Either way I never have to work again. Win-win.",
@@ -1988,12 +1918,6 @@ const BANTER_LINES = {
       "Welcome to the world, {child}! Everyone who meets you will be lucky, I promise.",
       "I held {child} for the first time and the whole sect could probably hear me sobbing happily.",
       "{child}, I will bring you tea every day too, once you're old enough. I've already planned it.",
-    ],
-    twilight: [
-      "Getting older, huh? Well, I've had a wonderful run, and I'm grateful for every wrinkle.",
-      "Twilight years already? Time really flies when you're kind to everyone, even the tribulation.",
-      "My body's slowing down, but hey — more time to appreciate the little things. And naps.",
-      "I suppose this is aging. Bit scary, honestly. But I've made peace with it. Mostly. Shit — sorry, I meant gosh.",
     ],
     ascension_trial: [
       "Ascend or die, huh? No pressure. I'll do my best and be very polite to the lightning.",
@@ -2148,12 +2072,6 @@ const BANTER_LINES = {
       "{child} cried the instant they saw my smile. Most people take longer to notice. Impressive infant.",
       "A new little one to protect from everyone. And I do mean everyone. Hehe.",
     ],
-    twilight: [
-      "Twilight already? Wonderful. More time to remember every single face I've ever met. Hehe.",
-      "They say old age comes for everyone. I've been coming for everyone first. We're even now.",
-      "My body ages, my collection grows. A fair trade, I think. Don't you think? You'd better think so.",
-      "Death is finally interested in me. Flattering. I've been interested in it for years. Hehe.",
-    ],
     ascension_trial: [
       "Ascension or death? Ooh, both sound fun! Can I pick both?",
       "If I become immortal, I get to hold grudges FOREVER. Forever! Hehehehe!",
@@ -2306,12 +2224,6 @@ const BANTER_LINES = {
       "The baby is also named Gerald, probably. We'll ask when they can talk.",
       "{child} arrived in a puff of soup-scented mystery. As is tradition. My tradition, anyway.",
       "I showed {child} the small horse Gerald. They laughed. Excellent taste already.",
-    ],
-    twilight: [
-      "Twilight of the borgin. The gorgin grows old. Time is a soup and I am the noodle in it.",
-      "My years are numbered, says the wrinkly calendar goblin in my skull. Rude little guy.",
-      "Old age is just Tuesday wearing a spooky hat. I have decided this. It is now canon.",
-      "The dantian creaks like Gerald's saddle. Gerald says: neigh, but wise.",
     ],
     ascension_trial: [
       "Ascension Trial? I will ascend like a balloon. Balloons ascend. Checkmate, Heaven.",

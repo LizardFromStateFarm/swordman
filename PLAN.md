@@ -954,6 +954,12 @@ This gives mid-game players a concrete automation roadmap to look forward to.
 
 ## Phase 30 — Lifespan & Game Time (寿元 · 岁月)
 
+> **Changed 2026-09-26 (user): age never kills.** "The user shouldn't have to worry about age." Age stays as a
+> stat on the game clock, but lifespan, old-age death, twilight and Final Seclusion (30B–30C below) were removed —
+> for the player and for spouses. A life ends by the Ascension Trial, a violent death, or Pass the Mantle (any time,
+> from Stats). Lifespan extenders (e.g. 2.7's Longevity Blood legacy) are cut. Casual lives now run ~30h; the
+> user accepted that and the life target became 20–40h (GAMEDESIGN pillar 1). See life-loop.md §15.
+
 > **Built overnight 2026-09-26 (task 2.3, then pacing compression task 2.4) — see `docs/systems/life-loop.md`
 > §12 (2.3) and §13 (2.4) for what actually landed.** Task 2.4 retuned `stages.js`'s Foundation Building–Spirit
 > Severing `qiCap`s so a casual mortal life reaches Spirit Severing / an Ascension attempt within the 10–20h

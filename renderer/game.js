@@ -147,7 +147,7 @@
   const sectSys   = new SectSystem(gameState)
   const sectWarSys = new SectWarSystem(gameState)
   const settingsUI = new SettingsUI(gameState, renderer)
-  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #twilight-overlay:not(.hidden), #proposal-overlay:not(.hidden)'))
+  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #proposal-overlay:not(.hidden)'))
   // Phase 9A/B: window "active" = visible AND focused; notifications only fire otherwise (news, not a summons).
   const notifSys   = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(),
     (title, body) => window.electron.notify(title, body))
@@ -309,20 +309,12 @@
     document.getElementById('health-fill').style.background = `rgb(${hr},${hg},${hb})`
     document.getElementById('health-numbers').textContent   = `${Math.round(health)} / 100`
 
-    // Age bar (Phase 30, M2 task 2.3) — pulses amber in twilight
-    const ageBlock = document.getElementById('age-block')
-    ageBlock.classList.toggle('twilight', !!d.inTwilight)
-    document.getElementById('age-fill').style.width    = Math.min(100, (d.ageFrac || 0) * 100) + '%'
-    document.getElementById('age-numbers').textContent = `${Math.round(s.age)} / ${Math.round(d.lifespan)}`
+    // Age readout (Phase 30) — a stat only, nothing dies of age
+    document.getElementById('age-numbers').textContent = String(Math.floor(s.age))
 
-    // Twilight card (Phase 30, M2 task 2.3) — pops once per life unless already dismissed/answered
-    if (d.inTwilight && !s.twilightNoticed && document.getElementById('twilight-overlay').classList.contains('hidden')) {
-      document.getElementById('twilight-overlay').classList.remove('hidden')
-    }
-
-    // Proposal card (Phase 16-lite, M2 task 2.5) — auto-opens once per proposal, never over the twilight card
+    // Proposal card (Phase 16-lite, M2 task 2.5) — auto-opens once per proposal
     const prop = s.family?.proposal
-    if (prop && prop.year !== _proposalShownYear && document.getElementById('twilight-overlay').classList.contains('hidden')) {
+    if (prop && prop.year !== _proposalShownYear) {
       _proposalShownYear = prop.year
       openProposalOverlay(s)
     }
@@ -446,7 +438,7 @@
       ${sr('Breakthrough Chance', Math.round(d.breakthroughChance*100)+'%')}
       ${sr('Realm Integrity', `<span style="color:${integColor}">${Math.round(integ)}</span>`)}
       ${sr('Health', `<span style="color:${healthColor}">${Math.round(health)}</span>`)}
-      ${sr('Age', `${Math.round(s.age)} / ${Math.round(d.lifespan)}${d.inTwilight ? ` <span style="color:var(--gold)">(twilight)</span>` : ''}`)}
+      ${sr('Age', Math.floor(s.age))}
       ${sr('Clan Year', Math.floor(s.gameYear))}
       ${sr('Breakthroughs', s.stats.breakthroughs)}
       ${sr('Failed BTs', s.stats.failed)}
@@ -483,7 +475,6 @@
     if (!f) return ''
     let html = ''
     if (f.spouse) html += sr('Spouse', `${escHtml(Persons.fullName(f.spouse))} · ${personStageLabel(f.spouse.stageIndex)}`)
-    else if (f.pastSpouses?.length) html += sr('Spouse', `<span style="color:var(--dim)">${escHtml(Persons.fullName(f.pastSpouses[f.pastSpouses.length - 1]))} (passed)</span>`)
     for (const c of f.children || []) {
       const age = Math.max(0, Math.floor(s.gameYear - c.bornYear))
       html += sr('Child', `${escHtml(Persons.fullName(c))} · ${age} · ${escHtml(c.root?.name || '')}`)
@@ -1938,26 +1929,6 @@
 
   document.getElementById('death-ok').addEventListener('click', () => {
     document.getElementById('death-overlay').classList.add('hidden')
-  })
-
-  // ── Twilight overlay (Phase 30, M2 task 2.3) ────────────────────────────────
-
-  document.getElementById('twilight-seclusion').addEventListener('click', () => {
-    const res = gameState.enterFinalSeclusion()
-    if (res.ok) flashMessage('Entering Final Seclusion.', 'special')
-    document.getElementById('twilight-overlay').classList.add('hidden')
-  })
-
-  document.getElementById('twilight-mantle').addEventListener('click', () => {
-    document.getElementById('twilight-overlay').classList.add('hidden')
-    showConfirm('Pass the Mantle?', 'This ends your life peacefully, now. Cannot be undone.', () => {
-      gameState.passTheMantle()
-    })
-  })
-
-  document.getElementById('twilight-wait').addEventListener('click', () => {
-    gameState.dismissTwilight()
-    document.getElementById('twilight-overlay').classList.add('hidden')
   })
 
   // ── Proposal overlay (Phase 16-lite, M2 task 2.5) ───────────────────────────

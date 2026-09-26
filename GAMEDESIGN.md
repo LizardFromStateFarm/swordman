@@ -15,8 +15,10 @@ Art style: Colored ASCII art on a dark transparent canvas. Wuxia aesthetic.
 
 This is a single-player game made for the love of the game, not a monetized live-service idle game.
 
-1. **A mortal life is a run.** One character's mortal life should take roughly **10–20 hours of open play**
-   (casual profile) before it ends: by old age, a failed tribulation, a failed Ascension, or a successful one.
+1. **A mortal life is a run.** One character's mortal life should take roughly **20–40 hours of open play**
+   (casual profile) before it ends: by a failed tribulation, a failed Ascension, a successful one, a violent
+   death, or the player choosing to Pass the Mantle. **Age never ends a life** (user decision 2026-09-26): the
+   player shouldn't have to worry about it — age is just a stat.
    Nobody should spend 100+ hours on one mortal character. Long play belongs to the **Immortal era**, where
    progression changes.
 2. **Death is part of the fun, not a fail state.** Dying hands the game to the next generation. A save slot is
@@ -29,7 +31,7 @@ This is a single-player game made for the love of the game, not a monetized live
    needs a decision while you're away uses a **standing order** you set in advance. Notifications are opt-in
    conveniences.
 5. **Two clocks.** Idle jobs (expeditions, missions, crafting, study) use wall-clock timers and finish while
-   the game is closed. **Age, lifespan and world history use game time**, which passes **only while the game
+   the game is closed. **Age and world history use game time**, which passes **only while the game
    is open** (see Phase 30 in PLAN.md). Nothing is tied to the real calendar or the time of day. Those can
    only appear as cosmetic flavor, never as bonuses.
 6. **No store logic.** There are no premium or "hard" currencies, no leaderboards and no online requirement.
@@ -114,10 +116,15 @@ offline Qi rate, not aging offline.
 
 | Measure (casual profile) | Target | Actual (sim, 2026-09-26, task 2.4) |
 |---|---|---|
-| One mortal life (birth → end) | 10–20h of open play | ✅ median 16.8h (active 12.6h — faster, ≥5h floor) |
+| One mortal life (birth → end) | 20–40h of open play (was 10–20h; widened 2026-09-26 when old age was removed) | ✅ median 29.5h (active 9.9h — faster, ≥5h floor) |
 | Generations before the first successful Ascension | ~3–5 (≈ 40–80h total) | not yet measurable — needs ancestral catch-up (tasks 2.5–2.8); every death is still a fresh soul |
 | Early realms in a later generation | noticeably faster than in generation 1 (ancestral catch-up) | not built yet (task 2.7's `CATCHUP_QPS_MULT`) |
 | Immortal era | open-ended; long play is fine here | unchanged (M7) |
+
+> **2026-09-26: old-age death was removed** (age is a stat only, no lifespan/twilight/Final Seclusion). With it
+> gone, casual lives only end at the Ascension Trial, so the casual median life rose from 16.8h to ~29.5h — see
+> life-loop.md §15. **The user accepted this** (2026-09-26): the target band is now 20–40h and the Spirit Severing
+> pacing band 60–300m; no stage retune.
 
 **Task 2.4 (pacing compression) is done.** Foundation Building–Spirit Severing `qiCap`s were retuned (see
 `docs/systems/life-loop.md` §13 for the full before/after) so a casual mortal life now reaches Spirit Severing

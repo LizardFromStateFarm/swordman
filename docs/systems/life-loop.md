@@ -1,5 +1,5 @@
 # Life Loop — Reference & Build Spec
-_Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ built) · renderer/engine/persons.js (✅ built) · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-26 (task 2.5)_
+_Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ built) · renderer/engine/persons.js (✅ built) · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-26 (age made harmless)_
 
 > **Status: build spec, written overnight (task 2.1). Tasks 2.2 (shared generators + minimal person record),
 > 2.3 (game clock + lifespan), 2.4 (pacing compression) and 2.5 (marriage & children lite) are now BUILT — see
@@ -8,16 +8,22 @@ _Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ 
 > overnight* (see §9). Once M2 ships, cut this doc down to a normal <120-line reference (index.md rule).
 > Until then it is deliberately longer because it is the spec for tasks 2.5–2.8.
 
+> **⚠ 2026-09-26, user decision — AGE NEVER KILLS (see §15).** Everything in this spec about **lifespan**
+> (`LIFESPAN_BY_REALM`, `derived.lifespan/inTwilight/ageFrac`, old-age death), **twilight** (card, banter trigger),
+> **Final Seclusion**, **spouse old-age death + mourning**, the **`longevity_blood`** legacy, `LIFESPAN_EXT_CAP_FRAC`,
+> the `full_life` / `seclusion_bt` firsts, the bot's `twilight()` and invariant `age_over_lifespan` is **superseded
+> and removed from code**. Age remains a stat on the game clock. Where older sections below disagree, §15 wins.
+
 ## 1. Overview
 
-A save slot is a **clan**. A character's mortal life is one **run** of ~10–20h of open play (casual). Age runs on a
+A save slot is a **clan**. A character's mortal life is one **run** of ~20–40h of open play (casual; was 10–20h before old age was removed, §15). Age runs on a
 **game clock** that only moves while the game is open. When a life ends, however it ends, the game goes through
 one flow: **ending scene → Ancestral Hall (Merit, legacies, tree) → heir selection → new life.**
 The clan keeps Bloodline Quality, Merit, legacies, the family tree and its best realm. Realms below the clan's best
 cultivate much faster (**ancestral catch-up**). A successful Ascension ends the life as an **Ascended Ancestor**
 (which removes the post-Ascension dead zone), and play continues with the heir.
 
-Pillars this must respect (GAMEDESIGN.md): life = 10–20h run · death is part of the fun · meta progression is mostly
+Pillars this must respect (GAMEDESIGN.md): life = 20–40h run · death is part of the fun · meta progression is mostly
 unlocks · **never punish absence** (age never passes offline, no expiring windows) · two clocks · no store logic.
 
 Stage index reference (`stages.js`, 23 rows): `0` Mortal · `1–9` Qi Condensation · `10–12` Foundation Building ·
@@ -181,8 +187,8 @@ Top comment: `// Phase 31 Merit sources, clan firsts, legacies, catch-up, heir c
 | `first_beast` | `tameEncounteredBeast` ok | 10 |
 | `war_won` | any own/member war won | 15 |
 | `married` / `first_child` | `acceptSuitor` / first child born | 10 / 5 |
-| `full_life` | death by `old_age` | 10 |
-| `seclusion_bt` | breakthrough during Final Seclusion | 15 |
+| ~~`full_life`~~ **CUT (§15)** | death by `old_age` | 10 |
+| ~~`seclusion_bt`~~ **CUT (§15)** | breakthrough during Final Seclusion | 15 |
 
 Typical gen-1 casual life ≈ 36 (stage) + ~225 (firsts) + ~20 (deeds) ≈ **280 Merit**; later lives ≈ 60–90.
 
@@ -194,7 +200,7 @@ Typical gen-1 casual life ≈ 36 (stage) + ~225 (firsts) + ~20 (deeds) ≈ **280
 | `family_manual` 家传功法 | Heritage | 30→3 · 60→7 · 120→99 | pick 1 technique from `clan.techniquesEver` with `minStage ≤ value`; heir learns it **free** when eligible (P) |
 | `beast_lineage` 灵兽血脉 | Heritage | 60→1 (requires `first_beast`) | offspring of the highest-level beast: same `typeId`/traits, level 1 |
 | `sect_continuity` 宗门传承 | Knowledge | 150→1 (requires `founded_sect`) | founded sect carries to the heir as its leader (full version M5 5.4) |
-| `longevity_blood` 长生血 | Blood | 25→0.05 · 50→0.10 · 100→0.15 | +lifespan % (counts toward `LIFESPAN_EXT_CAP_FRAC`) |
+| ~~`longevity_blood` 长生血~~ **CUT (§15)** | Blood | 25→0.05 · 50→0.10 · 100→0.15 | +lifespan % (counts toward `LIFESPAN_EXT_CAP_FRAC`) |
 | `refined_meridians` 洗髓 | Blood | 30→0.03 · 70→0.06 · 150→0.09 | +Qi/s % (deliberately small) |
 
 Deferred from PLAN 31D (P): Clan Estate (needs a new idle job), Clan Recipe Book (no recipe-knowledge system
@@ -761,3 +767,36 @@ partner term checked directly with a scripted scenario (growth = 1 + 8(s/22)² +
 
 **Pacing note for 2.6/2.8:** casual marries ~5–20 game years after FB (~6h open) and has 4 adult children well before
 death, so the `child` heir path will dominate; cousin/new soul will mostly matter for afk and early deaths.
+
+## 15. Age made harmless (2026-09-26, user decision)
+
+> "The user shouldn't have to worry about age. Have an age stat but age shouldn't kill anyone."
+
+**Removed:** `LIFESPAN_BY_REALM`, `TWILIGHT_FRAC`, `FINAL_SECLUSION_*`, `LIFESPAN_EXT_CAP_FRAC`, `MOURNING_YEARS`
+(lifespan.js; file name kept); `_baseLifespan()`, `derived.lifespan/inTwilight/ageFrac`, old-age `_die('old_age')` and
+the twilight log/emit in `tick()`, `enterFinalSeclusion()`/`dismissTwilight()`, the `final_seclusion` rejections in
+`startExpedition`/`startSectMission`/`answerWarCall`, the Final Seclusion Qi/BT boost; spouse old-age death,
+`family.pastSpouses`/`mourningUntil` (a spouse is for life now, so there's no remarriage), the suitor-age cap; the
+HUD age bar (now a plain "歲 Age 47" readout) and `#twilight-overlay`; the `twilight` banter trigger + its 58 lines;
+the sim's `twilight()` bot step, `age_over_lifespan` invariant and twilight report column; `lastReincarnation.lifespan`.
+
+**Kept:** `age`/`gameYear` on the game clock (only `tick()` advances them; still drives proposals and children),
+Pass the Mantle (Stats button, any time — the player's way to move to the next generation), `DEATH_CAUSE_TEXT.old_age`
+(harmless, for old summaries). Migration: `_ensurePhase30Fields()` / `_ensurePhase16Fields()` delete the leftover
+`finalSeclusion`/`twilightNoticed`/`_twilightLogged`/`pastSpouses`/`mourningUntil` keys; migrated age is no longer capped.
+New sim invariant `age_below_awakening`.
+
+**Pacing impact** (full `npm run sim`, 3 seeds, 200h, before = 2.5 commit, after = this change): a life now ends only
+at the Ascension Trial (or a violent death / Pass the Mantle — the bot never passes the mantle now).
+| Profile | Median life before → after | Deaths before → after |
+|---|---|---|
+| casual | 16.8h → **29.5h** (outside the 10–20h band — flagged) | old_age 19, passed_mantle 13 → ascension_failed 9 |
+| active | 10.2h → 9.9h | ascension_failed 40, passed_mantle 9 → ascension_failed 14 |
+| afk | 2.8h → 2.8h | unchanged |
+Casual's Spirit Severing fill also rose to 4.2h (target 1–2h) — Final Seclusion's ×1.5 Qi/s used to carry casual through
+SS. 0 errors / 0 violations. **User accepted ~30h casual lives** (2026-09-26): `LIFE_TARGETS_H.casual.gen1` → [20, 40],
+Spirit Severing `PACING_TARGETS_MIN` → [60, 300], GAMEDESIGN pillar 1 → 20–40h. No `stages.js` retune.
+
+**Knock-on for tasks 2.6–2.8:** `_endLife` causes lose `old_age`; the Twilight step in §5.1/§5.2 is gone; 2.7's legacy list
+is 6 (no `longevity_blood`) and firsts lose `full_life`/`seclusion_bt`; §7 bot has no `twilight()`; invariant 2 is gone.
+Children still reach `ADULT_AGE` on the clock, so the child heir path is unaffected.

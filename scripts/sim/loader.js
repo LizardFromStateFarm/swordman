@@ -83,8 +83,7 @@ function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } 
       BANTER_RECENT_MAX, BANTER_LOG_MAX,
       WAR_ORDER_ANSWER_OPTIONS, WAR_ORDER_LEND_BEAST_OPTIONS, WAR_ORDER_REINFORCE_OPTIONS, WAR_ORDER_ALLY_OPTIONS,
       AUTOMATION_UNLOCKS, AUTO_BREAKTHROUGH_THRESHOLD_MIN, AUTO_BREAKTHROUGH_THRESHOLD_MAX,
-      GAME_YEARS_PER_OPEN_HOUR, AWAKENING_AGE, LIFESPAN_BY_REALM, TWILIGHT_FRAC,
-      FINAL_SECLUSION_QPS_MULT, FINAL_SECLUSION_BT_BONUS, PROPOSAL_MIN_STAGE, CHILD_CAP, ADULT_AGE })`),
+      GAME_YEARS_PER_OPEN_HOUR, AWAKENING_AGE, PROPOSAL_MIN_STAGE, CHILD_CAP, ADULT_AGE })`),
     // One frame of the real game loop (renderer/game.js), minus rendering.
     // onStones(source, delta) — optional Spirit Stone ledger hook (who produced/consumed stones this frame).
     step(dt, onStones) {

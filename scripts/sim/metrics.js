@@ -38,7 +38,7 @@ class Recorder {
     this._lastSlow = -Infinity
     this._lastDeathTs = null         // Phase 23A/B: dedupe s.lastReincarnation across ticks
     this.deathsByCause = {}
-    this.lifeLengths = []            // Phase 30 (M2 task 2.3): [{cause, openHours, ageAtDeath, lifespan}]
+    this.lifeLengths = []            // Phase 30 (M2 task 2.3): [{cause, openHours, ageAtDeath, married, children, ...}]
   }
 
   // ── Hooks from the bot ───────────────────────────────────────────────────
@@ -88,7 +88,7 @@ class Recorder {
       this._lastDeathTs = s.lastReincarnation.ts
       const lr = s.lastReincarnation
       this.deathsByCause[lr.cause] = (this.deathsByCause[lr.cause] || 0) + 1
-      if (lr.openHours != null) this.lifeLengths.push({ cause: lr.cause, openHours: lr.openHours, ageAtDeath: lr.ageAtDeath, lifespan: lr.lifespan,
+      if (lr.openHours != null) this.lifeLengths.push({ cause: lr.cause, openHours: lr.openHours, ageAtDeath: lr.ageAtDeath,
         // Phase 16-lite (M2 task 2.5): family per life
         married: !!lr.married, children: lr.children || 0, adultChildren: lr.adultChildren || 0, spouseMaxStage: lr.spouseMaxStage || 0 })
       this.milestone('first_death')
@@ -159,10 +159,8 @@ class Recorder {
     if (!(s.health >= 0 && s.health <= 100)) this.violate('health_out_of_range', s.health)
     if (!(s.bloodlineQuality >= 0 && s.bloodlineQuality <= this.D.BLOODLINE_CAP)) this.violate('bloodline_out_of_range', s.bloodlineQuality)
     if (!(s.generation >= 1)) this.violate('generation_invalid', s.generation)
-    // Phase 30 (M2 task 2.3): age never exceeds lifespan in live play (old-age death fires the same
-    // tick age crosses it, before this invariant sees it again) — no `succession`-pending exemption yet
-    // (task 2.6), since that state doesn't exist.
-    if (!(s.age <= (d.lifespan ?? Infinity) + 1e-6)) this.violate('age_over_lifespan', `${s.age} > ${d.lifespan}`)
+    // Phase 30: age is a stat only (no lifespan since 2026-09-26) — it just never runs below the awakening age.
+    if (!(s.age >= this.D.AWAKENING_AGE)) this.violate('age_below_awakening', s.age)
     // Phase 16-lite (M2 task 2.5), life-loop.md §7 invariant 5.
     const fam = s.family
     if (fam) {

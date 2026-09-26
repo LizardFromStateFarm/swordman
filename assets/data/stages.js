@@ -2,8 +2,8 @@
 // stageIndex in GameState maps to index in this array.
 // Foundation Building+ qiCaps retuned 2026-09-26 (M2 task 2.4, life-loop.md §6) so a casual mortal LIFE
 // (not just cumulative pacing) lands in the 10–20 open-hour band and reaches Spirit Severing / an
-// Ascension attempt within that life, given the Phase 30 game clock (lifespan.js) now ends a life by
-// old age well before the previous, looser caps let a casual player out of Core Formation. Casual's
+// Ascension attempt within that life (at the time, the Phase 30 clock ended a life by old age — removed
+// 2026-09-26, so lives now run until the Ascension Trial; see life-loop.md §15). Casual's
 // unboosted idle time to fill each cap now lands in life-loop.md §6.2's tighter bands: FB 15–30m,
 // CF 30–60m, NS 45–90m, SS 60–120m (see scripts/sim/profiles.js PACING_TARGETS_MIN). QC/Mortal caps
 // unchanged (§6.1: casual's 30-min check-in cadence already floors QC at ~4.5h regardless of cap).

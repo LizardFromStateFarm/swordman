@@ -43,7 +43,7 @@ invariant violations, 2 = harness crashed / bad `--set`.
   exercises the "never punish absence" path instead of a bot that manually clicks every button regardless of
   profile. `active` still clicks manually on top of its own orders (proving the no-double-charge guarantee).
 - **Family (Phase 16-lite, M2 task 2.5):** every profile runs `Bot.family()` second in the `checkIn` chain (after
-  `twilight()`): a pending proposal → `acceptSuitor()` of the highest powerScore (stage×100 + root mult×10). Never declines.
+  nothing — `twilight()` was removed with old age on 2026-09-26): a pending proposal → `acceptSuitor()` of the highest powerScore (stage×100 + root mult×10). Never declines.
 
 ## Report sections / metrics
 - **Summary** per horizon×profile: final stage, breakthrough success, worst fail streak, longest dead zone,
@@ -57,10 +57,10 @@ invariant violations, 2 = harness crashed / bad `--set`.
   via `--set`, 2–3 iterations to converge (multipliers shift as later stages arrive at different times).
   **Retuned 2026-09-26 (M2 task 2.4, life-loop.md §6):** bands tightened for FB/CF/NS/SS (FB 15–30m,
   CF 30–60m, NS 45–90m, SS 60–120m — was 20–45/60–180/180–480/480–1200) now that the Phase 30 game clock
-  ends a casual life by old age, so a casual mortal life needs to clear these realms much faster to stay
-  in the 10–20h life-length band instead of dying of old age around Core Formation. See life-loop.md §13.
+  ended a casual life by old age (removed 2026-09-26 — lives now end at the Ascension Trial, so casual's median
+  life rose to ~29.5h; see life-loop.md §15), so a casual mortal life needed to clear these realms much faster.
 - **Life Loop pacing (Phase 30/M2 task 2.4)**: median per-life open-hours per profile (from the "Life Loop"
-  section) vs `LIFE_TARGETS_H` in profiles.js (`casual.gen1 [10,20]`, `active.gen1 [5,15]`) — flags if a
+  section) vs `LIFE_TARGETS_H` in profiles.js (`casual.gen1 [20,40]` — widened from [10,20] when old age was removed, 2026-09-26 — `active.gen1 [5,15]`) — flags if a
   profile's median life falls outside its band. `later` (post-catch-up generations), `FIRST_ASCENSION_H`
   and `GENERATIONS_TO_ASCEND` are defined but **not yet checked** — they need tasks 2.5–2.8's ancestral
   catch-up/generation continuity to mean anything (every death today is a fresh soul, no carry-over).
@@ -108,7 +108,7 @@ inventory counts not positive integers · integrity ∉ [0,100] · karma ∉ [0,
 stageIndex out of range · beasts > maxBeasts · disciples > cap · invalid war phase · sect rank out of range ·
 joined AND founded · war side ≠ joined/founded state · war-committed mission slot over cap or not released after
 the war · beast stuck at war · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi ·
-health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap` · `item_category_invalid` (Phase 21: every `ITEMS[id].category` must be one of `currency|mat|pill|equip|rare|key`, checked once per run) · `family_children_over_cap` / `family_spouse_dead` / `family_proposal_invalid` (M2 2.5, life-loop.md §7 invariant 5: children ≤ `CHILD_CAP`, spouse null or alive, proposal only when unmarried and past `PROPOSAL_MIN_STAGE`). The sim also runs `BanterSystem` (source `banter`, 0 stones).
+health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap` · `item_category_invalid` (Phase 21: every `ITEMS[id].category` must be one of `currency|mat|pill|equip|rare|key`, checked once per run) · `family_children_over_cap` / `family_spouse_dead` / `family_proposal_invalid` (M2 2.5, life-loop.md §7 invariant 5: children ≤ `CHILD_CAP`, spouse null or alive, proposal only when unmarried and past `PROPOSAL_MIN_STAGE`) · `age_below_awakening` (replaced `age_over_lifespan` when lifespan was removed, 2026-09-26) · `age_offline` (age/gameYear unchanged by offline catch-up). The sim also runs `BanterSystem` (source `banter`, 0 stones).
 
 ## Extending
 - **New system/phase:** add bot behaviour in `bot.js` (new method + add to the `checkIn` chain), new

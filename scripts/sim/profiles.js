@@ -34,8 +34,8 @@ const THRESHOLDS = {
 // Retuned 2026-09-26 (M2 task 2.4, pacing compression) — Mortal/Qi Condensation are unchanged (§6.1:
 // casual's 30-min check-in cadence already floors QC at ~4.5h regardless of cap). Foundation Building
 // through Spirit Severing were tightened so a casual mortal LIFE (not just cumulative pacing) lands in
-// the 10–20 open-hour band and reaches Spirit Severing / an Ascension attempt within that life, now that
-// the Phase 30 game clock (lifespan.js) ends a life by old age. Old bands (pre-task-2.4): FB 20–45,
+// the 10–20 open-hour band and reaches Spirit Severing / an Ascension attempt within that life (old-age
+// death existed then; removed 2026-09-26, see life-loop.md §15). Old bands (pre-task-2.4): FB 20–45,
 // CF 60–180, NS 180–480, SS 480–1200.
 const PACING_TARGETS_MIN = {
   'Mortal':              [1, 4],
@@ -43,7 +43,7 @@ const PACING_TARGETS_MIN = {
   'Foundation Building': [15, 30],
   'Core Formation':      [30, 60],
   'Nascent Soul':        [45, 90],
-  'Spirit Severing':     [60, 120],
+  'Spirit Severing':     [60, 300],   // widened 2026-09-26: Final Seclusion no longer boosts SS (life-loop.md §15)
 }
 const PACING_PROFILE = 'casual'   // flags are raised for this profile only (the representative idle player)
 
@@ -59,7 +59,7 @@ const PACING_PROFILE = 'casual'   // flags are raised for this profile only (the
 // no "later generation" or "generations to first Ascension" signal to check against yet. Kept here as
 // the constants task 2.8's tuning pass expects to find, per life-loop.md §8's build-order table.
 const LIFE_TARGETS_H = {
-  casual: { gen1: [10, 20], later: [8, 16] },
+  casual: { gen1: [20, 40], later: [8, 16] },   // gen1 widened 2026-09-26: no old age → ~30h casual lives accepted
   active:  { gen1: [5, 15] },
 }
 const FIRST_ASCENSION_H = { casual: [40, 80] }     // not yet checked — needs task 2.6-2.8 generation continuity

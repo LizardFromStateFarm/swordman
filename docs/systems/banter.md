@@ -40,7 +40,8 @@ Writers: see `banter-writing-guide.md` (voice, tokens, triggers, the 14 personal
 ## Data Shape
 - `PERSONALITIES = [{ id, name, nameCN, blurb }]`, 14 entries.
 - `BANTER_LINES = { generic: {trigger: [..]}, <personalityId>: {trigger: [..]} }`, with
-  `BANTER_TRIGGERS = [..18 ids..]` (`twilight` added in M2 2.3; `married`/`child_born` in M2 2.5) and `BANTER_MIN_LINES = { idle: 25, other: 4, genericIdle: 20, genericOther: 2 }`.
+  `BANTER_TRIGGERS = [..17 ids..]` (`married`/`child_born` added in M2 2.5; `twilight` was added in 2.3 and removed with
+  old age on 2026-09-26) and `BANTER_MIN_LINES = { idle: 25, other: 4, genericIdle: 20, genericOther: 2 }`.
 
 ## Wiring
 - game.js creates `BanterSystem(gameState, () => overlayOpen())`, ticks it in the loop, and renders `#banter-bubble`

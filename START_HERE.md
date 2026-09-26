@@ -34,7 +34,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
-| Lifespan & Game Time (age passes only while open) | ◐ Phase 30 (M2) — game clock + lifespan + Final Seclusion/Pass the Mantle (task 2.3); pacing compression (task 2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
+| Game Time & Age (age passes only while open; **age never kills** since 2026-09-26) | ◐ Phase 30 (M2) — game clock + age stat + Pass the Mantle; lifespan/twilight/Final Seclusion removed; pacing (2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
 | Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — clan skeleton (task 2.2) built |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
@@ -63,6 +63,23 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 2
+Agent: User decision: "the user shouldn't have to worry about age. Have an age stat but age shouldn't kill
+  anyone." User picked: remove twilight AND Final Seclusion entirely; commit 2.5 first (done: 23886dc).
+  - Removed lifespan, old-age death (player + spouse), twilight card/banter trigger (58 lines), Final Seclusion,
+    mourning/pastSpouses, suitor-age cap, age bar (HUD now shows a plain "歲 Age N"). Pass the Mantle stays in
+    Stats. Old-save leftovers deleted on load. Sim: bot twilight() gone, age_over_lifespan → age_below_awakening,
+    twilight report column gone. Full list in life-loop.md §15 (+ a superseded-notice at the top of the spec).
+  - Docs: life-loop.md §15, GAMEDESIGN pillars 1+5, PLAN Phase 30 note, qa-sim, banter, index, CLAUDE.md tree,
+    stages.js/profiles.js comments.
+  - Verified: npm test, sim:quick, full npm run sim (0 errors / 0 violations), build:web, dist, CDP smoke test.
+  - **Pacing impact — accepted by the user:** casual median life 16.8h → 29.5h (lives now only end at the
+    Ascension Trial); casual Spirit Severing fill 4.2h. Targets updated instead of retuning stages:
+    LIFE_TARGETS_H.casual.gen1 [20,40], SS PACING_TARGETS_MIN [60,300], GAMEDESIGN pillar 1 → 20–40h.
+    Active 9.9h, afk 2.8h — basically unchanged.
+  Next: M2 task 2.6 (heir selection). §15 lists
+    what 2.6-2.8 no longer need (old_age cause, twilight step, longevity_blood, full_life/seclusion_bt firsts).
+
 Date: 2026-09-26 (day session, user present)
 Agent: M2 task 2.5 — Marriage & children lite (Phase 16-lite). Picked up from an overnight agent that ran out of
   usage mid-task: it had only edited 3 data files (BLOODLINE_G_PARTNER, married/child_born triggers, 116 banter
