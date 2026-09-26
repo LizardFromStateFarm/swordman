@@ -7,5 +7,5 @@ contextBridge.exposeInMainWorld('electron', {
   deleteSlot:        (i)       => ipcRenderer.invoke('delete-slot', i),
   isDev:             ()        => ipcRenderer.invoke('is-dev'),
   quit:              ()        => ipcRenderer.send('quit-app'),
-  toggleAlwaysOnTop: ()        => ipcRenderer.send('toggle-always-on-top'),
+  toggleAlwaysOnTop: ()        => ipcRenderer.invoke('toggle-always-on-top'),
 })

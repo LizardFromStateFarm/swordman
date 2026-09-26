@@ -31,7 +31,7 @@ function createWindow() {
     width:   W,
     height:  H,
     x:       cfg.x ?? sw - W - 20,
-    y:       cfg.y ?? Math.floor((sh - H) / 2),
+    y:       cfg.y ?? 20,
     frame:       false,
     transparent: true,
     alwaysOnTop: true,
@@ -45,6 +45,12 @@ function createWindow() {
       nodeIntegration:  false,
     },
   })
+
+  // 'screen-saver' is the highest always-on-top level Electron exposes — plain
+  // alwaysOnTop:true uses a lower level that Windows drops behind an exclusive-
+  // fullscreen game as soon as the game regains focus (e.g. after clicking the
+  // overlay). This level is what lets the window survive on top of a fullscreen game.
+  win.setAlwaysOnTop(true, 'screen-saver')
 
   win.loadFile('renderer/index.html')
   win.once('ready-to-show', () => win.show())
@@ -88,7 +94,10 @@ ipcMain.handle('is-dev', () => !app.isPackaged)
 
 ipcMain.on('quit-app', () => app.quit())
 
-ipcMain.on('toggle-always-on-top', () => {
-  if (!win) return
-  win.setAlwaysOnTop(!win.isAlwaysOnTop())
+ipcMain.handle('toggle-always-on-top', () => {
+  if (!win) return true
+  // Reapply 'screen-saver' whenever turning back on, or it reverts to the
+  // weaker default level that a fullscreen game can cover — see createWindow().
+  win.setAlwaysOnTop(!win.isAlwaysOnTop(), 'screen-saver')
+  return win.isAlwaysOnTop()
 })

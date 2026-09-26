@@ -37,8 +37,10 @@ if (!window.electron) {
     // Dev tools (charselect late-game presets) are Electron-dev only — never on iOS / plain browser.
     isDev: async () => false,
 
-    // No desktop window to manage on iOS — safe no-ops.
+    // No desktop window to manage on iOS — safe no-ops. toggleAlwaysOnTop resolves
+    // `true` (matches Electron's default pinned-on-boot state) since there's no
+    // real window to pin/unpin here, and the pin button reads this to show state.
     quit: () => {},
-    toggleAlwaysOnTop: () => {},
+    toggleAlwaysOnTop: async () => true,
   }
 }

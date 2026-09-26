@@ -48,7 +48,26 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
-Date: 2026-09-25 (session 6)
+Date: 2026-09-25 (session 7)
+Agent: Overlay fullscreen fix (user report): "pin" wasn't surviving over fullscreen games and clicking it could
+  strand the window behind one with no way back. Root cause: `alwaysOnTop: true` in main.js uses Electron's
+  default z-order level, which Windows drops behind an exclusive-fullscreen game as soon as the game regains
+  focus. Fixed both `createWindow()` and the `toggle-always-on-top` IPC handler to call
+  `win.setAlwaysOnTop(true, 'screen-saver')` — the highest level Electron exposes, same trick overlay apps like
+  OBS/RTSS use. Also changed default spawn position from vertically-centered to top-right (`y: 20`) per request.
+  Kept the pin toggle (user chose "keep toggle, but make it safe" over removing it). Files: main.js only.
+  Docs: docs/systems/ui-layout.md Gotchas. NOT a fix for true legacy DirectX exclusive-fullscreen games that
+  refuse ALL overlays at the OS level (rare now; most games use Windows Fullscreen Optimizations / borderless) —
+  that would need in-process hooking like Discord/Steam overlays, out of scope. Verified: npm start launches,
+  window still shows top-right, pin button still toggles. NOT verified against an actual fullscreen game by the
+  agent (no test game available in this environment) — user should confirm in their own fullscreen game.
+Follow-up (same session): pin button now shows state visually (gold glow via `.pinned` class + title text) so
+  it's obvious whether the window is pinned on top, since toggling it off is easy to do by accident. Changed
+  `toggle-always-on-top` from `ipcMain.on`/`send` to `ipcMain.handle`/`invoke` so it returns the new state;
+  `game.js` click handler awaits it and updates the button. Updated the iOS shim (`platform-storage.js`) to match
+  (no-op that resolves `true`) per CLAUDE.md rule 7. Files: main.js, preload.js, renderer/game.js,
+  renderer/index.html, renderer/styles.css, renderer/engine/platform-storage.js. Docs: ui-layout.md. Verified:
+  npm test, npm run build:web.
 Agent: Phase 5C Member Wars (1ef39a9) + dev late-game test characters (d0ead45) + answering a war call is now free.
 Dev presets (user request, after 5C): `npm start` → any EMPTY slot on charselect shows a purple preset picker + DEV
   button → writes a late-game save and starts it. Presets: Sect Elder (member war in 1 min), Sect Founder (own war in

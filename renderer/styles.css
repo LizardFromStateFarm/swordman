@@ -275,6 +275,12 @@ body {
   transition: color .1s, border-color .1s;
 }
 .tb-btn:hover { color: var(--gold); border-color: var(--gold); }
+.tb-btn.pinned {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: rgba(237,208,80,0.15);
+  text-shadow: 0 0 4px rgba(237,208,80,0.6);
+}
 
 /* ── Sprite area ────────────────────────────────────────────────────────── */
 

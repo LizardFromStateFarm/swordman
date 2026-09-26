@@ -1328,8 +1328,11 @@
     })
   })
 
-  document.getElementById('btn-pin').addEventListener('click', () => {
-    window.electron.toggleAlwaysOnTop()
+  document.getElementById('btn-pin').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-pin')
+    const pinned = await window.electron.toggleAlwaysOnTop()
+    btn.classList.toggle('pinned', pinned)
+    btn.title = pinned ? 'Pinned on top (click to unpin)' : 'Not pinned (click to pin on top)'
   })
 
   document.getElementById('btn-quit').addEventListener('click', () => {
