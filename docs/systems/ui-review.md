@@ -81,6 +81,15 @@ breakthrough; b: joined parts, visible motion).
 4. Anatomy cues: readable arms + hand seal, visible bun, sword resting across the knees.
 5. Background with brush feel: mist gradient, ink bleed, depth (not flat dot bands).
 6. Per-part layers + glow from (b): sword/gear/aura as placed glyph layers; customization slots.
+
+**User art notes on the hybrid (2026-09-26), binding for A3/A4:**
+- Remove the inward-spiralling Qi stream ("hurricane"); combined with the ring it is too much.
+- Keep (b)'s thin rotating mote circle and make it the signature effect: **several rings at different tilts**
+  (orbits around the figure).
+- Use (b)'s straight-rising motes for ambient Qi.
+- Effects must be **sleek and clean, never dirty**: deliberate lines and glow, no noisy dot clutter.
+- Clean up the dark spots on the figure (dark fold lines, gaps where shapes meet).
+- Overall: "much, much stronger" than the current art.
 Each variant's weakness is the other's strength: (b) lacks mass/cloth, which (c) produces; (c) lacks line work,
 accents and per-part motion, which (b) produces.
 
