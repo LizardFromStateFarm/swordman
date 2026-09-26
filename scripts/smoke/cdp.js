@@ -57,9 +57,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
       await sleep(150)
     }
     const shots = []
-    // clip (optional) = { x, y, width, height } in CSS px — crop to one element, e.g. for a Visual Review Gate close-up
+    // clip (optional) = { x, y, width, height, scale? } in CSS px — crop to one element (scale 2–3 magnifies, e.g. sprites for a Visual Review Gate close-up)
     const shot = async (name, clip) => {
-      const r = await send('Page.captureScreenshot', clip ? { format: 'png', clip: { ...clip, scale: 1 } } : { format: 'png' })
+      const r = await send('Page.captureScreenshot', clip ? { format: 'png', clip: { scale: 1, ...clip } } : { format: 'png' })
       const f = path.join(outDir, `${name}.png`); fs.writeFileSync(f, Buffer.from(r.result.data, 'base64')); shots.push(f)
     }
     const assert = (c, m) => { if (!c) { failed++; console.log('FAIL', m) } else console.log('ok  ', m) }

@@ -6,9 +6,48 @@ The scoreboard for the visual review gate (CLAUDE.md → "VISUAL REVIEW GATE"). 
 scored 0–10 by a fresh reviewer agent from real screenshots: 0 = garbage, 6 = decent, 8 = polished + atmospheric
 (the pass line), 10 = "can't believe this is CSS and ASCII art". Record every review here, newest first per item.
 
-## Baseline of what already exists
-Not reviewed yet. Roadmap task **1.8c** reviews every existing screen, mode and sprite and fills the table below.
-Low scorers become fix items for 1.8b.
+## Baseline of what already exists (1.8c, 2026-09-26)
+One fresh reviewer per group, one cycle, no fixing. Screenshots: `scripts/smoke/scenarios/visual-baseline.js` →
+`scripts/smoke/out/vb-*.png` (group 4 = banner, `banner-menus.js`). Rerun both after 1.8b / A4 for before/after.
+
+| # | Group | Score | Weakest criteria | Headline problems |
+|---|---|---|---|---|
+| 1 | Character select, first-launch tip, ⚙ Settings, layout picker | **5.7** | Aesthetic 5 (emoji cap), Consistency 5 | Emoji in titlebar (📌 💤); plain slot cards, "— Empty —" copy, ~190px dead space; 8–9px meta text; toasts land on Settings/picker; DEV controls off-palette |
+| 2 | Overlay (300×700): HUD + all 7 tabs | **4.7** | Consistency 4, Layout 4 | Emoji everywhere (🧘 ⚡ 💰 💎 📌 ⚖ ⚗); Stats rows collide (Own Sect / Spouse / Child); automation checkbox + ON/OFF duplicated and shown in 2 tabs; 5 button styles; toasts cover tab bottoms; titlebar name wraps 3 lines; Log repeats "Year 1:". Per tab: Tech 5 · Stats 4 · Explore 5 · Craft 5 · Pack 5 · Sect 5 · Log 5 |
+| 3 | Expanded + Desktop | **4.5** | Layout 3, Consistency 4 | Left column ~55% empty; 300px content just stretched (label↔value 650px apart on Desktop); no grids/cards; automation contradiction (green check + "OFF") |
+| 4 | Banner strip + quick menus | **6.2** | Layout, Aesthetic | Scored in 1.7b (3 cycles, user accepted) — strip itself flat |
+| 5 | Story popups (proposal, marriage event, heir, tournament, confirm, Hall, Ascension, death → interlude) | **5.3** | Aesthetic 5, Hierarchy 5, Consistency 5, Layout 5 | Great writing, generic modals: death/ascension/marriage look like "Decline All"; ~9px body, tiny titles; title/border colors drift (jade/red/gold); person strings wrap; no hover/selected states; disabled "Fight!" gives no reason. Per popup: proposal 6 · marriage 5 · heir 5 · tournament 5 · confirm 6 · Hall 5 · Ascension 6 · death 5 |
+| 6 | Cultivator sprites (5 stage states; breakthrough from source) | **4.0** | Animation 3, Detail 3 | Reads as a robot / lunar lander (box torso, tent legs, kaomoji face, no arms/robes/hair); rows jump sideways between frames (per-row centering); power = more stamped symbols, not grander silhouettes; red ⊕ clashes; ⚡ draws as orange color emoji. Per state: idle 3 · meditating 4 · deep 4 · levitating 4 · transcending 4 · breakthrough 3 (source). (An earlier 3.7 pass was discarded: capture bug) |
+| 7 | Beast sprites (encounter cards) | **3.1** | Animation 2, every criterion < 6 | None reads as its animal (fox/hound share a template, eagle = "goblet with lightning"); only frame 0 ever rendered (9px HTML); ⚡ emoji breaks eagle alignment; cards empty on the right, identical; the file's "Review score 8.2–8.6" comments are inflated |
+
+**Average across groups ≈ 4.8 / 10. Nothing passes.** The strongest assets: the writing (popups, chronicle), the
+dark parchment-gold palette, the HUD, the particles/glow effects.
+
+### Bugs found by the baseline (fix in 1.8b unless noted)
+- **Breakthrough sprite never shows**: game.js sets `renderer.setState('breakthrough')` on click, but the same frame's
+  state notify → `updateSprite()` immediately sets the stage sprite back. (Art track A3/A4, or a small fix in 1.8b.)
+- **Banter bubble covers popups**: seen over the Ascension card and over "This Life Ends" on the death card (its
+  `isBlocked` check prevents new lines, but a bubble already showing stays on top).
+- **Toasts cover content**: bottom ~50px of every tab, Settings rows and the layout picker.
+- **Stats row collisions** (Own Sect wraps; Spouse value overprints its label; "Child[DEV] …" has no gap).
+- **Automation rows** show a checkbox AND ON/OFF (contradictory states possible), and the block renders in 2 tabs.
+- **Ancestral Hall** doesn't fully cover the window (titlebar + sprite top show through above it).
+- Beast sprites: only `frames[0]` is ever rendered.
+
+### Emoji inventory (for A1)
+`node scripts/check-no-emoji.js` → **110 emoji on 74 lines**: ⚡×38 ☯×25 ⚔×10 ⚙×8 ⛰×4 ⚒×4 📜×4 ♥×3 💎×2 💤×2 🧘×2
+🪨 ⚗ ✅ 🔒 ⏸ 💰 📌 ⚖ ×1. By file: cultivator-sprites.js 30 lines · game.js 17 · index.html 12 · beast-sprites.js 7 ·
+banner-menus.js 2 (comments) · game-state.js 2 · styles.css / settings.js / layout.js / data settings.js 1 each.
+Reviewers saw on screen: 🧘 ⚡ 💰 💎 📌 💤 ⚖ ⚗ (and ☯ ⚔ at risk of emoji fallback).
+
+### Art direction input (for A2)
+Both art reviewers put the ceiling on the **grid**, not the colors: at 11×8 cells a whole limb is one character, box
+drawing can only make rectangles (the body is always a box, legs are always tents), and frame-swap animation moves
+whole cells only. Particles + glow already carry most of the atmosphere. Both sprite reviews recommend
+**(b) the layered glyph compositor**; the second: "(a) has already hit its ceiling in this review (~4)", and (c) "may
+look prettier but trades away the ASCII identity and costs more" (free placement/scaling fixes silhouette and posture; layers animate
+robe/aura/figure independently with sub-cell motion); (c) shape-to-glyph + ink-wash is "the most xianxia" but a
+bigger build.
 
 ## Scores
 

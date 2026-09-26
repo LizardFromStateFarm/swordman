@@ -84,6 +84,9 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   only drifts/random events, children born on a timer (None/Some/Many), child bond only via random events/neglect,
   affairs discovered by dice and ending on their own, tournament/duel fights auto-rolled. Rule: CLAUDE.md Depth
   Pass #6 (player choices are never simulated).
+- **1.8c baseline bugs** (ui-review.md → "Bugs found by the baseline"): breakthrough sprite never displays (overwritten by
+  the same-frame notify); banter bubble covers death/ascension cards; toasts cover tab bottoms + Settings; Stats rows
+  collide; automation checkbox + ON/OFF duplicated in 2 tabs; Hall doesn't cover the titlebar; beasts show frame 0 only.
 - **Full itemized list: `docs/systems/ui-layout.md` → "UX Audit"** (1.8a, 2026-09-26): 7 structural findings + a
   per-system gap table. Headline items: tab body is only ~105px of the 600px window; own-sect Sect tab = 15 screens
   of scroll; Stats is a junk drawer holding every family/clan decision; automation panel duplicated at the top of
@@ -94,6 +97,19 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 16
+Agent: **1.8c visual baseline + art audit** (user approved). No game code changed.
+  - New `scripts/smoke/scenarios/visual-baseline.js` screenshots every screen/mode/popup/art piece (vb-1…7), and
+    `scripts/check-no-emoji.js` inventories emoji (110 on 74 lines; `--strict` becomes the A1 lint). cdp.js
+    `shot(name, clip)` now accepts `clip.scale` for magnified close-ups.
+  - 6 fresh reviewers (+ a re-run for sprites after a capture bug): charselect/settings **5.7** · Overlay tabs **4.7** ·
+    Expanded/Desktop **4.5** · banner **6.2** (1.7b) · popups **5.3** · cultivator sprites **4.0** · beasts **3.1**.
+    Average ≈ 4.8; nothing passes. Full table, bugs, emoji inventory and art input: docs/systems/ui-review.md.
+  - Both art reviews: the grid is the ceiling (≈4 max); recommend **(b) layered glyph compositor** for A2.
+  - Real bugs found (logged in UX Debt): breakthrough sprite never shows; banter bubble over death/ascension cards;
+    toasts over content; Stats row collisions; duplicated automation controls; Hall not covering the titlebar.
+  Next: **A1 emoji purge + lint**, then **A2 art bake-off** (user picks), then 1.8b.
+
 Date: 2026-09-26 (day session, user present) — part 15
 Agent: two user requests.
   1) **New rule: Visual Review Gate** (CLAUDE.md section + .agents/rules/ui-review.md + docs/systems/ui-review.md
