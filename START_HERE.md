@@ -34,7 +34,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
-| NPC World Simulation (personalities, sects) | ⬜ Phase 15 |
+| NPC World Simulation (personalities, sects) | ⬜ Phase 15 → superseded by Phase 28 (M3) |
 | Marriage & Family system | ⬜ Phase 16 |
 | Secret Realm Dungeons (ASCII map grid) | ⬜ Phase 17 |
 | Lineage & Heir Inheritance | ⬜ Phase 18 |
@@ -43,12 +43,95 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Backpack & Inventory Tab (unified item/currency view) | ⬜ Phase 21 |
 | Active / Idle Mode Toggle + Mid-Late Automation | ⬜ Phase 22 |
 | Immortal Realms content + Secret Arts (post-Ascension endgame) | ⬜ Phase 23D–E |
+| Immortal Paths: Tyrant / Devourer / Celestial Deity / Heaven's Executioner | ⬜ Phase 24 (planned) |
+| Doctrine (道统) | ⬜ Phase 25 (planned) |
+| Immortal Island (仙岛) + ascension petitions | ⬜ Phase 26 (planned) |
+| Deep Sect Management (offices, Recruiter, manual recruiting) | ⬜ Phase 27 (planned) |
+| Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ⬜ Phase 28 (planned) |
+
+> **Build order lives in PLAN.md → "Development Roadmap" (milestones M1–M7).** The table above is by feature,
+> not by order.
+| Character Personality & Banter | ⬜ Phase 29 (planned) |
 
 ---
 
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-25 (session 10) — PLANNING ONLY, no code changed
+Agent: User asked to reorder PLAN.md so it reflects the real development order, plus new decisions/systems.
+  - PLAN.md restructured, and NO phase was renumbered: phase numbers are stable IDs cited by code/docs/git.
+    The new top of the file has:
+      - "How this plan is organized"
+      - a Phase Index (phase → status → milestone)
+      - a **Development Roadmap**: milestones M0 (built) → M1 QoL & banter → M2 character foundation →
+        M3 Living World → M4 Deep Sect Mgmt → M5 Family & Lineage → M6 Immortal Era → M7 polish. Each is a
+        table of session-sized tasks with Needs / Done-when.
+    The design sections below were moved into the same milestone order (text unchanged except the edits
+    listed below). Next free phase number: 30.
+  - **Changed the session-9 recommendation:** Phase 27 (sect mgmt) now comes AFTER 28 core (M3 → M4), since
+    disciples/recruiters are persons and building recruitment on anonymous 5A disciples would mean building
+    it twice. A new task 2.1 extracts the shared roll generators + one `powerScore()` before M3.
+  - User decisions recorded:
+      - Paths are not locked at first. A Point of No Return comes at Path Mastery 60 in one method (warning
+        at 45), and after that the same-side method stays usable as a secondary at 50% (24A).
+      - Enslaving/devouring your own ascended disciples is allowed (26F).
+      - The living world is a heavy+light sim mix built so names recur (28B).
+  - New design in Phase 28 (now "supersedes 15 and 11A"):
+      - 28B familiar-faces rules: familiarity counter, known-first casting ~75%, new-name throttle
+      - 28H starting cohort: ~40–60 NPCs start with you, including 3–5 "Heaven's Chosen" rivals (the 11A
+        rival is folded in here)
+      - 28H natural replacement: band population controller, births, awakening waves, wanderers, hidden
+        masters, role succession, no recycled names; ascended NPCs move to an Immortal population you meet
+        again
+      - 28I encounters on expeditions/missions/realms/wars, with a stance setting and choice cards
+      - 28J Heaven Ranking (strongest) + Rising Dragon Ranking (fastest-growing newcomers), both using one
+        shared powerScore()
+  - The open-questions section was rewritten: resolved items are marked ✅, and 6 questions are still open
+    (e.g. player lifespan, Rising Dragon age limit).
+  Follow-up (same session, user decisions):
+  - Rising Dragon Ranking limit is 30 real days, and a new soul restarts eligibility.
+  - New 3rd board "Your Class" (同届榜): your starting cohort, alive/fallen/ascended, never ages out, and the
+    default Rankings view. Past-life classes are archived.
+  - ≥ 40% of the Heavy-sim budget is reserved for your starting wave, and the cohort was raised from ~40–60 to
+    ~80–120 (28B/28H/28J, roadmap 3.8, open questions updated).
+  Next: start at roadmap M1 task 1.1 (Settings tab shell) → 1.2 (banter). Optional 1.7 (23D-lite) if the
+  post-Ascension dead zone needs fixing before M6.
+
+Date: 2026-09-25 (session 9) — PLANNING ONLY, no code changed
+Agent: User asked for the Immortal-era gameplay design to be added to PLAN.md. Wrote a new PLAN.md section
+  "Phases 24–29" (after Phase 23) and cross-linked the older phases:
+  - 24 Immortal Paths: after Ascension, Immortal stages fill with Immortal Essence (passive Qi only ~5–10%),
+    earned by a Path. Evil paths: Tyrant (enslave people as labor/soldiers/"essence cattle", Fear vs
+    Resentment, revolts, Infamy → crusades) and Devourer (absorb anyone; Impurity refine timer, Corruption,
+    heart-demon rampages). Good paths: Celestial Deity (believers give Faith + gifts, you bless specific NPCs,
+    and their breakthroughs/ascensions pay you back; Saints; prayers) and Heaven's Executioner (devour ONLY
+    evil beings, with a bounty board and Investigate to catch disguised demons / framed innocents). Falling
+    is fast, redemption is slow (Heart Tribulation).
+  - 25 Doctrine: tenet slots by realm, Virtue/Demon/Neutral tenets, regional spread, NPC sects adopt it,
+    acting against your tenets → schism → heretic sect.
+  - 26 Immortal Island: 5 tiers (6×6 → 18×18 plot grid), ~30 buildings in 8 groups (path-locked Faith vs
+    Dominion buildings), island wars, Lower Sect link, and 26F Ascension Petitions (your ascended disciples
+    and blessed followers ask to join: accept / decline / enslave-or-devour if demonic).
+  - 27 Deep Sect Management: 10 offices with personality fit, a Recruiter that follows your requirement
+    filters (root/alignment/personality/age/stage/region/cost), 6 manual recruit methods, 6 sect tiers that
+    set candidate quality, and a full disciple lifecycle. Idle-first: everything can run on policy.
+  - 28 Persistent Living World (SUPERSEDES Phase 15): full Person record (roots, personality axes,
+    morality alignment + disposition, memories, relations, lifespan), Near/Known/Background sim tiers
+    with "materialize on observation" so every NPC you meet is permanent, a Chronicle for the dead, a
+    per-slot world save file (needs a new window.electron method on BOTH platforms), and a perf budget.
+  - 29 Character Personality & Banter: 12 random personalities with sample lines, idle + contextual
+    speech bubbles, a banter log, a frequency setting, and alignment/Path variants of each voice.
+  - Cross-refs added: Phase status block, 5A (→27), 13D gating table (→24), 15 (superseded note),
+    23D (Qi loop → Essence), and the file-structure list.
+  - Recommended build order: 29 → 27A–C → 28 → 23D → 24 → 26 → 25.
+  - Six open questions for the user are listed at the end of the Phases 24–29 section. Ask them before
+    building each phase.
+  Not done (not needed for a plan-only change): no system docs created yet (Rule 6 says create each one
+  BEFORE that phase's code), no sim/dist runs (nothing executable changed).
+  Next: pick up the recommended order. Phase 29 (banter) is the cheapest and most self-contained start;
+  Phase 23D is still the fix for the post-Ascension dead zone.
+
 Date: 2026-09-25/26 (session 8)
 Agent: Phase 23A+B+C — Health & Death, Bloodline Quality, chance-based Ascension Trial. User picked this
   from START_HERE's recommendations, then chose scope "23A+23B+23C" (not just 23A) and confirmed the
@@ -184,7 +267,7 @@ Open design gaps the sim still flags (numbers can't fix these):
   - weapon_soul_spear (expedition_power) / weapon_thunder_staff (enemy_hp_reduce): effects nothing reads.
   - Sim's dead-zone/stage-wall metrics aren't generation-aware (see bloodline.md gotchas) — a mid-run
     reincarnation can misreport as "stuck", check `lineage.generation` before trusting those flags now.
-Next recommended tasks (pick one):
+Next recommended tasks — SUPERSEDED by the PLAN.md Development Roadmap (session 10); list kept for history:
   - Phase 23D Immortal Realms — the natural follow-up: gives a successful Ascension somewhere to go instead
     of the old dead-end stub. Needs the "keep playing the Immortal" direction from session 8 fleshed out
     (new realm ladder + sprites via Asset Pipeline, watch-over-family passive once Phase 16 exists).
