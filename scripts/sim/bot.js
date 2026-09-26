@@ -31,7 +31,7 @@ class Bot {
     for (let i = 0; i < 40; i++) {
       const before = this.s.spiritStones
       const acted = this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
-        this.elixirs() || this.beasts() || this.sect() || this.ownSect() || this.war() || this.expedition()
+        this.elixirs() || this.memberWar() || this.beasts() || this.sect() || this.ownSect() || this.war() || this.expedition()
       if (!acted) break
       this.rec.stones(this.rec.lastAction, this.s.spiritStones - before)
     }
@@ -200,12 +200,33 @@ class Bot {
     if (this.path === 'founder' && this.canFound()) return this.do('leave_sect', this.gs.leaveSect())
     if (D.SECT_RANKS[s.sect.rank + 1] && s.sect.contribution >= D.SECT_RANKS[s.sect.rank + 1].minContribution)
       return this.do('sect_rank_up', this.gs.rankUpSect())
-    if (s.sect.activeMissions.length < D.SECT_MAX_MISSIONS) {
+    if (s.sect.activeMissions.length + (s.derived.warSlot || 0) < D.SECT_MAX_MISSIONS) {   // a war call can hold one slot
       const m = D.SECT_MISSIONS.filter(m => m.minRank <= s.sect.rank && !s.sect.activeMissions.some(a => a.missionId === m.id))
         .sort((a, b) => b.contribution / Math.max(b.duration, this.actEverySec) - a.contribution / Math.max(a.duration, this.actEverySec))[0]
       if (m) return this.do('sect_mission', this.gs.startSectMission(m.id))
     }
     if (this.path === 'member' && s.spiritStones > 400) return this.do('sect_donate', this.gs.donateToSect(s.spiritStones - 300))
+    return false
+  }
+
+  // ── Member war (Phase 5C): answer the call, lend a beast, fill the war chest when comfortably affordable ──
+  memberWar() {
+    const s = this.s, w = s.sectWar, D = this.D
+    if (w.side !== 'member' || (w.phase !== 'scouting' && w.phase !== 'preparing')) return false
+    this.rec.warSeen(w)
+    if (!w.answered && s.sect.activeMissions.length < D.SECT_MAX_MISSIONS) return this.do('war_answer_call', this.gs.answerWarCall())
+    if (!w.beastId) {
+      const b = s.beasts.filter(b => !b.expedition).sort((a, b) => b.level - a.level)[0]
+      if (b) return this.do('war_beast', this.gs.sendBeastToWar(b.id))
+    }
+    const full = this.gs.memberWarChestFull(), left = full - w.chestStones
+    const chunk = Math.min(left, Math.max(10, Math.ceil(full / 4)))
+    if (left > 0 && s.spiritStones >= 3 * chunk) return this.do('war_chest', this.gs.donateWarChest(chunk))
+    // Pills only once they're no longer needed for breakthroughs
+    if (this.ascended && w.pillsGiven < D.MEMBER_WAR_MAX_PILLS) {
+      const p = Object.keys(s.inventory).find(id => D.ITEMS[id]?.type === 'pill')
+      if (p) return this.do('war_pill', this.gs.offerWarPill(p))
+    }
     return false
   }
 

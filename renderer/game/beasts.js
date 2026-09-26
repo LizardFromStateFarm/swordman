@@ -11,7 +11,7 @@ class BeastSystem {
     if (!s?.beasts?.length) return
     const now = Date.now()
     for (const beast of s.beasts) {
-      if (beast.expedition?.endsAt && now >= beast.expedition.endsAt) {
+      if (beast.expedition?.endsAt && !beast.expedition.war && now >= beast.expedition.endsAt) {
         this._gs.resolveBeastExpedition(beast.id)
       }
     }

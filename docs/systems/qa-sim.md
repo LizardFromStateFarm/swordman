@@ -1,5 +1,5 @@
 # QA Sim Harness — Reference
-_Covers: scripts/sim/* · package.json (`sim`, `sim:quick`) · Phase: tooling · Updated: 2026-09-25_
+_Covers: scripts/sim/* · package.json (`sim`, `sim:quick`) · Phase: tooling (+5C member-war metrics) · Updated: 2026-09-25_
 
 Bots play the **real** game logic (no copies, no mocks of game code) at thousands× speed and write a short
 report on pacing, fun/engagement signals, health (errors + invariants) and performance.
@@ -33,20 +33,27 @@ invariant violations, 2 = harness crashed / bad `--set`.
 - `active` — overlay always open, acts every 10s (min-maxer; upper bound on pace)
 - `casual` — overlay always open, acts every 30 min (the realistic "idle on the side of the screen" player)
 - `afk` — opens 15 min, closed 8h → exercises `initSlot()` offline catch-up, 8h cap, war fast-forward
-- `--path=founder|member` — founder leaves its sect to found one as soon as it can; member never founds
+- `--path=founder|member` — founder leaves its sect to found one as soon as it can; member never founds.
+  Both answer member-war calls while in a joined sect (answer → lend best idle beast → war chest at ≥3× chunk →
+  pills only after Ascension). Founder bots usually found before their first call (~10h after joining at rank 0).
 
 ## Report sections / metrics
 - **Summary** per horizon×profile: final stage, breakthrough success, worst fail streak, longest dead zone,
-  meaningful actions per open hour (meditate excluded), % time Qi sat at cap, stones at end, wars W/L (seen %).
+  meaningful actions per open hour (meditate excluded), % time Qi sat at cap, stones at end, own-sect wars W/L (seen %).
 - **Time to reach**: realm entries + key milestones (median hours; `k/n` if only some seeds got there).
 - **Pacing vs GAMEDESIGN.md**: per realm, unboosted idle minutes to fill the Qi cap (qiCap ÷ the stage's
   time-averaged Qi/s) vs `PACING_TARGETS_MIN` in profiles.js. Flag only for `PACING_PROFILE` (casual), and
   only when >2× outside the band. Tuning recipe used 2026-09-25: newCap = cap × target ÷ measured fill,
   via `--set`, 2–3 iterations to converge (multipliers shift as later stages arrive at different times).
+- **Member Wars** (Phase 5C): joined-sect wars per profile — count, W/L, % of calls the bot was around to answer,
+  ignored (seen, no commitment), fought without you (resolved while closed), contribution net. Tallied per side by
+  `Recorder.trackWars()` (diffs `sectWar` counters each tick, so a founder's pre-founding member wars aren't mixed
+  into its own-sect wars). `runs[i].wars` = own side, `runs[i].memberWars` = member side.
 - **Slowest stage-ups**: top 3 stage transitions per profile.
 - **⚠ Flags** (thresholds in `THRESHOLDS`): dead zone, difficulty wall (stage ≥4× previous and ≥1h; afk ignores
   waits ≤1.5 sessions), progression stalls, content exhausted, qi-capped %, frustration (fail streak),
-  demotions, integrity waiting, hoarding, low engagement, wars resolving unseen, never-used features.
+  demotions, integrity waiting, hoarding, low engagement, own/member wars resolving unseen, member wars ignored,
+  never-used features.
 - **Health**: exceptions (deduped, with stack) + invariant violations + save→load round-trip count.
 - **Economy — Spirit Stones**: a ledger attributes every stone gained/lost to a source (disciples, expeditions,
   beast_expeditions, sect_missions, events, war_spoils, war_losses, offline_catchup) or a bot purchase
@@ -60,7 +67,8 @@ invariant violations, 2 = harness crashed / bad `--set`.
 Non-finite numbers anywhere in state (except `derived.qiCap` at Ascension) · qi <0 or > cap · stones <0 ·
 inventory counts not positive integers · integrity ∉ [0,100] · karma ∉ [0,100] · breakthrough chance >0.98 ·
 stageIndex out of range · beasts > maxBeasts · disciples > cap · invalid war phase · sect rank out of range ·
-joined AND founded · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi.
+joined AND founded · war side ≠ joined/founded state · war-committed mission slot over cap or not released after
+the war · beast stuck at war · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi.
 
 ## Extending
 - **New system/phase:** add bot behaviour in `bot.js` (new method + add to the `checkIn` chain), new

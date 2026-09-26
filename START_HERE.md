@@ -24,7 +24,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Sect system — join existing (5 sects, ranks, missions) | ✅ Phase 4 |
 | Found own sect (buildings, disciples, income) | ✅ Phase 5A |
 | Sect wars + alliances | ✅ Phase 5B |
-| Member wars (joined sects go to war, you get pulled in) | ⬜ Phase 5C |
+| Member wars (joined sects go to war, you get pulled in) | ✅ Phase 5C |
 | QA sim harness (`npm run sim` → bot playtest report) | ✅ Tooling |
 | Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
 | Dao Paths, Reincarnation, Tribulation | ⬜ Phase 7–8 |
@@ -40,36 +40,41 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Challenge Modes + Permadeath + Settings | ⬜ Phase 20 |
 | Backpack & Inventory Tab (unified item/currency view) | ⬜ Phase 21 |
 | Active / Idle Mode Toggle + Mid-Late Automation | ⬜ Phase 22 |
+| Immortal Progression (bloodline, ascension trial, health/death, immortal realms, secret arts) | ⬜ Phase 23 |
 
 ---
 
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
-Date: 2026-09-25 (session 4)
-Agent: Merge sim/pacing work to main + economy pass (Spirit Stones) — repo is in a clean HANDOFF state
+Date: 2026-09-25 (session 5)
+Agent: Phase 5C Member Wars — joined sects now go to war and call on you. Committed? NO — review, then commit.
 What was done:
-  - Sessions 2–3 (QA sim harness, Infinity fix, Qi pacing pass) merged to main. This session's economy pass
-    is also on main. Nothing pushed to the remote — push when you're ready.
-  - Harness: Spirit Stone ledger (every stone attributed to a source/sink, self-checked each run), Economy
-    report section + flags (hoarding vs income, war-loss "tax", one-faucet economy). Bot buys war boosts only
-    at ≥3× cost.
-  - Economy findings: disciples were ~90% of all income (~1,100/h); war defeats (15% of bank) were ~80% of all
-    outflow → two-speed economy with a wealth tax instead of player choices; afk players never founded a sect.
-  - Numbers changed (all tagged "economy pass 2026-09-25" in the data files):
-      sect-buildings.js  DISCIPLE_STONE_RATE 0.003→0.0004, DISCIPLE_HERB_RATE 0.0015→0.0002,
-                         SECT_FOUNDING.minStage 18→19 (void crystals first drop at 19)
-      sect-war.js        WAR_LOSS_RESOURCE_FRAC 0.15→0.08; reinforce fame×0.5→×2; ally 50+fame×0.3 → 100+fame×1
-      sects.js           Escort / Subdue Demon / Retrieve Artifact now also pay Spirit Stones
-      techniques.js      Celestial Orbit 150→600 (cheaper stones had pulled it earlier and broke FB pacing)
-  - Result (casual, 200h): bank 31k→6k, stones spent by choice 12k→32k, war losses 137k→15k. Active bank 47k→4k.
-    afk founds a sect at ~132h (never before). Qi pacing still inside every GAMEDESIGN band.
-  - Docs: qa-sim.md, sects.md, sect-war.md, own-sect.md, PLAN.md.
-  - Verified: npm test, npm run sim (healthy, 135 save round-trips, ledger balanced), build:web, dist.
+  - One sectWar state for both sides: side 'own' (founded, 5B) | 'member' (joined, 5C). _ensurePhase5BFields()
+    keeps side in sync with ownSect.founded / sect.id and migrates pre-5C saves (own-sect wars untouched).
+  - Member war: rank-scaled 4–10h interval, 2h window (30m Call to Arms + 90m Muster — the war-window-gap fix).
+    Commitments: Answer the Call (holds a mission slot until the war resolves), war chest (stones, capped by rank,
+    earns contribution), up to 3 pills, one beast (beast.expedition = { war:true }, comes home with XP).
+    Win (engaged) → contribution + stones + 15% rare item. Loss → sect buffs suppressed 3h, −contribution (flat × rank).
+    Seen-but-ignored → −contribution −2 karma. Wars resolved entirely while closed = unseen, no penalty.
+    Leaving mid-war = deserter (−5 extra karma). Rank is never demoted.
+  - Files: assets/data/sect-war.js (MEMBER_WAR_* constants), game-state.js (war section rewritten for both sides,
+    member API, _recalc suppression/warSlot, join/leave/startSectMission), game/beasts.js (skip war beasts),
+    game.js (renderMemberWarPanel, war slot in mission count, 'At war' beast status), styles.css (.war-warn).
+  - Bug found by the sim and fixed before landing: answered wasn't cleared at resolution → mission slot stayed locked.
+  - Sim: bot memberWar() (answer → beast → chest at ≥3× → pills after Ascension); per-side war tally
+    (Recorder.trackWars), Member Wars report section, 4 new invariants, 3 new FEATURES.
+  - Docs: sect-war.md (full 5C section), sects.md, qa-sim.md, PLAN.md, CLAUDE.md tree.
+  - Verified: npm test, sim:quick, full sim founder + --path=member (healthy, 0 violations), build:web, dist,
+    scripted scenario test of every member-war flow incl. save round-trip mid-war and pre-5C save migration.
+  - NOT verified: the new Sect-tab war panel by eye (the sim doesn't load game.js). Check in npm start: join a sect,
+    then either wait for a call or use DevTools: gameState.get().sectWar.nextWarAt = Date.now().
 
-CURRENT BASELINE (npm run sim, 200h medians — a regression if yours differ without a reason):
-  Ascension: active ~11h · casual ~56h · afk ~140h.  Found sect: 6.7h · 33h · 132h.
-  Casual income ~290 stones/h late game, bank ~6k.  Health: 0 errors, 0 violations.
+CURRENT BASELINE (npm run sim, 200h medians; Ascension is noisy — 8 seeds on old code gave casual 71h, not 56h):
+  Founder path — Ascension: active ~11h · casual ~76h · afk ~140h.  Found sect: 6.7h · 36h · ~135h.
+  Member path (--path=member) — Ascension: active ~39h · casual ~60h (2/3 seeds). Member wars: active/casual
+  answer 100% of ~32 calls, win ~70%, contribution +2k; afk answers ~15–25% (opens 15 min per 8h).
+  Health: 0 errors, 0 violations.
 
 READY FOR DEV WORK — how a new agent should start:
   1. Read START_HERE.md (this) + CLAUDE.md; load only the docs/systems/*.md for the system you touch.
@@ -80,12 +85,17 @@ READY FOR DEV WORK — how a new agent should start:
 
 Open design gaps the sim still flags (numbers can't fix these):
   - Nothing to do after Ascension → long dead zones for every profile (Phases 7–8).
-  - Casual players see ~50% of sect wars and afk ~0% (15-min scout+prep window), so they rarely use the war-prep
-    stone sink and still bank ~6k / ~3.5k. Fix via Phase 5C design, Phase 9 notifications, or a longer window.
+  - OWN-sect wars still use the 15-min window: casual sees ~50%, afk ~0%, casual still banks ~4–8k. Member wars
+    (2h window) fixed this for joined sects. Option: give own-sect wars a longer window too (try --set
+    WAR_SCOUT_SECONDS / WAR_PREP_SECONDS) — a 5B balance change, ask the user. Afk needs Phase 9 notifications.
+  - Member-path bot donates everything above 300 stones to its sect, which is why member Ascension (active ~39h)
+    lags founder (~11h). It's the bot's policy, not a game wall — worth a smarter bot before tuning from it.
   - weapon_soul_spear (expedition_power) / weapon_thunder_staff (enemy_hp_reduce): effects nothing reads.
 Next recommended tasks (pick one):
-  - Phase 5C Member Wars (PLAN.md) — user-requested; also the natural place to fix the war-window gap.
-  - Phase 6 Animation & Visual Overhaul, or Phase 7 (post-Ascension content — biggest sim flag).
+  - Phase 6 Animation & Visual Overhaul, or Phase 7 → Phase 23 (post-Ascension content — biggest sim flag).
+    Phase 23 (added 2026-09-25) is the planned post-Ascension system: hidden Bloodline Quality, chance-based
+    Ascension, Health/death → reincarnation, Immortal Realms, Secret Arts. Its 23A–C sub-phases work without
+    the family system. Resolve its "Open questions" with the user before building.
   - Optional: add `npm run sim:quick` as a gate in scripts/release.js (it's healthy now; ask the user first).
 ```
 
@@ -111,7 +121,7 @@ docs/
     integrity.md       ← Realm Integrity, Spiritual Beasts (Phase 3)
     sects.md           ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md        ← Found a sect: buildings, disciples, income (Phase 5A)
-    sect-war.md        ← Sect wars (Phase 5B; 5C Member Wars planned)
+    sect-war.md        ← Sect wars: own-sect (5B) + member wars for joined sects (5C)
     qa-sim.md          ← QA sim harness — `npm run sim`, report flags, extending the bot
     ui-layout.md       ← Window layout, tab pattern, CSS vars
 .agents/rules/

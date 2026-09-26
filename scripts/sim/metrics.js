@@ -3,6 +3,12 @@
 
 const QPS_CHECKPOINTS_H = [1, 5, 10, 25, 50, 100, 200]
 
+const blankWar = () => ({ wins: 0, losses: 0, seen: 0, ignored: 0, unseen: 0, contribNet: 0 })
+function warSummary(t) {
+  const total = t.wins + t.losses
+  return { total, wins: t.wins, losses: t.losses, engagedPct: total ? Math.round(100 * Math.min(1, t.seen / total)) : null }
+}
+
 class Recorder {
   constructor(data, endSec = Infinity) {
     this.D = data
@@ -23,7 +29,9 @@ class Recorder {
     this.peakStones = 0
     this.fill = {}                   // stageIndex → { q: Σ qps·dt, sec, cap } — for "idle time to fill cap"
     this.qps = {}                    // checkpoint hour → qi/s
-    this.warsSeen = new Set()        // nextWarAt keys of wars the player checked in during
+    this.warsSeen = new Set()        // side:nextWarAt keys of wars the player checked in during
+    this.wars = { own: blankWar(), member: blankWar() }   // per-side war tally (sectWar resets on join/leave/found)
+    this._war = null                 // last seen { side, n, ignored, unseen, contrib } baseline
     this.violations = {}             // type → { count, firstAt, example }
     this.errors = {}                 // message → { count, firstAt, where }
     this.saveChecks = 0
@@ -39,7 +47,18 @@ class Recorder {
     this.milestone(`first_${name}`)
   }
   milestone(name) { if (!(name in this.milestones)) this.milestones[name] = this.t }
-  warSeen(w) { this.warsSeen.add(w.nextWarAt) }
+  warSeen(w) { if (!this.warsSeen.has(`${w.side}:${w.nextWarAt}`)) { this.warsSeen.add(`${w.side}:${w.nextWarAt}`); if (this.wars[w.side]) this.wars[w.side].seen++ } }
+
+  // Per-tick war tally: diff the live sectWar counters against the last baseline for the same side.
+  trackWars(w) {
+    const cur = { side: w.side, v: w.warVictories, l: w.warDefeats, ignored: w.warsIgnored || 0, unseen: w.warsUnseen || 0, contrib: w.contribNet || 0 }
+    const b = this._war
+    this._war = cur
+    if (!cur.side || !b || b.side !== cur.side || cur.v + cur.l < b.v + b.l) return
+    const t = this.wars[cur.side]
+    t.wins += cur.v - b.v; t.losses += cur.l - b.l
+    t.ignored += cur.ignored - b.ignored; t.unseen += cur.unseen - b.unseen; t.contribNet += cur.contrib - b.contrib
+  }
   breakthrough(res, chance, pill, fromStage) {
     const b = this.bt
     this.lastAction = 'breakthrough'
@@ -61,6 +80,7 @@ class Recorder {
   // ── Per-tick sampling (cheap) ────────────────────────────────────────────
   sample(s, dt, open) {
     this.t += dt
+    this.trackWars(s.sectWar)
     if (open) {
       this.openSec += dt
       if (s.qi >= s.derived.qiCap * 0.999 && isFinite(s.derived.qiCap)) this.cappedSec += dt
@@ -132,6 +152,11 @@ class Recorder {
     if (!['none', 'scouting', 'preparing'].includes(s.sectWar.phase)) this.violate('war_phase_invalid', s.sectWar.phase)
     if (s.sect.id && (s.sect.rank < 0 || s.sect.rank >= this.D.SECT_RANKS.length)) this.violate('sect_rank_out_of_range', s.sect.rank)
     if (s.sect.id && s.ownSect.founded) this.violate('joined_and_founded', s.sect.id)
+    const w = s.sectWar, side = s.ownSect.founded ? 'own' : s.sect.id ? 'member' : null
+    if (w.side !== side) this.violate('war_side_mismatch', `${w.side} vs ${side}`)
+    if (w.side === 'member' && s.sect.activeMissions.length + (w.answered ? 1 : 0) > this.D.SECT_MAX_MISSIONS) this.violate('war_slot_over_cap', s.sect.activeMissions.length)
+    if (w.answered && w.phase === 'none') this.violate('war_slot_not_released', w.lastResult?.ts)
+    for (const b of s.beasts) if (b.expedition?.war && (w.side !== 'member' || w.beastId !== b.id || w.phase === 'none')) this.violate('beast_stuck_at_war', b.id)
   }
 
   // Called by run.js around a close→reopen (real save + initSlot load).
@@ -160,8 +185,6 @@ class Recorder {
     }
     const stageTimes = []   // time spent getting from stage i-1 → i
     for (let i = 1; i <= this.maxStage; i++) stageTimes.push({ stage: i, name: this.stageName(i), atH: H(this.stageReached[i]), tookH: H(this.stageReached[i] - this.stageReached[i - 1]) })
-    const w = s.sectWar
-    const wars = w.warVictories + w.warDefeats
     return {
       simHours: H(this.t),
       stageCount: this.D.CULTIVATION_STAGES.length, stageRealms: this.D.CULTIVATION_STAGES.map(st => st.realm), finalStage: s.stageIndex, finalStageName: this.stageName(s.stageIndex), maxStage: this.maxStage,
@@ -188,7 +211,8 @@ class Recorder {
       sect: { joined: s.sect.id, rank: s.sect.rank, founded: s.ownSect.founded, disciples: s.ownSect.disciples.length,
               buildings: Object.keys(s.ownSect.buildings).filter(k => s.ownSect.buildings[k]).length, hallLevel: s.ownSect.hallLevel,
               fame: Math.round(s.derived.sectFame || 0) },
-      wars: { total: wars, wins: w.warVictories, losses: w.warDefeats, engagedPct: wars ? Math.round(100 * Math.min(1, this.warsSeen.size / wars)) : null },
+      wars: warSummary(this.wars.own),
+      memberWars: { ...warSummary(this.wars.member), ignored: this.wars.member.ignored, unseen: this.wars.member.unseen, contribNet: this.wars.member.contribNet },
       health: { violations: this.violations, errors: this.errors, saveRoundtrips: this.saveChecks },
       ...extra,
     }

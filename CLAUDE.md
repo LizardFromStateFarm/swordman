@@ -51,7 +51,7 @@ docs/
     crafting.md         ← Recipes, equipment, pills, elixirs (Phase 2)
     sects.md            ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
-    sect-war.md         ← Sect war timer, scouting/prep, auto-resolve, alliances (Phase 5B)
+    sect-war.md         ← Sect wars: own-sect (5B) + member wars for joined sects (5C)
     qa-sim.md           ← QA sim harness: flags, metrics, profiles, how to extend
     ui-layout.md        ← Window layout, tab pattern, CSS vars
 .agents/rules/
@@ -79,7 +79,7 @@ renderer/
     expedition.js       ← ExpeditionSystem — tick-based expedition resolution
     crafting.js         ← CraftingSystem — thin UI wrapper for craft/equip/pill/elixir
     sect.js             ← SectSystem — resolves timed sect missions (Phase 4)
-    sect-war.js         ← SectWarSystem — advances the sect war state machine (Phase 5B)
+    sect-war.js         ← SectWarSystem — advances the sect war state machine, own + member wars (Phase 5B/5C)
 assets/
   data/
     stages.js           ← CULTIVATION_STAGES[23]
@@ -91,7 +91,7 @@ assets/
     recipes.js          ← RECIPES — all crafting recipes
     sects.js            ← SECTS, SECT_RANKS, SECT_MISSIONS (Phase 4)
     sect-buildings.js   ← Own-sect founding cost, Sect Hall levels, buildings, disciple constants (Phase 5A)
-    sect-war.js         ← War timer scaling, rival name pools, reinforcement/alliance/spoils constants (Phase 5B)
+    sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
 ```

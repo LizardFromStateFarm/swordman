@@ -11,7 +11,7 @@ Phase 1  ✅  Core idle loop (Qi, stages, techniques, events, slots, particle re
 Phase 2  ✅  Explore / Combat / Resources / Crafting
 Phase 3  ✅  Breakthrough Integrity + Spiritual Beasts
 Phase 4  ✅  Sect System — join existing sects
-Phase 5  🔶  Build Your Own Sect (5A ✅) + Sect Wars (5B ✅) + Member Wars (5C ⬜ — wars for joined sects)
+Phase 5  ✅  Build Your Own Sect (5A ✅) + Sect Wars (5B ✅) + Member Wars (5C ✅ — wars for joined sects)
 Tooling  ✅  QA Sim Harness (`npm run sim`) — bot playtesting + balance/fun report
 Phase 6  ⬜  Animation & Visual Overhaul (incl. 6E window/layout modes)
 Phase 7  ⬜  Dao Paths + Body Cultivation + Heavenly Tribulation
@@ -30,6 +30,7 @@ Phase 19 ⬜  World Epochs & Spiritual Tides (Dynamic Global Modifiers)
 Phase 20 ⬜  Optional Settings & Challenge Modes (Permadeath, Accessibility)
 Phase 21 ⬜  Backpack & Inventory Tab (unified item/currency view)
 Phase 22 ⬜  Active / Idle Mode Toggle + Mid-Late Automation
+Phase 23 ⬜  Immortal Progression — Bloodline Quality, Ascension Trial, Health/Death, Immortal Realms, Secret Arts
 ```
 
 ---
@@ -210,7 +211,20 @@ Phases: Scouting (5 min) → Preparation (10 min) → Auto-resolve.
 Win = spoils + enemy contribution loss. Lose = resource penalty + array damage.
 Alliance system: ally with other sects for defensive help.
 
-### 5C — Member Wars (sect wars for non-leaders) ⬜
+### 5C — Member Wars (sect wars for non-leaders) ✅
+
+> **Status: implemented 2026-09-25.** See `docs/systems/sect-war.md` ("Member War Outcome"). Built as planned —
+> one `sectWar` state with `side: 'own' | 'member'`, same Date.now()-chained phase machine, rank-scaled 4–10h interval.
+> Divergences / decisions: the member war window is **2h** (30m Call to Arms + 90m Muster) instead of 15 min, which
+> is the fix for the sim's "wars resolve unseen" flag (casual now answers 100% of member calls; own-sect wars keep
+> 15 min). Commitments: answer (holds a mission slot until the war resolves), war chest (stones, capped per rank,
+> also earns contribution), up to 3 pills, one beast (`beast.expedition = { war: true }`, returns with XP).
+> Contribution penalties are flat × rank multiplier, not %, since contribution keeps growing past max rank.
+> A war that starts *and* ends while the game is closed is "unseen": no reward, no ignore penalty — afk players
+> aren't punished for calls they could never see (`tickSectWar(live=false)` in offline catch-up). Sect tier = its
+> position in `SECTS` (scales enemy stars + spoils). No rare-item table of its own: demon essence / artifact fragment.
+> Sim: bot answers/lends/donates; report gained a Member Wars section + 4 invariants. Afk still answers only
+> ~15–25% of calls (opens 15 min per 8h) — needs Phase 9 notifications, not a longer window.
 
 > **Requested 2026-09-25.** Today wars only exist once you *found* a sect (`tickSectWar()` early-returns
 > unless `ownSect.founded`). Sects you merely *join* should also go to war, pulling you in as a member.
@@ -367,6 +381,10 @@ This is a major event — the most dramatic animation in the game.
 ---
 
 ## Phase 8 — Ascension & Reincarnation (New Game+)
+
+> ⚠ **Superseded in part by Phase 23 (2026-09-25):** Ascension is now a chance-based trial driven by hidden
+> Bloodline Quality, success leads to the Immortal Realms and failure/death leads to reincarnation. Dao Seeds /
+> Ascension Hall / Sect Legacy below still apply but must be rebalanced alongside Phase 23.
 
 When you reach Ascension (stageIndex 22), the game doesn't end — you **Reincarnate**.
 
@@ -846,6 +864,9 @@ After marriage, a "Child Event" fires ~once every 14 real days (random roll each
 - Disciple contribution ×2 vs random disciple (family loyalty)
 - May inherit sect mastery after you ascend (Reincarnation): sect "Founding Legacy" title added, buildings stay intact
 
+**Bloodline (Phase 23B):** reincarnating into an adult child carries the family's Bloodline Quality in full,
+and the spouse's highest stage feeds bloodline growth. Children are the main way to build the line.
+
 **Orphan player interaction:**
 Players born as Orphans (Phase 12) gain a special event chain when they reach relationship ≥ 70 with
 any NPC: "Sworn Sibling Bond" (结义). This creates a pseudo-family relationship with all the loyalty
@@ -1001,6 +1022,9 @@ Computed at new game start from the full lineage record. Applied before the firs
 
 ### 18C — Heir Selection at Reincarnation
 
+> See Phase 23D: heir selection also sets the Bloodline Quality carried forward (family = full, new soul ≈ 25%),
+> and a Solitary Lineage Art heir (23E) counts as family.
+
 When you Ascend (Phase 8), before the new game begins, the heir screen fires:
 
 | Option | Condition | Starting Bonus |
@@ -1118,6 +1142,9 @@ The Settings tab (⚙ icon added to titlebar) also holds per-session accessibili
 *can* be changed at any time.
 
 ### 20A — Permadeath (永恒逝世)
+
+> Phase 23A adds normal-mode death (Health 0 → reincarnate). Permadeath differs only in that death ends the
+> line with a tombstone instead of reincarnating.
 
 When enabled:
 - If Realm Integrity reaches 0 and a Realm Demotion would push the character below Qi Condensation L1
@@ -1309,6 +1336,169 @@ Automation
 This gives mid-game players a concrete automation roadmap to look forward to.
 
 **New files:** none — logic in `renderer/engine/game-state.js` (mode flag), automation dispatch in `renderer/game/expedition.js`, `renderer/game/sect.js`, `renderer/game/crafting.js`; UI wiring and Active Mode interaction windows in `renderer/game.js`.
+
+---
+
+## Phase 23 — Immortal Progression: Bloodline, Mortal Peril & Secret Arts
+
+> **Requested 2026-09-25.** Replaces the "Ascension = automatic reincarnation" loop of Phase 8 with a
+> *chance-based* Ascension, a post-Ascension Immortal progression, death + reincarnation, and a hidden
+> **Bloodline Quality** stat carried down a family line. Also adds studyable **Secret Arts** (rare drops).
+> Also answers the QA sim's #1 flag: every profile currently hits a long dead zone after Ascension
+> (`npm run sim`). Cross-refs: Phase 8 (superseded parts), 16C (children), 18 (lineage tree / heirs),
+> 20A (permadeath), 17 (bosses).
+
+### 23A — Health & Death (生死)
+
+A body can die. Realm Integrity stays what it is (the stability of your *cultivation*); Health is the body.
+
+- **`health` (0–100)**, displayed as a bar under Integrity. Regenerates slowly (faster while meditating,
+  with healing pills, or with a future Art).
+- **Damage sources** (first pass): expeditions into zones whose enemy tier outclasses you, failed Heavenly
+  Tribulation waves (Phase 7C), inner-demon style events at high realms, sect-war defeats you fought in (5C),
+  failed Ascension (23C).
+- **Health 0 → death.** A death screen shows the life summary, then **reincarnation** (23D). Normal mode never
+  deletes the save line; **Permadeath (20A)** still ends the line with a tombstone.
+- **Early death barely grows the bloodline** — growth scales with the highest stage reached (23B), so dying
+  as a Qi Condensation disciple is a restart, not a shortcut.
+- Optional later: **lifespan (寿元)** per realm (classic xianxia: if you don't break through before your
+  lifespan runs out, you die of old age). Park until the base health loop feels right in the sim.
+
+### 23B — Bloodline Quality (血脉品质)
+
+A **hidden** number (0–100, soft cap) that belongs to the family line, not the save slot. It's stored in the
+Phase 18 lineage record.
+
+- **Hidden during play.** It's revealed only on the Ascension decision screen, and in the Ascension Hall /
+  lineage tree after the first Ascension attempt. Before that, it only shows through flavor ("Your blood
+  stirs faintly…" / "Heaven-blessed blood").
+- **Effects:**
+  - The main input to **Ascension survival chance** (23C).
+  - A **mild Qi/s bonus**: +0.2% per point → up to +20% at 100. It stacks multiplicatively with the others,
+    so re-run the sim pacing check after adding it.
+- **A brand-new character** (new save / "new soul") starts at **0**.
+- **Growth happens only at the end of a life** (death, failed Ascension, or successful Ascension then passing
+  on the line). The next generation's value:
+  ```
+  heirBQ = parentBQ × carry + growth
+  growth = G_base + G_self × (yourMaxStage/22)² + G_partner × (partnerMaxStage/22)²
+  ```
+  - **Reincarnate into your family** (a child from 16C, or an heir from the Solitary Lineage Art, 23E):
+    `carry = 1.0` plus a small flat "family" bonus each generation. This is the intended best path.
+  - **No family, new soul:** `carry ≈ 0.25`. You keep a sliver ("the Dao remembers you faintly"), but it's
+    much weaker, as requested.
+  - The squared stage terms make early deaths grow the line very little and late-game lives grow it a lot.
+  - The partner term uses **how far your spouse cultivated** (16B NPC stage), so marrying a strong cultivator
+    matters. With no partner that term is 0, unless the Solitary Lineage Art applies (23E).
+  - Starting values to tune with the sim: `G_base 1`, `G_self 8`, `G_partner 5`, family flat bonus `+1`,
+    soft cap 100.
+
+### 23C — The Ascension Trial (飞升劫)
+
+Reaching the peak of Spirit Severing no longer ascends automatically.
+- **The Ascension screen** shows the revealed Bloodline Quality, the **survival chance**, and its
+  breakdown. The player chooses **Ascend now** or **Keep cultivating**, to wait for more pills or Arts,
+  or to secure an heir first.
+- **Survival chance** = `base + BQ term + prep`, capped at 0.95 (never certain, like breakthroughs):
+  - `base` about 5–10%, so a Bloodline 0 first-generation cultivator almost always fails. That makes the
+    first life a "founding ancestor" and gives the multi-generation loop its purpose.
+  - `BQ term` goes up to about +60% at BQ 100.
+  - `prep` is a smaller slice from preparation: Tribulation Veteran title, full Integrity/Health,
+    ascension-grade pills, specific Arts (23E).
+- **Success:** you enter the **Immortal Realms** (23D). The mortal line continues through your heir later if
+  you choose.
+- **Failure:** the body dies (health → 0). You reincarnate (23D rules), and the line's BQ grows from this life.
+
+### 23D — Reincarnation & the Immortal Realms
+
+**Reincarnation screen** (extends 18C Heir Selection):
+
+| Option | Condition | Bloodline carried |
+|---|---|---|
+| Reincarnate into your family | An adult child (16C) or a Solitary-Lineage heir (23E) exists | Full (`carry 1.0` + family bonus) |
+| New soul | Always | Weak (`carry ≈ 0.25`) |
+
+What carries over otherwise follows Phase 8 (Dao Seeds, sect legacy, etc.), which will need rebalancing
+alongside this.
+
+**Immortal Realms (post-Ascension progression)** give the endgame instead of an empty Ascension:
+- New realm ladder, e.g. Earth Immortal (地仙) → Heavenly Immortal (天仙) → Golden Immortal (金仙) →
+  Taiyi Golden Immortal (太乙金仙) → Daluo Golden Immortal (大罗金仙). Each has 3 layers, its own Qi cap
+  scale, and its own art/sprite states. New sprite states go through the Asset Pipeline.
+- Uses the same Qi loop with the Bloodline Qi bonus still applied. Immortal breakthroughs can carry small
+  health risk, so dying and reincarnating stays possible at every level.
+- An Immortal can **watch over the family line**: small passive boosts to the current generation. This gives
+  a reason to keep the old immortal save meaningful.
+- Pacing target: extend the GAMEDESIGN.md doubling curve (realms = days of idle). Add the new realms to
+  `PACING_TARGETS_MIN` in `scripts/sim/profiles.js` when built.
+
+### 23E — Secret Arts (秘术)
+
+A second kind of learnable power, separate from Techniques (which are bought with stones). You **find**
+Arts and **study** them.
+- **Sources:**
+  - Rare drops from high-tier expedition enemies (e.g. about 0.5–2% per expedition at enemy tier ≥ 3, on a
+    new `rareDrops` entry in `LOCATIONS`).
+  - Guaranteed/likely drops from **bosses**. The full version needs Phase 17 realm bosses, but a small
+    earlier stand-in could be a rare "Boss appears" event on Heavenly Peak / Void Rift expeditions.
+- **Studying:** one Art at a time on a real-time study timer (hours to days). It's sped up by
+  **Comprehension**: `s.comprehension` already exists in state (Heavenly Insight events raise it) and is
+  otherwise unused today. Arts have mastery levels 1–5 (re-study to deepen).
+- **Inheritance:** a studied Art can be written into the **family library**. Heirs who reincarnate into the
+  family can re-study it faster; new souls can't.
+- **Launch set (examples, all rare):**
+
+| Art | Effect |
+|---|---|
+| **Solitary Lineage Art (孤脉血嗣诀)** | Lets you **produce an heir from your own essence, with no partner**, to continue the family bloodline. The heir counts as family (full `carry`), and the partner growth term is replaced by ~50% of your own stage term: better than no family, weaker than a strong spouse. |
+| Tortoise Breath Art (龟息功) | Health regen ×2; once per life, survive a lethal blow at 1 health |
+| Heaven-Evading Art (避天诀) | +Ascension survival chance (by mastery) |
+| Blood Refinement Art (炼血诀) | +bloodline growth for this life (by mastery) |
+| Ten Thousand Swords Art (万剑诀) | Lets you safely fight one enemy tier higher on expeditions (less health damage) |
+
+### 23 — Build order, state, sim
+
+Suggested sub-phase order:
+1. **23A** (Health & Death).
+2. **23B + 23C + new-soul reincarnation.** This is playable without any family system. Do it right after
+   Phase 7 (it needs Tribulation) or even before, since it fixes the post-Ascension dead zone.
+3. **23D** (Immortal Realms).
+4. **23E** (Secret Arts; the boss stand-in first).
+5. **Family hooks** (reincarnate-into-child, partner term) once Phase 16 exists.
+
+**State (sketch):**
+- **Slot state:** `health`, `_healthRegenAcc`, `arts: { known: {id: mastery}, studying: {id, endsAt} }`,
+  `immortalStage` (or extend `stageIndex` past 22).
+- **Lineage record (18A, cross-slot):** `bloodlineQuality`, `generation`, `familyLibrary: [artId]`,
+  `heirs: [...]`.
+- Add a new `_ensurePhase23Fields()` for save migration (Rule 5).
+- The cross-slot lineage file needs a new `window.electron.*` method in **both** `preload.js`/`main.js` and
+  `renderer/engine/platform-storage.js` (Rule 7 / iOS).
+
+**New files (expected):**
+- `assets/data/arts.js`
+- `assets/data/immortal-realms.js` (or rows appended to `stages.js`)
+- `assets/data/bloodline.js` (growth/survival constants)
+- `renderer/game/arts.js` (study timer)
+- `renderer/game/ascension.js` (trial + reincarnation flow)
+- `docs/systems/bloodline.md` (write it **before** code, Rule 6)
+
+**QA sim (required, same change):**
+- Teach `scripts/sim/bot.js` to decide Ascend-vs-wait (e.g. ascend when survival ≥ a threshold, otherwise
+  keep farming prep) and to study Arts.
+- Handle death/reincarnation as a run *continuing across generations*. Runs will need longer horizons (500h+).
+- Add metrics: ascension attempts & survival rate, deaths by cause, generations per run, BQ per generation,
+  time-to-first-Immortal.
+- Add invariants: BQ within 0–cap, never lower after a family reincarnation, health within 0–100,
+  survival chance ≤ 0.95.
+
+**Open questions for the user before building:**
+1. Survival chance: exact curve and cap (proposed max 95%)?
+2. Should successful Immortals also be able to have heirs? Should players keep playing the Immortal while the
+   heir plays, or switch between them?
+3. How long should studying an Art take (hours vs days)? Should Arts be lost on a new-soul reincarnation?
+4. Does lifespan (寿元) belong in v1 of Health or later?
+5. Does the Solitary Lineage Art need a cost or drawback (e.g. health/lifespan, or a lower-quality heir)?
 
 ---
 

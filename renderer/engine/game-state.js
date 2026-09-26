@@ -42,7 +42,7 @@ class GameState {
         }
         this.tickOwnSect(elapsed)
         this._ensurePhase5BFields()
-        this.tickSectWar()
+        this.tickSectWar(false)   // offline catch-up: wars fully resolved while closed are "unseen" (no ignore penalty)
         if (gain > 0.5) {
           this._s.events = this._s.events || []
           this._s.events.unshift({
@@ -146,10 +146,19 @@ class GameState {
     if (o.poolRefreshAt === undefined) o.poolRefreshAt = 0
   }
 
-  _blankSectWar() {
-    return { phase: 'none', nextWarAt: 0, scoutEndsAt: 0, prepEndsAt: 0,
+  _blankSectWar(side = null) {
+    return { side, phase: 'none', nextWarAt: 0, scoutEndsAt: 0, prepEndsAt: 0,
              enemyName: '', enemyTier: 0, allyId: null, reinforced: false,
-             arrayDamagedUntil: 0, warVictories: 0, warDefeats: 0, lastResult: null }
+             arrayDamagedUntil: 0, warVictories: 0, warDefeats: 0, lastResult: null,
+             // Phase 5C member wars
+             answered: false, chestStones: 0, pillsGiven: 0, beastId: null, seen: false,
+             buffSuppressedUntil: 0, warsIgnored: 0, warsUnseen: 0, contribNet: 0 }
+  }
+
+  // Which war the player takes part in: leading a founded sect, or a member of a joined one (never both).
+  _warSide() {
+    const s = this._s
+    return s.ownSect?.founded ? 'own' : s.sect?.id ? 'member' : null
   }
 
   _ensurePhase5BFields() {
@@ -165,6 +174,15 @@ class GameState {
     if (w.warDefeats === undefined)   w.warDefeats = 0
     if (w.allyId === undefined)       w.allyId = null
     if (w.reinforced === undefined)   w.reinforced = false
+    // Phase 5C: member-war fields + side sync (old saves only ever had own-sect wars)
+    const blank = this._blankSectWar()
+    for (const k of Object.keys(blank)) if (w[k] === undefined) w[k] = blank[k]
+    const side = this._warSide()
+    if (w.side === null && side === 'own') w.side = 'own'   // pre-5C save: keep the founded sect's war record
+    if (w.side !== side) {
+      if (w.beastId) this._releaseWarBeast(0)
+      s.sectWar = this._blankSectWar(side)
+    }
   }
 
   _sectDef() {
@@ -259,8 +277,9 @@ class GameState {
     qps      = qps * beastQpsMult + beastPassiveQps
     btBonus += beastBtBonus
 
-    // Sect bonuses (Phase 4)
-    const sectFx = this._sectDef()?.effects || {}
+    // Sect bonuses (Phase 4) — suppressed for a while after the sect loses a member war (Phase 5C)
+    const sectBuffSuppressed = s.sectWar.side === 'member' && Date.now() < (s.sectWar.buffSuppressedUntil || 0)
+    const sectFx = sectBuffSuppressed ? {} : (this._sectDef()?.effects || {})
     if (sectFx.qps_mult)                 qps     *= sectFx.qps_mult
     if (sectFx.weapon_qps_mult && weapId) qps    *= sectFx.weapon_qps_mult
     if (sectFx.artifact_qps_mult && artId) qps   *= sectFx.artifact_qps_mult
@@ -326,6 +345,8 @@ class GameState {
       integrityRegenMult: sectFx.integrity_regen_mult || 1,
       realmIntegrity:   s.realmIntegrity ?? 100,
       arrayDamaged,
+      sectBuffSuppressed,
+      warSlot:          this._warSlot(),
     }
   }
 
@@ -707,7 +728,7 @@ class GameState {
   resolveBeastExpedition(beastId) {
     const s = this._s
     const beast = (s.beasts || []).find(b => b.id === beastId)
-    if (!beast?.expedition) return
+    if (!beast?.expedition || beast.expedition.war) return   // war-lent beasts come home when the war resolves (Phase 5C)
 
     const loc = LOCATIONS.find(l => l.id === beast.expedition.locationId)
     if (!loc) { beast.expedition = null; this._notify(); return }
@@ -769,6 +790,7 @@ class GameState {
     if (s.ownSect?.founded)       return { ok: false, reason: 'own_sect' }
     if (s.stageIndex < def.minStage) return { ok: false, reason: 'stage' }
     s.sect = { id: def.id, rank: 0, contribution: 0, activeMissions: [] }
+    s.sectWar = this._blankSectWar('member')   // first call to arms is scheduled on the next tick
     this.addEvent({ text: `You joined the ${def.name} (${def.nameCN}) as an Outer Disciple.`, type: 'special' })
     this._recalc(); this._notify()
     return { ok: true, sect: def }
@@ -778,9 +800,14 @@ class GameState {
     const s = this._s
     const def = this._sectDef()
     if (!def) return { ok: false, reason: 'no_sect' }
+    const w = s.sectWar
+    const deserter = w.side === 'member' && w.phase !== 'none'
+    if (w.beastId) this._releaseWarBeast(0)
     s.sect  = { id: null, rank: 0, contribution: 0, activeMissions: [] }
-    s.karma = Math.max(0, s.karma - 5)
-    this.addEvent({ text: `You left the ${def.name}. Your rank and contribution are forfeit.`, type: 'negative' })
+    s.sectWar = this._blankSectWar()
+    s.karma = Math.max(0, s.karma - 5 - (deserter ? MEMBER_WAR_DESERT_KARMA : 0))
+    if (deserter) this.addEvent({ text: `You fled the ${def.name} on the eve of battle with the ${w.enemyName}. Your fellow disciples curse the name of a deserter.`, type: 'negative' })
+    else this.addEvent({ text: `You left the ${def.name}. Your rank and contribution are forfeit.`, type: 'negative' })
     this._recalc(); this._notify()
     return { ok: true }
   }
@@ -817,7 +844,7 @@ class GameState {
     if (!m)                                  return { ok: false, reason: 'unknown' }
     if (s.sect.rank < m.minRank)             return { ok: false, reason: 'rank' }
     if (s.sect.activeMissions.some(a => a.missionId === missionId)) return { ok: false, reason: 'busy' }
-    if (s.sect.activeMissions.length >= SECT_MAX_MISSIONS)          return { ok: false, reason: 'full' }
+    if (s.sect.activeMissions.length + this._warSlot() >= SECT_MAX_MISSIONS) return { ok: false, reason: 'full' }
     s.sect.activeMissions.push({
       uid: `${Date.now()}_${Math.floor(Math.random() * 9999)}`,
       missionId,
@@ -895,7 +922,7 @@ class GameState {
     }
     const clean = String(name || '').trim().slice(0, F.maxNameLen) || 'Nameless Sect'
     s.ownSect = { ...this._blankOwnSect(), founded: true, name: clean, foundedAt: Date.now() }
-    s.sectWar = this._blankSectWar()
+    s.sectWar = this._blankSectWar('own')
     this._refreshRecruitPool()
     this._scheduleNextWar()
     this.addEvent({ text: `You founded the ${clean}! Its Sect Hall stands, awaiting disciples.`, type: 'special' })
@@ -1021,48 +1048,72 @@ class GameState {
     }
   }
 
-  // ── Phase 5B: Sect Wars ───────────────────────────────────────────────────
+  // ── Phase 5B: Sect Wars (own sect) + Phase 5C: Member Wars (joined sect) ───────────────────────────────────
+  // One state machine for both sides; see docs/systems/sect-war.md.
 
   _scheduleNextWar(baseTs) {
     const s = this._s, w = s.sectWar
-    const fame = s.derived?.sectFame || 0
-    const frac = Math.min(1, fame / WAR_FAME_SOFTCAP)
-    const hours = WAR_MAX_INTERVAL_HOURS - frac * (WAR_MAX_INTERVAL_HOURS - WAR_MIN_INTERVAL_HOURS)
+    let hours
+    if (w.side === 'member') {
+      const frac = Math.min(1, (s.sect.rank || 0) / (SECT_RANKS.length - 1))
+      hours = MEMBER_WAR_MAX_INTERVAL_HOURS - frac * (MEMBER_WAR_MAX_INTERVAL_HOURS - MEMBER_WAR_MIN_INTERVAL_HOURS)
+    } else {
+      const frac = Math.min(1, (s.derived?.sectFame || 0) / WAR_FAME_SOFTCAP)
+      hours = WAR_MAX_INTERVAL_HOURS - frac * (WAR_MAX_INTERVAL_HOURS - WAR_MIN_INTERVAL_HOURS)
+    }
     w.nextWarAt = (baseTs || Date.now()) + hours * 3600 * 1000
+  }
+
+  // When the current war's battle happens (scouting knows it in advance too).
+  _warEndsAt() {
+    const w = this._s.sectWar
+    if (w.phase === 'preparing') return w.prepEndsAt
+    const prep = w.side === 'member' ? MEMBER_WAR_PREP_SECONDS : WAR_PREP_SECONDS
+    return w.phase === 'scouting' ? w.scoutEndsAt + prep * 1000 : 0
   }
 
   // Advances the war state machine by exactly one phase transition, if one is due.
   // Returns true if a transition happened (caller loops to fast-forward offline catch-up).
   _advanceSectWarStep() {
     const s = this._s, w = s.sectWar
-    if (!s.ownSect.founded) return false
+    if (!w.side || w.side !== this._warSide()) return false
+    const member = w.side === 'member'
     const now = Date.now()
 
     if (w.phase === 'none') {
       if (!w.nextWarAt) { this._scheduleNextWar(); return false }
       if (now < w.nextWarAt) return false
       w.phase = 'scouting'
-      w.scoutEndsAt = w.nextWarAt + WAR_SCOUT_SECONDS * 1000
+      w.scoutEndsAt = w.nextWarAt + (member ? MEMBER_WAR_SCOUT_SECONDS : WAR_SCOUT_SECONDS) * 1000
       const pick = a => a[Math.floor(Math.random() * a.length)]
       w.enemyName = `${pick(RIVAL_SECT_PREFIXES)} ${pick(RIVAL_SECT_SUFFIXES)}`
-      w.enemyTier = Math.max(1, Math.min(5, Math.round((s.derived?.sectFame || 0) / 100) + Math.floor(Math.random() * 3) - 1))
+      const baseTier = member ? this._sectTier() : Math.round((s.derived?.sectFame || 0) / 100)
+      w.enemyTier = Math.max(1, Math.min(5, baseTier + Math.floor(Math.random() * 3) - 1))
       w.allyId = null
       w.reinforced = false
-      this.addEvent({ text: `Scouts report the ${w.enemyName} massing near your borders.`, type: 'negative' })
+      w.answered = false; w.chestStones = 0; w.pillsGiven = 0; w.beastId = null; w.seen = false
+      if (member) {
+        const def = this._sectDef()
+        this.addEvent({ text: `War drums sound across the ${def.name}! The ${w.enemyName} has declared war — the elders call every disciple to arms.`, type: 'negative' })
+      } else {
+        this.addEvent({ text: `Scouts report the ${w.enemyName} massing near your borders.`, type: 'negative' })
+      }
       return true
     }
 
     if (w.phase === 'scouting') {
       if (now < w.scoutEndsAt) return false
       w.phase = 'preparing'
-      w.prepEndsAt = w.scoutEndsAt + WAR_PREP_SECONDS * 1000
-      this.addEvent({ text: `The ${w.enemyName} will strike soon — prepare your defenses!`, type: 'negative' })
+      w.prepEndsAt = w.scoutEndsAt + (member ? MEMBER_WAR_PREP_SECONDS : WAR_PREP_SECONDS) * 1000
+      this.addEvent({ text: member
+        ? `The ${this._sectDef().name} musters its disciples at the mountain gate. Battle with the ${w.enemyName} draws near.`
+        : `The ${w.enemyName} will strike soon — prepare your defenses!`, type: 'negative' })
       return true
     }
 
     if (w.phase === 'preparing') {
       if (now < w.prepEndsAt) return false
-      this._resolveSectWar()
+      if (member) this._resolveMemberWar(); else this._resolveSectWar()
       return true
     }
 
@@ -1102,11 +1153,120 @@ class GameState {
     this._recalc(); this._notify()
   }
 
+  // 1-based strength of the joined sect (its position in SECTS — later sects are stronger).
+  _sectTier() {
+    const i = SECTS.findIndex(x => x.id === this._s.sect.id)
+    return Math.max(1, i + 1)
+  }
+
+  _warSlot() {
+    const w = this._s.sectWar
+    return w?.side === 'member' && w.answered && w.phase !== 'none' ? 1 : 0
+  }
+
+  memberWarChestFull() {
+    return MEMBER_WAR_CHEST_BASE + (this._s.sect.rank || 0) * MEMBER_WAR_CHEST_PER_RANK
+  }
+
+  // Commitment bonus → sect power. Shared by the UI (preview) and _resolveMemberWar().
+  memberWarPower() {
+    const s = this._s, w = s.sectWar
+    let bonus = 0
+    if (w.answered) bonus += MEMBER_WAR_ANSWER_BONUS
+    bonus += MEMBER_WAR_CHEST_MAX_BONUS * Math.min(1, w.chestStones / this.memberWarChestFull())
+    bonus += MEMBER_WAR_PILL_BONUS * w.pillsGiven
+    const beast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
+    if (beast) bonus += Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * beast.level)
+    const rankMult = SECT_RANKS[s.sect.rank]?.rewardMult || 1
+    return { bonus, rankMult, power: 1 + bonus * rankMult }
+  }
+
+  // Brings a war-lent beast home (war resolved, sect left, or state reset). Safe if it was dismissed meanwhile.
+  _releaseWarBeast(xp) {
+    const s = this._s, w = s.sectWar
+    const beast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
+    if (beast?.expedition?.war) {
+      beast.expedition = null
+      if (xp > 0) this._addBeastXp(beast, xp)
+    }
+    w.beastId = null
+    return beast || null
+  }
+
+  _resolveMemberWar() {
+    const s = this._s, w = s.sectWar
+    const def = this._sectDef()
+    const { bonus, power } = this.memberWarPower()
+    const engaged = bonus > 0
+    const enemyPower = 0.6 + Math.random() * 0.8
+    const win = Math.random() < power / (power + enemyPower)
+    const rankMult = SECT_RANKS[s.sect.rank]?.rewardMult || 1
+    const enemyName = w.enemyName
+    const beast = this._releaseWarBeast(MEMBER_WAR_BEAST_XP)
+    const res = { side: 'member', win, enemyName, engaged, seen: w.seen, contribDelta: 0, ts: Date.now() }
+    const parts = []
+    const loseContrib = amount => {   // never below 0; rank is never demoted
+      const lost = Math.min(s.sect.contribution, Math.round(amount * rankMult))
+      s.sect.contribution -= lost
+      res.contribDelta -= lost
+      return lost
+    }
+
+    if (win) {
+      w.warVictories++
+      if (engaged) {
+        const contrib = Math.round(MEMBER_WAR_WIN_CONTRIB * rankMult)
+        const stones  = Math.round((MEMBER_WAR_SPOILS_STONE_BASE + this._sectTier() * MEMBER_WAR_SPOILS_STONE_PER_TIER) * rankMult * (0.7 + Math.random() * 0.6))
+        s.sect.contribution += contrib
+        s.spiritStones += stones
+        res.contribDelta += contrib
+        res.stones = stones
+        parts.push(`${contrib} Contribution`, `${stones} Spirit Stones`)
+        if (Math.random() < MEMBER_WAR_RARE_CHANCE) {
+          const item = MEMBER_WAR_RARE_ITEMS[Math.floor(Math.random() * MEMBER_WAR_RARE_ITEMS.length)]
+          s.inventory[item] = (s.inventory[item] || 0) + 1
+          res.rareItem = item
+          parts.push(`a ${ITEMS[item]?.name || item}`)
+        }
+      }
+    } else {
+      w.warDefeats++
+      w.buffSuppressedUntil = Date.now() + MEMBER_WAR_BUFF_SUPPRESS_HOURS * 3600 * 1000
+      res.suppressed = true
+      if (w.seen) parts.push(`−${loseContrib(MEMBER_WAR_LOSS_CONTRIB)} Contribution`)
+    }
+
+    const ignored = w.seen && !engaged
+    if (ignored) {
+      w.warsIgnored++
+      const lost = loseContrib(MEMBER_WAR_IGNORE_CONTRIB)
+      s.karma = Math.max(0, s.karma - MEMBER_WAR_IGNORE_KARMA)
+      parts.push(`−${lost} Contribution and −${MEMBER_WAR_IGNORE_KARMA} karma for ignoring the call`)
+    }
+    if (!w.seen && !engaged) w.warsUnseen++
+    w.contribNet += res.contribDelta
+    if (beast) parts.push(`${beast.name} returned with ${MEMBER_WAR_BEAST_XP} XP`)
+    w.lastResult = res
+    w.answered = false   // the committed mission slot is released with the war
+
+    const tail = parts.length ? ` ${parts.join(', ')}.` : ''
+    if (win && engaged)      this.addEvent({ text: `Victory! The ${def.name} crushed the ${enemyName}, and the elders remember who answered the call:${tail}`, type: 'special' })
+    else if (win)            this.addEvent({ text: `The ${def.name} defeated the ${enemyName} — though you played no part in it.${tail}`, type: ignored ? 'negative' : 'positive' })
+    else                     this.addEvent({ text: `Defeat — the ${enemyName} routed the ${def.name}. The sect's blessings wane for ${MEMBER_WAR_BUFF_SUPPRESS_HOURS} hours.${tail}`, type: 'negative' })
+
+    w.phase = 'none'
+    this._scheduleNextWar()
+    this._recalc(); this._notify()
+  }
+
   // Fast-forwards the sect-war state machine (regular ticks and offline catch-up alike).
-  tickSectWar() {
-    if (!this._s?.ownSect?.founded) return
+  // live=false only for offline catch-up in initSlot(): a war that starts and ends while closed stays "unseen".
+  tickSectWar(live = true) {
+    const w = this._s?.sectWar
+    if (!w?.side) return
     let guard = 0
     while (this._advanceSectWarStep() && guard++ < 50) {}
+    if (live && w === this._s.sectWar && w.phase !== 'none') w.seen = true
   }
 
   reinforceForWar() {
@@ -1136,6 +1296,70 @@ class GameState {
     this.addEvent({ text: `The ${def.name} agreed to send aid against the ${w.enemyName}.`, type: 'positive' })
     this._notify()
     return { ok: true, cost, ally: def }
+  }
+
+  // ── Phase 5C: member war commitments ──────────────────────────────────────
+
+  _memberWarActive() {
+    const w = this._s.sectWar
+    return w.side === 'member' && !!this._s.sect.id && (w.phase === 'scouting' || w.phase === 'preparing')
+  }
+
+  answerWarCall() {
+    const s = this._s, w = s.sectWar
+    if (!this._memberWarActive()) return { ok: false, reason: 'no_war' }
+    if (w.answered)               return { ok: false, reason: 'already' }
+    if (s.sect.activeMissions.length >= SECT_MAX_MISSIONS) return { ok: false, reason: 'full' }
+    w.answered = true
+    this.addEvent({ text: `You answered the call to arms. Your sword is pledged to the ${this._sectDef().name} until the ${w.enemyName} is dealt with.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  donateWarChest(stones) {
+    const s = this._s, w = s.sectWar
+    stones = Math.floor(stones)
+    if (!this._memberWarActive()) return { ok: false, reason: 'no_war' }
+    if (!(stones > 0))            return { ok: false, reason: 'invalid' }
+    const room = this.memberWarChestFull() - w.chestStones
+    if (room <= 0)                return { ok: false, reason: 'full' }
+    const given = Math.min(stones, room)
+    if (s.spiritStones < given)   return { ok: false, reason: 'stones' }
+    const gained = Math.max(1, Math.floor(given * SECT_DONATE_RATE))
+    s.spiritStones      -= given
+    w.chestStones       += given
+    s.sect.contribution += gained
+    this._notify()
+    return { ok: true, given, gained }
+  }
+
+  offerWarPill(itemId) {
+    const s = this._s, w = s.sectWar
+    if (!this._memberWarActive())         return { ok: false, reason: 'no_war' }
+    if (ITEMS[itemId]?.type !== 'pill')   return { ok: false, reason: 'not_pill' }
+    if (!(s.inventory[itemId] > 0))       return { ok: false, reason: 'none' }
+    if (w.pillsGiven >= MEMBER_WAR_MAX_PILLS) return { ok: false, reason: 'full' }
+    s.inventory[itemId]--
+    if (s.inventory[itemId] <= 0) delete s.inventory[itemId]
+    if (s.activePill === itemId && !s.inventory[itemId]) s.activePill = null
+    w.pillsGiven++
+    s.sect.contribution += MEMBER_WAR_PILL_CONTRIB
+    this._recalc(); this._notify()
+    return { ok: true, gained: MEMBER_WAR_PILL_CONTRIB }
+  }
+
+  sendBeastToWar(beastId) {
+    const s = this._s, w = s.sectWar
+    if (!this._memberWarActive()) return { ok: false, reason: 'no_war' }
+    if (w.beastId && (s.beasts || []).some(b => b.id === w.beastId)) return { ok: false, reason: 'already' }
+    const beast = (s.beasts || []).find(b => b.id === beastId)
+    if (!beast)                   return { ok: false, reason: 'not_found' }
+    if (beast.expedition)         return { ok: false, reason: 'busy' }
+    beast.expedition = { war: true, locationId: null, endsAt: this._warEndsAt() }
+    w.beastId = beast.id
+    this.addEvent({ text: `${beast.name} joins the ${this._sectDef().name}'s war host against the ${w.enemyName}.`, type: 'positive' })
+    this._notify()
+    return { ok: true, beast }
   }
 
   addEvent(ev) {

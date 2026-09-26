@@ -1167,3 +1167,4 @@ body {
 .war-banner.loss { border-color: var(--red);  color: var(--red);  font-size: 10px; }
 .war-timer { font-size: 10px; color: var(--dim); margin-top: 3px; }
 .war-timer span { color: var(--gold); }
+.war-warn { color: var(--red); }

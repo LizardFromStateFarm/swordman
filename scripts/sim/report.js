@@ -11,7 +11,8 @@ const fmtH = h => h == null ? '—' : h < 1 ? `${Math.round(h * 60)}m` : `${h.to
 
 // Features a well-rounded player should touch; "never used" is a strong design signal.
 const FEATURES = ['expedition', 'craft_equipment', 'craft_pill', 'use_elixir', 'tame_beast', 'beast_expedition',
-  'join_sect', 'sect_mission', 'sect_rank_up', 'found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce']
+  'join_sect', 'sect_mission', 'sect_rank_up', 'found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce',
+  'war_answer_call', 'war_chest', 'war_beast']
 
 const KEY_MILESTONES = [
   ['Qi Condensation L1', r => r.stageTimes.find(x => x.stage === 1)?.atH],
@@ -26,6 +27,7 @@ const KEY_MILESTONES = [
   ['joined a sect', r => r.milestones.first_join_sect],
   ['founded own sect', r => r.milestones.first_found_sect],
   ['first war resolved', r => r.milestones.first_war_resolved],
+  ['first call answered', r => r.milestones.first_war_answer_call],
   ['all techniques', r => r.milestones.all_techniques],
   ['all buildings', r => r.milestones.all_buildings],
 ]
@@ -98,7 +100,11 @@ function buildReport(runs, args) {
     const dph = med(g.map(r => r.decisionsPerOpenHour))
     if (dph < T.minDecisionsPerHr[p]) flags.push(`${tag} Low engagement: ${dph} meaningful actions/hour (min ${T.minDecisionsPerHr[p]})`)
     const eng = med(g.map(r => r.wars.engagedPct))
-    if (eng != null && eng < 50) flags.push(`${tag} Wars mostly resolve unseen: player checked in during only ${eng}% of wars (15-min window)`)
+    if (eng != null && eng < 50) flags.push(`${tag} Own-sect wars mostly resolve unseen: player checked in during only ${eng}% of wars (15-min window)`)
+    const meng = med(g.map(r => r.memberWars?.engagedPct))
+    if (meng != null && meng < 50) flags.push(`${tag} Member wars mostly resolve unseen: player answered during only ${meng}% of calls (2h window)`)
+    const mign = med(g.map(r => r.memberWars?.ignored))
+    if (mign > 0) flags.push(`${tag} Member wars ignored ${mign}× (seen but no commitment) — bot couldn't answer; check slot/stone availability`)
     const founderOnly = ['found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce']
     const unused = FEATURES.filter(ft => !(args.path === 'member' && founderOnly.includes(ft)) && g.every(r => !r.actions[ft]))
     if (T.unusedFeature && unused.length) flags.push(`${tag} Never used: ${unused.join(', ')}`)
@@ -175,6 +181,15 @@ function buildReport(runs, args) {
       return Object.entries(sums).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${Math.round(100 * v / Math.max(1, tot))}%`).join(', ') || '—' }
     const chosen = med(e.map(x => x.spent + (x.ledger.war_losses || 0)))
     L.push(`| ${p} | ${f(med(e.map(x => x.earned)))} | ${f(med(e.map(x => x.lateIncomePerHour)))} | ${f(chosen)} | ${f(med(e.map(x => -(x.ledger.war_losses || 0))))} | ${f(med(e.map(x => x.stonesEnd)))} | ${share(true)} | ${share(false)} |`)
+  }
+  L.push(``)
+  L.push(`## Member Wars — joined-sect wars (median, ${longest}h runs)`)
+  L.push(`| Profile | Wars | W/L | Answered during | Ignored | Fought without you | Contribution net |`)
+  L.push(`|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const m = group(p, longest).map(r => r.memberWars).filter(Boolean)
+    const tot = med(m.map(x => x.total))
+    L.push(tot ? `| ${p} | ${f(tot)} | ${f(med(m.map(x => x.wins)))}/${f(med(m.map(x => x.losses)))} | ${f(med(m.map(x => x.engagedPct)))}% | ${f(med(m.map(x => x.ignored)))} | ${f(med(m.map(x => x.unseen)))} | ${f(med(m.map(x => x.contribNet)))} |` : `| ${p} | 0 | — | — | — | — | — |`)
   }
   L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)
