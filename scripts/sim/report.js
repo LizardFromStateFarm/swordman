@@ -1,7 +1,7 @@
 // Turns raw sim runs into a compact markdown report (+ summary object) with auto-generated balance/fun flags.
 // Used by: scripts/sim/run.js. Thresholds live in scripts/sim/profiles.js. See docs/systems/qa-sim.md.
 
-const { PROFILES, THRESHOLDS: T, PACING_TARGETS_MIN, PACING_PROFILE } = require('./profiles')
+const { PROFILES, THRESHOLDS: T, PACING_TARGETS_MIN, PACING_PROFILE, LIFE_TARGETS_H } = require('./profiles')
 
 const med = xs => { const a = xs.filter(x => x != null && !isNaN(x)).sort((x, y) => x - y); return a.length ? a[Math.floor((a.length - 1) / 2)] : null }
 const rng = xs => { const a = xs.filter(x => x != null); if (!a.length) return '—'; const lo = Math.min(...a), hi = Math.max(...a), m = med(a); return lo === hi ? f(m) : `${f(m)} (${f(lo)}–${f(hi)})` }
@@ -242,7 +242,14 @@ function buildReport(runs, args) {
     for (const l of lives) (byCause[l.cause] ||= []).push(l.openHours)
     const causeStr = Object.entries(byCause).sort((a, b) => b[1].length - a[1].length)
       .map(([c, hs]) => `${c} ${hs.length}× (${fmtH(med(hs))})`).join(', ') || '—'
-    L.push(`| ${p} | ${lives.length} | ${f(livesPer100h)} | ${fmtH(med(lives.map(l => l.openHours)))} | ${f(med(lives.map(l => l.ageAtDeath)))} | ${seclusion}/${mantle} | ${causeStr} |`)
+    const medLife = med(lives.map(l => l.openHours))
+    L.push(`| ${p} | ${lives.length} | ${f(livesPer100h)} | ${fmtH(medLife)} | ${f(med(lives.map(l => l.ageAtDeath)))} | ${seclusion}/${mantle} | ${causeStr} |`)
+    // life-loop.md §6.2 (M2 task 2.4): median life length vs LIFE_TARGETS_H.gen1 — every life in the sim
+    // is effectively "gen1" until tasks 2.5-2.8 add ancestral catch-up/generation continuity, so `later`
+    // isn't checked yet (see profiles.js comment).
+    const target = LIFE_TARGETS_H[p]?.gen1
+    if (target && medLife != null && lives.length && (medLife < target[0] || medLife > target[1]))
+      flags.push(`[${p} ${longest}h] Median life ${fmtH(medLife)} outside life-loop.md target ${target[0]}-${target[1]}h`)
   }
   L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)

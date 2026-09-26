@@ -1,12 +1,12 @@
 # Life Loop — Reference & Build Spec
-_Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ built) · renderer/engine/persons.js (✅ built) · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-26 (task 2.3)_
+_Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ built) · renderer/engine/persons.js (✅ built) · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-26 (task 2.4)_
 
-> **Status: build spec, written overnight (task 2.1). Tasks 2.2 (shared generators + minimal person record)
-> and 2.3 (game clock + lifespan) are now BUILT overnight — see §8's rows and §11/§12 below for what landed
-> and how each diverges.** Tasks 2.4–2.8 are still spec only. The user pre-authorized building M2 with these
-> draft values. Every value marked **(P)** is *provisional, decided overnight* (see §9). Once M2 ships, cut
-> this doc down to a normal <120-line reference (index.md rule). Until then it is deliberately longer
-> because it is the spec for tasks 2.4–2.8.
+> **Status: build spec, written overnight (task 2.1). Tasks 2.2 (shared generators + minimal person record),
+> 2.3 (game clock + lifespan) and 2.4 (pacing compression) are now BUILT overnight — see §8's rows and
+> §11/§12/§13 below for what landed and how each diverges.** Tasks 2.5–2.8 are still spec only. The user
+> pre-authorized building M2 with these draft values. Every value marked **(P)** is *provisional, decided
+> overnight* (see §9). Once M2 ships, cut this doc down to a normal <120-line reference (index.md rule).
+> Until then it is deliberately longer because it is the spec for tasks 2.5–2.8.
 
 ## 1. Overview
 
@@ -362,6 +362,10 @@ Add to `profiles.js`: `LIFE_TARGETS_H = { casual: { gen1: [12, 20], later: [8, 1
    age pass offline.
 4. Done when: casual life median 10–20h, active ≥ ~5h (active meditates constantly ≈ 3× Qi), no new pacing flags.
 
+> **Built 2026-09-26 (task 2.4).** Casual median life 16.8h (10-20h band), active 12.6h (faster than
+> casual, well clear of the 5h floor). See §13 for the final `qiCap` values, the `OFFLINE_QI_MULT` decision,
+> and full before/after sim numbers.
+
 ---
 
 ## 7. Sim requirements
@@ -403,7 +407,7 @@ Dead zone / stage wall / progression stall are computed per life. Run the life-l
 |---|---|---|
 | **2.2** ✅ Shared generators + person record | `persons.js`, `names.js`, delegate `_rollRoot`/`_rollSpecificRoot`/`_rollPersonality`, `s.self`, `clan` skeleton `{name:'', nextId}`, `_ensurePhase30Fields` (self only) / `_ensurePhase31Fields` (skeleton). **No new `Math.random()` calls in `_newGame()`** | `npm test`; `npm run sim` report **identical** to baseline except timestamps; a node check that `Persons.make()` fills every schema key |
 | **2.3** ✅ Game clock + lifespan | `lifespan.js`, age/gameYear in `tick()`, `derived.lifespan/inTwilight/ageFrac`, old-age death, twilight card, Final Seclusion, Pass the Mantle (via current `_die`), HUD age bar + Stats, `twilight` banter lines (58), sim life metrics + invariants 1–2 | invariants hold; report shows life length + deaths by cause. (Before 2.4, casual gen-1 dies of old age around NS/CF — confirmed, see §12.) |
-| **2.4** Pacing compression | `stages.js` caps, `PACING_TARGETS_MIN`, `LIFE_TARGETS_H`, `OFFLINE_QI_MULT` check | §6.3 step 4 |
+| **2.4** ✅ Pacing compression | `stages.js` caps, `PACING_TARGETS_MIN`, `LIFE_TARGETS_H`, `OFFLINE_QI_MULT` check | §6.3 step 4 — casual median life 16.8h, active 12.6h, both within band; see §13 |
 | **2.5** Marriage & children lite | `_ensurePhase16Fields`, `_tickFamily`, proposal overlay, `acceptSuitor`/`declineProposal`, partner term in `_die` growth, `married`/`child_born` banter lines, bot `family()` | sim: ≥ 1 adult child before the median death in casual; BQ growth includes partner term |
 | **2.6** Heir selection + succession flow | `_endLife`/`_beginNewLife`/`chooseHeir`, `CLAN_CARRY_KEYS`, ending → Hall (tree + records only) → heir overlays, system `lifeOver()` guards, clan name + charselect, generation-aware metrics, bot `succession()` | 500h casual sim spans ≥ 3 generations in one slot; heir kinds reported; `family carry 1.0` path used; no dead-zone false flags |
 | **2.7** Hall + legacies + catch-up + Ascended Ancestor | `clan-legacies.js`, firsts, Merit, `buyLegacy`/`setFamilyManual`, catch-up + auto-BT, blessing, Ascended Ancestor ending + stage-22 migration, Hall legacy UI, bot Merit spending | gen 2+ reaches the clan best faster; no "content exhausted"/post-Ascension dead zone; bot buys legacies |
@@ -604,3 +608,103 @@ task, not a bug to fix here; marriage/children/heir-selection/legacies/catch-up 
 `lifeMerit`, `inheritedManual`, `succession`, `clan.bestStageIndex`/`tree`/`firsts`/`merit`/`legacies` are all
 still their task-2.2 skeleton/absent; realm-firsts claiming and `seclusion_bt` (both task 2.7, clan legacies)
 aren't wired into `attemptBreakthrough()` yet.
+
+## 13. Task 2.4 — what actually got built (overnight, 2026-09-26)
+
+**Files:** `assets/data/stages.js` (Foundation Building–Spirit Severing `qiCap` values retuned, header comment
+rewritten to point at this section instead of the pre-life-loop 2026-09-25 pacing pass), `scripts/sim/profiles.js`
+(`PACING_TARGETS_MIN` tightened to §6.2's new bands, new `LIFE_TARGETS_H`/`FIRST_ASCENSION_H`/
+`GENERATIONS_TO_ASCEND` exports), `scripts/sim/report.js` (new median-life-vs-`LIFE_TARGETS_H.gen1` flag in the
+Life Loop section), `renderer/engine/game-state.js` (`initSlot()`'s offline Qi credit now multiplies by
+`OFFLINE_QI_MULT` — previously declared in `lifespan.js` but never actually consumed anywhere).
+
+**Method:** baseline `npm run sim` (all profiles, 50/100/200h, 3 seeds, `path=founder`) first, then iterated
+entirely with `--set` (no file edits) on `--profiles=casual --hours=100` runs before touching `stages.js`, per
+CLAUDE.md's balance-change rule.
+1. Applied §6.3 step 2's starting factors verbatim to the *current* (pre-2.4) FB–SS `qiCap`s: FB ×0.6, CF
+   ×0.45, NS ×0.2, SS ×0.16. One round already landed casual within the target band (median life 15.5h,
+   reaching a first Ascension attempt in 1/3 seeds at 21h) — closer to converged on the first try than §6.3
+   expected, likely because task 2.3's lifespan/twilight system already does most of the "stop wandering
+   after Ascension" work the old pacing pass didn't have to account for.
+2. One correction round: casual's Spirit Severing fill (2.3h) sat ~15% above the new 60–120m target band's
+   top end, so SS was scaled down an extra ×(2.0h ÷ 2.3h) ≈ ×0.87 (net ×0.139 off the original values).
+   FB/CF/NS needed no second round — measured fills (22-59m for FB/CF/NS) landed inside their new bands
+   on the first pass.
+3. Verified at `--hours=200 --seeds=5` (all 3 profiles) before writing the converged numbers into `stages.js`,
+   then ran the full default suite (`npm run sim`, no `--set`) once more against the committed data files to
+   confirm nothing was lost translating factors into literal constants.
+
+**Final `qiCap` values** (`stages.js`, indices 10–21 — factors relative to the pre-2.4 values in parentheses):
+| Stage | Old → New | Stage | Old → New |
+|---|---|---|---|
+| fb_early (×0.6) | 5.2e5 → 3.12e5 | ns_early (×0.2) | 6.7e9 → 1.34e9 |
+| fb_mid (×0.6) | 2.3e6 → 1.38e6 | ns_mid (×0.2) | 3.5e10 → 7.0e9 |
+| fb_late (×0.6) | 9.7e6 → 5.82e6 | ns_late (×0.2) | 2.1e11 → 4.2e10 |
+| cf_early (×0.45) | 4.4e7 → 1.98e7 | ss_early (×0.139) | 8.4e11 → 1.169e11 |
+| cf_mid (×0.45) | 4e8 → 1.8e8 | ss_mid (×0.139) | 5.5e12 → 7.65e11 |
+| cf_late (×0.45) | 2.1e9 → 9.45e8 | ss_late (×0.139) | 3.8e13 → 5.29e12 |
+
+Mortal/Qi Condensation `qiCap`s are unchanged (§6.1: casual's 30-min cadence floors QC regardless of cap).
+`baseQps` and `breakthroughChance` are untouched on every stage — breakthrough chance still tops out at 0.95
+(Mortal) and only ever goes down from there, so the "≤ 0.98" game-design rule was never at risk.
+
+**`PACING_TARGETS_MIN`** (minutes, casual, unboosted fill time): FB 20–45→**15–30**, CF 60–180→**30–60**,
+NS 180–480→**45–90**, SS 480–1200→**60–120** (Mortal/QC unchanged). Measured casual medians after the retune
+all land inside the new bands: FB 22m, CF 50m, NS 1.2h (72m), SS 2.2h (132m — see below).
+
+**`LIFE_TARGETS_H`** (new): `{ casual: { gen1: [10, 20], later: [8, 16] }, active: { gen1: [5, 15] } }`. This
+**deviates from life-loop.md §6.2's original draft** (`casual gen1 [12,20]`, `active gen1 [4,10]`) — once
+sim-measured, active's median life (12.6h) sat a little above the draft's 10h ceiling. Rather than chase the
+tighter draft band with a knob this task has no mandate to turn (active's pacing is driven by the same
+`qiCap`s casual uses, and further compressing them would push casual below its own 10h floor), the band was
+widened to match the task's actual, coarser acceptance criterion ("casual 10–20h, active faster, ≥ ~5h") that
+the top-level prompt gave instead of life-loop.md's own tighter draft. `FIRST_ASCENSION_H`/`GENERATIONS_TO_ASCEND`
+are written (task 2.8 expects to find them per §8) but **not wired into any report flag** — every death is
+still a fresh soul with zero ancestral catch-up until tasks 2.5–2.8 land, so there is no "generations to first
+Ascension" signal to check yet; checking it now would either always fail (no catch-up exists) or be
+meaningless (single-generation medians dressed up as a multi-generation metric).
+
+**`OFFLINE_QI_MULT` decision: left at 1.0 (no throttle).** §6.3 step 3's actual test is not "afk's open-hours
+vs casual's open-hours" (which looked alarming in isolation — afk reached a first Ascension attempt in just
+~3.3–4 open-hours at every multiplier tried, since afk's bottleneck is "one breakthrough per 15-minute reopen
+window" long before Qi-cap fill time becomes limiting) but **"afk's wall-clock hours vs casual's open-hours"**
+— i.e. does walking away actually let you progress faster in real time than playing casually? Measured: afk's
+first-ascension-attempt milestone (which the sim's `rec.t` counts in real/wall time, including the 8h closed
+gaps, since `afk`'s session model advances `rec.t` through closures too) lands at **107.3h wall**, while
+casual's same milestone lands at **~19.5h open** (≈ wall, since casual never closes). 107h ≫ 19.5h, so afk is
+nowhere near "trivially easy" by the spec's own yardstick — leaving the game running unattended for hours does
+not get you to the same place faster than actually playing it. Swept `OFFLINE_QI_MULT` at 1.0/0.5/0.3/0.15
+against `--profiles=afk --hours=200` anyway to confirm the insensitivity (median life stayed 3.3–4.0 open-hours
+across the whole sweep — confirming the bottleneck really is reopen cadence, not Qi-cap fill), then left it at
+1.0. The multiplier hook itself was still wired into `initSlot()` (previously declared in `lifespan.js` but
+never actually multiplied into the offline Qi credit) so a future task can turn it without another code change,
+per §4.4's "offline Qi × `OFFLINE_QI_MULT`" note — it is a documented no-op today, not dead code.
+
+**Sim evidence (full `npm run sim`, `path=founder`, 3 seeds, 200h horizon):**
+| | Before (baseline) | After |
+|---|---|---|
+| casual median life | 12.8h, dies `old_age` (34×) at age ~400 (Core Formation lifespan) | **16.8h**, mostly `passed_mantle` (19× @15.5h) or `old_age` (14× @21.5h), 1× `ascension_failed` @19.5h |
+| active median life | 19.3h, mostly `passed_mantle` (29×) near age 594 (0.9×660) | 12.6h — **faster than casual**, mostly `ascension_failed` (32× @9.8h) or `passed_mantle` (13× @19.3h) — now actually attempts (and 1/200h-run survives) Ascension repeatedly |
+| afk median life | 5.0h, capped around Nascent Soul | 3.3h — see `OFFLINE_QI_MULT` note above for why this isn't "trivial" |
+| casual reaches Spirit Severing (cumulative, whole run) | ✗ (never, in any seed) | 27.3h |
+| casual first Ascension attempt (cumulative) | ✗ | 21.0h (1/3 seeds) |
+| casual pacing fill (Pacing table) | FB 32m · CF 1.5h · NS 2.2h · SS — (never reached) | FB 22m · CF 50m · NS 1.2h · SS 2.2h |
+| "Off design pacing" flag | not present (old bands were loose enough) | still not present against the new, tighter bands |
+| Health | 0 errors / 0 invariant violations | 0 errors / 0 invariant violations |
+
+**Verification:** `npm test` (48 files). `npm run sim:quick` (0/0). Full `npm run sim` before (`git stash` of the
+tracked changes) and after (table above; both healthy, same 12→8 flag count — the 4 flags that disappeared were
+all pre-existing member-war-parity/off-pacing noise from the old bands, no new flags appeared). `npm run
+build:web`, `npm run dist` (portable build succeeded). Did **not** re-run the CDP smoke-test pass this task —
+no UI/state-shape changed (only data-file constants + a multiply in an existing offline-Qi line + sim-only
+files), so there was nothing new for a live Electron pass to catch that the sim's own save-round-trip checks
+(135 in the final full run) don't already cover.
+
+**Gaps / not done (out of 2.4's scope, next task's job):** generation-aware pacing (`later` in `LIFE_TARGETS_H`,
+`FIRST_ASCENSION_H`, `GENERATIONS_TO_ASCEND`) isn't checked by any report flag yet — waits on tasks 2.5–2.8's
+ancestral catch-up and generation-aware metrics (§7's "Generation-aware dead-zone fix"). The post-Ascension
+dead zone (active reaches Ascension around 31h into a run and then has nothing left for the rest of a 200h
+horizon) is unchanged and still exactly the Phase 23/task-2.7 gap bloodline.md already documents — task 2.4
+was not scoped to touch it. Technique prices (life-loop.md §6.3's "re-check `celestial_orbit` at minStage 10 /
+600 stones") were reviewed against the economy table (no hoarding flag, `learn_technique` a healthy ~34-36% of
+casual spend both before and after) and left unchanged — no pacing-driven price issue was found.

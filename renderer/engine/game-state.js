@@ -45,7 +45,9 @@ class GameState {
       const elapsed = Math.min((Date.now() - (saved.lastSave || 0)) / 1000, 8 * 3600)
       if (elapsed > 1) {
         this._recalc()
-        const gain = elapsed * (this._s.derived?.qiPerSecond || 0)
+        // Phase 30 (M2 task 2.4): OFFLINE_QI_MULT tempers the afk lever. Age never passes offline (pillar 4),
+        // so afk lives are cheap in Qi-per-open-hour unless offline gain is throttled relative to live Qi/s.
+        const gain = elapsed * (this._s.derived?.qiPerSecond || 0) * OFFLINE_QI_MULT
         this._s.qi = Math.min(this._s.qi + gain, this._s.derived?.qiCap || 100)
         // Integrity regen while offline: +1 per 30 s
         const intGain = Math.floor((elapsed / 30) * (this._s.derived?.integrityRegenMult || 1))

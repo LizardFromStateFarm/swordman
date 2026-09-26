@@ -112,15 +112,19 @@ offline Qi rate, not aging offline.
 
 ## Pacing Targets (life loop)
 
-| Measure (casual profile) | Target |
-|---|---|
-| One mortal life (birth → end) | 10–20h of open play |
-| Generations before the first successful Ascension | ~3–5 (≈ 40–80h total) |
-| Early realms in a later generation | noticeably faster than in generation 1 (ancestral catch-up) |
-| Immortal era | open-ended; long play is fine here |
+| Measure (casual profile) | Target | Actual (sim, 2026-09-26, task 2.4) |
+|---|---|---|
+| One mortal life (birth → end) | 10–20h of open play | ✅ median 16.8h (active 12.6h — faster, ≥5h floor) |
+| Generations before the first successful Ascension | ~3–5 (≈ 40–80h total) | not yet measurable — needs ancestral catch-up (tasks 2.5–2.8); every death is still a fresh soul |
+| Early realms in a later generation | noticeably faster than in generation 1 (ancestral catch-up) | not built yet (task 2.7's `CATCHUP_QPS_MULT`) |
+| Immortal era | open-ended; long play is fine here | unchanged (M7) |
 
-Today (sim, 2026-09-25) the casual profile's first Ascension attempt comes at ~82h, so the mortal curve needs
-roughly a 4–6× compression. That's roadmap task 2.4.
+**Task 2.4 (pacing compression) is done.** Foundation Building–Spirit Severing `qiCap`s were retuned (see
+`docs/systems/life-loop.md` §13 for the full before/after) so a casual mortal life now reaches Spirit Severing
+and often an Ascension attempt within the 10–20h life, instead of dying of old age around Core Formation
+(the state task 2.3's game clock/lifespan produced before this pass). `PACING_TARGETS_MIN` and the new
+`LIFE_TARGETS_H` live in `scripts/sim/profiles.js`. Generation-level targets (row 2 above) wait on tasks 2.5–2.8
+(marriage/heirs/Ancestral Hall/catch-up) — there is no clan continuity across deaths yet for them to measure.
 
 ---
 

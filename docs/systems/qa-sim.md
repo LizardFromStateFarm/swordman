@@ -53,6 +53,15 @@ invariant violations, 2 = harness crashed / bad `--set`.
   time-averaged Qi/s) vs `PACING_TARGETS_MIN` in profiles.js. Flag only for `PACING_PROFILE` (casual), and
   only when >2× outside the band. Tuning recipe used 2026-09-25: newCap = cap × target ÷ measured fill,
   via `--set`, 2–3 iterations to converge (multipliers shift as later stages arrive at different times).
+  **Retuned 2026-09-26 (M2 task 2.4, life-loop.md §6):** bands tightened for FB/CF/NS/SS (FB 15–30m,
+  CF 30–60m, NS 45–90m, SS 60–120m — was 20–45/60–180/180–480/480–1200) now that the Phase 30 game clock
+  ends a casual life by old age, so a casual mortal life needs to clear these realms much faster to stay
+  in the 10–20h life-length band instead of dying of old age around Core Formation. See life-loop.md §13.
+- **Life Loop pacing (Phase 30/M2 task 2.4)**: median per-life open-hours per profile (from the "Life Loop"
+  section) vs `LIFE_TARGETS_H` in profiles.js (`casual.gen1 [10,20]`, `active.gen1 [5,15]`) — flags if a
+  profile's median life falls outside its band. `later` (post-catch-up generations), `FIRST_ASCENSION_H`
+  and `GENERATIONS_TO_ASCEND` are defined but **not yet checked** — they need tasks 2.5–2.8's ancestral
+  catch-up/generation continuity to mean anything (every death today is a fresh soul, no carry-over).
 - **Member Wars** (Phase 5C, updated by Phase 32): joined-sect wars per profile — count, W/L, "present for" (% of
   calls the bot's own check-in cadence overlapped an open war phase — a presence stat, not a reward gate), ignored
   (present, but left uncommitted — usually an explicit `stay_out` order), unseen (resolved while the game was
@@ -103,6 +112,13 @@ health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 
 - **New logic file in renderer/game/:** add to `LOGIC_FILES` and to the `systems` array (tick order = game.js).
 
 ## Gotchas
+- **`OFFLINE_QI_MULT` (lifespan.js) left at 1.0 (M2 task 2.4).** The "is afk trivially easy" check is NOT
+  afk's open-hours vs casual's open-hours (afk's bottleneck is one breakthrough per 15-min reopen window,
+  so it's insensitive to this multiplier well before Qi-cap fill time matters) — it's afk's **wall-clock**
+  hours (which `rec.t` counts through closures too) vs casual's **open** hours to the same milestone. Measured
+  107.3h wall (afk) vs ~19.5h open (casual) to a first Ascension attempt — afk is far slower in real time, so
+  no throttle was applied. The multiplier is wired into `initSlot()`'s offline Qi credit either way, as a
+  documented no-op, for a future task to turn without another code change. See life-loop.md §13.
 - Bot quality bounds the insight: "never used X" can mean the bot doesn't know X — check `bot.js` first.
   The bot is deliberately *reasonable*, not optimal (e.g. refuses breakthroughs at ≤20 integrity without a pill).
 - `loader.js` rewrites top-level `const` → `var` in **data files only** so `--set` can reassign constants.

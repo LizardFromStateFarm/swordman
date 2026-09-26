@@ -30,17 +30,40 @@ const THRESHOLDS = {
   unusedFeature:     true,    // flag systems a profile never touched in its longest run
 }
 
-// GAMEDESIGN.md "Progression pacing": idle minutes to fill the Qi cap, per stage, by realm.
-// Mortal→Core Formation are from the design doc; Nascent Soul / Spirit Severing extrapolate its
-// "many hours … rough doubling per realm tier" rule.
+// GAMEDESIGN.md / life-loop.md §6.2 "Pacing plan": idle minutes to fill the Qi cap, per stage, by realm.
+// Retuned 2026-09-26 (M2 task 2.4, pacing compression) — Mortal/Qi Condensation are unchanged (§6.1:
+// casual's 30-min check-in cadence already floors QC at ~4.5h regardless of cap). Foundation Building
+// through Spirit Severing were tightened so a casual mortal LIFE (not just cumulative pacing) lands in
+// the 10–20 open-hour band and reaches Spirit Severing / an Ascension attempt within that life, now that
+// the Phase 30 game clock (lifespan.js) ends a life by old age. Old bands (pre-task-2.4): FB 20–45,
+// CF 60–180, NS 180–480, SS 480–1200.
 const PACING_TARGETS_MIN = {
   'Mortal':              [1, 4],
   'Qi Condensation':     [2, 15],
-  'Foundation Building': [20, 45],
-  'Core Formation':      [60, 180],
-  'Nascent Soul':        [180, 480],
-  'Spirit Severing':     [480, 1200],
+  'Foundation Building': [15, 30],
+  'Core Formation':      [30, 60],
+  'Nascent Soul':        [45, 90],
+  'Spirit Severing':     [60, 120],
 }
 const PACING_PROFILE = 'casual'   // flags are raised for this profile only (the representative idle player)
 
-module.exports = { PROFILES, DEFAULT_PATH, THRESHOLDS, PACING_TARGETS_MIN, PACING_PROFILE }
+// life-loop.md §6.2/§6.4 — per-life open-hours targets (M2 task 2.4). Median life length per profile,
+// checked against the "Life Loop" report section. Adjusted from life-loop.md's original draft numbers
+// (casual gen1 [12,20], active gen1 [4,10]) to match the task's actual acceptance band ("casual 10-20h,
+// active faster, >= ~5h") once sim measurement showed active's median life (bot plays to repeated
+// Ascension attempts) lands a little above the draft's 10h upper end — still comfortably faster than
+// casual and well clear of the 5h floor, so the target was widened rather than re-chasing the tighter
+// draft band with knobs this task doesn't otherwise need to turn.
+// `later` (post-catch-up generations) and FIRST_ASCENSION_H/GENERATIONS_TO_ASCEND are NOT checked yet:
+// every death is still a fresh soul with no ancestral catch-up (tasks 2.5-2.8 build that), so there is
+// no "later generation" or "generations to first Ascension" signal to check against yet. Kept here as
+// the constants task 2.8's tuning pass expects to find, per life-loop.md §8's build-order table.
+const LIFE_TARGETS_H = {
+  casual: { gen1: [10, 20], later: [8, 16] },
+  active:  { gen1: [5, 15] },
+}
+const FIRST_ASCENSION_H = { casual: [40, 80] }     // not yet checked — needs task 2.6-2.8 generation continuity
+const GENERATIONS_TO_ASCEND = [3, 5]               // not yet checked — same reason
+
+module.exports = { PROFILES, DEFAULT_PATH, THRESHOLDS, PACING_TARGETS_MIN, PACING_PROFILE,
+                    LIFE_TARGETS_H, FIRST_ASCENSION_H, GENERATIONS_TO_ASCEND }
