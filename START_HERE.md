@@ -35,7 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
 | Game Time & Age (age passes only while open; **age never kills** since 2026-09-26) | ◐ Phase 30 (M2) — game clock + age stat + Pass the Mantle; lifespan/twilight/Final Seclusion removed; pacing (2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
-| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — world/clan registry built (2.6a); heirs = clan-succession.md 2.6b–f |
+| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — world/clan registry (2.6a), children (2.6b), heirs + tournament (2.6c), reign + rebirth as a descendant (2.6d) built; 2.6e–f next |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
@@ -54,7 +54,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Deep Sect Management (offices, Recruiter, manual recruiting) | ⬜ Phase 27 (planned) |
 | Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ⬜ Phase 28 (planned) |
 
-> **Tests:** `npm test` (syntax) · `npm run checks` (106 scenario checks, ~5s) · `npm run sim` (bot playtest). Any
+> **Tests:** `npm test` (syntax) · `npm run checks` (152 scenario checks, ~6s) · `npm run sim` (bot playtest) ·
+> `node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` (real-app smoke over CDP, throwaway profile). Any
 > useful check script you write goes in `scripts/sim/checks/` and gets documented — never left in a temp folder
 > (CLAUDE.md → "Test scripts are project assets").
 
@@ -67,6 +68,27 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 8
+Agent: built **M2 2.6d** (clan-succession.md §2.6d as-built; user approved the plan + both extras + a tiny rival twist):
+  - Death is two-phase: the next life is created UNBORN in s.interlude (clock/offline/events paused, survives
+    save/load). Heir bet (when the clan must pick) → the new head's parenting style (bond/morality/personality/trauma
+    → nurturing/strict/neglectful/ruthless; trauma = "never again" or "the cycle continues") → reign sim + 5–8 line
+    chronicle (marriage, children, branches, sect fortune, one story) → "born into the clan" or "born an orphan".
+  - One generation per death: if you weren't head, the NPC head steps down and their children succeed. Positions
+    eldest/younger/branch weighted by the bet + style; clan stipend from the clan sect; upbringing event from the
+    head's style (bond keyed by YOUR personality). Orphan deaths return to the last clan. Extinct clans → orphan.
+  - User add: a very small chance (RIVAL_REBIRTH_CHANCE 2%) to be born into a rival's family — for now any known
+    enemy (a spouse who dueled you, a sect you warred with / that took the clan sect). **PLAN.md Phase 28K "Your
+    Rival (宿敌)" + roadmap 4.10b** added for the real same-generation recurring rival (user request).
+  - Only the head names heirs / hosts tournaments now. Heir Bloodline term = whoever took the seat.
+  - New: assets/data/succession.js, scripts/sim/checks/succession.js (45), scripts/smoke/cdp.js + scenarios/succession.js.
+  - Sim fixes: Family Planning was set once per RUN; deaths inside a bot check-in now resolved first; stipend in ledger.
+  - Verified: npm test, 152 checks, full sim + 500h × 2 seeds (0/0), build:web, dist, real-app smoke (zero errors).
+    Pacing vs pre-2.6d (10 seeds, 200h): median life unchanged; casual reaches Ascension a bit more often (7/10 vs 5/10).
+  Note: the user committed mid-session as d27471c "succesions"; the finishing commit sits on top of it.
+  Next: 2.6e — challenge the head (head decides lethality; reads s.birth.headBond + the head's style), challenges
+    when you're head, step-down mass succession tournament. Assessment + Depth line first.
+
 Date: 2026-09-26 (day session, user present) — part 7 (wrap-up before a fresh context)
 Agent: moved the session's 106 scenario checks from the temp scratchpad into the repo: scripts/sim/checks/
   (world, family-marriage, family-affairs, children, tournament) + run-all.js → `npm run checks` (all pass, ~5s).

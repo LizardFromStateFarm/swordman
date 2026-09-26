@@ -272,4 +272,13 @@ Data: `assets/data/succession.js` (styles, weights, chronicle text, upbringing e
   Bond, **Clan Chronicle** button (`#chronicle-overlay`, newest first). Heir/Tournament rows only for the head.
 - **Sim:** see qa-sim.md (bot bets/rebirths, "Between lives" table, 2.6d invariants). Scenario checks:
   `scripts/sim/checks/succession.js` (45).
-- **Evidence:** EVIDENCE_TBD
+- **Evidence:** full `npm run sim` (27 runs) and a 500h × 3 profiles × 2 seeds run: 0 errors / 0 violations
+  (135 + 122 save round-trips). 500h: active 10 deaths → 7 bets (4 won), styles spread over all four, rebirths
+  eldest 1 · younger 5 · branch 3 · **rival 1**, sect fates grow/hold/decline/lost all seen; every profile spans ≥ 3
+  generations. 152 scenario checks (45 new in succession.js). Real app: `scripts/smoke/scenarios/succession.js` —
+  bet → chronicle → clan birth → Stats rows → Clan Chronicle → upbringing → mid-interlude save resumed; zero console
+  errors. **Pacing:** 10-seed 200h vs the pre-2.6d commit — median life unchanged (casual 31.5h vs 30.5h, active 9.7h
+  vs 10.6h); casual runs that reach Ascension 7/10 vs 5/10 (the heir Bloodline term now always applies — mild).
+- **Sim fixes along the way:** the bot set Family Planning once per *run* (later lives fell back to 'many'); deaths
+  inside a bot check-in (Ascension) now resolve the interlude before the bot acts again; the clan stipend is
+  attributed in the stone ledger ('clan_stipend').
