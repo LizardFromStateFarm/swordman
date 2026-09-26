@@ -1757,3 +1757,63 @@ body {
 #family-later:hover { border-color: var(--gold); color: var(--gold); }
 #family-choices button:disabled { opacity: 0.45; cursor: default; }
 .family-sub { display: block; font-size: 9px; color: var(--dim); margin-top: 2px; }
+
+/* ── Heir + Tournament of Heirs overlays (clan-succession.md 2.6c) — same look as #family-overlay ── */
+
+#heir-overlay, #tournament-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,4,14,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.fam-modal-box {
+  background: var(--bg2);
+  border: 1px solid var(--gold);
+  border-radius: 5px;
+  padding: 14px 14px;
+  width: 270px;
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  text-align: center;
+}
+#tournament-box.lethal { border-color: var(--red); }
+
+.fam-modal-title { font-size: 13px; color: var(--gold); margin-bottom: 6px; }
+#tournament-box.lethal .fam-modal-title { color: var(--red); }
+.fam-modal-desc  { font-size: 10px; color: var(--dim); margin-bottom: 8px; }
+
+.fam-modal-btns { display: flex; gap: 6px; margin-top: 6px; }
+.fam-modal-btns button,
+#heir-list button,
+#tournament-pool button {
+  background: rgba(24,10,4,.9);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  min-height: 32px;
+  flex: 1;
+}
+.fam-modal-btns button:hover:not(:disabled),
+#heir-list button:hover:not(:disabled),
+#tournament-pool button:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.fam-modal-btns button:disabled, #tournament-pool button:disabled { opacity: 0.45; cursor: default; }
+
+#heir-list, #tournament-pool { display: flex; flex-direction: column; gap: 5px; text-align: left; }
+#heir-list button, #tournament-pool button { width: 100%; text-align: left; }
+#tournament-pool button.picked { border-color: var(--gold); color: var(--gold); }
+#tournament-pool button.paired { opacity: 0.55; }
+.fam-sub { display: block; font-size: 9px; color: var(--dim); margin-top: 1px; }
+
+#tournament-pairs { font-size: 10px; color: var(--text); margin: 6px 0; text-align: left; }
+#tournament-log { font-size: 10px; color: var(--dim); text-align: left; max-height: 120px; overflow-y: auto; }
+#tournament-log div { margin: 2px 0; }
+#tournament-log .died { color: var(--red); }

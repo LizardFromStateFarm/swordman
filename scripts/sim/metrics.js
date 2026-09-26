@@ -92,7 +92,9 @@ class Recorder {
         // Phase 16-lite (M2 task 2.5): family per life
         married: !!lr.married, children: lr.children || 0, adultChildren: lr.adultChildren || 0, spouseMaxStage: lr.spouseMaxStage || 0,
         childrenAlive: lr.childrenAlive ?? lr.children ?? 0, formerSpouses: lr.formerSpouses || 0, tally: lr.familyTally || null,
-        childMaxStage: lr.childMaxStage ?? 0, childMeanBond: lr.childMeanBond ?? null, childMeanMorality: lr.childMeanMorality ?? null })
+        childMaxStage: lr.childMaxStage ?? 0, childMeanBond: lr.childMeanBond ?? null, childMeanMorality: lr.childMeanMorality ?? null,
+        heirKind: lr.heirKind ?? null, heirStage: lr.heirStage ?? null, heirTrauma: !!lr.heirTrauma, heirTerm: lr.heirTerm || 0,
+        tournamentDeaths: lr.tournamentDeaths || 0 })
       this.milestone('first_death')
     }
     if (open) {
@@ -191,6 +193,15 @@ class Recorder {
       }
       for (const p of [fam.spouse, ...(fam.lovers || []).map(l => l.person)]) if (p && !(p.morality >= -100 && p.morality <= 100)) this.violate('morality_range', `${p.id}=${p.morality}`)
       if (fam.childEvent && !fam.children.some(c => c.id === fam.childEvent.childId && c.alive && !c.estranged)) this.violate('child_event_orphaned', fam.childEvent.childId)
+      // 2.6c: the heir is a living adult child at home; a tournament's lethal rounds never cut the field below the Top 4.
+      const heirOk = c => c && c.alive && !c.estranged && s.world.year - c.bornYear >= this.D.ADULT_AGE
+      if (fam.heirId && !heirOk(fam.children.find(c => c.id === fam.heirId))) this.violate('heir_invalid', fam.heirId)
+      const t = fam.tournament
+      if (t) {
+        const entrants = t.pool.length + t.eliminated.length, deaths = t.eliminated.filter(e => e.died).length
+        if (deaths > Math.max(0, entrants - this.D.TOURNAMENT_TOP)) this.violate('tournament_too_many_deaths', `${deaths} of ${entrants}`)
+        if (t.pool.some(id => !heirOk(fam.children.find(c => c.id === id)))) this.violate('tournament_pool_invalid', t.pool.join(','))
+      }
       if (fam.proposal && (fam.spouse || s.maxStageThisLife < this.D.PROPOSAL_MIN_STAGE))
         this.violate('family_proposal_invalid', `spouse=${!!fam.spouse} maxStage=${s.maxStageThisLife}`)
     }

@@ -186,6 +186,35 @@
   </div>
 </div>
 
+<!-- Heir overlay (clan-succession.md 2.6c) — name any adult child in the household as heir -->
+<div id="heir-overlay" class="hidden">
+  <div id="heir-box" class="fam-modal-box">
+    <div class="fam-modal-title">Name an Heir 立嗣</div>
+    <div class="fam-modal-desc">Your heir takes over the clan and your sect when your path ends.</div>
+    <div id="heir-list"></div>
+    <div class="fam-modal-btns"><button id="heir-clear">Clear heir</button><button id="heir-close">Close</button></div>
+  </div>
+</div>
+
+<!-- Tournament of Heirs overlay (2.6c) — you pick every matchup; lethal until the Top 4 -->
+<div id="tournament-overlay" class="hidden">
+  <div id="tournament-box" class="fam-modal-box">
+    <div class="fam-modal-title">Tournament of Heirs 夺嫡</div>
+    <div id="tournament-info" class="fam-modal-desc"></div>
+    <div id="tournament-pool"></div>
+    <div id="tournament-pairs"></div>
+    <div id="tournament-log"></div>
+    <div class="fam-modal-btns">
+      <button id="tournament-auto">Auto-pair</button>
+      <button id="tournament-fight">Fight!</button>
+    </div>
+    <div class="fam-modal-btns">
+      <button id="tournament-cancel">Call it off</button>
+      <button id="tournament-close">Later</button>
+    </div>
+  </div>
+</div>
+
 <!-- Proposal overlay (Phase 16-lite, M2 task 2.5) — a pending proposal never expires; Stats reopens it -->
 <div id="proposal-overlay" class="hidden">
   <div id="proposal-box">

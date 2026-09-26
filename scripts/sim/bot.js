@@ -117,6 +117,24 @@ class Bot {
     if (!f) return false
     // 2.6b Family Planning, set once: 'active' keeps families small ('some'), casual/afk go big ('many').
     if (!this._planned) { this._planned = true; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : 'many') }
+    // 2.6c heirs: a tournament in progress is fought to the end (strongest paired with weakest — the bot
+    // protects its best). 'active' hosts one per life once it has 6+ adult children and reaches Nascent Soul;
+    // everyone else (and 'active' until then) simply names the strongest adult child heir.
+    if (f.tournament) {
+      const info = this.gs.tournamentInfo()
+      const pool = info.pool.map(id => f.children.find(c => c.id === id)).sort((a, b) => b.stageIndex - a.stageIndex)
+      const pairs = []
+      while (pairs.length < info.fights) pairs.push([pool.shift().id, pool.pop().id])
+      return this.do('tournament_round', this.gs.fightTournamentRound(pairs))
+    }
+    const adults = this.gs.eligibleHeirs()
+    if (this.profile === 'active' && !f.lastTournament && adults.length >= 6 && this.s.stageIndex >= 16) {
+      return this.do('host_tournament', this.gs.startTournament())
+    }
+    if (!f.heirId && adults.length) {
+      const best = [...adults].sort((a, b) => b.stageIndex - a.stageIndex)[0]
+      if (this.do('choose_heir', this.gs.chooseHeir(best.id), false)) return false
+    }
     // 2.6b child events: 'active' picks what that child likes most (and always fetches a runaway); casual/afk
     // pick at random — which lets bonds fall far enough to exercise the runaway crisis.
     if (f.childEvent) {

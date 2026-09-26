@@ -280,6 +280,16 @@ function buildReport(runs, args) {
     L.push(`| ${p} | ${lives.length} | ${f(med(lives.map(l => l.children || 0)))} | ${f(med(lives.map(l => l.childMaxStage || 0)))} | ${f(med(lives.map(l => num(l.childMeanBond)).filter(v => v != null)))} | ${f(med(lives.map(l => num(l.childMeanMorality)).filter(v => v != null)))} | ${T('childEvents')} · ${T('runaways')} |`)
   }
   L.push(``)
+  // clan-succession.md 2.6c: who took over, and at what cost.
+  L.push(`## Succession — heirs + Tournament of Heirs (${longest}h runs)`)
+  L.push(`| Profile | Lives | Heir named (chosen · tournament) | Heir stage (median) | Heir forged in blood | Tournament deaths (total) | BQ heir term (mean) |`)
+  L.push(`|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const lives = group(p, longest).flatMap(r => r.lifeLoop?.lifeLengths || [])
+    const n = Math.max(1, lives.length), withHeir = lives.filter(l => l.heirKind)
+    L.push(`| ${p} | ${lives.length} | ${withHeir.length} (${lives.filter(l => l.heirKind === 'chosen').length} · ${lives.filter(l => l.heirKind === 'tournament').length}) | ${f(med(withHeir.map(l => l.heirStage)))} | ${lives.filter(l => l.heirTrauma).length} | ${lives.reduce((a, l) => a + (l.tournamentDeaths || 0), 0)} | ${(lives.reduce((a, l) => a + (l.heirTerm || 0), 0) / n).toFixed(2)} |`)
+  }
+  L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)
   for (const p of profiles) {
     const g = group(p, longest), by = {}

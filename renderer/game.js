@@ -147,7 +147,7 @@
   const sectSys   = new SectSystem(gameState)
   const sectWarSys = new SectWarSystem(gameState)
   const settingsUI = new SettingsUI(gameState, renderer)
-  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #proposal-overlay:not(.hidden), #family-overlay:not(.hidden)'))
+  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #proposal-overlay:not(.hidden), #family-overlay:not(.hidden), #heir-overlay:not(.hidden), #tournament-overlay:not(.hidden)'))
   // Phase 9A/B: window "active" = visible AND focused; notifications only fire otherwise (news, not a summons).
   const notifSys   = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(),
     (title, body) => window.electron.notify(title, body))
@@ -476,6 +476,13 @@
     `
     document.getElementById('_matchmaker')?.addEventListener('click', () => openProposalOverlay(gameState.get()))
     document.getElementById('_family-matter')?.addEventListener('click', () => openFamilyOverlay(gameState.get()))
+    document.getElementById('_choose-heir')?.addEventListener('click', () => openHeirOverlay())
+    document.getElementById('_tournament')?.addEventListener('click', () => {
+      if (gameState.get().family.tournament) return openTournamentOverlay()
+      showConfirm('Host a Tournament of Heirs?', 'Every adult child fights. Rounds are to the death until four remain. It cannot be stopped once blood is spilled.', () => {
+        if (gameState.startTournament().ok) openTournamentOverlay()
+      })
+    })
     document.querySelectorAll('#tab-stats [data-plan]').forEach(btn => btn.addEventListener('click', () => gameState.setFamilyPlanning(btn.dataset.plan)))
     document.querySelectorAll('#tab-stats [data-end-affair]').forEach(btn => btn.addEventListener('click', () => {
       showConfirm('End the affair?', 'Children already born stay yours.', () => gameState.endAffair(btn.dataset.endAffair))
@@ -539,6 +546,15 @@
     }
     if (f.proposal) html += `<button id="_matchmaker" class="sect-btn" style="width:100%;margin:6px 0 2px;">A matchmaker awaits</button>`
     if (familyPendingKey(s)) html += `<button id="_family-matter" class="sect-btn" style="width:100%;margin:6px 0 2px;">A family matter awaits</button>`
+    // 2.6c: heir + Tournament of Heirs
+    const heir = f.heirId ? f.children.find(c => c.id === f.heirId) : null
+    const adults = gameState.eligibleHeirs().length
+    if (adults || heir || f.tournament) {
+      html += sr('Heir', heir ? `${escHtml(Persons.fullName(heir))}${heir.trauma ? ' <span style="color:var(--red)">· forged in blood</span>' : ''}` : '<span style="color:var(--dim)">None named</span>')
+      html += `<div style="display:flex;gap:6px;margin:6px 0 2px">
+        <button id="_choose-heir" class="sect-btn" style="flex:1" ${adults && !f.tournament ? '' : 'disabled'}>Name an Heir</button>
+        <button id="_tournament" class="sect-btn" style="flex:1" ${f.tournament || adults >= 2 ? '' : 'disabled'}>${f.tournament ? 'Continue Tournament' : 'Tournament of Heirs'}</button></div>`
+    }
     return html
   }
 
@@ -2112,6 +2128,89 @@
     }
     document.getElementById('family-overlay').classList.remove('hidden')
   }
+
+  // ── Heir + Tournament of Heirs (clan-succession.md 2.6c) ─────────────────
+
+  function childSummary(s, c) {
+    const pers = PERSONALITIES.find(x => x.id === c.personality)
+    const bl = bondLabel(c.bond ?? 50)
+    return `${personStageLabel(c.stageIndex)} · ${escHtml(pers?.name || '')} · ${bl.word}${c.trauma ? ' · scarred' : ''}`
+  }
+
+  function openHeirOverlay() {
+    const s = gameState.get(), f = s.family
+    const list = document.getElementById('heir-list')
+    list.innerHTML = gameState.eligibleHeirs().map(c => `<button data-heir="${escHtml(c.id)}"${c.id === f.heirId ? ' style="border-color:var(--gold)"' : ''}>
+      ${escHtml(Persons.fullName(c))}${c.id === f.heirId ? ' ★' : ''}<span class="fam-sub">${childSummary(s, c)}</span></button>`).join('') ||
+      '<div class="fam-modal-desc">No adult children at home.</div>'
+    list.querySelectorAll('[data-heir]').forEach(b => b.addEventListener('click', () => {
+      gameState.chooseHeir(b.dataset.heir); document.getElementById('heir-overlay').classList.add('hidden')
+    }))
+    document.getElementById('heir-overlay').classList.remove('hidden')
+  }
+  document.getElementById('heir-clear').addEventListener('click', () => { gameState.clearHeir(); document.getElementById('heir-overlay').classList.add('hidden') })
+  document.getElementById('heir-close').addEventListener('click', () => document.getElementById('heir-overlay').classList.add('hidden'))
+
+  // Pairing state lives in the render layer only (no persisted state): click one fighter, then their opponent.
+  let _tPick = null, _tPairs = [], _tLog = []
+  function openTournamentOverlay() {
+    _tPick = null; _tPairs = []
+    renderTournament()
+    document.getElementById('tournament-overlay').classList.remove('hidden')
+  }
+  function renderTournament() {
+    const s = gameState.get(), f = s.family, info = gameState.tournamentInfo()
+    const box = document.getElementById('tournament-box')
+    const kid = id => f.children.find(c => c.id === id)
+    document.getElementById('tournament-log').innerHTML = _tLog.map(r => `<div class="${r.died ? 'died' : ''}">${escHtml(r.text)}</div>`).join('')
+    if (!info) {   // finished (or called off)
+      box.classList.remove('lethal')
+      const heir = f.heirId ? kid(f.heirId) : null
+      document.getElementById('tournament-info').textContent = heir ? `${Persons.fullName(heir)} is your heir.` : 'The tournament is over.'
+      document.getElementById('tournament-pool').innerHTML = ''; document.getElementById('tournament-pairs').innerHTML = ''
+      for (const id of ['tournament-auto', 'tournament-fight', 'tournament-cancel']) document.getElementById(id).disabled = true
+      return
+    }
+    box.classList.toggle('lethal', info.lethal)
+    document.getElementById('tournament-info').textContent = info.lethal
+      ? `Round ${info.round} — TO THE DEATH. ${info.n} remain; pair ${info.fights} fight${info.fights === 1 ? '' : 's'} (the field never drops below ${TOURNAMENT_TOP}). Unpaired fighters rest.`
+      : `Round ${info.round} — the Top ${info.n}, non-lethal. Pair ${info.fights} fight${info.fights === 1 ? '' : 's'}.`
+    const pairedIds = new Set(_tPairs.flat())
+    document.getElementById('tournament-pool').innerHTML = info.pool.map(id => { const c = kid(id)
+      return `<button data-fighter="${escHtml(id)}" class="${_tPick === id ? 'picked' : ''}${pairedIds.has(id) ? ' paired' : ''}">${escHtml(Persons.fullName(c))}<span class="fam-sub">${childSummary(s, c)}</span></button>` }).join('')
+    document.getElementById('tournament-pairs').innerHTML = _tPairs.map(([a, b]) => `⚔ ${escHtml(kid(a).given)} vs ${escHtml(kid(b).given)}`).join('<br>')
+    document.getElementById('tournament-pool').querySelectorAll('[data-fighter]').forEach(btn => btn.addEventListener('click', () => {
+      const id = btn.dataset.fighter
+      const existing = _tPairs.findIndex(p => p.includes(id))
+      if (existing >= 0) _tPairs.splice(existing, 1)                       // click a paired fighter → unpair
+      else if (_tPick === id) _tPick = null
+      else if (_tPick && _tPairs.length < info.fights) { _tPairs.push([_tPick, id]); _tPick = null }
+      else _tPick = id
+      renderTournament()
+    }))
+    document.getElementById('tournament-auto').disabled = _tPairs.length >= info.fights
+    document.getElementById('tournament-fight').disabled = _tPairs.length !== info.fights
+    document.getElementById('tournament-cancel').disabled = info.fightsDone > 0
+  }
+  document.getElementById('tournament-auto').addEventListener('click', () => {
+    const info = gameState.tournamentInfo(); if (!info) return
+    const free = info.pool.filter(id => !_tPairs.flat().includes(id))
+    while (_tPairs.length < info.fights && free.length >= 2) _tPairs.push([free.shift(), free.shift()])
+    _tPick = null; renderTournament()
+  })
+  document.getElementById('tournament-fight').addEventListener('click', () => {
+    const res = gameState.fightTournamentRound(_tPairs)
+    if (!res.ok) return flashMessage('Pair every fight first', 'negative')
+    _tLog.push(...res.results); _tPairs = []; _tPick = null
+    renderTournament()
+  })
+  document.getElementById('tournament-cancel').addEventListener('click', () => {
+    gameState.cancelTournament(); _tLog = []; document.getElementById('tournament-overlay').classList.add('hidden')
+  })
+  document.getElementById('tournament-close').addEventListener('click', () => {
+    document.getElementById('tournament-overlay').classList.add('hidden')
+    if (!gameState.get().family.tournament) _tLog = []
+  })
 
   document.getElementById('family-later').addEventListener('click', () => {
     document.getElementById('family-overlay').classList.add('hidden')

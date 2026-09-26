@@ -418,6 +418,14 @@ class GameState {
     }
     if (clan) for (const line of clan.lines) if (line.headId === me.id) line.headId = null   // 2.6d fills it
     if (clan && clan.headId === me.id) clan.headId = null
+    // 2.6c: what 2.6d's reign sim needs — who takes over, who founds the branches, and the sect they inherit.
+    if (clan) {
+      const heir = f.heirId && (f.children || []).find(c => c.id === f.heirId && c.alive && !c.estranged)
+      clan.pendingSuccession = { fromPersonId: me.id, year: yr, heirId: heir ? heir.id : null,
+        branchFounderIds: heir && f.lastTournament?.ranking?.[0] === heir.id
+          ? f.lastTournament.ranking.slice(1).filter(id => (f.children || []).some(c => c.id === id && c.alive && !c.estranged)) : [] }
+      if (s.ownSect?.founded) clan.sect = { ...JSON.parse(JSON.stringify(s.ownSect)), inheritedYear: yr, heirId: heir ? heir.id : null }
+    }
     w.pastLives.push({ personId: me.id, clanId: clan?.id || null, lineId: w.playerLineId, cause, year: yr,
                        maxStage, generation, openHours: +(s.stats.timePlayed / 3600).toFixed(2) })
     return w
@@ -482,13 +490,19 @@ class GameState {
              lastEventId: null, duel: null, btSabotage: false, tally: this._blankFamilyTally(),
              lovers: [], encounters: [],
              // 2.6b (clan-succession.md): Family Planning + one pending child event at a time
-             planning: FAMILY_PLAN_DEFAULT, childEvent: null, nextChildEventYear: null, lastChildEventId: null }
+             planning: FAMILY_PLAN_DEFAULT, childEvent: null, nextChildEventYear: null, lastChildEventId: null,
+             // 2.6c: designated heir (a home adult child) + the Tournament of Heirs in progress / last result
+             heirId: null, tournament: null, lastTournament: null }
   }
 
   _blankFamilyTally() {
     return { events: 0, crises: 0, affairs: 0, discovered: 0, accept: 0, sabotage: 0, duel: 0, suicide: 0,
-             murder_suicide: 0, left: 0, duelWon: 0, duelLost: 0, fled: 0, childEvents: 0, runaways: 0 }
+             murder_suicide: 0, left: 0, duelWon: 0, duelLost: 0, fled: 0, childEvents: 0, runaways: 0,
+             tournaments: 0, tournamentDeaths: 0 }
   }
+
+  // 2.6c: an heir must be a living, adult child still in the household.
+  _heirEligible(c) { return !!c && c.alive && !c.estranged && this._childAge(c) >= ADULT_AGE }
 
   // 2.6b: morality (−100…100) = personality base + noise + `extra` (e.g. a parent's karma). One Math.random().
   _rollMorality(personality, extra = 0) {
@@ -534,6 +548,13 @@ class GameState {
       if (p && typeof p.morality !== 'number') p.morality = PERSONALITY_MORALITY[p.personality] ?? 0
     }
     if (f.childEvent && !f.children.some(c => c.id === f.childEvent.childId && c.alive && !c.estranged)) f.childEvent = null
+    // 2.6c: the heir and tournament entrants must still be eligible (a runaway or a death removes them).
+    if (f.heirId && !this._heirEligible(f.children.find(c => c.id === f.heirId))) f.heirId = null
+    if (f.tournament) {
+      // Filter only — finishing (which logs/notifies) happens in _tickFamily(), never inside _recalc().
+      f.tournament.pool = f.tournament.pool.filter(id => this._heirEligible(f.children.find(c => c.id === id)))
+      if (f.tournament.pool.length === 0) f.tournament = null
+    }
   }
 
   _changeAffection(delta) {
@@ -807,6 +828,9 @@ class GameState {
         this._emit('marriage_event', { id: ev.id, crisis: ev.crisis })
       }
     }
+
+    // 2.6c: a tournament whose field shrank to one (a runaway / a death between rounds) ends with that child.
+    if (f.tournament && f.tournament.pool.length === 1) this._finishTournament()
 
     // 2.6b: child events — one pending at a time (never expires), for a child old enough to have a story.
     if (!f.childEvent) {
@@ -1362,6 +1386,137 @@ class GameState {
     return { ok: true, bond: child.bond, outcome }
   }
 
+  // ── 2.6c (clan-succession.md): heirs + the Tournament of Heirs ─────────────
+
+  // Children who could be named heir / enter a tournament.
+  eligibleHeirs() { return this._s.family.children.filter(c => this._heirEligible(c)) }
+
+  chooseHeir(childId) {
+    const f = this._s.family
+    if (f.tournament) return { ok: false, reason: 'tournament' }
+    const c = f.children.find(x => x.id === childId)
+    if (!c) return { ok: false, reason: 'unknown' }
+    if (!this._heirEligible(c)) return { ok: false, reason: 'not_eligible' }
+    f.heirId = c.id
+    this.addEvent({ text: `${Persons.fullName(c)} is named heir to the clan.`, type: 'special' })
+    this._notify()
+    return { ok: true, heir: c }
+  }
+
+  clearHeir() {
+    this._s.family.heirId = null
+    this._notify()
+    return { ok: true }
+  }
+
+  // Rounds are lethal while the field is larger than TOURNAMENT_TOP, and a lethal round never takes it below
+  // TOURNAMENT_TOP; after that, non-lethal knockout to one winner.
+  tournamentInfo() {
+    const t = this._s.family.tournament
+    if (!t) return null
+    const n = t.pool.length, lethal = n > TOURNAMENT_TOP
+    return { round: t.round, n, lethal, fights: lethal ? Math.min(Math.floor(n / 2), n - TOURNAMENT_TOP) : Math.floor(n / 2),
+             pool: [...t.pool], eliminated: [...t.eliminated], fightsDone: t.fightsDone }
+  }
+
+  startTournament() {
+    const s = this._s, f = s.family
+    if (f.tournament) return { ok: false, reason: 'already' }
+    const entrants = this.eligibleHeirs()
+    if (entrants.length < 2) return { ok: false, reason: 'too_few' }
+    f.tournament = { year: Math.floor(s.world.year), round: 1, pool: entrants.map(c => c.id), eliminated: [],
+                     lethalFought: false, fightsDone: 0 }
+    this.addEvent({ text: `Year ${Math.floor(s.world.year)}: ${entrants.length} of your children enter the Tournament of Heirs.`, type: 'special' })
+    this._emit('tournament_start', { n: entrants.length })
+    this._notify()
+    return { ok: true, entrants: entrants.length }
+  }
+
+  // Only before the first fight — once blood is spilled, it runs to the end.
+  cancelTournament() {
+    const f = this._s.family
+    if (!f.tournament) return { ok: false, reason: 'no_tournament' }
+    if (f.tournament.fightsDone > 0) return { ok: false, reason: 'begun' }
+    f.tournament = null
+    this.addEvent({ text: 'You call off the Tournament of Heirs before the first blow.', type: 'neutral' })
+    this._notify()
+    return { ok: true }
+  }
+
+  _fightPower(c) {
+    return c.stageIndex * 100 + Math.round((c.root?.mult || 1) * 10) + (TOURNAMENT_PERSONALITY_POWER[c.personality] || 0) +
+           (Math.random() * 2 - 1) * TOURNAMENT_LUCK
+  }
+
+  // pairs: [[idA, idB], …] — exactly tournamentInfo().fights of them, every id in the pool at most once.
+  fightTournamentRound(pairs) {
+    const s = this._s, f = s.family, info = this.tournamentInfo()
+    if (!info) return { ok: false, reason: 'no_tournament' }
+    if (!Array.isArray(pairs) || pairs.length !== info.fights) return { ok: false, reason: 'bad_pairs' }
+    const seen = new Set()
+    for (const p of pairs) {
+      if (!Array.isArray(p) || p.length !== 2 || p[0] === p[1]) return { ok: false, reason: 'bad_pairs' }
+      for (const id of p) { if (!info.pool.includes(id) || seen.has(id)) return { ok: false, reason: 'bad_pairs' }; seen.add(id) }
+    }
+    const t = f.tournament, yr = Math.floor(s.world.year), lethal = info.lethal, results = []
+    const kid = id => f.children.find(c => c.id === id)
+    for (const [ia, ib] of pairs) {
+      const a = kid(ia), b = kid(ib)
+      const pa = this._fightPower(a), pb = this._fightPower(b)
+      const aWins = Math.random() < 1 / (1 + Math.exp(-(pa - pb) / TOURNAMENT_SPREAD))
+      const win = aWins ? a : b, lose = aWins ? b : a
+      let died = false, yielded = false
+      if (lethal) {
+        if (lose.personality === 'coward' && Math.random() < TOURNAMENT_COWARD_YIELD) yielded = true
+        else {
+          died = true
+          lose.alive = false; lose.diedYear = yr; lose.cause = 'tournament'
+          f.tally.tournamentDeaths++
+          s.karma = Math.max(0, s.karma + TOURNAMENT_KARMA_PER_DEATH)
+          if (f.spouse && (lose.parents || []).includes(f.spouse.id)) this._changeAffection(TOURNAMENT_SPOUSE_AFFECTION_PER_DEATH)
+        }
+      }
+      t.pool = t.pool.filter(id => id !== lose.id)
+      t.eliminated.push({ id: lose.id, round: t.round, died, yielded, stage: lose.stageIndex })
+      t.fightsDone++
+      const how = died ? `${lose.given} falls and does not rise` : yielded ? `${lose.given} throws down their sword and yields` : `${lose.given} is beaten`
+      const text = `Round ${t.round}: ${Persons.fullName(win)} defeats ${Persons.fullName(lose)} — ${how}.`
+      this.addEvent({ text, type: died ? 'negative' : 'neutral' })
+      results.push({ a: ia, b: ib, winner: win.id, loser: lose.id, died, yielded, text })
+    }
+    if (lethal) {
+      t.lethalFought = true
+      // Everyone who lived through a lethal round carries it — fighters, yielders and those who sat it out and
+      // watched (trauma → the Bloodline bonus if they become head). Applied once per child.
+      for (const c of f.children.filter(x => x.alive && (t.pool.includes(x.id) || t.eliminated.some(e => e.id === x.id && e.yielded)))) {
+        if (!c.trauma) { c.trauma = true; c.bond = Math.max(0, Math.min(100, c.bond + (TOURNAMENT_RUTHLESS.includes(c.personality) ? 5 : TOURNAMENT_SURVIVOR_BOND))) }
+      }
+    }
+    t.round++
+    let done = false
+    if (t.pool.length === 1) { this._finishTournament(); done = true }
+    this._recalc(); this._notify()
+    return { ok: true, results, done, heirId: done ? f.heirId : null, lethal }
+  }
+
+  // Winner = heir. Ranking: winner, then later eliminations first (ties: higher stage); places 2–4 → branch founders.
+  _finishTournament() {
+    const s = this._s, f = s.family, t = f.tournament
+    if (!t || t.pool.length !== 1) return
+    const winner = f.children.find(c => c.id === t.pool[0])
+    const rest = [...t.eliminated].sort((x, y) => (y.round - x.round) || (y.stage - x.stage)).map(e => e.id)
+    const ranking = [winner.id, ...rest]
+    const deaths = t.eliminated.filter(e => e.died).length
+    f.heirId = winner.id
+    f.lastTournament = { year: t.year, ranking: ranking.slice(0, TOURNAMENT_TOP), entrants: ranking.length, deaths, lethal: t.lethalFought }
+    f.tally.tournaments++
+    const clan = this._playerClan()
+    if (clan && t.lethalFought) clan.tradition.lethalTournaments++
+    f.tournament = null
+    this.addEvent({ text: `The Tournament of Heirs is over. ${Persons.fullName(winner)} stands alone${deaths ? `, and ${deaths} of your children do not stand at all` : ''}. ${winner.given} is your heir.`, type: 'special' })
+    this._emit('tournament_end', { heir: winner.given, deaths })
+  }
+
   // Chance to win a duel against your spouse: 0.5 + 0.08 per stage you're ahead, clamped.
   duelChance() {
     const s = this._s, sp = s.family.spouse
@@ -1452,7 +1607,11 @@ class GameState {
     const partner   = fam.spouse || (fam.formerSpouses || [])[(fam.formerSpouses || []).length - 1] || null
     const spouseMaxStage = partner ? partner.maxStage || 0 : 0
     const partnerTerm = Math.pow(spouseMaxStage / (CULTIVATION_STAGES.length - 1), 2)
-    const growth    = BLOODLINE_G_BASE + BLOODLINE_G_SELF * selfTerm + BLOODLINE_G_PARTNER * partnerTerm
+    // 2.6c: the heir who takes over — their strength, plus a flat bonus if they were forged in a lethal tournament.
+    const successor = fam.heirId ? (fam.children || []).find(c => c.id === fam.heirId && this._heirEligible(c)) || null : null
+    const heirTerm  = successor ? BLOODLINE_G_HEIR * Math.pow((successor.stageIndex || 0) / (CULTIVATION_STAGES.length - 1), 2) +
+                                  (successor.trauma ? BLOODLINE_G_TRAUMA_HEIR : 0) : 0
+    const growth    = BLOODLINE_G_BASE + BLOODLINE_G_SELF * selfTerm + BLOODLINE_G_PARTNER * partnerTerm + heirTerm
     const parentBQ  = s.bloodlineQuality || 0
     const heirBQ    = Math.min(BLOODLINE_CAP, parentBQ * BLOODLINE_CARRY_NEW_SOUL + growth)
     const priorGen  = s.generation || 1
@@ -1482,6 +1641,12 @@ class GameState {
       adultChildren: (fam.children || []).filter(c => c.alive && !c.estranged && s.world.year - c.bornYear >= ADULT_AGE).length,
       spouseMaxStage,
       growth,
+      // 2.6c
+      heirStage:  successor ? successor.stageIndex : null,
+      heirTrauma: !!successor?.trauma,
+      heirKind:   successor ? (fam.lastTournament?.ranking?.[0] === successor.id ? 'tournament' : 'chosen') : null,
+      heirTerm,
+      tournamentDeaths: fam.tally?.tournamentDeaths || 0,
     }
 
     // 2.6a: the world survives. The dying life's person, spouse(s) and children are written into the registry

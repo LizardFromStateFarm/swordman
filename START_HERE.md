@@ -63,6 +63,16 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 6
+Agent: built **M2 2.6c** (clan-succession.md §2.6c as-built):
+  - Name an heir (Stats) or host a Tournament of Heirs: you pair every fight; lethal while > 4 remain (never below
+    4), then non-lethal to one winner = heir; places 2–4 = future branch founders. Cowards may yield; deaths cost
+    karma and spouse affection; every survivor of a lethal round is scarred (trauma, bond −30).
+  - Bloodline: + heir strength term + flat trauma-heir bonus. clan.pendingSuccession + clan.sect recorded at death.
+  - Verified: npm test, full sim (0/0), 31 new + 75 prior scenario checks, build:web, dist, real-app tournament.
+  Next: 2.6d — heir parenting styles, reign sim + chronicle, rebirth position (eldest / younger / branch), heir
+    bet if none named, orphan option. This replaces the placeholder where the new life leads the clan.
+
 Date: 2026-09-26 (day session, user present) — part 5
 Agent: built **M2 2.6b** (clan-succession.md §2.6b as-built):
   - Family Planning None/Some/Many (Stats selector; gates spouse + lover births). Children cultivate from 16, capped

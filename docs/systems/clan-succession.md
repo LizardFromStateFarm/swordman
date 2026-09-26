@@ -110,7 +110,7 @@ Pruning: persons who are dead, not a head/heir, and ≥ 3 generations old are dr
 |---|---|---|
 | 2.6a ✅ | `s.world` split + migration, orphan-capable life, world clock | old saves migrate; sim identical except clock bookkeeping; save round-trip holds |
 | 2.6b ✅ | Family planning, children cultivate, bond + child events, morality | sim: children reach stages; bond/morality ranges hold |
-| 2.6c | Choose heir, Tournament of Heirs (pick matchups), heir-strength BQ term, sect to head | tournament resolves with correct lethal/non-lethal split; BQ term applied |
+| 2.6c ✅ | Choose heir, Tournament of Heirs (pick matchups), heir-strength BQ term, sect to head | tournament resolves with correct lethal/non-lethal split; BQ term applied |
 | 2.6d | Parenting styles, reign sim + chronicle, rebirth position, heir bet, orphan option | 500h sim spans ≥3 generations; positions + styles distributed sensibly |
 | 2.6e | Challenge head (head decides lethality), challenged-as-head events, step-down mass tournament | all paths reachable in sim; no life ends without a cause |
 | 2.6f | Branch wars, secession → new clan, clan relations | a seceded clan persists as rival/ally; slot follows the new clan |
@@ -180,3 +180,37 @@ Then life-loop.md 2.7 (Ancestral Hall, legacies — Sect Continuity legacy is su
   selector, child rows with stage + bond, a child event (bond 50 → 62), a runaway let go → "left the clan"; zero errors.
 - **Tuning note:** neglect is strong — casual's random choices plus ~36 children leave most children distant. Knobs:
   `CHILD_ATTENTION` / `CHILD_NEGLECT_PER_CHILD` / `CHILD_NEGLECT_FLOOR` in family.js.
+
+## 2.6c — as built (2026-09-26)
+- **Heir:** `family.heirId` — `chooseHeir(childId)` (living, adult, at home; not mid-tournament), `clearHeir()`,
+  `eligibleHeirs()`. Cleared automatically if the heir dies or runs away.
+- **Tournament of Heirs** (`family.tournament` while running; `family.lastTournament` = {year, ranking[≤4], entrants,
+  deaths, lethal} after): `startTournament()` (≥ 2 eligible), `tournamentInfo()` → {round, n, lethal, fights, pool},
+  `fightTournamentRound(pairs)` — exactly `fights` pairs, every fighter at most once; unpaired fighters rest.
+  A round is lethal while n > 4 and has `min(⌊n/2⌋, n − 4)` fights, so the field never drops below the Top 4
+  (7 → 3 fights → 4; 10 → 5 then 1). Then non-lethal knockout to one winner. `cancelTournament()` only before the
+  first fight. Fight odds: logistic((powerA − powerB) / 80), power = stage×100 + root×10 + personality
+  (hot-blood +40, psycho +30, demon king +20, arrogant +10, poet −10, lazy −20) ± 60 luck. A coward facing a lethal
+  loss yields 35% of the time (loses, lives). Each death: karma −3, spouse affection −15 if it was their child.
+  After each lethal round **every survivor** (fighters, yielders, those who sat it out) gains `trauma` and bond
+  −30 (psycho/demon king +5) — once per child. Winner = heir; ranking 2–4 = future branch founders. A lethal
+  tournament bumps `clan.tradition.lethalTournaments`. A field that shrinks to one between rounds (runaway/death)
+  ends with that child as heir (handled in `_tickFamily`, never inside `_recalc`).
+- **Bloodline:** growth += `BLOODLINE_G_HEIR` (4) × (heir stage / 22)² + `BLOODLINE_G_TRAUMA_HEIR` (2) if the heir has
+  `trauma`. `lastReincarnation` gained `heirStage`, `heirTrauma`, `heirKind` ('chosen'|'tournament'), `heirTerm`,
+  `tournamentDeaths`.
+- **For 2.6d:** at death `clan.pendingSuccession = {fromPersonId, year, heirId, branchFounderIds}` and, if you had
+  founded a sect, `clan.sect` = a snapshot of it (+ `heirId`). The new life still doesn't receive the sect — 2.6d's
+  reign sim decides what the heir does with it.
+- **UI:** Stats "Heir" row (★ forged in blood) with **Name an Heir** / **Tournament of Heirs** buttons; `#heir-overlay`
+  (pick from eligible children: stage · personality · bond · scarred) and `#tournament-overlay` (click a fighter
+  then their opponent to pair; click a paired fighter to unpair; Auto-pair fills the rest; red frame while lethal;
+  round log with deaths in red). Pairing state is render-layer only.
+- **Sim:** bot fights a running tournament strongest-vs-weakest; 'active' hosts one per life at 6+ adult children
+  from Nascent Soul; everyone names the strongest adult child heir otherwise. "Succession" report table.
+  Invariants `heir_invalid`, `tournament_too_many_deaths`, `tournament_pool_invalid`.
+- **Evidence:** full sim 0/0 (active: 22 tournaments over 23 lives, 43 children killed, 22 heirs forged in blood, mean
+  BQ heir term 5.08 vs casual's 3.61). 31 new scripted checks (field-size rules for 5/6/7/9/10 entrants, deaths,
+  trauma incl. those resting, bonds, karma, spouse affection, BQ term, pending succession, sect snapshot, coward yield,
+  validation, call-off, heir rules) + 75 earlier ones pass. Real app: named an heir, ran a 6-child tournament by
+  clicking pairs (2 deaths) then Auto-pair through the Top 4; zero console errors.

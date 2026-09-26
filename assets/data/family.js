@@ -435,3 +435,17 @@ const CHILD_CRISIS_EVENTS = [
       { label: 'Let them go', outcome: 'estrange', result: '{child} leaves the clan. The name stays; the child does not.' },
     ] },
 ]
+
+// ── Tournament of Heirs (clan-succession.md 2.6c) ────────────────────────────
+// You pick every matchup. Rounds are to the death while more than TOURNAMENT_TOP remain (a lethal round never
+// takes the field below TOURNAMENT_TOP); then the Top 4 fight non-lethally to a winner = your heir; places 2–4
+// are recorded as the future branch founders (2.6d). Fight odds: logistic over power difference / TOURNAMENT_SPREAD.
+const TOURNAMENT_TOP            = 4
+const TOURNAMENT_SPREAD         = 80      // power points (stage×100 + root×10) for ~73% odds
+const TOURNAMENT_LUCK           = 60      // ± uniform power noise per fighter per fight
+const TOURNAMENT_PERSONALITY_POWER = { hotblood: 40, psycho: 30, demonking: 20, arrogant: 10, lazy: -20, poet: -10 }
+const TOURNAMENT_COWARD_YIELD   = 0.35    // a coward facing a lethal loss may yield: loses, lives, disgraced
+const TOURNAMENT_SURVIVOR_BOND  = -30     // every lethal-round survivor's bond (ruthless personalities: +5 instead)
+const TOURNAMENT_RUTHLESS       = ['psycho', 'demonking']
+const TOURNAMENT_KARMA_PER_DEATH = -3
+const TOURNAMENT_SPOUSE_AFFECTION_PER_DEATH = -15   // per child of your current spouse who dies

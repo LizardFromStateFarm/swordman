@@ -1,7 +1,8 @@
 // Tunable constants for Phase 23A (Health & Death), 23B (Bloodline Quality) and 23C (Ascension Trial).
 // Used by: game-state.js (health regen/damage, ascensionChance, attemptAscension, _die), events.js (inner_demon).
 // Phase 16-lite (M2 task 2.5) added BLOODLINE_G_PARTNER — the spouse term in _die()'s growth formula.
-// Heir carry (BLOODLINE_FAMILY_BONUS/BLOODLINE_CARRY_COUSIN, life-loop.md §3.3) is still task 2.6.
+// clan-succession.md 2.6c added BLOODLINE_G_HEIR (heir strength) + BLOODLINE_G_TRAUMA_HEIR (heir forged in a lethal
+// tournament or duel). Rebirth carry for a descendant is task 2.6d.
 
 // ── 23A: Health ──────────────────────────────────────────────────────────────
 const HEALTH_REGEN_SECONDS = 45          // +HEALTH_REGEN_AMOUNT every this many seconds
@@ -19,6 +20,8 @@ const BLOODLINE_CAP            = 100
 const BLOODLINE_G_BASE         = 1
 const BLOODLINE_G_SELF         = 8
 const BLOODLINE_G_PARTNER      = 5       // Phase 16-lite (M2 task 2.5): spouse's maxStage this life (current or last)
+const BLOODLINE_G_HEIR         = 4       // 2.6c: × (heir stage / 22)² — the heir who takes over the clan
+const BLOODLINE_G_TRAUMA_HEIR  = 2       // 2.6c: flat, if that heir won their place through trauma (user, 2026-09-26)
 const BLOODLINE_CARRY_NEW_SOUL = 0.25    // family carry (1.0 + bonus) waits on Phase 16/18 heirs (task 2.6)
 
 // ── 23C: Ascension Trial ─────────────────────────────────────────────────────
