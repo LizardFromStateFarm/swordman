@@ -35,7 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
 | Game Time & Age (age passes only while open; **age never kills** since 2026-09-26) | ◐ Phase 30 (M2) — game clock + age stat + Pass the Mantle; lifespan/twilight/Final Seclusion removed; pacing (2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
-| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — world/clan registry (2.6a), children (2.6b), heirs + tournament (2.6c), reign + rebirth as a descendant (2.6d) built; 2.6e–f next |
+| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — world/clan registry (2.6a), children (2.6b), heirs + tournament (2.6c), reign + rebirth as a descendant (2.6d), challenge/step-down mid-life headship (2.6e) built; 2.6f next |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
@@ -68,6 +68,44 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 9
+Agent: built **M2 2.6e** (clan-succession.md §2.6e as-built; user approved the assessment + depth pass). Headship
+  can now change mid-life, not only at death — the first mechanic where that's true.
+  - **Challenge the head** (Stats button, gated to within CHALLENGE_STAGE_GAP=3 stages, off cooldown): the head
+    decides lethal/non-lethal from style+bond+morality+personality+"is this clan's tradition bloody" (reuses the
+    same test succession scoring already had). One fight (Tournament of Heirs' own power formula). Win lethal →
+    the old head dies, you take the seat AND the clan's founded sect (if you don't already have one), forged in
+    blood (immediate Bloodline bump, not just at a future rebirth). Lose lethal → your life ends
+    (`challenge_lost`). Non-lethal either way → the loser survives (elder / cooldown+bond hit).
+  - **Challenged as head**: an NPC from the roster calls you out every so often; unlike the reverse direction,
+    lethality is YOUR call, presented in the existing family-overlay card queue (right after a duel).
+  - **Step-down mass tournament**: while an NPC leads, they occasionally step back; every adult in the clan
+    (branches + you, if eligible) may join. One lethality decision for the whole bracket (the retiring head's
+    call), then the exact 2.6c shape (lethal above 4 remain, non-lethal Top-4 finale) generalized to the whole
+    clan with random pairing (nobody picks matchups here). A losing player is only marked mid-bracket — `_die()`
+    runs last, once the new head/branches are already committed, so death lands in an already-consistent clan.
+  - New shared machinery: `_headDecidesLethal`, `_resolveFight`, `_applyLethalTrauma`, `_selfAsPerson`,
+    `_installHead`, `_runBracket`. `clan.tradition.challenges` (a 2.6a schema field, unused until now) finally
+    gets incremented.
+  - **Found and fixed along the way:** the first tuning pass (check intervals [12–24]/[15–25] years, casual/afk
+    5% opportunistic challenge chance) fired ~4× too often for how fast game years pass here
+    (GAME_YEARS_PER_OPEN_HOUR=30) — a 200h/3-seed before/after sim run showed active's median life 8.7h→3.2h and
+    casual's 32.5h→17.5h, both falling outside life-loop.md's target bands, with the new death causes dominating
+    ascension_failed. Fixed by widening both intervals to [50–100] + an explicit 25% chance gate on top, and
+    cutting the opportunistic challenge chance to 1%; medians landed back at 8.1h/21.0h. Also surfaced (and fixed)
+    a real bug: winning a challenge could set `s.ownSect.founded` while still a member of another sect
+    (`joined_and_founded` invariant) — the sect handoff now also requires `!s.sect.id`.
+  - **Also fixed (found via smoke-testing this feature):** the generic confirm dialog (`showConfirm`) always
+    said "Delete" regardless of the action — true for Pass the Mantle, Host a Tournament of Heirs, End the
+    Affair, Discard, and now Challenge too. Added an optional label argument and fixed every call site.
+  - New: `scripts/sim/checks/succession.js` (+37 → 82 for this file), `scripts/smoke/scenarios/succession.js`
+    (+1 section, both the button + both family-overlay cards).
+  - Verified: npm test (59 files), npm run checks (189, was 152), full npm run sim before/after tuning (0/0,
+    Life Loop medians restored to target bands), build:web, dist, real-app smoke (zero console errors, incl.
+    screenshots of both new family-overlay cards and the fixed confirm-dialog label).
+  Next: 2.6f — branch wars, secession → new clan, clan relations (rival/ally). Read clan-succession.md §2.6f +
+    its "as built" sections for 2.6a–e first. Assessment + Depth line first.
+
 Date: 2026-09-26 (day session, user present) — part 8
 Agent: built **M2 2.6d** (clan-succession.md §2.6d as-built; user approved the plan + both extras + a tiny rival twist):
   - Death is two-phase: the next life is created UNBORN in s.interlude (clock/offline/events paused, survives

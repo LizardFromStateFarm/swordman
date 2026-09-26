@@ -221,6 +221,17 @@ class Recorder {
       }
       if (fam.proposal && (fam.spouse || s.maxStageThisLife < this.D.PROPOSAL_MIN_STAGE))
         this.violate('family_proposal_invalid', `spouse=${!!fam.spouse} maxStage=${s.maxStageThisLife}`)
+      // 2.6e: a pending challenge points at someone real; a pending step-down offer matches the sitting head.
+      if (fam.headChallenge) {
+        const ch = fam.headChallenge.challengerId === s.self.id ? null : s.world.persons[fam.headChallenge.challengerId]
+        if (!ch || ch.alive === false || ch.estranged) this.violate('head_challenge_orphaned', fam.headChallenge.challengerId)
+      }
+      if (fam.stepDownOffer) {
+        const clan = s.world.playerClanId ? s.world.clans[s.world.playerClanId] : null
+        if (!clan || clan.headId !== fam.stepDownOffer.headId) this.violate('stepdown_offer_invalid', `head ${fam.stepDownOffer.headId}`)
+        if (fam.stepDownOffer.entrantIds.length < 2) this.violate('stepdown_offer_invalid', `only ${fam.stepDownOffer.entrantIds.length} entrants`)
+      }
+      if (fam.tally.challengesWon + fam.tally.challengesLost > fam.tally.challenges) this.violate('challenge_tally_mismatch', JSON.stringify(fam.tally))
     }
     for (const def of this.D.SETTINGS_DEFS) {
       const v = s.settings?.[def.id]

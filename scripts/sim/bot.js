@@ -121,6 +121,18 @@ class Bot {
     // 2.6b Family Planning, set once per life: 'active' keeps families small ('some'), casual/afk go big ('many').
     // (Was once per run until 2.6d — every later life silently fell back to the default 'many'.)
     if (this._plannedFor !== this.s.self.id) { this._plannedFor = this.s.self.id; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : 'many') }
+    // 2.6e: an NPC calls you out for the head seat — decide lethal or not. 'active' plays it savvy (lethal
+    // only when clearly favored); casual/afk decide at random.
+    if (f.headChallenge) {
+      const challenger = this.gs.person(f.headChallenge.challengerId)
+      const lethal = this.profile === 'active' ? !!(challenger && challenger.stageIndex < this.s.stageIndex) : this.rand() < 0.4
+      return this.do('head_challenge_decide', this.gs.resolveHeadChallenge(lethal))
+    }
+    // 2.6e: the sitting head steps down — 'active' always enters if eligible; casual/afk enter about half the time.
+    if (f.stepDownOffer) {
+      const join = f.stepDownOffer.eligible && (this.profile === 'active' || this.rand() < 0.5)
+      return this.do('stepdown_answer', this.gs.answerStepDown(join))
+    }
     // 2.6d upbringing (you are the child): 'active' picks what its own personality likes; casual/afk pick at random.
     const up = this.s.upbringing?.event
     if (up) {
@@ -175,6 +187,13 @@ class Bot {
         pick = affordable.sort((a, b) => val(b.c) - val(a.c))[0]
       } else pick = affordable[Math.floor(this.rand() * affordable.length)]
       return this.do(f.event.crisis ? 'family_crisis' : 'family_event', this.gs.resolveMarriageEvent(pick.i))
+    }
+    // 2.6e: challenge the head for the seat when you're clearly the stronger fighter — 'active' seeks the
+    // seat outright; casual/afk occasionally try their luck.
+    const cc = this.gs.canChallengeHead()
+    if (cc.ok) {
+      const favored = cc.head.stageIndex <= this.s.stageIndex
+      if (this.profile === 'active' ? favored : this.rand() < 0.01) return this.do('challenge_head', this.gs.challengeHead())
     }
     // Encounters: seduce 1 in 4 (enough to exercise affairs, discovery and every reaction branch).
     if (f.encounters?.length) {

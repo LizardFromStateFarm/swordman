@@ -290,6 +290,17 @@ function buildReport(runs, args) {
     L.push(`| ${p} | ${lives.length} | ${withHeir.length} (${lives.filter(l => l.heirKind === 'chosen').length} · ${lives.filter(l => l.heirKind === 'tournament').length}) | ${f(med(withHeir.map(l => l.heirStage)))} | ${lives.filter(l => l.heirTrauma).length} | ${lives.reduce((a, l) => a + (l.tournamentDeaths || 0), 0)} | ${(lives.reduce((a, l) => a + (l.heirTerm || 0), 0) / n).toFixed(2)} |`)
   }
   L.push(``)
+  // clan-succession.md 2.6e: challenging the head, being challenged as head, step-down mass tournaments —
+  // all resolved mid-life, so these are per-life tallies same as the Family table above.
+  L.push(`## Clan Politics — challenges + step-down tournaments (${longest}h runs; totals over all lives)`)
+  L.push(`| Profile | Lives | Challenges (won/lost) | Step-downs joined (won) |`)
+  L.push(`|---|---|---|---|`)
+  for (const p of profiles) {
+    const lives = group(p, longest).flatMap(r => r.lifeLoop?.lifeLengths || [])
+    const T = k => lives.reduce((a, l) => a + (l.tally?.[k] || 0), 0)
+    L.push(`| ${p} | ${lives.length} | ${T('challenges')} (${T('challengesWon')}/${T('challengesLost')}) | ${T('stepDowns')} (${T('stepDownWon')}) |`)
+  }
+  L.push(``)
   // 2.6d: what happened between lives
   L.push(`## Between lives — succession, reign, rebirth (${longest}h runs)`)
   L.push(`| Profile | Deaths | Died as head | Bets (won) | Seat went to: named · tournament · clan · regency | New head's style: nurt · strict · negl · ruth | Reborn: eldest · younger · branch · rival · orphan | Sect: grow · hold · decline · lost | Extinct |`)

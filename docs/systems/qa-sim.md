@@ -62,6 +62,12 @@ invariant violations, 2 = harness crashed / bad `--set`.
   'active' picks what its own personality likes, casual/afk random. "Between lives" report table: deaths, died as
   head, bets (won), who got the seat (named · tournament · clan · regency), the new head's style, rebirth position
   (eldest · younger · branch · rival · orphan), sect fortunes, extinct clans.
+- **Clan Politics (2.6e):** headed first in `family()`, ahead of everything else — an NPC challenge against you
+  (`resolveHeadChallenge`) decides lethal only when `active` and clearly favored, else a coin flip; a step-down
+  offer (`answerStepDown`) is joined by `active` whenever eligible, by casual/afk about half the time. Initiating a
+  challenge yourself (`challengeHead`) is opportunistic: `active` always tries when favored, casual/afk only 1% of
+  checks (tuned down from an early 5% that made challenge deaths dominate casual's Life Loop table — see Gotchas).
+  "Clan Politics" report table (right after Succession): challenges (won/lost), step-downs joined (won).
 - **Bot randomness is seeded** (fixed 2026-09-26, 2.6a): any bot coin flip must use `this.rand()` (its own
   `mulberry32` stream), never `Math.random()` — Node's global is unseeded, which silently made runs unreproducible.
 
@@ -130,7 +136,7 @@ inventory counts not positive integers · integrity ∉ [0,100] · karma ∉ [0,
 stageIndex out of range · beasts > maxBeasts · disciples > cap · invalid war phase · sect rank out of range ·
 joined AND founded · war side ≠ joined/founded state · war-committed mission slot over cap or not released after
 the war · beast stuck at war · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi ·
-health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap` · `item_category_invalid` (Phase 21: every `ITEMS[id].category` must be one of `currency|mat|pill|equip|rare|key`, checked once per run) · `family_children_over_cap` / `family_spouse_dead` / `family_proposal_invalid` (M2 2.5, life-loop.md §7 invariant 5: children ≤ `CHILD_CAP`, spouse null or alive, proposal only when unmarried and past `PROPOSAL_MIN_STAGE`) · `family_affection_range` / `family_pending_unmarried` / `family_child_parents` / `family_encounters_over_cap` / `family_lover_is_spouse` (family.md; `family_children_over_cap` was retired with the child cap) · `world_invalid` / `world_self_duplicated` / `world_player_clan_missing` / `world_player_not_on_roster` / `world_past_lives_mismatch` + a world save round-trip check (clan-succession.md 2.6a) · `family_planning_invalid` / `child_bond_range` / `morality_range` / `child_stage_over_parent` / `child_event_orphaned` (2.6b) · `heir_invalid` / `tournament_too_many_deaths` / `tournament_pool_invalid` (2.6c) · `interlude_stuck` / `clan_head_invalid` (a non-extinct clan whose head is missing or dead) / `clan_too_many_branches` / `birth_position_invalid` / `birth_clan_mismatch` / `head_bond_range` (2.6d) · `age_below_awakening` (replaced `age_over_lifespan` when lifespan was removed, 2026-09-26) · `age_offline` (age/gameYear unchanged by offline catch-up). The sim also runs `BanterSystem` (source `banter`, 0 stones).
+health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap` · `item_category_invalid` (Phase 21: every `ITEMS[id].category` must be one of `currency|mat|pill|equip|rare|key`, checked once per run) · `family_children_over_cap` / `family_spouse_dead` / `family_proposal_invalid` (M2 2.5, life-loop.md §7 invariant 5: children ≤ `CHILD_CAP`, spouse null or alive, proposal only when unmarried and past `PROPOSAL_MIN_STAGE`) · `family_affection_range` / `family_pending_unmarried` / `family_child_parents` / `family_encounters_over_cap` / `family_lover_is_spouse` (family.md; `family_children_over_cap` was retired with the child cap) · `world_invalid` / `world_self_duplicated` / `world_player_clan_missing` / `world_player_not_on_roster` / `world_past_lives_mismatch` + a world save round-trip check (clan-succession.md 2.6a) · `family_planning_invalid` / `child_bond_range` / `morality_range` / `child_stage_over_parent` / `child_event_orphaned` (2.6b) · `heir_invalid` / `tournament_too_many_deaths` / `tournament_pool_invalid` (2.6c) · `interlude_stuck` / `clan_head_invalid` (a non-extinct clan whose head is missing or dead) / `clan_too_many_branches` / `birth_position_invalid` / `birth_clan_mismatch` / `head_bond_range` (2.6d) · `head_challenge_orphaned` (a pending challenge whose challenger died/left) / `stepdown_offer_invalid` (a pending step-down offer whose head no longer matches, or fewer than 2 entrants) / `challenge_tally_mismatch` (2.6e) · `age_below_awakening` (replaced `age_over_lifespan` when lifespan was removed, 2026-09-26) · `age_offline` (age/gameYear unchanged by offline catch-up). The sim also runs `BanterSystem` (source `banter`, 0 stones).
 
 ## Real-app smoke (`scripts/smoke/`)
 `node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` launches the real Electron app against a throwaway
@@ -139,7 +145,7 @@ health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 
 (gitignored). Use it for UI changes the headless sim can't see. Scenarios:
 | File | Covers |
 |---|---|
-| `scenarios/succession.js` | 2.6d — death card → heir bet → reign chronicle → clan birth → birth card; Stats clan rows + Clan Chronicle; upbringing card; a mid-interlude save resumed from the character select |
+| `scenarios/succession.js` | 2.6d — death card → heir bet → reign chronicle → clan birth → birth card; Stats clan rows + Clan Chronicle; upbringing card; a mid-interlude save resumed from the character select. Also 2.6e — the Challenge the Head button + confirm dialog, an NPC challenging you as head (family-overlay lethal/non-lethal card), a step-down mass tournament (family-overlay join/decline card) |
 
 ## Scenario checks (`scripts/sim/checks/`, `npm run checks`)
 The sim only sees what the bot happens to do. Scenario checks force a specific situation through the same
@@ -154,7 +160,7 @@ check script goes here (not in a temp folder) and is listed below in the same ch
 | `family-affairs.js` | family.md B — encounters, lovers, discovery, every spouse reaction, tolerant spouse | 19 |
 | `children.js` | 2.6b — Family Planning, child growth + cap, child events, runaways, neglect drift, morality | 22 |
 | `tournament.js` | 2.6c — field-size rules, deaths, trauma, bonds, BQ heir term (now at rebirth), heir takes the seat + branches, heir rules | 32 |
-| `succession.js` | 2.6d — named heir (no bet), the bet as a non-head, style roll, branches, sect fortunes + stipend, positions by bet, orphan + return, extinct clan, rival-family rebirth, interlude pause + save/load, upbringing, head-only heir naming, 30-generation chain | 45 |
+| `succession.js` | 2.6d — named heir (no bet), the bet as a non-head, style roll, branches, sect fortunes + stipend, positions by bet, orphan + return, extinct clan, rival-family rebirth, interlude pause + save/load, upbringing, head-only heir naming, 30-generation chain. Also 2.6e — canChallengeHead gating, challengeHead (lethal/non-lethal win + loss, sect handoff, Bloodline bump, karma), resolveHeadChallenge (your call as head), the step-down mass tournament (join/decline/no-contest, branches founded), the natural schedule firing both | 82 |
 
 **Writing one:** `const { createSim } = require('../loader.js')`, build a sim (`await createSim({ seed })`,
 `await sim.boot(0)`), set up state directly, call public/private `gs` methods, `assert(cond, msg)` printing
@@ -188,3 +194,15 @@ real second (1/120 game year); for year-based logic, bump `s.world.year` and cal
   `Recorder.sample()` (a timestamp diff, see `_lastDeathTs`/`deathsByCause`) — `stageReached`/`maxStage` don't
   reset on it, so existing progress-timeline metrics silently stop reflecting reality after a reset (see
   `docs/systems/bloodline.md` gotchas). Any future full-state-reset feature should read that pattern first.
+- **2.6e's first draft firing frequency was ~4× too high.** `GAME_YEARS_PER_OPEN_HOUR` (30) makes years pass fast
+  relative to real check-in cadence — a 15–25 year check interval fires several times even in a short life. A first
+  pass (`CHALLENGER_EVENT_YEARS`/`STEPDOWN_CHECK_YEARS` = [12–24]/[15–25], plus a 5% opportunistic challenge chance
+  for casual/afk) pushed active's median life 8.7h → 3.2h and casual's 32.5h → 17.5h in a 200h/3-seed before/after
+  sim run — both dropped outside life-loop.md's target bands, with `stepdown_tournament`/`challenge_lost` becoming
+  the dominant death causes ahead of `ascension_failed`. Fixed by widening both intervals to [50–100] and adding an
+  explicit `CHALLENGER_EVENT_CHANCE` (0.25) gate on top of the interval, plus dropping the opportunistic challenge
+  chance to 1%; medians landed back at 8.1h/21.0h. **Any new probabilistic life-ending event needs a before/after
+  full sim run against life-loop.md's target bands before it's considered tuned — the check interval alone is not
+  enough of a throttle at this time scale.** This also exposed `joined_and_founded` (a pre-existing invariant) the
+  first time anything besides founding could set `s.ownSect.founded` — `_installHead`'s clan-sect handoff now also
+  requires `!s.sect.id` (you can't inherit a sect while a member of another one).

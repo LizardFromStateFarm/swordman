@@ -22,6 +22,25 @@ async function headWithKids(seed, nKids, opts = {}) {
 }
 const clanOf = gs => { const w = gs.get().world; return w.clans[w.playerClanId] }
 
+// 2.6e helpers: a second life as a non-head member of the same clan (an NPC now leads it), and a synthetic
+// clan member (a cousin/branch relative — your OWN current-life children never sit in clan.lines.memberIds
+// until a death carries them into the world registry, so challengers/step-down entrants need their own).
+async function nonHeadLife(seed, nKids = 3, opts = {}) {
+  const r = await headWithKids(seed, nKids, opts)
+  r.gs.chooseHeir(r.kids[0].id)
+  r.gs.passTheMantle(); r.gs.finishInterlude('clan')
+  return r
+}
+function addMember(gs, { stage = 5, personality = null, bond = 50 } = {}) {
+  const s = gs.get(), w = s.world, clan = w.clans[w.playerClanId]
+  const p = gs._genPerson({ family: clan.name, bornYear: Math.floor(w.year) - 30, stage, role: 'kin' })
+  if (personality) p.personality = personality
+  p.bond = bond
+  w.persons[p.id] = p
+  clan.lines[0].memberIds.push(p.id)
+  return p
+}
+
 ;(async () => {
   // 1. Head dies with a named heir → no bet; the heir takes the seat; a sibling founds a branch; chronicle written.
   { const { gs, kids } = await headWithKids(1, 4)
@@ -189,6 +208,144 @@ const clanOf = gs => { const w = gs.get().world; return w.clans[w.playerClanId] 
     assert(bad === 0 && w.pastLives.length === 30, `30 lives: every clan has a living head, ≤ 3 branches, no duplicated self (${bad} problems)`)
     assert(maxPersons < 1500, `registry stays bounded (${maxPersons} persons at most)`)
     assert(gs.get().generation === 31 && w.year > 30 * 40, `generation ${gs.get().generation}, world year ${w.year}`)
+  }
+
+  // ── 2.6e (clan-succession.md): challenge the head, be challenged as head, step-down tournaments ──────
+
+  // 12. canChallengeHead: is_head / stage_gap / cooldown / ok / no_clan.
+  { const { gs } = await headWithKids(20, 2)
+    assert(gs.canChallengeHead().reason === 'is_head', 'the sitting head cannot challenge themselves')
+    const { sim, gs: gs2 } = await nonHeadLife(21)
+    const GAP = sim.ev('CHALLENGE_STAGE_GAP')
+    const s = gs2.get(), clan = clanOf(gs2), head = gs2.person(clan.headId)
+    s.stageIndex = head.stageIndex + GAP + 1
+    assert(gs2.canChallengeHead().reason === 'stage_gap', 'too far above the head → stage_gap')
+    s.stageIndex = head.stageIndex
+    const ok = gs2.canChallengeHead()
+    assert(ok.ok && ok.head.id === head.id, 'within the gap → ok, names the head')
+    s.family.challengeCooldownYear = s.world.year + 50
+    const cd = gs2.canChallengeHead()
+    assert(cd.reason === 'cooldown' && cd.readyYear === s.family.challengeCooldownYear, 'on cooldown → cooldown, with a ready year')
+    s.family.challengeCooldownYear = null
+    gs2.passTheMantle(); gs2.finishInterlude('orphan')
+    assert(gs2.canChallengeHead().reason === 'no_clan', 'an orphan life has no head to challenge')
+  }
+
+  // 13. challengeHead — lethal win: the old head dies, you take the seat + the clan's sect, forged in blood.
+  { const { gs } = await nonHeadLife(30, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [100, 100]'] })
+    const s = gs.get(), clan = clanOf(gs), headId = clan.headId
+    s.stageIndex = gs.person(headId).stageIndex + 20; s.maxStageThisLife = s.stageIndex
+    clan.sect = { name: 'Azure Peak', hallLevel: 2, founded: true, foundedAt: 0, buildings: {}, disciples: [], recruitPool: [], poolRefreshAt: 0, _incomeAcc: { spirit_stone: 0, spirit_herb: 0 } }
+    const bqBefore = s.bloodlineQuality, karmaBefore = s.karma
+    const res = gs.challengeHead(); const s2 = gs.get()
+    assert(res.ok && res.outcome === 'won_lethal' && res.lethal, `lethal win: ${res.outcome}`)
+    assert(s2.world.persons[headId].alive === false && s2.world.persons[headId].cause === 'challenge', 'the old head is dead')
+    assert(clanOf(gs).headId === s2.self.id && s2.self.trauma === true, 'you take the seat, forged in blood')
+    assert(s2.bloodlineQuality > bqBefore && s2.karma < karmaBefore, `Bloodline grows (${bqBefore.toFixed(1)} → ${s2.bloodlineQuality.toFixed(1)}), karma costs the kill (${karmaBefore} → ${s2.karma})`)
+    assert(s2.ownSect.founded && s2.ownSect.name === 'Azure Peak' && clanOf(gs).sect === null, 'the clan sect passes to you')
+    assert(clanOf(gs).tradition.challenges === 1, 'clan tradition tracks the challenge')
+  }
+
+  // 14. challengeHead — non-lethal win: the old head lives on as an elder, no trauma, no Bloodline change.
+  { const { gs } = await nonHeadLife(31, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [0, 0]'] })
+    const s = gs.get(), clan = clanOf(gs), headId = clan.headId
+    s.stageIndex = gs.person(headId).stageIndex + 20; s.maxStageThisLife = s.stageIndex
+    const bqBefore = s.bloodlineQuality
+    const res = gs.challengeHead(); const s2 = gs.get()
+    assert(res.ok && res.outcome === 'won_nonlethal' && !res.lethal, `non-lethal win: ${res.outcome}`)
+    assert(s2.world.persons[headId].alive !== false && s2.world.persons[headId].role === 'elder', 'the old head lives on as an elder')
+    assert(clanOf(gs).headId === s2.self.id && !s2.self.trauma && s2.bloodlineQuality === bqBefore, 'you take the seat, unscarred, Bloodline unchanged')
+  }
+
+  // 15. challengeHead — lethal loss: your challenge ends your life.
+  { const { gs } = await nonHeadLife(32, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [100, 100]'] })
+    const s = gs.get(), clan = clanOf(gs), headId = clan.headId
+    s.stageIndex = Math.max(0, gs.person(headId).stageIndex - 20); s.maxStageThisLife = s.stageIndex
+    const res = gs.challengeHead()
+    assert(res.ok && res.outcome === 'lost_lethal' && res.lethal, `lethal loss: ${res.outcome}`)
+    assert(gs.get().interlude && gs.get().lastReincarnation.cause === 'challenge_lost', 'your life ends; the clan you challenged carries on')
+    assert(gs.get().world.clans[clan.id].headId === headId, 'the head you failed to topple keeps the seat')
+  }
+
+  // 16. challengeHead — non-lethal loss: cooldown, bond hit, you stay put — the head keeps the seat.
+  { const { sim, gs } = await nonHeadLife(33, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [0, 0]'] })
+    const s = gs.get(), clan = clanOf(gs), headId = clan.headId
+    s.stageIndex = Math.max(0, gs.person(headId).stageIndex - 20); s.maxStageThisLife = s.stageIndex
+    const bondBefore = s.birth.headBond, bondLoss = sim.ev('CHALLENGE_BOND_LOSS')
+    const res = gs.challengeHead(); const s2 = gs.get()
+    assert(res.ok && res.outcome === 'lost_nonlethal' && !res.lethal, `non-lethal loss: ${res.outcome}`)
+    assert(s2.family.challengeCooldownYear > s2.world.year, 'a cooldown before you may try again')
+    assert(s2.birth.headId === headId ? s2.birth.headBond === Math.max(0, bondBefore - bondLoss) : true, `bond with the head drops (${bondBefore} → ${s2.birth.headBond})`)
+    assert(clanOf(gs).headId === headId && !s2.interlude, 'the head keeps the seat; you live on')
+  }
+
+  // 17. resolveHeadChallenge — an NPC calls you out while you hold the seat; YOUR call on lethality.
+  { const { gs } = await headWithKids(40, 2, { overrides: ['TOURNAMENT_LUCK = 0'] })   // you are head from birth here
+    const s = gs.get(), clan = clanOf(gs)
+    const weak = addMember(gs, { stage: 1 })
+    s.family.headChallenge = { challengerId: weak.id, year: Math.floor(s.world.year) }
+    const res = gs.resolveHeadChallenge(true)
+    assert(res.ok && res.outcome === 'won_lethal', `you crush a weak challenger: ${res.outcome}`)
+    assert(gs.get().world.persons[weak.id].alive === false, 'the challenger is dead')
+    assert(clanOf(gs).headId === s.self.id && clanOf(gs).tradition.challenges === 1, 'your seat is secure; the challenge is recorded')
+  }
+  { const { gs } = await headWithKids(41, 2, { overrides: ['TOURNAMENT_LUCK = 0'] })
+    const s = gs.get()
+    const strong = addMember(gs, { stage: 40 })
+    s.family.headChallenge = { challengerId: strong.id, year: Math.floor(s.world.year) }
+    const res = gs.resolveHeadChallenge(false)
+    assert(res.ok && res.outcome === 'lost_nonlethal', `overpowered, you choose non-lethal for yourself and lose: ${res.outcome}`)
+    assert(clanOf(gs).headId === strong.id && !gs.get().interlude, 'you step down; they take the seat; your life goes on')
+  }
+  { const { gs } = await headWithKids(42, 2, { overrides: ['TOURNAMENT_LUCK = 0'] })
+    const s = gs.get()
+    const strong = addMember(gs, { stage: 40 })
+    s.family.headChallenge = { challengerId: strong.id, year: Math.floor(s.world.year) }
+    const res = gs.resolveHeadChallenge(true)
+    assert(res.ok && res.outcome === 'lost_lethal', `you gamble lethal and lose: ${res.outcome}`)
+    assert(gs.get().interlude && gs.get().lastReincarnation.cause === 'challenged', 'defending the seat to the death costs your life')
+  }
+
+  // 18. Step-down mass tournament: join and dominate → you take the seat + branches; decline → resolved without
+  // you; too few entrants without you → no contest.
+  { const { gs } = await nonHeadLife(50, 3, { overrides: ['TOURNAMENT_LUCK = 0'] })
+    const s = gs.get(), clan = clanOf(gs), headId = clan.headId, linesBefore = clan.lines.length
+    const m1 = addMember(gs, { stage: 3 }), m2 = addMember(gs, { stage: 3 })
+    s.stageIndex = 40; s.maxStageThisLife = 40
+    s.family.stepDownOffer = { headId, year: Math.floor(s.world.year), entrantIds: [m1.id, m2.id, s.self.id], eligible: true }
+    const res = gs.answerStepDown(true)
+    assert(res.ok && res.joined && res.outcome === 'won', `join + dominate → ${res.outcome}`)
+    assert(clanOf(gs).headId === s.self.id, 'you take the seat')
+    assert(clanOf(gs).lines.length > linesBefore, `places 2–4 found new branches (${linesBefore} → ${clanOf(gs).lines.length} lines)`)
+  }
+  { const { gs } = await nonHeadLife(51, 3, { overrides: ['TOURNAMENT_LUCK = 0'] })
+    const s = gs.get(), clan = clanOf(gs), headId = clan.headId, meId = s.self.id
+    const m1 = addMember(gs, { stage: 3 }), m2 = addMember(gs, { stage: 8 })
+    s.family.stepDownOffer = { headId, year: Math.floor(s.world.year), entrantIds: [m1.id, m2.id, meId], eligible: true }
+    const res = gs.answerStepDown(false)
+    assert(res.ok && !res.joined, `declined: ${res.outcome}`)
+    assert(clanOf(gs).headId === m2.id, 'the strongest of the rest takes the seat without you')
+    assert(gs.get().self.id === meId && !gs.get().interlude, 'you are unaffected, alive, uninvolved')
+  }
+  { const { gs } = await nonHeadLife(52, 3)
+    const s = gs.get(), clan = clanOf(gs), headId = clan.headId, meId = s.self.id
+    s.family.stepDownOffer = { headId, year: Math.floor(s.world.year), entrantIds: [meId], eligible: true }
+    const res = gs.answerStepDown(false)
+    assert(res.ok && res.outcome === 'no_contest' && clanOf(gs).headId === headId, 'too few entrants without you → no contest, the head keeps the seat')
+  }
+
+  // 19. The natural schedule actually fires a challenger / a step-down offer (forced to certain via overrides).
+  { const { gs } = await headWithKids(60, 2, { overrides: ['CHALLENGER_EVENT_YEARS = [0, 0]', 'CHALLENGER_EVENT_CHANCE = 1'] })
+    const s = gs.get()
+    addMember(gs, { stage: s.stageIndex })
+    gs._tickFamily(); gs._tickFamily()
+    assert(s.family.headChallenge && s.family.headChallenge.challengerId, `a challenger appears on schedule: ${s.family.headChallenge?.challengerId}`)
+  }
+  { const { gs } = await nonHeadLife(61, 3, { overrides: ['STEPDOWN_CHECK_YEARS = [0, 0]', 'STEPDOWN_CHANCE = {nurturing:1,strict:1,neglectful:1,ruthless:1}'] })
+    const s = gs.get()
+    addMember(gs, { stage: 3 }); addMember(gs, { stage: 3 })
+    gs._tickFamily(); gs._tickFamily()
+    assert(s.family.stepDownOffer && s.family.stepDownOffer.entrantIds.length >= 2, `the head considers stepping down on schedule: ${JSON.stringify(s.family.stepDownOffer)}`)
   }
 })()
 

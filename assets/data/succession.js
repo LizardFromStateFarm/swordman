@@ -1,6 +1,8 @@
 // Clan succession after a death (clan-succession.md 2.6d): parenting styles, the heir bet, the reign sim, rebirth
-// position weights, the rare rival-family rebirth, chronicle text and upbringing events. Data only.
-// Used by: game-state.js (_beginInterlude/_runSuccession/_beginLife/resolveUpbringingEvent), game.js, scripts/sim/*.
+// position weights, the rare rival-family rebirth, chronicle text and upbringing events. Also 2.6e: challenging
+// the head, being challenged as head, and step-down mass tournaments — all resolved while you're still alive. Data only.
+// Used by: game-state.js (_beginInterlude/_runSuccession/_beginLife/resolveUpbringingEvent, challengeHead/
+// resolveHeadChallenge/answerStepDown), game.js, scripts/sim/*.
 // Personality ids: personalities.js. Tokens in text: {head} (head's given name), {name} (you), {clan} (clan name).
 
 // ── The reign (one generation passes between lives) ──────────────────────────
@@ -128,6 +130,33 @@ const CHRONICLE_BIRTH = {
   rival:   'Year {year}: in the house of the {clan}, a child awakens their spiritual root — the house of {enemy}, whom you once knew too well. No one knows. You don’t remember.',
   orphan:  'Year {year}: somewhere on the road, a child with no name and no clan awakens their spiritual root.',
 }
+
+// ── Clan politics in a life (2.6e): challenge the head, be challenged as head, step-down tournaments ──
+// You may challenge the sitting head (or they may be challenged by an NPC while you hold the seat) only
+// within CHALLENGE_STAGE_GAP stages of each other — no ambushing a much weaker or stronger head.
+// A game year passes fast here (GAME_YEARS_PER_OPEN_HOUR, lifespan.js) — these are rare, once-a-generation
+// dramatic beats, not a recurring minigame, so both the check interval AND a flat chance gate it.
+const CHALLENGE_STAGE_GAP        = 3
+const CHALLENGE_COOLDOWN_YEARS   = [15, 30]   // after a non-lethal loss, before you may challenge again
+const CHALLENGE_BOND_LOSS        = 20         // your bond with the head, on a non-lethal loss
+const CHALLENGE_KARMA_DEATH      = -5         // karma cost to the one who did the killing
+const CHALLENGER_EVENT_YEARS     = [50, 100]  // while you hold the seat, how often the game even checks for a threat
+const CHALLENGER_EVENT_CHANCE    = 0.25       // odds a real challenger actually shows up when it does check
+const CHALLENGER_STAGE_GAP_MAX   = 4          // only a plausible threat calls you out
+const STEPDOWN_CHECK_YEARS       = [50, 100]  // while an NPC leads (not you), how often they might consider it
+const STEPDOWN_CHANCE            = { nurturing: 0.04, strict: 0.07, neglectful: 0.14, ruthless: 0.03 }
+const STEPDOWN_REIGN_YEARS_MULT  = 0.0015     // + this × years already reigned, per check (older heads tire)
+
+// The sitting head's own decision when lethality is theirs to call — deciding on a challenge against them, or
+// setting the policy for a whole step-down tournament: style + how badly they're regarded (the lower the bond,
+// the harsher) + morality + personality + whether the clan's own tradition already runs bloody (reuses the
+// same "bloody" test succession scoring already uses). Rolled as a straight percent, clamped so it's never sure.
+const LETHAL_BASE_WEIGHT       = { nurturing: 8, strict: 20, neglectful: 15, ruthless: 45 }
+const LETHAL_BOND_WEIGHT       = 0.5    // + max(0, 50 − bond) × this
+const LETHAL_MORALITY_WEIGHT   = 0.4    // + max(0, −morality) × this
+const LETHAL_BLOODY_BONUS      = 15     // + this if the clan's tradition already runs bloody
+const LETHAL_PERSONALITY_BONUS = { psycho: 25, demonking: 20, hotblood: 10, arrogant: 10, niceguy: -15, poet: -10, coward: -10 }
+const LETHAL_CHANCE_RANGE      = [5, 90]
 
 // ── Upbringing (your first years in the new life; one event from the head's style) ─
 // Same shape as CHILD_EVENTS, but `bond` is keyed by YOUR personality and moves your bond with the head

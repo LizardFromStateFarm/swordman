@@ -510,13 +510,17 @@ class GameState {
              // 2.6b (clan-succession.md): Family Planning + one pending child event at a time
              planning: FAMILY_PLAN_DEFAULT, childEvent: null, nextChildEventYear: null, lastChildEventId: null,
              // 2.6c: designated heir (a home adult child) + the Tournament of Heirs in progress / last result
-             heirId: null, tournament: null, lastTournament: null }
+             heirId: null, tournament: null, lastTournament: null,
+             // 2.6e: challenging the head / being challenged as head / a step-down mass tournament
+             challengeCooldownYear: null, headChallenge: null, nextChallengerYear: null,
+             stepDownOffer: null, nextStepDownYear: null }
   }
 
   _blankFamilyTally() {
     return { events: 0, crises: 0, affairs: 0, discovered: 0, accept: 0, sabotage: 0, duel: 0, suicide: 0,
              murder_suicide: 0, left: 0, duelWon: 0, duelLost: 0, fled: 0, childEvents: 0, runaways: 0,
-             tournaments: 0, tournamentDeaths: 0 }
+             tournaments: 0, tournamentDeaths: 0,
+             challenges: 0, challengesWon: 0, challengesLost: 0, stepDowns: 0, stepDownWon: 0 }
   }
 
   // 2.6c: an heir must be a living, adult child still in the household.
@@ -573,6 +577,9 @@ class GameState {
       f.tournament.pool = f.tournament.pool.filter(id => this._heirEligible(f.children.find(c => c.id === id)))
       if (f.tournament.pool.length === 0) f.tournament = null
     }
+    // 2.6e: a pending challenge/step-down offer must still point at someone real.
+    if (f.headChallenge) { const ch = this.person(f.headChallenge.challengerId); if (!ch || ch.alive === false || ch.estranged) f.headChallenge = null }
+    if (f.stepDownOffer) { const clan = this._playerClan(); if (!clan || clan.headId !== f.stepDownOffer.headId) f.stepDownOffer = null }
   }
 
   _changeAffection(delta) {
@@ -890,6 +897,46 @@ class GameState {
         f.nextProposalYear = null
         this.addEvent({ text: `Year ${yr}: a matchmaker arrives with ${n === 1 ? 'a proposal' : `${n} proposals`} of marriage.`, type: 'special' })
         this._emit('proposal', { count: n })
+      }
+    }
+
+    // 2.6e: while you hold the head seat, a rival with a real shot may call you out — one pending at a time.
+    const clan = this._playerClan()
+    if (clan && this.isClanHead() && !f.headChallenge) {
+      if (f.nextChallengerYear == null) f.nextChallengerYear = y + this._randRange(CHALLENGER_EVENT_YEARS)
+      else if (y >= f.nextChallengerYear) {
+        f.nextChallengerYear = y + this._randRange(CHALLENGER_EVENT_YEARS)
+        const ch = Math.random() < CHALLENGER_EVENT_CHANCE ? this._pickChallenger(clan) : null
+        if (ch) {
+          f.headChallenge = { challengerId: ch.id, year: yr }
+          this.addEvent({ text: `Year ${yr}: ${Persons.fullName(ch)} strides into the hall and calls you out for the head seat.`, type: 'negative' })
+          this._emit('head_challenge', { id: ch.id })
+        }
+      }
+    }
+
+    // 2.6e: while an NPC leads (not you), they may eventually tire of the seat — anyone adult may join the
+    // tournament that follows, you included.
+    if (clan && clan.headId && clan.headId !== s.self.id && !f.stepDownOffer) {
+      if (f.nextStepDownYear == null) f.nextStepDownYear = y + this._randRange(STEPDOWN_CHECK_YEARS)
+      else if (y >= f.nextStepDownYear) {
+        f.nextStepDownYear = y + this._randRange(STEPDOWN_CHECK_YEARS)
+        const head = s.world.persons[clan.headId]
+        if (head) {
+          const reign = Math.max(0, yr - (head.headSince ?? yr))
+          const chance = (STEPDOWN_CHANCE[head.parentingStyle] ?? 0.15) + reign * STEPDOWN_REIGN_YEARS_MULT
+          if (Math.random() < Math.min(0.9, chance)) {
+            const entrants = this._stepDownEntrants(clan, clan.headId)
+            if (entrants.length >= 2) {
+              const eligible = entrants.some(p => p.id === s.self.id)
+              f.stepDownOffer = { headId: clan.headId, year: yr, entrantIds: entrants.map(p => p.id), eligible }
+              this.addEvent({ text: `Year ${yr}: worn down by ${reign} years in the seat, ${Persons.fullName(head)} lets the head seat stand open to any who can take it.`, type: 'special' })
+              this._emit('stepdown_offer', {})
+              // Only you get a say — if you're not eligible to enter, the tournament runs itself right away.
+              if (!eligible) this.answerStepDown(false)
+            }
+          }
+        }
       }
     }
   }
@@ -2145,6 +2192,297 @@ class GameState {
   isClanHead() {
     const clan = this._playerClan()
     return !!clan && clan.headId === this._s.self.id
+  }
+
+  // ── 2.6e (clan-succession.md): challenge the head, be challenged as head, step-down mass tournaments ──
+  // Headship can now change mid-life, not only at death. All three paths share: a single logistic fight
+  // (or bracket of them) via _resolveFight/_fightPower (the same power formula the Tournament of Heirs uses),
+  // a lethality call from _headDecidesLethal when it's the sitting head's to make, and _installHead to move
+  // the seat to a still-living winner (you or an NPC) without anyone else's life pausing.
+
+  _isBloody(clan) { return (clan?.tradition?.lethalTournaments || 0) > (clan?.tradition?.peacefulSuccessions || 0) }
+
+  // The sitting head's own call on lethality (deciding on a challenge against them, or setting the policy for
+  // a step-down tournament): style + how little they're liked + morality + personality + a bloody clan tradition.
+  _headDecidesLethal(head, clan, bond = 50) {
+    const style = head.parentingStyle || 'strict'
+    let w = LETHAL_BASE_WEIGHT[style] ?? 20
+    w += Math.max(0, 50 - bond) * LETHAL_BOND_WEIGHT
+    w += Math.max(0, -(head.morality ?? 0)) * LETHAL_MORALITY_WEIGHT
+    w += LETHAL_PERSONALITY_BONUS[head.personality] || 0
+    if (this._isBloody(clan)) w += LETHAL_BLOODY_BONUS
+    return Math.random() * 100 < Math.max(LETHAL_CHANCE_RANGE[0], Math.min(LETHAL_CHANCE_RANGE[1], w))
+  }
+
+  // A single fight between two {stageIndex, root, personality} fighters (world persons or _selfAsPerson()).
+  // A cowardly loser of a lethal fight may still yield — same TOURNAMENT_COWARD_YIELD rule as 2.6c.
+  _resolveFight(fA, fB, lethal) {
+    const pa = this._fightPower(fA), pb = this._fightPower(fB)
+    const aWins = Math.random() < 1 / (1 + Math.exp(-(pa - pb) / TOURNAMENT_SPREAD))
+    const winner = aWins ? fA : fB, loser = aWins ? fB : fA
+    let died = false, yielded = false
+    if (lethal) {
+      if (loser.personality === 'coward' && Math.random() < TOURNAMENT_COWARD_YIELD) yielded = true
+      else died = true
+    }
+    return { winner, loser, died, yielded }
+  }
+
+  // Anyone who lives through a lethal fight carries it (fighters who survive, winners included) — same rule
+  // 2.6c uses for the Tournament of Heirs, generalized to whoever fought (you, or a world person).
+  _applyLethalTrauma(res, lethal) {
+    if (!lethal) return
+    const mark = f => { if (!f) return; if (f.id === this._s.self.id) this._s.self.trauma = true; else f.trauma = true }
+    mark(res.winner)
+    if (!res.died) mark(res.loser)
+  }
+
+  // The living player as a fight-power-shaped Person: live stage/root/personality over the stored self record.
+  _selfAsPerson() {
+    const s = this._s
+    return { ...s.self, stageIndex: s.stageIndex, root: s.root, personality: s.personality?.id }
+  }
+
+  // Your bond with the CURRENT head — only tracked while they're still the head you were born/raised under.
+  _bondWithHead(head) {
+    const s = this._s
+    return (s.birth && s.birth.headId === head?.id && s.birth.headBond != null) ? s.birth.headBond : 50
+  }
+
+  _killPerson(id, yr, cause) {
+    const p = this._s.world.persons[id]
+    if (p) { p.alive = false; p.diedYear = yr; p.cause = cause }
+  }
+
+  // Moves a still-living clan member (you, or an NPC) into the head seat. The outgoing head (if still alive)
+  // steps down into seclusion, never dies of it. For you: hands over the clan's founded sect (clan.sect) if
+  // you don't already run your own. For an NPC: rolls a parenting style if they don't have one yet.
+  _installHead(clan, personId) {
+    const w = this._s.world, s = this._s, main = clan.lines[0]
+    const old = clan.headId ? w.persons[clan.headId] : null
+    if (old && old.alive !== false) old.role = 'elder'
+    const fromLine = this._lineOf(clan, personId)
+    if (fromLine && fromLine !== main) {
+      fromLine.memberIds = fromLine.memberIds.filter(id => id !== personId)
+      if (fromLine.headId === personId) {
+        const next = fromLine.memberIds.map(id => w.persons[id]).filter(p => p && p.alive !== false).sort((a, b) => (b.stageIndex || 0) - (a.stageIndex || 0))[0]
+        fromLine.headId = next ? next.id : null
+      }
+    }
+    if (!main.memberIds.includes(personId)) main.memberIds.push(personId)
+    clan.headId = personId; main.headId = personId
+    if (personId === s.self.id) {
+      if (clan.sect && !s.ownSect.founded && !s.sect.id) {
+        s.ownSect = { ...this._blankOwnSect(), ...clan.sect, founded: true }
+        delete s.ownSect.inheritedYear; delete s.ownSect.heirId
+        clan.sect = null
+      }
+    } else {
+      const p = w.persons[personId]
+      p.role = 'head'
+      if (!p.parentingStyle) p.parentingStyle = this._rollStyle(p).style
+      p.headSince = Math.floor(w.year)
+    }
+    return old
+  }
+
+  // Public (UI): can you challenge the sitting head right now?
+  canChallengeHead() {
+    const s = this._s, clan = this._playerClan()
+    if (!clan) return { ok: false, reason: 'no_clan' }
+    if (clan.headId === s.self.id) return { ok: false, reason: 'is_head' }
+    const head = clan.headId ? this.person(clan.headId) : null
+    if (!head) return { ok: false, reason: 'no_head' }
+    if (Math.abs((head.stageIndex || 0) - s.stageIndex) > CHALLENGE_STAGE_GAP) return { ok: false, reason: 'stage_gap' }
+    const y = s.world.year, ready = s.family.challengeCooldownYear
+    if (ready != null && y < ready) return { ok: false, reason: 'cooldown', readyYear: ready }
+    return { ok: true, head }
+  }
+
+  // You call out the sitting head. They decide lethal or not; the fight resolves at once.
+  challengeHead() {
+    const check = this.canChallengeHead()
+    if (!check.ok) return check
+    const s = this._s, f = s.family, w = s.world, yr = Math.floor(w.year), clan = this._playerClan(), head = check.head
+    const lethal = this._headDecidesLethal(head, clan, this._bondWithHead(head))
+    clan.tradition.challenges = (clan.tradition.challenges || 0) + 1
+    const res = this._resolveFight(this._selfAsPerson(), head, lethal)
+    this._applyLethalTrauma(res, lethal)
+    const youWon = res.winner.id === s.self.id
+    f.tally.challenges++
+    let outcome
+    if (youWon) {
+      f.tally.challengesWon++
+      if (res.died) { this._killPerson(head.id, yr, 'challenge'); s.karma = Math.max(0, s.karma + CHALLENGE_KARMA_DEATH) }
+      this._installHead(clan, s.self.id)
+      if (lethal && res.died) s.bloodlineQuality = Math.min(BLOODLINE_CAP, (s.bloodlineQuality || 0) + BLOODLINE_G_TRAUMA_HEIR)
+      this.addEvent({ text: `Year ${yr}: ${res.died ? `${Persons.fullName(head)} falls before you` : `you beat ${Persons.fullName(head)} to the ground and let them live`}. You take the head seat of the ${clan.name || 'clan'}.`, type: 'special' })
+      outcome = res.died ? 'won_lethal' : 'won_nonlethal'
+    } else {
+      f.tally.challengesLost++
+      if (res.died) {
+        this.addEvent({ text: `Year ${yr}: ${Persons.fullName(head)}'s blade is faster. Your challenge for the head seat ends your life.`, type: 'negative' })
+        this._recalc(); this._notify()
+        this._die('challenge_lost')
+        return { ok: true, outcome: 'lost_lethal', lethal }
+      }
+      f.challengeCooldownYear = yr + this._randRange(CHALLENGE_COOLDOWN_YEARS)
+      if (s.birth?.headId === head.id) s.birth.headBond = Math.max(0, (s.birth.headBond ?? 50) - CHALLENGE_BOND_LOSS)
+      this.addEvent({ text: `Year ${yr}: ${Persons.fullName(head)} beats you down and lets you live. You will need to heal before you try again.`, type: 'negative' })
+      outcome = 'lost_nonlethal'
+    }
+    this._recalc(); this._notify()
+    return { ok: true, outcome, lethal }
+  }
+
+  // A challenger from the roster with a real shot: adult, on the clan roster, within a plausible stage of you.
+  _pickChallenger(clan) {
+    const w = this._s.world, s = this._s, yr = Math.floor(w.year)
+    const ids = [...new Set(this._clanMemberIds(clan))].filter(id => id !== s.self.id)
+    const cands = ids.map(id => w.persons[id]).filter(p => p && p.alive !== false && !p.estranged &&
+      yr - (p.bornYear ?? 0) >= ADULT_AGE && Math.abs((p.stageIndex || 0) - s.stageIndex) <= CHALLENGER_STAGE_GAP_MAX)
+    return cands.length ? cands[Math.floor(Math.random() * cands.length)] : null
+  }
+
+  // Public (UI): resolve a pending NPC challenge against you (you're head) — YOUR call on lethality.
+  resolveHeadChallenge(lethal) {
+    const s = this._s, f = s.family, w = s.world, yr = Math.floor(w.year)
+    const ch = f.headChallenge
+    if (!ch) return { ok: false, reason: 'no_challenge' }
+    f.headChallenge = null
+    const clan = this._playerClan(), challenger = this.person(ch.challengerId)
+    if (!clan || !challenger || challenger.alive === false) { this._recalc(); this._notify(); return { ok: true, outcome: 'moot' } }
+    clan.tradition.challenges = (clan.tradition.challenges || 0) + 1
+    lethal = !!lethal
+    const res = this._resolveFight(this._selfAsPerson(), challenger, lethal)
+    this._applyLethalTrauma(res, lethal)
+    const youWon = res.winner.id === s.self.id
+    f.tally.challenges++
+    if (youWon) {
+      f.tally.challengesWon++
+      if (res.died) { this._killPerson(challenger.id, yr, 'challenge'); s.karma = Math.max(0, s.karma + CHALLENGE_KARMA_DEATH) }
+      this.addEvent({ text: `Year ${yr}: ${res.died ? `${Persons.fullName(challenger)} falls before you. Your seat is secure` : `you beat ${Persons.fullName(challenger)} down and let them live`}.`, type: res.died ? 'negative' : 'positive' })
+      this._recalc(); this._notify()
+      return { ok: true, outcome: res.died ? 'won_lethal' : 'won_nonlethal', lethal }
+    }
+    f.tally.challengesLost++
+    if (res.died) {
+      this.addEvent({ text: `Year ${yr}: ${Persons.fullName(challenger)}'s blade is faster. Your reign ends where it stood.`, type: 'negative' })
+      this._recalc(); this._notify()
+      this._die('challenged')
+      return { ok: true, outcome: 'lost_lethal', lethal }
+    }
+    this._installHead(clan, challenger.id)
+    this.addEvent({ text: `Year ${yr}: ${Persons.fullName(challenger)} beats you before the whole clan. You step down; they take the head seat.`, type: 'negative' })
+    this._recalc(); this._notify()
+    return { ok: true, outcome: 'lost_nonlethal', lethal }
+  }
+
+  // Everyone adult who could sign up, excluding the stepping-down head — includes the living player.
+  _stepDownEntrants(clan, excludeId) {
+    const w = this._s.world, s = this._s, yr = Math.floor(w.year), list = []
+    for (const id of new Set(this._clanMemberIds(clan))) {
+      if (id === excludeId) continue
+      if (id === s.self.id) { if (yr - (s.self.bornYear || 0) >= ADULT_AGE) list.push(this._selfAsPerson()) ; continue }
+      const p = w.persons[id]
+      if (p && p.alive !== false && !p.estranged && yr - (p.bornYear ?? 0) >= ADULT_AGE) list.push(p)
+    }
+    return list
+  }
+
+  // Resolves a whole elimination bracket at once: random pairing each round, lethal while more than
+  // TOURNAMENT_TOP remain AND the head chose blood, non-lethal after — same shape as the Tournament of
+  // Heirs (2.6c), generalized to the whole clan (branches, and you, may be in the pool) with nobody
+  // picking the pairs. Kills NPC losers directly; a losing player is only marked (selfOut), never dies here —
+  // the caller finishes with _die() once every other consequence (new head, branches) is already committed.
+  _runBracket(ids, lethal, yr) {
+    const self = this._s.self.id
+    const get = id => id === self ? this._selfAsPerson() : this._s.world.persons[id]
+    const nameOf = id => id === self ? this._s.name : Persons.fullName(this._s.world.persons[id])
+    let pool = [...ids], round = 1, eliminated = [], lines = [], selfOut = null
+    while (pool.length > 1) {
+      const roundLethal = lethal && pool.length > TOURNAMENT_TOP
+      const order = [...pool].sort(() => Math.random() - 0.5)
+      const next = []
+      if (order.length % 2) next.push(order.pop())
+      for (let i = 0; i < order.length; i += 2) {
+        const idA = order[i], idB = order[i + 1], pa = get(idA), pb = get(idB)
+        const res = this._resolveFight(pa, pb, roundLethal)
+        this._applyLethalTrauma(res, roundLethal)
+        const winId = res.winner === pa ? idA : idB, loseId = winId === idA ? idB : idA
+        next.push(winId)
+        if (res.died) { if (loseId === self) selfOut = 'died'; else this._killPerson(loseId, yr, 'stepdown_tournament') }
+        else if (loseId === self && !selfOut) selfOut = 'eliminated'
+        eliminated.push({ id: loseId, round, died: res.died, stage: get(loseId)?.stageIndex ?? 0 })
+        lines.push(`${nameOf(winId)} defeats ${nameOf(loseId)}${res.died ? ' — they do not rise' : res.yielded ? ' as they yield' : ''}.`)
+      }
+      pool = next; round++
+    }
+    const rest = eliminated.sort((a, b) => (b.round - a.round) || (b.stage - a.stage)).map(e => e.id)
+    return { winnerId: pool[0], ranking: [pool[0], ...rest], deaths: eliminated.filter(e => e.died).length, lines, selfOut }
+  }
+
+  // Places 2–4 in the bracket found new branches (up to MAX_BRANCHES total), mirroring the reign sim's own
+  // branch-founding — but from the WHOLE clan's tournament, not just your children.
+  _foundBranchesFrom(clan, ranking, yr) {
+    const w = this._s.world, main = clan.lines[0]
+    const founders = ranking.slice(1, TOURNAMENT_TOP).map(id => id === this._s.self.id ? null : w.persons[id])
+      .filter(p => p && p.alive !== false).slice(0, Math.max(0, MAX_BRANCHES - (clan.lines.length - 1)))
+    const lines = []
+    for (const f of founders) {
+      const used = new Set(clan.lines.map(l => l.name))
+      const name = BRANCH_NAMES.find(n => !used.has(n)) || `Branch ${clan.lines.length}`
+      for (const l of clan.lines) l.memberIds = l.memberIds.filter(id => id !== f.id)
+      clan.lines.push({ id: `${clan.id}-b${yr}-${f.id}`, name, headId: f.id, memberIds: [f.id], foundedYear: yr })
+      f.role = 'branch_head'
+      lines.push(`${f.given} leaves to found the ${name}.`)
+    }
+    return lines
+  }
+
+  // Public (UI): join or decline a pending step-down offer — then the WHOLE tournament resolves at once.
+  answerStepDown(join) {
+    const s = this._s, f = s.family, off = f.stepDownOffer
+    if (!off) return { ok: false, reason: 'no_offer' }
+    f.stepDownOffer = null
+    const clan = this._playerClan()
+    if (!clan || clan.headId !== off.headId) return { ok: true, outcome: 'moot' }
+    const w = s.world, yr = Math.floor(w.year), head = w.persons[off.headId]
+    let pool = off.entrantIds.filter(id => id === s.self.id ? true : w.persons[id] && w.persons[id].alive !== false && !w.persons[id].estranged)
+    if (!off.eligible || !join) pool = pool.filter(id => id !== s.self.id)
+    f.tally.stepDowns++
+    if (pool.length < 2) {
+      this.addEvent({ text: `Year ${yr}: no one steps forward. ${head ? Persons.fullName(head) : 'The head'} keeps the seat after all.`, type: 'neutral' })
+      return { ok: true, joined: false, outcome: 'no_contest' }
+    }
+    const lethal = head ? this._headDecidesLethal(head, clan) : true
+    this.addEvent({ text: `Year ${yr}: ${pool.length} step forward to contest the seat${lethal ? ', to the death' : ''}.`, type: lethal ? 'negative' : 'neutral' })
+    const result = this._runBracket(pool, lethal, yr)
+    for (const line of result.lines) this.addEvent({ text: line, type: line.includes('do not rise') ? 'negative' : 'neutral' })
+    const joined = pool.includes(s.self.id)
+    const youWin = result.winnerId === s.self.id
+    if (lethal) clan.tradition.lethalTournaments++; else clan.tradition.peacefulSuccessions++
+    let branchLines = []
+    if (youWin) {
+      this._installHead(clan, s.self.id)
+      if (lethal && result.deaths > 0) s.bloodlineQuality = Math.min(BLOODLINE_CAP, (s.bloodlineQuality || 0) + BLOODLINE_G_TRAUMA_HEIR)
+      f.tally.stepDownWon++
+      branchLines = this._foundBranchesFrom(clan, result.ranking, yr)
+      this.addEvent({ text: `Year ${yr}: you stand alone. The clan raises you to the head seat.`, type: 'special' })
+    } else {
+      this._installHead(clan, result.winnerId)
+      branchLines = this._foundBranchesFrom(clan, result.ranking, yr)
+      this.addEvent({ text: `Year ${yr}: ${Persons.fullName(w.persons[result.winnerId])} stands alone and takes the head seat.`, type: 'special' })
+    }
+    for (const line of branchLines) { this.addEvent({ text: line, type: 'neutral' }); clan.history.push({ year: yr, text: line }) }
+    clan.history.push({ year: yr, text: `The step-down tournament for the ${clan.name || 'clan'} ends: ${result.deaths} dead, a new head stands.` })
+    if (joined && result.selfOut === 'died') {
+      this._recalc(); this._notify()
+      this._die('stepdown_tournament')
+      return { ok: true, joined, lethal, outcome: 'died', deaths: result.deaths }
+    }
+    this._recalc(); this._notify()
+    return { ok: true, joined, lethal, outcome: youWin ? 'won' : (joined ? 'eliminated' : 'watched'), deaths: result.deaths }
   }
 
   startMeditation(duration = 30) {

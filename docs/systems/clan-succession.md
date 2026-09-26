@@ -1,7 +1,7 @@
 # Clan Succession — Build Spec (M2 tasks 2.6a–2.6f)
 _Covers: world/life save split · clan registry (main line + ≤3 branches) · children who cultivate · bond + morality ·
 Tournament of Heirs · reign simulation · rebirth as a descendant (or orphan) · head challenges · succession tournaments
-· branch wars · secession · Phase: 16/18C/31 rework (M2) · Updated: 2026-09-26 · **Status: spec, signed off by the user 2026-09-26**_
+· branch wars · secession · Phase: 16/18C/31 rework (M2) · Updated: 2026-09-26 · **Status: 2.6a–e built, 2.6f spec only**_
 
 **Replaces the old task 2.6** ("choose an heir at death and play as them", life-loop.md §4.3/§5.1/§7 heir parts).
 User-designed 2026-09-26. You never *play as* your heir. The heir (an NPC) takes over the clan; the world simulates
@@ -112,13 +112,14 @@ Pruning: persons who are dead, not a head/heir, and ≥ 3 generations old are dr
 | 2.6b ✅ | Family planning, children cultivate, bond + child events, morality | sim: children reach stages; bond/morality ranges hold |
 | 2.6c ✅ | Choose heir, Tournament of Heirs (pick matchups), heir-strength BQ term, sect to head | tournament resolves with correct lethal/non-lethal split; BQ term applied |
 | 2.6d ✅ | Parenting styles, reign sim + chronicle, rebirth position, heir bet, orphan option | 500h sim spans ≥3 generations; positions + styles distributed sensibly |
-| 2.6e | Challenge head (head decides lethality), challenged-as-head events, step-down mass tournament | all paths reachable in sim; no life ends without a cause |
+| 2.6e ✅ | Challenge head (head decides lethality), challenged-as-head events, step-down mass tournament | all paths reachable in sim; no life ends without a cause |
 | 2.6f | Branch wars, secession → new clan, clan relations | a seceded clan persists as rival/ally; slot follows the new clan |
 Then life-loop.md 2.7 (Ancestral Hall, legacies — Sect Continuity legacy is superseded by 2.6c) and 2.8 (tuning).
 
 ## Open questions (decide during the relevant task, flag to the user)
-- Challenge gap/cooldown, step-down rate — draft values in 2.6e's data. (Bet/rebirth weights + `REIGN_YEARS`: decided
-  in 2.6d, `assets/data/succession.js`.)
+- ~~Challenge gap/cooldown, step-down rate~~ — decided during 2.6e's build: `assets/data/succession.js`, retuned
+  once against a full sim run (see qa-sim.md Gotchas — the first draft fired ~4× too often). (Bet/rebirth weights +
+  `REIGN_YEARS`: decided in 2.6d, same file.)
 - Orphan lives: can an orphan later marry into / be adopted by a clan? (Decided 2026-09-26: no adoption in M2 — an
   orphan's death returns to the last clan's succession, or you can stay an orphan.)
 - ~~How the heir's chronicle is shown~~ — decided 2026-09-26: one overlay card (5–8 lines), also saved to
@@ -282,3 +283,68 @@ Data: `assets/data/succession.js` (styles, weights, chronicle text, upbringing e
 - **Sim fixes along the way:** the bot set Family Planning once per *run* (later lives fell back to 'many'); deaths
   inside a bot check-in (Ascension) now resolve the interlude before the bot acts again; the clan stipend is
   attributed in the stone ledger ('clan_stipend').
+
+## 2.6e — as built (2026-09-26)
+Data: `assets/data/succession.js` "Clan politics in a life" block. Code: `game-state.js` "2.6e" block.
+Headship can now change **mid-life**, not only at death — the first way any of this happens outside the
+death→interlude flow.
+- **Challenge the head** (`canChallengeHead()`/`challengeHead()`, Stats — only when not head, within
+  `CHALLENGE_STAGE_GAP` (3) of the sitting head, and off cooldown): the head decides lethal or not
+  (`_headDecidesLethal` — style + how little they're liked (bond, defaulting to 50 unless they're still your
+  birth head) + morality + personality + a bloody clan tradition, same "bloody" test succession scoring already
+  uses), then one fight resolves at once (`_resolveFight`, the same power formula/logistic/coward-yield the
+  Tournament of Heirs uses). Win lethal → the head dies, you take the seat **and the clan's founded sect**
+  (`clan.sect`, only if you don't already run or belong to one — `!s.ownSect.founded && !s.sect.id`), forged in
+  blood (`trauma = true` + an immediate `+BLOODLINE_G_TRAUMA_HEIR` to your own Bloodline Quality — a live version
+  of 2.6c/d's heir term, since you're the one who was tempered in the fight, not a future rebirth). Win non-lethal
+  → same seat, the old head lives on as an `elder`. Lose lethal → `_die('challenge_lost')`. Lose non-lethal →
+  `CHALLENGE_COOLDOWN_YEARS` cooldown + `CHALLENGE_BOND_LOSS` off your bond with the head.
+- **Challenged as head** (`resolveHeadChallenge(lethal)` — the family-overlay's highest-priority card, right after
+  a duel): an NPC from the clan roster within `CHALLENGER_STAGE_GAP_MAX` of your stage calls you out
+  (`_pickChallenger`, scheduled by `_tickFamily` every `CHALLENGER_EVENT_YEARS` at `CHALLENGER_EVENT_CHANCE` odds);
+  **lethality is your own choice**, not algorithmic. Same fight/outcomes as above, mirrored: you win lethal → the
+  challenger dies; you win non-lethal → they live; you lose lethal → `_die('challenged')`; you lose non-lethal →
+  you step down, they take the seat, your life goes on.
+- **Step-down mass tournament** (`answerStepDown(join)` — the family-overlay's second-highest card): while an NPC
+  leads (not you), `_tickFamily` rolls a chance every `STEPDOWN_CHECK_YEARS` (`STEPDOWN_CHANCE[style]` +
+  `STEPDOWN_REIGN_YEARS_MULT` × years already reigned) that they step back; `_stepDownEntrants` gathers every
+  adult clan member (any line, **you included** if adult) except the stepping-down head. If you're not eligible
+  the tournament resolves itself immediately (`answerStepDown(false)`, no card shown) — only your own eligibility
+  earns you a say. The whole event is ONE lethality decision by the retiring head (`_headDecidesLethal` again,
+  policy for the whole bracket, not per-round), then `_runBracket` — the exact 2.6c shape (lethal while more than
+  `TOURNAMENT_TOP` remain, non-lethal after, so the Top 4 always survive to lead the main line + up to 3 branches)
+  generalized to any mix of world persons and the living player, with **random pairing each round** (nobody picks
+  matchups here, unlike your own Tournament of Heirs). A losing player is only marked (`selfOut`), never killed
+  inside the bracket — the caller finishes with `_die('stepdown_tournament')` only after the new head and branches
+  (`_foundBranchesFrom`) are already committed, so your own death lands in an already-consistent clan. Lethal →
+  `clan.tradition.lethalTournaments++`; non-lethal → `peacefulSuccessions++` (both feed the "bloody clan" bias
+  everywhere else already reads it). 1v1 challenges (both directions) bump `clan.tradition.challenges` — a field
+  the 2.6a schema already had, unused until now.
+- **Shared machinery:** `_isBloody(clan)`, `_headDecidesLethal(head, clan, bond)`, `_resolveFight(fA, fB, lethal)`
+  (a cowardly loser may still yield, `TOURNAMENT_COWARD_YIELD`), `_applyLethalTrauma(res, lethal)` (anyone who
+  lives through a lethal fight is scarred — winners included — same rule 2.6c uses, generalized to you or any world
+  person), `_selfAsPerson()` (you, shaped like a fight participant: live stage/root/personality over the stored
+  `s.self`), `_installHead(clan, personId)` (moves the seat, demotes the outgoing head to `elder` if they're still
+  alive, rolls a parenting style for a new NPC head who doesn't have one yet, or hands you the sect).
+- **UI:** Stats gains a "Challenge the Head" button (non-head only, hidden past the stage gap; a dimmed cooldown
+  note otherwise) reusing the generic confirm dialog (`showConfirm`, now takes an optional 4th `label` argument —
+  every prior call site silently said "Delete" regardless of the actual action; fixed in the same change: "Begin"
+  for the Tournament of Heirs, "End It" for ending an affair, "Pass the Mantle", "Discard", and now "Challenge").
+  Both new decisions (an NPC's challenge, a step-down offer) reuse `#family-overlay`/`familyPendingKey` exactly
+  like a duel or marriage event — no new overlay markup.
+- **Sim:** see qa-sim.md "Clan Politics (2.6e)" + Gotchas (the first tuning pass fired ~4× too often and dominated
+  every profile's deaths — fixed by widening the check intervals and adding an explicit chance gate on top).
+  Scenario checks: `scripts/sim/checks/succession.js` (+37, using `overrides` to force `TOURNAMENT_LUCK = 0` and a
+  stage gap for deterministic fights, and `LETHAL_CHANCE_RANGE = [0,0]`/`[100,100]` to force the head's decision).
+  Real app: `scripts/smoke/scenarios/succession.js` (+1 section) — the Challenge button + confirm dialog, an NPC
+  challenge card, a step-down card, all resolved live.
+- **Evidence:** `npm test` (59 files), `npm run checks` (189, was 152), full `npm run sim --hours=200 --seeds=3`
+  before/after tuning — 0 errors/0 violations throughout; Life Loop medians restored to target bands (active 8.1h,
+  casual 21.0h, both within life-loop.md's [5,15]/[20,40]; afk 3.3h, unaffected — it rarely checks in). New "Clan
+  Politics" report table: active 10 challenges (4W/6L) + 19 step-downs (1 won) per 200h; casual 8 (1W/7L) + 29 (0
+  won) — casual mostly loses challenges it opportunistically tries and rarely wins a step-down bracket against a
+  field it didn't optimize for, which is the intended flavor (a savvy `active` player seeks the seat; a casual one
+  mostly doesn't). `npm run build:web`, `npm run dist`. Real-app smoke: zero console errors.
+- **Known gaps (2.6f's job, not this one):** branch members can't yet push their branch to war or secede; a
+  step-down tournament can only ever install a NEW head from the CURRENT clan's own roster, never spin off a
+  rival branch the way 2.6f's secession will.

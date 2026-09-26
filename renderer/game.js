@@ -85,9 +85,10 @@
 
   // Generic confirm overlay (Phase 21: also used by the Pack tab's Discard button — see showConfirm below).
   let _pendingConfirm = null
-  function showConfirm(msg, sub, onYes) {
+  function showConfirm(msg, sub, onYes, label = 'Delete') {
     document.getElementById('confirm-msg').textContent = msg
     document.getElementById('confirm-sub').textContent = sub
+    document.getElementById('confirm-yes').textContent = label
     _pendingConfirm = onYes
     document.getElementById('confirm-overlay').classList.remove('hidden')
   }
@@ -482,16 +483,23 @@
       if (gameState.get().family.tournament) return openTournamentOverlay()
       showConfirm('Host a Tournament of Heirs?', 'Every adult child fights. Rounds are to the death until four remain. It cannot be stopped once blood is spilled.', () => {
         if (gameState.startTournament().ok) openTournamentOverlay()
-      })
+      }, 'Begin')
     })
     document.querySelectorAll('#tab-stats [data-plan]').forEach(btn => btn.addEventListener('click', () => gameState.setFamilyPlanning(btn.dataset.plan)))
     document.querySelectorAll('#tab-stats [data-end-affair]').forEach(btn => btn.addEventListener('click', () => {
-      showConfirm('End the affair?', 'Children already born stay yours.', () => gameState.endAffair(btn.dataset.endAffair))
+      showConfirm('End the affair?', 'Children already born stay yours.', () => gameState.endAffair(btn.dataset.endAffair), 'End It')
     }))
     document.getElementById('_pass-mantle')?.addEventListener('click', () => {
       showConfirm('Pass the Mantle?', 'This ends your life peacefully, now. Cannot be undone.', () => {
         gameState.passTheMantle()
-      })
+      }, 'Pass the Mantle')
+    })
+    document.getElementById('_challenge-head')?.addEventListener('click', () => {
+      showConfirm('Challenge the head?', 'The head decides whether this is to the death. If they choose blood and you lose, this life ends.', () => {
+        const res = gameState.challengeHead()
+        if (res.outcome === 'won_lethal' || res.outcome === 'won_nonlethal') flashMessage('You seized the head seat.', 'positive')
+        else if (res.outcome === 'lost_nonlethal') flashMessage('You were beaten back.', 'negative')
+      }, 'Challenge')
     })
   }
 
@@ -516,6 +524,10 @@
         const bh = gameState.person(s.birth.headId), bl = bondLabel(s.birth.headBond)
         html += sr(s.birth.headId === c.headId ? 'Your Bond' : `Bond · ${escHtml(bh?.given || '')}`, `<span style="color:${bl.color}">${bl.word} · ${Math.round(s.birth.headBond)}</span>`)
       }
+      // 2.6e: challenge the head for the seat (only when you're a plausible threat and not on cooldown).
+      const cc = gameState.canChallengeHead()
+      if (cc.ok) html += `<button id="_challenge-head" class="sect-btn" style="width:100%;margin:6px 0 2px;">Challenge the Head</button>`
+      else if (cc.reason === 'cooldown') html += sr('', '<span style="color:var(--dim)">Still too weak from your last challenge to try again.</span>')
     }
     return html + chron
   }
@@ -1970,7 +1982,7 @@
           const res = craftSys.discard(iid, 1)
           if (res.ok) flashMessage(`Discarded: ${name}`, 'neutral')
           else flashMessage('Cannot discard', 'negative')
-        })
+        }, 'Discard')
       })
     })
   }
@@ -2047,6 +2059,9 @@
     old_age:            'Your years ran out',
     passed_mantle:      'You laid down the path',
     spouse_duel:        'Slain by your spouse in a duel to the death',
+    challenge_lost:     'Slain challenging the head for their seat',
+    challenged:         'Slain defending the head seat',
+    stepdown_tournament: 'Fallen in the succession tournament',
   }
 
   // 2.6d (clan-succession.md): the death card walks through the interlude — heir bet (if the clan must pick),
@@ -2176,6 +2191,8 @@
     const f = s.family
     if (!f) return null
     if (f.spouse && f.duel)  return `duel:${f.duel.year}`
+    if (f.headChallenge) return `hc:${f.headChallenge.challengerId}:${f.headChallenge.year}`   // 2.6e
+    if (f.stepDownOffer) return `sd:${f.stepDownOffer.headId}:${f.stepDownOffer.year}`          // 2.6e
     if (f.spouse && f.event) return `ev:${f.event.id}:${f.event.year}`
     if (f.childEvent) return `child:${f.childEvent.id}:${f.childEvent.childId}:${f.childEvent.year}`   // 2.6b
     if (s.upbringing?.event) return `up:${s.upbringing.event.id}:${s.upbringing.event.year}`   // 2.6d
@@ -2198,6 +2215,34 @@
         document.getElementById('family-overlay').classList.add('hidden')
         const res = gameState.resolveDuel(btn.dataset.duel)
         if (res.outcome === 'won') flashMessage('You survived the duel.', 'negative')
+      }))
+    } else if (f.headChallenge) {   // 2.6e: an NPC calls you out for the head seat — you decide lethal or not
+      const challenger = gameState.person(f.headChallenge.challengerId)
+      box.classList.add('crisis')
+      document.getElementById('family-title').textContent = 'Challenged for the Head Seat'
+      document.getElementById('family-desc').textContent = challenger
+        ? `${Persons.fullName(challenger)} strides into the hall and calls you out. Will this be to the death, or will the loser simply yield?`
+        : 'A challenger waits. The matter must be settled.'
+      choicesEl.innerHTML = `<button data-hc="1">To the Death<span class="family-sub">the loser does not walk away</span></button>
+        <button data-hc="0">Non-Lethal<span class="family-sub">the loser yields and lives</span></button>`
+      choicesEl.querySelectorAll('[data-hc]').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('family-overlay').classList.add('hidden')
+        const res = gameState.resolveHeadChallenge(btn.dataset.hc === '1')
+        if (res.outcome === 'won_lethal' || res.outcome === 'won_nonlethal') flashMessage('You held the head seat.', 'positive')
+        else if (res.outcome === 'lost_nonlethal') flashMessage('You were deposed.', 'negative')
+      }))
+    } else if (f.stepDownOffer) {   // 2.6e: the sitting head is stepping down — join the tournament, or watch
+      const off = f.stepDownOffer, head = gameState.person(off.headId)
+      box.classList.remove('crisis')
+      document.getElementById('family-title').textContent = 'The Head Seat Stands Open'
+      document.getElementById('family-desc').textContent = `${head ? Persons.fullName(head) : 'The head'} steps back and lets the clan settle it. ${off.entrantIds.length} may contest the seat. Will you enter?`
+      choicesEl.innerHTML = `<button data-sd="1">Enter the Tournament<span class="family-sub">win it all, or fall trying</span></button>
+        <button data-sd="0">Stay Out<span class="family-sub">watch the clan settle it without you</span></button>`
+      choicesEl.querySelectorAll('[data-sd]').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('family-overlay').classList.add('hidden')
+        const res = gameState.answerStepDown(btn.dataset.sd === '1')
+        if (res.outcome === 'won') flashMessage('You took the head seat.', 'positive')
+        else if (res.outcome === 'died') flashMessage('You fell in the tournament.', 'negative')
       }))
     } else if (!(f.spouse && f.event) && !f.childEvent && s.upbringing?.event) {   // 2.6d upbringing (you are the child)
       const ev = s.upbringing.event, def = gameState.upbringingEventDef(ev)
