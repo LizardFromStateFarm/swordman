@@ -1,9 +1,9 @@
 # Life Loop — Reference & Build Spec
-_Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ built) · renderer/engine/persons.js (✅ built) · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-26 (task 2.4)_
+_Covers: lifespan.js (new data, ✅ built) · clan-legacies.js · names.js (✅ built) · renderer/engine/persons.js (✅ built) · renderer/game/life-loop.js (new) · game-state.js (age, family, succession, clan, legacies) · bloodline.js · game.js (overlays) · scripts/sim/* · Phase: 30, 31, 16-lite, 18C (roadmap M2 2.1–2.8) · Updated: 2026-09-26 (task 2.5)_
 
 > **Status: build spec, written overnight (task 2.1). Tasks 2.2 (shared generators + minimal person record),
-> 2.3 (game clock + lifespan) and 2.4 (pacing compression) are now BUILT overnight — see §8's rows and
-> §11/§12/§13 below for what landed and how each diverges.** Tasks 2.5–2.8 are still spec only. The user
+> 2.3 (game clock + lifespan), 2.4 (pacing compression) and 2.5 (marriage & children lite) are now BUILT — see
+> §8's rows and §11–§14 below for what landed and how each diverges.** Tasks 2.6–2.8 are still spec only. The user
 > pre-authorized building M2 with these draft values. Every value marked **(P)** is *provisional, decided
 > overnight* (see §9). Once M2 ships, cut this doc down to a normal <120-line reference (index.md rule).
 > Until then it is deliberately longer because it is the spec for tasks 2.5–2.8.
@@ -408,7 +408,7 @@ Dead zone / stage wall / progression stall are computed per life. Run the life-l
 | **2.2** ✅ Shared generators + person record | `persons.js`, `names.js`, delegate `_rollRoot`/`_rollSpecificRoot`/`_rollPersonality`, `s.self`, `clan` skeleton `{name:'', nextId}`, `_ensurePhase30Fields` (self only) / `_ensurePhase31Fields` (skeleton). **No new `Math.random()` calls in `_newGame()`** | `npm test`; `npm run sim` report **identical** to baseline except timestamps; a node check that `Persons.make()` fills every schema key |
 | **2.3** ✅ Game clock + lifespan | `lifespan.js`, age/gameYear in `tick()`, `derived.lifespan/inTwilight/ageFrac`, old-age death, twilight card, Final Seclusion, Pass the Mantle (via current `_die`), HUD age bar + Stats, `twilight` banter lines (58), sim life metrics + invariants 1–2 | invariants hold; report shows life length + deaths by cause. (Before 2.4, casual gen-1 dies of old age around NS/CF — confirmed, see §12.) |
 | **2.4** ✅ Pacing compression | `stages.js` caps, `PACING_TARGETS_MIN`, `LIFE_TARGETS_H`, `OFFLINE_QI_MULT` check | §6.3 step 4 — casual median life 16.8h, active 12.6h, both within band; see §13 |
-| **2.5** Marriage & children lite | `_ensurePhase16Fields`, `_tickFamily`, proposal overlay, `acceptSuitor`/`declineProposal`, partner term in `_die` growth, `married`/`child_born` banter lines, bot `family()` | sim: ≥ 1 adult child before the median death in casual; BQ growth includes partner term |
+| **2.5** ✅ Marriage & children lite | `_ensurePhase16Fields`, `_tickFamily`, proposal overlay, `acceptSuitor`/`declineProposal`, partner term in `_die` growth, `married`/`child_born` banter lines, bot `family()` | sim: ≥ 1 adult child before the median death in casual; BQ growth includes partner term — met: 100% of casual lives end with an adult child; see §14 |
 | **2.6** Heir selection + succession flow | `_endLife`/`_beginNewLife`/`chooseHeir`, `CLAN_CARRY_KEYS`, ending → Hall (tree + records only) → heir overlays, system `lifeOver()` guards, clan name + charselect, generation-aware metrics, bot `succession()` | 500h casual sim spans ≥ 3 generations in one slot; heir kinds reported; `family carry 1.0` path used; no dead-zone false flags |
 | **2.7** Hall + legacies + catch-up + Ascended Ancestor | `clan-legacies.js`, firsts, Merit, `buyLegacy`/`setFamilyManual`, catch-up + auto-BT, blessing, Ascended Ancestor ending + stage-22 migration, Hall legacy UI, bot Merit spending | gen 2+ reaches the clan best faster; no "content exhausted"/post-Ascension dead zone; bot buys legacies |
 | **2.8** Tuning | Merit costs, catch-up strength, lifespans, BQ constants | `npm run sim --hours=500`: first Ascension casual 40–80h, 3–5 generations, gen 2+ life median ≥ 8h |
@@ -708,3 +708,56 @@ horizon) is unchanged and still exactly the Phase 23/task-2.7 gap bloodline.md a
 was not scoped to touch it. Technique prices (life-loop.md §6.3's "re-check `celestial_orbit` at minStage 10 /
 600 stones") were reviewed against the economy table (no hoarding flag, `learn_technique` a healthy ~34-36% of
 casual spend both before and after) and left unchanged — no pacing-driven price issue was found.
+
+## 14. Task 2.5 — what actually got built (2026-09-26)
+
+**State** (`s.family`, reset per life by `_newGame()`; `_ensurePhase16Fields()` is shape-only and runs last in the
+`_recalc()` ensure chain, after `_ensurePhase30Fields()`). Matches §2.1 plus two additions:
+- `pastSpouses: Person[]` — dead spouses (`alive:false`, `diedYear`, `cause:'old_age'`). Keeps invariant 5 ("spouse null or
+  alive") true while still letting `_die()` use "the last spouse this life" and task 2.6's `AncestorEntry` list them.
+- `spouseStageYear` — gameYear of the spouse's last stage gain (one stage per `SPOUSE_YEARS_PER_STAGE`, capped at 21).
+
+**Logic** (game-state.js):
+- `_tickFamily()` runs from `tick()` when `floor(gameYear)` changes (never offline). Order: spouse stage-ups → spouse
+  old-age death (`y − bornYear ≥ LIFESPAN_BY_REALM[realm of spouse.maxStage]` → `pastSpouses`, mourning
+  `MOURNING_YEARS`, `nextProposalYear = mourningUntil`, emit `spouse_died`) → child birth → proposal.
+- First proposal: scheduled on the first year change with `maxStageThisLife ≥ PROPOSAL_MIN_STAGE` (so migrated FB+ saves
+  are covered without any `Math.random()` inside an `_ensure*` method), fires `PROPOSAL_FIRST_DELAY_YEARS` later.
+  Suitors: 1–3, stage = player stage + [−3,+1] clamped to [1, 21], age = player age ± 20 (min 18) **capped at 80% of
+  the suitor's own realm lifespan** (not in the spec — without it a Nascent-Soul-era suitor could be born past their
+  lifespan and die the year after the wedding). Suitors get a random surname; emit `proposal` (no banter pool).
+- `acceptSuitor(id)` → spouse (`role:'spouse'`, `spouseIds` linked both ways), first child due in `FIRST_CHILD_YEARS`.
+  `declineProposal()` → retry in `PROPOSAL_RETRY_YEARS`. "Decide later" is UI-only (proposal stays pending forever).
+- Children: `Persons.blendRoot(s.root, spouse.root)`, rolled personality, given name re-rolled up to 3× to avoid a
+  sibling duplicate, `family = _clanSurname()` (clan.name, else the first word of a two-word player name, else none —
+  until 2.6 gives every clan a surname). `CHILD_CAP` counts across all spouses in a life.
+- `_die()` growth: `G_BASE + G_SELF×(maxStage/22)² + G_PARTNER×(spouseMaxStage/22)²`; the partner is the current spouse,
+  else the last of `pastSpouses`. `lastReincarnation` gained `married`, `children`, `adultChildren`, `spouseMaxStage`,
+  `growth` (additive). `family` still resets on death — heirs are task 2.6.
+- New helpers: `_blankFamily()`, `_randRange([lo,hi])`, `_randInt([lo,hi])`, `_clanSurname()`; `Persons.fullName(p)`.
+
+**UI:** `#proposal-overlay` (index.html/styles.css, same pattern as `#twilight-overlay`, scrollable box, 32px buttons):
+one card per suitor (name, realm·layer, age, root, personality) with Accept; Decide Later / Decline All. It auto-opens
+once per proposal per session (`_proposalShownYear` closure in game.js) and never on top of the twilight card. Stats
+gains Spouse / Child rows and an "A matchmaker awaits" button that reopens it. Added to BanterSystem's `isBlocked`.
+Overlay code lives in game.js next to the twilight card rather than in `life-loop.js` (that file arrives with 2.6).
+
+**Banter:** `married`/`child_born` added to `BANTER_TRIGGERS`, 116 lines (2+2 generic, 4+4 × 14). `fill()` supports
+`{spouse}`/`{child}`. The previous (interrupted) session had pasted every block into `generic` — fixed here.
+
+**Sim:** `Bot.family()` (accept the highest powerScore suitor, never decline). Life Loop table: Married / Children per
+life / Adult child at death, plus a casual flag when < 50% of lives end with an adult child. Invariants
+`family_children_over_cap`, `family_spouse_dead`, `family_proposal_invalid`. Loader exposes `PROPOSAL_MIN_STAGE`,
+`CHILD_CAP`, `ADULT_AGE`.
+
+**Evidence** (full `npm run sim`, founder, 3 seeds, 200h): 0 errors / 0 violations (the pre-fix baseline had
+`banter_pool_holes` ×756). Married 100% of lives in all three profiles, 4.0 children/life for active and casual
+(afk 2.5), **100% of lives end with ≥1 adult child**. Casual median life unchanged at 16.8h; active 12.6h → 10.2h and afk
+3.3h → 2.8h. Mostly RNG-stream shift from the new family rolls — family touches no Qi, stones or BT chance; its only
+balance lever is the partner term raising next-life BQ (and so Ascension odds) slightly, which would lengthen, not
+shorten, lives.
+Afk sect founding looked lower (1/3 → 0/3), but an 8-seed rerun gave 1/8 both before and after, so it's noise. BQ
+partner term checked directly with a scripted scenario (growth = 1 + 8(s/22)² + 5(sp/22)² exactly).
+
+**Pacing note for 2.6/2.8:** casual marries ~5–20 game years after FB (~6h open) and has 4 adult children well before
+death, so the `child` heir path will dominate; cousin/new soul will mostly matter for afk and early deaths.

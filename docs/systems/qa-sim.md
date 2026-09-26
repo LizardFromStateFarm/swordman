@@ -42,6 +42,8 @@ invariant violations, 2 = harness crashed / bad `--set`.
   `profile === 'active'` now — `casual`/`afk` rely entirely on the orders they set, by design, so the sim actually
   exercises the "never punish absence" path instead of a bot that manually clicks every button regardless of
   profile. `active` still clicks manually on top of its own orders (proving the no-double-charge guarantee).
+- **Family (Phase 16-lite, M2 task 2.5):** every profile runs `Bot.family()` second in the `checkIn` chain (after
+  `twilight()`): a pending proposal → `acceptSuitor()` of the highest powerScore (stage×100 + root mult×10). Never declines.
 
 ## Report sections / metrics
 - **Summary** per horizon×profile: final stage, breakthrough success, worst fail streak, longest dead zone,
@@ -62,6 +64,9 @@ invariant violations, 2 = harness crashed / bad `--set`.
   profile's median life falls outside its band. `later` (post-catch-up generations), `FIRST_ASCENSION_H`
   and `GENERATIONS_TO_ASCEND` are defined but **not yet checked** — they need tasks 2.5–2.8's ancestral
   catch-up/generation continuity to mean anything (every death today is a fresh soul, no carry-over).
+  **M2 task 2.5** added three family columns to the same table (share of lives married, mean children per life, share
+  of lives with ≥1 adult child at death — from `lastReincarnation.married/children/adultChildren`) and a casual flag
+  when fewer than half of lives end with an adult child (2.5's done-when: an heir should usually exist).
 - **Member Wars** (Phase 5C, updated by Phase 32): joined-sect wars per profile — count, W/L, "present for" (% of
   calls the bot's own check-in cadence overlapped an open war phase — a presence stat, not a reward gate), ignored
   (present, but left uncommitted — usually an explicit `stay_out` order), unseen (resolved while the game was
@@ -103,7 +108,7 @@ inventory counts not positive integers · integrity ∉ [0,100] · karma ∉ [0,
 stageIndex out of range · beasts > maxBeasts · disciples > cap · invalid war phase · sect rank out of range ·
 joined AND founded · war side ≠ joined/founded state · war-committed mission slot over cap or not released after
 the war · beast stuck at war · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi ·
-health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap` · `item_category_invalid` (Phase 21: every `ITEMS[id].category` must be one of `currency|mat|pill|equip|rare|key`, checked once per run). The sim also runs `BanterSystem` (source `banter`, 0 stones).
+health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap` · `item_category_invalid` (Phase 21: every `ITEMS[id].category` must be one of `currency|mat|pill|equip|rare|key`, checked once per run) · `family_children_over_cap` / `family_spouse_dead` / `family_proposal_invalid` (M2 2.5, life-loop.md §7 invariant 5: children ≤ `CHILD_CAP`, spouse null or alive, proposal only when unmarried and past `PROPOSAL_MIN_STAGE`). The sim also runs `BanterSystem` (source `banter`, 0 stones).
 
 ## Extending
 - **New system/phase:** add bot behaviour in `bot.js` (new method + add to the `checkIn` chain), new

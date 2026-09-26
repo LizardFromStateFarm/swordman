@@ -88,7 +88,9 @@ class Recorder {
       this._lastDeathTs = s.lastReincarnation.ts
       const lr = s.lastReincarnation
       this.deathsByCause[lr.cause] = (this.deathsByCause[lr.cause] || 0) + 1
-      if (lr.openHours != null) this.lifeLengths.push({ cause: lr.cause, openHours: lr.openHours, ageAtDeath: lr.ageAtDeath, lifespan: lr.lifespan })
+      if (lr.openHours != null) this.lifeLengths.push({ cause: lr.cause, openHours: lr.openHours, ageAtDeath: lr.ageAtDeath, lifespan: lr.lifespan,
+        // Phase 16-lite (M2 task 2.5): family per life
+        married: !!lr.married, children: lr.children || 0, adultChildren: lr.adultChildren || 0, spouseMaxStage: lr.spouseMaxStage || 0 })
       this.milestone('first_death')
     }
     if (open) {
@@ -161,6 +163,14 @@ class Recorder {
     // tick age crosses it, before this invariant sees it again) — no `succession`-pending exemption yet
     // (task 2.6), since that state doesn't exist.
     if (!(s.age <= (d.lifespan ?? Infinity) + 1e-6)) this.violate('age_over_lifespan', `${s.age} > ${d.lifespan}`)
+    // Phase 16-lite (M2 task 2.5), life-loop.md §7 invariant 5.
+    const fam = s.family
+    if (fam) {
+      if (fam.children.length > this.D.CHILD_CAP) this.violate('family_children_over_cap', fam.children.length)
+      if (fam.spouse && !fam.spouse.alive) this.violate('family_spouse_dead', fam.spouse.id)
+      if (fam.proposal && (fam.spouse || s.maxStageThisLife < this.D.PROPOSAL_MIN_STAGE))
+        this.violate('family_proposal_invalid', `spouse=${!!fam.spouse} maxStage=${s.maxStageThisLife}`)
+    }
     for (const def of this.D.SETTINGS_DEFS) {
       const v = s.settings?.[def.id]
       const ok = def.type === 'range' ? (v >= def.min && v <= def.max) : def.options.some(o => o.value === v)

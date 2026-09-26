@@ -34,13 +34,13 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
-| Lifespan & Game Time (age passes only while open) | ◐ Phase 30 (M2) — game clock + lifespan + Final Seclusion/Pass the Mantle (task 2.3); pacing compression (task 2.4) done. Remaining: family/heirs/legacies (2.5-2.8) |
+| Lifespan & Game Time (age passes only while open) | ◐ Phase 30 (M2) — game clock + lifespan + Final Seclusion/Pass the Mantle (task 2.3); pacing compression (task 2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
 | Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — clan skeleton (task 2.2) built |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
 | NPC World Simulation (personalities, sects) | ⬜ Phase 15 → superseded by Phase 28 (M4) |
-| Marriage & Family system | ⬜ Phase 16 (lite in M2, full in M6) |
+| Marriage & Family system | ◐ Phase 16 — lite built (M2 task 2.5: proposals, spouse, children, partner BQ term); full in M6 |
 | Secret Realm Dungeons (ASCII map grid) | ⬜ Phase 17 |
 | Lineage & Heir Inheritance | ⬜ Phase 18 |
 | World Epochs & Spiritual Tides | ⬜ Phase 19 |
@@ -63,6 +63,35 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present)
+Agent: M2 task 2.5 — Marriage & children lite (Phase 16-lite). Picked up from an overnight agent that ran out of
+  usage mid-task: it had only edited 3 data files (BLOODLINE_G_PARTNER, married/child_born triggers, 116 banter
+  lines) and **pasted all 15 banter blocks into the `generic` pool** (duplicate keys → 14 personalities had zero
+  lines; baseline sim showed banter_pool_holes ×756). Moved each block into its own personality pool first.
+  - game-state.js: `s.family` (+ `_blankFamily()`, shape-only `_ensurePhase16Fields()`), `_tickFamily()` on each
+    game-year change (spouse stage-ups/old-age death/mourning, child births with blended roots, proposals),
+    public `acceptSuitor(id)` / `declineProposal()`, partner term in `_die()` growth, family summary on
+    `lastReincarnation`. New emits: `married`, `child_born`, `spouse_died`, `proposal`. `Persons.fullName()`.
+  - UI: `#proposal-overlay` (suitor cards, Accept / Decide Later / Decline All), Stats Spouse/Child rows +
+    "A matchmaker awaits" reopen button; banter `{spouse}`/`{child}` tokens filled.
+  - Sim: `Bot.family()`, family columns + casual adult-child flag in the Life Loop table, 3 family invariants.
+  - Divergences (life-loop.md §14): added `family.pastSpouses` + `spouseStageYear`; suitor age capped at 80% of
+    their realm lifespan; overlay lives in game.js (life-loop.js comes with 2.6).
+  - Verified: npm test (48 files); sim:quick 0/0; full npm run sim before (worktree baseline) and after — 0 errors,
+    0 violations; **100% of casual lives end with ≥1 adult child** (4 children/life), casual median life still
+    16.8h. Afk sect-founding dip checked with 8 seeds (1/8 both) = noise. Scripted scenario check of the whole
+    family flow incl. exact partner-term growth and old-save migration (20/20 ok). build:web, dist OK. CDP smoke
+    test on a scratch --user-data-dir: overlay shows 3 suitors at 300px, Decide Later → Stats reopen → Accept →
+    child born → Stats rows + child_born banter line, zero console errors; scratch processes killed, real save
+    dir untouched.
+  Not done / known gaps: family resets on death (heirs = task 2.6). `spouse_died`/`proposal` have no banter pools
+    (not in spec). No banter-line quality pass on the 116 new lines beyond a skim. Suitor/child names use
+    `_clanSurname()` fallback until 2.6 gives clans a surname. iOS touch not checked on a device.
+  Still open for the user (from 2.3): "open" for aging = app running incl. system tray, not only visible.
+  Next: M2 task 2.6 (heir selection + succession flow — `_endLife`/`_beginNewLife`/`chooseHeir`,
+    CLAN_CARRY_KEYS, ending → Hall → heir overlays, lifeOver() guards, bot succession()). Read life-loop.md §2.2-2.3,
+    §4.3-4.4, §5.1, §7, §10, §14 first.
+
 Date: 2026-09-26 overnight
 Agent: overnight autonomous run, task 2.4 — Roadmap M2 task 2.4, Phase 30 pacing compression. Ran unattended
   (pre-approved: the user pre-authorized all of M2 with life-loop.md's draft values); user was asleep. Picks

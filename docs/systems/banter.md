@@ -40,7 +40,7 @@ Writers: see `banter-writing-guide.md` (voice, tokens, triggers, the 14 personal
 ## Data Shape
 - `PERSONALITIES = [{ id, name, nameCN, blurb }]`, 14 entries.
 - `BANTER_LINES = { generic: {trigger: [..]}, <personalityId>: {trigger: [..]} }`, with
-  `BANTER_TRIGGERS = [..15 ids..]` and `BANTER_MIN_LINES = { idle: 25, other: 4, genericIdle: 20, genericOther: 2 }`.
+  `BANTER_TRIGGERS = [..18 ids..]` (`twilight` added in M2 2.3; `married`/`child_born` in M2 2.5) and `BANTER_MIN_LINES = { idle: 25, other: 4, genericIdle: 20, genericOther: 2 }`.
 
 ## Wiring
 - game.js creates `BanterSystem(gameState, () => overlayOpen())`, ticks it in the loop, and renders `#banter-bubble`
@@ -57,4 +57,8 @@ Writers: see `banter-writing-guide.md` (voice, tokens, triggers, the 14 personal
 - The writing agents under-swore, so a swearing pass was appended. Keep the voice: ~10% of lines, in character (niceguy apologizes, stoic says "Fuck." flatly).
 - `_die()` replaces `this._s`; the `reborn` emit happens after the new state exists, so `recordBanter` writes to the new life.
 - Tokens are only filled for the triggers that supply them (see the writing guide). An unfilled token is stripped to "someone"/"something" as a safety net.
+  `{spouse}`/`{child}` (M2 2.5) are given names from the `married`/`child_born` event ctx, falling back to the live
+  `s.family` and then to "my spouse"/"the little one".
+- `married`/`child_born` blocks must go **inside each personality's own object**. In M2 2.5 all 15 blocks were first pasted
+  into `generic` (duplicate keys, so JS silently kept only the last) — the sim's `banter_pool_holes` caught it (756 hits).
 - Offline war resolution doesn't emit, which keeps a 20-line flood from firing on reopen.

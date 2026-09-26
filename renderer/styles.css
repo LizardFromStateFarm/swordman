@@ -980,6 +980,63 @@ body {
   margin-top: 2px;
 }
 
+/* ── Proposal overlay (Phase 16-lite, M2 task 2.5) — follows #twilight-overlay ── */
+
+#proposal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,4,14,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+#proposal-box {
+  background: var(--bg2);
+  border: 1px solid var(--jade);
+  border-radius: 5px;
+  padding: 14px 16px;
+  width: 260px;
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+#proposal-title { font-size: 13px; color: var(--jade); margin-bottom: 6px; }
+#proposal-desc  { font-size: 10px; color: var(--dim); margin-bottom: 10px; }
+
+#proposal-suitors { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+
+.suitor-card {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 10px;
+  color: var(--dim);
+}
+.suitor-name { font-size: 12px; color: var(--text); }
+
+#proposal-suitors .suitor-card button,
+#proposal-btns button {
+  background: rgba(24,10,4,.9);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  min-height: 32px;
+  width: 100%;
+}
+#proposal-suitors .suitor-card button { margin-top: 5px; }
+#proposal-suitors .suitor-card button:hover,
+#proposal-btns button:hover { border-color: var(--jade); color: var(--jade); }
+#proposal-btns { display: flex; gap: 6px; }
+
 /* ══════════════════════════════════════════════════════════════════════════
    EXPLORE TAB
 ══════════════════════════════════════════════════════════════════════════ */

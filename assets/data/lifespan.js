@@ -1,9 +1,7 @@
 // Phase 30 game clock + lifespan, Phase 16-lite family timing. Used by: game-state.js, scripts/sim/*.
 // Values are provisional (life-loop.md §9) — the user pre-authorized building M2 with these drafts.
-// Only GAME_YEARS_PER_OPEN_HOUR / AWAKENING_AGE / LIFESPAN_BY_REALM / TWILIGHT_FRAC /
-// FINAL_SECLUSION_QPS_MULT / FINAL_SECLUSION_BT_BONUS are consumed by code as of task 2.3. The rest
-// (LIFESPAN_EXT_CAP_FRAC, OFFLINE_QI_MULT, PROPOSAL_*/SPOUSE_*/CHILD_*/ADULT_AGE/MOURNING_YEARS) are
-// written now per the life-loop.md §3.1 spec table but wait on tasks 2.5+ (marriage/children/legacies).
+// Everything here is consumed by code as of task 2.5 except LIFESPAN_EXT_CAP_FRAC (legacies, task 2.7).
+// ADULT_AGE is only read by _die()'s summary + the sim so far; heir selection (task 2.6) is its real consumer.
 
 // ── Game clock (task 2.3) ────────────────────────────────────────────────────
 const GAME_YEARS_PER_OPEN_HOUR = 30    // 1 year per 2 open minutes. Age/gameYear advance ONLY in tick().

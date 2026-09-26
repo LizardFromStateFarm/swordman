@@ -129,7 +129,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 2.2 ✅ | **Shared generators + `powerScore()` + minimal person record** (the schema 28A later extends): root, personality, name, stage, age | 28A/28J prep | 2.1 | Player creation uses them; sim numbers unchanged |
 | 2.3 ✅ | Game clock + **lifespan (寿元)**: age passes only while open, per-realm lifespan, old-age warning (seclusion scene), death by old age | 30 | 2.2 | Sim metrics: life length, deaths by cause; age never advances in offline catch-up (invariant) |
 | 2.4 ✅ | **Pacing compression**: retune the realm caps/costs so a casual mortal life is 10–20h. Rewrite `PACING_TARGETS_MIN` | 30 | 2.3 | `npm run sim`: casual life median within 10–20h, active ≥ ~5h, afk not trivial (check offline Qi vs no aging) |
-| 2.5 | **Marriage & children (lite)**: a proposal choice event from Foundation Building, spouse = person record, children born in game years, partner term in bloodline growth | 16 lite, 23 family hooks | 2.3 | Children exist before the typical death; family `carry 1.0` path works in sim |
+| 2.5 ✅ | **Marriage & children (lite)**: a proposal choice event from Foundation Building, spouse = person record, children born in game years, partner term in bloodline growth | 16 lite, 23 family hooks | 2.3 | Children exist before the typical death; family `carry 1.0` path works in sim |
 | 2.6 | **Heir selection at death** (child / new soul), inherited roots + bloodline, a death → hall → heir screen flow | 18C | 2.5 | Generations continue in one slot; sim runs span generations |
 | 2.7 | **Ancestral Hall + Clan Legacies**: family tree view, Ancestral Merit earned per life, unlocks (heirlooms, family manual, clan legacies), **ancestral catch-up** (realms below the family best go faster). **Ascended Ancestor** ending for a successful Ascension. Cuts Phase 8's Dao Seeds | 31, 8, 18B | 2.6 | Gen 2+ reaches the family best faster; the sim's post-Ascension dead zone is gone; bot spends Merit |
 | 2.8 | Tuning pass: generations to first Ascension ~3–5, meta progression feels meaningful, Merit sinks | 30, 31 | 2.7 | `npm run sim` 500h+ horizon: first Ascension ≈ 40–80h casual |
@@ -1105,6 +1105,11 @@ walked and spends the life on new ground. This is what keeps short lives from tu
 ## M2 family (lite) — Phase 16 lite + 18C
 
 The minimum family needed for heirs, built on the 2.2 person record so M6 upgrades it rather than replacing it.
+
+> **Marriage & children built 2026-09-26 (M2 task 2.5) — see `docs/systems/life-loop.md` §14.** Proposals, spouse
+> aging/death, mourning, children with blended roots and the 23B partner term all shipped as specced. Divergences:
+> `family.pastSpouses`/`spouseStageYear` were added to the state shape; no Solitary Lineage Art/adoption yet (heir
+> fallback is 2.6's distant cousin). Heir selection (18C, below) is still task 2.6.
 
 - **Marriage:** from Foundation Building, a rare **proposal choice event** offers 1–3 generated suitors (person
   records: name, root, stage, personality). Accept, decline, or wait. A Solitary Lineage Art (23E) or adoption

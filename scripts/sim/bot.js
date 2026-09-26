@@ -33,7 +33,7 @@ class Bot {
     this.automation()
     for (let i = 0; i < 40; i++) {
       const before = this.s.spiritStones
-      const acted = this.twilight() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
+      const acted = this.twilight() || this.family() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
         this.elixirs() || this.memberWar() || this.beasts() || this.sect() || this.ownSect() || this.war() ||
         this.pushExpedition() || this.expedition()
       if (!acted) break
@@ -113,6 +113,17 @@ class Bot {
     const hoursToCap = qiNeeded / Math.max(1e-9, d.qiPerSecond * 1.5) / 3600
     if (hoursToCap <= 0.8 * openHoursRemaining) return this.do('final_seclusion', this.gs.enterFinalSeclusion())
     return this.do('pass_mantle', this.gs.passTheMantle())
+  }
+
+  // ── Family (Phase 16-lite, M2 task 2.5) ───────────────────────────────────
+  // Pending proposal → accept the strongest suitor (Persons.powerScore: stage×100 + root mult×10, mirrored
+  // here since the bot only touches the public API). Never declines — life-loop.md §7.
+  family() {
+    const prop = this.s.family?.proposal
+    if (!prop || this.s.family.spouse) return false
+    const score = p => p.stageIndex * 100 + Math.round((p.root?.mult ?? 0) * 10)
+    const best = [...prop.suitors].sort((a, b) => score(b) - score(a))[0]
+    return this.do('marry', this.gs.acceptSuitor(best.id))
   }
 
   do(name, res, meaningful = true) {

@@ -1,6 +1,7 @@
 // Tunable constants for Phase 23A (Health & Death), 23B (Bloodline Quality) and 23C (Ascension Trial).
 // Used by: game-state.js (health regen/damage, ascensionChance, attemptAscension, _die), events.js (inner_demon).
-// No family system yet (Phase 16/18 not built) — every reincarnation is a "new soul" (BLOODLINE_CARRY_NEW_SOUL).
+// Phase 16-lite (M2 task 2.5) added BLOODLINE_G_PARTNER — the spouse term in _die()'s growth formula.
+// Heir carry (BLOODLINE_FAMILY_BONUS/BLOODLINE_CARRY_COUSIN, life-loop.md §3.3) is still task 2.6.
 
 // ── 23A: Health ──────────────────────────────────────────────────────────────
 const HEALTH_REGEN_SECONDS = 45          // +HEALTH_REGEN_AMOUNT every this many seconds
@@ -16,8 +17,9 @@ const WAR_INJURY_AMOUNT = 12
 // ── 23B: Bloodline Quality ───────────────────────────────────────────────────
 const BLOODLINE_CAP            = 100
 const BLOODLINE_G_BASE         = 1
-const BLOODLINE_G_SELF         = 8       // partner term (G_partner) waits on Phase 16 (family)
-const BLOODLINE_CARRY_NEW_SOUL = 0.25    // family carry (1.0 + bonus) waits on Phase 16/18 heirs
+const BLOODLINE_G_SELF         = 8
+const BLOODLINE_G_PARTNER      = 5       // Phase 16-lite (M2 task 2.5): spouse's maxStage this life (current or last)
+const BLOODLINE_CARRY_NEW_SOUL = 0.25    // family carry (1.0 + bonus) waits on Phase 16/18 heirs (task 2.6)
 
 // ── 23C: Ascension Trial ─────────────────────────────────────────────────────
 const ASCENSION_BASE_CHANCE    = 0.07

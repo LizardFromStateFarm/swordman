@@ -71,6 +71,9 @@ const Persons = {
     }
   },
 
+  // Display name: 'Lin Mei', or just 'Mei' while the clan has no surname yet (clan.name is '' until 2.6).
+  fullName(p) { return p ? (p.family ? `${p.family} ${p.given}` : p.given) : '' },
+
   // 28J extends this (encounter/ranking power). p.root may be null (e.g. `s.self`, which reads root live
   // off s.root instead) — treat that as 0 root bonus rather than throwing.
   powerScore(p) {

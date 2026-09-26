@@ -99,8 +99,13 @@ class BanterSystem {
       name:  s.name,
       stage: st ? `${st.realm}${st.layer && st.realm !== 'Mortal' ? ' ' + st.layer : ''}` : 'mortal',
       item:  ctx.item, hours: ctx.hours, enemy: ctx.enemy, sect: ctx.sect,
+      // Phase 16-lite (M2 task 2.5): given names from the married/child_born events; fall back to the live
+      // family (e.g. a queued line said after a reload) and then to a neutral phrase.
+      spouse: ctx.spouse ?? s.family?.spouse?.given,
+      child:  ctx.child ?? s.family?.children?.[s.family.children.length - 1]?.given,
     }
-    return line.replace(/\{(\w+)\}/g, (m, k) => vals[k] != null ? String(vals[k]) : (k === 'item' ? 'something' : 'someone'))
+    const FALLBACK = { item: 'something', spouse: 'my spouse', child: 'the little one' }
+    return line.replace(/\{(\w+)\}/g, (m, k) => vals[k] != null ? String(vals[k]) : (FALLBACK[k] || 'someone'))
   }
 
   // Display-time profanity mask ("fuck" → "f***").

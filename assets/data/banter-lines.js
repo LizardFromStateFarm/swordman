@@ -1,6 +1,7 @@
 // BANTER_LINES — what the cultivator says, per personality × trigger, plus a shared generic pool (Phase 29).
 // Used by renderer/game/banter.js; sim checks for holes (scripts/sim/metrics.js). Brief: docs/systems/banter-writing-guide.md.
-// 1637 lines (58 added for `twilight`, Phase 30 M2 task 2.3). Tokens: {name} {stage} anywhere; {item} rare_drop; {hours} welcome_back; {enemy} {sect} war_*.
+// 1753 lines (58 added for `twilight`, Phase 30 M2 task 2.3; 116 for `married`/`child_born`, M2 task 2.5).
+// Tokens: {name} {stage} anywhere; {item} rare_drop; {hours} welcome_back; {enemy} {sect} war_*; {spouse} married; {child} child_born.
 
 const BANTER_LINES = {
   // ── generic ───────────────────────────────────────────────────────────────
@@ -80,6 +81,14 @@ const BANTER_LINES = {
       "A new life? I remember nothing. Except a strong urge to slap some young master.",
       "Reborn! Is this transmigration? Do I have a system? ...No system. Damn.",
       "Did I just reincarnate? Vague memory of dying. Vaguer memory of deserving it.",
+    ],
+    married: [
+      "Married. The heavens shook. Or that was thunder. Hard to tell these days.",
+      "Til cultivation do us part, I suppose.",
+    ],
+    child_born: [
+      "A child is born. The clan continues. Also, I need a nap immediately.",
+      "New arrival. Small. Loud. Extremely opinionated about everything already.",
     ],
     twilight: [
       "The years pile up like unpaid debts. Heaven, I'd like an extension on this lease, please.",
@@ -216,6 +225,18 @@ const BANTER_LINES = {
       "Reincarnated as a nobody? Impossible. I refuse. File an appeal with the underworld.",
       "I remember... being magnificent. And then something rude happened. Probably jealousy.",
       "Fresh body, same face. Well. Hopefully the same face. Somebody bring me a mirror.",
+    ],
+    married: [
+      "This Young Master has taken a spouse. {spouse} should feel extremely fortunate.",
+      "Marriage is beneath me. And yet here I am, married. Curious.",
+      "I do not do 'romance'. I do 'strategic bloodline alliance'. Same thing, apparently.",
+      "Kneel before your new spouse — wait, that's not how this works, is it.",
+    ],
+    child_born: [
+      "{child} has been born into greatness. This Young Master demands they start winning immediately.",
+      "A new heir! Finally, someone I can boss around who legally has to listen.",
+      "{child} cried the moment they saw me. Overwhelmed by my aura, surely.",
+      "I shall mold {child} into a genius. Or at least someone taller than me.",
     ],
     twilight: [
       "Twilight? Nonsense. This young master doesn't age. He merely becomes a rarer vintage.",
@@ -363,6 +384,18 @@ const BANTER_LINES = {
       "Last life I must have been brave once. This time I'll skip that part.",
       "I have a strange feeling I owe someone money and they had a sword. Moving on. Fast.",
     ],
+    married: [
+      "Married! Nothing left to flee from now. Terrifying.",
+      "I proposed retreat as a wedding vow. {spouse} said no. Fair.",
+      "Running toward marriage instead of away from danger — bold strategy for me.",
+      "A true genius marries wisely. I married whoever showed up first.",
+    ],
+    child_born: [
+      "{child} was born. I already taught them the most important skill: running away.",
+      "A new cultivator to hide behind in a crisis. Excellent long-term planning on my part.",
+      "{child} cried all night. I fled to the guest room. Strategic retreat.",
+      "Parenthood: technically can't run from this one. Still thinking it over.",
+    ],
     twilight: [
       "Old age is coming for me. Finally, an opponent I can outrun without shame.",
       "They say face your mortality. I say: flee from it, wisely, at great speed.",
@@ -509,6 +542,18 @@ const BANTER_LINES = {
       "I have a strange memory of yelling at lightning. PAST ME HAD THE RIGHT IDEA!",
       "A BRAND NEW BODY! WITH BRAND NEW BONES TO BREAK! LET'S GOOOO!",
     ],
+    married: [
+      "MARRIED! LET'S PUNCH THE HEAVENS TOGETHER, {spouse}!",
+      "I VOWED ETERNAL LOVE AT MAXIMUM VOLUME. THE OFFICIANT CRIED.",
+      "Wedding night, THEN we fight the sky. Priorities.",
+      "{spouse} accepted my proposal mid-sprint. I never stopped running.",
+    ],
+    child_born: [
+      "{child} IS BORN! ALREADY MAKING A LOT OF NOISE! I APPROVE COMPLETELY!",
+      "MY CHILD WILL PUNCH THE HEAVENS SOMEDAY! ...After naptime.",
+      "{child} gripped my finger with SURPRISING FEROCITY. A FIGHTER ALREADY.",
+      "I yelled the birth announcement from the rooftop. The whole village heard. Good.",
+    ],
     twilight: [
       "OLD AGE?! FINE! I'LL PUNCH TIME ITSELF! ...After I catch my breath. Give me a second.",
       "They say my years are numbered! GOOD! I FIGHT BETTER UNDER A DEADLINE!",
@@ -654,6 +699,18 @@ const BANTER_LINES = {
       "New body, new start. Zero debt. Also zero stones. Mixed feelings. Mostly rage.",
       "I think I died because I wouldn't buy a healing pill. ...Still wouldn't. No regrets.",
       "Reincarnation is free, at least. Finally, the universe does something right.",
+    ],
+    married: [
+      "Married {spouse}. The betrothal gift cost three spirit stones. I am still furious about it.",
+      "Two cultivate as cheap as one. That's the whole reason, don't tell {spouse}.",
+      "I did make {spouse} split the wedding banquet bill. A marriage of equals.",
+      "Love is free. The wedding was NOT. Robbery under the Nine Heavens.",
+    ],
+    child_born: [
+      "{child} was born. Do you know what diapers cost per stone these days? DO YOU?",
+      "A new heir means one less generation of inheritance tax. Excellent investment.",
+      "{child} already grabs at my spirit stone pouch. A prodigy. A thieving prodigy.",
+      "I am overjoyed. Also I am recalculating the household budget. Both, at once.",
     ],
     twilight: [
       "Old age, for free?! Outrageous! At least give me a discount on the coffin.",
@@ -802,6 +859,18 @@ const BANTER_LINES = {
       "I died last life. I think it was the pufferfish. Somehow I know it was worth it.",
       "Reincarnated as {name}. My soul remembers one thing only. A noodle stall. Somewhere.",
     ],
+    married: [
+      "Married {spouse} mostly for the wedding banquet. Worth it. Absolutely worth it.",
+      "Til cultivation do us part, and until the leftovers run out.",
+      "I do. I also do seconds. And thirds.",
+      "{spouse} makes better spirit-herb soup than any sect chef. That's my whole love language.",
+    ],
+    child_born: [
+      "{child} was born! First thing I did was start planning the celebration feast menu.",
+      "A new mouth to feed. Literally. I've already started teaching them about dumplings.",
+      "{child} spit up on me. I understand. I too react strongly to being hungry.",
+      "The birth banquet had eleven courses. {child} slept through all of them. Rude, but forgivable.",
+    ],
     twilight: [
       "They say my years are running low, like the last dumpling on the plate. Tragic. Eat faster.",
       "Twilight of life, huh. Better make peace with the universe and also eat one more bowl.",
@@ -948,6 +1017,18 @@ const BANTER_LINES = {
       "I remember… a past life… a plum tree… a very bad review of my poetry.",
       "Reborn as {name}. My soul carries ten thousand sorrows. My body carries colic.",
       "Waaah! That's not crying, that's my first poem. It's about the cold air. Harsh critics.",
+    ],
+    married: [
+      "Two lonely dao-hearts, bound at last, {spouse} and I — the moon itself wept for joy, probably.",
+      "Marriage: a verse written in two trembling hands and one very overpriced ring.",
+      "My heart, once a barren cliffside, now blooms — briefly — with wedded devotion.",
+      "I wrote {spouse} forty poems for the wedding. Only three didn't rhyme 'meridian' with 'obsidian'.",
+    ],
+    child_born: [
+      "{child} arrived on a night the stars themselves seemed to lean closer to listen.",
+      "A new verse in the family's endless poem, written in a cry no rhyme could capture.",
+      "I wept holding {child}. Tears of joy, tears of poetry, mostly just tears.",
+      "The moon watched {child}'s first breath. I watched too. We were both moved.",
     ],
     twilight: [
       "The autumn of my life has come, and oh, how the leaves of my dantian do wither.",
@@ -1098,6 +1179,18 @@ const BANTER_LINES = {
       "Born as {name}. The midwife dropped me. I did not cry. She did.",
       "I seem to have died. And returned. Interesting. Where is my sword.",
     ],
+    married: [
+      "Married {spouse} today. Vows exchanged. Face unchanged.",
+      "The officiant asked if I do. I said 'affirmative'. {spouse} sighed.",
+      "Wedding successful. Emotional register: still zero.",
+      "I feel something. It might be joy. Or my eyebrows regrowing.",
+    ],
+    child_born: [
+      "{child} was born. Reaction: overwhelming. Face: unchanged.",
+      "New heir acquired. Crying detected. Also mine, quietly.",
+      "{child} opened their eyes. I opened mine slightly wider. A dramatic display, for me.",
+      "Parenthood status: active. Emotional readout: surprisingly full.",
+    ],
     twilight: [
       "I am aging. Noted. Proceeding with cultivation.",
       "Twilight has arrived. My face has not changed expression. It never does.",
@@ -1245,6 +1338,18 @@ const BANTER_LINES = {
       "The Demon Lord is reincarnated! Kneel, parents! …They're cooing at me. Humiliating.",
       "Reborn as {name}. This body is weak. But the darkness remembers. The darkness is teething.",
       "I have returned from death! My dark vow endures! My teeth, however, did not.",
+    ],
+    married: [
+      "Kneel, mortal officiant! ...He did not kneel. We are married regardless.",
+      "{spouse} has bound their fate to this Demon King's. A wise, terrified choice.",
+      "Behold my consort, chosen from ten thousand realms! ...Chosen from the village, actually.",
+      "Our union shall be spoken of for a THOUSAND GENERATIONS. My sealed arm approves.",
+    ],
+    child_born: [
+      "Behold! A new heir to my dark legacy! ...They just want to be held. Fine. FINE.",
+      "{child} shall inherit my throne, my power, my sealed arm's terrible secrets. Someday.",
+      "I declared {child} the Young Sovereign of Darkness. They responded by falling asleep.",
+      "My bloodline continues! Tremble, future enemies of {child}, an infant who is napping.",
     ],
     twilight: [
       "The mortal coil weakens?! Even a Demon King's vessel is bound by lesser Time. How embarrassing.",
@@ -1394,6 +1499,18 @@ const BANTER_LINES = {
       "Something killed me last time. I don't know what. I'll start by distrusting the midwife.",
       "Heaven gave me a second chance. Why? What's the catch? There's always a catch.",
     ],
+    married: [
+      "Married {spouse}. Trust no one, the manual says. I married anyway. Bold move.",
+      "The wedding guests all clapped in unison. Suspicious. Rehearsed. I'm onto them.",
+      "{spouse} says 'I do'. I say 'prove it'. We're working on communication.",
+      "A spy at my own wedding? Statistically likely. I've counted the cranes.",
+    ],
+    child_born: [
+      "{child} was born. Innocent-looking. Suspiciously innocent-looking. I'm watching them.",
+      "A new heir means a new potential spy inside my own household. I trust no one. Not even {child}.",
+      "{child} stared at me for a long time. What do they know. WHAT DO THEY KNOW.",
+      "I've already hidden three decoy cribs. You can't be too careful with an heir.",
+    ],
     twilight: [
       "Old age? Or a poison, slowly administered by my enemies over decades? I'm onto them.",
       "Twilight of life. Suspicious timing. Who benefits from my death? Make a list. Start with the crane.",
@@ -1539,6 +1656,18 @@ const BANTER_LINES = {
       "Can't remember my past life, but I'm sure it was better. Everything used to be better.",
       "They named me {name}? In my day we had proper names. Like... hm. Forgot. But proper.",
       "Being young again is horrible. Everyone's so patronizing. I'm ancient, lady, give me my porridge.",
+    ],
+    married: [
+      "Married. In my day we didn't need a matchmaker, we just glared at each other until it stuck.",
+      "{spouse} is a fine cultivator. Doesn't respect the old ways nearly enough, but fine.",
+      "Back in my day weddings didn't have music THIS loud. Kids these days and their gongs.",
+      "I do. There. Said it. Don't make a fuss.",
+    ],
+    child_born: [
+      "{child} was born. In my day babies didn't cry this loud. We suffered in silence. Mostly.",
+      "A new generation, and already they've got opinions. Where do they learn this.",
+      "I held {child} and felt something. Probably my back. Also maybe joy.",
+      "Kids today are born practically demanding spirit herbs. In my day we ate dirt and liked it.",
     ],
     twilight: [
       "Twilight, they call it. In my day we called it 'Tuesday' and kept cultivating anyway.",
@@ -1689,6 +1818,18 @@ const BANTER_LINES = {
       "Born again as {name}. Great. Can I skip to the part where I'm already strong?",
       "A fresh start. Goal one: find a comfy tree. Goal two: see goal one.",
     ],
+    married: [
+      "Married {spouse}. Saved me the effort of ever having to meet anyone else again.",
+      "The vows were long. I meditated through most of them lying down. Still counts.",
+      "Marriage is just teamwork you don't have to schedule. Efficient, honestly.",
+      "{spouse} proposed. I said yes without opening my eyes. Peak effort conservation.",
+    ],
+    child_born: [
+      "{child} was born. I held them for exactly as long as required, then handed them back.",
+      "A new heir means someone else can cultivate hard while I nap. Excellent succession planning.",
+      "{child} sleeps sixteen hours a day. I respect this child enormously.",
+      "Parenthood, from a reclining position. Still counts.",
+    ],
     twilight: [
       "Twilight of life, apparently. Guess I'll take my final nap a little more seriously now.",
       "They say my years are numbered. Good. Fewer years to bother getting out of bed for.",
@@ -1835,6 +1976,18 @@ const BANTER_LINES = {
       "Oh, a new body. Hi, body! I'll take better care of you. I vaguely remember the last one.",
       "New life! I dreamed I was a cultivator who complimented his own murderer. Weird dream.",
       "Reincarnated. The soup lady in the underworld was so sweet. I tipped her in memories.",
+    ],
+    married: [
+      "Married {spouse} today! I'm so happy I could cry. I did cry. A lot.",
+      "{spouse}, thank you for choosing me. I promise to bring you tea every single day.",
+      "The whole village came to the wedding, even people I've never met. Everyone's invited, always.",
+      "I do! I really, really do. Forever, probably. Is forever enough? I'll do more.",
+    ],
+    child_born: [
+      "{child} is here! I already love them more than anything. I might cry again. I'm crying again.",
+      "Welcome to the world, {child}! Everyone who meets you will be lucky, I promise.",
+      "I held {child} for the first time and the whole sect could probably hear me sobbing happily.",
+      "{child}, I will bring you tea every day too, once you're old enough. I've already planned it.",
     ],
     twilight: [
       "Getting older, huh? Well, I've had a wonderful run, and I'm grateful for every wrinkle.",
@@ -1983,6 +2136,18 @@ const BANTER_LINES = {
       "Wow, a new body! Clean hands! Weird. They feel like they should be busier.",
       "I'm reborn and I feel so peaceful. Pure. Innocent. Hehe. That won't last.",
     ],
+    married: [
+      "Married {spouse} today. 'Til death do us part — and I do enjoy deciding when that is. Kidding! ...Hehe.",
+      "I promised to protect {spouse} from all enemies. I've already made a list. It's long.",
+      "The wedding rings match our matching smiles. Mine doesn't reach my eyes. Charming, isn't it.",
+      "{spouse} said yes. I'm going to remember this happiness forever. Ten thousand years, in fact.",
+    ],
+    child_born: [
+      "{child} was born. Small. Precious. I will remember this face for ten thousand years. Hehe.",
+      "My own heir! I've already started their list of future enemies. It's a gift, really.",
+      "{child} cried the instant they saw my smile. Most people take longer to notice. Impressive infant.",
+      "A new little one to protect from everyone. And I do mean everyone. Hehe.",
+    ],
     twilight: [
       "Twilight already? Wonderful. More time to remember every single face I've ever met. Hehe.",
       "They say old age comes for everyone. I've been coming for everyone first. We're even now.",
@@ -2129,6 +2294,18 @@ const BANTER_LINES = {
       "Blink. Blink. New life, who dis. I have a faint memory of a spoon. A dear friend.",
       "I have been reincarnated. Before: a cultivator. Now: a cultivator. Big change. Huge.",
       "Mweh. I'm a baby soul. I feel like I owe someone a bean. Several beans.",
+    ],
+    married: [
+      "Married. Borgin. The wedding cake was also the officiant. Everyone clapped anyway.",
+      "{spouse} and I are now Gerald-bonded. Gerald approves. Gerald is the Dao.",
+      "I do, I dee, I dah, I dum, marriage is a soup now apparently.",
+      "The vows were three honks and a spin. Legally binding in at least one province.",
+    ],
+    child_born: [
+      "{child} has been born! Borgin! They already speak fluent nonsense, just like me!",
+      "The baby is also named Gerald, probably. We'll ask when they can talk.",
+      "{child} arrived in a puff of soup-scented mystery. As is tradition. My tradition, anyway.",
+      "I showed {child} the small horse Gerald. They laughed. Excellent taste already.",
     ],
     twilight: [
       "Twilight of the borgin. The gorgin grows old. Time is a soup and I am the noodle in it.",

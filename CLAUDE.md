@@ -115,7 +115,7 @@ assets/
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)
-    banter-lines.js     ← BANTER_LINES — 1,637 lines, personality × trigger + generic pool (Phase 29)
+    banter-lines.js     ← BANTER_LINES — 1,753 lines, personality × trigger + generic pool (Phase 29)
     names.js            ← SURNAMES (60) + GIVEN_NAMES (205) — pinyin, gender-neutral (Phase 30/31, M2 task 2.2)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
   sprites/

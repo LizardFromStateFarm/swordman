@@ -147,7 +147,7 @@
   const sectSys   = new SectSystem(gameState)
   const sectWarSys = new SectWarSystem(gameState)
   const settingsUI = new SettingsUI(gameState, renderer)
-  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #twilight-overlay:not(.hidden)'))
+  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #twilight-overlay:not(.hidden), #proposal-overlay:not(.hidden)'))
   // Phase 9A/B: window "active" = visible AND focused; notifications only fire otherwise (news, not a summons).
   const notifSys   = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(),
     (title, body) => window.electron.notify(title, body))
@@ -158,6 +158,7 @@
   let _btFocusReadyAt = null, _prevCanBreakthrough = false
   // Phase 22 (22C): Active Mode's craft Master's Touch — "watching" = viewed the Craft tab within 60s.
   let _craftTabViewedAt = 0
+  let _proposalShownYear = null   // Phase 16-lite (M2 task 2.5): auto-open each proposal once per session; Stats reopens it
 
   function bootGame() {
     tickRunning = true
@@ -319,6 +320,14 @@
       document.getElementById('twilight-overlay').classList.remove('hidden')
     }
 
+    // Proposal card (Phase 16-lite, M2 task 2.5) — auto-opens once per proposal, never over the twilight card
+    const prop = s.family?.proposal
+    if (prop && prop.year !== _proposalShownYear && document.getElementById('twilight-overlay').classList.contains('hidden')) {
+      _proposalShownYear = prop.year
+      openProposalOverlay(s)
+    }
+    if (!prop) document.getElementById('proposal-overlay').classList.add('hidden')
+
     const activeTab = document.querySelector('.tab.active')?.dataset?.tab
     if (fromTick) {
       // On every tick: only update the live expedition timer without re-rendering
@@ -456,14 +465,31 @@
       ${(s.deaths || 0) > 0 ? sr('Deaths', s.deaths) : ''}
       ${s.stats.ascensionAttempts > 0 ? sr('Bloodline Quality', `${Math.round(s.bloodlineQuality || 0)} / 100`) : ''}
       ${s.stats.ascensions > 0 ? sr('Ascensions', s.stats.ascensions) : ''}
+      ${renderFamilyRows(s)}
       <button id="_pass-mantle" class="sect-btn" style="width:100%;margin:6px 0 2px;">Pass the Mantle</button>
       ${renderBanterLog(s)}
     `
+    document.getElementById('_matchmaker')?.addEventListener('click', () => openProposalOverlay(gameState.get()))
     document.getElementById('_pass-mantle')?.addEventListener('click', () => {
       showConfirm('Pass the Mantle?', 'This ends your life peacefully, now. Cannot be undone.', () => {
         gameState.passTheMantle()
       })
     })
+  }
+
+  // Phase 16-lite (M2 task 2.5): spouse, children and the matchmaker link in Stats.
+  function renderFamilyRows(s) {
+    const f = s.family
+    if (!f) return ''
+    let html = ''
+    if (f.spouse) html += sr('Spouse', `${escHtml(Persons.fullName(f.spouse))} · ${personStageLabel(f.spouse.stageIndex)}`)
+    else if (f.pastSpouses?.length) html += sr('Spouse', `<span style="color:var(--dim)">${escHtml(Persons.fullName(f.pastSpouses[f.pastSpouses.length - 1]))} (passed)</span>`)
+    for (const c of f.children || []) {
+      const age = Math.max(0, Math.floor(s.gameYear - c.bornYear))
+      html += sr('Child', `${escHtml(Persons.fullName(c))} · ${age} · ${escHtml(c.root?.name || '')}`)
+    }
+    if (f.proposal) html += `<button id="_matchmaker" class="sect-btn" style="width:100%;margin:6px 0 2px;">A matchmaker awaits</button>`
+    return html
   }
 
   // ── Banter (Phase 29) ─────────────────────────────────────────────────────
@@ -1932,6 +1958,45 @@
   document.getElementById('twilight-wait').addEventListener('click', () => {
     gameState.dismissTwilight()
     document.getElementById('twilight-overlay').classList.add('hidden')
+  })
+
+  // ── Proposal overlay (Phase 16-lite, M2 task 2.5) ───────────────────────────
+
+  function personStageLabel(i) {
+    const st = CULTIVATION_STAGES[Math.min(Math.max(i || 0, 0), CULTIVATION_STAGES.length - 1)]
+    return st.realm === 'Mortal' ? 'Mortal' : `${st.realm} · ${st.layer}`
+  }
+
+  function openProposalOverlay(s) {
+    const prop = s.family?.proposal
+    if (!prop) return
+    document.getElementById('proposal-suitors').innerHTML = prop.suitors.map(p => {
+      const pers = PERSONALITIES.find(x => x.id === p.personality)
+      const age  = Math.max(0, Math.floor(s.gameYear - p.bornYear))
+      return `<div class="suitor-card">
+        <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
+        <div>${personStageLabel(p.stageIndex)} · age ${age}</div>
+        <div>${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
+        <button data-suitor="${escHtml(p.id)}">Accept</button>
+      </div>`
+    }).join('')
+    document.querySelectorAll('#proposal-suitors [data-suitor]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const res = gameState.acceptSuitor(btn.dataset.suitor)
+        document.getElementById('proposal-overlay').classList.add('hidden')
+        if (res.ok) flashMessage(`You are wed to ${Persons.fullName(res.spouse)}.`, 'special')
+      })
+    })
+    document.getElementById('proposal-overlay').classList.remove('hidden')
+  }
+
+  document.getElementById('proposal-later').addEventListener('click', () => {
+    document.getElementById('proposal-overlay').classList.add('hidden')
+  })
+
+  document.getElementById('proposal-decline').addEventListener('click', () => {
+    gameState.declineProposal()
+    document.getElementById('proposal-overlay').classList.add('hidden')
   })
 
   document.querySelectorAll('.tab').forEach(btn => {

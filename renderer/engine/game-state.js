@@ -123,6 +123,8 @@ class GameState {
       gameYear:         1,
       finalSeclusion:   false,
       twilightNoticed:  false,
+      // Phase 16-lite (M2 task 2.5): spouse/children/proposal. Advanced only by _tickFamily() (game clock).
+      family:           this._blankFamily(),
       // Phase 2
       expedition:    { active: false, locationId: null, endsAt: null, pushed: false },
       inventory:     {},
@@ -376,6 +378,107 @@ class GameState {
     if (typeof s.twilightNoticed !== 'boolean') s.twilightNoticed = false
   }
 
+  // Phase 16-lite (M2 task 2.5). pastSpouses/spouseStageYear are additions to life-loop.md §2.1's shape:
+  // pastSpouses keeps dead spouses (spouse itself is always null or alive — sim invariant 5) so _die()'s
+  // partner term can use "the last spouse this life" and task 2.6's AncestorEntry can list them;
+  // spouseStageYear is the gameYear of the spouse's last stage gain (SPOUSE_YEARS_PER_STAGE).
+  _blankFamily() {
+    return { spouse: null, children: [], marriedYear: null, nextChildYear: null, proposal: null,
+             nextProposalYear: null, mourningUntil: 0, pastSpouses: [], spouseStageYear: null }
+  }
+
+  // Phase 16-lite (M2 task 2.5): shape-only backfill. No Math.random() here — the first proposal is
+  // scheduled by _tickFamily() on the next game-year change once maxStageThisLife ≥ PROPOSAL_MIN_STAGE,
+  // which covers migrated saves already past Foundation Building too.
+  _ensurePhase16Fields() {
+    const s = this._s
+    if (!s.family || typeof s.family !== 'object') s.family = this._blankFamily()
+    const f = s.family, blank = this._blankFamily()
+    for (const k of Object.keys(blank)) if (f[k] === undefined) f[k] = blank[k]
+    if (!Array.isArray(f.children))    f.children = []
+    if (!Array.isArray(f.pastSpouses)) f.pastSpouses = []
+    if (!(typeof f.mourningUntil === 'number' && isFinite(f.mourningUntil))) f.mourningUntil = 0
+  }
+
+  _randRange([lo, hi]) { return lo + Math.random() * (hi - lo) }
+  _randInt([lo, hi])   { return lo + Math.floor(Math.random() * (hi - lo + 1)) }
+
+  // Surname for new clan members. clan.name stays '' until task 2.6 gives every slot a surname; until then
+  // fall back to the first word of a two-word player name ('Lin Mei' → 'Lin'), else none.
+  _clanSurname() {
+    const s = this._s
+    if (s.clan?.name) return s.clan.name
+    const parts = (s.name || '').trim().split(/\s+/)
+    return (s.name !== 'Unnamed Cultivator' && parts.length >= 2) ? parts[0] : ''
+  }
+
+  // Phase 16-lite (M2 task 2.5): the family's game-clock step. Called from tick() only when
+  // floor(gameYear) changes (so ~every 2 open minutes), never offline — families age with the player.
+  _tickFamily() {
+    const s = this._s, f = s.family, y = s.gameYear, yr = Math.floor(y)
+
+    // Spouse: gains a stage every SPOUSE_YEARS_PER_STAGE married years (never ascends), dies of old age.
+    const sp = f.spouse
+    if (sp) {
+      while (y - f.spouseStageYear >= SPOUSE_YEARS_PER_STAGE && sp.stageIndex < SPOUSE_STAGE_CAP) {
+        sp.stageIndex++
+        sp.maxStage = Math.max(sp.maxStage, sp.stageIndex)
+        f.spouseStageYear += SPOUSE_YEARS_PER_STAGE
+      }
+      if (sp.stageIndex >= SPOUSE_STAGE_CAP) f.spouseStageYear = y
+      if (y - sp.bornYear >= this._baseLifespan(sp.maxStage)) {
+        sp.alive = false; sp.diedYear = yr; sp.cause = 'old_age'
+        f.pastSpouses.push(sp)
+        f.spouse = null
+        f.nextChildYear = null
+        f.mourningUntil = y + MOURNING_YEARS
+        f.nextProposalYear = f.mourningUntil
+        this.addEvent({ text: `Year ${yr}: ${Persons.fullName(sp)}, your companion on the path, has passed on.`, type: 'negative' })
+        this._emit('spouse_died', { spouse: Persons.fullName(sp) })
+      }
+    }
+
+    // Children: born on the game clock while married, up to CHILD_CAP per life (across all spouses).
+    if (f.spouse && f.nextChildYear != null && y >= f.nextChildYear && f.children.length < CHILD_CAP) {
+      const taken = new Set(f.children.map(c => c.given))
+      let given = Persons.rollGiven()
+      for (let i = 0; i < 3 && taken.has(given); i++) given = Persons.rollGiven()
+      const child = Persons.make({
+        id: this._newPersonId(s.clan), given, family: this._clanSurname(), bornYear: yr,
+        root: Persons.blendRoot(s.root, f.spouse.root), personality: Persons.rollPersonality(),
+        role: 'child', alive: true, parents: [s.self.id, f.spouse.id],
+      })
+      f.children.push(child)
+      f.nextChildYear = f.children.length < CHILD_CAP ? y + this._randRange(CHILD_INTERVAL_YEARS) : null
+      this.addEvent({ text: `Year ${yr}: a child is born — ${Persons.fullName(child)} (${child.root.name}).`, type: 'special' })
+      this._emit('child_born', { child: child.given })
+    }
+
+    // Proposals: only unmarried, past PROPOSAL_MIN_STAGE, out of mourning. A pending proposal never expires.
+    if (!f.spouse && !f.proposal && (s.maxStageThisLife || 0) >= PROPOSAL_MIN_STAGE) {
+      if (f.nextProposalYear == null) {
+        f.nextProposalYear = y + this._randRange(PROPOSAL_FIRST_DELAY_YEARS)
+      } else if (y >= f.nextProposalYear && y >= f.mourningUntil) {
+        const n = this._randInt(PROPOSAL_SUITORS)
+        const suitors = []
+        for (let i = 0; i < n; i++) {
+          const stage = Math.max(1, Math.min(SPOUSE_STAGE_CAP, s.stageIndex + this._randInt(SUITOR_STAGE_OFFSET)))
+          // Capped at 80% of their own realm's lifespan so a suitor can't die the year after the wedding.
+          const age = Math.min(Math.max(18, s.age + this._randRange(SUITOR_AGE_OFFSET_YEARS)), 0.8 * this._baseLifespan(stage))
+          suitors.push(Persons.make({
+            id: this._newPersonId(s.clan), given: Persons.rollGiven(), family: Persons.rollSurname(),
+            bornYear: Math.floor(y - age), root: Persons.rollRoot(), personality: Persons.rollPersonality(),
+            stageIndex: stage, maxStage: stage, role: 'suitor', alive: true,
+          }))
+        }
+        f.proposal = { suitors, year: yr }
+        f.nextProposalYear = null
+        this.addEvent({ text: `Year ${yr}: a matchmaker arrives with ${n === 1 ? 'a proposal' : `${n} proposals`} of marriage.`, type: 'special' })
+        this._emit('proposal', { count: n })
+      }
+    }
+  }
+
   // Phase 30 (M2 task 2.3): base lifespan (years) for the realm of maxStageThisLife, before any legacy
   // extenders (task 2.7's longevity_blood, capped by LIFESPAN_EXT_CAP_FRAC, isn't built yet).
   _baseLifespan(maxStage) {
@@ -423,6 +526,7 @@ class GameState {
     this._ensurePhase29Fields()
     this._ensurePhase31Fields()
     this._ensurePhase30Fields()
+    this._ensurePhase16Fields()
     const st = this._stage()
 
     let qps = st.baseQps * s.root.mult
@@ -612,6 +716,7 @@ class GameState {
     // Uses last frame's derived.lifespan (at most one tick stale — only a breakthrough changes it, and
     // that calls _recalc() immediately), falling back to a fresh compute before the very first tick.
     const years = dt * GAME_YEARS_PER_OPEN_HOUR / 3600
+    const prevYear = Math.floor(s.gameYear)
     s.age      += years
     s.gameYear += years
     const lifespan = s.derived.lifespan || this._baseLifespan(s.maxStageThisLife)
@@ -621,6 +726,7 @@ class GameState {
       this.addEvent({ text: `Year ${Math.floor(s.gameYear)}: the twilight of this life has come.`, type: 'neutral' })
       this._emit('twilight')
     }
+    if (Math.floor(s.gameYear) !== prevYear) this._tickFamily()   // Phase 16-lite (M2 task 2.5)
 
     const gain = s.derived.qiPerSecondBoosted * dt
     s.qi = Math.min(s.qi + gain, s.derived.qiCap)
@@ -768,6 +874,40 @@ class GameState {
     return { ok: true }
   }
 
+  // ── Phase 16-lite (M2 task 2.5): Marriage ──────────────────────────────────
+
+  acceptSuitor(personId) {
+    const s = this._s, f = s.family
+    if (f.spouse)    return { ok: false, reason: 'married' }
+    if (!f.proposal) return { ok: false, reason: 'no_proposal' }
+    const suitor = f.proposal.suitors.find(p => p.id === personId)
+    if (!suitor) return { ok: false, reason: 'unknown' }
+    const y = s.gameYear
+    const spouse = { ...suitor, role: 'spouse', spouseIds: [...(suitor.spouseIds || []), s.self.id] }
+    s.self.spouseIds = [...(s.self.spouseIds || []), spouse.id]
+    f.spouse          = spouse
+    f.marriedYear     = Math.floor(y)
+    f.spouseStageYear = y
+    f.proposal        = null
+    f.nextProposalYear = null
+    f.nextChildYear   = f.children.length < CHILD_CAP ? y + this._randRange(FIRST_CHILD_YEARS) : null
+    this.addEvent({ text: `Year ${Math.floor(y)}: ${s.name} and ${Persons.fullName(spouse)} are wed. Two paths become one.`, type: 'special' })
+    this._recalc(); this._notify()
+    this._emit('married', { spouse: spouse.given })
+    return { ok: true, spouse }
+  }
+
+  // "Decline all" — "Decide later" is UI-only (the proposal just stays pending; it never expires).
+  declineProposal() {
+    const s = this._s, f = s.family
+    if (!f.proposal) return { ok: false, reason: 'no_proposal' }
+    f.proposal = null
+    f.nextProposalYear = s.gameYear + this._randRange(PROPOSAL_RETRY_YEARS)
+    this.addEvent({ text: `The matchmaker leaves disappointed. Perhaps in a few decades.`, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
   // ── Phase 23A/B/C: Health, Bloodline Quality, Ascension Trial ──────────────
 
   // Hidden from the player except on the Ascension screen and after the first attempt (Phase 23B).
@@ -820,7 +960,12 @@ class GameState {
     // Phase 9B: fired before this._s is replaced so a listener can still read the dying life's stage.
     this._emit('death', { cause, maxStage })
     const selfTerm  = Math.pow(maxStage / (CULTIVATION_STAGES.length - 1), 2)
-    const growth    = BLOODLINE_G_BASE + BLOODLINE_G_SELF * selfTerm   // no partner term yet (Phase 16)
+    // Phase 16-lite (M2 task 2.5): partner term — the current spouse, else the last spouse this life.
+    const fam       = s.family || {}
+    const partner   = fam.spouse || (fam.pastSpouses || [])[(fam.pastSpouses || []).length - 1] || null
+    const spouseMaxStage = partner ? partner.maxStage || 0 : 0
+    const partnerTerm = Math.pow(spouseMaxStage / (CULTIVATION_STAGES.length - 1), 2)
+    const growth    = BLOODLINE_G_BASE + BLOODLINE_G_SELF * selfTerm + BLOODLINE_G_PARTNER * partnerTerm
     const parentBQ  = s.bloodlineQuality || 0
     const heirBQ    = Math.min(BLOODLINE_CAP, parentBQ * BLOODLINE_CARRY_NEW_SOUL + growth)
     const priorGen  = s.generation || 1
@@ -838,6 +983,12 @@ class GameState {
       openHours:  +(s.stats.timePlayed / 3600).toFixed(2),
       ageAtDeath: s.age,
       lifespan:   s.derived?.lifespan ?? null,
+      // Phase 16-lite (M2 task 2.5): family summary for the sim's Life Loop metrics.
+      married:    !!partner,
+      children:   (fam.children || []).length,
+      adultChildren: (fam.children || []).filter(c => s.gameYear - c.bornYear >= ADULT_AGE).length,
+      spouseMaxStage,
+      growth,
     }
 
     this._s = this._newGame()
