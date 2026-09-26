@@ -5,7 +5,7 @@ _Covers: renderer/index.html · renderer/styles.css · renderer/game.js · Phase
 Fixed 300×540px window. Flex column, no scroll on outer container.
 
 ```
-#titlebar          32px   drag region; cultivator name (click → rename) + 3 buttons
+#titlebar          32px   drag region; cultivator name (click → rename) + 4 buttons (◀ ⚙ 📌 ✕)
 #sprite-wrap       172px  canvas; no-drag; meditate-badge overlay (top-right)
 #stage-block       ~55px  realm + layer + desc text, centered
 #qi-block          ~38px  labels + track + rate
@@ -27,7 +27,10 @@ Defined in `:root` at top of styles.css — always use these, never raw hex in n
 --purple  #9070C8              root badge, special effects
 --border  #2A1A10              all borders
 --font    "Courier New",...    monospace; always use this for buttons and inputs
+--bg-opacity 1                 Phase 20C setting; multiplies --bg, titlebar and #app shadow alphas
 ```
+`:root[data-cb="deuteranopia"|"protanopia"]` overrides `--red`/`--jade` (color-blind setting). Never hard-code
+red/green hex in JS: use `var(--red)` or `settingsUI.palette()` (see settings.md).
 
 ## Tab System
 5 tabs: Techniques · Stats · Explore · Craft · Log
@@ -56,7 +59,7 @@ All `render<X>(s)` functions:
 Types: `'positive'` (jade), `'negative'` (red), `'special'` (gold), `'neutral'` (dim)
 
 ## Overlays
-Two overlays in HTML: `#rename-overlay`, `#confirm-overlay`.
+Overlays in HTML: `#rename-overlay`, `#confirm-overlay`, `#settings-overlay` (Phase 20C), `#ascension-overlay`, `#death-overlay`.
 Pattern: `.hidden` class toggle. Always `z-index: 200`. Wire buttons directly in the IIFE.
 
 ## Invariants

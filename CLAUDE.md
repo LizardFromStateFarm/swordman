@@ -11,7 +11,9 @@ ASCII cultivator lives on the edge of the screen, cultivating passively.
 
 ## ══ PRE-TASK ASSESSMENT (REQUIRED) ══
 
-Before any tool call, file read, or code change — output this block first then ask user to approve out put(even on auto approve).
+Before starting work on a task (any code change, or file reads/searches in service of that task) — output this block first then ask user to approve output (even on auto approve).
+
+**Exempt:** orientation reads — `START_HERE.md`, `CLAUDE.md`, `PLAN.md`, `GAMEDESIGN.md`, `docs/**` — used to figure out what the next task is. Read these freely without an assessment. Once you've picked the next task from the docs, output the assessment and get approval **before** reading source or making changes for it.
 
 ```
 TASK ASSESSMENT
@@ -55,6 +57,7 @@ docs/
     qa-sim.md           ← QA sim harness: flags, metrics, profiles, how to extend
     dev-presets.md      ← Dev-only late-game test characters (npm start charselect)
     bloodline.md        ← Health & Death, Bloodline Quality, Ascension Trial (Phase 23A-C)
+    settings.md         ← ⚙ Settings panel, per-slot presentation prefs (Phase 20C)
     ui-layout.md        ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
@@ -82,6 +85,7 @@ renderer/
     crafting.js         ← CraftingSystem — thin UI wrapper for craft/equip/pill/elixir
     sect.js             ← SectSystem — resolves timed sect missions (Phase 4)
     sect-war.js         ← SectWarSystem — advances the sect war state machine, own + member wars (Phase 5B/5C)
+    settings.js         ← SettingsUI — ⚙ overlay rendered from SETTINGS_DEFS + applies prefs (Phase 20C, UI only)
 assets/
   data/
     stages.js           ← CULTIVATION_STAGES[23]
@@ -95,6 +99,7 @@ assets/
     sect-buildings.js   ← Own-sect founding cost, Sect Hall levels, buildings, disciple constants (Phase 5A)
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
     bloodline.js        ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
+    settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors

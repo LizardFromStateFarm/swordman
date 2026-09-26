@@ -106,6 +106,8 @@ class GameState {
       deaths:            0,
       ascended:          false,
       lastReincarnation: null,
+      // Phase 20C
+      settings:          this.defaultSettings(),
       stats: {
         totalQiGained:      0,
         breakthroughs:      0,
@@ -216,6 +218,23 @@ class GameState {
     if (s.stats.ascensions === undefined)        s.stats.ascensions        = 0
   }
 
+  // Phase 20C: fill missing settings with defaults, reset any unknown/invalid value.
+  _ensurePhase20CFields() {
+    const s = this._s
+    if (!s.settings || typeof s.settings !== 'object') s.settings = {}
+    for (const def of SETTINGS_DEFS) {
+      if (!this._settingValid(def, s.settings[def.id])) s.settings[def.id] = def.default
+    }
+    for (const k of Object.keys(s.settings)) {
+      if (!SETTINGS_DEFS.some(d => d.id === k)) delete s.settings[k]
+    }
+  }
+
+  _settingValid(def, v) {
+    if (def.type === 'range') return typeof v === 'number' && isFinite(v) && v >= def.min && v <= def.max
+    return def.options.some(o => o.value === v)
+  }
+
   _sectDef() {
     const id = this._s?.sect?.id
     return id && typeof SECTS !== 'undefined' ? (SECTS.find(x => x.id === id) || null) : null
@@ -254,6 +273,7 @@ class GameState {
     this._ensurePhase5Fields()
     this._ensurePhase5BFields()
     this._ensurePhase23Fields()
+    this._ensurePhase20CFields()
     const st = this._stage()
 
     let qps = st.baseQps * s.root.mult
@@ -577,6 +597,7 @@ class GameState {
     const heirBQ    = Math.min(BLOODLINE_CAP, parentBQ * BLOODLINE_CARRY_NEW_SOUL + growth)
     const priorGen  = s.generation || 1
     const priorDeaths = s.deaths || 0
+    const settings    = s.settings
 
     const summary = {
       cause, maxStageReached: maxStage, generation: priorGen,
@@ -588,6 +609,7 @@ class GameState {
     this._s.generation        = priorGen + 1
     this._s.deaths            = priorDeaths + 1
     this._s.lastReincarnation = summary
+    if (settings) this._s.settings = settings   // presentation prefs belong to the player, not the life
     this._recalc(); this._notify()
   }
 
@@ -1545,6 +1567,32 @@ class GameState {
   }
 
   forceSave() { this._save() }
+
+  // ── Phase 20C: Settings ───────────────────────────────────────────────────
+
+  defaultSettings() {
+    const out = {}
+    for (const def of SETTINGS_DEFS) out[def.id] = def.default
+    return out
+  }
+
+  getSettings() { return this._s?.settings || this.defaultSettings() }
+
+  setSetting(id, value) {
+    const s   = this._s
+    const def = SETTINGS_DEFS.find(d => d.id === id)
+    if (!s || !def) return { ok: false, reason: 'unknown' }
+    if (def.type === 'range') {
+      value = Number(value)
+      if (!isFinite(value)) return { ok: false, reason: 'invalid' }
+      value = Math.round(Math.min(def.max, Math.max(def.min, value)) / def.step) * def.step
+      value = Math.min(def.max, Math.max(def.min, +value.toFixed(4)))
+    }
+    if (!this._settingValid(def, value)) return { ok: false, reason: 'invalid' }
+    s.settings[id] = value
+    this._save(); this._notify()
+    return { ok: true }
+  }
 }
 
 // ── Shared format helpers ─────────────────────────────────────────────────────

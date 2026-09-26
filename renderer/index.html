@@ -34,6 +34,7 @@
     <span id="cultivator-name" title="Click to rename">Unnamed Cultivator</span>
     <div id="tb-controls">
       <button class="tb-btn" id="btn-back"   title="Back to character select">◀</button>
+      <button class="tb-btn" id="btn-settings" title="Settings">⚙</button>
       <button class="tb-btn pinned" id="btn-pin" title="Pinned on top (click to unpin)">📌</button>
       <button class="tb-btn" id="btn-quit"   title="Close">✕</button>
     </div>
@@ -126,6 +127,17 @@
   </div>
 </div>
 
+<!-- Settings overlay (Phase 20C) — rows rendered from SETTINGS_DEFS by renderer/game/settings.js -->
+<div id="settings-overlay" class="hidden">
+  <div id="settings-box">
+    <div id="settings-head">
+      <span id="settings-title">⚙ Settings 设置</span>
+      <button class="tb-btn" id="settings-close" title="Close">✕</button>
+    </div>
+    <div id="settings-body"></div>
+  </div>
+</div>
+
 <!-- Ascension Trial overlay (Phase 23C) -->
 <div id="ascension-overlay" class="hidden">
   <div id="ascension-box">
@@ -162,6 +174,7 @@
 <script src="../assets/data/sect-buildings.js"></script>
 <script src="../assets/data/sect-war.js"></script>
 <script src="../assets/data/bloodline.js"></script>
+<script src="../assets/data/settings.js"></script>
 <script src="../assets/data/dev-presets.js"></script>
 <script src="../assets/sprites/cultivator-sprites.js"></script>
 <script src="../assets/sprites/beast-sprites.js"></script>
@@ -174,6 +187,7 @@
 <script src="game/beasts.js"></script>
 <script src="game/sect.js"></script>
 <script src="game/sect-war.js"></script>
+<script src="game/settings.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

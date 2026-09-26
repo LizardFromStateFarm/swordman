@@ -21,6 +21,10 @@ class ASCIIRenderer {
     this._particles = []
     this._particleSpawnT = 0
     this._auraRings = []          // expanding ring effects
+
+    // Phase 20C settings (applied by renderer/game/settings.js)
+    this.speed         = 1            // animation speed multiplier
+    this.reducedMotion = false        // true → no particles / aura rings
   }
 
   // ── Public API ───────────────────────────────────────────────────────────
@@ -43,7 +47,15 @@ class ASCIIRenderer {
     this.stageColor = hex || '#CC6010'
   }
 
+  setSpeed(mult) { this.speed = mult > 0 ? mult : 1 }
+
+  setReducedMotion(on) {
+    this.reducedMotion = !!on
+    if (this.reducedMotion) { this._particles = []; this._auraRings = [] }
+  }
+
   triggerBreakthroughBurst() {
+    if (this.reducedMotion) return
     this._spawnBurst(24)
     this._addAuraRing(1.8)
   }
@@ -60,7 +72,7 @@ class ASCIIRenderer {
     this.lastT   = performance.now()
     const tick   = (now) => {
       if (!this.running) return
-      const dt = Math.min((now - this.lastT) / 1000, 0.1)
+      const dt = Math.min((now - this.lastT) / 1000, 0.1) * this.speed
       this.lastT = now
       this._update(dt)
       this._draw()
@@ -80,6 +92,8 @@ class ASCIIRenderer {
       this.frameT -= dur
       this.frame = (this.frame + 1) % this.sprite.frames.length
     }
+
+    if (this.reducedMotion) return
 
     // Spawn ambient particles
     this._particleSpawnT += dt

@@ -35,7 +35,7 @@
 | — | Tooling: QA Sim Harness, Dev presets | ✅ | M0 |
 | 23A–C | Health & Death, Bloodline Quality, Ascension Trial | ✅ | M0 (section lives in M6) |
 | 29 | Character Personality & Banter | ⬜ | M1 |
-| 20C | Settings tab + accessibility | ⬜ | M1 |
+| 20C | Settings tab + accessibility | ✅ | M1 |
 | 9A–B | Tray + desktop notifications | ⬜ | M1 |
 | 21 | Backpack & Inventory tab | ⬜ | M1 |
 | 22 | Active / Idle toggle + automation | ⬜ | M1 |
@@ -82,7 +82,7 @@
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
-| 1.1 | Settings tab shell (⚙) + accessibility options | 20C | — | Settings persist per slot; later tasks add their toggles here |
+| 1.1 ✅ | Settings tab shell (⚙) + accessibility options | 20C | — | Settings persist per slot; later tasks add their toggles here |
 | 1.2 | Banter engine + 12 personalities, speech bubble, banter log, frequency setting | 29 | 1.1 | Every personality × trigger has lines (sim invariant); bubble fits 300 px + iOS |
 | 1.3 | System tray + desktop notifications (wars, BT ready, expedition back) | 9A–B | — | Both platforms: Electron real, iOS shim no-op (Rule 7); afk war-window flag improves in sim |
 | 1.4 | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
@@ -531,6 +531,12 @@ dying, all new characters on that install gain +5 starting Spirit Stones. Displa
 Challenge mode badge shown on the character select slot card next to the character name.
 
 ### 20C — Accessibility Options (changeable any time)
+
+> **Status: ✅ implemented 2026-09-25 (roadmap 1.1).** See `docs/systems/settings.md`. Divergences: the ⚙ opens an
+> overlay, not a 7th tab (keeps the tab row readable at 300 px). Added **Background opacity** (20–100% slider, user
+> request). Settings live in `s.settings` and hold presentation prefs only. 20A/20B's `permadeath`/`challengeMode`
+> should go in a separate `s.challenge` object when M7 builds them. Font size scales the tab panels only (`zoom`),
+> not the whole window. Options are data-driven (`assets/data/settings.js`), so later tasks just append an entry.
 
 | Option | Values | Default |
 |--------|--------|---------|

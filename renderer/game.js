@@ -122,6 +122,8 @@
     slots = await window.electron.loadAllSlots()
     document.getElementById('app').classList.add('hidden')
     document.getElementById('charselect').classList.remove('hidden')
+    settingsUI.close()
+    settingsUI.apply(gameState.defaultSettings())   // charselect always shows default presentation
     renderCharSelect()
   })
 
@@ -134,6 +136,7 @@
   const beastSys  = new BeastSystem(gameState)
   const sectSys   = new SectSystem(gameState)
   const sectWarSys = new SectWarSystem(gameState)
+  const settingsUI = new SettingsUI(gameState, renderer)
   let tickRunning = false
 
   function bootGame() {
@@ -144,6 +147,7 @@
 
     gameState.subscribe((s, fromTick) => {
       if (!s) return
+      if (!fromTick) settingsUI.apply(s.settings)
       updateHUD(s, fromTick)
       updateSprite(s)
       if (s.lastReincarnation && s.lastReincarnation.ts !== _lastDeathTs) {
@@ -153,7 +157,7 @@
     })
 
     const s = gameState.get()
-    if (s) { updateHUD(s); updateSprite(s) }
+    if (s) { settingsUI.apply(s.settings); updateHUD(s); updateSprite(s) }
 
     let lastTick = performance.now()
     function loop(now) {
@@ -240,12 +244,13 @@
     document.getElementById('integrity-fill').style.background = `rgb(${ir},${ig},${ib})`
     document.getElementById('integrity-numbers').textContent   = `${Math.round(integ)} / 100`
 
-    // Health bar: lerp jade (full) to red (empty) (Phase 23A)
+    // Health bar: lerp --jade (full) to --red (empty) (Phase 23A; palette follows color-blind setting)
     const health = s.health ?? 100
     const ht = health / 100
-    const hr = Math.round(200 + ht * (48  - 200))
-    const hg = Math.round(48  + ht * (184 - 48))
-    const hb = Math.round(48  + ht * (120 - 48))
+    const { red: R, jade: J } = settingsUI.palette()
+    const hr = Math.round(R[0] + ht * (J[0] - R[0]))
+    const hg = Math.round(R[1] + ht * (J[1] - R[1]))
+    const hb = Math.round(R[2] + ht * (J[2] - R[2]))
     document.getElementById('health-fill').style.width      = Math.min(100, health) + '%'
     document.getElementById('health-fill').style.background = `rgb(${hr},${hg},${hb})`
     document.getElementById('health-numbers').textContent   = `${Math.round(health)} / 100`
@@ -1409,6 +1414,8 @@
     })
   })
 
+  document.getElementById('btn-settings').addEventListener('click', () => settingsUI.open())
+
   document.getElementById('btn-pin').addEventListener('click', async () => {
     const btn = document.getElementById('btn-pin')
     const pinned = await window.electron.toggleAlwaysOnTop()
@@ -1451,7 +1458,7 @@
       document.body.appendChild(toast)
     }
     if (flashTimer) clearTimeout(flashTimer)
-    const color = type === 'special' ? '#EDD050' : type === 'negative' ? '#C83030' : type === 'neutral' ? '#8A7A60' : '#30B878'
+    const color = type === 'special' ? 'var(--gold)' : type === 'negative' ? 'var(--red)' : type === 'neutral' ? 'var(--dim)' : 'var(--jade)'
     toast.style.borderColor = color
     toast.style.color       = color
     toast.textContent       = msg
@@ -1460,7 +1467,11 @@
   }
 
   function fmt(n) {
-    if (!isFinite(n) || n >= 1e15) return '∞'
+    const mode = gameState.getSettings().displayNumbers
+    if (!isFinite(n)) return '∞'
+    if (mode === 'raw')        return Math.floor(n).toLocaleString('en-US')
+    if (mode === 'scientific') return n >= 1e4 ? n.toExponential(2).replace('e+', 'e') : Math.floor(n).toString()
+    if (n >= 1e15) return '∞'
     if (n >= 1e12) return (n/1e12).toFixed(2)+'T'
     if (n >= 1e9)  return (n/1e9 ).toFixed(2)+'B'
     if (n >= 1e6)  return (n/1e6 ).toFixed(2)+'M'

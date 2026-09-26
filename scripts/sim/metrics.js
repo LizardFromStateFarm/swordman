@@ -154,6 +154,11 @@ class Recorder {
     if (!(s.health >= 0 && s.health <= 100)) this.violate('health_out_of_range', s.health)
     if (!(s.bloodlineQuality >= 0 && s.bloodlineQuality <= this.D.BLOODLINE_CAP)) this.violate('bloodline_out_of_range', s.bloodlineQuality)
     if (!(s.generation >= 1)) this.violate('generation_invalid', s.generation)
+    for (const def of this.D.SETTINGS_DEFS) {
+      const v = s.settings?.[def.id]
+      const ok = def.type === 'range' ? (v >= def.min && v <= def.max) : def.options.some(o => o.value === v)
+      if (!ok) this.violate('settings_invalid', `${def.id}=${v}`)
+    }
     if (!(s.karma >= 0 && s.karma <= 100)) this.violate('karma_out_of_range', s.karma)
     if (d.breakthroughChance > 0.98 || d.breakthroughChanceDisplay > 0.98) this.violate('bt_chance_over_0.98', d.breakthroughChanceDisplay)
     if (s.stageIndex < 0 || s.stageIndex >= this.D.CULTIVATION_STAGES.length) this.violate('stage_out_of_range', s.stageIndex)

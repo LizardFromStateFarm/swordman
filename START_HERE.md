@@ -28,6 +28,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | QA sim harness (`npm run sim` → bot playtest report) | ✅ Tooling |
 | Dev late-game test characters (charselect, `npm start` only) | ✅ Tooling |
 | Health & Death, Bloodline Quality, chance-based Ascension Trial | ✅ Phase 23A–C |
+| ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
 | Dao Paths, Reincarnation, Tribulation | ⬜ Phase 7–8 |
 | Desktop notifications, tray, time-of-day | ⬜ Phase 9 |
@@ -58,6 +59,33 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-25 (session 11)
+Agent: Roadmap M1 task 1.1 — Phase 20C Settings (⚙). User approved the assessment and asked to add adjustable
+  background opacity. Also clarified CLAUDE.md's pre-task rule: orientation reads (START_HERE/CLAUDE/PLAN/GAMEDESIGN/
+  docs/**) need no assessment, and the assessment is required once a task is picked, before source reads or changes.
+  - ⚙ titlebar button → #settings-overlay (overlay, not a 7th tab). Rows render from SETTINGS_DEFS
+    (assets/data/settings.js): Numbers raw/1.2K/1.2e3 · Panel text S/M/L (zoom on #tab-body) · Color vision
+    off/deutan/protan · Background opacity 20–100% slider (live preview while dragging, saves on release) · Animation
+    0.5/1/2× · Reduce motion · Sprite glow 70/100/130%.
+  - State: s.settings (per slot) in _newGame + _ensurePhase20CFields (fills defaults, resets invalid values, drops
+    unknown keys). Carried across _die() reincarnation. API: setSetting(id,v) / getSettings() / defaultSettings().
+  - renderer/game/settings.js SettingsUI.apply() diffs and applies on every non-tick notify. The renderer got
+    setSpeed()/setReducedMotion(). The health-bar lerp + toast now follow --red/--jade (palette-aware).
+    Charselect resets to default presentation.
+  - Color-blind palette through the Asset Pipeline: rev1 7.8 FAIL, rev2 7.8 FAIL, rev3 8.0 PASS (deutan 8.2 /
+    protan 7.8). Key finding: the sky-blue "jade" in rev1/2 collided with --purple under deutan simulation (ΔE≈8),
+    which the reviewers missed. Rev3 was picked by a computed Machado-sim + ΔE search (scratch script, not committed).
+    Deutan #E4572E/#4BD2C2, Protan #F0502A/#45C8E8.
+  - Sim: loads settings.js, new invariant settings_invalid. No balance impact (presentation only), so the full
+    `npm run sim` was skipped by design; sim:quick is healthy.
+  - Verified: npm test, sim:quick, direct API/migration/death-carry script, npm run build:web, npm run dist, and
+    drove the real Electron app over CDP with --user-data-dir pointed at a scratch folder (the user's real slots are
+    never touched; that's a reusable trick for future UI checks). Screenshotted the panel and HUD with deutan + 30%
+    opacity + raw numbers + large text.
+  Not verified: the look at 20% opacity over a real desktop (CDP screenshots composite transparency onto grey), and
+    the iOS layout by eye.
+  Next: roadmap M1 task 1.2 (banter engine; add its frequency setting by appending to SETTINGS_DEFS).
+
 Date: 2026-09-25 (session 10) — PLANNING ONLY, no code changed
 Agent: User asked to reorder PLAN.md so it reflects the real development order, plus new decisions/systems.
   - PLAN.md restructured, and NO phase was renumbered: phase numbers are stable IDs cited by code/docs/git.
@@ -304,6 +332,7 @@ docs/
     dev-presets.md     ← Dev-only late-game test characters (npm start charselect)
     qa-sim.md          ← QA sim harness — `npm run sim`, report flags, extending the bot
     bloodline.md       ← Health & Death, Bloodline Quality, Ascension Trial (Phase 23A-C)
+    settings.md        ← ⚙ Settings panel, per-slot presentation prefs (Phase 20C)
     ui-layout.md       ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md           ← Always-on rules (docs, style, Electron security)
@@ -326,6 +355,7 @@ renderer/
     crafting.js        ← CraftingSystem — thin wrapper for craft/equip/pill/elixir
     beasts.js          ← BeastSystem — tick-based beast expedition resolution (Phase 3)
     sect.js            ← SectSystem — sect mission timers (Phase 4)
+    settings.js        ← SettingsUI — ⚙ overlay + applies prefs (Phase 20C)
 assets/
   data/
     stages.js          ← CULTIVATION_STAGES[23] — every layer of the cultivation path
@@ -339,6 +369,7 @@ assets/
     sects.js           ← SECTS + SECT_RANKS + SECT_MISSIONS (Phase 4)
     sect-buildings.js  ← Own-sect founding/buildings/disciple constants (Phase 5A)
     bloodline.js       ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
+    settings.js        ← SETTINGS_DEFS — ⚙ panel options (Phase 20C)
     dev-presets.js     ← DEV_PRESETS — late-game test characters (npm start only)
   sprites/
     cultivator-sprites.js  ← CULTIVATOR_SPRITES — all animated ASCII frames
