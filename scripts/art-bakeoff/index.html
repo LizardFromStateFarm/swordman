@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!-- Art direction bake-off (roadmap A2, docs/systems/ui-review.md → "A2 bake-off"). A standalone prototype page, NOT
+     part of the game: the same seated cultivator rendered three ways — (a) grid ASCII pushed as far as it goes,
+     (b) layered glyph compositor, (c) shape-to-glyph + ink-wash. Opened in the real app by
+     scripts/smoke/scenarios/art-bakeoff.js, or directly in a browser. ?dpr=3 (default) renders hi-DPI canvases. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Art Bake-off</title>
+  <style>
+    :root { --bg: #08040E; --text: #E8D8B0; --dim: #8A7A60; --gold: #EDD050; --border: #2A1A10; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: "Courier New", monospace; padding: 16px; }
+    h1 { color: var(--gold); font-size: 16px; letter-spacing: 2px; margin: 0 0 4px; }
+    .sub { color: var(--dim); font-size: 11px; margin-bottom: 14px; }
+    .row { display: flex; gap: 18px; flex-wrap: wrap; }
+    .col { border: 1px solid var(--border); border-radius: 6px; padding: 10px; background: rgba(18,9,28,.6); }
+    .col h2 { font-size: 12px; color: var(--gold); margin: 0 0 2px; letter-spacing: 1px; }
+    .col p { font-size: 10px; color: var(--dim); margin: 0 0 8px; max-width: 300px; }
+    canvas { display: block; background: var(--bg); }
+    .banner { margin-top: 8px; }
+    .ctl { margin: 10px 0 14px; display: flex; gap: 6px; }
+    .ctl button { background: rgba(24,10,4,.8); border: 1px solid var(--border); color: var(--dim); font-family: inherit;
+      font-size: 11px; padding: 4px 10px; border-radius: 3px; cursor: pointer; }
+    .ctl button.on { color: var(--gold); border-color: var(--gold); }
+  </style>
+</head>
+<body>
+  <h1>Art Bake-off 画风比试</h1>
+  <div class="sub">The same Qi-Condensation cultivator (seated lotus, robes, hair bun, sword across the knees), three ways.
+    Top: Overlay size (300×150). Below: Banner size (80×56).</div>
+  <div class="ctl"><button data-mode="idle" class="on">Idle</button><button data-mode="breakthrough">Breakthrough</button></div>
+  <div class="row">
+    <div class="col" id="col-a"><h2>(a) Grid ASCII, pushed</h2><p>Today's engine: fixed character grid, frame swaps. Bigger grid, fixed cell advance (no row jitter), no emoji.</p>
+      <canvas id="a-over"></canvas><canvas id="a-ban" class="banner"></canvas></div>
+    <div class="col" id="col-b"><h2>(b) Layered glyph compositor</h2><p>Small ASCII parts (head, hair, robe, sleeves, lap, sword, aura) at their own size, position, rotation and glow, each animating independently. Braille folds for detail; the face is a swappable slot.</p>
+      <canvas id="b-over"></canvas><canvas id="b-ban" class="banner"></canvas></div>
+    <div class="col" id="col-c"><h2>(c) Shape-to-glyph + ink-wash</h2><p>The figure is authored as vector shapes; the engine fills them with glyphs (braille edges, fabric folds, density shading) over ink-wash mountains, mist and Qi streams.</p>
+      <canvas id="c-over"></canvas><canvas id="c-ban" class="banner"></canvas></div>
+  </div>
+  <script src="bakeoff.js"></script>
+</body>
+</html>

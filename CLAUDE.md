@@ -154,6 +154,7 @@ capacitor.config.json     ← Capacitor (iOS) config — webDir "www"
 scripts/
   build-ios-web.js      ← Builds www/ (gitignored) from renderer/ + assets/ for Capacitor
   gen-tray-icon.js      ← One-off generator for assets/icons/tray-icon.png (Phase 9A, not run at boot)
+  art-bakeoff/          ← A2 art-direction prototype page (3 renderers, same cultivator) — not part of the game
   check-no-emoji.js     ← Emoji inventory (file:line); --strict exits 1 (A1 adds it to npm test) — no-emoji rule
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt

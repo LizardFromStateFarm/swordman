@@ -49,6 +49,22 @@ look prettier but trades away the ASCII identity and costs more" (free placement
 robe/aura/figure independently with sub-cell motion); (c) shape-to-glyph + ink-wash is "the most xianxia" but a
 bigger build.
 
+## A2 art bake-off (2026-09-26)
+Prototype: `scripts/art-bakeoff/` (index.html + bakeoff.js; standalone, not in the game). Capture:
+`scripts/smoke/scenarios/art-bakeoff.js` → `scripts/smoke/out/bake-*.png` (bake-page.png = side by side). Same subject
+(seated Qi-Condensation cultivator: robes, bun, sword across knees, hand seal; idle + breakthrough), one self-check
+polish pass each, then one fresh reviewer each.
+
+| Variant | Score | Ceiling (reviewer's estimate with a full engine) | Strongest | Weakest |
+|---|---|---|---|---|
+| (a) Grid ASCII, pushed | 4.3 | **~6**: a cell grid can't make curves/overlap/sub-cell detail; "charming and readable" at best (Dwarf Fortress / Caves of Qud) | clean palette | rigid triangle + box head, breakthrough = recolor, mush when small |
+| (b) Layered glyph compositor | **5.2** | **8**: per-part motion, glow, customization slots, strong breakthrough; robes from positioned glyphs need hand-tuned parts | atmosphere (big 氣, Qi rings), breakthrough, independent layers | line-art body reads as diagram; parts don't join into one body; idle motion too subtle |
+| (c) Shape-to-glyph + ink-wash | 4.2 | **7.5**: smooth silhouettes + tonal gradients if it adds per-cell opacity, dot thinning and hand-authored line accents | best silhouette/mass, fading ink mountains | uniform dot density = LED-matrix/halftone look, facial/anatomical cues lost, no ink modulation |
+
+All three prototypes land 4–5 (one pass each); none is close to 8. The ceilings are the decision input.
+Each variant's weakness is the other's strength: (b) lacks mass/cloth, which (c) produces; (c) lacks line work,
+accents and per-part motion, which (b) produces.
+
 ## Scores
 
 | Date | Item | Modes / states shown | Score | Cycle | Top fixes (or "passed") |

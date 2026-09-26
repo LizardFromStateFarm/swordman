@@ -97,6 +97,13 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 17
+Agent: **A2 art bake-off** (user approved; user reordered A2 before A1). Standalone prototype
+  `scripts/art-bakeoff/` renders the same seated cultivator 3 ways; `scripts/smoke/scenarios/art-bakeoff.js` captures
+  bake-*.png. One self-check polish pass each, one fresh reviewer each: (a) grid 4.3 (ceiling ~6) · (b) layered
+  compositor 5.2 (ceiling 8) · (c) shape-to-glyph + ink-wash 4.2 (ceiling 7.5). Details: ui-review.md → "A2 art bake-off".
+  Next: **user picks the direction** → A1 (UI emoji purge) → 1.8b.
+
 Date: 2026-09-26 (day session, user present) — part 16
 Agent: **1.8c visual baseline + art audit** (user approved). No game code changed.
   - New `scripts/smoke/scenarios/visual-baseline.js` screenshots every screen/mode/popup/art piece (vb-1…7), and
