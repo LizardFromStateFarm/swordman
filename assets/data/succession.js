@@ -1,8 +1,9 @@
 // Clan succession after a death (clan-succession.md 2.6d): parenting styles, the heir bet, the reign sim, rebirth
 // position weights, the rare rival-family rebirth, chronicle text and upbringing events. Also 2.6e: challenging
-// the head, being challenged as head, and step-down mass tournaments — all resolved while you're still alive. Data only.
+// the head, being challenged as head, and step-down mass tournaments — all resolved while you're still alive.
+// Also 2.6f: branch wars (push/declare) and secession into a new clan. Data only.
 // Used by: game-state.js (_beginInterlude/_runSuccession/_beginLife/resolveUpbringingEvent, challengeHead/
-// resolveHeadChallenge/answerStepDown), game.js, scripts/sim/*.
+// resolveHeadChallenge/answerStepDown, pushBranchWar/declareBranchWar/secede), game.js, scripts/sim/*.
 // Personality ids: personalities.js. Tokens in text: {head} (head's given name), {name} (you), {clan} (clan name).
 
 // ── The reign (one generation passes between lives) ──────────────────────────
@@ -157,6 +158,29 @@ const LETHAL_MORALITY_WEIGHT   = 0.4    // + max(0, −morality) × this
 const LETHAL_BLOODY_BONUS      = 15     // + this if the clan's tradition already runs bloody
 const LETHAL_PERSONALITY_BONUS = { psycho: 25, demonking: 20, hotblood: 10, arrogant: 10, niceguy: -15, poet: -10, coward: -10 }
 const LETHAL_CHANCE_RANGE      = [5, 90]
+
+// ── Branch wars & secession (2.6f) ────────────────────────────────────────────
+// Only the living player ever starts these — pushing your branch head to war, declaring war as a branch head,
+// or seceding outright. No NPC branch acts on its own here (that's M4's living-world job); the player's own
+// line is always the one in motion. War strength = sum of _fightPower over a line's living adults (you
+// included); an uninvolved third branch may pick a side and lend a fraction of its own strength.
+const BRANCH_WAR_COOLDOWN_YEARS     = [30, 60]  // after any attempt (won, lost, or a head who refused your push)
+const BRANCH_WAR_WILL_BASE          = { niceguy: 5, poet: 8, coward: 3, stoic: 18, grumpy: 22, lazy: 10, glutton: 12,
+                                         gremlin: 16, miser: 14, hotblood: 42, arrogant: 36, paranoid: 24, demonking: 46, psycho: 50 }
+const BRANCH_WAR_WILL_STRENGTH_MULT = 40   // + this × clamp(attacker/defender power − 1, −1, 1) — braver when the numbers favor them
+const BRANCH_WAR_WILL_BLOODY_BONUS  = 12   // + this if the clan's own tradition already runs bloody
+const BRANCH_WAR_WILL_RANGE         = [5, 85]
+const BRANCH_WAR_SPREAD             = 260  // aggregate-line-power spread for the win-odds logistic (wider than a 1v1 fight's TOURNAMENT_SPREAD)
+const BRANCH_WAR_ALLY_LINE_SHARE    = 0.5  // an uninvolved branch that picks a side lends this fraction of its own strength
+const BRANCH_WAR_DEATH_CHANCE       = 0.35 // the losing side's head: deposed (survives) unless this roll hits
+const BRANCH_WAR_DEATH_BLOODY_BONUS = 0.25
+const BRANCH_WAR_KARMA_DEATH        = -5
+
+// Secession (branch head only, no fight): the old clan becomes a rival or ally depending on how warm you were
+// with the head you left and your own morality — a cold, ruthless exit reads very differently from a fond one.
+const SECESSION_RELATION_BASE          = 10    // a little goodwill even on an otherwise flat parting
+const SECESSION_RELATION_BOND_MULT     = 0.9   // + (bond with the head you're leaving − 50) × this
+const SECESSION_RELATION_MORALITY_MULT = 0.3   // + your own morality × this
 
 // ── Upbringing (your first years in the new life; one event from the head's style) ─
 // Same shape as CHILD_EVENTS, but `bond` is keyed by YOUR personality and moves your bond with the head

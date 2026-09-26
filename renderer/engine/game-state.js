@@ -513,14 +513,17 @@ class GameState {
              heirId: null, tournament: null, lastTournament: null,
              // 2.6e: challenging the head / being challenged as head / a step-down mass tournament
              challengeCooldownYear: null, headChallenge: null, nextChallengerYear: null,
-             stepDownOffer: null, nextStepDownYear: null }
+             stepDownOffer: null, nextStepDownYear: null,
+             // 2.6f: branch wars (push/declare) — one cooldown, since only one branch line is ever yours
+             branchWarCooldownYear: null }
   }
 
   _blankFamilyTally() {
     return { events: 0, crises: 0, affairs: 0, discovered: 0, accept: 0, sabotage: 0, duel: 0, suicide: 0,
              murder_suicide: 0, left: 0, duelWon: 0, duelLost: 0, fled: 0, childEvents: 0, runaways: 0,
              tournaments: 0, tournamentDeaths: 0,
-             challenges: 0, challengesWon: 0, challengesLost: 0, stepDowns: 0, stepDownWon: 0 }
+             challenges: 0, challengesWon: 0, challengesLost: 0, stepDowns: 0, stepDownWon: 0,
+             branchWars: 0, branchWarsWon: 0, secessions: 0 }
   }
 
   // 2.6c: an heir must be a living, adult child still in the household.
@@ -530,6 +533,12 @@ class GameState {
   _rollMorality(personality, extra = 0) {
     const base = PERSONALITY_MORALITY[personality] ?? 0
     return Math.max(-100, Math.min(100, Math.round(base + (Math.random() * 2 - 1) * MORALITY_NOISE + extra)))
+  }
+
+  // The living player's own morality, live (no Math.random — same formula _recordLifeInWorld snapshots at death).
+  _selfMorality() {
+    const s = this._s
+    return Math.max(-100, Math.min(100, Math.round((PERSONALITY_MORALITY[s.personality?.id] ?? 0) + (s.karma - 50))))
   }
 
   // 2.6b: the child-birth interval for the current Family Planning choice (null = no children).
@@ -2483,6 +2492,211 @@ class GameState {
     }
     this._recalc(); this._notify()
     return { ok: true, joined, lethal, outcome: youWin ? 'won' : (joined ? 'eliminated' : 'watched'), deaths: result.deaths }
+  }
+
+  // ── 2.6f (clan-succession.md): branch wars + secession ─────────────────────
+  // Only the living player ever starts these (push/declare/secede) — no NPC branch acts on its own here.
+  // War strength = sum of _fightPower over a line's living adults (you included); resolved at once, same
+  // logistic shape as a 1v1 fight (_resolveFight), just wider (BRANCH_WAR_SPREAD) since it's now aggregate power.
+
+  // Your line, and whether you're on the main line / lead your own line. null off any clan (or an orphan).
+  _branchInfo() {
+    const s = this._s, clan = this._playerClan()
+    if (!clan) return null
+    const mine = this._lineOf(clan, s.self.id)
+    if (!mine) return null
+    return { clan, mine, main: clan.lines[0], isMain: mine === clan.lines[0], isHead: mine.headId === s.self.id }
+  }
+
+  // Sum of _fightPower over a line's living, non-estranged adults (you included, via _selfAsPerson()).
+  _lineStrength(clan, line) {
+    const s = this._s, w = s.world, yr = Math.floor(w.year)
+    let total = 0
+    for (const id of line.memberIds) {
+      if (id === s.self.id) { total += this._fightPower(this._selfAsPerson()); continue }
+      const p = w.persons[id]
+      if (p && p.alive !== false && !p.estranged && yr - (p.bornYear ?? 0) >= ADULT_AGE) total += this._fightPower(p)
+    }
+    return total
+  }
+
+  // Any OTHER line (not attacker/defender) with a living head rolls a side (1/3 attacker · 1/3 defender ·
+  // 1/3 stays out) and lends BRANCH_WAR_ALLY_LINE_SHARE of its own strength if it picks one.
+  _branchAllies(clan, attackerLine, defenderLine) {
+    let atkBonus = 0, defBonus = 0, lines = []
+    for (const line of clan.lines) {
+      if (line === attackerLine || line === defenderLine) continue
+      const head = line.headId ? this.person(line.headId) : null
+      if (!head || head.alive === false) continue
+      const share = this._lineStrength(clan, line) * BRANCH_WAR_ALLY_LINE_SHARE, r = Math.random()
+      if (r < 1 / 3) { atkBonus += share; lines.push(`${line.name} lends its strength to ${attackerLine.name}.`) }
+      else if (r < 2 / 3) { defBonus += share; lines.push(`${line.name} lends its strength to ${defenderLine.name}.`) }
+    }
+    return { atkBonus, defBonus, lines }
+  }
+
+  // A branch head's own call on whether to march: personality + how the numbers look + a bloody clan tradition.
+  _branchHeadWarWill(head, clan, atkPower, defPower) {
+    let w = BRANCH_WAR_WILL_BASE[head.personality] ?? 15
+    const ratio = defPower > 0 ? Math.max(-1, Math.min(1, atkPower / defPower - 1)) : 1
+    w += ratio * BRANCH_WAR_WILL_STRENGTH_MULT
+    if (this._isBloody(clan)) w += BRANCH_WAR_WILL_BLOODY_BONUS
+    return Math.random() * 100 < Math.max(BRANCH_WAR_WILL_RANGE[0], Math.min(BRANCH_WAR_WILL_RANGE[1], w))
+  }
+
+  // No pending family matter may overlap a war/secession decision — same "busy" gate chooseHeir/startTournament use.
+  _branchWarBusy() {
+    const f = this._s.family
+    return !!(f.tournament || f.headChallenge || f.stepDownOffer)
+  }
+
+  // Public (UI): can you press your branch head to war right now? (member, not head, off cooldown)
+  canPushBranchWar() {
+    const s = this._s, info = this._branchInfo()
+    if (!info) return { ok: false, reason: 'no_branch' }
+    if (info.isMain) return { ok: false, reason: 'main_line' }
+    if (info.isHead) return { ok: false, reason: 'is_head' }
+    if (this._branchWarBusy()) return { ok: false, reason: 'busy' }
+    const y = s.world.year, ready = s.family.branchWarCooldownYear
+    if (ready != null && y < ready) return { ok: false, reason: 'cooldown', readyYear: ready }
+    const head = info.mine.headId ? this.person(info.mine.headId) : null
+    if (!head) return { ok: false, reason: 'no_head' }
+    return { ok: true, clan: info.clan, mine: info.mine, head }
+  }
+
+  // Public (UI): can you declare war on the main line right now? (you lead your own branch, off cooldown)
+  canDeclareBranchWar() {
+    const s = this._s, info = this._branchInfo()
+    if (!info) return { ok: false, reason: 'no_branch' }
+    if (info.isMain) return { ok: false, reason: 'main_line' }
+    if (!info.isHead) return { ok: false, reason: 'not_head' }
+    if (this._branchWarBusy()) return { ok: false, reason: 'busy' }
+    const y = s.world.year, ready = s.family.branchWarCooldownYear
+    if (ready != null && y < ready) return { ok: false, reason: 'cooldown', readyYear: ready }
+    return { ok: true, clan: info.clan, mine: info.mine }
+  }
+
+  // Public (UI): can you leave outright and found a new clan? (you lead your own branch — no fight, no cooldown)
+  canSecede() {
+    const info = this._branchInfo()
+    if (!info) return { ok: false, reason: 'no_branch' }
+    if (info.isMain) return { ok: false, reason: 'main_line' }
+    if (!info.isHead) return { ok: false, reason: 'not_head' }
+    if (this._branchWarBusy()) return { ok: false, reason: 'busy' }
+    return { ok: true, clan: info.clan, mine: info.mine }
+  }
+
+  // Public (UI): rough strength preview for the Stats panel — your line vs. the main line, pre-war.
+  branchWarPreview() {
+    const info = this._branchInfo()
+    if (!info || info.isMain) return null
+    return { ours: Math.round(this._lineStrength(info.clan, info.mine)), main: Math.round(this._lineStrength(info.clan, info.main)) }
+  }
+
+  // Resolves attackerLine's war on the main line at once. Only ever called with the PLAYER's own line as the
+  // attacker (no NPC branch declares on its own — that's M4's job). Aggregate line power (+ uninvolved
+  // branches who pick a side) decides the logistic win chance; the losing side's head is deposed unless a
+  // death roll hits, in which case they die (you: _die('branch_war'); an NPC: killed outright). The winning
+  // line becomes the new main line; the old main line is simply relabeled as a branch.
+  _resolveBranchWar(clan, attackerLine) {
+    const s = this._s, w = s.world, yr = Math.floor(w.year), f = s.family, mainLine = clan.lines[0]
+    const atkBase = this._lineStrength(clan, attackerLine), defBase = this._lineStrength(clan, mainLine)
+    const allies = this._branchAllies(clan, attackerLine, mainLine)
+    const atk = atkBase + allies.atkBonus, def = defBase + allies.defBonus
+    const attackerWins = Math.random() < 1 / (1 + Math.exp(-(atk - def) / BRANCH_WAR_SPREAD))
+    const loserLine = attackerWins ? mainLine : attackerLine
+    const loserHeadId = loserLine.headId
+    const died = Math.random() < (BRANCH_WAR_DEATH_CHANCE + (this._isBloody(clan) ? BRANCH_WAR_DEATH_BLOODY_BONUS : 0))
+    if (died) clan.tradition.lethalTournaments++; else clan.tradition.peacefulSuccessions++
+    f.branchWarCooldownYear = yr + this._randRange(BRANCH_WAR_COOLDOWN_YEARS)
+    f.tally.branchWars = (f.tally.branchWars || 0) + 1
+    const lines = [...allies.lines]
+    let selfDied = false
+    if (loserHeadId === s.self.id) {
+      if (died) selfDied = true
+    } else if (loserHeadId) {
+      const loserHead = w.persons[loserHeadId]
+      if (died && loserHead) { this._killPerson(loserHeadId, yr, 'branch_war'); if (attackerWins) s.karma = Math.max(0, s.karma + BRANCH_WAR_KARMA_DEATH) }
+      else if (loserHead) loserHead.role = 'elder'
+    }
+    // The loser no longer holds their line, whether killed or merely deposed — the strongest other living
+    // adult in the line takes it over (mirrors _installHead's own branch-demotion pattern).
+    const next = loserLine.memberIds.map(id => id === s.self.id ? null : w.persons[id])
+      .filter(p => p && p.id !== loserHeadId && p.alive !== false && !p.estranged)
+      .sort((a, b) => (b.stageIndex || 0) - (a.stageIndex || 0))[0]
+    loserLine.headId = next ? next.id : null
+    // The loser's line is never the one that ends up leading the clan (a demoted old main line included).
+    if (next) next.role = 'branch_head'
+    if (attackerWins) {
+      const idx = clan.lines.indexOf(attackerLine)
+      clan.lines[0] = attackerLine; clan.lines[idx] = mainLine
+      if (mainLine.name === 'Main Line') {
+        const used = new Set(clan.lines.map(l => l.name))
+        mainLine.name = BRANCH_NAMES.find(n => !used.has(n)) || `Branch ${clan.lines.length}`
+      }
+      clan.headId = attackerLine.headId
+      const newHead = attackerLine.headId ? this.person(attackerLine.headId) : null
+      lines.push(`${attackerLine.name} prevails. The ${clan.name || 'clan'} now answers to ${newHead ? Persons.fullName(newHead) : 'no one'}.`)
+    } else {
+      lines.push(`The main line holds. ${attackerLine.name} is put down.`)
+    }
+    for (const line of lines) clan.history.push({ year: yr, text: line })
+    if (attackerWins) f.tally.branchWarsWon = (f.tally.branchWarsWon || 0) + 1
+    for (const line of lines) this.addEvent({ text: line, type: attackerWins ? 'special' : 'negative' })
+    if (selfDied) { this._recalc(); this._notify(); this._die('branch_war'); return { ok: true, won: attackerWins, died: true, lines } }
+    this._recalc(); this._notify()
+    return { ok: true, won: attackerWins, died: false, lines }
+  }
+
+  // A branch MEMBER (not its head) presses their branch head to march on the main line. The head decides for
+  // themselves — same shape as _headDecidesLethal, just about starting a war instead of fighting one to the death.
+  pushBranchWar() {
+    const check = this.canPushBranchWar()
+    if (!check.ok) return check
+    const s = this._s, f = s.family, yr = Math.floor(s.world.year), { clan, mine, head } = check
+    const willing = this._branchHeadWarWill(head, clan, this._lineStrength(clan, mine), this._lineStrength(clan, clan.lines[0]))
+    if (!willing) {
+      f.branchWarCooldownYear = yr + this._randRange(BRANCH_WAR_COOLDOWN_YEARS)
+      this.addEvent({ text: `Year ${yr}: you press ${Persons.fullName(head)} to march on the main line. They refuse — not yet.`, type: 'neutral' })
+      this._notify()
+      return { ok: true, declared: false }
+    }
+    this.addEvent({ text: `Year ${yr}: ${Persons.fullName(head)} heeds you. The ${mine.name} marches on the main line.`, type: 'negative' })
+    return { ok: true, declared: true, ...this._resolveBranchWar(clan, mine) }
+  }
+
+  // The branch head declares outright — no persuasion needed, it's your own call.
+  declareBranchWar() {
+    const check = this.canDeclareBranchWar()
+    if (!check.ok) return check
+    const { clan, mine } = check, yr = Math.floor(this._s.world.year)
+    this.addEvent({ text: `Year ${yr}: you declare war on the main line of the ${clan.name || 'clan'}.`, type: 'negative' })
+    return this._resolveBranchWar(clan, mine)
+  }
+
+  // A branch head leaves outright with their whole branch, founding a new clan. No fight — the relation between
+  // the two clans afterward reads how warm you were with the head you left and your own morality.
+  secede() {
+    const check = this.canSecede()
+    if (!check.ok) return check
+    const s = this._s, w = s.world, f = s.family, { clan, mine } = check, yr = Math.floor(w.year)
+    const oldHead = clan.headId ? this.person(clan.headId) : null
+    const bond = oldHead ? this._bondWithHead(oldHead) : 50
+    const relation = Math.max(-100, Math.min(100, Math.round(
+      SECESSION_RELATION_BASE + (bond - 50) * SECESSION_RELATION_BOND_MULT + this._selfMorality() * SECESSION_RELATION_MORALITY_MULT)))
+    let newName = Persons.rollSurname()
+    for (let tries = 0; tries < 8 && newName === clan.name; tries++) newName = Persons.rollSurname()
+    clan.lines = clan.lines.filter(l => l !== mine)
+    const newClan = this._foundClan(w, newName, s.self.id)
+    newClan.lines[0] = { ...mine, id: `${newClan.id}-main`, name: 'Main Line' }
+    newClan.relations[clan.id] = relation; clan.relations[newClan.id] = relation
+    w.playerClanId = newClan.id; w.playerLineId = newClan.lines[0].id
+    f.tally.secessions = (f.tally.secessions || 0) + 1
+    const text = `Year ${yr}: ${s.name} leads the ${mine.name} out of the ${clan.name || 'clan'} and founds the ${newName} clan.`
+    clan.history.push({ year: yr, text }); newClan.history.push({ year: yr, text })
+    this.addEvent({ text, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true, clanId: newClan.id, relation }
   }
 
   startMeditation(duration = 30) {

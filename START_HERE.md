@@ -35,7 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
 | Game Time & Age (age passes only while open; **age never kills** since 2026-09-26) | ◐ Phase 30 (M2) — game clock + age stat + Pass the Mantle; lifespan/twilight/Final Seclusion removed; pacing (2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
-| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — world/clan registry (2.6a), children (2.6b), heirs + tournament (2.6c), reign + rebirth as a descendant (2.6d), challenge/step-down mid-life headship (2.6e) built; 2.6f next |
+| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — world/clan registry (2.6a), children (2.6b), heirs + tournament (2.6c), reign + rebirth as a descendant (2.6d), challenge/step-down mid-life headship (2.6e), branch wars + secession (2.6f) all built (2.6 complete); 2.7 (Ancestral Hall itself) next |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
@@ -68,6 +68,48 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 10
+Agent: built **M2 2.6f** (clan-succession.md §2.6f as-built; user approved the assessment + depth pass). This
+  finishes task 2.6 end to end (2.6a–f all built) — the last gap flagged by 2.6e: branch members had no way to
+  push for war or leave, and a step-down tournament could only ever install a head from the clan's own roster.
+  - **Branch wars**: a branch MEMBER can *push* their branch head to war on the main line — the head decides for
+    themselves (personality + how the numbers look + a bloody clan tradition, same shape as 2.6e's
+    `_headDecidesLethal`); a branch HEAD can *declare* outright, no persuasion needed. War strength is the sum of
+    every living adult's fight-power on each line (you included); an uninvolved third branch may pick a side and
+    lend half its own strength. Win → your branch becomes the new main line (the old one is just relabeled, never
+    removed); lose → your side's head is deposed, or — a flat roll, worse if the clan's tradition already runs
+    bloody — killed outright (yours: `_die('branch_war')`; an NPC's: killed and replaced from within that line).
+    Pushing and winning never makes the pushing MEMBER head — their branch head leads the win, exactly as the
+    spec's "you become head if you lead it" implies.
+  - **Secession**: a branch head can leave outright with their WHOLE branch (no fight) and found a new clan —
+    the slot follows it. The old clan lives on; the relation between the two (`clan.relations`, both directions,
+    already-existing 2.6a schema) reads how warm you were with the head you left and your own live morality —
+    a fond, righteous exit reads very differently from a cold, ruthless one.
+  - New shared machinery: `_branchInfo`, `_lineStrength`, `_branchAllies`, `_branchHeadWarWill`, `_branchWarBusy`,
+    `_resolveBranchWar` (the one instant-resolution core both push and declare call), `_selfMorality` (a live
+    version of the formula `_recordLifeInWorld` already snapshots at death).
+  - UI: inside the existing Stats "not head" clan block, only when your line isn't the main line — a Branch
+    Strength preview (yours vs. the main line's), then Push for War / Declare War + Secede depending on whether
+    you lead your own branch. No new overlay — every outcome resolves at once (confirm dialog → addEvent log
+    lines + a flashMessage toast), same as a 2.6e challenge.
+  - New: `family.tally.branchWars/branchWarsWon/secessions` (flow into `lastReincarnation`/the sim report
+    automatically, no new plumbing), `scripts/sim/checks/succession.js` (+33 → 222 total), sim invariants
+    `clan_relation_range`/`branch_war_tally_mismatch`/`branch_war_cooldown_invalid`.
+  - Verified: npm test (59 files), npm run checks (222, was 189), full npm run sim --hours=200 --seeds=2 AND a
+    broader --hours=300 --seeds=3 pass — 0 errors/0 violations throughout, 111+50 save round-trips; branch wars
+    fired for real (unforced) in every profile across both runs. Secession never fired naturally in ~1,500
+    sim-hours (intentionally rare — a branch head choice, not something the bot chases hard) but is fully
+    covered by a scripted check. build:web, dist both succeeded. Real-app smoke: extended
+    scripts/smoke/scenarios/succession.js with a 2.6f section (branch strength preview, Declare War as a branch
+    head that wins outright, Push for War as a plain member, Secede founding a new clan the slot follows) —
+    zero console errors. Also fixed a latent gap in that same script found along the way: the pre-existing 2.6e
+    NPC-challenge step never checked for a possible lethal loss, so a real (unseeded) death there could leave a
+    stale death-overlay under later screenshots; added the same finishInterlude()+#death-ok recovery already
+    used elsewhere in the file.
+  Next: M2 task 2.7 — Ancestral Hall + Clan Legacies (family tree view, Ancestral Merit per life, ancestral
+    catch-up, Ascended Ancestor ending; cuts Phase 8's Dao Seeds). Read life-loop.md's 2.7 section +
+    PLAN.md Phase 31 first. Needs its own assessment + Depth pass line.
+
 Date: 2026-09-26 (day session, user present) — part 9
 Agent: built **M2 2.6e** (clan-succession.md §2.6e as-built; user approved the assessment + depth pass). Headship
   can now change mid-life, not only at death — the first mechanic where that's true.

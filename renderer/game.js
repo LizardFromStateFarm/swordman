@@ -501,6 +501,24 @@
         else if (res.outcome === 'lost_nonlethal') flashMessage('You were beaten back.', 'negative')
       }, 'Challenge')
     })
+    document.getElementById('_declare-branch-war')?.addEventListener('click', () => {
+      showConfirm('Declare war on the main line?', 'Your branch marches against the clan you were born into. The losing head is deposed — or does not survive it.', () => {
+        const res = gameState.declareBranchWar()
+        if (res.ok && res.won) flashMessage('Your branch prevails. The clan is yours.', 'positive')
+        else if (res.ok && !res.died) flashMessage('Your branch is put down. You are deposed.', 'negative')
+      }, 'Declare War')
+    })
+    document.getElementById('_push-branch-war')?.addEventListener('click', () => {
+      showConfirm('Press your branch head to war?', 'They decide for themselves whether to march, weighing their temper against the odds.', () => {
+        const res = gameState.pushBranchWar()
+        if (res.ok && res.declared === false) flashMessage('They refuse — not yet.', 'neutral')
+      }, 'Push')
+    })
+    document.getElementById('_secede')?.addEventListener('click', () => {
+      showConfirm('Secede and found a new clan?', 'You leave with your whole branch. The old clan lives on as a rival or ally, depending on how you part.', () => {
+        gameState.secede()
+      }, 'Secede')
+    })
   }
 
   // 2.6d: clan, your place in it, the head (their style + your bond), and the clan chronicle.
@@ -528,6 +546,22 @@
       const cc = gameState.canChallengeHead()
       if (cc.ok) html += `<button id="_challenge-head" class="sect-btn" style="width:100%;margin:6px 0 2px;">Challenge the Head</button>`
       else if (cc.reason === 'cooldown') html += sr('', '<span style="color:var(--dim)">Still too weak from your last challenge to try again.</span>')
+      // 2.6f: branch politics — only when you're on a branch, not the main line.
+      if (mine && mine !== c.lines[0]) {
+        const prev = gameState.branchWarPreview()
+        if (prev) html += sr('Branch Strength', `${prev.ours} vs. the main line's ${prev.main}`)
+        if (mine.headId === s.self.id) {
+          const dw = gameState.canDeclareBranchWar()
+          if (dw.ok) html += `<button id="_declare-branch-war" class="sect-btn" style="width:100%;margin:6px 0 2px;">Declare War on the Main Line</button>`
+          else if (dw.reason === 'cooldown') html += sr('', '<span style="color:var(--dim)">Your branch is still recovering to try again.</span>')
+          const sec = gameState.canSecede()
+          if (sec.ok) html += `<button id="_secede" class="sect-btn" style="width:100%;margin:2px 0 2px;">Secede — Found a New Clan</button>`
+        } else {
+          const pw = gameState.canPushBranchWar()
+          if (pw.ok) html += `<button id="_push-branch-war" class="sect-btn" style="width:100%;margin:6px 0 2px;">Push for War</button>`
+          else if (pw.reason === 'cooldown') html += sr('', '<span style="color:var(--dim)">Too soon to press the matter again.</span>')
+        }
+      }
     }
     return html + chron
   }
@@ -2062,6 +2096,7 @@
     challenge_lost:     'Slain challenging the head for their seat',
     challenged:         'Slain defending the head seat',
     stepdown_tournament: 'Fallen in the succession tournament',
+    branch_war:          'Fallen leading your branch to war',
   }
 
   // 2.6d (clan-succession.md): the death card walks through the interlude — heir bet (if the clan must pick),

@@ -41,6 +41,24 @@ function addMember(gs, { stage = 5, personality = null, bond = 50 } = {}) {
   return p
 }
 
+// 2.6f helper: reshapes a non-head life into a BRANCH life — either as that branch's own head, or a plain
+// member serving under a synthetic NPC branch head — by pulling you out of whichever line the birth lottery
+// landed you on (nonHeadLife doesn't guarantee main-line) and putting you on a freshly declared branch line.
+async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {}) {
+  const r = await nonHeadLife(seed, nKids, { overrides })
+  const { gs } = r, s = gs.get(), clan = clanOf(gs), w = s.world
+  for (const l of clan.lines) l.memberIds = l.memberIds.filter(id => id !== s.self.id)
+  let headId = s.self.id, memberIds = [s.self.id]
+  if (!asHead) {
+    const head = gs._genPerson({ family: clan.name, bornYear: Math.floor(w.year) - 30, stage: 5, role: 'branch_head' })
+    w.persons[head.id] = head
+    headId = head.id; memberIds = [head.id, s.self.id]
+  }
+  const line = { id: `${clan.id}-btest`, name: 'Eastern Branch', headId, memberIds, foundedYear: Math.floor(w.year) }
+  clan.lines.push(line)
+  return { ...r, clan, line }
+}
+
 ;(async () => {
   // 1. Head dies with a named heir → no bet; the heir takes the seat; a sibling founds a branch; chronicle written.
   { const { gs, kids } = await headWithKids(1, 4)
@@ -346,6 +364,107 @@ function addMember(gs, { stage = 5, personality = null, bond = 50 } = {}) {
     addMember(gs, { stage: 3 }); addMember(gs, { stage: 3 })
     gs._tickFamily(); gs._tickFamily()
     assert(s.family.stepDownOffer && s.family.stepDownOffer.entrantIds.length >= 2, `the head considers stepping down on schedule: ${JSON.stringify(s.family.stepDownOffer)}`)
+  }
+
+  // ── 2.6f (clan-succession.md): branch wars + secession ───────────────────────────────────────────────
+
+  // 20. Gating: a main-line member has no branch to push, declare for, or secede with.
+  { const { gs } = await nonHeadLife(70, 2)
+    assert(gs.canPushBranchWar().reason === 'main_line', 'a main-line member cannot push a branch war')
+    assert(gs.canDeclareBranchWar().reason === 'main_line', 'a main-line member cannot declare one either')
+    assert(gs.canSecede().reason === 'main_line', 'nor secede — only a branch head can')
+  }
+
+  // 21. Gating: a branch member may push (not declare/secede); a branch head may declare/secede (not push).
+  { const { gs } = await branchLife(71, { asHead: false })
+    const pw = gs.canPushBranchWar()
+    assert(pw.ok, `a branch member may push their head to war: ${JSON.stringify(pw)}`)
+    assert(gs.canDeclareBranchWar().reason === 'not_head', 'but may not declare it directly')
+    assert(gs.canSecede().reason === 'not_head', 'nor secede')
+  }
+  { const { gs } = await branchLife(72, { asHead: true })
+    assert(gs.canPushBranchWar().reason === 'is_head', 'a branch head has no one above them to push')
+    assert(gs.canDeclareBranchWar().ok, 'but may declare war directly')
+    assert(gs.canSecede().ok, 'or secede outright')
+  }
+
+  // 22. Cooldown and a busy family matter (a running Tournament of Heirs) both block a declaration.
+  { const { gs } = await branchLife(73, { asHead: true })
+    const s = gs.get()
+    s.family.branchWarCooldownYear = s.world.year + 50
+    const cd = gs.canDeclareBranchWar()
+    assert(cd.reason === 'cooldown' && cd.readyYear === s.family.branchWarCooldownYear, 'a cooldown blocks another declaration')
+    s.family.branchWarCooldownYear = null
+    s.family.tournament = { year: 0, round: 1, pool: [], eliminated: [], lethalFought: false, fightsDone: 0 }
+    assert(gs.canDeclareBranchWar().reason === 'busy', 'a running Tournament of Heirs blocks it too')
+  }
+
+  // 23. declareBranchWar — an overwhelming branch wins and survives: it becomes the new main line, the old
+  // main line is demoted + relabeled, its deposed head survives as an elder, its successor is a "branch_head".
+  { const { gs, clan, line } = await branchLife(74, { asHead: true, overrides: ['TOURNAMENT_LUCK = 0', 'BRANCH_WAR_DEATH_CHANCE = 0'] })
+    const s = gs.get(), oldHeadId = clan.headId, oldMainId = clan.lines[0].id, linesBefore = clan.lines.length
+    s.stageIndex = 200; s.maxStageThisLife = 200
+    const res = gs.declareBranchWar(), clan2 = clanOf(gs)
+    assert(res.ok && res.won && !res.died, `overwhelming branch wins, survives: ${JSON.stringify(res)}`)
+    assert(clan2.headId === s.self.id && clan2.lines[0].id === line.id, 'your branch becomes the main line; you lead the clan')
+    const demoted = clan2.lines.find(l => l.id === oldMainId)
+    assert(demoted && demoted.name !== 'Main Line' && demoted.headId !== oldHeadId, `the old main line is demoted, relabeled, and re-headed (${demoted?.name})`)
+    assert(gs.person(oldHeadId).alive !== false && gs.person(oldHeadId).role === 'elder', 'the deposed old head survives as an elder')
+    assert(clan2.lines.length === linesBefore, 'no new line is created — the old main line is only relabeled')
+    assert(s.family.branchWarCooldownYear > s.world.year && s.family.tally.branchWars === 1 && s.family.tally.branchWarsWon === 1, 'cooldown set; tally records a win')
+  }
+
+  // 24. declareBranchWar — an overmatched branch loses and survives (DEATH_CHANCE forced to 0): you are
+  // deposed from your own branch's headship, but your life goes on; the main line is untouched.
+  { const { gs, clan, line } = await branchLife(75, { asHead: true, overrides: ['TOURNAMENT_LUCK = 0', 'BRANCH_WAR_DEATH_CHANCE = 0'] })
+    const s = gs.get(), meId = s.self.id, oldHeadId = clan.headId
+    s.stageIndex = 0; s.maxStageThisLife = 0
+    const res = gs.declareBranchWar()
+    assert(res.ok && !res.won && !res.died, `overmatched branch loses, you survive: ${JSON.stringify(res)}`)
+    assert(clanOf(gs).headId === oldHeadId && !gs.get().interlude, 'the main line is untouched; your life goes on')
+    assert(clanOf(gs).lines.find(l => l.id === line.id).headId !== meId, 'you are deposed from your own branch')
+  }
+
+  // 25. declareBranchWar — an overmatched branch loses and its head dies (DEATH_CHANCE forced to 1): your
+  // own declaration, lost, ends your life.
+  { const { gs } = await branchLife(76, { asHead: true, overrides: ['TOURNAMENT_LUCK = 0', 'BRANCH_WAR_DEATH_CHANCE = 1'] })
+    const s = gs.get()
+    s.stageIndex = 0; s.maxStageThisLife = 0
+    const res = gs.declareBranchWar()
+    assert(res.ok && !res.won && res.died, `overmatched branch loses, its head falls: ${JSON.stringify(res)}`)
+    assert(gs.get().interlude && gs.get().lastReincarnation.cause === 'branch_war', 'losing the war you declared ends your life')
+  }
+
+  // 26. pushBranchWar — a head who never agrees (WILL_RANGE forced to 0) refuses; cooldown set, no war fought.
+  { const { gs } = await branchLife(80, { asHead: false, overrides: ['BRANCH_WAR_WILL_RANGE = [0, 0]'] })
+    const s = gs.get()
+    const res = gs.pushBranchWar()
+    assert(res.ok && res.declared === false, `a reluctant head refuses: ${JSON.stringify(res)}`)
+    assert(s.family.branchWarCooldownYear > s.world.year && s.family.tally.branchWars === 0, 'cooldown set; no war actually fought')
+  }
+
+  // 27. pushBranchWar — a head who always agrees (WILL_RANGE forced to 100) marches; the war resolves at once,
+  // but even winning never makes the PUSHING member the head — their branch head leads it.
+  { const { gs, clan, line } = await branchLife(81, { asHead: false, overrides: ['TOURNAMENT_LUCK = 0', 'BRANCH_WAR_WILL_RANGE = [100, 100]', 'BRANCH_WAR_DEATH_CHANCE = 0'] })
+    const s = gs.get(), meId = s.self.id, headId = line.headId
+    gs.person(headId).stageIndex = 200
+    const res = gs.pushBranchWar()
+    assert(res.ok && res.declared && res.won, `a willing head marches and wins: ${JSON.stringify(res)}`)
+    assert(clanOf(gs).headId === headId && clanOf(gs).headId !== meId, "the branch head leads the win — pushing never makes YOU head")
+    assert(s.family.tally.branchWars === 1 && s.family.tally.branchWarsWon === 1, 'tally records the fought, won war')
+  }
+
+  // 28. secede — a branch head leaves outright with their whole branch: a new clan is founded, the slot
+  // follows it, the old clan keeps living, and the relation is set both ways.
+  { const { gs, clan, line } = await branchLife(90, { asHead: true })
+    const s = gs.get(), oldClanId = clan.id, memberIds = [...line.memberIds]
+    const res = gs.secede(), s2 = gs.get(), newClan = s2.world.clans[res.clanId]
+    assert(res.ok && newClan && newClan.id !== oldClanId, `a new clan is founded: ${newClan?.name}`)
+    assert(s2.world.playerClanId === newClan.id && newClan.headId === s.self.id, 'the slot follows your new clan; you lead it')
+    assert(newClan.lines.length === 1 && memberIds.every(id => newClan.lines[0].memberIds.includes(id)), 'your whole branch comes with you')
+    assert(!s2.world.clans[oldClanId].lines.some(l => l.id === line.id), 'the old clan no longer carries your line')
+    assert(newClan.relations[oldClanId] === res.relation && s2.world.clans[oldClanId].relations[newClan.id] === res.relation, `relation is set both ways (${res.relation})`)
+    assert(s2.family.tally.secessions === 1, 'tally records the secession')
   }
 })()
 

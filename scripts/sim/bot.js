@@ -195,6 +195,19 @@ class Bot {
       const favored = cc.head.stageIndex <= this.s.stageIndex
       if (this.profile === 'active' ? favored : this.rand() < 0.01) return this.do('challenge_head', this.gs.challengeHead())
     }
+    // 2.6f: branch politics. 'active' plays a branch head aggressively (declares once favored, else secedes
+    // once in a while rather than wait forever); a branch member pushes rarely. Every profile occasionally
+    // tries either path, enough to exercise both outcomes without every branch life turning into a war.
+    const dw = this.gs.canDeclareBranchWar()
+    if (dw.ok) {
+      const prev = this.gs.branchWarPreview()
+      const favored = prev && prev.ours >= prev.main
+      if (this.profile === 'active' ? favored : this.rand() < 0.03) return this.do('declare_branch_war', this.gs.declareBranchWar())
+      if (this.profile !== 'active' && this.rand() < 0.01) return this.do('secede', this.gs.secede())
+    } else {
+      const pw = this.gs.canPushBranchWar()
+      if (pw.ok && this.rand() < (this.profile === 'active' ? 0.05 : 0.02)) return this.do('push_branch_war', this.gs.pushBranchWar())
+    }
     // Encounters: seduce 1 in 4 (enough to exercise affairs, discovery and every reaction branch).
     if (f.encounters?.length) {
       return this.rand() < 0.25 ? this.do('seduce', this.gs.seduceEncounter(0)) : this.do('leave_encounter', this.gs.dismissEncounter(0), false)

@@ -2,7 +2,9 @@
 // Stats clan rows + Clan Chronicle overlay, the upbringing event in the family overlay, and resuming a mid-interlude
 // save from the character select. Also 2.6e: the Challenge the Head button + confirm dialog, an NPC challenging you
 // as head (family-overlay lethal/non-lethal card), and a step-down mass tournament (family-overlay join/decline
-// card). Run: node scripts/smoke/cdp.js scripts/smoke/scenarios/succession.js
+// card). Also 2.6f: Stats branch strength preview + Declare War (a branch head) + Push for War (a branch member,
+// an NPC head decides) + Secede (founds a new clan, the slot follows it).
+// Run: node scripts/smoke/cdp.js scripts/smoke/scenarios/succession.js
 module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await click('.cs-btn-new[data-slot="0"]')
   await wait('gameState.get() && !document.getElementById("app")?.classList.contains("hidden")')
@@ -100,6 +102,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await shot('2.6e-3-head-challenge-card')
   await click('#family-choices [data-hc="1"]')
   assert(await ev('!gameState.get().family.headChallenge'), 'challenge resolved (you decided lethal)')
+  if (await ev('!!gameState.get().interlude')) { await ev('gameState.finishInterlude()'); await click('#death-ok') }   // walked back if you lost lethally
 
   // The sitting (NPC) head steps back — a mass succession tournament, joinable, resolved instantly.
   await ev(`(() => {
@@ -125,4 +128,82 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   const stats2 = await ev('document.getElementById("tab-stats").innerText')
   assert(/You lead the clan/i.test(stats2), 'you dominated the tournament and now lead the clan')
   await shot('2.6e-5-after-stepdown')
+
+  // ── 2.6f (clan-succession.md): branch wars + secession ────────────────────────────────────────────────
+  // You already lead the clan from the step-down win above, so every setup below must first hand the main
+  // line to a fresh (weak) NPC head before putting you on your own branch — a clan only ever has one headId.
+  // Force yourself onto a freshly declared branch line, as its head, overwhelmingly stronger than the main
+  // line — an easy, deterministic win (the win/lose logic itself is covered by scripts/sim/checks/succession.js).
+  await ev(`(() => {
+    const gs = gameState, s = gs.get(), w = s.world, clan = w.clans[w.playerClanId]
+    for (const l of clan.lines) l.memberIds = l.memberIds.filter(id => id !== s.self.id)
+    const mainHead = gs._genPerson({ family: clan.name, bornYear: Math.floor(w.year) - 60, stage: 3, role: 'head' })
+    w.persons[mainHead.id] = mainHead
+    clan.headId = mainHead.id; clan.lines[0].headId = mainHead.id; clan.lines[0].memberIds.push(mainHead.id)
+    clan.lines.push({ id: clan.id + '-smoke-branch', name: 'Southern Branch', headId: s.self.id, memberIds: [s.self.id], foundedYear: Math.floor(w.year) })
+    w.playerLineId = clan.id + '-smoke-branch'
+    s.stageIndex = 200; s.maxStageThisLife = 200; s.family.branchWarCooldownYear = null
+    gs._recalc(); gs._notify()
+  })()`)
+  await click('.tab[data-tab="stats"]')
+  const stats3 = await ev('document.getElementById("tab-stats").innerText')
+  assert(/Branch Strength/i.test(stats3) && /Declare War/i.test(stats3) && /Secede/i.test(stats3), 'Stats: branch strength preview + Declare War / Secede for a branch head')
+  await shot('2.6f-1-branch-stats')
+  await click('#_declare-branch-war')
+  await wait('!document.getElementById("confirm-overlay").classList.contains("hidden")')
+  await shot('2.6f-2-declare-confirm')
+  await click('#confirm-yes')
+  await sleep(300)
+  assert(await ev('gameState.get().world.clans[gameState.get().world.playerClanId].headId === gameState.get().self.id'), 'overwhelming branch wins outright — you now lead the clan')
+  await shot('2.6f-3-after-declare')
+
+  // Push for war as a plain branch MEMBER (an NPC leads the new branch) — the head decides, not you.
+  await ev(`(() => {
+    const gs = gameState, s = gs.get(), w = s.world, clan = w.clans[w.playerClanId]
+    for (const l of clan.lines) l.memberIds = l.memberIds.filter(id => id !== s.self.id)
+    const mainHead = gs._genPerson({ family: clan.name, bornYear: Math.floor(w.year) - 60, stage: 3, role: 'head' })
+    w.persons[mainHead.id] = mainHead
+    clan.headId = mainHead.id; clan.lines[0].headId = mainHead.id; clan.lines[0].memberIds.push(mainHead.id)
+    const head = gs._genPerson({ family: clan.name, bornYear: Math.floor(w.year) - 30, stage: 5, role: 'branch_head' })
+    head.personality = 'hotblood'   // a willing head, deterministic enough for a smoke pass
+    w.persons[head.id] = head
+    clan.lines.push({ id: clan.id + '-smoke-branch-2', name: 'Northern Branch', headId: head.id, memberIds: [head.id, s.self.id], foundedYear: Math.floor(w.year) })
+    w.playerLineId = clan.id + '-smoke-branch-2'
+    s.stageIndex = 0; s.maxStageThisLife = 0   // a weak pusher — win/lose doesn't matter here, only that it fires
+    s.family.branchWarCooldownYear = null
+    gs._recalc(); gs._notify()
+  })()`)
+  const pw = await ev('gameState.canPushBranchWar()')
+  assert(pw.ok, `canPushBranchWar: ${JSON.stringify(pw)}`)
+  await click('#_push-branch-war')
+  await wait('!document.getElementById("confirm-overlay").classList.contains("hidden")')
+  await shot('2.6f-4-push-confirm')
+  await click('#confirm-yes')
+  await sleep(300)
+  if (await ev('!!gameState.get().interlude')) { await ev('gameState.finishInterlude()'); await click('#death-ok') }   // walked back if the war killed you
+  await shot('2.6f-5-after-push')
+
+  // Secede — a branch head leaves outright with their whole branch and founds a new clan; the slot follows it.
+  await ev(`(() => {
+    const gs = gameState, s = gs.get(), w = s.world, clan = w.clans[w.playerClanId]
+    for (const l of clan.lines) l.memberIds = l.memberIds.filter(id => id !== s.self.id)
+    if (clan.headId === s.self.id) {
+      const mainHead = gs._genPerson({ family: clan.name, bornYear: Math.floor(w.year) - 60, stage: 3, role: 'head' })
+      w.persons[mainHead.id] = mainHead
+      clan.headId = mainHead.id; clan.lines[0].headId = mainHead.id; clan.lines[0].memberIds.push(mainHead.id)
+    }
+    clan.lines.push({ id: clan.id + '-smoke-branch-3', name: 'Western Branch', headId: s.self.id, memberIds: [s.self.id], foundedYear: Math.floor(w.year) })
+    w.playerLineId = clan.id + '-smoke-branch-3'
+    gs._recalc(); gs._notify()
+  })()`)
+  const oldClanId = await ev('gameState.get().world.playerClanId')
+  await click('.tab[data-tab="stats"]')
+  await click('#_secede')
+  await wait('!document.getElementById("confirm-overlay").classList.contains("hidden")')
+  await shot('2.6f-6-secede-confirm')
+  await click('#confirm-yes')
+  await sleep(300)
+  const newClanId = await ev('gameState.get().world.playerClanId')
+  assert(newClanId !== oldClanId, `secession founds a new clan and the slot follows it (${oldClanId} → ${newClanId})`)
+  await shot('2.6f-7-after-secede')
 }

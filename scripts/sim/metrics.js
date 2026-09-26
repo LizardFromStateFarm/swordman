@@ -184,6 +184,8 @@ class Recorder {
         const h = c.headId === s.self.id ? s.self : wd.persons[c.headId]
         if (!c.extinct && (!h || h.alive === false)) this.violate('clan_head_invalid', `${c.id} head ${c.headId}`)
         if (c.lines.length > 4) this.violate('clan_too_many_branches', `${c.id}: ${c.lines.length - 1}`)
+        // 2.6f: clan-to-clan relations (secession, rival rebirth) stay within range.
+        for (const v of Object.values(c.relations || {})) if (!(v >= -100 && v <= 100)) this.violate('clan_relation_range', `${c.id}=${v}`)
       }
       const b = s.birth
       if (b) {
@@ -232,6 +234,9 @@ class Recorder {
         if (fam.stepDownOffer.entrantIds.length < 2) this.violate('stepdown_offer_invalid', `only ${fam.stepDownOffer.entrantIds.length} entrants`)
       }
       if (fam.tally.challengesWon + fam.tally.challengesLost > fam.tally.challenges) this.violate('challenge_tally_mismatch', JSON.stringify(fam.tally))
+      // 2.6f: branch wars — won can't exceed fought; a cooldown, if set, is a plain number.
+      if ((fam.tally.branchWarsWon || 0) > (fam.tally.branchWars || 0)) this.violate('branch_war_tally_mismatch', JSON.stringify(fam.tally))
+      if (fam.branchWarCooldownYear != null && !isFinite(fam.branchWarCooldownYear)) this.violate('branch_war_cooldown_invalid', fam.branchWarCooldownYear)
     }
     for (const def of this.D.SETTINGS_DEFS) {
       const v = s.settings?.[def.id]

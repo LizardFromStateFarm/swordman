@@ -1,7 +1,7 @@
 # Clan Succession — Build Spec (M2 tasks 2.6a–2.6f)
 _Covers: world/life save split · clan registry (main line + ≤3 branches) · children who cultivate · bond + morality ·
 Tournament of Heirs · reign simulation · rebirth as a descendant (or orphan) · head challenges · succession tournaments
-· branch wars · secession · Phase: 16/18C/31 rework (M2) · Updated: 2026-09-26 · **Status: 2.6a–e built, 2.6f spec only**_
+· branch wars · secession · Phase: 16/18C/31 rework (M2) · Updated: 2026-09-26 · **Status: 2.6a–f built**_
 
 **Replaces the old task 2.6** ("choose an heir at death and play as them", life-loop.md §4.3/§5.1/§7 heir parts).
 User-designed 2026-09-26. You never *play as* your heir. The heir (an NPC) takes over the clan; the world simulates
@@ -113,7 +113,7 @@ Pruning: persons who are dead, not a head/heir, and ≥ 3 generations old are dr
 | 2.6c ✅ | Choose heir, Tournament of Heirs (pick matchups), heir-strength BQ term, sect to head | tournament resolves with correct lethal/non-lethal split; BQ term applied |
 | 2.6d ✅ | Parenting styles, reign sim + chronicle, rebirth position, heir bet, orphan option | 500h sim spans ≥3 generations; positions + styles distributed sensibly |
 | 2.6e ✅ | Challenge head (head decides lethality), challenged-as-head events, step-down mass tournament | all paths reachable in sim; no life ends without a cause |
-| 2.6f | Branch wars, secession → new clan, clan relations | a seceded clan persists as rival/ally; slot follows the new clan |
+| 2.6f ✅ | Branch wars, secession → new clan, clan relations | a seceded clan persists as rival/ally; slot follows the new clan |
 Then life-loop.md 2.7 (Ancestral Hall, legacies — Sect Continuity legacy is superseded by 2.6c) and 2.8 (tuning).
 
 ## Open questions (decide during the relevant task, flag to the user)
@@ -348,3 +348,72 @@ death→interlude flow.
 - **Known gaps (2.6f's job, not this one):** branch members can't yet push their branch to war or secede; a
   step-down tournament can only ever install a NEW head from the CURRENT clan's own roster, never spin off a
   rival branch the way 2.6f's secession will.
+
+## 2.6f — as built (2026-09-26)
+Data: `assets/data/succession.js` "Branch wars & secession" block. Code: `game-state.js` "2.6f" block.
+Only the living player ever starts any of this — pushing a branch head to war, declaring war as a branch head,
+or seceding outright. No NPC branch acts on its own (that stays M4's living-world job); the player's own line
+is always the one in motion, and always the attacker in a war (never the defending main line).
+- **War strength:** `_lineStrength(clan, line)` sums `_fightPower` (the same stage×100 + root×10 + personality
+  + luck formula every fight in 2.6c–e uses) over a line's living, non-estranged adults — you included, via
+  `_selfAsPerson()`. Any OTHER line (a third branch, uninvolved in the war) rolls a side — 1/3 attacker · 1/3
+  defender · 1/3 stays out — and lends `BRANCH_WAR_ALLY_LINE_SHARE` (half) of its own strength if it picks one;
+  a log line names who backed whom. Win odds are the same logistic every fight uses, just over aggregate power
+  and a wider spread (`BRANCH_WAR_SPREAD` 260 vs. a 1v1 fight's `TOURNAMENT_SPREAD` 80).
+- **The losing side's head** (never the player when the defending main line loses — the player is only ever the
+  attacker) is deposed unless a flat roll (`BRANCH_WAR_DEATH_CHANCE` 0.35, + a bonus if the clan's own tradition
+  already runs bloody) kills them instead. Deposed-but-alive → `role: 'elder'`. Either way the line needs a new
+  head: the strongest other living adult in that same line takes it over (`role: 'branch_head'` — the loser's
+  line is, by definition, never the one that ends up leading the clan, even a demoted old main line), mirroring
+  `_installHead`'s own branch-demotion pattern. If the loser is the PLAYER's own declared war and they die,
+  `_die('branch_war')` runs last, once every other consequence (new line heads, the swap below) is already
+  committed — same ordering discipline 2.6e's step-down tournament uses.
+- **Win → your branch becomes the new main line:** `clan.lines[0]` is swapped with your line; the OLD main line
+  is simply relabeled (a fresh `BRANCH_NAMES` pick) rather than removed — no new line is ever created by a war,
+  only by secession. `clan.headId` moves to your line's head. A war death (either side) bumps
+  `clan.tradition.lethalTournaments`; a bloodless one bumps `peacefulSuccessions` — the same fields 2.6c/e
+  already read for the "bloody clan" bias, so a clan that has fought and lost bloody branch wars runs hotter
+  everywhere else too (lethality rolls, step-down chance).
+- **Push vs. declare:** a branch MEMBER (not its head) can only *push* — `_branchHeadWarWill(head, clan, atk,
+  def)` is the NPC branch head's own call (personality base weight + how the numbers look, clamped to ±1 ×
+  `BRANCH_WAR_WILL_STRENGTH_MULT` + a bloody-tradition bonus), so a head who thinks they'd lose usually declines
+  (cooldown, no war fought, no tally). A branch HEAD can *declare* outright — it's their own decision, no NPC
+  will-check. **Either way, "you become head if you lead it"**: winning as a mere pusher never makes YOU head —
+  your NPC branch head leads the win and keeps the seat; only declaring (you already ARE that line's head)
+  puts you in the clan headship on a win.
+- **Secede** (branch head only, no fight, no cooldown): `_foundClan` makes a brand-new clan from a rolled
+  surname (distinct from the old one); your whole branch LINE (not just you) moves over as its new main line.
+  The relation between old and new clan (`clan.relations`, both directions) reads `SECESSION_RELATION_BASE` (a
+  little goodwill even on a flat parting) + `(bond with the head you left − 50) × SECESSION_RELATION_BOND_MULT`
+  + `_selfMorality() × SECESSION_RELATION_MORALITY_MULT` — a fond, righteous exit reads very differently from a
+  cold, ruthless one. `world.playerClanId`/`playerLineId` move to the new clan (the slot follows it); the old
+  clan keeps living in the world, unaffected otherwise. Deliberately does **not** feed `world.enemies` (the rare
+  rival-rebirth mechanic) — that mechanism rolls a fresh surname-based rival clan on its own and would produce
+  a second, disconnected clan rather than reusing the one you actually just split from; `clan.relations` is the
+  correct, already-built mechanism the spec calls for here.
+- **Shared machinery:** `_branchInfo()` (your line, whether it's the main line, whether you head it),
+  `_lineStrength`, `_branchAllies`, `_branchHeadWarWill`, `_branchWarBusy()` (a running Tournament of Heirs /
+  pending challenge / pending step-down offer blocks all three — same "busy" gate `chooseHeir` uses), and
+  `_resolveBranchWar(clan, attackerLine)` — the one instant-resolution core both `pushBranchWar()` (after the
+  NPC head agrees) and `declareBranchWar()` call. `_selfMorality()` is new too (the live version of the formula
+  `_recordLifeInWorld` already snapshots at death).
+- **UI:** Stats, inside the existing "not head" clan block — only when your line isn't the main line: a
+  "Branch Strength" preview row (`branchWarPreview()`: your line's power vs. the main line's), then either
+  "Push for War" (member) or "Declare War on the Main Line" + "Secede — Found a New Clan" (branch head), each
+  behind the existing generic confirm dialog. No new overlay markup — every outcome resolves at once and shows
+  up as `addEvent` log lines + a `flashMessage` toast, exactly like a challenge.
+- **Known gap:** a player deposed from their own branch's headship (a lost declared war, survived) has no
+  built path back to reclaiming it — there's no "branch step-down" equivalent. Left for a later pass if it
+  turns out to matter; the player can still push wars for *someone else's* headship as a plain member instead.
+- **Sim:** `scripts/sim/bot.js` — 'active' plays a branch head aggressively (declares once favored by
+  `branchWarPreview()`, secedes occasionally otherwise as casual/afk do too); a branch member pushes rarely,
+  every profile exercising both paths without every branch life turning into a war. New `family.tally` fields
+  `branchWars`/`branchWarsWon`/`secessions` (flow into the "Clan Politics" report table and
+  `lastReincarnation.familyTally` automatically, no new plumbing). Invariants: `clan_relation_range` (every
+  `clan.relations` value stays −100…100), `branch_war_tally_mismatch`, `branch_war_cooldown_invalid`. Scenario
+  checks: `scripts/sim/checks/succession.js` (+33: gating for main-line/member/head/cooldown/busy, a won and a
+  lost branch war with survival, a lost branch war with death, a refused and an accepted push — including the
+  "pushing never makes YOU head" case — and a full secession).
+- **Evidence:** `npm test` (59 files), `npm run checks` (222, was 189). Full `npm run sim --hours=200 --seeds=2`:
+  0 errors/0 violations, 50 save round-trips; branch wars fired for real in every profile (active declared once;
+  afk pushed once) without being forced. `npm run build:web`, `npm run dist`.

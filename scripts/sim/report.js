@@ -292,13 +292,13 @@ function buildReport(runs, args) {
   L.push(``)
   // clan-succession.md 2.6e: challenging the head, being challenged as head, step-down mass tournaments —
   // all resolved mid-life, so these are per-life tallies same as the Family table above.
-  L.push(`## Clan Politics — challenges + step-down tournaments (${longest}h runs; totals over all lives)`)
-  L.push(`| Profile | Lives | Challenges (won/lost) | Step-downs joined (won) |`)
-  L.push(`|---|---|---|---|`)
+  L.push(`## Clan Politics — challenges + step-down tournaments + branch wars (${longest}h runs; totals over all lives)`)
+  L.push(`| Profile | Lives | Challenges (won/lost) | Step-downs joined (won) | Branch wars (won) | Secessions |`)
+  L.push(`|---|---|---|---|---|---|`)
   for (const p of profiles) {
     const lives = group(p, longest).flatMap(r => r.lifeLoop?.lifeLengths || [])
     const T = k => lives.reduce((a, l) => a + (l.tally?.[k] || 0), 0)
-    L.push(`| ${p} | ${lives.length} | ${T('challenges')} (${T('challengesWon')}/${T('challengesLost')}) | ${T('stepDowns')} (${T('stepDownWon')}) |`)
+    L.push(`| ${p} | ${lives.length} | ${T('challenges')} (${T('challengesWon')}/${T('challengesLost')}) | ${T('stepDowns')} (${T('stepDownWon')}) | ${T('branchWars')} (${T('branchWarsWon')}) | ${T('secessions')} |`)
   }
   L.push(``)
   // 2.6d: what happened between lives
