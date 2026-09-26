@@ -15,6 +15,12 @@
   --purple:  #9070C8;
   --border:  #2A1A10;
   --font:    "Courier New", Consolas, monospace;
+  /* Shared surfaces (1.7b review): raised control backgrounds, floating panels, scrollbar thumbs */
+  --btn-bg:  rgba(24,10,4,.8);
+  --panel:   rgba(18,9,28,0.97);
+  --scroll:  #4A3A28;
+  --dim-hi:  #A89878;   /* secondary text that must stay readable at 10–11px (meta lines) */
+  --red-text: color-mix(in srgb, var(--red) 72%, #fff);   /* red that stays legible as small text on dark */
   /* Banter speech bubble (Phase 29). Review score: 8.1 */
   --bubble-bg:     rgba(28,16,34,0.95);
   --bubble-border: #C8B890;
@@ -43,8 +49,8 @@ body {
 ══════════════════════════════════════════════════════════════════════════ */
 
 #charselect {
-  width: 300px;
-  height: 600px;
+  width: 100vw;    /* Phase 6E: fills whatever size the layout mode gave the window (main.js boundsFor) */
+  height: 100vh;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -233,8 +239,9 @@ body {
 ══════════════════════════════════════════════════════════════════════════ */
 
 #app {
-  width: 300px;
-  height: 600px;
+  position: relative;
+  width: 100vw;    /* Phase 6E: the window size comes from the layout mode (main.js); see "Layout modes" below */
+  height: 100vh;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -332,7 +339,7 @@ body {
 
 #stage-block {
   flex-shrink: 0;
-  padding: 7px 12px 4px;
+  padding: 5px 12px 2px;
   text-align: center;
 }
 
@@ -352,15 +359,18 @@ body {
 #stage-desc {
   font-size: 10px;
   color: var(--dim);
-  margin-top: 2px;
+  margin-top: 1px;
   font-style: italic;
+  white-space: nowrap;      /* Phase 6E compact top: one line, full text in the title tooltip */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Qi bar ─────────────────────────────────────────────────────────────── */
 
 #qi-block {
   flex-shrink: 0;
-  padding: 3px 12px 7px;
+  padding: 2px 12px 4px;
 }
 
 #qi-labels {
@@ -394,8 +404,21 @@ body {
   text-align: right;
   font-size: 11px;
   color: var(--jade);
-  margin-top: 2px;
+  margin-top: 1px;
 }
+
+/* ── Vitals row (Phase 6E compact top): Integrity · Health · Age side by side ── */
+
+#vitals {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  padding: 0 12px 6px;
+}
+#vitals > div { padding: 0; min-width: 0; }
+#vitals .lbl, #vitals span { white-space: nowrap; }
+#age-labels { gap: 5px; }
 
 /* ── Integrity bar ──────────────────────────────────────────────────────── */
 
@@ -496,7 +519,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 5px;
-  padding: 0 10px 7px;
+  padding: 0 10px 6px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;
 }
@@ -508,12 +531,15 @@ body {
   border-radius: 4px;
   font-family: var(--font);
   font-size: 11px;
-  padding: 6px 3px;
+  padding: 4px 6px;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
+  /* Phase 6E compact top: icon on the left spanning both lines, name over sub (was a 3-row column) */
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
   align-items: center;
-  gap: 2px;
+  text-align: left;
   transition: border-color .12s, background .12s, box-shadow .12s;
 }
 
@@ -552,7 +578,7 @@ body {
   50%      { box-shadow: 0 0 20px rgba(255,152,0,0.75) }
 }
 
-.act-icon { font-size: 15px; }
+.act-icon { font-size: 15px; grid-row: 1 / 3; }
 .act-name { font-weight: bold; font-size: 12px; }
 .act-sub  { font-size: 10px; color: var(--dim); }
 
@@ -586,6 +612,7 @@ body {
 
 #tab-body {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   -webkit-app-region: no-drag;
 }
@@ -1872,3 +1899,345 @@ body {
 #tournament-log { font-size: 10px; color: var(--dim); text-align: left; max-height: 120px; overflow-y: auto; }
 #tournament-log div { margin: 2px 0; }
 #tournament-log .died { color: var(--red); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LAYOUT MODES (Phase 6E, roadmap 1.7) — docs/systems/ui-layout.md → "Layout modes"
+   body[data-layout] = overlay (default, 300×700) · expanded (640 wide, two columns) · desktop (resizable,
+   two columns; also the iOS/browser layout, one column when narrow) · banner (full-width strip at a screen edge).
+   main.js sizes the window; everything visual lives here. No JS branching in render functions.
+══════════════════════════════════════════════════════════════════════════ */
+
+#hud {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+#main-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#banner-info, #banner-btns, #resize-grip { display: none; }
+
+/* ── Expanded + Desktop: cultivator column left, tabs right ─────────────── */
+
+body[data-layout="expanded"] #app,
+body[data-layout="desktop"] #app {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  grid-template-rows: auto 1fr;
+}
+body[data-layout="expanded"] #titlebar,
+body[data-layout="desktop"] #titlebar { grid-column: 1 / -1; }
+body[data-layout="expanded"] #hud,
+body[data-layout="desktop"] #hud {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid var(--border);
+}
+body[data-layout="expanded"] #main-pane,
+body[data-layout="desktop"] #main-pane { min-height: 0; min-width: 0; }
+/* The tab bar no longer shares 300px with anything: bigger, easier targets */
+body[data-layout="expanded"] #tabs,
+body[data-layout="desktop"] #tabs { border-top: none; }
+body[data-layout="expanded"] .tab,
+body[data-layout="desktop"] .tab { font-size: 11px; padding: 8px 0; }
+body[data-layout="expanded"] .panel,
+body[data-layout="desktop"] .panel { padding: 10px 14px; }
+body[data-layout="expanded"] #stage-desc,
+body[data-layout="desktop"] #stage-desc { white-space: normal; }
+
+body[data-layout="desktop"] #app { grid-template-columns: 320px 1fr; }
+body[data-layout="desktop"] #resize-grip {
+  display: block;
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--dim);
+  cursor: nwse-resize;
+  -webkit-app-region: no-drag;
+  z-index: 5;
+}
+body[data-layout="desktop"] #resize-grip:hover { color: var(--gold); }
+
+/* iOS / narrow browser: desktop layout falls back to a single column */
+@media (max-width: 599px) {
+  body[data-layout="desktop"] #app { display: flex; flex-direction: column; }
+  body[data-layout="desktop"] #hud { border-right: none; overflow: visible; }
+  body[data-layout="desktop"] #resize-grip { display: none; }
+}
+
+/* ── Banner: one strip, like a taskbar ──────────────────────────────────── */
+
+body[data-layout="banner"] #app {
+  flex-direction: row;
+  align-items: center;
+  border-radius: 0;
+}
+body[data-layout="banner"] #titlebar,
+body[data-layout="banner"] #main-pane,
+body[data-layout="banner"] #vitals,
+body[data-layout="banner"] #stage-desc,
+body[data-layout="banner"] #meditate-badge { display: none; }
+body[data-layout="banner"] #hud {
+  flex: 1;
+  height: 100%;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 0 8px 0 4px;
+  min-width: 0;
+}
+body[data-layout="banner"] #sprite-wrap { border-bottom: none; background: none; }
+body[data-layout="banner"] #stage-block { padding: 0; text-align: left; white-space: nowrap; }
+body[data-layout="banner"] #stage-realm { font-size: 12px; letter-spacing: 1px; }
+body[data-layout="banner"] #stage-layer { font-size: 10px; margin-top: 1px; }
+body[data-layout="banner"] #qi-block { flex: 1; min-width: 140px; max-width: 360px; padding: 0; }
+body[data-layout="banner"] #qi-labels { margin-bottom: 2px; font-size: 10px; }
+body[data-layout="banner"] #qi-rate { font-size: 10px; margin-top: 1px; }
+body[data-layout="banner"] #banner-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+body[data-layout="banner"] #banner-stones { color: var(--text); }
+body[data-layout="banner"] #banner-exp.active { color: var(--jade); }
+body[data-layout="banner"] #actions { padding: 0; gap: 6px; grid-template-columns: auto auto; }
+body[data-layout="banner"] .act-btn { padding: 3px 8px; min-width: 120px; }
+body[data-layout="banner"] #banner-btns { display: flex; margin-left: auto; -webkit-app-region: no-drag; }
+body[data-layout="banner"] #btn-unbanner { width: 30px; height: 30px; font-size: 14px; }
+
+/* Titlebar ▭ button: shown only while peeking out of banner mode (returns to the strip) */
+#btn-layout.peek { color: var(--jade); border-color: var(--jade); }
+
+/* ── Layout picker ──────────────────────────────────────────────────────── */
+
+#layout-picker {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,4,14,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+#layout-box {
+  background: var(--bg2);
+  border: 1px solid var(--gold);
+  border-radius: 5px;
+  width: min(270px, calc(100vw - 24px));
+  max-height: 92%;
+  overflow-y: auto;
+  padding: 10px;
+}
+#layout-title { font-size: 12px; color: var(--gold); letter-spacing: 1px; margin-bottom: 8px; text-align: center; }
+.layout-opt {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  column-gap: 8px;
+  width: 100%;
+  margin-bottom: 5px;
+  padding: 6px 8px;
+  background: rgba(24,10,4,.8);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .1s, background .1s;
+}
+.layout-opt:hover  { border-color: var(--dim); }
+.layout-opt.active { border-color: var(--gold); background: rgba(237,208,80,0.1); }
+.layout-opt-icon { grid-row: 1 / 3; font-size: 16px; color: var(--gold); align-self: center; text-align: center; }
+.layout-opt-name { font-size: 12px; }
+.layout-opt.active .layout-opt-name { color: var(--gold); }
+.layout-opt-desc { font-size: 10px; color: var(--dim); margin-top: 1px; }
+#layout-edge { margin-top: 4px; }
+#layout-hint { font-size: 9px; color: var(--dim); text-align: center; margin-top: 8px; }
+
+/* One-time hint pointing at the new ▣ button (first launch after 1.7) */
+#layout-tip {
+  position: fixed;
+  top: 34px;
+  right: 8px;
+  max-width: 200px;
+  background: var(--bubble-bg);
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-size: 10px;
+  color: var(--text);
+  z-index: 205;
+  cursor: pointer;
+}
+
+/* ── Banner quick actions (1.7b) — ⚔ ⛰ ⚒ 📜 dropdowns on the strip; see renderer/game/banner-menus.js ── */
+
+/* The window grows while a menu is open: the strip stays pinned to its screen edge, the rest is see-through */
+body[data-layout="banner"] #app { position: fixed; left: 0; right: 0; top: 0; height: 56px; }
+body[data-layout="banner"][data-edge="bottom"] #app { top: auto; bottom: 0; }
+
+#banner-quick { display: none; }
+body[data-layout="banner"] #banner-quick { display: flex; gap: 6px; -webkit-app-region: no-drag; }
+
+.bq-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 9px;
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color .12s, background .12s, box-shadow .12s;
+}
+.bq-btn:hover { border-color: var(--gold); box-shadow: 0 0 8px rgba(237,208,80,0.18); }
+.bq-btn.ready { border-color: rgba(237,208,80,0.45); }
+.bq-btn.busy  { color: var(--jade); border-color: rgba(48,184,120,0.45); }
+.bq-btn.open  { color: var(--gold); border-color: var(--gold); background: rgba(237,208,80,0.12); }
+.bq-icon  { font-size: 13px; color: var(--gold); text-shadow: 0 0 6px rgba(237,208,80,0.35); }
+.bq-btn.busy .bq-icon { color: var(--jade); text-shadow: 0 0 6px rgba(48,184,120,0.4); }
+.bq-dot   { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+.bq-badge {
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: rgba(237,208,80,0.18);
+  color: var(--gold);
+  font-size: 10px;
+  text-align: center;
+}
+.bq-caret { color: var(--dim); font-size: 9px; }
+
+#banner-menu {
+  position: fixed;
+  top: 60px;
+  width: 360px;
+  max-height: 368px;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(40,24,52,0.97), var(--panel) 45%);
+  border: 1px solid rgba(237,208,80,0.55);
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.75), 0 0 18px rgba(237,208,80,0.08), inset 0 0 0 1px rgba(237,208,80,0.12);
+  z-index: 150;
+  animation: bmDrop .14s ease-out;
+  -webkit-app-region: no-drag;
+}
+body[data-edge="bottom"] #banner-menu { top: auto; bottom: 60px; }
+@keyframes bmDrop { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
+
+.bm-head { padding: 9px 12px 4px; }
+/* ◆ divider under the header: gold hairlines fading out to both sides */
+.bm-orn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px 2px;
+  color: var(--gold); font-size: 8px; text-shadow: 0 0 6px rgba(237,208,80,0.6);
+}
+.bm-orn::before, .bm-orn::after { content: ''; flex: 1; height: 1px; }
+.bm-orn::before { background: linear-gradient(90deg, transparent, rgba(237,208,80,0.45)); }
+.bm-orn::after  { background: linear-gradient(90deg, rgba(237,208,80,0.45), transparent); }
+.bm-title   { font-size: 12px; color: var(--gold); letter-spacing: 1px; text-shadow: 0 0 8px rgba(237,208,80,0.3); }
+.bm-titlecn { font-size: 10px; color: var(--dim); }
+.bm-sub     { font-size: 10.5px; color: var(--dim-hi); margin-top: 3px; line-height: 1.4; }
+.bm-sub b   { color: var(--gold); font-weight: normal; }
+.bm-live    { color: var(--jade); }
+
+.bm-chips { display: flex; flex-wrap: nowrap; justify-content: space-between; gap: 3px; padding: 7px 10px 3px; }
+.bm-chip {
+  flex-shrink: 0;
+  min-height: 24px;
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--dim);
+  font-family: var(--font);
+  font-size: 10px;
+  padding: 3px 5px;
+  cursor: pointer;
+}
+.bm-chip:hover  { color: var(--text); border-color: var(--dim); }
+.bm-chip.active { color: var(--gold); border-color: var(--gold); background: rgba(237,208,80,0.12); }
+.bm-chip-n      { color: var(--jade); }
+
+.bm-list {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 6px 14px;
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 22px), transparent);   /* fades: "there's more below" */
+          mask-image: linear-gradient(#000 calc(100% - 22px), transparent);
+}
+.bm-list::-webkit-scrollbar       { width: 6px }
+.bm-list::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 3px }
+
+.bm-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 2px;
+  width: 100%;
+  padding: 6px 8px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font);
+  text-align: left;
+  cursor: default;
+}
+.bm-row + .bm-row { border-top-color: rgba(42,26,16,0.6); }
+.bm-row.can { cursor: pointer; }
+.bm-row.can:hover { border-color: var(--gold); background: rgba(237,208,80,0.07); }
+.bm-row.locked .bm-name { color: var(--dim); }
+.bm-row.active { border-left: 2px solid var(--jade); }
+.bm-name { font-size: 12px; }
+.bm-cn   { font-size: 10px; color: var(--dim); white-space: nowrap; }
+.bm-side { font-size: 11px; text-align: right; white-space: nowrap; align-self: center; }
+.bm-row.locked .bm-side { white-space: normal; max-width: 190px; font-size: 10px; color: var(--dim); }
+.bm-side.go   { color: var(--gold); }
+.bm-side.dim  { color: var(--dim); }
+.bm-side.live { color: var(--jade); }
+.bm-x     { color: var(--red-text); }
+.bm-seal  {   /* 封 "sealed" stamp in front of a lock reason */
+  display: inline-block; color: var(--red-text); border: 1px solid currentColor; border-radius: 2px;
+  font-size: 9px; line-height: 1; padding: 1px 2px; vertical-align: 1px;
+}
+.bm-stone { color: var(--gold); }
+.bm-meta { grid-column: 1 / -1; font-size: 11px; color: var(--dim-hi); line-height: 1.45; }
+.bm-part { white-space: nowrap; }
+.bm-desc { grid-column: 1 / -1; font-size: 10.5px; color: var(--dim); line-height: 1.4; font-style: italic; }
+.bm-sep  { color: var(--dim); }
+.bm-gain { color: var(--jade); }
+.bm-tier { color: var(--purple); }
+.bm-have  { color: var(--jade); }
+.bm-miss  { color: var(--red-text); }
+.bm-owned { color: var(--jade); }
+.bm-eff   { color: var(--purple); }
+.bm-empty { font-size: 11px; color: var(--dim); text-align: center; padding: 18px 8px; font-style: italic; }
+
+/* Banner: the strip's own controls read as one family — glyph marks, no mixed full-color emoji icons.
+   Toasts sit in the strip's empty right side (left of ⬡) so they never cover a control. */
+body[data-layout="banner"] .act-icon { display: none; }
+body[data-layout="banner"] .act-btn  { grid-template-columns: 1fr; }
+body[data-layout="banner"] #_toast {   /* same shape as a .bq-btn so it reads as part of the strip */
+  top: 28px !important; bottom: auto !important; left: auto !important; right: 52px !important;
+  transform: translateY(-50%) !important; height: 34px; display: flex; align-items: center;
+  background: var(--btn-bg) !important; font-size: 11px !important;
+  max-width: min(520px, 36vw); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+body[data-layout="banner"] .act-sub { font-size: 10px; color: var(--dim-hi); }
+body[data-layout="banner"] .act-btn:disabled { opacity: .45; border-style: dashed; }
+body[data-layout="banner"][data-edge="bottom"] #_toast { top: auto !important; bottom: 28px !important; transform: translateY(50%) !important; }

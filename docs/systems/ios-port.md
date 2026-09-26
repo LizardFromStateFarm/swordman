@@ -107,6 +107,9 @@ each other, just waiting on credentials/accounts that only a human can create.
   On an iPhone screen this currently renders as a small fixed-size box, not full-screen. Needs a
   real responsive/mobile-layout pass — deliberately deferred, not part of this plumbing work. This
   is the single biggest remaining chunk of actual "port" work.
+  **Partly addressed by Phase 6E (2026-09-26):** `#app` now fills the viewport (100vw × 100vh) and the shim's
+  `getLayout()` answers `desktop`, whose CSS drops to one column under 600px wide. Not yet checked on a real
+  phone (no Mac); overlays and tab contents are still tuned for ~300px.
 - **This machine's `NODE_ENV` is set to `production` globally.** That makes `npm install` silently
   skip all `devDependencies` — which is where `electron`, `electron-builder`, AND all three
   `@capacitor/*` packages live. A plain `npm install` here will silently strip them back out of

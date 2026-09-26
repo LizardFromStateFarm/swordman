@@ -150,11 +150,14 @@ health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 
 ## Real-app smoke (`scripts/smoke/`)
 `node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` launches the real Electron app against a throwaway
 `--user-data-dir` (never your real slots), drives it over the Chrome DevTools Protocol (`ev` / `click` / `wait` /
-`shot` / `assert`), fails on any console error or uncaught exception, and writes screenshots to `scripts/smoke/out/`
+`shot(name, clip?)` / `assert`; `clip {x,y,width,height}` crops a close-up), fails on any console error or uncaught exception, and writes screenshots to `scripts/smoke/out/`
 (gitignored). Use it for UI changes the headless sim can't see. Scenarios:
 | File | Covers |
 |---|---|
 | `scenarios/succession.js` | 2.6d — death card → heir bet → reign chronicle → clan birth → birth card; Stats clan rows + Clan Chronicle; upbringing card; a mid-interlude save resumed from the character select. Also 2.6e — the Challenge the Head button + confirm dialog, an NPC challenging you as head (family-overlay lethal/non-lethal card), a step-down mass tournament (family-overlay join/decline card). Also 2.6f — Stats branch strength preview, Declare War (a branch head), Push for War (a branch member), Secede (founds a new clan, the slot follows it) |
+| `scenarios/layout-modes.js` | ui-layout.md → Layout modes (1.7) — each mode's real window size + data-layout, pin per mode, Desktop resize IPC, banner readouts, popup auto-peek + return, ⬡ / ↩ Back to the banner, the character select never a strip, Continue restores the banner |
+| `scenarios/banner-menus.js` | ui-layout.md → Banner quick actions (1.7b) — Sect Elder in banner mode: each of the four dropdowns opens and grows the window, one real action per menu (mission, expedition, craft, learn), category chips, Esc shrinks back; writes the close-ups the Visual Review Gate reviewer reads |
+| `scenarios/ux-audit.js` | ui-layout.md → UX Audit (1.8a) — loads the Sect Elder + Sect Founder dev presets, screenshots every tab + ⚙/Hall overlays (`out/ux-*.png`) and prints chrome heights + per-tab content height / screens-of-scroll / control count / min font. Rerun after layout/UI work for before/after |
 
 ## Scenario checks (`scripts/sim/checks/`, `npm run checks`)
 The sim only sees what the bot happens to do. Scenario checks force a specific situation through the same

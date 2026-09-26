@@ -50,5 +50,13 @@ if (!window.electron) {
     updateTrayInfo: () => {},
     notify: () => {},
     onRequestSave: () => {},
+
+    // Phase 6E layout modes: a phone/browser has no window to resize or pin, so it always uses the full-screen
+    // 'desktop' layout (which reflows to one column when narrow) and the mode picker hides itself
+    // (supported: false). See docs/systems/ui-layout.md → "Layout modes".
+    getLayout: async () => ({ mode: 'desktop', current: 'desktop', bannerEdge: 'top', supported: false }),
+    setLayout: async () => ({ mode: 'desktop', bannerEdge: 'top', pinned: true }),
+    resizeWindow: () => {},
+    bannerMenu: () => {},
   }
 }

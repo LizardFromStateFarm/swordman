@@ -21,8 +21,15 @@ New files:  [if any]
 Complexity: Low | Medium | High | Very High
 Model rec:  Haiku | Sonnet | Opus
 Reason:     [one line]
+Depth:      [gameplay tasks: Design Depth Pass summary; else "n/a"]
+UX:         [player-facing tasks: surface / interact / discover / layout modes / UX debt; else "n/a"]
+Review:     [visible change → visual review gate (what gets screenshotted, which modes); else "n/a"]
 ───────────────────────────────────────
 ```
+
+UI/UX is a first-class deliverable. Every player-facing task does the **UX Pass** in `CLAUDE.md`. Per-task
+testing is lightweight (`npm test` + `npm run checks` + look at it in the app). Sim, dist, smoke runs and new
+checks happen in each feature's **QA & Balance** task (`CLAUDE.md` → Documentation Rules).
 
 Low = doc/config/CSS tweak → Haiku
 Medium = single-system feature, 1–3 files → Sonnet
@@ -39,9 +46,11 @@ ASCII art rendered via colored characters on canvas (no image files).
 Read `CLAUDE.md` before touching any file. Read `START_HERE.md` for session context.
 Read `docs/index.md` to find the system doc for whatever you're modifying.
 
-## Visual assets
+## Visual assets and UI
 All new or modified sprites MUST pass the two-agent Asset Pipeline in `.agents/rules/assets.md`.
-Minimum review score: 8.0 / 10. No exceptions.
+All UI changes MUST pass the Visual Review Gate in `.agents/rules/ui-review.md`: a fresh reviewer agent scores
+real screenshots 0–10 (0 garbage … 10 "can't believe it's CSS and ASCII art"). Minimum 8.0 / 10, no criterion
+below 6. No exceptions.
 
 ## Code style
 - Vanilla ES6+ only — no frameworks, no bundlers, no transpilers.

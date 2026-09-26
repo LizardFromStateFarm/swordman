@@ -65,7 +65,8 @@ When an older design section below conflicts with these, the pillars win. The se
 | 21 | Backpack & Inventory tab | ✅ | M1 |
 | 22 | Active / Idle toggle + automation | ✅ | M1 |
 | 32 | War Standing Orders (absence never punished) | ✅ | M1 |
-| 6E | Window & layout modes | ⬜ | M1 (optional) |
+| 6E | Window & layout modes | ✅ (2026-09-26, task 1.7) | M1 |
+| 33 | UI/UX Overhaul (system info + interaction audit, main interaction area out of the bottom strip) | ⬜ | M1 — **priority, next** (user 2026-09-26) |
 | 30 | Lifespan & Game Time (寿元 · 岁月) | ◐ (game clock + lifespan, Final Seclusion/Pass the Mantle — task 2.3; pacing compression — task 2.4) | M2 |
 | 31 | Ancestral Hall & Clan Legacies (祖祠) — meta progression; absorbs 8 and 18B | ⬜ | M2 |
 | 16 (lite) | Marriage & children, lite version (spouse/child as person records) | ⬜ | M2 |
@@ -121,7 +122,18 @@ When an older design section below conflicts with these, the pillars win. The se
 | 1.4 ✅ | War Standing Orders: calls are answered by a preset order, and being present only adds optional choices | 32 | — | Sim: afk/casual war outcomes within ~10% of active; the "missed war window" flags are retired |
 | 1.5 ✅ | Backpack tab + item `category` field | 21 | — | All items visible with filters; stones delta indicator |
 | 1.6 ✅ | Active / Idle toggle + staged automation unlocks | 22 | 1.1 | Bot uses automation; sim shows afk/casual actions/h up |
-| 1.7 | *(optional)* Window & layout modes | 6E | 1.1 | 4 modes CSS-only off `data-layout` |
+| 1.7 ✅ | **Window & layout modes** (built 2026-09-26; as-built in ui-layout.md → Layout modes). Diverged from the 6E spec: mode is app-wide in window.json (not `settings.layoutMode`), banner is 56px (not 120), Expanded is 640×720, Desktop keeps the themed titlebar + a ◢ grip, popups auto-peek out of banner | 6E | 1.1 | 4 modes CSS-only off `data-layout`; mode switch in titlebar; persists |
+| 1.8a ✅ | **UX audit** (done 2026-09-26; user approved all 4 priorities, see ui-layout.md → "User decisions on the audit") (first step of the overhaul, before any layout work): for each system, list what state the player can't see or understand, and what they can't act on (or can only act on awkwardly). Output: `docs/systems/ui-layout.md` → "UX Audit" table + START_HERE "UX Debt" | 33 | — | User reviews the audit and picks priorities |
+| 1.7b ✅ | **Banner quick actions** (user 2026-09-26; Visual Review Gate 6.2 after 3 cycles → **user accepted it as-is**; the strip itself gets polished in 1.8b): ⚔ Missions · ⛰ Explore · ⚒ Craft · 📜 Learn as dropdowns on the banner strip; the window grows while a menu is open | 6E | 1.7 | All four act without leaving banner mode; passes the Visual Review Gate |
+| 1.8c | **Visual design review of everything that already exists** (user 2026-09-26): run the Visual Review Gate (`.agents/rules/ui-review.md`) on every screen, in every layout mode (charselect, each tab, every overlay, banner) and on every sprite state. Baseline scores go in `docs/systems/ui-review.md`; anything under 8.0 gets its reviewer's top fixes logged as 1.8b work items (sprites under 8.0 → Asset Pipeline revisions) | 33 | 1.7b | Every existing screen + sprite has a baseline score; the fix list feeds 1.8b |
+| 1.8b | **UI overhaul**: move the main interaction area out of the ~169px bottom tab strip; tab navigation that scales past 7 tabs; per-system info panels and breakdowns from 1.8a; keep the ethereal style | 33 | 1.7, 1.8a, 1.8c | Every system in the audit has visible state and reachable actions in Overlay, Expanded, Desktop; Banner shows the essentials; **every reworked screen scores ≥ 8.0** in the Visual Review Gate |
+| 1.9 | **QA & Balance: layout modes + UI overhaul** (CLAUDE.md → QA & Balance): smoke every mode, UX walkthrough, dist + build:web | — | 1.8b | Zero console errors in all modes; iOS bundle builds |
+
+> **Priority change (2026-09-26, user):** 1.7–1.9 jump ahead of M2 task 2.8. The game now has many systems the
+> player can't read or interact with well, and the main interaction happens in the smallest part of the window.
+> From now on every task also does the **UX Pass** (CLAUDE.md). Per-task testing is lightweight; heavy testing and
+> tuning are batched into QA & Balance tasks like 1.9 and 2.8. **Order: 1.8a (audit) ✅ → 1.7 (layout modes) ✅ → 1.7b
+> (banner quick actions) → 1.8c (visual review of everything existing) → 1.8b → 1.9 → 2.8.** The audit comes first so the Expanded/Desktop layouts are designed around what actually needs room.
 
 > The old optional task "Immortal ladder filled by Qi (23D-lite)" was cut. The M2 Ascended-Ancestor ending
 > (task 2.7) fixes the dead zone in a way that fits the pillars.
@@ -143,7 +155,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 2.6e ✅ | Challenge the head (head decides lethality), challenges when you're head, step-down mass tournament | — | 2.6d | all paths reachable in sim |
 | 2.6f ✅ | Branch wars, secession → new clan, clan relations (rival/ally) | — | 2.6e | seceded clan persists in the world |
 | 2.7 ✅ | **Ancestral Hall + Clan Legacies** (plan reconciled 2026-09-26 with the 2.6 world/clan model — see clan-succession.md §2.7; sub-tasks 2.7a–f all built): family tree view (reads world.pastLives/persons), Ancestral Merit earned per life onto the real Clan object, unlocks (heirlooms, family manual, clan legacies — sect_continuity cut, already free via 2.6d), **ancestral catch-up**, **Ascended Ancestor** ending (attemptAscension() routes through `_die`/the interlude instead of leaving the character idle at the stub stage — confirmed fixed: active's life count over 200h went ~10 → 163). Cuts Phase 8's Dao Seeds | 31, 8, 18B | 2.6 | Gen 2+ reaches the family best faster; the sim's post-Ascension dead zone is gone; bot spends Merit |
-| 2.8 | Tuning pass: generations to first Ascension ~3–5, meta progression feels meaningful, Merit sinks | 30, 31 | 2.7 | `npm run sim` 500h+ horizon: first Ascension ≈ 40–80h casual |
+| 2.8 | **QA & Balance (M2)**: tuning pass: generations to first Ascension ~3–5, meta progression feels meaningful, Merit sinks | 30, 31 | 2.7 | `npm run sim` 500h+ horizon: first Ascension ≈ 40–80h casual |
 
 ### M3 — Character foundation (the rolls every generation and NPCs reuse)
 
@@ -2785,10 +2797,10 @@ The player can choose how the game sits on their screen. Mode is stored in `sett
 
 | Mode | Description | Window Size | Always-on-top |
 |------|-------------|-------------|---------------|
-| Overlay (default) | Narrow side-panel, current behavior | 300 × 700 px | Yes |
+| Overlay (default) | Narrow side-panel, **the active-play mode** (user 2026-09-26): taller than the old 300×600, with a compacted top section so the tab area gets real room | 300 × 700 px | Yes |
 | Expanded | Wider panel; two-column tab layout, more content visible at once | 480 × 800 px | Yes |
 | Desktop | Full resizable window, standard OS chrome, taskbar presence | 700 × 900 px min | No |
-| Banner | Horizontal strip pinned to top or bottom of screen; sprite left, key stats right, no tabs — just the essentials at a glance | Full screen width × 120 px | Yes |
+| Banner | **The "while gaming" mode** (user 2026-09-26): a taskbar-like strip pinned to the top (default) or bottom of the screen; sprite left, key stats right, no tabs — just the essentials at a glance | Full screen width × 120 px | Yes |
 
 **Banner mode specifics:**
 - Shows: sprite (40×80 canvas), cultivation stage label, Qi bar, Qi/s, spirit stones, active expedition timer (if running), breakthrough button when ready.

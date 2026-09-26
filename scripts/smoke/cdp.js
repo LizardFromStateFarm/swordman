@@ -5,7 +5,7 @@
 // A scenario exports `async ({ ev, click, wait, shot, assert }) => {}`:
 //   ev(expr)        — evaluate a JS expression in the page (awaits promises, returns by value)
 //   click(selector) — click the first match (throws if none)   · wait(expr, ms) — poll until expr is truthy
-//   shot(name)      — PNG into the output folder (printed at the end) · assert(cond, msg) — prints ok/FAIL
+//   shot(name, clip?) — PNG into the output folder (printed at the end); clip {x,y,width,height} crops it · assert(cond, msg) — prints ok/FAIL
 const { spawn } = require('child_process')
 const fs = require('fs'), os = require('os'), path = require('path')
 
@@ -57,8 +57,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
       await sleep(150)
     }
     const shots = []
-    const shot = async name => {
-      const r = await send('Page.captureScreenshot', { format: 'png' })
+    // clip (optional) = { x, y, width, height } in CSS px — crop to one element, e.g. for a Visual Review Gate close-up
+    const shot = async (name, clip) => {
+      const r = await send('Page.captureScreenshot', clip ? { format: 'png', clip: { ...clip, scale: 1 } } : { format: 'png' })
       const f = path.join(outDir, `${name}.png`); fs.writeFileSync(f, Buffer.from(r.result.data, 'base64')); shots.push(f)
     }
     const assert = (c, m) => { if (!c) { failed++; console.log('FAIL', m) } else console.log('ok  ', m) }

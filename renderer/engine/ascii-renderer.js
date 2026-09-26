@@ -25,6 +25,7 @@ class ASCIIRenderer {
     // Phase 20C settings (applied by renderer/game/settings.js)
     this.speed         = 1            // animation speed multiplier
     this.reducedMotion = false        // true → no particles / aura rings
+    this.scale         = 1            // Phase 6E: banner mode draws the whole scene smaller (see setScale)
   }
 
   // ── Public API ───────────────────────────────────────────────────────────
@@ -46,6 +47,17 @@ class ASCIIRenderer {
   setStageColor(hex) {
     this.stageColor = hex || '#CC6010'
   }
+
+  // Phase 6E layout modes: resize the canvas and scale the scene to fit it (banner = a ~0.35× miniature).
+  // Everything draws in a logical space of canvas size ÷ scale, so particles and rings stay centered.
+  setSize(w, h, scale = 1) {
+    if (this.cv.width !== w) this.cv.width = w
+    if (this.cv.height !== h) this.cv.height = h
+    this.scale = scale > 0 ? scale : 1
+    this._particles = []; this._auraRings = []
+  }
+
+  _dims() { return { W: this.cv.width / this.scale, H: this.cv.height / this.scale } }
 
   setSpeed(mult) { this.speed = mult > 0 ? mult : 1 }
 
@@ -122,15 +134,17 @@ class ASCIIRenderer {
 
   _draw() {
     const ctx = this.ctx
-    const W   = this.cv.width
-    const H   = this.cv.height
-    ctx.clearRect(0, 0, W, H)
+    ctx.clearRect(0, 0, this.cv.width, this.cv.height)
     if (!this.sprite) return
+    const { W, H } = this._dims()
 
+    ctx.save()
+    ctx.scale(this.scale, this.scale)
     this._drawBackground(ctx, W, H)
     this._drawAuraRings(ctx, W, H)
     this._drawParticles(ctx, W, H)
     this._drawSprite(ctx, W, H)
+    ctx.restore()
     ctx.shadowBlur = 0
   }
 
@@ -241,7 +255,7 @@ class ASCIIRenderer {
   static _PARTICLE_CHARS = ['气','✦','✧','·','~','∿','∾','≋','☽','☆','◇','○','·']
 
   _spawnParticle() {
-    const W = this.cv.width, H = this.cv.height
+    const { W, H } = this._dims()
     const cx = W / 2 + (Math.random() - 0.5) * 80
     const cy = H * 0.55 + (Math.random() - 0.5) * 60
     const angle  = Math.random() * Math.PI * 2

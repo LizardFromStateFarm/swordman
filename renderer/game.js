@@ -123,6 +123,7 @@
     await gameState.initSlot(slotIndex)
     document.getElementById('charselect').classList.add('hidden')
     document.getElementById('app').classList.remove('hidden')
+    layoutUI.enterGame()
     bootGame()
   }
 
@@ -132,6 +133,7 @@
     slots = await window.electron.loadAllSlots()
     document.getElementById('app').classList.add('hidden')
     document.getElementById('charselect').classList.remove('hidden')
+    layoutUI.leaveGame()
     settingsUI.close()
     settingsUI.apply(gameState.defaultSettings())
     document.getElementById('banter-bubble').classList.add('hidden')   // charselect always shows default presentation
@@ -148,6 +150,45 @@
   const sectSys   = new SectSystem(gameState)
   const sectWarSys = new SectWarSystem(gameState)
   const settingsUI = new SettingsUI(gameState, renderer)
+  // Phase 6E layout modes (renderer/game/layout.js). fmt/fmtTime are hoisted function declarations below.
+  const layoutUI   = new LayoutUI(renderer, { fmt, fmtTime })
+  layoutUI.init()
+
+  // The four quick actions, shared by the tabs and the banner's dropdowns (1.7b) so both give the same feedback.
+  const quickActions = {
+    learn(id) {
+      const res = gameState.learnTechnique(id)
+      if (!res.ok) flashMessage({ owned: 'Already learned', stage: 'Realm too low', stones: 'Need more spirit stones' }[res.reason] || 'Cannot learn', 'negative')
+      else flashMessage(`Learned: ${TECHNIQUES.find(t => t.id === id)?.name}`, 'special')
+      return res
+    },
+    startMission(id) {
+      const res = gameState.startSectMission(id)
+      const msgs = { rank: 'Rank too low', busy: 'Already underway', full: 'Mission slots full', unknown: 'Unknown mission', no_sect: 'Not in a sect' }
+      if (!res.ok) flashMessage(msgs[res.reason] || 'Cannot start mission', 'negative')
+      else flashMessage(`Mission started: ${res.mission.name}`, 'positive')
+      return res
+    },
+    sendExpedition(id) {
+      const res = gameState.startExpedition(id)
+      if (!res.ok) flashMessage({ active: 'Expedition already active', stage: 'Realm too low', unknown: 'Unknown location' }[res.reason] || 'Cannot send expedition', 'negative')
+      else flashMessage(`Expedition to ${res.loc.name} underway.`, 'positive')
+      return res
+    },
+    // Phase 22 (22C): "watching" = viewed the Craft tab (or the banner's Craft menu) within the last minute.
+    craft(id) {
+      const watched = Date.now() - _craftTabViewedAt <= ACTIVE_CRAFT_TOUCH_WINDOW_SECONDS * 1000
+      const res = craftSys.craft(id, watched)
+      if (res.ok) {
+        const bonus = res.masterTouch ? ` ×2 (Master's Touch!)` : res.doubled ? ` ×2 (Herb Hall bonus!)` : ''
+        flashMessage(`Crafted: ${res.item.name}${bonus}`, 'positive')
+      } else flashMessage(res.reason === 'ingredients' ? 'Not enough materials' : 'Cannot craft', 'negative')
+      return res
+    },
+    markCraftWatched() { _craftTabViewedAt = Date.now() },
+  }
+  const bannerMenus = new BannerMenus(gameState, quickActions, { fmt, fmtTime, escHtml, effectText, personStageLabel })
+  layoutUI.onModeChange = mode => { if (mode !== 'banner') bannerMenus.close() }
   const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #proposal-overlay:not(.hidden), #family-overlay:not(.hidden), #heir-overlay:not(.hidden), #tournament-overlay:not(.hidden), #hall-overlay:not(.hidden)'))
   // Phase 9A/B: window "active" = visible AND focused; notifications only fire otherwise (news, not a summons).
   const notifSys   = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(),
@@ -231,6 +272,7 @@
     document.getElementById('stage-realm').style.color = st.color || 'var(--gold)'
     document.getElementById('stage-layer').textContent = `${st.layer} · ${st.layerCN}`
     document.getElementById('stage-desc').textContent  = st.desc
+    document.getElementById('stage-desc').title        = st.desc   // Phase 6E: clipped to one line in Overlay
 
     // Phase 9A: keep the tray tooltip/menu label in sync, but only send the (cheap but not-free) IPC
     // when the name or stage label actually changed — this runs every frame while the tab is live.
@@ -301,7 +343,7 @@
     const ib = Math.round(48  + t * (192 - 48))
     document.getElementById('integrity-fill').style.width      = Math.min(100, integ) + '%'
     document.getElementById('integrity-fill').style.background = `rgb(${ir},${ig},${ib})`
-    document.getElementById('integrity-numbers').textContent   = `${Math.round(integ)} / 100`
+    document.getElementById('integrity-numbers').textContent   = String(Math.round(integ))   // out of 100; the bar shows the rest
 
     // Health bar: lerp --jade (full) to --red (empty) (Phase 23A; palette follows color-blind setting)
     const health = s.health ?? 100
@@ -312,7 +354,7 @@
     const hb = Math.round(R[2] + ht * (J[2] - R[2]))
     document.getElementById('health-fill').style.width      = Math.min(100, health) + '%'
     document.getElementById('health-fill').style.background = `rgb(${hr},${hg},${hb})`
-    document.getElementById('health-numbers').textContent   = `${Math.round(health)} / 100`
+    document.getElementById('health-numbers').textContent   = String(Math.round(health))
 
     // Age readout (Phase 30) — a stat only, nothing dies of age
     document.getElementById('age-numbers').textContent = String(Math.floor(s.age))
@@ -332,6 +374,9 @@
       openFamilyOverlay(s)
     }
     if (!famKey) document.getElementById('family-overlay').classList.add('hidden')
+
+    layoutUI.update(s)   // Phase 6E: banner-strip stones + expedition readout (no-op in other modes)
+    if (layoutUI.mode === 'banner') bannerMenus.update(s, fromTick)   // 1.7b: quick-action buttons + open menu
 
     const activeTab = document.querySelector('.tab.active')?.dataset?.tab
     if (fromTick) {
@@ -397,13 +442,7 @@
       row.className = 'tech-row' + (isOwned ? ' owned' : '') + (isLocked ? ' locked' : '')
       row.innerHTML = techRowHTML(t, isOwned, isLocked)
       if (!isOwned && !isLocked) {
-        row.addEventListener('click', () => {
-          const res = gameState.learnTechnique(t.id)
-          if (!res.ok) {
-            const msgs = { owned:'Already learned', stage:'Realm too low', stones:'Need more spirit stones' }
-            flashMessage(msgs[res.reason] || 'Cannot learn', 'negative')
-          }
-        })
+        row.addEventListener('click', () => quickActions.learn(t.id))
       }
       el.appendChild(row)
     }
@@ -768,12 +807,7 @@
 
     updateSectTimersInPlace(s)
     el.querySelectorAll('[data-mission]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const res = gameState.startSectMission(btn.dataset.mission)
-        const msgs = { rank:'Rank too low', busy:'Already underway', full:'Mission slots full', unknown:'Unknown mission', no_sect:'Not in a sect' }
-        if (!res.ok) flashMessage(msgs[res.reason] || 'Cannot start mission', 'negative')
-        else flashMessage(`Mission started: ${res.mission.name}`, 'positive')
-      })
+      btn.addEventListener('click', () => quickActions.startMission(btn.dataset.mission))
     })
     document.getElementById('_sect_rankup')?.addEventListener('click', () => {
       const res = gameState.rankUpSect()
@@ -1425,15 +1459,7 @@
 
     // Wire Send buttons
     el.querySelectorAll('.loc-btn[data-locid]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const res = gameState.startExpedition(btn.dataset.locid)
-        if (!res.ok) {
-          const msgs = { active:'Expedition already active', stage:'Realm too low', unknown:'Unknown location' }
-          flashMessage(msgs[res.reason] || 'Cannot send expedition', 'negative')
-        } else {
-          flashMessage(`Expedition to ${res.loc.name} underway.`, 'positive')
-        }
-      })
+      btn.addEventListener('click', () => quickActions.sendExpedition(btn.dataset.locid))
     })
 
     // Inventory
@@ -1754,17 +1780,7 @@
 
     // Wire craft buttons
     el.querySelectorAll('[data-recipe]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        // Phase 22 (22C): "watching" = viewed the Craft tab within the last minute — Master's Touch chance.
-        const watched = Date.now() - _craftTabViewedAt <= ACTIVE_CRAFT_TOUCH_WINDOW_SECONDS * 1000
-        const res = craftSys.craft(btn.dataset.recipe, watched)
-        if (res.ok) {
-          const bonus = res.masterTouch ? ` ×2 (Master's Touch!)` : res.doubled ? ` ×2 (Herb Hall bonus!)` : ''
-          flashMessage(`Crafted: ${res.item.name}${bonus}`, 'positive')
-        } else {
-          flashMessage(res.reason === 'ingredients' ? 'Not enough materials' : 'Cannot craft', 'negative')
-        }
-      })
+      btn.addEventListener('click', () => quickActions.craft(btn.dataset.recipe))
     })
 
     // Wire equip buttons

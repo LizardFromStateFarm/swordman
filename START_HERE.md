@@ -30,7 +30,9 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Health & Death, Bloodline Quality, chance-based Ascension Trial | ✅ Phase 23A–C |
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
-| Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
+| Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
+| **UI/UX overhaul — NEXT, priority** (nav regroup, attention strip, Stats split, breakdowns) | ⬜ Phase 33 (M1 1.8b, then 1.9 QA) |
+| Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
@@ -54,7 +56,11 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Deep Sect Management (offices, Recruiter, manual recruiting) | ⬜ Phase 27 (planned) |
 | Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ⬜ Phase 28 (planned) |
 
-> **Tests:** `npm test` (syntax) · `npm run checks` (152 scenario checks, ~6s) · `npm run sim` (bot playtest) ·
+> **Testing is lightweight per task** (user rule 2026-09-26): `npm test` + `npm run checks` + look at it in the app.
+> Sim/dist/build:web/smoke/new checks are batched into each feature's **QA & Balance** task (CLAUDE.md).
+> **UI/UX is first-class:** every player-facing task does the UX Pass (CLAUDE.md) and logs gaps under "UX Debt" below.
+
+> **Tools:** `npm test` (syntax) · `npm run checks` (152 scenario checks, ~6s) · `npm run sim` (bot playtest) ·
 > `node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` (real-app smoke over CDP, throwaway profile). Any
 > useful check script you write goes in `scripts/sim/checks/` and gets documented — never left in a temp folder
 > (CLAUDE.md → "Test scripts are project assets").
@@ -65,9 +71,102 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ---
 
+## UX Debt — known gaps in what the player can see / do (add here; remove when fixed)
+
+- No in-game UI to pick the Family Manual technique (only the sim bot calls `setFamilyManual()`) — 2.7
+- ~~Main interaction area is the smallest part of the window~~ — 1.7: Overlay tab body 105 → 305px, Expanded/Desktop
+  656–696px. Still open: 7 tabs at 9px in Overlay, banner has no attention strip yet — 1.8b
+- **Full itemized list: `docs/systems/ui-layout.md` → "UX Audit"** (1.8a, 2026-09-26): 7 structural findings + a
+  per-system gap table. Headline items: tab body is only ~105px of the 600px window; own-sect Sect tab = 15 screens
+  of scroll; Stats is a junk drawer holding every family/clan decision; automation panel duplicated at the top of
+  3 views; ancestral catch-up, clan relations and morality have zero UI; no breakdowns for BT chance / Qi/s
+
+---
+
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 15
+Agent: two user requests.
+  1) **New rule: Visual Review Gate** (CLAUDE.md section + .agents/rules/ui-review.md + docs/systems/ui-review.md
+     scoreboard). Every UI change and every asset is scored 0–10 by a FRESH reviewer agent from real screenshots
+     (0 garbage … 8 polished indie … 10 "can't believe it's CSS and ASCII art"); pass = avg ≥ 8.0 and no criterion
+     < 6; 3 failing cycles → the user decides. Asset Pipeline now uses the same anchored scale. Assessment block
+     gained a `Review:` line. PLAN: new **1.8c** = baseline review of everything that already exists (feeds 1.8b).
+  2) **1.7b Banner quick actions**: 任 Missions · 歷 Explore · 煉 Craft · 功 Learn dropdowns on the banner strip; the
+     window grows 380px while one is open (main.js banner-menu IPC). New renderer/game/banner-menus.js; the four
+     actions were pulled out of the tab handlers into game.js `quickActions` so tabs and menus share them. Menus
+     show reward amounts, drop chances per location, have/need materials, 封 "sealed" lock reasons. New CSS tokens
+     --btn-bg/--panel/--scroll/--dim-hi/--red-text. smoke: scenarios/banner-menus.js (10 checks, one real action
+     per menu); cdp.js shot(name, clip) for close-ups.
+  - **Review result: 6.2 → 6.3 → 6.2 over 3 cycles (FAIL)**; each cycle's fixes applied (see ui-review.md). After
+    cycle 3 the one real bug it found (Learn text overflowing the panel) and the lock inconsistency were fixed.
+    Per the gate, **the user decides**: accept, or keep iterating. Strongest remaining critique: the strip itself
+    (from 1.7) is a flat dark bar; the empty space right of Learn is reserved for 1.8b's attention strip.
+  - Verified: npm test (65), npm run checks (248), build:web, layout-modes + banner-menus smoke (zero console errors).
+  - **User accepted the banner menus as-is** after the 3 cycles (the strip gets polished in 1.8b).
+  Next: 1.8c (baseline visual review of everything) → 1.8b.
+
+Date: 2026-09-26 (day session, user present) — part 14
+Agent: built **1.7 Window & layout modes** (Phase 6E; user approved the assessment incl. banner 56px, themed titlebar
+  in Desktop, ⬡ peek). As-built: ui-layout.md → "Layout modes".
+  - Four modes off body[data-layout], CSS-only: **Overlay** (default, now 300×700 = the active-play mode, compacted
+    top: 150px canvas, one-line stage desc, Integrity/Health/Age on one row, 2-line action buttons), **Expanded**
+    (640×720, cultivator column + tabs), **Desktop** (resizable via a ◢ grip, not pinned, one column under 600px =
+    also the iOS/browser layout), **Banner** (full-width 56px strip at the top/bottom edge, like a taskbar).
+  - main.js owns geometry (boundsFor/applyLayout, per-mode remembered positions, Desktop size) + IPC get-layout /
+    set-layout / resize-window; preload + iOS shim updated (Rule 7). New renderer/game/layout.js (LayoutUI: ▣ picker,
+    canvas sizing via new renderer.setSize(w,h,scale), banner readouts, one-time tip). index.html wraps #hud/#main-pane.
+  - **Deviation from the 6E spec (deliberate):** the mode is app-wide in window.json, not a per-slot setting — the
+    character select needs a window before any slot loads. The character select never shows as a strip.
+  - Banner UX: ⬡ "peeks" to the full window (picker then offers ↩ Back to the banner); any popup (death card,
+    family matter, proposal) opening in banner mode auto-peeks and drops back when closed, so a banner never hides
+    a decision.
+  - Measured (ux-audit.js rerun): Overlay tab body **105 → 305px**; screens-of-scroll roughly ÷3 everywhere
+    (founder Sect 14.8 → 4.9, Stats 7.6 → 2.5, Explore 8.6 → 2.9).
+  - Bug caught by the smoke run: Windows ignores setSize on a non-resizable window → the grip uses setBounds.
+  - New: scripts/smoke/scenarios/layout-modes.js (18 checks). Verified: npm test (63 files), npm run checks (248),
+    npm run build:web, layout-modes + ux-audit smoke (zero console errors). Not run (per the new rules, → 1.9):
+    dist, sim. No new art (glyph icons + a scaled existing sprite), so no Asset Pipeline pass.
+  - Not verified: the iOS/narrow single-column layout on a real phone (no Mac).
+  Next: **1.8b UI overhaul** (all 4 approved priorities): nav regroup + attention strip + tab badges (automation to
+    one Mode panel), Stats → Character / Family / Clan, click-to-open breakdowns, UX-debt fixes. Expanded's empty
+    space under the actions and the banner's empty right side are reserved for the attention strip.
+
+Date: 2026-09-26 (day session, user present) — part 13
+Agent: **1.8a UX audit** (user approved the assessment). No game code changed.
+  - Read every render function in game.js and cross-checked the gameState API + derived fields against what the UI
+    reads. The UI can reach almost every action; the problem is space, grouping, discoverability and unexplained
+    numbers, not missing wiring (exceptions: setFamilyManual, clan.relations, derived.catchUp, morality).
+  - New smoke scenario `scripts/smoke/scenarios/ux-audit.js` (documented in qa-sim.md): dev presets → screenshots of
+    every tab/overlay + layout metrics. Key numbers: window is really 300×600 (docs said 540, fixed); the always-
+    visible chrome takes ~488px, leaving a **101–112px tab body**; founder Sect tab = 1498px = 14.8 screens.
+  - Wrote the audit into `docs/systems/ui-layout.md` → "UX Audit": measurements, 7 structural findings, a per-system
+    gap table (severity + proposed home per layout mode), and proposed 1.8b priorities. START_HERE UX Debt points to it.
+  - Note for 1.7: PLAN.md's 6E spec lists Overlay as 300×700 but the real window is 300×600. Decide in 1.7.
+  - Tests: none needed (docs + a smoke scenario; the scenario itself ran green, zero console errors).
+  - **User decisions (recorded in ui-layout.md + PLAN 6E):** all 4 priorities approved for 1.8b. Overlay (default)
+    = the active-play mode, grown to 300×700 with a compacted top section. Banner = the "while gaming" mode, a
+    taskbar-like strip at the top of the screen.
+  Next: **1.7 layout modes** (Overlay 300×700 + compact top, Expanded, Desktop, Banner top-strip), then 1.8b.
+
+Date: 2026-09-26 (day session, user present) — part 12
+Agent: **process + roadmap change, no code** (user request, approved). The user wants UI/UX to be a much bigger
+  focus and per-task testing relaxed.
+  - CLAUDE.md: new **UX PASS** section (surface / interact / discover / feel / UX debt), required for every
+    player-facing task; the assessment block gains a `UX:` line. The "task is NOT done until" bar is now
+    lightweight (`npm test` + `npm run checks` + looking at it in the app); sim/dist/build:web/smoke/new checks/
+    bot teaching move into a new **QA & Balance** task per large feature/milestone. Balance rule updated to match.
+  - .agents/rules/general.md: assessment block + a pointer to both rules.
+  - PLAN.md: 6E promoted out of "optional"; new Phase 33 (UI/UX Overhaul); roadmap tasks 1.7 (now urgent), 1.8a
+    (UX audit), 1.8b (overhaul), 1.9 (QA & Balance for them); 2.8 relabeled as M2's QA & Balance task.
+    **Order: 1.8a → 1.7 → 1.8b → 1.9 → 2.8.**
+  - ui-layout.md: the 300×540 invariant now applies to Overlay mode only; added a "UX direction" note.
+  - START_HERE: new "UX Debt" list (above).
+  Next: **1.8a UX audit.** Go through every system (the docs/systems list + the live UI) and fill a "UX Audit"
+    table in ui-layout.md: what the player can't see or understand, what they can't act on, and severity. Review
+    it with the user, then do 1.7 layout modes designed around it. 2.8 waits until 1.9 is done.
+
 Date: 2026-09-26 (day session, user present) — part 11
 Agent: committed part 10's uncommitted 2.6f work first (user confirmed), then built **M2 task 2.7 — Ancestral
   Hall & Clan Legacies** end to end (sub-tasks 2.7a–f; user approved the reconciliation plan + per-clan Merit

@@ -48,7 +48,7 @@ _Covers: assets/data/settings.js · renderer/game/settings.js · game-state.js (
 ## Gotchas
 - `--bg-opacity` only scales the translucent *window chrome* backgrounds (`--bg`, the titlebar, the `#app` shadow). Buttons, cards and overlays keep their own alpha so text stays readable. At 0.2 the desktop shows through strongly, which is intended.
 - Event-log text that was already written (e.g. "Absorbed 1.2K Qi") was formatted with `fmtQi()` in game-state.js at the time. It does not reformat when `displayNumbers` changes. Only live HUD/tab numbers do.
-- `zoom` on `#tab-body` scales layout as well as text. At 15px some panels scroll more, which is expected. Don't apply it to the whole window: the 300 px width and 172 px canvas are fixed (ui-layout.md invariants).
+- `zoom` on `#tab-body` scales layout as well as text. At 15px some panels scroll more, which is expected. Don't apply it to the whole window: the canvas is sized per layout mode by LayoutUI (ui-layout.md → Layout modes). The window layout itself is NOT a ⚙ setting: it's app-wide in window.json, chosen from the titlebar ▣ picker.
 - `displayNumbers: 'raw'` prints full digits (`26,340,613,447`). Fine at 300 px up to ~1e12 on the Qi bar. Past that, `raw` can crowd the Qi row. `scientific` switches over at ≥ 1e4.
 - Color-blind palettes (styles.css, Review score 8.0): Deutan `--red #E4572E`/`--jade #4BD2C2`, Protan `#F0502A`/`#45C8E8`. Sky-blue "jade" was rejected because it collides with `--purple` under deutan simulation (ΔE≈8). Keep any new jade substitute teal/cyan.
 - UI check without touching real saves: `npx electron . --user-data-dir=<scratch> --remote-debugging-port=9333`, then drive it over CDP.

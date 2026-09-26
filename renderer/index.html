@@ -7,7 +7,7 @@
   <title>Cultivator Idle</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-layout="overlay">
 
 <!-- ══════════════════════════════════════════════════════
      CHARACTER SELECT SCREEN  (shown on startup)
@@ -34,6 +34,7 @@
     <span id="cultivator-name" title="Click to rename">Unnamed Cultivator</span>
     <div id="tb-controls">
       <button class="tb-btn" id="btn-back"   title="Back to character select">◀</button>
+      <button class="tb-btn" id="btn-layout" title="Window layout">▣</button>
       <button class="tb-btn" id="btn-mode" title="Idle Mode (click for Active Mode)">💤</button>
       <button class="tb-btn" id="btn-settings" title="Settings">⚙</button>
       <button class="tb-btn pinned" id="btn-pin" title="Pinned on top (click to unpin)">📌</button>
@@ -41,83 +42,125 @@
     </div>
   </div>
 
-  <div id="sprite-wrap">
-    <canvas id="sprite-canvas" width="300" height="172"></canvas>
-    <div id="meditate-badge" class="hidden">🧘 3× Qi</div>
-  </div>
+  <!-- Layout modes (Phase 6E, docs/systems/ui-layout.md → "Layout modes"): #hud = the always-visible cultivator
+       readout, #main-pane = tabs. body[data-layout] arranges them: stacked (overlay), side by side (expanded /
+       desktop), or one horizontal strip with #main-pane hidden (banner). -->
+  <div id="hud">
 
-  <div id="stage-block">
-    <div id="stage-realm">Mortal Realm</div>
-    <div id="stage-layer">Unawakened · 凡人</div>
-    <div id="stage-desc">A mortal who has yet to feel the calling of the Dao.</div>
-  </div>
-
-  <div id="qi-block">
-    <div id="qi-labels">
-      <span class="lbl">氣 Qi</span>
-      <span id="qi-numbers">0 / 100</span>
+    <div id="sprite-wrap">
+      <canvas id="sprite-canvas" width="300" height="150"></canvas>
+      <div id="meditate-badge" class="hidden">🧘 3× Qi</div>
     </div>
-    <div id="qi-track"><div id="qi-fill"></div></div>
-    <div id="qi-rate">+0.5 qi/s</div>
-  </div>
 
-  <div id="integrity-block">
-    <div id="integrity-labels">
-      <span class="lbl">⚖ Integrity</span>
-      <span id="integrity-numbers">100 / 100</span>
+    <div id="stage-block">
+      <div id="stage-realm">Mortal Realm</div>
+      <div id="stage-layer">Unawakened · 凡人</div>
+      <div id="stage-desc">A mortal who has yet to feel the calling of the Dao.</div>
     </div>
-    <div id="integrity-track"><div id="integrity-fill"></div></div>
-  </div>
 
-  <div id="health-block">
-    <div id="health-labels">
-      <span class="lbl">♥ Health</span>
-      <span id="health-numbers">100 / 100</span>
+    <div id="qi-block">
+      <div id="qi-labels">
+        <span class="lbl">氣 Qi</span>
+        <span id="qi-numbers">0 / 100</span>
+      </div>
+      <div id="qi-track"><div id="qi-fill"></div></div>
+      <div id="qi-rate">+0.5 qi/s</div>
     </div>
-    <div id="health-track"><div id="health-fill"></div></div>
+
+    <!-- Integrity · Health · Age: one compact three-column row (Phase 6E) -->
+    <div id="vitals">
+      <div id="integrity-block">
+        <div id="integrity-labels">
+          <span class="lbl">⚖ Integrity</span>
+          <span id="integrity-numbers">100</span>
+        </div>
+        <div id="integrity-track"><div id="integrity-fill"></div></div>
+      </div>
+
+      <div id="health-block">
+        <div id="health-labels">
+          <span class="lbl">♥ Health</span>
+          <span id="health-numbers">100</span>
+        </div>
+        <div id="health-track"><div id="health-fill"></div></div>
+      </div>
+
+      <!-- Age readout (Phase 30) — a stat only: no lifespan, nothing dies of age -->
+      <div id="age-block">
+        <div id="age-labels">
+          <span class="lbl">歲 Age</span>
+          <span id="age-numbers">16</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Banner-only readout (hidden in other modes): spirit stones + expedition -->
+    <div id="banner-info">
+      <span id="banner-stones"></span>
+      <span id="banner-exp"></span>
+    </div>
+
+    <div id="actions">
+      <button id="btn-meditate" class="act-btn">
+        <span class="act-icon">🧘</span>
+        <span class="act-name">Meditate</span>
+        <span class="act-sub">3× Qi · 30s</span>
+      </button>
+      <button id="btn-breakthrough" class="act-btn" disabled>
+        <span class="act-icon">⚡</span>
+        <span class="act-name">Breakthrough</span>
+        <span class="act-sub">Advance realm</span>
+      </button>
+    </div>
+
+    <!-- Banner-only quick actions (1.7b): ⚔ ⛰ ⚒ 📜 dropdown buttons, rendered by renderer/game/banner-menus.js -->
+    <div id="banner-quick"></div>
+
+    <!-- Banner-only: open the full window (a temporary Overlay "peek"; ▭ in the titlebar returns to the banner) -->
+    <div id="banner-btns">
+      <button class="tb-btn" id="btn-unbanner" title="Open the full window">⬡</button>
+    </div>
+
   </div>
 
-  <!-- Age readout (Phase 30) — a stat only: no lifespan, nothing dies of age -->
-  <div id="age-block">
-    <div id="age-labels">
-      <span class="lbl">歲 Age</span>
-      <span id="age-numbers">16</span>
+  <div id="main-pane">
+    <div id="tabs">
+      <button class="tab active" data-tab="techniques">Tech</button>
+      <button class="tab"        data-tab="stats">Stats</button>
+      <button class="tab"        data-tab="explore">Explore</button>
+      <button class="tab"        data-tab="craft">Craft</button>
+      <button class="tab"        data-tab="pack">Pack</button>
+      <button class="tab"        data-tab="sect">Sect</button>
+      <button class="tab"        data-tab="events">Log</button>
+    </div>
+
+    <div id="tab-body">
+      <div id="tab-techniques" class="panel active"></div>
+      <div id="tab-stats"      class="panel"></div>
+      <div id="tab-explore"    class="panel"></div>
+      <div id="tab-craft"      class="panel"></div>
+      <div id="tab-pack"       class="panel"></div>
+      <div id="tab-sect"       class="panel"></div>
+      <div id="tab-events"     class="panel"></div>
     </div>
   </div>
 
-  <div id="actions">
-    <button id="btn-meditate" class="act-btn">
-      <span class="act-icon">🧘</span>
-      <span class="act-name">Meditate</span>
-      <span class="act-sub">3× Qi · 30s</span>
-    </button>
-    <button id="btn-breakthrough" class="act-btn" disabled>
-      <span class="act-icon">⚡</span>
-      <span class="act-name">Breakthrough</span>
-      <span class="act-sub">Advance realm</span>
-    </button>
-  </div>
+  <!-- Desktop mode only: transparent frameless windows get no native resize border on Windows -->
+  <div id="resize-grip" title="Drag to resize">◢</div>
 
-  <div id="tabs">
-    <button class="tab active" data-tab="techniques">Tech</button>
-    <button class="tab"        data-tab="stats">Stats</button>
-    <button class="tab"        data-tab="explore">Explore</button>
-    <button class="tab"        data-tab="craft">Craft</button>
-    <button class="tab"        data-tab="pack">Pack</button>
-    <button class="tab"        data-tab="sect">Sect</button>
-    <button class="tab"        data-tab="events">Log</button>
-  </div>
+</div>
 
-  <div id="tab-body">
-    <div id="tab-techniques" class="panel active"></div>
-    <div id="tab-stats"      class="panel"></div>
-    <div id="tab-explore"    class="panel"></div>
-    <div id="tab-craft"      class="panel"></div>
-    <div id="tab-pack"       class="panel"></div>
-    <div id="tab-sect"       class="panel"></div>
-    <div id="tab-events"     class="panel"></div>
-  </div>
+<!-- Banner quick-action dropdown (1.7b) — hangs under its ⚔/⛰/⚒/📜 button while the window is grown -->
+<div id="banner-menu" class="hidden"></div>
 
+<!-- Layout picker (Phase 6E) — opened from the titlebar ▣ button; rows rendered by renderer/game/layout.js -->
+<div id="layout-picker" class="hidden">
+  <div id="layout-box">
+    <div id="layout-title">Window Layout 布局</div>
+    <div id="layout-list"></div>
+    <div id="layout-edge"></div>
+    <div id="layout-hint">Remembered on this computer, for every cultivator.</div>
+  </div>
 </div>
 
 <!-- Rename overlay -->
@@ -286,6 +329,8 @@
 <script src="game/settings.js"></script>
 <script src="game/banter.js"></script>
 <script src="game/notifications.js"></script>
+<script src="game/layout.js"></script>
+<script src="game/banner-menus.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

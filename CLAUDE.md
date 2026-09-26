@@ -25,6 +25,9 @@ Complexity: Low | Medium | High | Very High
 Model rec:  Haiku | Sonnet | Opus
 Reason:     [one line]
 Depth:      [gameplay tasks: the hooks + choice/consequence loops from the Design Depth Pass; else "n/a"]
+UX:         [player-facing tasks: where it's surfaced, where it's interacted with, how it's discovered,
+             layout modes checked, UX debt found — from the UX Pass; else "n/a"]
+Review:     [visible change? → "visual review gate: <what gets screenshotted, which modes>"; else "n/a"]
 ───────────────────────────────────────
 ```
 
@@ -60,6 +63,49 @@ ranging from acceptance to a duel to the death — see `docs/systems/family.md`.
 
 ---
 
+## ══ UX PASS (REQUIRED for any player-facing task) ══
+
+UI and player experience are a **first-class deliverable, not a wrapper around the mechanic** (user rule,
+2026-09-26). A deep system the player can't see, understand, or reach is a failed feature. The game already has
+many systems whose state the player can barely read or act on. Every task must leave the UI better, not just
+add more to it. Before building, write a **"UX pass"** into the spec/plan and show it to the user:
+
+1. **Surface.** Where does the player *see* this system's state: numbers, odds, timers, relationships, and
+   **why** something happened? Hidden state gets a visible explanation: a tooltip, a breakdown ("BT chance 62% =
+   base 50 + root 8 + pill 4"), or a log line that names the cause. No silent mechanics.
+2. **Interact.** Where does the player *act* on it, and in how many clicks? Don't cram new controls into the small
+   bottom tab strip of Overlay mode. Design for the roomier layouts (Expanded/Desktop, Phase 6E) first, then make
+   sure it degrades cleanly to Overlay (300px) and to a phone (Rule 7).
+3. **Discover.** How does the player learn it exists or needs attention? Options: a first-time hint, a toast, a
+   badge or dot on the tab, a highlighted button. A choice the player never notices is not a choice.
+4. **Feel.** Keep the ethereal, xianxia-novel style: use the CSS tokens (`--gold`, `--jade`, `--purple`…), write
+   flavorful labels, and animate meaningful moments. Readability beats density. Honor the ⚙ text-size and
+   color-blind settings.
+5. **UX debt.** List any existing UX gaps you noticed in systems you touched (e.g. "no UI to pick the Family
+   Manual"). Fix them if they're small; otherwise add them to START_HERE.md → "UX Debt" so they aren't lost.
+
+For UI work, **launch the app and look at it** (`npm start`, or a CDP screenshot) before calling it done. Check
+every layout mode the change affects. Reference: `docs/systems/ui-layout.md`.
+
+---
+
+## ══ VISUAL REVIEW GATE (MANDATORY for UI changes and assets) ══
+
+Every **UI change** (screens, tabs, panels, overlays, menus, layout modes, components, any CSS the player would
+see) and every **visual asset** (sprites, animations, palettes, color tokens) is scored **0–10 by a separate
+reviewer agent** from real screenshots. The author never grades their own work (user rule, 2026-09-26).
+
+- **Scale:** 0 = garbage/broken · 2 = works but ugly · 4 = plain developer UI · 6 = decent, nothing special ·
+  **8 = polished + atmospheric, would pass in a released indie game** · 10 = *"can't believe this is CSS and ASCII art"*.
+- **How:** screenshot the change in the real app in every layout mode it appears in (smoke scenario + `shot()`),
+  spawn a **fresh** reviewer agent with the prompt in `.agents/rules/ui-review.md`, and apply its fixes.
+- **Gate:** average **≥ 8.0 and no criterion below 6** → done; record it in `docs/systems/ui-review.md` and put a
+  `/* UI review: X.X (date) */` comment on the CSS section. Otherwise fix → re-screenshot → re-review with a fresh
+  agent. After 3 failing cycles, show the user the screenshots + scores and let them decide.
+- Sprites and other assets use the Asset Pipeline below, on this same anchored scale.
+
+---
+
 ## Project Structure
 
 ```
@@ -82,7 +128,8 @@ docs/
     settings.md         ← ⚙ Settings panel, per-slot presentation prefs (Phase 20C)
     banter.md           ← Personalities + banter engine, bubble, log (Phase 29)
     banter-writing-guide.md ← Voice/tokens/triggers brief for writing banter lines
-    ui-layout.md        ← Window layout, tab pattern, CSS vars
+    ui-layout.md        ← Window layout + layout modes (6E), tab pattern, CSS vars, UX Audit (1.8a)
+    ui-review.md        ← Visual Review Gate score history (every UI change + asset, 0–10, pass ≥ 8.0)
     notifications.md    ← System tray + opt-in desktop notifications (Phase 9A-B)
     life-loop.md        ← M2 build spec: lifespan, heirs, Ancestral Hall, clan legacies (Phases 30/31)
     family.md           ← Spouse affection, marriage/crisis events, duel, lovers + affair discovery (Phase 16-lite+)
@@ -93,8 +140,9 @@ docs/
   general.md            ← Always-on rules (code style, Electron security)
   assets.md             ← ASCII art pipeline (create → review → gate ≥8.0)
   game-design.md        ← Design rules (pacing, flavor text, event structure)
+  ui-review.md          ← Visual Review Gate: anchored 0–10 scale, reviewer prompt, gate (all UI + assets)
 
-main.js                 ← Electron window, IPC, slot save/load, system tray + notifications (Phase 9A-B)
+main.js                 ← Electron window, IPC, slot save/load, system tray + notifications (Phase 9A-B), layout-mode geometry (6E)
 preload.js              ← contextBridge — only way renderer talks to Node
 capacitor.config.json     ← Capacitor (iOS) config — webDir "www"
 scripts/
@@ -122,6 +170,8 @@ renderer/
     settings.js         ← SettingsUI — ⚙ overlay rendered from SETTINGS_DEFS + applies prefs (Phase 20C, UI only)
     banter.js           ← BanterSystem — picks lines on game events + idle timer, DOM-free (Phase 29)
     notifications.js    ← NotificationSystem — opt-in desktop notification triggers + cooldowns, DOM-free (Phase 9A-B)
+    layout.js           ← LayoutUI — window layout modes: ▣ picker, body[data-layout], canvas sizing, banner peek (Phase 6E)
+    banner-menus.js     ← BannerMenus — banner strip quick-action dropdowns: missions/explore/craft/learn (1.7b)
 assets/
   icons/
     tray-icon.png       ← System tray icon (Phase 9A) — see scripts/gen-tray-icon.js
@@ -178,7 +228,9 @@ assets/
 
 All visual assets must pass a two-agent create → review gate before being committed.
 
-**Covered:** new sprite states, color palettes, UI color tokens, multi-frame animations.
+**Covered:** new sprite states, color palettes, UI color tokens, multi-frame animations. Scored on the
+anchored 0–10 scale of the Visual Review Gate above (0 garbage … 10 "can't believe it's ASCII art"), by a separate
+reviewer agent, never the creator.
 
 **Step 1 — Create** using the prompt template in `.agents/rules/assets.md`.
 
@@ -198,8 +250,10 @@ All visual assets must pass a two-agent create → review gate before being comm
 - Breakthrough chance must never exceed 0.98
 - New `RANDOM_EVENTS` must have both positive and negative variants
 - Flavor text should read like a xianxia novel translation
-- Balance changes: run `npm run sim` before AND after, read only `scripts/sim/out/report.md`; try values
-  with `--set` first. New systems must teach the sim bot to use them (see `docs/systems/qa-sim.md`).
+- Balance tuning happens in the **QA & Balance task** at the end of a feature (see Documentation Rules), not
+  in every task. When a task *is* a balance change, run `npm run sim` before AND after, read only
+  `scripts/sim/out/report.md`, and try values with `--set` first. The sim bot learns new systems during that
+  feature's QA & Balance task (see `docs/systems/qa-sim.md`).
 
 ---
 
@@ -236,17 +290,39 @@ session's temp/scratchpad folder (that folder is deleted with the session and th
 4. When you change a system, extend its check file instead of writing a new throwaway script.
 Truly one-off probes (a single debug print) can stay in scratch. When unsure, keep it.
 
-### A task is NOT done until
+You don't have to write a new check for **every** task (see below). The heavy check-writing happens in the
+feature's QA & Balance task. The rule above is about *not throwing away* a useful script once you've written one.
 
-- The code works
+### A task is NOT done until (lightweight bar, user rule 2026-09-26)
+
+Per-task testing is kept light on purpose. Spend the time on the feature and its UX instead.
+- The code works: you ran it. For UI work, you launched the app and looked at it in each affected layout mode.
+- `npm test` (syntax) and `npm run checks` (existing scenario checks, ~6s) pass. These are cheap guards against
+  save/state breakage, not a request for new tests.
 - `START_HERE.md` is updated
 - `PLAN.md` reflects the new state
 - Relevant system doc is current
-- `npm run dist` produces a working build (for any user-facing changes)
-- `npm run checks` passes (all scenario checks, ~5s) — and any new check you wrote is saved in the repo (below)
-- If `renderer/` or `assets/` changed: `npm run build:web` (or `npm run cap:sync`) still succeeds —
-  confirms the iOS web bundle still assembles cleanly, even though there's no Mac to build the
-  actual `.ipa` yet. See `docs/systems/ios-port.md`.
+- The UX Pass was done for player-facing work, and any leftover UX debt is logged in START_HERE.md
+- Visible changes passed the **Visual Review Gate** (≥ 8.0 from a fresh reviewer agent, recorded in
+  `docs/systems/ui-review.md`), or the user accepted them after 3 cycles
+
+**Not required per task** (these move to QA & Balance): `npm run sim`, `npm run dist`, `npm run build:web`, CDP
+smoke scenarios, writing new scenario checks, teaching the sim bot, balance tuning. Do run one of them anyway
+when your change clearly risks exactly that thing: `build:web` after touching `platform-storage.js`/`main.js`
+IPC, `dist` after touching packaging, the sim after touching save migration or offline catch-up.
+
+### QA & Balance task: one per large feature / milestone
+
+When a large feature or group of tasks is complete (e.g. a whole roadmap task like 2.6 or 2.7, the UI overhaul,
+or a milestone), PLAN.md gets a dedicated **QA & Balance** task, done as its own session:
+- Full `npm run sim` (multi-seed) with before/after comparison, and a tuning pass against the doc's targets
+- Scenario checks written for the feature's rules and edge cases (`scripts/sim/checks/`); teach the sim bot the
+  new systems; add sim invariants
+- `npm run dist` + `npm run build:web` succeed; CDP smoke scenario for the new UI (zero console errors)
+- A **UX walkthrough**: play the feature in every layout mode. Is every state visible and explained, every
+  action reachable, every choice noticeable? Fix it or log it as UX debt.
+- Update the system docs' "as-built / verified" notes
+M2 task 2.8 is the model for this.
 
 ---
 

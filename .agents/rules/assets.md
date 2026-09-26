@@ -1,6 +1,7 @@
 # Asset Creation Rules — ASCII Sprite Pipeline
 
-All visual assets must pass a two-step create → review gate.
+All visual assets must pass a two-step create → review gate, and the review is done by a separate agent (never
+the creator), on the anchored 0–10 scale shared with UI reviews (`.agents/rules/ui-review.md`).
 This file is the detailed reference; the summary lives in `CLAUDE.md`.
 
 ---
@@ -72,7 +73,11 @@ Output exactly: a JS object with fps, defaultColor, colors, frames — no surrou
 
 ```
 Rate this ASCII art sprite for a wuxia cultivation idle game.
-Score each criterion 1–10, then compute the average.
+Score each criterion 0–10 on this anchored scale, then compute the average:
+  0 garbage/broken · 2 works but ugly · 4 plain/forgettable · 6 decent, nothing special ·
+  8 polished + atmospheric, would pass in a released indie game · 10 "can't believe this is ASCII art"
+Be stingy: an 8 is earned, a 9+ is rare. (Same scale as .agents/rules/ui-review.md.)
+Always review from a screenshot of the sprite running in the real app, not only the text.
 
 Criteria:
 1. Visual clarity      — at 14px monospace, the sprite reads as a recognizable figure

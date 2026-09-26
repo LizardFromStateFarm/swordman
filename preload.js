@@ -13,4 +13,9 @@ contextBridge.exposeInMainWorld('electron', {
   updateTrayInfo:    (name, stage)  => ipcRenderer.send('update-tray-info', name, stage),
   notify:            (title, body) => ipcRenderer.send('show-notification', title, body),
   onRequestSave:     (cb)          => ipcRenderer.on('request-save', () => cb()),
+  // Phase 6E layout modes (docs/systems/ui-layout.md → "Layout modes"); iOS shim in platform-storage.js.
+  getLayout:         ()             => ipcRenderer.invoke('get-layout'),
+  setLayout:         (mode, opts)   => ipcRenderer.invoke('set-layout', mode, opts),
+  resizeWindow:      (w, h)         => ipcRenderer.send('resize-window', w, h),
+  bannerMenu:        (extra)        => ipcRenderer.send('banner-menu', extra),
 })
