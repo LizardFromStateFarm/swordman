@@ -62,6 +62,25 @@ polish pass each, then one fresh reviewer each.
 | (c) Shape-to-glyph + ink-wash | 4.2 | **7.5**: smooth silhouettes + tonal gradients if it adds per-cell opacity, dot thinning and hand-authored line accents | best silhouette/mass, fading ink mountains | uniform dot density = LED-matrix/halftone look, facial/anatomical cues lost, no ink modulation |
 
 All three prototypes land 4–5 (one pass each); none is close to 8. The ceilings are the decision input.
+
+**Round 2** (user: "love c's background, person and halo; b's sword and the rotating ring"): b vs c vs **(h) hybrid** =
+c's ink scene + figure + halo with b's glyph sword/sash and rotating mote ring (split behind/in front of the figure).
+All three got reviewer fixes (c: ink dot-thinning, rim light, face/bangs/seal, stronger breathing, rim-light + halo-ripple
+breakthrough; b: joined parts, visible motion).
+
+| Variant | R1 | R2 | Ceiling (R2 reviewer) |
+|---|---|---|---|
+| **(h) Hybrid** | — | **5.7** | **8.5** ("the most flexible direction: true shading, silhouettes, scalable effects") |
+| (c) Shape-to-glyph | 4.2 | 4.7 | 7 |
+| (b) Compositor | 5.2 | 4.2 | 7 (same art ±1 between reviewers = noise) |
+
+**Decision (user, 2026-09-26): the HYBRID.** Engine requirements from the reviews (→ A3):
+1. Ink shading that reads: visible folds, stroke taper/weight, dots fading into paper (R2: "robe = even LED-sign dot field").
+2. The face as its own high-detail layer (focal point; R2 still "goggle eyes").
+3. A simplified LOD sprite for banner/1× sizes (fine braille turns to noise small).
+4. Anatomy cues: readable arms + hand seal, visible bun, sword resting across the knees.
+5. Background with brush feel: mist gradient, ink bleed, depth (not flat dot bands).
+6. Per-part layers + glow from (b): sword/gear/aura as placed glyph layers; customization slots.
 Each variant's weakness is the other's strength: (b) lacks mass/cloth, which (c) produces; (c) lacks line work,
 accents and per-part motion, which (b) produces.
 

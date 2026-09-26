@@ -1,6 +1,6 @@
 // Art bake-off renderers (roadmap A2). Prototype only: not loaded by the game. Three ways to draw the SAME seated
-// cultivator in a 300×150 logical scene: drawA (grid ASCII), drawB (layered glyph compositor), drawC (shape-to-glyph
-// + ink-wash). Everything is a pure function of time t, so screenshots are repeatable: window.bake.freeze(t, mode).
+// cultivator in a 300×150 logical scene: drawA (grid ASCII, round 1 only), drawB (layered glyph compositor), drawC
+// (shape-to-glyph + ink-wash) and the round-2 hybrid (drawC with { hybrid: true }). Everything is a pure function of time t, so screenshots are repeatable: window.bake.freeze(t, mode).
 // No emoji anywhere (CLAUDE.md rule): only text glyphs, box/block/braille characters and CJK.
 
 const DPR = +(new URLSearchParams(location.search).get('dpr') || 3)
@@ -169,7 +169,7 @@ const B_PARTS = {
   sleeveL: ['   /|', '  / |', ' /  |', '(___/'],
   sleeveR: ['|\\   ', '| \\  ', '|  \\ ', '\\___)'],
   hands:   ['(◇)'],
-  lap:     ['   _.-~~~~~~~~~~~~~~-._   ', " .'  ⣀⣀  ~~~~~~  ⣀⣀    '. ", '(   (⣿⣿)        (⣿⣿)     )', " '-.____..------..____.-' "],
+  lap:     ['   _.-~~~~~~~~~~~~~~-._   ', " .'  ⣀⣀⣀  ~~~~~~  ⣀⣀⣀  '. ", '(  ⣿⣿⣿⣿          ⣿⣿⣿⣿   )', " '-.____..------..____.-' "],
   sword:   ['◂══════════════════════╡▐═○'],
   lotus:   ['‿⌒‿⌒‿⌒‿⌒‿⌒‿⌒‿'],
 }
@@ -177,27 +177,22 @@ const B_PARTS = {
 function drawB(ctx, t, mode, face = 'serene') {
   const bt = mode === 'breakthrough'
   drawBase(ctx, t, mode)
-  const breath = Math.sin(t * 1.3), sway = Math.sin(t * 0.9), bob = breath * 0.8
+  const breath = Math.sin(t * 1.3), sway = Math.sin(t * 0.9), bob = breath * 1.6
   const glowK = bt ? 2 : 1
   // aura layer: faint 氣 behind, a rotating ring of motes, a halo behind the head
   glyph(ctx, '氣', 150, 66, 118, bt ? PAL.gold : PAL.qi, { alpha: bt ? 0.16 : 0.06, glow: 20 })
   glyph(ctx, '◯', 150, 30 + bob, 44 + (bt ? 8 * Math.abs(Math.sin(t * 3)) : 0), bt ? PAL.gold : PAL.qi, { alpha: bt ? 0.5 : 0.22, glow: 14 })
-  const ringR = bt ? 66 + 6 * Math.sin(t * 4) : 62
-  for (let i = 0; i < 40; i++) {
-    const a = i / 40 * Math.PI * 2 + t * 0.25
-    glyph(ctx, i % 4 ? '·' : '∘', 150 + Math.cos(a) * ringR * 1.25, 72 + Math.sin(a) * ringR * 0.62, 7,
-      bt ? PAL.gold : PAL.qi, { alpha: 0.25 + 0.35 * Math.sin(a * 3 + t * 2) ** 2, glow: 6 })
-  }
+  moteRing(ctx, t, mode, 'back')
   // figure layers, back to front, each animating on its own
   part(ctx, B_PARTS.lotus, 150, 124 + bob * 0.3, 9, PAL.lotus, { alpha: bt ? 0.95 : 0.6, glow: 6 })
   part(ctx, B_PARTS.lap, 150, 101 + bob * 0.4, 8, PAL.robe, { map: { '⣀': PAL.robeShade, '⣿': PAL.robeShade, '~': PAL.robeShade, '.': PAL.robeShade, '-': PAL.robeShade } })
-  part(ctx, B_PARTS.torso, 150, 63 + bob, 8, PAL.robe, { sy: 1 + breath * 0.025, map: { '⢸': PAL.robeShade, '⡇': PAL.robeShade, '/': PAL.robeShade, '\\': PAL.robeShade, '|': PAL.robeShade } })
-  part(ctx, B_PARTS.sleeveL, 124 - sway * 0.8, 71 + bob, 9, PAL.robe, { rot: 0.05 + sway * 0.04, map: { '(': PAL.robeShade, '_': PAL.robeShade } })
-  part(ctx, B_PARTS.sleeveR, 176 - sway * 0.8, 71 + bob, 9, PAL.robe, { rot: -0.05 + sway * 0.04, map: { ')': PAL.robeShade, '_': PAL.robeShade } })
+  part(ctx, B_PARTS.torso, 150, 63 + bob, 8, PAL.robe, { sy: 1 + breath * 0.045, map: { '⢸': PAL.robeShade, '⡇': PAL.robeShade, '/': PAL.robeShade, '\\': PAL.robeShade, '|': PAL.robeShade } })
+  part(ctx, B_PARTS.sleeveL, 127 - sway * 1.5, 71 + bob, 9, PAL.robe, { rot: 0.05 + sway * 0.08, map: { '(': PAL.robeShade, '_': PAL.robeShade } })
+  part(ctx, B_PARTS.sleeveR, 173 - sway * 1.5, 71 + bob, 9, PAL.robe, { rot: -0.05 + sway * 0.08, map: { ')': PAL.robeShade, '_': PAL.robeShade } })
   part(ctx, B_PARTS.collar, 150, 50 + bob, 6, PAL.trim, { glow: 6 * glowK })
   part(ctx, B_PARTS.sash, 150, 81 + bob, 8, PAL.sash, { map: { '◈': PAL.gold }, glowChars: '◈' })
   part(ctx, B_PARTS.hands, 150, 88 + bob, 8, PAL.skin, { map: { '◇': bt ? PAL.gold : PAL.qi }, glowChars: '◇' })
-  part(ctx, B_PARTS.sword, 150, 113 + bob * 0.4, 7, PAL.steel, { rot: -0.035, map: { '╡': PAL.hilt, '▐': PAL.hilt, '○': PAL.tassel }, glow: bt ? 8 : 3 })
+  glyphSword(ctx, t, mode, 113 + bob * 0.4)
   // head group
   part(ctx, B_FACES[face], 150, 32 + bob, 8, PAL.skin, { map: { '-': PAL.eye, 'ˋ': PAL.eye, 'ˊ': PAL.eye, '‿': PAL.lip, '⁀': PAL.lip, ',': PAL.skinShade, '`': PAL.skinShade, "'": PAL.skinShade } })
   part(ctx, B_PARTS.cap, 150, 20 + bob, 8, PAL.hairHi)
@@ -210,12 +205,15 @@ function drawB(ctx, t, mode, face = 'serene') {
     glyph(ctx, 'ϟ', 150 + Math.cos(a) * 58, 64 + Math.sin(a) * 44, 13 + 4 * rnd(Math.floor(t * 8) + i), PAL.gold,
       { rot: a, alpha: 0.4 + 0.6 * rnd(Math.floor(t * 10) + i * 3), glow: 12 })
   }
+  moteRing(ctx, t, mode, 'front')
   drawMotes(ctx, t, mode, 18)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// (c) SHAPE-TO-GLYPH + INK-WASH: vector shapes rasterized into a glyph grid (braille edges, fabric folds, density
-// shading) over braille ink mountains, mist and Qi streams.
+// (c) SHAPE-TO-GLYPH + INK-WASH: vector shapes rasterized into a glyph grid (braille edges, fabric folds, ink-like
+// dot thinning in the shadows, rim light) over braille ink mountains, mist and Qi streams. Round 2: value hierarchy,
+// visible face/bangs/hand seal, stronger breathing, a spiral + halo-ripple breakthrough instead of a gold wash.
+// (h) HYBRID = (c)'s ink scene, figure and halo + (b)'s glyph sword and rotating mote ring (split behind/in front).
 // ═══════════════════════════════════════════════════════════════════════════
 const hitCtx = document.createElement('canvas').getContext('2d')
 const C_FS = 6, C_CW = 3.6, C_LH = 5.2
@@ -224,75 +222,113 @@ const DOTS = [[0.25, 0.125, 0], [0.25, 0.375, 1], [0.25, 0.625, 2], [0.75, 0.125
 
 function ellipse(cx, cy, rx, ry, a0 = 0, a1 = Math.PI * 2) { const p = new Path2D(); p.ellipse(cx, cy, rx, ry, 0, a0, a1); p.closePath(); return p }
 
-function cShapes(t, mode) {
-  const breath = Math.sin(t * 1.3), sway = Math.sin(t * 0.9), b = breath * 0.8
+function cShapes(t, mode, o) {
+  const breath = Math.sin(t * 1.3), sway = Math.sin(t * 0.9), b = breath * 1.6
   const S = []
   const add = (id, path, color, shade, mat, box) => S.push({ id, path, color, shade, mat, box })
   const bt = mode === 'breakthrough'
-  // halo ring behind the head
-  const hr = bt ? 27 + 3 * Math.sin(t * 5) : 25
+  // halo ring behind the head (ripples outward on breakthrough)
+  const hr = 25 + (bt ? 4 * Math.sin(t * 6) : 1.2 * Math.sin(t * 1.3))
   const halo = new Path2D(); halo.arc(150, 32 + b, hr, 0, Math.PI * 2); halo.arc(150, 32 + b, hr - 1.8, 0, Math.PI * 2, true)
-  add('halo', halo, bt ? PAL.gold : PAL.qi, bt ? PAL.gold : PAL.qi, 'glow', [120, 2, 180, 62])
-  add('lap', ellipse(150, 106 + b * 0.4, 63, 15), PAL.robe, PAL.robeDeep, 'robe', [86, 90, 214, 122])
-  const sl = new Path2D(); sl.moveTo(129, 51 + b); sl.quadraticCurveTo(106 + sway, 70 + b, 107 + sway * 1.5, 96 + b); sl.lineTo(137, 95 + b); sl.quadraticCurveTo(136, 72 + b, 138, 60 + b); sl.closePath()
-  const sr = new Path2D(); sr.moveTo(171, 51 + b); sr.quadraticCurveTo(194 + sway, 70 + b, 193 + sway * 1.5, 96 + b); sr.lineTo(163, 95 + b); sr.quadraticCurveTo(164, 72 + b, 162, 60 + b); sr.closePath()
-  const tw = 1 + breath * 0.02
-  const to = new Path2D(); to.moveTo(150 - 20 * tw, 50 + b); to.lineTo(150 + 20 * tw, 50 + b); to.quadraticCurveTo(150 + 27 * tw, 72 + b, 150 + 26 * tw, 95 + b); to.lineTo(150 - 26 * tw, 95 + b); to.quadraticCurveTo(150 - 27 * tw, 72 + b, 150 - 20 * tw, 50 + b); to.closePath()
-  add('torso', to, PAL.robe, PAL.robeShade, 'robe', [118, 48, 182, 96])
-  add('sleeveL', sl, PAL.robe, PAL.robeShade, 'robe', [100, 48, 140, 98])
-  add('sleeveR', sr, PAL.robe, PAL.robeShade, 'robe', [160, 48, 200, 98])
-  const sash = new Path2D(); sash.rect(126, 85 + b, 48, 4.5)
-  add('sash', sash, PAL.sash, '#7A2A26', 'solid', [125, 84, 175, 91])
-  add('hands', ellipse(150, 89 + b, 7.5, 5), PAL.skin, PAL.skinShade, 'skin', [141, 83, 159, 95])
-  const col = new Path2D(); col.moveTo(141, 50 + b); col.lineTo(150, 67 + b); col.lineTo(159, 50 + b); col.lineTo(155.5, 50 + b); col.lineTo(150, 61 + b); col.lineTo(144.5, 50 + b); col.closePath()
-  add('collar', col, PAL.trim, '#9A8030', 'glow', [140, 49, 160, 68])
-  const neck = new Path2D(); neck.rect(146, 42 + b, 8, 9)
-  add('neck', neck, PAL.skin, PAL.skinShade, 'skin', [145, 41, 155, 52])
-  add('hairBack', ellipse(150, 30 + b, 12.8, 13.5), PAL.hair, '#12141F', 'hair', [136, 15, 164, 45])
-  add('head', ellipse(150, 33 + b, 10, 12), PAL.skin, PAL.skinShade, 'skin', [139, 20, 161, 46])
-  add('cap', ellipse(150, 27 + b, 11.2, 8.5, Math.PI, Math.PI * 2), PAL.hair, '#12141F', 'hair', [138, 17, 162, 28])
-  add('bun', ellipse(150, 13 + b, 6.5, 5.5), PAL.hair, '#12141F', 'hair', [142, 6, 158, 20])
-  for (const s of [-1, 1]) {
-    const lk = new Path2D(); const x0 = 150 + s * 11.5
-    lk.moveTo(x0, 28 + b); lk.quadraticCurveTo(x0 + s * 3 + sway * 1.5, 42 + b, x0 + s * 1 + sway * 2.5, 54 + b); lk.lineTo(x0 + s * 2.6 + sway * 2.5, 54 + b); lk.quadraticCurveTo(x0 + s * 4.6 + sway * 1.5, 42 + b, x0 + s * 1.6, 28 + b); lk.closePath()
-    add('lock' + s, lk, PAL.hair, '#12141F', 'hair', [x0 - 6, 27, x0 + 7, 56])
+  add('halo', halo, bt ? PAL.gold : PAL.qi, bt ? PAL.gold : PAL.qi, 'glow', [118, 0, 182, 64])
+  if (bt) {
+    const rr = 25 + ((t * 30) % 40)
+    const rip = new Path2D(); rip.arc(150, 32 + b, rr, 0, Math.PI * 2); rip.arc(150, 32 + b, rr - 1.2, 0, Math.PI * 2, true)
+    add('ripple', rip, PAL.gold, PAL.gold, 'glow', [150 - rr - 2, 30 - rr, 150 + rr + 2, 36 + rr])
   }
-  const pin = new Path2D(); pin.moveTo(152, 12 + b); pin.lineTo(167, 7 + b); pin.lineTo(167.4, 8.6 + b); pin.lineTo(152.4, 13.6 + b); pin.closePath()
-  add('pin', pin, PAL.gold, '#9A8030', 'glow', [151, 6, 168, 15])
-  const sw = new Path2D(); sw.moveTo(80, 117 + b * 0.4); sw.lineTo(212, 111.5 + b * 0.4); sw.lineTo(212, 114.3 + b * 0.4); sw.lineTo(80, 118.6 + b * 0.4); sw.closePath()
-  add('blade', sw, PAL.steel, '#7C88A0', 'steel', [78, 109, 214, 121])
-  const hilt = new Path2D(); hilt.rect(212, 110 + b * 0.4, 14, 4.8); hilt.rect(211, 107.5 + b * 0.4, 2.4, 10)
-  add('hilt', hilt, PAL.hilt, '#9A8030', 'glow', [210, 106, 227, 119])
-  add('tassel', ellipse(229.5, 115 + b * 0.4, 2.2, 3.2), PAL.tassel, '#801818', 'solid', [226, 111, 233, 119])
+  add('lap', ellipse(150, 106 + b * 0.4, 63, 15), PAL.robe, PAL.robeDeep, 'robe', [86, 89, 214, 123])
+  const sl = new Path2D(); sl.moveTo(129, 51 + b); sl.quadraticCurveTo(105 + sway * 2, 70 + b, 106 + sway * 3, 97 + b); sl.lineTo(138, 96 + b); sl.quadraticCurveTo(136, 72 + b, 138, 60 + b); sl.closePath()
+  const sr = new Path2D(); sr.moveTo(171, 51 + b); sr.quadraticCurveTo(195 + sway * 2, 70 + b, 194 + sway * 3, 97 + b); sr.lineTo(162, 96 + b); sr.quadraticCurveTo(164, 72 + b, 162, 60 + b); sr.closePath()
+  const tw = 1 + breath * 0.035
+  const to = new Path2D(); to.moveTo(150 - 20 * tw, 50 + b); to.lineTo(150 + 20 * tw, 50 + b); to.quadraticCurveTo(150 + 27 * tw, 72 + b, 150 + 26 * tw, 95 + b); to.lineTo(150 - 26 * tw, 95 + b); to.quadraticCurveTo(150 - 27 * tw, 72 + b, 150 - 20 * tw, 50 + b); to.closePath()
+  add('torso', to, PAL.robe, PAL.robeShade, 'robe', [117, 47, 183, 97])
+  add('sleeveL', sl, PAL.robe, PAL.robeShade, 'robe', [100, 47, 141, 99])
+  add('sleeveR', sr, PAL.robe, PAL.robeShade, 'robe', [159, 47, 200, 99])
+  if (!o.hybrid) { const sash = new Path2D(); sash.rect(126, 85 + b, 48, 4.5); add('sash', sash, PAL.sash, '#7A2A26', 'solid', [125, 83, 175, 92]) }
+  add('hands', ellipse(150, 89 + b, 8.5, 5.5), '#F2D6B0', PAL.skinShade, 'skin', [140, 82, 160, 96])
+  const col = new Path2D(); col.moveTo(141, 50 + b); col.lineTo(150, 67 + b); col.lineTo(159, 50 + b); col.lineTo(155.5, 50 + b); col.lineTo(150, 61 + b); col.lineTo(144.5, 50 + b); col.closePath()
+  add('collar', col, PAL.trim, '#9A8030', 'glow', [140, 48, 160, 69])
+  const neck = new Path2D(); neck.rect(146, 42 + b, 8, 9)
+  add('neck', neck, PAL.skin, PAL.skinShade, 'skin', [145, 40, 155, 53])
+  add('hairBack', ellipse(150, 30 + b, 12.8, 13.5), PAL.hair, '#12141F', 'hair', [136, 14, 164, 46])
+  add('head', ellipse(150, 33 + b, 10, 12), PAL.skin, PAL.skinShade, 'skin', [139, 19, 161, 47])
+  // hair cap with bangs that dip onto the forehead and frame the temples
+  const cap = new Path2D()
+  cap.moveTo(138.6, 32 + b); cap.quadraticCurveTo(138, 18 + b, 150, 17.5 + b); cap.quadraticCurveTo(162, 18 + b, 161.4, 32 + b)
+  cap.quadraticCurveTo(158, 25 + b, 153, 27 + b); cap.quadraticCurveTo(150, 24.5 + b, 147, 27 + b); cap.quadraticCurveTo(142, 25 + b, 138.6, 32 + b); cap.closePath()
+  add('cap', cap, PAL.hair, '#12141F', 'hair', [137, 16, 163, 33])
+  add('bun', ellipse(150, 12.5 + b, 6.5, 5.5), PAL.hair, '#12141F', 'hair', [142, 5, 158, 20])
+  for (const s of [-1, 1]) {
+    const lk = new Path2D(); const x0 = 150 + s * 11.5, sw2 = sway * 3
+    lk.moveTo(x0, 28 + b); lk.quadraticCurveTo(x0 + s * 3 + sw2 * 0.6, 42 + b, x0 + s * 1 + sw2, 55 + b); lk.lineTo(x0 + s * 2.8 + sw2, 55 + b); lk.quadraticCurveTo(x0 + s * 4.8 + sw2 * 0.6, 42 + b, x0 + s * 1.6, 28 + b); lk.closePath()
+    add('lock' + s, lk, PAL.hair, '#12141F', 'hair', [x0 - 8, 26, x0 + 9, 58])
+  }
+  const pin = new Path2D(); pin.moveTo(152, 11.5 + b); pin.lineTo(168, 6 + b); pin.lineTo(168.4, 7.8 + b); pin.lineTo(152.4, 13.2 + b); pin.closePath()
+  add('pin', pin, PAL.gold, '#9A8030', 'glow', [151, 4, 170, 15])
+  if (!o.hybrid) {
+    const sw = new Path2D(); sw.moveTo(78, 116.5 + b * 0.4); sw.lineTo(212, 110.5 + b * 0.4); sw.lineTo(212, 114.5 + b * 0.4); sw.lineTo(78, 119.5 + b * 0.4); sw.closePath()
+    add('blade', sw, PAL.steel, '#7C88A0', 'steel', [76, 108, 214, 121])
+    const hilt = new Path2D(); hilt.rect(212, 109.5 + b * 0.4, 14, 5.5); hilt.rect(210.5, 106.5 + b * 0.4, 2.6, 11)
+    add('hilt', hilt, PAL.hilt, '#9A8030', 'glow', [209, 105, 227, 119])
+    add('tassel', ellipse(229.5, 115 + b * 0.4, 2.2, 3.4), PAL.tassel, '#801818', 'solid', [226, 110, 233, 120])
+  }
   return S
 }
 
-// Cell glyph for an interior (all 8 dots inside one shape).
-function cInterior(sh, x, y, light, t) {
-  if (sh.mat === 'robe') {
-    const fold = Math.sin(x * 0.42 + Math.sin(y * 0.09 + 1.3) * 2.2)
-    if (Math.abs(fold) < 0.22) return ['⡇', mix(sh.shade, sh.color, 0.35)]
-    return ['⣿', mix(sh.shade, sh.color, light)]
-  }
-  if (sh.mat === 'hair') return [rnd(Math.floor(x * 7 + y * 13)) > 0.7 ? '⢕' : '⣿', mix(PAL.hair, PAL.hairHi, 0.35 + light * 0.65)]
-  return ['⣿', mix(sh.shade, sh.color, light)]
+// Ink shading: lit cells keep all 8 dots, shadowed cells lose dots (dithered by a hash) and fade, like ink thinning.
+function inkThin(bits, light, seed) {
+  const keep = 0.35 + 0.65 * light
+  let out = 0
+  for (let bit = 0; bit < 8; bit++) if (bits & (1 << bit) && rnd(seed * 8 + bit) < keep) out |= 1 << bit
+  return out || (bits & 0x40)   // never empty a covered cell entirely
 }
 
-function drawC(ctx, t, mode) {
+function cInterior(sh, x, y, light, seed) {
+  if (sh.mat === 'robe') {
+    const fold = Math.sin(x * 0.42 + Math.sin(y * 0.09 + 1.3) * 2.2)
+    if (Math.abs(fold) < 0.2) return [0x47, mix(sh.shade, sh.color, 0.2), 0.9]            // dark fold line ⡇
+    return [inkThin(0xFF, light, seed), mix(sh.shade, sh.color, light), 0.55 + 0.45 * light]
+  }
+  if (sh.mat === 'hair') return [rnd(seed) > 0.72 ? 0x95 : 0xFF, mix(PAL.hair, PAL.hairHi, 0.35 + light * 0.65), 1]
+  if (sh.mat === 'skin') return [0xFF, mix(sh.shade, sh.color, 0.45 + light * 0.55), 1]
+  return [0xFF, mix(sh.shade, sh.color, light), 1]
+}
+
+// (b)'s rotating mote ring, split into the half behind the figure and the half in front of it.
+function moteRing(ctx, t, mode, half) {
   const bt = mode === 'breakthrough'
+  const ringR = bt ? 66 + 6 * Math.sin(t * 4) : 62
+  for (let i = 0; i < 40; i++) {
+    const a = i / 40 * Math.PI * 2 + t * 0.25
+    const front = Math.sin(a) > 0
+    if (half && (half === 'front') !== front) continue
+    glyph(ctx, i % 4 ? '·' : '∘', 150 + Math.cos(a) * ringR * 1.25, 72 + Math.sin(a) * ringR * 0.62, front ? 8 : 6,
+      bt ? PAL.gold : PAL.qi, { alpha: (front ? 1 : 0.6) * (0.25 + 0.4 * Math.sin(a * 3 + t * 2) ** 2), glow: 6 })
+  }
+}
+
+// (b)'s glyph sword, resting across the knees.
+function glyphSword(ctx, t, mode, y) {
+  part(ctx, B_PARTS.sword, 150, y, 8, PAL.steel, { rot: -0.035, map: { '╡': PAL.hilt, '▐': PAL.hilt, '○': PAL.tassel }, glow: mode === 'breakthrough' ? 9 : 4 })
+}
+
+function drawC(ctx, t, mode, o = {}) {
+  const bt = mode === 'breakthrough'
+  const b = Math.sin(t * 1.3) * 1.6
   // ink-wash sky
   const sky = ctx.createLinearGradient(0, 0, 0, LH)
   sky.addColorStop(0, '#0C0718'); sky.addColorStop(1, '#130B20')
   ctx.fillStyle = sky; ctx.fillRect(0, 0, LW, LH)
   const g = ctx.createRadialGradient(150, 40, 2, 150, 40, 120)
-  g.addColorStop(0, rgba(bt ? PAL.gold : PAL.qi, bt ? 0.22 : 0.10)); g.addColorStop(1, 'rgba(0,0,0,0)')
+  g.addColorStop(0, rgba(bt ? PAL.gold : PAL.qi, bt ? 0.20 : 0.10)); g.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = g; ctx.fillRect(0, 0, LW, LH)
+  if (o.hybrid) moteRing(ctx, t, mode, 'back')
 
   ctx.font = `${C_FS}px ${FONT}`
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   const ridgeFar = x => 78 + 10 * Math.sin(x * 0.021 + 1) + 6 * Math.sin(x * 0.057 + 2) + 3 * Math.sin(x * 0.13)
   const ridgeNear = x => 96 + 8 * Math.sin(x * 0.03 + 4) + 4 * Math.sin(x * 0.09 + 1)
-  const shapes = cShapes(t, mode)
+  const shapes = cShapes(t, mode, o)
   for (let r = 0; r < C_ROWS; r++) for (let c = 0; c < C_COLS; c++) {
     const x0 = c * C_CW, y0 = r * C_LH
     const hits = new Array(8)
@@ -311,12 +347,11 @@ function drawC(ctx, t, mode) {
     const cx = x0 + C_CW / 2, cy = y0 + C_LH / 2
     const ids = Object.keys(count)
     if (!ids.length) {
-      // background: braille ink mountains (exact ridge per dot), then drifting mist
       let bits = 0, near = false
       for (const [dx, dy, bit] of DOTS) {
         const px = x0 + dx * C_CW, py = y0 + dy * C_LH
         const dn = py - ridgeNear(px), df = py - ridgeFar(px)
-        // a band under each ridge whose dots thin out with depth (dithered by a hash), like ink soaking into paper
+        // a band under each ridge whose dots thin out with depth, like ink soaking into paper
         if (dn > 0 && rnd(Math.floor(px * 13 + py * 7)) > dn / 16) { bits |= 1 << bit; near = true }
         else if (df > 0 && dn <= 0 && rnd(Math.floor(px * 11 + py * 5)) > df / 12) bits |= 1 << bit
       }
@@ -338,53 +373,61 @@ function drawC(ctx, t, mode) {
     for (const id of ids) if (count[id] > count[dom]) dom = id
     const sh = shapes[dom]
     const bx = sh.box
-    const light = clamp(0.95 - 0.55 * ((cy - bx[1]) / (bx[3] - bx[1])) + 0.25 * ((150 - cx) / 60), 0.15, 1)
-    let ch, color
-    if (count[dom] === 8) [ch, color] = cInterior(sh, cx, cy, light, t)
+    const light = clamp(0.95 - 0.6 * ((cy - bx[1]) / (bx[3] - bx[1])) + 0.3 * ((150 - cx) / 60), 0.1, 1)
+    const seed = c * 131 + r * 17
+    let bits, color, alpha = 1
+    if (count[dom] === 8) [bits, color, alpha] = cInterior(sh, cx, cy, light, seed)
     else {
-      let bits = 0
+      bits = 0
       for (let bit = 0; bit < 8; bit++) if (hits[bit] == dom) bits |= 1 << bit
-      ch = String.fromCharCode(0x2800 + bits)
-      color = mix(sh.shade, sh.color, Math.min(1, light + 0.1))
+      // rim light: edges facing the upper-left light are brighter than the body
+      color = mix(sh.shade, sh.color, Math.min(1, light + 0.3))
+      if (sh.mat === 'robe' && cx < 150) color = mix(color.startsWith('#') ? color : PAL.robe, '#FFFFFF', 0.25)
     }
-    if (bt && sh.mat === 'robe') color = mix(color.startsWith('#') ? color : '#DCD4C4', PAL.gold, 0.25)
-    const glow = sh.mat === 'glow' || (bt && sh.mat === 'robe')
+    // breakthrough: gold rim light on the robe edges only (form stays readable)
+    if (bt && sh.mat === 'robe' && count[dom] < 8) color = PAL.gold
+    const glow = sh.mat === 'glow' || (bt && sh.mat === 'robe' && count[dom] < 8)
     ctx.shadowColor = sh.mat === 'glow' ? sh.color : PAL.gold
-    ctx.shadowBlur = glow ? (sh.mat === 'glow' ? 7 : 3) : 0
+    ctx.shadowBlur = glow ? 7 : 0
+    ctx.globalAlpha = alpha
     ctx.fillStyle = color
-    ctx.fillText(ch, cx, cy)
+    ctx.fillText(String.fromCharCode(0x2800 + bits), cx, cy)
+    ctx.globalAlpha = 1
   }
   ctx.shadowBlur = 0
-  // fine face detail on top of the raster: closed eyes, mouth
-  const b = Math.sin(t * 1.3) * 0.8
-  glyph(ctx, '⠤', 146, 34 + b, 6, PAL.eye); glyph(ctx, '⠤', 154, 34 + b, 6, PAL.eye); glyph(ctx, '⠒', 150, 39.5 + b, 5, PAL.lip)
-  // hand seal glow
-  glyph(ctx, '◇', 150, 88.5 + b, 6, bt ? PAL.gold : PAL.qi, { glow: 10 })
-  // Qi streams: motes spiralling inward to the dantian
+  // line accents placed on top of the raster: brows, closed eyes, mouth, hand seal
+  // face: the dotted skin swallows thin glyphs, so features are stroked + filled in near-black (still glyphs)
+  const feat = (ch, x, y, size, color) => {
+    ctx.save(); ctx.font = `bold ${size}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.lineWidth = size * 0.12; ctx.strokeStyle = color; ctx.fillStyle = color
+    ctx.strokeText(ch, x, y); ctx.fillText(ch, x, y); ctx.restore()
+  }
+  feat('◡', 145.5, 33.8 + b, 6.5, '#2A1820'); feat('◡', 154.5, 33.8 + b, 6.5, '#2A1820')
+  feat('⌒', 145.5, 30.2 + b, 5.5, PAL.hair); feat('⌒', 154.5, 30.2 + b, 5.5, PAL.hair)
+  feat('‿', 150, 40 + b, 6, '#9A4A44')
+  glyph(ctx, '◇', 150, 88.5 + b, 8, bt ? PAL.gold : PAL.qi, { glow: bt ? 14 : 10 })
+  if (o.hybrid) {
+    part(ctx, B_PARTS.sash, 150, 86.8 + b, 7, PAL.sash, { map: { '◈': PAL.gold }, glowChars: '◈' })
+    glyphSword(ctx, t, mode, 114 + b * 0.4)
+    moteRing(ctx, t, mode, 'front')
+  }
+  // Qi streams: motes spiralling inward to the dantian (tighter, faster, golden on breakthrough)
   for (let i = 0; i < 44; i++) {
-    const life = (t * (bt ? 0.45 : 0.16) + rnd(i + 9)) % 1
-    const ang = rnd(i) * Math.PI * 2 + life * 4.5
+    const life = (t * (bt ? 0.55 : 0.16) + rnd(i + 9)) % 1
+    const ang = rnd(i) * Math.PI * 2 + life * (bt ? 9 : 4.5)
     const rad = (1 - life) * (70 + 30 * rnd(i + 3))
     const x = 150 + Math.cos(ang) * rad * 1.35, y = 80 + Math.sin(ang) * rad * 0.55
-    glyph(ctx, i % 7 === 0 ? '气' : (i % 3 ? '·' : '∘'), x, y, i % 7 === 0 ? 7 : 6, bt && i % 2 ? PAL.gold : PAL.qi,
+    glyph(ctx, i % 7 === 0 ? '气' : (i % 3 ? '·' : '∘'), x, y, i % 7 === 0 ? 7 : 6, bt && i % 3 ? PAL.gold : PAL.qi,
       { alpha: Math.sin(life * Math.PI) * 0.85, glow: 6 })
   }
-  if (bt) {
-    for (let i = 0; i < 12; i++) {
-      const a = i / 12 * Math.PI * 2 + t * 0.3
-      ctx.save(); ctx.globalAlpha = 0.18 + 0.2 * rnd(Math.floor(t * 9) + i)
-      ctx.strokeStyle = PAL.gold; ctx.lineWidth = 1; ctx.shadowColor = PAL.gold; ctx.shadowBlur = 10
-      ctx.beginPath(); ctx.moveTo(150 + Math.cos(a) * 30, 60 + Math.sin(a) * 22); ctx.lineTo(150 + Math.cos(a) * 140, 60 + Math.sin(a) * 90); ctx.stroke(); ctx.restore()
-    }
-    for (let i = 0; i < 6; i++) {
-      const a = i / 6 * Math.PI * 2 + t
-      glyph(ctx, 'ϟ', 150 + Math.cos(a) * 60, 62 + Math.sin(a) * 42, 12, PAL.gold, { rot: a, alpha: 0.5 + 0.5 * rnd(Math.floor(t * 12) + i), glow: 12 })
-    }
+  if (bt) for (let i = 0; i < 4; i++) {
+    const a = i / 4 * Math.PI * 2 + t * 0.7
+    glyph(ctx, 'ϟ', 150 + Math.cos(a) * 64, 58 + Math.sin(a) * 40, 11, PAL.gold, { rot: a, alpha: 0.35 + 0.5 * rnd(Math.floor(t * 12) + i), glow: 12 })
   }
 }
 
 // ── page wiring ─────────────────────────────────────────────────────────────
-const VARIANTS = { a: drawA, b: drawB, c: drawC }
+const VARIANTS = { b: drawB, c: drawC, h: (ctx, t, mode) => drawC(ctx, t, mode, { hybrid: true }) }
 const targets = []
 for (const v of Object.keys(VARIANTS)) {
   for (const [kind, w, h] of [['over', 300, 150], ['ban', 80, 56]]) {

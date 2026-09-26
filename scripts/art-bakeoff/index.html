@@ -26,16 +26,16 @@
 </head>
 <body>
   <h1>Art Bake-off 画风比试</h1>
-  <div class="sub">The same Qi-Condensation cultivator (seated lotus, robes, hair bun, sword across the knees), three ways.
+  <div class="sub">Round 2 (round 1: grid ASCII 4.3 · compositor 5.2 · shape-to-glyph 4.2). The same Qi-Condensation cultivator (seated lotus, robes, hair bun, sword across the knees), three ways.
     Top: Overlay size (300×150). Below: Banner size (80×56).</div>
   <div class="ctl"><button data-mode="idle" class="on">Idle</button><button data-mode="breakthrough">Breakthrough</button></div>
   <div class="row">
-    <div class="col" id="col-a"><h2>(a) Grid ASCII, pushed</h2><p>Today's engine: fixed character grid, frame swaps. Bigger grid, fixed cell advance (no row jitter), no emoji.</p>
-      <canvas id="a-over"></canvas><canvas id="a-ban" class="banner"></canvas></div>
     <div class="col" id="col-b"><h2>(b) Layered glyph compositor</h2><p>Small ASCII parts (head, hair, robe, sleeves, lap, sword, aura) at their own size, position, rotation and glow, each animating independently. Braille folds for detail; the face is a swappable slot.</p>
       <canvas id="b-over"></canvas><canvas id="b-ban" class="banner"></canvas></div>
     <div class="col" id="col-c"><h2>(c) Shape-to-glyph + ink-wash</h2><p>The figure is authored as vector shapes; the engine fills them with glyphs (braille edges, fabric folds, density shading) over ink-wash mountains, mist and Qi streams.</p>
       <canvas id="c-over"></canvas><canvas id="c-ban" class="banner"></canvas></div>
+    <div class="col" id="col-h"><h2>(h) Hybrid: c + b</h2><p>(c)'s ink-wash scene, figure and halo (user's pick) with (b)'s glyph sword and rotating mote ring, which now passes behind and in front of the figure.</p>
+      <canvas id="h-over"></canvas><canvas id="h-ban" class="banner"></canvas></div>
   </div>
   <script src="bakeoff.js"></script>
 </body>

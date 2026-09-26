@@ -102,7 +102,9 @@ Agent: **A2 art bake-off** (user approved; user reordered A2 before A1). Standal
   `scripts/art-bakeoff/` renders the same seated cultivator 3 ways; `scripts/smoke/scenarios/art-bakeoff.js` captures
   bake-*.png. One self-check polish pass each, one fresh reviewer each: (a) grid 4.3 (ceiling ~6) · (b) layered
   compositor 5.2 (ceiling 8) · (c) shape-to-glyph + ink-wash 4.2 (ceiling 7.5). Details: ui-review.md → "A2 art bake-off".
-  Next: **user picks the direction** → A1 (UI emoji purge) → 1.8b.
+  - **Round 2** (user asked for b vs c vs hybrid, liking c's background/person/halo + b's sword/ring): b 4.2 · c 4.7 ·
+    **hybrid 5.7, ceiling 8.5** → **user chose the HYBRID**. 6 engine requirements recorded for A3 (ui-review.md).
+  Next: **A1** (UI-only emoji purge + lint) → **1.8b** (UI overhaul + family agency) → 1.9 → A3 hybrid engine → A4.
 
 Date: 2026-09-26 (day session, user present) — part 16
 Agent: **1.8c visual baseline + art audit** (user approved). No game code changed.

@@ -1,5 +1,5 @@
 // Real-app capture for the art bake-off (roadmap A2, docs/systems/ui-review.md → "A2 bake-off"): opens
-// scripts/art-bakeoff/index.html inside the Electron app and screenshots each variant (a/b/c) at Overlay size
+// scripts/art-bakeoff/index.html inside the Electron app and screenshots each variant (round 2: b / c / h = hybrid) at Overlay size
 // (300×150, 3× magnified hi-DPI) and Banner size (80×56, 4×), idle at 3 moments + breakthrough at 2, plus the
 // whole comparison page and variant (b)'s swappable face. Output: scripts/smoke/out/bake-*.png.
 // Run: node scripts/smoke/cdp.js scripts/smoke/scenarios/art-bakeoff.js
@@ -12,7 +12,7 @@ module.exports = async ({ ev, wait, shot, assert, sleep }) => {
   await ev('window.resizeTo && window.resizeTo(1100, 560)')
   const rect = id => ev(`(() => { const r = document.getElementById('${id}').getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height } })()`)
   const moments = { idle: [0.4, 1.7, 3.1], breakthrough: [5.2, 5.6] }
-  for (const v of ['a', 'b', 'c']) {
+  for (const v of ['b', 'c', 'h']) {
     const over = await rect(`${v}-over`), ban = await rect(`${v}-ban`)
     for (const [mode, ts] of Object.entries(moments)) {
       for (let i = 0; i < ts.length; i++) {
