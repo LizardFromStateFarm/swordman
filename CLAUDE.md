@@ -56,6 +56,12 @@ building any gameplay feature, write a **"Depth pass"** into the spec/plan and s
 4. **Drama** — the best and the worst thing that can happen. Include story-making failure (betrayal, rivalry,
    loss, revenge), not only bonuses.
 5. **Feedback** — how does the player's past behavior change future events?
+6. **Agency: the player's own decisions are never simulated** (user rule, 2026-09-26). NPCs and the world may act on
+   timers and rolls (a spouse's reaction, a head's verdict, an heir's reign), but anything that is *the player's*
+   choice (who to court, whether to have a child, how to raise one, ending an affair, what to do in a fight) must
+   be an explicit choice the player makes, never a timer, a drift, or a hidden roll deciding for them. A coarse
+   setting (like None/Some/Many) may stand in only for chores the player explicitly delegated, and it must stay
+   overridable per case. List every player decision the feature makes on its own and turn each into a choice.
 
 If the user asks for one mechanic, propose 2–3 connected ones alongside it. Example of the expected depth:
 marriage (Phase 16-lite) → spouse affection, personality-driven marriage events, affairs, discovery reactions

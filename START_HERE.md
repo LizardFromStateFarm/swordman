@@ -76,6 +76,10 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 - No in-game UI to pick the Family Manual technique (only the sim bot calls `setFamilyManual()`) — 2.7
 - ~~Main interaction area is the smallest part of the window~~ — 1.7: Overlay tab body 105 → 305px, Expanded/Desktop
   656–696px. Still open: 7 tabs at 9px in Overlay, banner has no attention strip yet — 1.8b
+- **Family agency (→ 1.8b):** player decisions currently simulated: courtship only via matchmaker, spouse affection
+  only drifts/random events, children born on a timer (None/Some/Many), child bond only via random events/neglect,
+  affairs discovered by dice and ending on their own, tournament/duel fights auto-rolled. Rule: CLAUDE.md Depth
+  Pass #6 (player choices are never simulated).
 - **Full itemized list: `docs/systems/ui-layout.md` → "UX Audit"** (1.8a, 2026-09-26): 7 structural findings + a
   per-system gap table. Headline items: tab body is only ~105px of the 600px window; own-sect Sect tab = 15 screens
   of scroll; Stats is a junk drawer holding every family/clan decision; automation panel duplicated at the top of
