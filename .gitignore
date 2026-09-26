@@ -7,3 +7,6 @@ Thumbs.db
 
 www/
 ios/App/App/public/
+
+# QA sim harness output (regenerated every run)
+scripts/sim/out/

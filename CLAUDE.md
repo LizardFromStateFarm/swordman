@@ -52,6 +52,7 @@ docs/
     sects.md            ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
     sect-war.md         ← Sect war timer, scouting/prep, auto-resolve, alliances (Phase 5B)
+    qa-sim.md           ← QA sim harness: flags, metrics, profiles, how to extend
     ui-layout.md        ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
@@ -63,6 +64,8 @@ preload.js              ← contextBridge — only way renderer talks to Node
 capacitor.config.json     ← Capacitor (iOS) config — webDir "www"
 scripts/
   build-ios-web.js      ← Builds www/ (gitignored) from renderer/ + assets/ for Capacitor
+  sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
+    run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt
 renderer/
   index.html            ← All HTML — charselect + app, 6 tabs
   styles.css            ← All CSS — CSS vars at top, add new components here
@@ -141,6 +144,8 @@ All visual assets must pass a two-agent create → review gate before being comm
 - Breakthrough chance must never exceed 0.98
 - New `RANDOM_EVENTS` must have both positive and negative variants
 - Flavor text should read like a xianxia novel translation
+- Balance changes: run `npm run sim` before AND after, read only `scripts/sim/out/report.md`; try values
+  with `--set` first. New systems must teach the sim bot to use them (see `docs/systems/qa-sim.md`).
 
 ---
 

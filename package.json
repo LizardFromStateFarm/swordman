@@ -12,6 +12,8 @@
     "cap:sync": "npm run build:web && npx cap sync ios",
     "ios:open": "npm run cap:sync && npx cap open ios",
     "test": "node scripts/check-syntax.js",
+    "sim": "node scripts/sim/run.js",
+    "sim:quick": "node scripts/sim/run.js --profiles=active,afk --hours=24 --seeds=1 --out=scripts/sim/out/quick",
     "release": "node scripts/release.js"
   },
   "author": "Cultivator Idle",

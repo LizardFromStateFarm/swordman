@@ -11,7 +11,8 @@ Phase 1  ✅  Core idle loop (Qi, stages, techniques, events, slots, particle re
 Phase 2  ✅  Explore / Combat / Resources / Crafting
 Phase 3  ✅  Breakthrough Integrity + Spiritual Beasts
 Phase 4  ✅  Sect System — join existing sects
-Phase 5  ✅  Build Your Own Sect (5A ✅ done) + Sect Wars (5B ✅ done)
+Phase 5  🔶  Build Your Own Sect (5A ✅) + Sect Wars (5B ✅) + Member Wars (5C ⬜ — wars for joined sects)
+Tooling  ✅  QA Sim Harness (`npm run sim`) — bot playtesting + balance/fun report
 Phase 6  ⬜  Animation & Visual Overhaul (incl. 6E window/layout modes)
 Phase 7  ⬜  Dao Paths + Body Cultivation + Heavenly Tribulation
 Phase 8  ⬜  Ascension & Reincarnation (New Game+)
@@ -208,6 +209,41 @@ Trigger every 2–6 hours (real time), scaled by sect fame.
 Phases: Scouting (5 min) → Preparation (10 min) → Auto-resolve.
 Win = spoils + enemy contribution loss. Lose = resource penalty + array damage.
 Alliance system: ally with other sects for defensive help.
+
+### 5C — Member Wars (sect wars for non-leaders) ⬜
+
+> **Requested 2026-09-25.** Today wars only exist once you *found* a sect (`tickSectWar()` early-returns
+> unless `ownSect.founded`). Sects you merely *join* should also go to war, pulling you in as a member.
+
+- **Trigger:** while `sect.id` is set, the joined sect periodically goes to war with a rival (reuse
+  `RIVAL_SECT_*` pools, or another `SECTS` entry for flavor). Interval scales by sect rank, not fame
+  (suggested 4–10h; lower ranks get called less often).
+- **Same phase machine:** scouting → preparing → auto-resolve, reusing the Date.now()-chained 5B pattern so
+  offline catch-up keeps working. Generalise `sectWar` state with a `side: 'own' | 'member'` field rather than
+  duplicating it (keep `_ensurePhase5BFields` migration safe).
+- **Member actions during a war (the "pulled in" feel):** answer the call (commit to a war mission that locks
+  one mission slot for the war), donate stones/pills to the war chest, or send a beast. Each adds to sect power.
+  Ignoring the call is allowed but costs contribution/karma.
+- **Outcome:** sect power = f(sect tier, your rank, your commitments) vs rival. Win → contribution + rank-scaled
+  spoils (maybe a rare item). Loss → contribution loss, sect buff (`effects`) suppressed for a few hours.
+  Never demotes rank on its own.
+- **Leaving mid-war:** allowed, but a karma + contribution penalty ("deserter").
+- **QA sim:** add member-war behaviour to `scripts/sim/bot.js` (member path), war metrics for `--path=member`
+  (engaged %, W/L, contribution delta) — see `docs/systems/qa-sim.md` → Extending.
+- Needs its own section in `docs/systems/sect-war.md` before code (Rule #6).
+
+---
+
+## Tooling — QA Sim Harness ✅
+
+> **Implemented 2026-09-25.** `npm run sim` / `npm run sim:quick` — headless bots (active / casual / afk
+> profiles, founder / member sect paths) play the real game logic at ~20+ game-hours per real second per core
+> and write `scripts/sim/out/report.md`: pacing (time to each realm/milestone), fun signals (dead zones,
+> difficulty walls, fail streaks, hoarding, actions/hour, qi-capped %, unused features), health (exceptions,
+> invariants, save round-trips) and tick performance. See `docs/systems/qa-sim.md`.
+> Not yet: Playwright UI-level pass (would need a swappable clock seam in game.js); an LLM-driven policy
+> tier for qualitative "does this feel good" feedback; wiring `sim:quick` into `npm run release` (blocked
+> until the current health failure — see START_HERE — is fixed, or it would block every release).
 
 ---
 

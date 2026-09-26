@@ -24,6 +24,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Sect system — join existing (5 sects, ranks, missions) | ✅ Phase 4 |
 | Found own sect (buildings, disciples, income) | ✅ Phase 5A |
 | Sect wars + alliances | ✅ Phase 5B |
+| Member wars (joined sects go to war, you get pulled in) | ⬜ Phase 5C |
+| QA sim harness (`npm run sim` → bot playtest report) | ✅ Tooling |
 | Animation + Visual Overhaul (incl. window/layout modes) | ⬜ Phase 6 |
 | Dao Paths, Reincarnation, Tribulation | ⬜ Phase 7–8 |
 | Desktop notifications, tray, time-of-day | ⬜ Phase 9 |
@@ -44,44 +46,44 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
-Date: 2026-09-25
-Agent: Phase 5B — Sect Wars (Phase 5A finished earlier same day, see docs/systems/own-sect.md)
+Date: 2026-09-25 (session 2)
+Agent: QA Sim Harness (tooling) + planned Phase 5C (Member Wars)
 What was done:
-  - Wrote docs/systems/sect-war.md first (Rule #6), then implemented Phase 5B:
-      · assets/data/sect-war.js — war interval scaling (2–6h by sectFame), scout(5m)/prep(10m) durations,
-        reinforcement/alliance costs+bonuses, loss/array-damage constants, rival sect name pools
-      · game-state.js — `sectWar` state (+ _ensurePhase5BFields migration); tickSectWar() (Date.now()-chained
-        state machine: none→scouting→preparing→auto-resolve, loops internally so offline catch-up fast-forwards
-        through any number of missed wars in one initSlot() call); reinforceForWar() / requestWarAlly(sectId);
-        _resolveSectWar() rolls playerPower/(playerPower+enemyPower) using derived.warDefense + fame, pays
-        spoils or a Spirit Stone penalty + Defensive Array disable (derived.arrayDamaged excludes its
-        war_defense effect in _recalc() while damaged); fame now includes +5×warVictories
-      · renderer/game/sect-war.js — SectWarSystem.tick() thin wrapper, wired into the main loop
-      · Sect tab: renderSectWarPanel() — idle/scouting/preparing/resolved banners, alliance request list
-        (buys a one-war power bonus from the existing Phase 4 SECTS roster), reinforce button; live countdown
-        via updateSectTimersInPlace(); Stats tab shows W/L record
-      · Docs: PLAN.md, CLAUDE.md tree, docs/index.md, own-sect.md cross-ref
-  - Verified: `npm test` (28 files), `npm run build:web`, `npm run dist` (real win32 build — we're on native
-    Windows this session, not the Linux sandbox from last time), a headless vm-sandboxed logic test (phase
-    transitions, ally/reinforce gating, forced-win and forced-loss resolves, array damage, offline
-    fast-forward across a full missed war cycle in one call, migration, disband reset — all passed), AND a
-    full Playwright `_electron` UI round-trip against the real packaged app: founded a sect, force-advanced
-    the war through all four states via the live `gameState` global, clicked the real Ally/Reinforce buttons,
-    screenshotted each state, confirmed only the pre-existing CSP style-src console noise appeared (no new
-    errors). Playwright was a throwaway dev install (--no-save), removed after.
+  - Built scripts/sim/ — headless bot playtesting harness. `npm run sim` (full: active/casual/afk profiles ×
+    50/100/200h × 3 seeds, ~16s on 16 cores, parallel worker processes) / `npm run sim:quick` (~1s).
+    Loads the REAL game logic (data + game-state.js + game/*.js) into a Node vm with fake Date, seeded
+    Math.random (deterministic: same seed = identical result) and in-memory window.electron. Bots only call
+    public gameState methods. afk profile closes/reopens the game through the real save → initSlot() path.
+  - Output: scripts/sim/out/report.md (~60 lines, AI-friendly) + report.json. Metrics: time to each realm
+    and milestone, slowest stage-ups, dead zones, difficulty walls, fail streaks, hoarding, actions/hour,
+    qi-capped %, wars W/L + % seen, unused features, invariants, exceptions, save round-trips, tick µs.
+    `--set="CONST=value"` tries balance changes without editing data files. Exit 1 on health failures.
+  - Docs: docs/systems/qa-sim.md (new), docs/index.md, CLAUDE.md (tree + balance rule), PLAN.md (Tooling
+    entry + new Phase 5C "Member Wars" plan, per user request), package.json scripts, .gitignore (sim out/).
+  - Verified: npm test (syntax) passes; full suite runs; determinism checked; --set, --path=member,
+    bad-override error path all checked.
+FIRST FINDINGS from the harness (nothing below has been fixed — balance/bug work for next session):
+  - BUG: assets/data/events.js:74 'heavenly_lightning' does `qi + qiCap*0.25`; at Ascension qiCap=Infinity
+    → s.qi = Infinity. This is why `npm run sim` currently exits 1 (non_finite_number violation).
+  - Pacing is far too fast: active player reaches Ascension in ~2h, casual (checks every 30m) ~24h,
+    afk ~58h; after that nothing new for the rest of the run (content-exhausted + huge dead-zone flags).
+    Technique multipliers stack to ~19× (×3 meditating) vs. stage caps from Foundation Building on.
+  - Economy: active hoards ~47k Spirit Stones by 200h, casual ~28k — nothing to spend on late game.
+  - afk players never found a sect in 200h: stone income ~2.5/h and they sit just under the 500 cost.
+  - Founding needs stage 18 but void_crystal only drops at void_rift (stage 19) → founding really gated at 19.
+  - Beast taming talisman needs beast_core (only early zones) → late players must backtrack to tame.
+  - Casual players see only ~50% of sect wars (15-min scouting+prep window vs 30-min check-ins).
+  - weapon_soul_spear (expedition_power) / weapon_thunder_staff (enemy_hp_reduce) effects aren't read by any
+    logic — dead items. artifact_void_compass only reveals locked locations in the Explore UI (game.js:779).
 What was NOT finished / left for next session:
-  - Phase 4 + 5A + 5B are all still uncommitted (this session did not commit — ask before committing).
-  - No real NPC-sect simulation exists (Phase 15), so rival sects/allies are flavor + a Phase-4-roster
-    alliance purchase, not a persistent relationship system — documented as a deliberate divergence.
-  - Balance is first-pass across 4/5A/5B (disciple rates, building costs, war power formula, spoils/penalty
-    sizes, reinforce/ally costs) — needs real playtesting/tuning together, not just correctness-verified.
-  - Pre-existing: CSP `style-src 'self'` blocks inline `style="width:…"` in innerHTML (Explore expedition bar,
-    beast XP bar initial render) — unrelated to 5B, new Sect War UI has no bars so it didn't need a workaround.
-  - iOS items unchanged: blocked on Apple Developer approval; responsive/mobile CSS pass not started.
+  - None of the balance findings above are fixed. This session's harness + doc changes are uncommitted (ask before committing).
+  - sim:quick is NOT wired into `npm run release` yet (it would fail until the Infinity bug is fixed).
+  - No Playwright UI-level pass, no LLM-driven bot policy tier (both documented as next tiers in qa-sim.md).
+  - npm run dist / build:web not re-run: no renderer/ or assets/ files changed this session.
 Next recommended task:
-  - Playtest Phases 4/5A/5B together on a real save and tune numbers (disciple income, building costs, war
-    power/spoils/costs) — nothing mechanically is blocking this, only real play data is missing.
-  - Or move on to Phase 6 (Animation & Visual Overhaul) per PLAN.md.
+  - Fix events.js:74 (clamp when qiCap is Infinity), then a pacing pass driven by `npm run sim` (use --set
+    first; target e.g. casual Ascension ≫ 24h, no dead zone > 3h for casual).
+  - Then Phase 5C Member Wars (PLAN.md) — add member-war behaviour to the sim bot at the same time.
 ```
 
 **When you finish a session, update this block** — date, what you did, what's next.
@@ -106,12 +108,15 @@ docs/
     integrity.md       ← Realm Integrity, Spiritual Beasts (Phase 3)
     sects.md           ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md        ← Found a sect: buildings, disciples, income (Phase 5A)
+    sect-war.md        ← Sect wars (Phase 5B; 5C Member Wars planned)
+    qa-sim.md          ← QA sim harness — `npm run sim`, report flags, extending the bot
     ui-layout.md       ← Window layout, tab pattern, CSS vars
 .agents/rules/
   general.md           ← Always-on rules (docs, style, Electron security)
   assets.md            ← ASCII art pipeline (create → review → gate ≥8.0)
   game-design.md       ← Design rules (pacing, flavor text, event structure)
 
+scripts/sim/           ← QA sim harness (bots play real logic headless → scripts/sim/out/report.md)
 main.js                ← Electron window, IPC handlers, slot save/load
 preload.js             ← contextBridge — only way renderer talks to Node
 renderer/
