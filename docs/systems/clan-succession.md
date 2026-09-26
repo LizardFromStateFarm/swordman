@@ -109,7 +109,7 @@ Pruning: persons who are dead, not a head/heir, and ≥ 3 generations old are dr
 | Task | Scope | Done when |
 |---|---|---|
 | 2.6a ✅ | `s.world` split + migration, orphan-capable life, world clock | old saves migrate; sim identical except clock bookkeeping; save round-trip holds |
-| 2.6b | Family planning, children cultivate, bond + child events, morality | sim: children reach stages; bond/morality ranges hold |
+| 2.6b ✅ | Family planning, children cultivate, bond + child events, morality | sim: children reach stages; bond/morality ranges hold |
 | 2.6c | Choose heir, Tournament of Heirs (pick matchups), heir-strength BQ term, sect to head | tournament resolves with correct lethal/non-lethal split; BQ term applied |
 | 2.6d | Parenting styles, reign sim + chronicle, rebirth position, heir bet, orphan option | 500h sim spans ≥3 generations; positions + styles distributed sensibly |
 | 2.6e | Challenge head (head decides lethality), challenged-as-head events, step-down mass tournament | all paths reachable in sim; no life ends without a cause |
@@ -149,3 +149,34 @@ Then life-loop.md 2.7 (Ancestral Hall, legacies — Sect Continuity legacy is su
   Full `npm run sim`: 0 errors / 0 violations, 135 save round-trips incl. the world. 13 scripted checks (fresh
   world, 2.5-era + pre-2.2 migrations, death persistence, a full orphan life) + the 40 family checks still pass. Real
   app: an old-format slot (clan "Lin", year 200) migrated on Continue, re-saved in the new format, zero console errors.
+
+## 2.6b — as built (2026-09-26)
+- **Family Planning** `family.planning` ∈ none/some/many (`CHILD_INTERVAL_BY_PLAN` in lifespan.js: null / [40,70] / [15,30]; default
+  many). Gates spouse AND lover births. `setFamilyPlanning(plan)`; turning it back on schedules the next birth
+  `FIRST_CHILD_YEARS` out (no backlog). Stats has a None/Some/Many selector. `CHILD_INTERVAL_YEARS` is gone.
+- **Children grow:** new child fields `bond` (starts 50), `morality`, `xp`; from `AWAKENING_AGE` they gain
+  `root.mult / CHILD_YEARS_PER_STAGE` (12) stage-progress per year, capped at your current stage (and 21). Stats shows
+  each child's age, stage and a bond word (Close ≥70 · Fond ≥45 · Distant ≥20 · Estranged).
+- **Child events:** 12 in `CHILD_EVENTS` (family.js) — bond keyed by the CHILD's personality, plus `morality`, `train`
+  (stage progress), `favor` (siblings −5), costs/effects shared with marriage events via `_applyFamilyEffect()`. One
+  pending at a time every `CHILD_EVENT_YEARS` [8,18] for a child aged ≥ 6; `requires: 'adult'|'siblings'`. A child with
+  bond < 20 and adult may instead trigger `child_runaway` (50%): **fetch** (+25 bond) or **let go** (`estranged`: stays
+  in the world registry at death, off the clan roster, stops growing). `resolveChildEvent(i)`, `childEventDef()`.
+  The family overlay shows duel → marriage event → child event, in that order.
+- **Big households spread you thin (added after the first sim):** with more than 4 children at home, every child's
+  bond drifts DOWN (0.5/yr) toward `50 − 2 × (extra children)`, floored at 15. Without it, bonds barely moved (a few
+  dozen events spread over 20–46 children) and runaways never happened. Big families stay possible — they just cost
+  closeness, which feeds the heir flow in 2.6c/d.
+- **Morality** on every generated person: `PERSONALITY_MORALITY` base ± 15, children + (your karma − 50) × 0.2; your own
+  morality is snapshotted at death (base + karma − 50). Affair reactions now read it: accept × (1 + max(0,m)/100),
+  duel/murder-suicide × (1 + max(0,−m)/100). Old saves backfill the base (no Math.random in migrations).
+- **Sim:** bot sets planning once (active 'some', casual/afk 'many'); answers child events (active: what the child likes,
+  always fetches; casual/afk: random). New "Children" report table (born, strongest child's stage, mean bond, mean
+  morality, events, runaways). Invariants: `family_planning_invalid`, `child_bond_range`, `morality_range`,
+  `child_stage_over_parent`, `child_event_orphaned`.
+- **Evidence** (full sim, 3 seeds, 200h): 0 errors / 0 violations. Strongest child reaches stage 21 (your cap) for active
+  and casual. Mean bond: active 24.6 (0 runaways — it fetches), casual 16.4 (97 runaways over 14 lives), afk 41.6.
+  Casual median life 30.5h (20–40h band). 22 new scripted checks + all 53 earlier ones pass. Real app: planning
+  selector, child rows with stage + bond, a child event (bond 50 → 62), a runaway let go → "left the clan"; zero errors.
+- **Tuning note:** neglect is strong — casual's random choices plus ~36 children leave most children distant. Knobs:
+  `CHILD_ATTENTION` / `CHILD_NEGLECT_PER_CHILD` / `CHILD_NEGLECT_FLOOR` in family.js.

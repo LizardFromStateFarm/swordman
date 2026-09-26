@@ -137,7 +137,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 2.5 ✅ | **Marriage & children (lite)**: a proposal choice event from Foundation Building, spouse = person record, children born in game years, partner term in bloodline growth | 16 lite, 23 family hooks | 2.3 | Children exist before the typical death; family `carry 1.0` path works in sim |
 | 2.6 | **Clan succession** — REDESIGNED 2026-09-26 by the user, see `docs/systems/clan-succession.md`: you don't play as your heir; the heir (NPC) rules, the world sims their reign, you're reborn as a descendant (or an orphan). Split into 2.6a–f below | 16, 18C, 31 | 2.5 | see 2.6a–f |
 | 2.6a ✅ | World vs life save split (`s.world`: clans, persons, world clock), orphan-capable life | — | 2.5 | old saves migrate; save round-trip holds |
-| 2.6b | Family planning (None/Some/Many), children cultivate, child bond + child events, morality field | 16 | 2.6a | children reach stages in sim |
+| 2.6b ✅ | Family planning (None/Some/Many), children cultivate, child bond + child events, morality field | 16 | 2.6a | children reach stages in sim |
 | 2.6c | Choose heir / Tournament of Heirs (you pick matchups; lethal to Top 4), heir-strength Bloodline term, sect to head | 18C | 2.6b | tournament paths verified |
 | 2.6d | Heir parenting styles, reign sim + chronicle, rebirth position (eldest / younger / branch), heir bet, orphan option | 18C | 2.6c | 500h sim spans ≥3 generations |
 | 2.6e | Challenge the head (head decides lethality), challenges when you're head, step-down mass tournament | — | 2.6d | all paths reachable in sim |

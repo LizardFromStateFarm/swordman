@@ -269,6 +269,17 @@ function buildReport(runs, args) {
     L.push(`| ${p} | ${lives.length} | ${T('events')} / ${T('crises')} | ${T('left')} · ${died} | ${T('duelWon')}/${T('duelLost')}/${T('fled')} | ${T('affairs')} · ${T('discovered')} | ${T('accept')}/${T('sabotage')}/${T('duel')}/${T('suicide')}/${T('murder_suicide')} | ${(born / n).toFixed(1)} · ${(lost / n).toFixed(1)} |`)
   }
   L.push(``)
+  // clan-succession.md 2.6b: how the children turned out (the pool 2.6c's Tournament of Heirs draws from).
+  L.push(`## Children — growth, bond, morality (${longest}h runs; per life, medians)`)
+  L.push(`| Profile | Lives | Children born | Strongest child (stage) | Mean bond | Mean morality | Child events · runaways (totals) |`)
+  L.push(`|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const lives = group(p, longest).flatMap(r => r.lifeLoop?.lifeLengths || [])
+    const T = k => lives.reduce((a, l) => a + (l.tally?.[k] || 0), 0)
+    const num = v => v == null ? null : +v
+    L.push(`| ${p} | ${lives.length} | ${f(med(lives.map(l => l.children || 0)))} | ${f(med(lives.map(l => l.childMaxStage || 0)))} | ${f(med(lives.map(l => num(l.childMeanBond)).filter(v => v != null)))} | ${f(med(lives.map(l => num(l.childMeanMorality)).filter(v => v != null)))} | ${T('childEvents')} · ${T('runaways')} |`)
+  }
+  L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)
   for (const p of profiles) {
     const g = group(p, longest), by = {}

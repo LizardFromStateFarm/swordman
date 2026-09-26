@@ -63,6 +63,19 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 5
+Agent: built **M2 2.6b** (clan-succession.md §2.6b as-built):
+  - Family Planning None/Some/Many (Stats selector; gates spouse + lover births). Children cultivate from 16, capped
+    at your stage. Per-child bond + 12 child events (bond keyed by the child's personality; morality/train/favor),
+    runaway crisis at low bond (fetch / let go → estranged, off the clan roster). Morality on every person;
+    affair reactions read the spouse's morality.
+  - Design addition (flag to user): big households spread you thin — past 4 kids at home, bonds drift down (floor
+    15). Without it bonds never moved and runaways never happened.
+  - Verified: npm test, sim:quick, full sim (0/0; strongest child stage 21; casual mean bond 16, ~7 runaways/life;
+    casual life 30.5h), 22 new + 53 prior scenario checks, build:web, dist, real-app smoke test (zero errors).
+  Next: 2.6c — choose an heir / Tournament of Heirs (you pick matchups; lethal until Top 4, then non-lethal),
+    heir-strength + trauma-heir Bloodline terms, sect goes to the head. Assessment + Depth line first.
+
 Date: 2026-09-26 (day session, user present) — part 4
 Agent: ee8b77f spec: user redesigned succession → docs/systems/clan-succession.md (2.6a–f; heir is an NPC, you're
   reborn as a descendant or orphan; tournaments, challenges, branch wars, secession; trauma-heir BQ bonus).

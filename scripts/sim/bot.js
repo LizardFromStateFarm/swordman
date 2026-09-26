@@ -115,6 +115,21 @@ class Bot {
   family() {
     const f = this.s.family
     if (!f) return false
+    // 2.6b Family Planning, set once: 'active' keeps families small ('some'), casual/afk go big ('many').
+    if (!this._planned) { this._planned = true; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : 'many') }
+    // 2.6b child events: 'active' picks what that child likes most (and always fetches a runaway); casual/afk
+    // pick at random — which lets bonds fall far enough to exercise the runaway crisis.
+    if (f.childEvent) {
+      const def = this.gs.childEventDef(f.childEvent), child = f.children.find(c => c.id === f.childEvent.childId)
+      const affordable = def.choices.map((c, i) => ({ c, i })).filter(x => this.s.spiritStones >= this.gs.familyCost(x.c))
+      if (!affordable.length || !child) return false
+      let pick
+      if (this.profile === 'active') {
+        const val = c => c.outcome === 'fetch' ? 999 : c.bond ? (c.bond[child.personality] ?? c.bond.default ?? 0) : 0
+        pick = affordable.sort((a, b) => val(b.c) - val(a.c))[0]
+      } else pick = affordable[Math.floor(this.rand() * affordable.length)]
+      return this.do(f.childEvent.crisis ? 'child_crisis' : 'child_event', this.gs.resolveChildEvent(pick.i))
+    }
     if (f.duel) return this.do('duel', this.gs.resolveDuel(this.gs.duelChance() >= 0.6 ? 'fight' : 'flee'))
     if (f.event) {
       const def = this.gs.marriageEventDef(f.event)

@@ -1,4 +1,5 @@
-// Family: spouse affection, marriage/crisis events, affairs + discovery reactions (Phase 16-lite+, M2).
+// Family: spouse affection, marriage/crisis events, affairs + discovery reactions (Phase 16-lite+, M2), plus
+// children who grow up, child events and PERSONALITY_MORALITY (clan-succession.md 2.6b).
 // Used by: game-state.js (_tickFamily, resolveMarriageEvent, resolveDuel, encounters), game.js, scripts/sim/*.
 // Child timing lives in lifespan.js. Spec: docs/systems/family.md. Personality ids: personalities.js.
 // Event text tokens: {spouse} (spouse given name), {name} (you), {child} (youngest living child).
@@ -288,5 +289,149 @@ const MARRIAGE_CRISIS_EVENTS = [
     choices: [
       { label: 'Beg them to stay', outcome: 'beg', result: '' },
       { label: 'Let them go', outcome: 'let_go', result: 'You watch them walk down the mountain.' },
+    ] },
+]
+
+// ── Children who grow up (clan-succession.md 2.6b) ───────────────────────────
+const CHILD_YEARS_PER_STAGE   = 12      // game years per stage for a ×1 root child, from AWAKENING_AGE; ÷ root.mult
+const CHILD_BOND_START        = 50
+const CHILD_BOND_CRISIS       = 20      // below this, an adult child may run away (CHILD_RUNAWAY_CHANCE per event roll)
+const CHILD_RUNAWAY_CHANCE    = 0.5
+const CHILD_EVENT_YEARS       = [8, 18] // one pending child event at a time, never expires
+const CHILD_EVENT_MIN_AGE     = 6
+const FAVOR_SIBLING_PENALTY   = 5       // bond lost by every OTHER living child when you favor one
+const CHILD_FETCH_BOND        = 25      // bond gained when you go after a runaway
+// Big households spread you thin: with more than CHILD_ATTENTION children at home, every child's bond drifts
+// DOWN (never up) toward 50 − CHILD_NEGLECT_PER_CHILD × (extra children), floored at CHILD_NEGLECT_FLOOR.
+const CHILD_ATTENTION         = 4
+const CHILD_NEGLECT_PER_CHILD = 2
+const CHILD_NEGLECT_FLOOR     = 15
+const CHILD_NEGLECT_DRIFT     = 0.5     // bond per game year
+
+// ── Morality (every Person, −100 ruthless … +100 righteous). M3's alignment phase extends this field. ─
+// Base by personality; children also inherit a nudge from your karma at their birth, then upbringing moves it.
+const PERSONALITY_MORALITY = {
+  niceguy: 50, poet: 15, stoic: 10, glutton: 10, lazy: 5, grumpy: 5, hotblood: 5, coward: 0, gremlin: 0,
+  miser: -10, arrogant: -15, paranoid: -20, demonking: -40, psycho: -60,
+}
+const MORALITY_NOISE          = 15      // ± uniform at birth/roll
+const MORALITY_KARMA_WEIGHT   = 0.2     // child: + (your karma − 50) × this at birth
+// Affair reactions read the spouse's morality: violent outcomes × (1 + max(0, −m)/100), accept × (1 + max(0, m)/100).
+
+// ── Child events (2.6b). Same shape as MARRIAGE_EVENTS, but `bond` is keyed by the CHILD's personality and
+// applies to that child; `morality` nudges the child; `train` adds stage progress (capped at your stage);
+// `favor` costs every other living child FAVOR_SIBLING_PENALTY bond. requires: 'siblings' | 'adult'.
+// Tokens: {child}, {name}, {spouse}.
+const CHILD_EVENTS = [
+  { id: 'spared_rival', title: 'A Spared Rival', text: '{child} beat a rival in a clan spar — then helped them up. The elders are divided.',
+    choices: [
+      { label: 'Praise their mercy', morality: 10, result: '{child} stands a little taller.',
+        bond: { default: 8, niceguy: 12, poet: 10, psycho: -6, demonking: -4 } },
+      { label: 'Mercy is weakness', morality: -10, train: 0.3, result: '{child} will not hesitate again.',
+        bond: { default: -6, demonking: 8, psycho: 10, arrogant: 4, niceguy: -12 } },
+    ] },
+  { id: 'forbidden_art', title: 'A Forbidden Technique', text: '{child} begs you to teach them a technique the elders call forbidden.',
+    choices: [
+      { label: 'Teach it in secret', morality: -5, train: 0.6, effect: { karma: -3 }, result: '{child} learns fast. Too fast, perhaps.',
+        bond: { default: 8, demonking: 14, psycho: 12, hotblood: 10, coward: -4, stoic: -2 } },
+      { label: 'Teach a safer art instead', train: 0.3, effect: { qiFrac: -0.1 }, result: 'Slower, steadier, and still yours.',
+        bond: { default: 4, stoic: 8, coward: 8, paranoid: 4, hotblood: -4 } },
+      { label: 'Refuse', result: '{child} sulks for a season.',
+        bond: { default: -6, stoic: 2, coward: 4, hotblood: -10, demonking: -10 } },
+    ] },
+  { id: 'sibling_quarrel', requires: 'siblings', title: 'A Quarrel Between Siblings', text: '{child} and a sibling came to blows over a single spirit herb.',
+    choices: [
+      { label: 'Side with {child}', favor: true, result: '{child} wins. The sibling does not forget.',
+        bond: { default: 10, arrogant: 14, glutton: 12, niceguy: 4 } },
+      { label: 'Make them share it', morality: 5, result: 'Half a herb each. Nobody is happy. Everyone learns.',
+        bond: { default: 2, niceguy: 8, stoic: 4, miser: -8, arrogant: -6 } },
+      { label: 'Punish them both', result: 'The courtyard is very quiet for a while.',
+        bond: { default: -5, stoic: 2, grumpy: 2, gremlin: -8 } },
+    ] },
+  { id: 'coming_of_age', requires: 'adult', title: 'Coming of Age', text: '{child} has come of age. The clan expects a ceremony.',
+    choices: [
+      { label: 'A grand ceremony', cost: { stones: 50 }, result: 'The whole valley hears the name {child} today.',
+        bond: { default: 12, arrogant: 16, glutton: 14, poet: 12, miser: -2, stoic: 4 } },
+      { label: 'A private blessing', result: 'Just the two of you, and a cup of old wine.',
+        bond: { default: 6, stoic: 10, niceguy: 10, poet: 8, arrogant: -6 } },
+      { label: 'You are in seclusion', effect: { qiFrac: 0.1 }, result: 'The ceremony goes on without you.',
+        bond: { default: -14, stoic: -4, lazy: -6, niceguy: -16, poet: -18 } },
+    ] },
+  { id: 'wounded_cub', title: 'A Wounded Cub', text: '{child} carried home an injured spirit-beast cub.',
+    choices: [
+      { label: 'Help heal it', cost: { stones: 10 }, morality: 8, result: 'The cub follows {child} everywhere now.',
+        bond: { default: 8, niceguy: 12, gremlin: 12, glutton: 4, psycho: -4 } },
+      { label: 'Make them release it', result: '{child} watches it limp back into the forest.',
+        bond: { default: -4, stoic: 2, paranoid: 2, niceguy: -8 } },
+      { label: 'Take its core — a lesson in the Dao', morality: -12, effect: { items: { beast_core: 1 } }, result: '{child} does not cry. You notice.',
+        bond: { default: -8, psycho: 10, demonking: 8, niceguy: -20, poet: -14 } },
+    ] },
+  { id: 'servant_bully', title: 'A Cruel Streak', text: 'A servant tearfully reports that {child} has been tormenting their son.',
+    choices: [
+      { label: 'Punish {child} harshly', morality: 8, result: '{child} apologizes. Their eyes do not.',
+        bond: { default: -8, niceguy: 2, stoic: -2, psycho: -14, arrogant: -12 } },
+      { label: 'Make them apologize', morality: 5, result: 'A stiff bow, and a lesson half-learned.',
+        bond: { default: -2, niceguy: 4, grumpy: 2 } },
+      { label: 'The strong rule the weak', morality: -10, result: 'The servant leaves your employ the next morning.',
+        bond: { default: 6, psycho: 12, demonking: 12, arrogant: 10, niceguy: -10 } },
+    ] },
+  { id: 'join_expedition', title: 'Take Me With You', text: '{child} wants to come along on your next expedition.',
+    choices: [
+      { label: 'Take them', effect: { health: -5 }, train: 0.5, result: 'You take a hit meant for {child}. They saw.',
+        bond: { default: 10, hotblood: 14, gremlin: 10, coward: -6, lazy: -4 } },
+      { label: 'It is too dangerous', result: '{child} watches you leave from the gate.',
+        bond: { default: -5, coward: 6, lazy: 4, hotblood: -12 } },
+    ] },
+  { id: 'first_love', requires: 'adult', title: 'First Love', text: '{child} has fallen for a wandering cultivator with no name and no sect.',
+    choices: [
+      { label: 'Give your blessing', morality: 3, result: '{child} beams for a month.',
+        bond: { default: 10, poet: 16, niceguy: 10, paranoid: -2 } },
+      { label: 'Forbid it', result: '{child} obeys. Mostly.',
+        bond: { default: -10, stoic: -2, grumpy: 0, poet: -18 } },
+      { label: 'Test the suitor yourself', effect: { health: -3 }, result: 'The suitor survives the test. Barely. {child} is mortified.',
+        bond: { default: 2, hotblood: 8, arrogant: 6, paranoid: 8, poet: -6 } },
+    ] },
+  { id: 'stolen_pills', title: 'Missing Pills', text: 'Pills are missing from the clan store. {child} is wearing a very innocent face.',
+    choices: [
+      { label: 'Let it go this once', morality: -3, result: '{child} grins. You will regret this.',
+        bond: { default: 6, glutton: 10, gremlin: 8, lazy: 8, stoic: -2 } },
+      { label: 'Punish them', morality: 5, result: '{child} scrubs the courtyard for a month.',
+        bond: { default: -6, stoic: 2, grumpy: 4, gremlin: -10 } },
+      { label: 'Admire the audacity', morality: -6, train: 0.2, result: 'You show {child} how to do it properly.',
+        bond: { default: 8, gremlin: 16, psycho: 10, demonking: 8, niceguy: -6 } },
+    ] },
+  { id: 'poetry_path', title: 'The Path of the Brush', text: '{child} wants to give up cultivation for poetry.',
+    choices: [
+      { label: 'Let them follow their heart', train: -0.5, result: '{child} writes you a poem. It is not bad.',
+        bond: { default: 10, poet: 18, lazy: 10, niceguy: 8, hotblood: -4 } },
+      { label: 'Cultivation comes first', train: 0.3, result: '{child} returns to the training ground, brush left behind.',
+        bond: { default: -8, stoic: 2, hotblood: 4, poet: -18 } },
+    ] },
+  { id: 'why_seclusion', title: 'Where Were You?', text: '{child} asks why you are always in seclusion.',
+    choices: [
+      { label: 'Spend a season with them', effect: { qiFrac: -0.1 }, result: 'A season of kites, sparring and bad cooking.',
+        bond: { default: 12, niceguy: 14, glutton: 12, gremlin: 12, stoic: 4 } },
+      { label: 'Explain the Dao', result: '{child} nods, and does not understand.',
+        bond: { default: 2, stoic: 8, poet: 4, gremlin: -4 } },
+      { label: 'Send them away', result: '{child} stops asking.',
+        bond: { default: -12, stoic: -4, lazy: -4, niceguy: -16 } },
+    ] },
+  { id: 'public_humiliation', title: 'Humiliated', text: 'A rival clan heir humiliated {child} in the market square.',
+    choices: [
+      { label: 'Demand satisfaction', effect: { health: -8 }, morality: -3, result: 'The rival clan sends an apology — and a grudge.',
+        bond: { default: 10, hotblood: 14, arrogant: 14, demonking: 10, coward: 2, niceguy: 2 } },
+      { label: 'Train {child} for revenge', train: 0.5, morality: -5, result: 'A rematch is scheduled for next spring.',
+        bond: { default: 8, hotblood: 12, psycho: 12, demonking: 10, coward: -6 } },
+      { label: 'Teach them to rise above it', morality: 8, result: '{child} learns something harder than any technique.',
+        bond: { default: 2, niceguy: 10, stoic: 10, poet: 6, arrogant: -10, hotblood: -8 } },
+    ] },
+]
+
+// Low-bond adult child (bond < CHILD_BOND_CRISIS). Outcomes resolved in game-state.js.
+const CHILD_CRISIS_EVENTS = [
+  { id: 'child_runaway', title: 'An Empty Room', text: 'The room of {child} is empty. A note says they will make their own way — without you.',
+    choices: [
+      { label: 'Go after them', outcome: 'fetch', effect: { qiFrac: -0.1 }, result: 'You find {child} three valleys away. They come home.' },
+      { label: 'Let them go', outcome: 'estrange', result: '{child} leaves the clan. The name stays; the child does not.' },
     ] },
 ]

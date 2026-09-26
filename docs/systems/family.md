@@ -50,8 +50,9 @@ tally: {events, crises, affairs, discovered, accept, sabotage, duel, suicide, mu
   is born. On discovery: affection −25 (−10 more if via a child); tolerant spouse: −5, no reaction.
 - [B] `AFFAIR_REACTIONS[personalityId] = {accept, sabotage, duel, suicide, murder_suicide}` weights (table in the
   2026-09-26 session / data file), scaled by affection as above.
-- Children (lifespan.js): `CHILD_CAP` removed. Each partner has their own timer: `FIRST_CHILD_YEARS` [8,20] then
-  `CHILD_INTERVAL_YEARS` [15,30].
+- Children (lifespan.js): `CHILD_CAP` removed. Each partner has their own timer: `FIRST_CHILD_YEARS` [8,20] then the
+  Family Planning interval (`CHILD_INTERVAL_BY_PLAN`, 2.6b). Children growing up, bond, child events and morality:
+  see clan-succession.md §2.6b.
 
 ## API (game-state.js)
 - `resolveMarriageEvent(i)` → `{ok, affection, outcome}` · `{ok:false, reason:'no_event'|'bad_choice'|'cant_afford'}`

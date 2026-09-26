@@ -136,7 +136,7 @@ assets/
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
     bloodline.js        ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
     lifespan.js         ← Game clock + family timing constants (Phase 30/16-lite; age is a stat only, no lifespan)
-    family.js           ← Affection, MARRIAGE_EVENTS / crisis events, duel + affair constants, AFFAIR_REACTIONS (family.md)
+    family.js           ← Affection, MARRIAGE_EVENTS / crisis, duel + affairs, AFFAIR_REACTIONS, CHILD_EVENTS, PERSONALITY_MORALITY
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)

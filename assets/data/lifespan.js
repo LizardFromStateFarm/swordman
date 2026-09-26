@@ -18,7 +18,9 @@ const SUITOR_STAGE_OFFSET         = [-3, 1]     // vs player stage, clamped to >
 const SUITOR_AGE_OFFSET_YEARS     = [-20, 20]   // vs player age, min 18
 const SPOUSE_YEARS_PER_STAGE      = 25          // spouse gains 1 stage per this many married years...
 const SPOUSE_STAGE_CAP            = 21          // ...never ascends. Spouses never die of age either.
-// No cap on children (user, 2026-09-26) — each partner (spouse or lover) has their own timer.
-const FIRST_CHILD_YEARS           = [8, 20]     // after a couple gets together
-const CHILD_INTERVAL_YEARS        = [15, 30]    // between children with the same partner
+// No cap on children (user, 2026-09-26) — each partner (spouse or lover) has their own timer, paced by the
+// player's Family Planning choice (2.6b, clan-succession.md). 'none' = no children at all.
+const FIRST_CHILD_YEARS           = [8, 20]     // after a couple gets together (or planning turns back on)
+const CHILD_INTERVAL_BY_PLAN      = { none: null, some: [40, 70], many: [15, 30] }
+const FAMILY_PLAN_DEFAULT         = 'many'
 const ADULT_AGE                   = 16          // heir-eligible

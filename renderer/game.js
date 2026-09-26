@@ -476,6 +476,7 @@
     `
     document.getElementById('_matchmaker')?.addEventListener('click', () => openProposalOverlay(gameState.get()))
     document.getElementById('_family-matter')?.addEventListener('click', () => openFamilyOverlay(gameState.get()))
+    document.querySelectorAll('#tab-stats [data-plan]').forEach(btn => btn.addEventListener('click', () => gameState.setFamilyPlanning(btn.dataset.plan)))
     document.querySelectorAll('#tab-stats [data-end-affair]').forEach(btn => btn.addEventListener('click', () => {
       showConfirm('End the affair?', 'Children already born stay yours.', () => gameState.endAffair(btn.dataset.endAffair))
     }))
@@ -492,6 +493,14 @@
     if (a >= 50)                return { word: 'Warm',    color: 'var(--text)' }
     if (a >= AFFECTION_CRISIS)  return { word: 'Cool',    color: 'var(--gold)' }
     return                             { word: 'Cold',    color: 'var(--red)' }
+  }
+
+  // Child bond tiers (clan-succession.md 2.6b) — UI only.
+  function bondLabel(b) {
+    if (b >= 70)                return { word: 'Close',    color: 'var(--jade)' }
+    if (b >= 45)                return { word: 'Fond',     color: 'var(--text)' }
+    if (b >= CHILD_BOND_CRISIS) return { word: 'Distant',  color: 'var(--gold)' }
+    return                             { word: 'Estranged', color: 'var(--red)' }
   }
 
   const SPOUSE_END_TEXT = { left: 'left you', divorced: 'divorced', suicide: 'took their own life',
@@ -514,15 +523,19 @@
     for (const x of f.formerSpouses || []) {
       html += sr('Former', `<span style="color:var(--dim)">${escHtml(Persons.fullName(x))} — ${SPOUSE_END_TEXT[x.endCause] || 'gone'} (yr ${x.endedYear})</span>`)
     }
+    // 2.6b Family Planning — None / Some / Many (covers lover children too)
+    html += `<div class="set-row"><div class="set-label">Family Planning</div><div class="set-seg">${[['none', 'None'], ['some', 'Some'], ['many', 'Many']]
+      .map(([v, l]) => `<button class="set-opt${f.planning === v ? ' active' : ''}" data-plan="${v}">${l}</button>`).join('')}</div></div>`
     const kids = f.children || []
     if (kids.length) html += sr('Children', `${kids.filter(c => c.alive).length} living${kids.some(c => !c.alive) ? ` · ${kids.filter(c => !c.alive).length} lost` : ''}`)
     const shown = kids.slice(-12)   // youngest 12; the rest are summarized
     if (kids.length > shown.length) html += sr('', `<span style="color:var(--dim)">+${kids.length - shown.length} older children</span>`)
     for (const c of shown) {
       const age = Math.max(0, Math.floor((c.alive ? s.world.year : c.diedYear) - c.bornYear))
-      html += c.alive
-        ? sr('Child', `${escHtml(Persons.fullName(c))} · ${age} · ${escHtml(c.root?.name || '')}`)
-        : sr('Child', `<span style="color:var(--dim)">${escHtml(Persons.fullName(c))} · died at ${age}</span>`)
+      if (!c.alive) { html += sr('Child', `<span style="color:var(--dim)">${escHtml(Persons.fullName(c))} · died at ${age}</span>`); continue }
+      if (c.estranged) { html += sr('Child', `<span style="color:var(--dim)">${escHtml(Persons.fullName(c))} · left the clan (yr ${c.leftYear})</span>`); continue }
+      const bl = bondLabel(c.bond ?? 50)
+      html += sr('Child', `${escHtml(Persons.fullName(c))} · ${age}${age >= AWAKENING_AGE ? ` · ${personStageLabel(c.stageIndex)}` : ''} · <span style="color:${bl.color}">${bl.word}</span>`)
     }
     if (f.proposal) html += `<button id="_matchmaker" class="sect-btn" style="width:100%;margin:6px 0 2px;">A matchmaker awaits</button>`
     if (familyPendingKey(s)) html += `<button id="_family-matter" class="sect-btn" style="width:100%;margin:6px 0 2px;">A family matter awaits</button>`
@@ -2042,9 +2055,10 @@
 
   function familyPendingKey(s) {
     const f = s.family
-    if (!f?.spouse) return null
-    if (f.duel)  return `duel:${f.duel.year}`
-    if (f.event) return `ev:${f.event.id}:${f.event.year}`
+    if (!f) return null
+    if (f.spouse && f.duel)  return `duel:${f.duel.year}`
+    if (f.spouse && f.event) return `ev:${f.event.id}:${f.event.year}`
+    if (f.childEvent) return `child:${f.childEvent.id}:${f.childEvent.childId}:${f.childEvent.year}`   // 2.6b
     return null
   }
 
@@ -2053,7 +2067,7 @@
     if (!familyPendingKey(s)) return
     const box = document.getElementById('family-box')
     const choicesEl = document.getElementById('family-choices')
-    if (f.duel) {
+    if (f.spouse && f.duel) {
       const pct = Math.round(gameState.duelChance() * 100)
       box.classList.add('crisis')
       document.getElementById('family-title').textContent = 'A Duel to the Death 生死斗'
@@ -2064,6 +2078,22 @@
         document.getElementById('family-overlay').classList.add('hidden')
         const res = gameState.resolveDuel(btn.dataset.duel)
         if (res.outcome === 'won') flashMessage('You survived the duel.', 'negative')
+      }))
+    } else if (!(f.spouse && f.event) && f.childEvent) {   // 2.6b child event (after duel/marriage matters)
+      const ev = f.childEvent, def = gameState.childEventDef(ev)
+      const child = f.children.find(c => c.id === ev.childId)
+      box.classList.toggle('crisis', !!ev.crisis)
+      document.getElementById('family-title').textContent = def.title
+      document.getElementById('family-desc').textContent = gameState.familyText(def.text, ev) +
+        (child ? ` (${child.given}: ${bondLabel(child.bond).word.toLowerCase()}, age ${Math.floor(s.world.year - child.bornYear)})` : '')
+      choicesEl.innerHTML = def.choices.map((ch, i) => {
+        const cost = gameState.familyCost(ch)
+        const sub = cost ? `<span class="family-sub">${fmt(cost)} Spirit Stones</span>` : ''
+        return `<button data-cchoice="${i}" ${s.spiritStones < cost ? 'disabled' : ''}>${escHtml(gameState.familyText(ch.label, ev))}${sub}</button>`
+      }).join('')
+      choicesEl.querySelectorAll('[data-cchoice]').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('family-overlay').classList.add('hidden')
+        gameState.resolveChildEvent(+btn.dataset.cchoice)
       }))
     } else {
       const def = gameState.marriageEventDef(f.event)

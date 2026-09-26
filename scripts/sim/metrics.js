@@ -91,7 +91,8 @@ class Recorder {
       if (lr.openHours != null) this.lifeLengths.push({ cause: lr.cause, openHours: lr.openHours, ageAtDeath: lr.ageAtDeath,
         // Phase 16-lite (M2 task 2.5): family per life
         married: !!lr.married, children: lr.children || 0, adultChildren: lr.adultChildren || 0, spouseMaxStage: lr.spouseMaxStage || 0,
-        childrenAlive: lr.childrenAlive ?? lr.children ?? 0, formerSpouses: lr.formerSpouses || 0, tally: lr.familyTally || null })
+        childrenAlive: lr.childrenAlive ?? lr.children ?? 0, formerSpouses: lr.formerSpouses || 0, tally: lr.familyTally || null,
+        childMaxStage: lr.childMaxStage ?? 0, childMeanBond: lr.childMeanBond ?? null, childMeanMorality: lr.childMeanMorality ?? null })
       this.milestone('first_death')
     }
     if (open) {
@@ -181,6 +182,15 @@ class Recorder {
       if (fam.children.some(c => c.alive && !(c.parents || []).includes(s.self.id))) this.violate('family_child_parents', 'living child without self as parent')
       if ((fam.encounters || []).length > this.D.LOVER_ENCOUNTER_MAX) this.violate('family_encounters_over_cap', fam.encounters.length)
       if ((fam.lovers || []).some(l => fam.spouse && l.person.id === fam.spouse.id)) this.violate('family_lover_is_spouse', fam.spouse.id)
+      // 2.6b: planning, bond, morality, child stage cap, child event target
+      if (!(fam.planning in this.D.CHILD_INTERVAL_BY_PLAN)) this.violate('family_planning_invalid', fam.planning)
+      for (const c of fam.children) {
+        if (!(c.bond >= 0 && c.bond <= 100)) this.violate('child_bond_range', `${c.id}=${c.bond}`)
+        if (!(c.morality >= -100 && c.morality <= 100)) this.violate('morality_range', `${c.id}=${c.morality}`)
+        if (c.alive && !c.estranged && c.stageIndex > Math.max(s.maxStageThisLife || 0, s.stageIndex)) this.violate('child_stage_over_parent', `${c.id} ${c.stageIndex} > ${s.maxStageThisLife}`)
+      }
+      for (const p of [fam.spouse, ...(fam.lovers || []).map(l => l.person)]) if (p && !(p.morality >= -100 && p.morality <= 100)) this.violate('morality_range', `${p.id}=${p.morality}`)
+      if (fam.childEvent && !fam.children.some(c => c.id === fam.childEvent.childId && c.alive && !c.estranged)) this.violate('child_event_orphaned', fam.childEvent.childId)
       if (fam.proposal && (fam.spouse || s.maxStageThisLife < this.D.PROPOSAL_MIN_STAGE))
         this.violate('family_proposal_invalid', `spouse=${!!fam.spouse} maxStage=${s.maxStageThisLife}`)
     }
