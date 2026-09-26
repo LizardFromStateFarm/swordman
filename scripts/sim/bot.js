@@ -107,10 +107,11 @@ class Bot {
   // family.md: a pending duel → fight if the odds are ≥ 50%, else flee. A pending marriage event → 'active'
   // picks the affordable choice its spouse likes most (an attentive player); 'casual'/'afk' pick a random
   // affordable one, which exercises the low-affection crisis path. Crises: forgive a cheater, beg a leaver.
+  // Lover encounters: seduce 25% of the time, else leave. Never ends an affair. Duels: fight only at ≥ 60% odds.
   family() {
     const f = this.s.family
     if (!f) return false
-    if (f.duel) return this.do('duel', this.gs.resolveDuel(this.gs.duelChance() >= 0.5 ? 'fight' : 'flee'))
+    if (f.duel) return this.do('duel', this.gs.resolveDuel(this.gs.duelChance() >= 0.6 ? 'fight' : 'flee'))
     if (f.event) {
       const def = this.gs.marriageEventDef(f.event)
       const affordable = def.choices.map((c, i) => ({ c, i })).filter(x => this.s.spiritStones >= this.gs.familyCost(x.c))
@@ -122,6 +123,10 @@ class Bot {
         pick = affordable.sort((a, b) => val(b.c) - val(a.c))[0]
       } else pick = affordable[Math.floor(Math.random() * affordable.length)]
       return this.do(f.event.crisis ? 'family_crisis' : 'family_event', this.gs.resolveMarriageEvent(pick.i))
+    }
+    // Encounters: seduce 1 in 4 (enough to exercise affairs, discovery and every reaction branch).
+    if (f.encounters?.length) {
+      return Math.random() < 0.25 ? this.do('seduce', this.gs.seduceEncounter(0)) : this.do('leave_encounter', this.gs.dismissEncounter(0), false)
     }
     const prop = f.proposal
     if (!prop || f.spouse) return false

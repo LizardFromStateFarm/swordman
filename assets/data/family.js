@@ -31,6 +31,7 @@ const DUEL_WIN_HEALTH_COST  = 30
 const LOVER_ENCOUNTER_CHANCE    = 0.12    // per expedition return, from PROPOSAL_MIN_STAGE
 const LOVER_ENCOUNTER_MAX       = 3
 const SEDUCE_CHANCE             = 0.65
+const AFFAIR_YEARS              = [15, 50]   // an affair fades on its own after this many game years
 const DISCOVERY_PER_LOVER_YEAR  = 0.02
 const DISCOVERY_ON_LOVER_CHILD  = 0.40
 const AFFAIR_DISCOVERED_AFFECTION = -25

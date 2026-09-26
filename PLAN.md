@@ -1120,6 +1120,11 @@ The minimum family needed for heirs, built on the 2.2 person record so M6 upgrad
 > aging/death, mourning, children with blended roots and the 23B partner term all shipped as specced. Divergences:
 > `family.pastSpouses`/`spouseStageYear` were added to the state shape; no Solitary Lineage Art/adoption yet (heir
 > fallback is 2.6's distant cousin). Heir selection (18C, below) is still task 2.6.
+>
+> **Family depth built 2026-09-26 (user request) — `docs/systems/family.md`.** No child cap (per-partner intervals),
+> spouse affection + 23 personality-driven marriage events, crisis events (spouse cheats / leaves), a duel to the
+> death, lovers from expedition encounters, and affair discovery with personality-weighted reactions (accept,
+> sabotage, duel, suicide, murder-suicide). Lover children are full heirs (for 2.6).
 
 - **Marriage:** from Foundation Building, a rare **proposal choice event** offers 1–3 generated suitors (person
   records: name, root, stage, personality). Accept, decline, or wait. A Solitary Lineage Art (23E) or adoption

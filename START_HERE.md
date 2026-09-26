@@ -40,7 +40,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
 | NPC World Simulation (personalities, sects) | ⬜ Phase 15 → superseded by Phase 28 (M4) |
-| Marriage & Family system | ◐ Phase 16 — lite built (M2 task 2.5: proposals, spouse, children, partner BQ term); full in M6 |
+| Marriage & Family system | ◐ Phase 16 — lite+ built: proposals, spouse affection + marriage/crisis events, duels, lovers + affair discovery, uncapped children (family.md); full in M6 |
 | Secret Realm Dungeons (ASCII map grid) | ⬜ Phase 17 |
 | Lineage & Heir Inheritance | ⬜ Phase 18 |
 | World Epochs & Spiritual Tides | ⬜ Phase 19 |
@@ -63,6 +63,28 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 3
+Agent: User asked for deeper family mechanics + guidance so agents design interconnected systems by default.
+  - e204d39 Docs: CLAUDE.md now has a required DESIGN DEPTH PASS (memory, choices, ≥3 hooks, drama, feedback) + a
+    `Depth:` line in the task assessment; pillar 7 "Systems talk to each other" in PLAN/GAMEDESIGN; rules file too.
+    **Every future gameplay task must include the Depth pass.**
+  - b30d10b Family A: spouse affection (0-100, drifts to 50), 23 marriage events in new assets/data/family.js (affection
+    delta keyed by the SPOUSE's personality; costs/effects touch stones/Qi/Health/Karma/sect/items), crisis events
+    below 25 (spouse cheats: forgive/duel/divorce; spouse leaving: beg/let go), duel to the death (lose → your life
+    ends, cause spouse_duel), Devoted +5% BT, former spouses kept, child cap removed.
+  - Family B (this commit): lovers from expedition encounters (Explore tab, seduce 65%), affairs fade after 15-50 yrs,
+    lover children are full heirs, discovery (2%/lover/yr, 40% on a lover child) → reaction from AFFAIR_REACTIONS
+    by personality, scaled by affection: accept / sabotage next BT / duel / suicide / murder-suicide (minor shared
+    children). Somber, non-graphic text, no banter on these. Spec: docs/systems/family.md (incl. its Depth pass).
+  - Fixed along the way: event Qi effect → qi=Infinity after Ascension (sim caught it); lovers piling up to ~60
+    children/life (added AFFAIR_YEARS).
+  - Verified: npm test, sim:quick, full npm run sim (0 errors / 0 violations; casual median life 34.5h), 21 + 19
+    scripted scenario checks (every event outcome, duel win/lose/flee, every reaction branch, murder-suicide only
+    takes minors, tolerant spouse, unmarried lovers), build:web, dist, CDP smoke test (event → affection, crisis →
+    duel card → Stats reopen → flee, Explore encounter → seduce, Stats lover → End affair; zero console errors).
+  Open for the user: casual lives average ~49 children (no cap over ~1,100-year lives) — tune intervals by realm?
+  Next: M2 task 2.6 (heir selection). Heirs = any living adult child incl. lover children (family.md).
+
 Date: 2026-09-26 (day session, user present) — part 2
 Agent: User decision: "the user shouldn't have to worry about age. Have an age stat but age shouldn't kill
   anyone." User picked: remove twilight AND Final Seclusion entirely; commit 2.5 first (done: 23886dc).

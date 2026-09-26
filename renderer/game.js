@@ -472,6 +472,9 @@
     `
     document.getElementById('_matchmaker')?.addEventListener('click', () => openProposalOverlay(gameState.get()))
     document.getElementById('_family-matter')?.addEventListener('click', () => openFamilyOverlay(gameState.get()))
+    document.querySelectorAll('#tab-stats [data-end-affair]').forEach(btn => btn.addEventListener('click', () => {
+      showConfirm('End the affair?', 'Children already born stay yours.', () => gameState.endAffair(btn.dataset.endAffair))
+    }))
     document.getElementById('_pass-mantle')?.addEventListener('click', () => {
       showConfirm('Pass the Mantle?', 'This ends your life peacefully, now. Cannot be undone.', () => {
         gameState.passTheMantle()
@@ -500,12 +503,18 @@
       html += sr('Spouse', `${escHtml(Persons.fullName(f.spouse))} · ${personStageLabel(f.spouse.stageIndex)}`)
       html += sr('Affection', `<span style="color:${al.color}">${al.word} · ${Math.round(f.affection)}</span>${f.tolerant ? ' · tolerant' : ''}${f.btSabotage ? ' · <span style="color:var(--red)">sabotaging your next breakthrough</span>' : ''}`)
     }
+    for (const l of f.lovers || []) {
+      html += `<div class="stat-row"><span class="stat-key">Lover</span><span class="stat-val">${escHtml(Persons.fullName(l.person))} · since yr ${l.since}
+        <button class="sect-btn" data-end-affair="${escHtml(l.person.id)}" style="margin-left:4px;padding:1px 6px;min-height:24px">End</button></span></div>`
+    }
     for (const x of f.formerSpouses || []) {
       html += sr('Former', `<span style="color:var(--dim)">${escHtml(Persons.fullName(x))} — ${SPOUSE_END_TEXT[x.endCause] || 'gone'} (yr ${x.endedYear})</span>`)
     }
     const kids = f.children || []
     if (kids.length) html += sr('Children', `${kids.filter(c => c.alive).length} living${kids.some(c => !c.alive) ? ` · ${kids.filter(c => !c.alive).length} lost` : ''}`)
-    for (const c of kids) {
+    const shown = kids.slice(-12)   // youngest 12; the rest are summarized
+    if (kids.length > shown.length) html += sr('', `<span style="color:var(--dim)">+${kids.length - shown.length} older children</span>`)
+    for (const c of shown) {
       const age = Math.max(0, Math.floor((c.alive ? s.gameYear : c.diedYear) - c.bornYear))
       html += c.alive
         ? sr('Child', `${escHtml(Persons.fullName(c))} · ${age} · ${escHtml(c.root?.name || '')}`)
@@ -1393,6 +1402,36 @@
           }
         })
       })
+    }
+
+    // ── Encounters on the Road (family.md) — potential lovers, never expire ────
+    const people = s.family?.encounters || []
+    if (people.length > 0) {
+      const pTitle = document.createElement('div')
+      pTitle.className = 'section-title'
+      pTitle.textContent = 'Encounters on the Road'
+      el.appendChild(pTitle)
+      people.forEach((enc, i) => {
+        const p = enc.person
+        const pers = PERSONALITIES.find(x => x.id === p.personality)
+        const row = document.createElement('div')
+        row.className = 'suitor-card'
+        row.style.marginBottom = '6px'
+        row.innerHTML = `
+          <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
+          <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
+          <div style="margin:3px 0">At ${escHtml(enc.place)}, they ${escHtml(enc.text || '')}.</div>
+          <div style="display:flex;gap:6px">
+            <button class="sect-btn" style="flex:1;min-height:32px" data-seduce="${i}">Seduce</button>
+            <button class="sect-btn" style="flex:1;min-height:32px" data-leave="${i}">Leave</button>
+          </div>${s.family.spouse && !s.family.tolerant ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)">${escHtml(s.family.spouse.given)} may find out.</div>` : ''}`
+        el.appendChild(row)
+      })
+      el.querySelectorAll('[data-seduce]').forEach(btn => btn.addEventListener('click', () => {
+        const res = gameState.seduceEncounter(+btn.dataset.seduce)
+        if (res.ok) flashMessage(res.success ? 'An affair begins.' : 'Rebuffed.', res.success ? 'special' : 'negative')
+      }))
+      el.querySelectorAll('[data-leave]').forEach(btn => btn.addEventListener('click', () => gameState.dismissEncounter(+btn.dataset.leave)))
     }
 
     // ── Active Beasts ─────────────────────────────────────────────────────────

@@ -6,8 +6,8 @@ Updated: 2026-09-26_
 Builds on M2 task 2.5 (proposals, spouse, children, partner BQ term — life-loop.md §14) and the "age never kills"
 change (§15). User-requested 2026-09-26: no child cap, spouse **affection** + personality-driven **marriage events**,
 **affairs** via expedition encounters, and personality-weighted **discovery reactions**. Built in two commits:
-**A** = affection, marriage + crisis events, duel card, former spouses, uncapped children — **✅ built**. **B** = lovers,
-encounters, discovery reactions.
+**A** = affection, marriage + crisis events, duel card, former spouses, uncapped children — **✅ built** (b30d10b). **B** = lovers,
+encounters, discovery reactions — **✅ built**.
 
 ## Depth pass (CLAUDE.md)
 - **Memory:** `affection` (0–100), `tolerant`, `formerSpouses` (+ why each ended), lovers, `tally` per life.
@@ -27,7 +27,7 @@ spouse: Person|null  affection: 0–100 (spouse's)  tolerant: bool (spouse accep
 children: Person[] (no cap; alive:false kept for the tree)   formerSpouses: Person[] (+ endedYear, endCause)
 marriedYear, nextChildYear, spouseStageYear, proposal, nextProposalYear          — as in task 2.5
 event: {id, crisis, year}|null   nextEventYear: number|null   duel: {year, reason}|null   btSabotage: bool
-lovers: [{person, since, nextChildYear}]    encounters: [{person, place, year}] (≤ LOVER_ENCOUNTER_MAX)   [B]
+lovers: [{person, since, nextChildYear, endsYear}]    encounters: [{person, place, year}] (≤ LOVER_ENCOUNTER_MAX)   [B]
 tally: {events, crises, affairs, discovered, accept, sabotage, duel, suicide, murder_suicide, left, duelWon, duelLost, fled}
 ```
 `endCause` ∈ `left` (spouse walked out / you fled a duel) · `divorced` · `suicide` · `murder_suicide` · `duel` (you won).
@@ -45,7 +45,8 @@ tally: {events, crises, affairs, discovered, accept, sabotage, duel, suicide, mu
 - Duel: win = clamp(0.5 + 0.08 × (your stage − spouse stage), 0.1, 0.9). Win → spouse dies (`duel`), you lose
   `DUEL_WIN_HEALTH_COST` 30 Health (min 1). Lose → `_die('spouse_duel')`. Flee → spouse leaves.
 - [B] Encounters: `LOVER_ENCOUNTER_CHANCE` 0.12 per expedition from `PROPOSAL_MIN_STAGE`, max 3 pending, never expire;
-  `SEDUCE_CHANCE` 0.65. Discovery (married, not tolerant): 0.02 per lover per game year; 0.40 when a lover's child
+  `SEDUCE_CHANCE` 0.65. Affairs fade on their own after `AFFAIR_YEARS` [15,50] (added after the first sim: without it
+  lovers piled up to ~60 children per life). Discovery (married, not tolerant): 0.02 per lover per game year; 0.40 when a lover's child
   is born. On discovery: affection −25 (−10 more if via a child); tolerant spouse: −5, no reaction.
 - [B] `AFFAIR_REACTIONS[personalityId] = {accept, sabotage, duel, suicide, murder_suicide}` weights (table in the
   2026-09-26 session / data file), scaled by affection as above.
@@ -79,3 +80,15 @@ tally: {events, crises, affairs, discovered, accept, sabotage, duel, suicide, mu
 - Murder-suicide kills only **minor** children shared with that spouse (`gameYear − bornYear < ADULT_AGE`).
 - Log text for suicide/murder-suicide/duel deaths stays somber and non-graphic.
 - A spouse who leaves stays in `formerSpouses`; the BQ partner term uses the current spouse, else the last former one.
+- `familyCost()`/`familyText()`/`marriageEventDef()`/`duelChance()` are public because the UI and the bot read them.
+- Event Qi effects are skipped while `qiCap` is Infinity (post-Ascension stub stage) — the first sim produced `qi=Infinity`.
+- In the sim, forcing `Math.random` to a constant hangs `resolveExpedition()`'s beast-trait loop; scenario tests must
+  override the VM's RNG (`sim.ev('Math.random = …')`) only around family calls.
+
+## Sim evidence (2026-09-26, full `npm run sim`, 3 seeds, 200h; bot seduces 25%, fights at ≥ 60%)
+0 errors / 0 violations. Casual median life 34.5h (in the 20–40h band), active 9.1h, afk 3.0h. Per 200h run totals —
+casual: 172 events / 9 crises, 95 affairs → 48 discovered (reactions acc 6 / sab 23 / duel 10 / sui 6 / murder 3), 10
+duels fled; active: 106 affairs → 47 discovered, duels 4 won / 4 lost / 11 fled (4 lives ended in a spouse duel).
+**Open tuning question:** casual lives now average ~49 children (lives run ~1,100 game years with no cap). Stats shows
+the 12 youngest; save size grows ~0.3 KB per child. A genre-flavored fix would be longer child intervals at higher
+realms ("the higher the realm, the harder to conceive") — not done without the user's call.

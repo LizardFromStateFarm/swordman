@@ -381,7 +381,8 @@ class GameState {
     return { spouse: null, children: [], marriedYear: null, nextChildYear: null, proposal: null,
              nextProposalYear: null, spouseStageYear: null,
              affection: null, tolerant: false, formerSpouses: [], event: null, nextEventYear: null,
-             lastEventId: null, duel: null, btSabotage: false, tally: this._blankFamilyTally() }
+             lastEventId: null, duel: null, btSabotage: false, tally: this._blankFamilyTally(),
+             lovers: [], encounters: [] }
   }
 
   _blankFamilyTally() {
@@ -399,6 +400,8 @@ class GameState {
     for (const k of Object.keys(blank)) if (f[k] === undefined) f[k] = blank[k]
     if (!Array.isArray(f.children)) f.children = []
     if (!Array.isArray(f.formerSpouses)) f.formerSpouses = []
+    if (!Array.isArray(f.lovers))        f.lovers = []
+    if (!Array.isArray(f.encounters))    f.encounters = []
     if (!f.tally || typeof f.tally !== 'object') f.tally = this._blankFamilyTally()
     for (const [k, v] of Object.entries(this._blankFamilyTally())) if (typeof f.tally[k] !== 'number') f.tally[k] = v
     if (f.spouse && !(typeof f.affection === 'number' && isFinite(f.affection))) f.affection = AFFECTION_START
@@ -488,6 +491,59 @@ class GameState {
     return (ev?.crisis ? MARRIAGE_CRISIS_EVENTS : MARRIAGE_EVENTS).find(e => e.id === ev?.id) || null
   }
 
+  // A generated person near the player's stage/age (suitors and lovers).
+  _rollStranger(role) {
+    const s = this._s
+    const stage = Math.max(1, Math.min(SPOUSE_STAGE_CAP, s.stageIndex + this._randInt(SUITOR_STAGE_OFFSET)))
+    const age   = Math.max(18, s.age + this._randRange(SUITOR_AGE_OFFSET_YEARS))
+    return Persons.make({
+      id: this._newPersonId(s.clan), given: Persons.rollGiven(), family: Persons.rollSurname(),
+      bornYear: Math.floor(s.gameYear - age), root: Persons.rollRoot(), personality: Persons.rollPersonality(),
+      stageIndex: stage, maxStage: stage, role, alive: true,
+    })
+  }
+
+  // family.md: the spouse learns of an affair. Affection drops, then a reaction is rolled from the spouse's
+  // personality (AFFAIR_REACTIONS), scaled by the affection that's left: accept × aff/50, violent × (100−aff)/50.
+  _discoverAffair(lover, viaChild) {
+    const s = this._s, f = s.family, sp = f.spouse
+    if (!sp) return
+    const yr = Math.floor(s.gameYear), spName = Persons.fullName(sp), loverName = Persons.fullName(lover.person)
+    f.tally.discovered++
+    this._changeAffection(AFFAIR_DISCOVERED_AFFECTION + (viaChild ? AFFAIR_CHILD_EXTRA_AFFECTION : 0))
+    this.addEvent({ text: `Year ${yr}: ${spName} learns of your affair with ${loverName}${viaChild ? ' — and of the child' : ''}.`, type: 'negative' })
+    const w = AFFAIR_REACTIONS[sp.personality] || { accept: 30, sabotage: 30, duel: 20, suicide: 10, murder_suicide: 10 }
+    const a = f.affection, calm = a / 50, hot = (100 - a) / 50
+    const opts = [['accept', w.accept * calm], ['sabotage', w.sabotage], ['duel', w.duel * hot],
+                  ['suicide', w.suicide * hot], ['murder_suicide', w.murder_suicide * hot]]
+    const total = opts.reduce((sum, o) => sum + o[1], 0)
+    let roll = Math.random() * total, reaction = 'sabotage'
+    for (const [k, wt] of opts) { roll -= wt; if (wt > 0 && roll <= 0) { reaction = k; break } }
+    f.tally[reaction]++
+    if (reaction === 'accept') {
+      f.tolerant = true
+      this.addEvent({ text: `${spName} is silent for a long time. Then: "I knew what you were when I married you." It is not mentioned again.`, type: 'neutral' })
+    } else if (reaction === 'sabotage') {
+      f.btSabotage = true
+      this.addEvent({ text: `${spName} says nothing. But your seclusion chamber's formation lines have been quietly scuffed.`, type: 'negative' })
+    } else if (reaction === 'duel') {
+      f.event = null
+      f.duel = { year: yr, reason: 'affair' }
+      this.addEvent({ text: `${spName} draws a blade in the courtyard and names the terms: to the death.`, type: 'negative' })
+      this._emit('duel', { spouse: spName })
+    } else if (reaction === 'suicide') {
+      this._spouseEnds('suicide', `${spName} could not bear it. They are found at dawn; they have taken their own life.`)
+    } else {
+      const lost = f.children.filter(c => c.alive && c.parents.includes(sp.id) && s.gameYear - c.bornYear < ADULT_AGE)
+      for (const c of lost) { c.alive = false; c.diedYear = yr; c.cause = 'murder_suicide' }
+      const names = lost.map(c => c.given).join(', ')
+      this._spouseEnds('murder_suicide', lost.length
+        ? `in grief and fury, ${spName} ended their own life — and took ${names} with them. The house is silent.`
+        : `in grief and fury, ${spName} ended their own life. The house is silent.`)
+    }
+    this._emit('affair_discovered', { reaction })
+  }
+
   _randRange([lo, hi]) { return lo + Math.random() * (hi - lo) }
   _randInt([lo, hi])   { return lo + Math.floor(Math.random() * (hi - lo + 1)) }
 
@@ -525,6 +581,26 @@ class GameState {
       f.nextChildYear = y + this._randRange(CHILD_INTERVAL_YEARS)
     }
 
+    // Lovers (family.md): each has their own child timer. A lover's child may expose the affair
+    // (DISCOVERY_ON_LOVER_CHILD); a tolerant spouse only sighs (AFFAIR_TOLERATED_AFFECTION).
+    for (const lover of [...f.lovers]) {
+      if (lover.endsYear != null && y >= lover.endsYear) {   // affairs fade on their own (AFFAIR_YEARS)
+        f.lovers.splice(f.lovers.indexOf(lover), 1)
+        this.addEvent({ text: `Year ${yr}: your affair with ${Persons.fullName(lover.person)} fades, as such things do.`, type: 'neutral' })
+        continue
+      }
+      if (y < lover.nextChildYear) continue
+      this._makeChild(lover.person)
+      lover.nextChildYear = y + this._randRange(CHILD_INTERVAL_YEARS)
+      if (f.spouse && f.tolerant) this._changeAffection(AFFAIR_TOLERATED_AFFECTION)
+      else if (f.spouse && !f.duel && Math.random() < DISCOVERY_ON_LOVER_CHILD) this._discoverAffair(lover, true)
+    }
+    // Yearly discovery roll per lover while married (at most one discovery per year).
+    if (f.spouse && !f.tolerant && !f.duel) {
+      const found = f.lovers.find(() => Math.random() < DISCOVERY_PER_LOVER_YEAR)
+      if (found) this._discoverAffair(found, false)
+    }
+
     // Marriage events: one pending at a time (never expires), none while a duel is pending.
     if (f.spouse && !f.event && !f.duel) {
       if (f.nextEventYear == null) {
@@ -546,15 +622,7 @@ class GameState {
       } else if (y >= f.nextProposalYear) {
         const n = this._randInt(PROPOSAL_SUITORS)
         const suitors = []
-        for (let i = 0; i < n; i++) {
-          const stage = Math.max(1, Math.min(SPOUSE_STAGE_CAP, s.stageIndex + this._randInt(SUITOR_STAGE_OFFSET)))
-          const age = Math.max(18, s.age + this._randRange(SUITOR_AGE_OFFSET_YEARS))
-          suitors.push(Persons.make({
-            id: this._newPersonId(s.clan), given: Persons.rollGiven(), family: Persons.rollSurname(),
-            bornYear: Math.floor(y - age), root: Persons.rollRoot(), personality: Persons.rollPersonality(),
-            stageIndex: stage, maxStage: stage, role: 'suitor', alive: true,
-          }))
-        }
+        for (let i = 0; i < n; i++) suitors.push(this._rollStranger('suitor'))
         f.proposal = { suitors, year: yr }
         f.nextProposalYear = null
         this.addEvent({ text: `Year ${yr}: a matchmaker arrives with ${n === 1 ? 'a proposal' : `${n} proposals`} of marriage.`, type: 'special' })
@@ -965,7 +1033,8 @@ class GameState {
     const ctx = f.event
     s.spiritStones -= cost
     const fx = ch.effect || {}
-    if (fx.qiFrac)    s.qi = Math.max(0, Math.min(s.derived.qiCap, s.qi + fx.qiFrac * s.derived.qiCap))
+    // Skipped once the cap is Infinity (post-Ascension stub stage) — a fraction of Infinity would poison qi.
+    if (fx.qiFrac && isFinite(s.derived.qiCap)) s.qi = Math.max(0, Math.min(s.derived.qiCap, s.qi + fx.qiFrac * s.derived.qiCap))
     if (fx.health)    s.health = Math.max(1, Math.min(100, (s.health ?? 100) + fx.health))   // family events never kill
     if (fx.karma)     s.karma = Math.max(0, Math.min(100, s.karma + fx.karma))
     if (fx.integrity) s.realmIntegrity = Math.max(0, Math.min(100, (s.realmIntegrity ?? 100) + fx.integrity))
@@ -1001,6 +1070,46 @@ class GameState {
     return { ok: true, affection: f.affection, outcome }
   }
 
+  // ── Family depth (family.md): lovers ───────────────────────────────────────
+
+  // Seduce the i-th pending expedition encounter (SEDUCE_CHANCE). Success starts an ongoing affair.
+  seduceEncounter(i) {
+    const s = this._s, f = s.family, enc = f.encounters[i]
+    if (!enc) return { ok: false, reason: 'unknown' }
+    f.encounters.splice(i, 1)
+    const name = Persons.fullName(enc.person), y = s.gameYear
+    const success = Math.random() < SEDUCE_CHANCE
+    if (success) {
+      f.lovers.push({ person: { ...enc.person, role: 'lover' }, since: Math.floor(y), nextChildYear: y + this._randRange(FIRST_CHILD_YEARS),
+                      endsYear: y + this._randRange(AFFAIR_YEARS) })
+      f.tally.affairs++
+      this.addEvent({ text: `You and ${name} begin an affair${f.spouse ? ', out of your spouse\'s sight' : ''}.`, type: 'special' })
+    } else {
+      this.addEvent({ text: `${name} laughs, not unkindly, and walks on alone.`, type: 'neutral' })
+    }
+    this._recalc(); this._notify()
+    return { ok: true, success }
+  }
+
+  dismissEncounter(i) {
+    const f = this._s.family
+    if (!f.encounters[i]) return { ok: false, reason: 'unknown' }
+    f.encounters.splice(i, 1)
+    this._notify()
+    return { ok: true }
+  }
+
+  // Ends an affair. Children already born stay yours.
+  endAffair(personId) {
+    const s = this._s, f = s.family
+    const idx = f.lovers.findIndex(l => l.person.id === personId)
+    if (idx < 0) return { ok: false, reason: 'unknown' }
+    const [lover] = f.lovers.splice(idx, 1)
+    this.addEvent({ text: `You end things with ${Persons.fullName(lover.person)}.`, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
   // Chance to win a duel against your spouse: 0.5 + 0.08 per stage you're ahead, clamped.
   duelChance() {
     const s = this._s, sp = s.family.spouse
@@ -1021,7 +1130,6 @@ class GameState {
       return { ok: true, outcome: 'fled', chance: 0 }
     }
     const chance = this.duelChance()
-    f.tally.duel++
     if (Math.random() < chance) {
       f.tally.duelWon++
       s.health = Math.max(1, (s.health ?? 100) - DUEL_WIN_HEALTH_COST)
@@ -1271,6 +1379,18 @@ class GameState {
           type: 'special',
         })
       }
+    }
+
+    // Lover encounter (family.md): at most one per expedition, max LOVER_ENCOUNTER_MAX pending, never expire.
+    // Skipped for a not-yet-migrated save during initSlot()'s offline catch-up (no encounters/clan yet).
+    const fam = s.family
+    if (fam && Array.isArray(fam.encounters) && s.clan && (s.maxStageThisLife || 0) >= PROPOSAL_MIN_STAGE && fam.encounters.length < LOVER_ENCOUNTER_MAX &&
+        Math.random() < LOVER_ENCOUNTER_CHANCE) {
+      const person = this._rollStranger('stranger')
+      const flavor = LOVER_ENCOUNTER_TEXT[Math.floor(Math.random() * LOVER_ENCOUNTER_TEXT.length)]
+      fam.encounters.push({ person, place: loc.name, text: flavor, year: Math.floor(s.gameYear) })
+      this.addEvent({ text: `At ${loc.name}, ${Persons.fullName(person)} ${flavor}. (Explore tab)`, type: 'special' })
+      this._emit('lover_encounter', { name: Persons.fullName(person) })
     }
 
     // Health risk: zones whose enemy tier outclasses the player's current stage (Phase 23A)
