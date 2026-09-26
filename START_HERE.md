@@ -54,6 +54,10 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Deep Sect Management (offices, Recruiter, manual recruiting) | ⬜ Phase 27 (planned) |
 | Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ⬜ Phase 28 (planned) |
 
+> **Tests:** `npm test` (syntax) · `npm run checks` (106 scenario checks, ~5s) · `npm run sim` (bot playtest). Any
+> useful check script you write goes in `scripts/sim/checks/` and gets documented — never left in a temp folder
+> (CLAUDE.md → "Test scripts are project assets").
+
 > **Build order lives in PLAN.md → "Development Roadmap" (milestones M1–M8).** The table above is by feature,
 > not by order. **Design pillars** (GAMEDESIGN.md, top of PLAN.md) override older design text: single-player,
 > ~10–20h mortal lives, death → heir → meta progression, never punish absence, no store logic.
@@ -63,6 +67,13 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 7 (wrap-up before a fresh context)
+Agent: moved the session's 106 scenario checks from the temp scratchpad into the repo: scripts/sim/checks/
+  (world, family-marriage, family-affairs, children, tournament) + run-all.js → `npm run checks` (all pass, ~5s).
+  User rule added to CLAUDE.md: useful test scripts are project assets — save under scripts/, document in
+  qa-sim.md "Scenario checks", extend them when changing a system; `npm run checks` is in the done-list.
+  Next: 2.6d in a NEW conversation ("read START_HERE and continue with 2.6d") — see part 6 below for scope.
+
 Date: 2026-09-26 (day session, user present) — part 6
 Agent: built **M2 2.6c** (clan-succession.md §2.6c as-built):
   - Name an heir (Stats) or host a Tournament of Heirs: you pair every fight; lethal while > 4 remain (never below

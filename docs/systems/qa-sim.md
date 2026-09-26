@@ -10,6 +10,8 @@ npm run sim            # full suite: active,casual,afk × 50,100,200h × 3 seeds
 npm run sim:quick      # smoke: active,afk × 24h × 1 seed (~1s)
 npm run sim -- --profiles=casual --hours=100 --seeds=5 --set="WAR_MIN_INTERVAL_HOURS=1"
 npm run sim -- --help  # all flags (scripts/sim/USAGE.txt)
+npm run checks         # scenario checks: exact rules, ~5s (see "Scenario checks" below)
+npm run checks -- tournament   # only files whose name matches
 ```
 Read **only** `scripts/sim/out/report.md` (~60 lines). Open `report.json` only to dig into one run
 (`runs[i].stageTimes`, `.milestones`, `.actions`, `.economy`, `.health`). Exit code 0 = healthy, 1 = errors or
@@ -123,9 +125,31 @@ joined AND founded · war side ≠ joined/founded state · war-committed mission
 the war · beast stuck at war · save round-trip changes stage/techniques/equipped/root/beasts/sect · offline lowers qi ·
 health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 · `settings_invalid` (any `s.settings` value not valid for its `SETTINGS_DEFS` entry) · `personality_invalid` · `banter_buffer_over_cap` · `banter_pool_holes` (content check once per run: every personality × trigger meets `BANTER_MIN_LINES`) · `war_orders_invalid` (Phase 32: any `s.warOrders` value not one of its `WAR_ORDER_*_OPTIONS`, or a negative `chestStones`/`reinforceKeep`) · `war_chest_over_cap` (Phase 32: `sectWar.chestStones` exceeds `MEMBER_WAR_CHEST_BASE + rank × MEMBER_WAR_CHEST_PER_RANK`, whether an order, a manual click, or both filled it — proves no double-charge) · `war_pills_over_cap` · `item_category_invalid` (Phase 21: every `ITEMS[id].category` must be one of `currency|mat|pill|equip|rare|key`, checked once per run) · `family_children_over_cap` / `family_spouse_dead` / `family_proposal_invalid` (M2 2.5, life-loop.md §7 invariant 5: children ≤ `CHILD_CAP`, spouse null or alive, proposal only when unmarried and past `PROPOSAL_MIN_STAGE`) · `family_affection_range` / `family_pending_unmarried` / `family_child_parents` / `family_encounters_over_cap` / `family_lover_is_spouse` (family.md; `family_children_over_cap` was retired with the child cap) · `world_invalid` / `world_self_duplicated` / `world_player_clan_missing` / `world_player_not_on_roster` / `world_past_lives_mismatch` + a world save round-trip check (clan-succession.md 2.6a) · `family_planning_invalid` / `child_bond_range` / `morality_range` / `child_stage_over_parent` / `child_event_orphaned` (2.6b) · `heir_invalid` / `tournament_too_many_deaths` / `tournament_pool_invalid` (2.6c) · `age_below_awakening` (replaced `age_over_lifespan` when lifespan was removed, 2026-09-26) · `age_offline` (age/gameYear unchanged by offline catch-up). The sim also runs `BanterSystem` (source `banter`, 0 stones).
 
+## Scenario checks (`scripts/sim/checks/`, `npm run checks`)
+The sim only sees what the bot happens to do. Scenario checks force a specific situation through the same
+`loader.js` and assert the exact rule ("a lethal round never takes the field below 4", "an old save migrates").
+`run-all.js` runs every file, prints per-file ok/FAIL counts and exits 1 on any failure. **Per CLAUDE.md, any useful
+check script goes here (not in a temp folder) and is listed below in the same change.**
+
+| File | Covers | Checks |
+|---|---|---|
+| `world.js` | clan-succession.md 2.6a — world/life split, 2.5-era + pre-2.2 migrations, death keeps the world, orphan life | 13 |
+| `family-marriage.js` | family.md A — affection, marriage + crisis events, duel win/lose/flee, sabotage, partner BQ term | 21 |
+| `family-affairs.js` | family.md B — encounters, lovers, discovery, every spouse reaction, tolerant spouse | 19 |
+| `children.js` | 2.6b — Family Planning, child growth + cap, child events, runaways, neglect drift, morality | 22 |
+| `tournament.js` | 2.6c — field-size rules, deaths, trauma, bonds, BQ heir term, pending succession, heir rules | 31 |
+
+**Writing one:** `const { createSim } = require('../loader.js')`, build a sim (`await createSim({ seed })`,
+`await sim.boot(0)`), set up state directly, call public/private `gs` methods, `assert(cond, msg)` printing
+`ok   msg` / `FAIL msg`. Gotchas: game code runs in a VM with its own seeded `Math.random` — to force a roll,
+override it inside the VM (`sim.ev('globalThis.__r = Math.random; Math.random = () => 0')`, restore after); never
+force a constant around `resolveExpedition()` (its beast-trait loop then never ends). `sim.step(1)` advances one
+real second (1/120 game year); for year-based logic, bump `s.world.year` and call `gs._tickFamily()` directly.
+
 ## Extending
 - **New system/phase:** add bot behaviour in `bot.js` (new method + add to the `checkIn` chain), new
-  milestones in `Recorder.slow()`, invariants in `checkInvariants()`, feature id in `report.js FEATURES`.
+  milestones in `Recorder.slow()`, invariants in `checkInvariants()`, feature id in `report.js FEATURES`,
+  and a scenario check file in `checks/` for the rules the bot won't reliably hit.
 - **New data file:** add it to `DATA_FILES` in `loader.js` (same order as `renderer/index.html`).
 - **New logic file in renderer/game/:** add to `LOGIC_FILES` and to the `systems` array (tick order = game.js).
 

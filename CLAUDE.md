@@ -102,6 +102,7 @@ scripts/
   gen-tray-icon.js      ← One-off generator for assets/icons/tray-icon.png (Phase 9A, not run at boot)
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt
+    checks/             ← Scenario checks (`npm run checks`) — force exact situations, print ok/FAIL; run-all.js + one file per system
 renderer/
   index.html            ← All HTML — charselect + app, 7 tabs
   styles.css            ← All CSS — CSS vars at top, add new components here
@@ -220,6 +221,19 @@ Documentation is part of implementation. "I'll update it after" means it never g
 **Required for every new data file:**
 5. **Top-of-file comment** — one line: what it contains and which files depend on it.
 
+### Test scripts are project assets, not scratch (user rule, 2026-09-26)
+
+Any check/test script you write that would be useful for future work — scenario checks that force a specific
+situation, migration tests, regression repros, before/after comparison harnesses — goes in the repo, **not** the
+session's temp/scratchpad folder (that folder is deleted with the session and the next agent never sees it):
+1. Save it under `scripts/sim/checks/<system>.js` (scenario checks: require `../loader.js`, print `ok …` / `FAIL …`
+   lines, set `process.exitCode = 1` on failure) or another fitting `scripts/` folder for other tools.
+2. Give it a top-of-file comment: what it covers, which system doc, how to run it.
+3. Document it in the same change: add it to `docs/systems/qa-sim.md` → "Scenario checks" (and the system's own doc if
+   it pins down that system's rules). `npm run checks` picks up new files in `scripts/sim/checks/` automatically.
+4. When you change a system, extend its check file instead of writing a new throwaway script.
+Truly one-off probes (a single debug print) can stay in scratch. When unsure, keep it.
+
 ### A task is NOT done until
 
 - The code works
@@ -227,6 +241,7 @@ Documentation is part of implementation. "I'll update it after" means it never g
 - `PLAN.md` reflects the new state
 - Relevant system doc is current
 - `npm run dist` produces a working build (for any user-facing changes)
+- `npm run checks` passes (all scenario checks, ~5s) — and any new check you wrote is saved in the repo (below)
 - If `renderer/` or `assets/` changed: `npm run build:web` (or `npm run cap:sync`) still succeeds —
   confirms the iOS web bundle still assembles cleanly, even though there's no Mac to build the
   actual `.ipa` yet. See `docs/systems/ios-port.md`.
