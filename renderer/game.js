@@ -147,7 +147,7 @@
   const sectSys   = new SectSystem(gameState)
   const sectWarSys = new SectWarSystem(gameState)
   const settingsUI = new SettingsUI(gameState, renderer)
-  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #proposal-overlay:not(.hidden)'))
+  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #proposal-overlay:not(.hidden), #family-overlay:not(.hidden)'))
   // Phase 9A/B: window "active" = visible AND focused; notifications only fire otherwise (news, not a summons).
   const notifSys   = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(),
     (title, body) => window.electron.notify(title, body))
@@ -159,6 +159,7 @@
   // Phase 22 (22C): Active Mode's craft Master's Touch — "watching" = viewed the Craft tab within 60s.
   let _craftTabViewedAt = 0
   let _proposalShownYear = null   // Phase 16-lite (M2 task 2.5): auto-open each proposal once per session; Stats reopens it
+  let _familyShownKey    = null   // family.md: auto-open each marriage event / duel once per session
 
   function bootGame() {
     tickRunning = true
@@ -320,6 +321,14 @@
     }
     if (!prop) document.getElementById('proposal-overlay').classList.add('hidden')
 
+    // Family card (family.md): marriage/crisis event or duel — auto-opens once per item, never expires
+    const famKey = familyPendingKey(s)
+    if (famKey && famKey !== _familyShownKey && document.getElementById('proposal-overlay').classList.contains('hidden')) {
+      _familyShownKey = famKey
+      openFamilyOverlay(s)
+    }
+    if (!famKey) document.getElementById('family-overlay').classList.add('hidden')
+
     const activeTab = document.querySelector('.tab.active')?.dataset?.tab
     if (fromTick) {
       // On every tick: only update the live expedition timer without re-rendering
@@ -462,6 +471,7 @@
       ${renderBanterLog(s)}
     `
     document.getElementById('_matchmaker')?.addEventListener('click', () => openProposalOverlay(gameState.get()))
+    document.getElementById('_family-matter')?.addEventListener('click', () => openFamilyOverlay(gameState.get()))
     document.getElementById('_pass-mantle')?.addEventListener('click', () => {
       showConfirm('Pass the Mantle?', 'This ends your life peacefully, now. Cannot be undone.', () => {
         gameState.passTheMantle()
@@ -469,17 +479,40 @@
     })
   }
 
-  // Phase 16-lite (M2 task 2.5): spouse, children and the matchmaker link in Stats.
+  // Affection tiers (family.md) — UI only; the number is shown alongside.
+  function affectionLabel(a) {
+    if (a >= AFFECTION_DEVOTED) return { word: 'Devoted', color: 'var(--jade)' }
+    if (a >= 50)                return { word: 'Warm',    color: 'var(--text)' }
+    if (a >= AFFECTION_CRISIS)  return { word: 'Cool',    color: 'var(--gold)' }
+    return                             { word: 'Cold',    color: 'var(--red)' }
+  }
+
+  const SPOUSE_END_TEXT = { left: 'left you', divorced: 'divorced', suicide: 'took their own life',
+                            murder_suicide: 'died, and took children with them', duel: 'fell in a duel with you' }
+
+  // Stats family section (Phase 16-lite + family.md): spouse + affection, former spouses, children, pending links.
   function renderFamilyRows(s) {
     const f = s.family
     if (!f) return ''
     let html = ''
-    if (f.spouse) html += sr('Spouse', `${escHtml(Persons.fullName(f.spouse))} · ${personStageLabel(f.spouse.stageIndex)}`)
-    for (const c of f.children || []) {
-      const age = Math.max(0, Math.floor(s.gameYear - c.bornYear))
-      html += sr('Child', `${escHtml(Persons.fullName(c))} · ${age} · ${escHtml(c.root?.name || '')}`)
+    if (f.spouse) {
+      const al = affectionLabel(f.affection)
+      html += sr('Spouse', `${escHtml(Persons.fullName(f.spouse))} · ${personStageLabel(f.spouse.stageIndex)}`)
+      html += sr('Affection', `<span style="color:${al.color}">${al.word} · ${Math.round(f.affection)}</span>${f.tolerant ? ' · tolerant' : ''}${f.btSabotage ? ' · <span style="color:var(--red)">sabotaging your next breakthrough</span>' : ''}`)
+    }
+    for (const x of f.formerSpouses || []) {
+      html += sr('Former', `<span style="color:var(--dim)">${escHtml(Persons.fullName(x))} — ${SPOUSE_END_TEXT[x.endCause] || 'gone'} (yr ${x.endedYear})</span>`)
+    }
+    const kids = f.children || []
+    if (kids.length) html += sr('Children', `${kids.filter(c => c.alive).length} living${kids.some(c => !c.alive) ? ` · ${kids.filter(c => !c.alive).length} lost` : ''}`)
+    for (const c of kids) {
+      const age = Math.max(0, Math.floor((c.alive ? s.gameYear : c.diedYear) - c.bornYear))
+      html += c.alive
+        ? sr('Child', `${escHtml(Persons.fullName(c))} · ${age} · ${escHtml(c.root?.name || '')}`)
+        : sr('Child', `<span style="color:var(--dim)">${escHtml(Persons.fullName(c))} · died at ${age}</span>`)
     }
     if (f.proposal) html += `<button id="_matchmaker" class="sect-btn" style="width:100%;margin:6px 0 2px;">A matchmaker awaits</button>`
+    if (familyPendingKey(s)) html += `<button id="_family-matter" class="sect-btn" style="width:100%;margin:6px 0 2px;">A family matter awaits</button>`
     return html
   }
 
@@ -1915,6 +1948,7 @@
     ascension_failed:   'The Ascension Trial claimed your life',
     old_age:            'Your years ran out',
     passed_mantle:      'You laid down the path',
+    spouse_duel:        'Slain by your spouse in a duel to the death',
   }
 
   function showDeathOverlay(summary) {
@@ -1960,6 +1994,55 @@
     })
     document.getElementById('proposal-overlay').classList.remove('hidden')
   }
+
+  // ── Family overlay (docs/systems/family.md): marriage/crisis events + duel ──
+
+  function familyPendingKey(s) {
+    const f = s.family
+    if (!f?.spouse) return null
+    if (f.duel)  return `duel:${f.duel.year}`
+    if (f.event) return `ev:${f.event.id}:${f.event.year}`
+    return null
+  }
+
+  function openFamilyOverlay(s) {
+    const f = s.family
+    if (!familyPendingKey(s)) return
+    const box = document.getElementById('family-box')
+    const choicesEl = document.getElementById('family-choices')
+    if (f.duel) {
+      const pct = Math.round(gameState.duelChance() * 100)
+      box.classList.add('crisis')
+      document.getElementById('family-title').textContent = 'A Duel to the Death 生死斗'
+      document.getElementById('family-desc').textContent = `${Persons.fullName(f.spouse)} waits in the courtyard with a drawn blade. One of you will not walk away.`
+      choicesEl.innerHTML = `<button data-duel="fight">Fight<span class="family-sub">${pct}% to survive — if you lose, this life ends</span></button>
+        <button data-duel="flee">Flee<span class="family-sub">${escHtml(f.spouse.given)} leaves you for good</span></button>`
+      choicesEl.querySelectorAll('[data-duel]').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('family-overlay').classList.add('hidden')
+        const res = gameState.resolveDuel(btn.dataset.duel)
+        if (res.outcome === 'won') flashMessage('You survived the duel.', 'negative')
+      }))
+    } else {
+      const def = gameState.marriageEventDef(f.event)
+      box.classList.toggle('crisis', !!f.event.crisis)
+      document.getElementById('family-title').textContent = def.title
+      document.getElementById('family-desc').textContent = gameState.familyText(def.text, f.event)
+      choicesEl.innerHTML = def.choices.map((ch, i) => {
+        const cost = gameState.familyCost(ch)
+        const sub = cost ? `<span class="family-sub">${fmt(cost)} Spirit Stones</span>` : ''
+        return `<button data-choice="${i}" ${s.spiritStones < cost ? 'disabled' : ''}>${escHtml(gameState.familyText(ch.label, f.event))}${sub}</button>`
+      }).join('')
+      choicesEl.querySelectorAll('[data-choice]').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('family-overlay').classList.add('hidden')
+        gameState.resolveMarriageEvent(+btn.dataset.choice)
+      }))
+    }
+    document.getElementById('family-overlay').classList.remove('hidden')
+  }
+
+  document.getElementById('family-later').addEventListener('click', () => {
+    document.getElementById('family-overlay').classList.add('hidden')
+  })
 
   document.getElementById('proposal-later').addEventListener('click', () => {
     document.getElementById('proposal-overlay').classList.add('hidden')

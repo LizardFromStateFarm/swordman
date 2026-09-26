@@ -256,6 +256,19 @@ function buildReport(runs, args) {
       flags.push(`[${p} ${longest}h] Median life ${fmtH(medLife)} outside life-loop.md target ${target[0]}-${target[1]}h`)
   }
   L.push(``)
+  // family.md: what marriages and affairs did per life (totals across all lives, per-life means in brackets).
+  L.push(`## Family — marriage events, affairs, reactions (${longest}h runs; totals over all lives)`)
+  L.push(`| Profile | Lives | Events / crises | Spouses lost (left · died) | Duels won/lost/fled | Affairs · discovered | Reactions (acc/sab/duel/sui/murder) | Children born · lost (mean/life) |`)
+  L.push(`|---|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const lives = group(p, longest).flatMap(r => r.lifeLoop?.lifeLengths || [])
+    const T = k => lives.reduce((a, l) => a + (l.tally?.[k] || 0), 0)
+    const died = T('suicide') + T('murder_suicide') + T('duelWon')
+    const born = lives.reduce((a, l) => a + (l.children || 0), 0), lost = lives.reduce((a, l) => a + ((l.children || 0) - (l.childrenAlive ?? l.children ?? 0)), 0)
+    const n = Math.max(1, lives.length)
+    L.push(`| ${p} | ${lives.length} | ${T('events')} / ${T('crises')} | ${T('left')} · ${died} | ${T('duelWon')}/${T('duelLost')}/${T('fled')} | ${T('affairs')} · ${T('discovered')} | ${T('accept')}/${T('sabotage')}/${T('duel')}/${T('suicide')}/${T('murder_suicide')} | ${(born / n).toFixed(1)} · ${(lost / n).toFixed(1)} |`)
+  }
+  L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)
   for (const p of profiles) {
     const g = group(p, longest), by = {}

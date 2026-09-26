@@ -1708,3 +1708,52 @@ body {
 .pack-btn-discard{ border-color: var(--red)    !important; color: var(--red)    !important; }
 .pack-item-btns button:disabled { opacity: .4; cursor: not-allowed; }
 .pack-item-hint { font-size: 9px; color: var(--dim); font-style: italic; }
+
+/* ── Family overlay (docs/systems/family.md) — same look as #proposal-overlay ── */
+
+#family-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,4,14,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+#family-box {
+  background: var(--bg2);
+  border: 1px solid var(--gold);
+  border-radius: 5px;
+  padding: 14px 16px;
+  width: 260px;
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+  text-align: center;
+}
+#family-box.crisis { border-color: var(--red); }
+
+#family-title { font-size: 13px; color: var(--gold); margin-bottom: 6px; }
+#family-box.crisis #family-title { color: var(--red); }
+#family-desc  { font-size: 10px; color: var(--dim); margin-bottom: 10px; }
+
+#family-choices { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+
+#family-choices button,
+#family-later {
+  background: rgba(24,10,4,.9);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  min-height: 32px;
+  width: 100%;
+}
+#family-choices button:hover:not(:disabled),
+#family-later:hover { border-color: var(--gold); color: var(--gold); }
+#family-choices button:disabled { opacity: 0.45; cursor: default; }
+.family-sub { display: block; font-size: 9px; color: var(--dim); margin-top: 2px; }

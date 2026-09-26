@@ -85,6 +85,7 @@ docs/
     ui-layout.md        ← Window layout, tab pattern, CSS vars
     notifications.md    ← System tray + opt-in desktop notifications (Phase 9A-B)
     life-loop.md        ← M2 build spec: lifespan, heirs, Ancestral Hall, clan legacies (Phases 30/31)
+    family.md           ← Spouse affection, marriage/crisis events, duel, lovers + affair discovery (Phase 16-lite+)
     backpack.md          ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
     automation.md        ← Active/Idle Mode + staged automation unlocks, Active Mode bonuses (Phase 22)
 .agents/rules/
@@ -134,6 +135,7 @@ assets/
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
     bloodline.js        ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
     lifespan.js         ← Game clock + family timing constants (Phase 30/16-lite; age is a stat only, no lifespan)
+    family.js           ← Affection, MARRIAGE_EVENTS / crisis events, duel + affair constants, AFFAIR_REACTIONS (family.md)
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)

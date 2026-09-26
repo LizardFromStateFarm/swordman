@@ -374,11 +374,19 @@ class GameState {
     delete s.finalSeclusion; delete s.twilightNoticed; delete s._twilightLogged
   }
 
-  // Phase 16-lite (M2 task 2.5). spouseStageYear (an addition to life-loop.md §2.1's shape) is the gameYear
-  // of the spouse's last stage gain (SPOUSE_YEARS_PER_STAGE). Nobody dies of age, so a spouse is for life.
+  // Phase 16-lite (M2 task 2.5) + family depth (docs/systems/family.md). spouseStageYear is the gameYear of
+  // the spouse's last stage gain. Nobody dies of age — a spouse leaves the family only through the marriage
+  // itself (divorce, walking out, a duel, or a discovered affair). affection is null while unmarried.
   _blankFamily() {
     return { spouse: null, children: [], marriedYear: null, nextChildYear: null, proposal: null,
-             nextProposalYear: null, spouseStageYear: null }
+             nextProposalYear: null, spouseStageYear: null,
+             affection: null, tolerant: false, formerSpouses: [], event: null, nextEventYear: null,
+             lastEventId: null, duel: null, btSabotage: false, tally: this._blankFamilyTally() }
+  }
+
+  _blankFamilyTally() {
+    return { events: 0, crises: 0, affairs: 0, discovered: 0, accept: 0, sabotage: 0, duel: 0, suicide: 0,
+             murder_suicide: 0, left: 0, duelWon: 0, duelLost: 0, fled: 0 }
   }
 
   // Phase 16-lite (M2 task 2.5): shape-only backfill. No Math.random() here — the first proposal is
@@ -390,7 +398,94 @@ class GameState {
     const f = s.family, blank = this._blankFamily()
     for (const k of Object.keys(blank)) if (f[k] === undefined) f[k] = blank[k]
     if (!Array.isArray(f.children)) f.children = []
+    if (!Array.isArray(f.formerSpouses)) f.formerSpouses = []
+    if (!f.tally || typeof f.tally !== 'object') f.tally = this._blankFamilyTally()
+    for (const [k, v] of Object.entries(this._blankFamilyTally())) if (typeof f.tally[k] !== 'number') f.tally[k] = v
+    if (f.spouse && !(typeof f.affection === 'number' && isFinite(f.affection))) f.affection = AFFECTION_START
+    if (!f.spouse) { f.affection = null; f.event = null; f.duel = null }
     delete f.pastSpouses; delete f.mourningUntil   // spouse death/mourning removed 2026-09-26
+  }
+
+  _changeAffection(delta) {
+    const f = this._s.family
+    if (!f.spouse) return 0
+    const before = f.affection
+    f.affection = Math.max(0, Math.min(100, f.affection + delta))
+    return f.affection - before
+  }
+
+  // Fills {spouse}/{name}/{child} in family event text.
+  familyText(str, ctx = {}) {
+    const s = this._s
+    const vals = { spouse: s.family.spouse ? s.family.spouse.given : 'your spouse', name: s.name,
+                   child: ctx.child || this._youngestChild()?.given || 'your child' }
+    return String(str || '').replace(/\{(\w+)\}/g, (m, k) => vals[k] ?? m)
+  }
+
+  _youngestChild() {
+    const kids = this._s.family.children.filter(c => c.alive)
+    return kids.length ? kids[kids.length - 1] : null
+  }
+
+  // Scaled Spirit Stone cost of a family event choice (FAMILY_STONE_SCALE per stage). Public: the UI shows it.
+  familyCost(choice) {
+    const base = choice?.cost?.stones || 0
+    return base ? Math.round(base * (1 + this._s.stageIndex * FAMILY_STONE_SCALE)) : 0
+  }
+
+  // A child with `partner` (spouse or lover). No cap — each partner has their own timer (family.md).
+  _makeChild(partner) {
+    const s = this._s, f = s.family, yr = Math.floor(s.gameYear)
+    const taken = new Set(f.children.map(c => c.given))
+    let given = Persons.rollGiven()
+    for (let i = 0; i < 3 && taken.has(given); i++) given = Persons.rollGiven()
+    const child = Persons.make({
+      id: this._newPersonId(s.clan), given, family: this._clanSurname(), bornYear: yr,
+      root: Persons.blendRoot(s.root, partner.root), personality: Persons.rollPersonality(),
+      role: 'child', alive: true, parents: [s.self.id, partner.id],
+    })
+    f.children.push(child)
+    this.addEvent({ text: `Year ${yr}: a child is born — ${Persons.fullName(child)} (${child.root.name}).`, type: 'special' })
+    this._emit('child_born', { child: child.given })
+    return child
+  }
+
+  // The marriage ends. endCause: left | divorced | suicide | murder_suicide | duel (family.md). Death causes
+  // mark the spouse dead; the rest walk away. Proposals resume after PROPOSAL_RETRY_YEARS.
+  _spouseEnds(endCause, text, type = 'negative') {
+    const s = this._s, f = s.family, sp = f.spouse
+    if (!sp) return
+    const y = s.gameYear, yr = Math.floor(y)
+    const died = endCause === 'suicide' || endCause === 'murder_suicide' || endCause === 'duel'
+    const former = { ...sp, endedYear: yr, endCause }
+    if (died) { former.alive = false; former.diedYear = yr; former.cause = endCause }
+    f.formerSpouses.push(former)
+    f.spouse = null; f.affection = null; f.tolerant = false
+    f.nextChildYear = null; f.event = null; f.nextEventYear = null; f.duel = null; f.btSabotage = false
+    f.nextProposalYear = y + this._randRange(PROPOSAL_RETRY_YEARS)
+    if (!died) f.tally.left++
+    if (text) this.addEvent({ text: `Year ${yr}: ${text}`, type })
+    this._emit(died ? 'spouse_died' : 'spouse_left', { spouse: Persons.fullName(former), cause: endCause })
+  }
+
+  // Next marriage event: the crisis pool below AFFECTION_CRISIS (CRISIS_EVENT_CHANCE), else a normal event
+  // whose `requires` gate is met, avoiding an immediate repeat.
+  _rollMarriageEvent() {
+    const s = this._s, f = s.family
+    if (f.affection < AFFECTION_CRISIS && Math.random() < CRISIS_EVENT_CHANCE) {
+      const ev = MARRIAGE_CRISIS_EVENTS[Math.floor(Math.random() * MARRIAGE_CRISIS_EVENTS.length)]
+      return { id: ev.id, crisis: true }
+    }
+    const ok = r => !r || (r === 'sect' && !!s.sect?.id) || (r === 'beast' && (s.beasts || []).length > 0) ||
+                    (r === 'children' && !!this._youngestChild())
+    let pool = MARRIAGE_EVENTS.filter(e => ok(e.requires) && e.id !== f.lastEventId)
+    if (!pool.length) pool = MARRIAGE_EVENTS.filter(e => ok(e.requires))
+    const ev = pool[Math.floor(Math.random() * pool.length)]
+    return { id: ev.id, crisis: false }
+  }
+
+  marriageEventDef(ev) {
+    return (ev?.crisis ? MARRIAGE_CRISIS_EVENTS : MARRIAGE_EVENTS).find(e => e.id === ev?.id) || null
   }
 
   _randRange([lo, hi]) { return lo + Math.random() * (hi - lo) }
@@ -419,22 +514,29 @@ class GameState {
         f.spouseStageYear += SPOUSE_YEARS_PER_STAGE
       }
       if (sp.stageIndex >= SPOUSE_STAGE_CAP) f.spouseStageYear = y
+      // Affection drifts slowly back toward AFFECTION_REST.
+      const gap = AFFECTION_REST - f.affection
+      f.affection += Math.sign(gap) * Math.min(Math.abs(gap), AFFECTION_DRIFT_PER_YEAR)
     }
 
-    // Children: born on the game clock while married, up to CHILD_CAP per life.
-    if (f.spouse && f.nextChildYear != null && y >= f.nextChildYear && f.children.length < CHILD_CAP) {
-      const taken = new Set(f.children.map(c => c.given))
-      let given = Persons.rollGiven()
-      for (let i = 0; i < 3 && taken.has(given); i++) given = Persons.rollGiven()
-      const child = Persons.make({
-        id: this._newPersonId(s.clan), given, family: this._clanSurname(), bornYear: yr,
-        root: Persons.blendRoot(s.root, f.spouse.root), personality: Persons.rollPersonality(),
-        role: 'child', alive: true, parents: [s.self.id, f.spouse.id],
-      })
-      f.children.push(child)
-      f.nextChildYear = f.children.length < CHILD_CAP ? y + this._randRange(CHILD_INTERVAL_YEARS) : null
-      this.addEvent({ text: `Year ${yr}: a child is born — ${Persons.fullName(child)} (${child.root.name}).`, type: 'special' })
-      this._emit('child_born', { child: child.given })
+    // Children with the spouse: one every CHILD_INTERVAL_YEARS, no cap.
+    if (f.spouse && f.nextChildYear != null && y >= f.nextChildYear) {
+      this._makeChild(f.spouse)
+      f.nextChildYear = y + this._randRange(CHILD_INTERVAL_YEARS)
+    }
+
+    // Marriage events: one pending at a time (never expires), none while a duel is pending.
+    if (f.spouse && !f.event && !f.duel) {
+      if (f.nextEventYear == null) {
+        f.nextEventYear = y + this._randRange(MARRIAGE_EVENT_YEARS)
+      } else if (y >= f.nextEventYear) {
+        const ev = this._rollMarriageEvent()
+        f.event = { ...ev, year: yr, child: this._youngestChild()?.given || null }
+        f.nextEventYear = null
+        const def = this.marriageEventDef(f.event)
+        this.addEvent({ text: `Year ${yr}: ${def.title} — ${this.familyText(def.text, f.event)}`, type: ev.crisis ? 'negative' : 'neutral' })
+        this._emit('marriage_event', { id: ev.id, crisis: ev.crisis })
+      }
     }
 
     // Proposals: only unmarried and past PROPOSAL_MIN_STAGE. A pending proposal never expires.
@@ -594,6 +696,12 @@ class GameState {
 
     // Catch-up/Refined Meridians/blessing multipliers (task 2.7) will chain in at this point.
 
+    // Family (docs/systems/family.md): a Devoted spouse steadies your breakthroughs; a betrayed one
+    // sabotages the next attempt (cleared by attemptBreakthrough()).
+    const fam = s.family
+    if (fam?.spouse && fam.affection >= AFFECTION_DEVOTED) btBonus += DEVOTED_BT_BONUS
+    if (fam?.btSabotage) btBonus -= SABOTAGE_BT_MALUS
+
     // Pill preview bonus (for display only — consumed at BT attempt time)
     let pillBtPreview = 0
     if (s.activePill && ITEMS[s.activePill]) {
@@ -741,6 +849,8 @@ class GameState {
       if (s.inventory[s.activePill] <= 0) delete s.inventory[s.activePill]
     }
     s.activePill = null
+    // Family sabotage lasts one attempt; derived.breakthroughChance already includes it for this roll.
+    if (s.family) s.family.btSabotage = false
 
     const guaranteed = pillEffect?.type === 'bt_guarantee'
 
@@ -820,7 +930,10 @@ class GameState {
     f.spouseStageYear = y
     f.proposal        = null
     f.nextProposalYear = null
-    f.nextChildYear   = f.children.length < CHILD_CAP ? y + this._randRange(FIRST_CHILD_YEARS) : null
+    f.nextChildYear   = y + this._randRange(FIRST_CHILD_YEARS)
+    f.affection       = AFFECTION_START + (spouse.personality === s.personality?.id ? AFFECTION_SAME_PERSONALITY : 0)
+    f.tolerant        = false
+    f.nextEventYear   = null
     this.addEvent({ text: `Year ${Math.floor(y)}: ${s.name} and ${Persons.fullName(spouse)} are wed. Two paths become one.`, type: 'special' })
     this._recalc(); this._notify()
     this._emit('married', { spouse: spouse.given })
@@ -836,6 +949,90 @@ class GameState {
     this.addEvent({ text: `The matchmaker leaves disappointed. Perhaps in a few decades.`, type: 'neutral' })
     this._recalc(); this._notify()
     return { ok: true }
+  }
+
+  // ── Family depth (docs/systems/family.md): marriage events + duel ─────────
+
+  // Answers the pending marriage/crisis event. Affection delta is keyed by the SPOUSE's personality.
+  resolveMarriageEvent(i) {
+    const s = this._s, f = s.family
+    if (!f.spouse || !f.event) return { ok: false, reason: 'no_event' }
+    const def = this.marriageEventDef(f.event)
+    const ch  = def?.choices?.[i]
+    if (!ch) return { ok: false, reason: 'bad_choice' }
+    const cost = this.familyCost(ch)
+    if (s.spiritStones < cost) return { ok: false, reason: 'cant_afford' }
+    const ctx = f.event
+    s.spiritStones -= cost
+    const fx = ch.effect || {}
+    if (fx.qiFrac)    s.qi = Math.max(0, Math.min(s.derived.qiCap, s.qi + fx.qiFrac * s.derived.qiCap))
+    if (fx.health)    s.health = Math.max(1, Math.min(100, (s.health ?? 100) + fx.health))   // family events never kill
+    if (fx.karma)     s.karma = Math.max(0, Math.min(100, s.karma + fx.karma))
+    if (fx.integrity) s.realmIntegrity = Math.max(0, Math.min(100, (s.realmIntegrity ?? 100) + fx.integrity))
+    if (fx.contribution && s.sect?.id) s.sect.contribution += fx.contribution
+    for (const [id, q] of Object.entries(fx.items || {})) s.inventory[id] = (s.inventory[id] || 0) + q
+    const delta = this._changeAffection(ch.aff ? (ch.aff[f.spouse.personality] ?? ch.aff.default ?? 0) : 0)
+    f.lastEventId = f.event.id
+    f.event = null
+    if (ctx.crisis) f.tally.crises++; else f.tally.events++
+    const who = f.spouse.given
+    const heart = delta ? ` (${who} ♥${delta > 0 ? '+' : ''}${Math.round(delta)})` : ''
+    if (ch.result) this.addEvent({ text: this.familyText(`${def.title}: ${ch.result}${heart}`, ctx), type: delta < 0 ? 'negative' : 'positive' })
+
+    let outcome = null
+    if (ch.outcome === 'forgive') {
+      this._changeAffection(FORGIVE_AFFECTION); outcome = 'forgiven'
+    } else if (ch.outcome === 'duel') {
+      f.duel = { year: Math.floor(s.gameYear), reason: 'betrayal' }; outcome = 'duel'
+      this._emit('duel', { spouse: Persons.fullName(f.spouse) })
+    } else if (ch.outcome === 'divorce') {
+      this._spouseEnds('divorced', `you and ${Persons.fullName(f.spouse)} part ways. The marriage is over.`); outcome = 'divorced'
+    } else if (ch.outcome === 'let_go') {
+      this._spouseEnds('left', `${Persons.fullName(f.spouse)} walks down the mountain and does not look back.`); outcome = 'left'
+    } else if (ch.outcome === 'beg') {
+      if (Math.random() < BEG_STAY_CHANCE) {
+        f.affection = BEG_STAY_AFFECTION; outcome = 'stayed'
+        this.addEvent({ text: `${who} sets down the bags. They will stay — for now.`, type: 'positive' })
+      } else {
+        this._spouseEnds('left', `${Persons.fullName(f.spouse)} hears you out, then leaves anyway.`); outcome = 'left'
+      }
+    }
+    this._recalc(); this._notify()
+    return { ok: true, affection: f.affection, outcome }
+  }
+
+  // Chance to win a duel against your spouse: 0.5 + 0.08 per stage you're ahead, clamped.
+  duelChance() {
+    const s = this._s, sp = s.family.spouse
+    if (!sp) return 0
+    return Math.max(DUEL_WIN_RANGE[0], Math.min(DUEL_WIN_RANGE[1], DUEL_BASE_WIN + DUEL_WIN_PER_STAGE * (s.stageIndex - sp.stageIndex)))
+  }
+
+  // 'flee' ends the marriage; 'fight' is to the death — yours (life ends) or theirs.
+  resolveDuel(choice) {
+    const s = this._s, f = s.family
+    if (!f.spouse || !f.duel) return { ok: false, reason: 'no_duel' }
+    if (choice !== 'fight' && choice !== 'flee') return { ok: false, reason: 'bad_choice' }
+    const name = Persons.fullName(f.spouse)
+    if (choice === 'flee') {
+      f.tally.fled++
+      this._spouseEnds('left', `you lower your sword and leave. ${name} does not follow.`)
+      this._recalc(); this._notify()
+      return { ok: true, outcome: 'fled', chance: 0 }
+    }
+    const chance = this.duelChance()
+    f.tally.duel++
+    if (Math.random() < chance) {
+      f.tally.duelWon++
+      s.health = Math.max(1, (s.health ?? 100) - DUEL_WIN_HEALTH_COST)
+      this._spouseEnds('duel', `the duel ends in the courtyard. ${name} does not rise. You carry the wound, and the silence.`)
+      this._recalc(); this._notify()
+      return { ok: true, outcome: 'won', chance }
+    }
+    f.tally.duelLost++
+    this.addEvent({ text: `Year ${Math.floor(s.gameYear)}: ${name}'s blade is faster. Your path ends in your own courtyard.`, type: 'negative' })
+    this._die('spouse_duel')
+    return { ok: true, outcome: 'lost', chance }
   }
 
   // ── Phase 23A/B/C: Health, Bloodline Quality, Ascension Trial ──────────────
@@ -890,9 +1087,9 @@ class GameState {
     // Phase 9B: fired before this._s is replaced so a listener can still read the dying life's stage.
     this._emit('death', { cause, maxStage })
     const selfTerm  = Math.pow(maxStage / (CULTIVATION_STAGES.length - 1), 2)
-    // Phase 16-lite (M2 task 2.5): partner term — the spouse (for life; spouses never die of age).
+    // Phase 16-lite: partner term — the current spouse, else the last former spouse this life (family.md).
     const fam       = s.family || {}
-    const partner   = fam.spouse || null
+    const partner   = fam.spouse || (fam.formerSpouses || [])[(fam.formerSpouses || []).length - 1] || null
     const spouseMaxStage = partner ? partner.maxStage || 0 : 0
     const partnerTerm = Math.pow(spouseMaxStage / (CULTIVATION_STAGES.length - 1), 2)
     const growth    = BLOODLINE_G_BASE + BLOODLINE_G_SELF * selfTerm + BLOODLINE_G_PARTNER * partnerTerm
@@ -915,7 +1112,10 @@ class GameState {
       // Phase 16-lite (M2 task 2.5): family summary for the sim's Life Loop metrics.
       married:    !!partner,
       children:   (fam.children || []).length,
-      adultChildren: (fam.children || []).filter(c => s.gameYear - c.bornYear >= ADULT_AGE).length,
+      childrenAlive: (fam.children || []).filter(c => c.alive).length,
+      formerSpouses: (fam.formerSpouses || []).length,
+      familyTally: fam.tally ? { ...fam.tally } : null,
+      adultChildren: (fam.children || []).filter(c => c.alive && s.gameYear - c.bornYear >= ADULT_AGE).length,
       spouseMaxStage,
       growth,
     }

@@ -90,7 +90,8 @@ class Recorder {
       this.deathsByCause[lr.cause] = (this.deathsByCause[lr.cause] || 0) + 1
       if (lr.openHours != null) this.lifeLengths.push({ cause: lr.cause, openHours: lr.openHours, ageAtDeath: lr.ageAtDeath,
         // Phase 16-lite (M2 task 2.5): family per life
-        married: !!lr.married, children: lr.children || 0, adultChildren: lr.adultChildren || 0, spouseMaxStage: lr.spouseMaxStage || 0 })
+        married: !!lr.married, children: lr.children || 0, adultChildren: lr.adultChildren || 0, spouseMaxStage: lr.spouseMaxStage || 0,
+        childrenAlive: lr.childrenAlive ?? lr.children ?? 0, formerSpouses: lr.formerSpouses || 0, tally: lr.familyTally || null })
       this.milestone('first_death')
     }
     if (open) {
@@ -161,11 +162,15 @@ class Recorder {
     if (!(s.generation >= 1)) this.violate('generation_invalid', s.generation)
     // Phase 30: age is a stat only (no lifespan since 2026-09-26) — it just never runs below the awakening age.
     if (!(s.age >= this.D.AWAKENING_AGE)) this.violate('age_below_awakening', s.age)
-    // Phase 16-lite (M2 task 2.5), life-loop.md §7 invariant 5.
+    // Phase 16-lite + family.md invariants (no child cap since 2026-09-26).
     const fam = s.family
     if (fam) {
-      if (fam.children.length > this.D.CHILD_CAP) this.violate('family_children_over_cap', fam.children.length)
       if (fam.spouse && !fam.spouse.alive) this.violate('family_spouse_dead', fam.spouse.id)
+      if (fam.spouse && !(fam.affection >= 0 && fam.affection <= 100)) this.violate('family_affection_range', fam.affection)
+      if (!fam.spouse && (fam.event || fam.duel)) this.violate('family_pending_unmarried', `event=${!!fam.event} duel=${!!fam.duel}`)
+      if (fam.children.some(c => c.alive && !(c.parents || []).includes(s.self.id))) this.violate('family_child_parents', 'living child without self as parent')
+      if ((fam.encounters || []).length > this.D.LOVER_ENCOUNTER_MAX) this.violate('family_encounters_over_cap', fam.encounters.length)
+      if ((fam.lovers || []).some(l => fam.spouse && l.person.id === fam.spouse.id)) this.violate('family_lover_is_spouse', fam.spouse.id)
       if (fam.proposal && (fam.spouse || s.maxStageThisLife < this.D.PROPOSAL_MIN_STAGE))
         this.violate('family_proposal_invalid', `spouse=${!!fam.spouse} maxStage=${s.maxStageThisLife}`)
     }

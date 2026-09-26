@@ -18,7 +18,7 @@ const SUITOR_STAGE_OFFSET         = [-3, 1]     // vs player stage, clamped to >
 const SUITOR_AGE_OFFSET_YEARS     = [-20, 20]   // vs player age, min 18
 const SPOUSE_YEARS_PER_STAGE      = 25          // spouse gains 1 stage per this many married years...
 const SPOUSE_STAGE_CAP            = 21          // ...never ascends. Spouses never die of age either.
-const FIRST_CHILD_YEARS           = [8, 20]     // after marriage
-const CHILD_INTERVAL_YEARS        = [15, 30]
-const CHILD_CAP                   = 4
+// No cap on children (user, 2026-09-26) — each partner (spouse or lover) has their own timer.
+const FIRST_CHILD_YEARS           = [8, 20]     // after a couple gets together
+const CHILD_INTERVAL_YEARS        = [15, 30]    // between children with the same partner
 const ADULT_AGE                   = 16          // heir-eligible
