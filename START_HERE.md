@@ -108,7 +108,8 @@ Agent: **1.8c visual baseline + art audit** (user approved). No game code change
   - Both art reviews: the grid is the ceiling (≈4 max); recommend **(b) layered glyph compositor** for A2.
   - Real bugs found (logged in UX Debt): breakthrough sprite never shows; banter bubble over death/ascension cards;
     toasts over content; Stats row collisions; duplicated automation controls; Hall not covering the titlebar.
-  Next: **A1 emoji purge + lint**, then **A2 art bake-off** (user picks), then 1.8b.
+  Next: **A2 art bake-off** (user picks), then **A1 UI-only emoji purge + lint** (user reordered: the sprite emoji die
+    with the old art in A4), then 1.8b.
 
 Date: 2026-09-26 (day session, user present) — part 15
 Agent: two user requests.
