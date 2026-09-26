@@ -445,6 +445,8 @@ class GameState {
       alive: false, diedYear: yr, cause, role: 'ancestor',
       // 2.6b: your morality at death = your personality's base, pulled by the karma you lived with.
       morality: Math.max(-100, Math.min(100, Math.round((PERSONALITY_MORALITY[s.personality?.id] ?? 0) + (s.karma - 50)))),
+      // Phase 31 (M2 task 2.7d): a ★ mark for the Ancestral Hall's family tree + its own epitaph flavor.
+      ascendedAncestor: cause === 'ascended',
     }
     w.persons[me.id] = me
     const keep = (p, role) => {
@@ -464,10 +466,16 @@ class GameState {
     if (clan) {
       const heir = wasHead && f.heirId && (f.children || []).find(c => c.id === f.heirId && c.alive && !c.estranged)
       const viaTournament = !!heir && f.lastTournament?.ranking?.[0] === heir.id
+      // Phase 31 (M2 task 2.7c): a snapshot of what this life carried, for the Heirloom/Beast Lineage legacies
+      // to hand to the next life at _beginLife() — captured here since s.equipped/s.beasts are gone once _die()
+      // rebuilds this._s via _newGame(), same reason clan.sect is snapshotted below.
+      const bestBeast = [...(s.beasts || [])].sort((a, b) => (b.level || 0) - (a.level || 0))[0] || null
       clan.pendingSuccession = { fromPersonId: me.id, year: yr, wasHead, heirId: heir ? heir.id : null,
         heirKind: heir ? (viaTournament ? 'tournament' : 'chosen') : null,
         branchFounderIds: viaTournament
-          ? f.lastTournament.ranking.slice(1).filter(id => (f.children || []).some(c => c.id === id && c.alive && !c.estranged)) : [] }
+          ? f.lastTournament.ranking.slice(1).filter(id => (f.children || []).some(c => c.id === id && c.alive && !c.estranged)) : [],
+        equipped: { ...s.equipped },
+        bestBeast: bestBeast ? { typeId: bestBeast.typeId, name: bestBeast.name, traits: [...(bestBeast.traits || [])] } : null }
       if (s.ownSect?.founded) clan.sect = { ...JSON.parse(JSON.stringify(s.ownSect)), inheritedYear: yr, heirId: heir ? heir.id : null }
       // Phase 31 (M2 task 2.7b): Ancestral Merit — stage term + this life's claimed firsts + capped deeds.
       clan.bestStageIndex = Math.max(clan.bestStageIndex, maxStage)
@@ -498,6 +506,71 @@ class GameState {
     clan.firsts[id] = { gen: s.generation || 1, year: Math.floor(s.world.year) }
     s.lifeMerit.push({ id, label: def.label, merit: def.merit })
     return true
+  }
+
+  // ── Phase 31 (M2 task 2.7c, clan-succession.md §2.7): Clan Legacies ────────────────────────────────
+  // Bought from Ancestral Merit, any time, on the CURRENT clan (per-clan ledger, same as firsts).
+
+  // The current level's value, or 0 if not bought yet.
+  _legacyValue(clan, id) {
+    const lvl = clan?.legacies?.[id] || 0
+    return lvl > 0 ? CLAN_LEGACIES[id].levels[lvl - 1].value : 0
+  }
+
+  buyLegacy(id) {
+    const clan = this._playerClan()
+    if (!clan) return { ok: false, reason: 'unknown' }
+    const def = CLAN_LEGACIES[id]
+    if (!def) return { ok: false, reason: 'unknown' }
+    if (def.requires && !clan.firsts[def.requires]) return { ok: false, reason: 'locked' }
+    const lvl = clan.legacies[id] || 0
+    if (lvl >= def.levels.length) return { ok: false, reason: 'maxed' }
+    const cost = def.levels[lvl].cost
+    if (clan.merit < cost) return { ok: false, reason: 'merit' }
+    clan.merit -= cost
+    clan.legacies[id] = lvl + 1
+    this._notify()
+    return { ok: true, level: lvl + 1 }
+  }
+
+  // Picks which of the clan's known techniques (clan.techniquesEver) the Family Manual legacy hands the heir
+  // for free. Gated by the legacy's own level (levels[].value = max technique minStage it can pick).
+  setFamilyManual(techId) {
+    const clan = this._playerClan()
+    if (!clan) return { ok: false, reason: 'unknown' }
+    const lvl = clan.legacies.family_manual || 0
+    if (!lvl) return { ok: false, reason: 'no_legacy' }
+    if (!clan.techniquesEver.includes(techId)) return { ok: false, reason: 'unknown' }
+    const t = TECHNIQUES.find(x => x.id === techId)
+    if (!t) return { ok: false, reason: 'unknown' }
+    if (t.minStage > CLAN_LEGACIES.family_manual.levels[lvl - 1].value) return { ok: false, reason: 'tier' }
+    clan.manualTechId = techId
+    this._notify()
+    return { ok: true }
+  }
+
+  legacyLevel(id) { return this._playerClan()?.legacies?.[id] || 0 }
+
+  // Applies the clan's bought legacies to a freshly-built life at _beginLife() — stipend, heirloom items and a
+  // beast lineage offspring captured at the last death (_recordLifeInWorld's snapshot, carried on
+  // interlude.legacyCapture since _runSuccession deletes clan.pendingSuccession before this ever runs), and the
+  // Family Manual pick (learnTechnique() waives its cost — see there). sect_continuity is cut: the reign sim
+  // already hands clan.sect to the heir unconditionally (2.6d).
+  _applyLegacies(clan, capture) {
+    if (!clan) return
+    const s = this._s
+    capture = capture || {}
+    const stipend = this._legacyValue(clan, 'ancestral_stipend')
+    if (stipend) s.spiritStones += stipend
+    const slots = this._legacyValue(clan, 'heirloom')
+    if (slots >= 1 && capture.equipped?.weapon)   s.equipped.weapon   = capture.equipped.weapon
+    if (slots >= 2 && capture.equipped?.artifact) s.equipped.artifact = capture.equipped.artifact
+    if (clan.manualTechId) s.inheritedManual = clan.manualTechId
+    if (this._legacyValue(clan, 'beast_lineage') && capture.bestBeast && (s.beasts || []).length < (s.derived?.maxBeasts || 3)) {
+      const b = capture.bestBeast
+      s.beasts.push({ id: `beast_${Date.now()}_${Math.floor(Math.random() * 9999)}`, typeId: b.typeId, name: b.name,
+        level: 1, xp: 0, traits: [...(b.traits || [])], expedition: null })
+    }
   }
 
   // A person by id: the living player, or the world registry.
@@ -1139,7 +1212,17 @@ class GameState {
     }
     qps *= 1 + discQi
 
-    // Catch-up/Refined Meridians/blessing multipliers (task 2.7) will chain in at this point.
+    // Phase 31 (M2 tasks 2.7d/2.7e, clan-succession.md §2.7): Ancestral catch-up below the clan's best-reached
+    // stage, Refined Meridians (permanent, any stage) and the Ancestor Blessing (permanent, unconditional —
+    // not gated by catch-up). None of these apply to an orphan life (no clan).
+    const legacyClan = this._playerClan()
+    const inCatchUp = !!(legacyClan && s.stageIndex < legacyClan.bestStageIndex)
+    let catchUpBtBonus = 0
+    if (legacyClan) {
+      if (inCatchUp) { qps *= CATCHUP_QPS_MULT; catchUpBtBonus = CATCHUP_BT_BONUS }
+      qps *= 1 + this._legacyValue(legacyClan, 'refined_meridians')
+      qps *= 1 + (legacyClan.blessingStacks || 0) * ANCESTOR_BLESSING_QPS
+    }
 
     // Family (docs/systems/family.md): a Devoted spouse steadies your breakthroughs; a betrayed one
     // sabotages the next attempt (cleared by attemptBreakthrough()).
@@ -1155,7 +1238,7 @@ class GameState {
       if (pe.type === 'bt_guarantee') pillBtPreview = 1
     }
 
-    const baseChance = Math.min(0.98, Math.max(sectFx.bt_floor || 0, st.breakthroughChance + btBonus + s.karma / 1000))
+    const baseChance = Math.min(0.98, Math.max(sectFx.bt_floor || 0, st.breakthroughChance + btBonus + catchUpBtBonus + s.karma / 1000))
 
     s.derived = {
       qiPerSecond:              qps,
@@ -1182,6 +1265,7 @@ class GameState {
       realmIntegrity:   s.realmIntegrity ?? 100,
       arrayDamaged,
       sectBuffSuppressed,
+      catchUp:          inCatchUp,   // Phase 31 (2.7e): below the clan's best-reached stage
     }
   }
 
@@ -1736,9 +1820,17 @@ class GameState {
       s.stats.ascensions++
       this._claimFirst('ascended')
       const clan = this._playerClan()
-      if (clan) clan.bestStageIndex = Math.max(clan.bestStageIndex, s.stageIndex)
-      this._recalc(); this._notify()
-      return { success: true, chance, newStage: this._stage() }
+      if (clan) {
+        clan.bestStageIndex = Math.max(clan.bestStageIndex, s.stageIndex)
+        clan.ascendedAncestors++
+        clan.blessingStacks = Math.min(ANCESTOR_BLESSING_QPS_MAX, clan.blessingStacks + 1)
+      }
+      const newStage = this._stage()
+      // Phase 31 (M2 task 2.7d): a successful Ascension ENDS the life — an Ascended Ancestor, not a character
+      // left idling at an unreachable stub stage. Routes through the same interlude/rebirth flow as any other
+      // death (fixes the post-Ascension dead zone: bloodline.md/life-loop.md's long-flagged gap).
+      this._die('ascended')
+      return { success: true, chance, ascended: true, newStage }
     }
 
     this._die('ascension_failed')
@@ -2041,6 +2133,9 @@ class GameState {
     it.chronicle.push(...lines)
     for (const l of lines) clan.history.push({ year: yr, text: l })
     if (clan.history.length > CLAN_HISTORY_MAX) clan.history.splice(0, clan.history.length - CLAN_HISTORY_MAX)
+    // Phase 31 (2.7c): carry the dying life's equipped/beast snapshot forward onto `it` — pendingSuccession
+    // itself is deleted right below, but _beginLife() (Heirloom/Beast Lineage) runs long after this method returns.
+    it.legacyCapture = pend ? { equipped: pend.equipped || null, bestBeast: pend.bestBeast || null } : null
     delete clan.pendingSuccession
   }
 
@@ -2218,6 +2313,7 @@ class GameState {
       heirTerm, newBloodlineQuality: s.bloodlineQuality, growth: (lr.growth || 0) + heirTerm,
       birth: { position, style: it.style, headStyle: style, betWon: it.betWon, rival, extinct: it.extinct, stipend,
                successorKind: succ ? it.heirKind : null, sectFate: it.sectFate, chronicle: [...it.chronicle] } })
+    this._applyLegacies(clan, it.legacyCapture)   // Phase 31 (2.7c): the clan you're actually reborn into — null for an orphan
     this._pruneWorld(w)
     s.interlude = null
     const pt = POSITION_TEXT[position]
@@ -2784,8 +2880,9 @@ class GameState {
     if (!t)                        return { ok: false, reason: 'unknown' }
     if (s.techniques.includes(id)) return { ok: false, reason: 'owned' }
     if (s.stageIndex < t.minStage) return { ok: false, reason: 'stage' }
-    if (s.spiritStones < t.cost)   return { ok: false, reason: 'stones' }
-    s.spiritStones -= t.cost
+    const free = id === s.inheritedManual   // Phase 31 (2.7c): Family Manual legacy — free once eligible
+    if (!free && s.spiritStones < t.cost) return { ok: false, reason: 'stones' }
+    if (!free) s.spiritStones -= t.cost
     s.techniques.push(id)
     const clan = this._playerClan()
     if (clan && !clan.techniquesEver.includes(id)) clan.techniquesEver.push(id)   // Phase 31 (2.7b): Family Manual pool
@@ -3945,6 +4042,15 @@ class GameState {
   // that's a permanent-death gamble with its own manual confirmation overlay (Phase 23C).
   _tickAutomation(dt) {
     const s = this._s
+
+    // Phase 31 (M2 task 2.7e, clan-succession.md §2.7): Ancestral catch-up auto-BT is a base mechanic, not one
+    // of Phase 22's opt-in automations below — it fires in BOTH Active and Idle Mode, below the clan's best-
+    // reached stage only, with the same Ascension-Trial exclusion Auto-Breakthrough already has.
+    if (CATCHUP_AUTO_BT && s.derived?.catchUp && s.derived.canBreakthrough && s.stageIndex < CULTIVATION_STAGES.length - 2) {
+      const res = this.attemptBreakthrough()
+      if (res.success || res.reason === 'failed') this._emit('auto_fire', { system: 'catchup_breakthrough' })
+    }
+
     if (s.playMode !== 'idle') return
     const a = s.automation
 

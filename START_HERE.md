@@ -35,7 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
 | Game Time & Age (age passes only while open; **age never kills** since 2026-09-26) | ◐ Phase 30 (M2) — game clock + age stat + Pass the Mantle; lifespan/twilight/Final Seclusion removed; pacing (2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
-| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ⬜ Phase 31 (M2) — world/clan registry (2.6a), children (2.6b), heirs + tournament (2.6c), reign + rebirth as a descendant (2.6d), challenge/step-down mid-life headship (2.6e), branch wars + secession (2.6f) all built (2.6 complete); 2.7 (Ancestral Hall itself) next |
+| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ✅ Phase 31 (M2) — 2.6a–f (world/clan registry, children, heirs + tournament, reign + rebirth, challenge/step-down, branch wars + secession) and 2.7a–f (Ancestral Merit, legacies, Ascended Ancestor ending fixes the post-Ascension dead zone, ancestral catch-up, Hall UI) all built. Known gap: no in-game UI yet to pick the Family Manual technique (only the sim bot exercises it). Next: 2.8 tuning |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
@@ -68,6 +68,53 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 11
+Agent: committed part 10's uncommitted 2.6f work first (user confirmed), then built **M2 task 2.7 — Ancestral
+  Hall & Clan Legacies** end to end (sub-tasks 2.7a–f; user approved the reconciliation plan + per-clan Merit
+  decision before any code). life-loop.md's original §2.7 draft assumed the PRE-2.6-redesign single-`s.clan`
+  model; before writing code, reconciled it against the real `s.world`/`Clan`/`Person` architecture and wrote the
+  result as `docs/systems/clan-succession.md` §2.7 (life-loop.md now points to it; its own numbers/tables stand).
+  - **2.7a state:** Merit/legacies/firsts/manualTechId/techniquesEver/bestStageIndex/ascendedAncestors/
+    blessingStacks added to the real per-world Clan object (`_foundClan()` + new `_ensurePhase34Fields()`
+    migration); new `assets/data/clan-legacies.js` (Merit/catch-up/blessing constants, `CLAN_FIRSTS`, 5
+    `CLAN_LEGACIES` — `sect_continuity`/`longevity_blood` both cut, already superseded — `EPITAPHS`).
+  - **2.7b Merit:** `_claimFirst(id)` wired into breakthroughs (realm firsts), Ascension, joining/founding a
+    sect, taming a beast, war wins, marriage, first child; credited once at death in `_recordLifeInWorld()`
+    (stage term + this life's firsts + capped deeds).
+  - **2.7c Legacies:** `buyLegacy`/`setFamilyManual`/`legacyLevel`, applied at rebirth (`_applyLegacies`) —
+    stipend, heirloom items, a beast-lineage offspring, a free Family Manual technique.
+  - **2.7d Ascended Ancestor ending — the big one:** `attemptAscension()` success used to just set
+    `stageIndex=22` and leave the character playing at an unreachable stub stage (**confirmed**: this was still
+    the post-Ascension dead zone bloodline.md/life-loop.md had flagged since task 2.4, never actually fixed).
+    Now it claims the Ascended Ancestor first/blessing stack and calls `_die('ascended')` — the exact same
+    interlude/rebirth flow as any other death. **Measured effect:** a 200h/3-seed sim's `active` life count
+    went **~10 → 163** — every Ascension now genuinely starts the next generation.
+  - **2.7e catch-up:** below `clan.bestStageIndex`, Qi/s ×2.5 + breakthrough chance +10%; a small addition to
+    `_tickAutomation()` auto-breakthroughs there in BOTH Active and Idle Mode (a base mechanic, unlike Phase
+    22's opt-in automations right below it in the same method).
+  - **2.7f Ancestral Hall UI:** the old "Clan Chronicle" overlay is now the Ancestral Hall (records, family
+    tree from `world.pastLives`/`persons`, buyable legacies, the unchanged chronicle below).
+  - **Real bug caught by a scenario check before it ever shipped:** Heirloom/Beast Lineage read
+    `clan.pendingSuccession` for their capture, but that field is deleted mid-interlude, well before rebirth —
+    the carry would always have been silently empty. Fixed by moving the capture onto `interlude.legacyCapture`
+    (survives the whole flow). See qa-sim.md Gotchas — a lesson for any future death-flow capture.
+  - Also found/fixed along the way: offline-resolved war wins must not claim the `war_won` clan first (gated on
+    the existing `_warLive` flag) or the save-round-trip invariant breaks; four stale `Cultivator Idle.exe`
+    processes from an earlier session were locking `dist/` (closed after confirming with the user).
+  - New: `scripts/sim/checks/succession.js` (+26 → 248 total, incl. the pendingSuccession-bug check),
+    `scripts/smoke/scenarios/succession.js` extended (also fixed two stale `#chronicle-*` ids from the rename).
+  - Verified: npm test (60 files), npm run checks (248, was 222), full npm run sim --hours=200 --seeds=3 (0
+    errors/0 violations, 75 save round-trips), npm run build:web, npm run dist, real-app smoke (zero console
+    errors).
+  - **Known/expected fallout, deliberately NOT tuned here (2.8's job):** active's median life fell to 3.3h,
+    below life-loop.md's [5,15] band — a direct, expected consequence of catch-up + repeatable Ascension now
+    cycling much faster than the band assumed when it was tuned against a world where Ascension was a dead end.
+  - **Known gap:** no in-game UI yet to choose the Family Manual technique (only the sim bot uses
+    `setFamilyManual()`) — flagged, not blocking.
+  Next: M2 task 2.8 (tuning pass — Merit costs, catch-up strength, lifespans, BQ constants; target: 3–5
+    generations to first Ascension, gen 2+ life ≥ 8h, active's median life back inside its band). This is the
+    LAST M2 task — M2 is fully done once 2.8 lands. Read clan-succession.md §2.7's "Pacing fallout" note first.
+
 Date: 2026-09-26 (day session, user present) — part 10
 Agent: built **M2 2.6f** (clan-succession.md §2.6f as-built; user approved the assessment + depth pass). This
   finishes task 2.6 end to end (2.6a–f all built) — the last gap flagged by 2.6e: branch members had no way to

@@ -12,7 +12,7 @@ const fmtH = h => h == null ? '—' : h < 1 ? `${Math.round(h * 60)}m` : `${h.to
 // Features a well-rounded player should touch; "never used" is a strong design signal.
 const FEATURES = ['expedition', 'craft_equipment', 'craft_pill', 'use_elixir', 'tame_beast', 'beast_expedition',
   'join_sect', 'sect_mission', 'sect_rank_up', 'found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce',
-  'war_answer_call', 'war_chest', 'war_beast', 'ascend']
+  'war_answer_call', 'war_chest', 'war_beast', 'ascend', 'buy_legacy']
 
 const KEY_MILESTONES = [
   ['Qi Condensation L1', r => r.stageTimes.find(x => x.stage === 1)?.atH],

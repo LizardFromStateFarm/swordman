@@ -73,6 +73,10 @@ invariant violations, 2 = harness crashed / bad `--set`.
   chance every profile shares (rare enough that not every branch life turns into a war); non-`active` profiles
   also occasionally secede outright instead. A branch member (`canPushBranchWar().ok`) pushes rarely. Same
   "Clan Politics" report table gains two columns: branch wars (won), secessions.
+- **Legacies (2.7c):** `bot.legacies()`, checked right after `family()` in the main action chain — spends
+  Ancestral Merit greedily in life-loop.md §7's priority order (`ancestral_stipend → refined_meridians →
+  family_manual → heirloom → beast_lineage`), then, once `family_manual` is bought, picks the clan's highest-
+  `minStage`-within-tier known technique for `setFamilyManual()`. `buy_legacy` is a `FEATURES` "never used" entry.
 - **Bot randomness is seeded** (fixed 2026-09-26, 2.6a): any bot coin flip must use `this.rand()` (its own
   `mulberry32` stream), never `Math.random()` — Node's global is unseeded, which silently made runs unreproducible.
 
@@ -211,6 +215,19 @@ real second (1/120 game year); for year-based logic, bump `s.world.year` and cal
   enough of a throttle at this time scale.** This also exposed `joined_and_founded` (a pre-existing invariant) the
   first time anything besides founding could set `s.ownSect.founded` — `_installHead`'s clan-sect handoff now also
   requires `!s.sect.id` (you can't inherit a sect while a member of another one).
+- **A death-flow snapshot must be captured on `s.interlude`, not on `clan.pendingSuccession` (2.7c).**
+  `pendingSuccession` is deliberately transient — `_runSuccession()` `delete`s it as soon as it's done reading it,
+  well before `_beginLife()` (which can run much later, after the player answers a bet/rebirth choice) ever needs
+  anything from the dying life. A scripted check (succession.js #33) caught the Heirloom/Beast Lineage legacies
+  reading it anyway and always getting `undefined` — fixed by adding `interlude.legacyCapture`, set in
+  `_runSuccession()` right before the delete. **Any future feature that needs data from the life that just ended,
+  read at `_beginLife()` time, belongs on `s.interlude`, which survives the whole flow.**
+- **Fixing a long-standing dead zone can look like a pacing regression in the report — check which one it is.**
+  2.7d ended the post-Ascension dead zone (attemptAscension() success now calls `_die()` instead of leaving the
+  character idle at the stub stage); the immediate, correct effect was active's life count over 200h jumping
+  ~10 → 163. The immediate SIDE effect was active's median life falling to 3.3h, under `LIFE_TARGETS_H.active`'s
+  `[5,15]` band — expected, not a bug: the band was tuned (task 2.4) against a world where Ascension was a dead
+  end. Deliberately left untuned for task 2.8, which owns exactly these knobs (Merit costs, catch-up strength).
 - **Offline catch-up mutating `world.clans` breaks the save-round-trip check (2.7b).** `initSlot()`'s bounded
   replay loop can resolve a sect/member war while the app is closed and already sets `this._warLive = false` for
   exactly this reason (it gates the `war_won`/`war_lost` banter/event emit right next to `w.warVictories++`).

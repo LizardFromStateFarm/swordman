@@ -39,7 +39,7 @@ class Bot {
     for (let i = 0; i < 40; i++) {
       this.interlude()   // an action this check-in may have ended the life — never act on an unborn one
       const before = this.s.spiritStones
-      const acted = this.family() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
+      const acted = this.family() || this.legacies() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
         this.elixirs() || this.memberWar() || this.beasts() || this.sect() || this.ownSect() || this.war() ||
         this.pushExpedition() || this.expedition()
       if (!acted) break
@@ -115,6 +115,25 @@ class Bot {
   // picks the affordable choice its spouse likes most (an attentive player); 'casual'/'afk' pick a random
   // affordable one, which exercises the low-affection crisis path. Crises: forgive a cheater, beg a leaver.
   // Lover encounters: seduce 25% of the time, else leave. Never ends an affair. Duels: fight only at ≥ 60% odds.
+  // Phase 31 (M2 task 2.7c): spend Ancestral Merit greedily, cheapest-first-ish priority order (life-loop.md
+  // §7's original draft), then pick the highest-minStage known technique once Family Manual is bought.
+  legacies() {
+    const s = this.s
+    const clan = s.world.playerClanId ? s.world.clans[s.world.playerClanId] : null
+    if (!clan) return false
+    const order = ['ancestral_stipend', 'refined_meridians', 'family_manual', 'heirloom', 'beast_lineage']
+    for (const id of order) {
+      if (this.do('buy_legacy', this.gs.buyLegacy(id))) return true
+    }
+    if ((clan.legacies.family_manual || 0) > 0 && !clan.manualTechId && clan.techniquesEver.length) {
+      const maxTier = this.D.CLAN_LEGACIES.family_manual.levels[clan.legacies.family_manual - 1].value
+      const cands = clan.techniquesEver.map(id => this.D.TECHNIQUES.find(t => t.id === id))
+        .filter(t => t && t.minStage <= maxTier).sort((a, b) => b.minStage - a.minStage)
+      if (cands[0] && this.do('set_family_manual', this.gs.setFamilyManual(cands[0].id), false)) return true
+    }
+    return false
+  }
+
   family() {
     const f = this.s.family
     if (!f) return false

@@ -907,7 +907,7 @@ body {
 #interlude-body .chron-bet.lost { color: var(--red); }
 #interlude-choices { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 #interlude-choices button,
-#chronicle-close {
+#hall-close {
   background: rgba(24,10,4,.9);
   border: 1px solid var(--border);
   color: var(--text);
@@ -920,22 +920,37 @@ body {
   width: 100%;
   text-align: left;
 }
-#interlude-choices button:hover,
-#chronicle-close:hover { border-color: var(--gold); color: var(--gold); }
+#interlude-choices button:hover { border-color: var(--gold); color: var(--gold); }
 
-/* Clan chronicle overlay (2.6d) */
-#chronicle-overlay {
+/* Ancestral Hall overlay (2.6d chronicle + Phase 31 records/tree/legacies, task 2.7f) */
+#hall-overlay {
   position: fixed; inset: 0; background: rgba(8,4,14,0.9);
   display: flex; align-items: center; justify-content: center; z-index: 190;
 }
-#chronicle-box {
+#hall-box {
   background: var(--bg2); border: 1px solid var(--gold); border-radius: 5px;
   padding: 14px 16px; width: min(260px, calc(100vw - 32px)); max-height: 88vh; overflow-y: auto; box-sizing: border-box;
 }
-#chronicle-title { font-size: 13px; color: var(--gold); margin-bottom: 8px; text-align: center; }
-#chronicle-lines { font-size: 10px; color: var(--text); line-height: 1.55; margin-bottom: 10px; }
-#chronicle-lines .chron-line { margin-bottom: 5px; }
-#chronicle-close { text-align: center; }
+#hall-title { font-size: 13px; color: var(--gold); margin-bottom: 8px; text-align: center; }
+.hall-section-label { font-size: 10px; color: var(--dim); margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+#hall-records { font-size: 10px; color: var(--text); line-height: 1.55; }
+#hall-tree, #hall-chronicle { font-size: 10px; color: var(--text); line-height: 1.55; max-height: 140px; overflow-y: auto; }
+#hall-tree .chron-line, #hall-chronicle .chron-line { margin-bottom: 5px; }
+#hall-tree .chron-line.ascended { color: var(--gold); }
+#hall-legacies .legacy-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 6px;
+  padding: 5px 0; border-bottom: 1px solid rgba(237,208,80,0.08); font-size: 10px;
+}
+#hall-legacies .legacy-name { color: var(--text); }
+#hall-legacies .legacy-desc { color: var(--dim); font-size: 9px; display: block; }
+#hall-legacies button {
+  font-size: 9px; padding: 3px 7px; border: 1px solid var(--gold); border-radius: 3px;
+  background: transparent; color: var(--gold); cursor: pointer; white-space: nowrap;
+}
+#hall-legacies button:disabled { border-color: var(--dim); color: var(--dim); cursor: default; }
+#hall-legacies button:not(:disabled):hover { background: rgba(237,208,80,0.12); }
+#hall-close { text-align: center; margin-top: 6px; }
+#hall-close:hover { border-color: var(--gold); color: var(--gold); }
 
 
 /* ── Proposal overlay (Phase 16-lite, M2 task 2.5) ─────────────────── */

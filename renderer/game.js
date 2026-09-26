@@ -148,7 +148,7 @@
   const sectSys   = new SectSystem(gameState)
   const sectWarSys = new SectWarSystem(gameState)
   const settingsUI = new SettingsUI(gameState, renderer)
-  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #proposal-overlay:not(.hidden), #family-overlay:not(.hidden), #heir-overlay:not(.hidden), #tournament-overlay:not(.hidden)'))
+  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #proposal-overlay:not(.hidden), #family-overlay:not(.hidden), #heir-overlay:not(.hidden), #tournament-overlay:not(.hidden), #hall-overlay:not(.hidden)'))
   // Phase 9A/B: window "active" = visible AND focused; notifications only fire otherwise (news, not a summons).
   const notifSys   = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(),
     (title, body) => window.electron.notify(title, body))
@@ -478,7 +478,7 @@
     document.getElementById('_matchmaker')?.addEventListener('click', () => openProposalOverlay(gameState.get()))
     document.getElementById('_family-matter')?.addEventListener('click', () => openFamilyOverlay(gameState.get()))
     document.getElementById('_choose-heir')?.addEventListener('click', () => openHeirOverlay())
-    document.getElementById('_chronicle')?.addEventListener('click', () => openChronicleOverlay())
+    document.getElementById('_hall')?.addEventListener('click', () => openHallOverlay())
     document.getElementById('_tournament')?.addEventListener('click', () => {
       if (gameState.get().family.tournament) return openTournamentOverlay()
       showConfirm('Host a Tournament of Heirs?', 'Every adult child fights. Rounds are to the death until four remain. It cannot be stopped once blood is spilled.', () => {
@@ -521,10 +521,10 @@
     })
   }
 
-  // 2.6d: clan, your place in it, the head (their style + your bond), and the clan chronicle.
+  // 2.6d: clan, your place in it, the head (their style + your bond), and the Ancestral Hall (2.7f).
   function renderClanRows(s) {
     const w = s.world, c = w.playerClanId ? w.clans[w.playerClanId] : null
-    const chron = (c || w.lastClanId) ? '<button id="_chronicle" class="sect-btn" style="width:100%;margin:4px 0 2px;">Clan Chronicle</button>' : ''
+    const chron = (c || w.lastClanId) ? '<button id="_hall" class="sect-btn" style="width:100%;margin:4px 0 2px;">Ancestral Hall 祖祠</button>' : ''
     if (!c) return sr('Clan', 'None — an orphan of the world') + chron
     const members = new Set(c.lines.flatMap(l => l.memberIds)).size
     const mine = c.lines.find(l => l.id === w.playerLineId)
@@ -2080,7 +2080,9 @@
       renderer.setState('transcending')
       flashMessage('You have Ascended! Welcome to the Immortal Realms.', 'special')
     }
-    // Failure/death is reported by the lastReincarnation watcher (see bootGame)
+    // Phase 31 (M2 task 2.7d): a successful Ascension now ALSO ends the life (fixes the post-Ascension dead
+    // zone) — the death/interlude overlay opens right behind this flash via the lastReincarnation watcher,
+    // same as every other cause of death (see bootGame).
   })
 
   // ── Death / reincarnation overlay (Phase 23A/D) ─────────────────────────────
@@ -2097,6 +2099,7 @@
     challenged:         'Slain defending the head seat',
     stepdown_tournament: 'Fallen in the succession tournament',
     branch_war:          'Fallen leading your branch to war',
+    ascended:            'You rose to the Immortal Realms — an Ascended Ancestor now watches over the clan',
   }
 
   // 2.6d (clan-succession.md): the death card walks through the interlude — heir bet (if the clan must pick),
@@ -2177,18 +2180,71 @@
     if (s?.birth) flashMessage(`${s.name} awakens. A new life begins.`, 'special')
   })
 
-  // ── Clan chronicle (2.6d): clan.history, newest first ───────────────────
-  function openChronicleOverlay() {
+  // ── Ancestral Hall (Phase 31, M2 task 2.7f, clan-succession.md §2.7) ────────
+  // Deterministic epitaph pick (no Math.random — re-opening the Hall must show the same line every time).
+  function epitaphFor(cause, personId) {
+    const pool = EPITAPHS[cause]
+    if (!pool || !pool.length) return null
+    let h = 0
+    for (let i = 0; i < personId.length; i++) h = (h * 31 + personId.charCodeAt(i)) >>> 0
+    return pool[h % pool.length]
+  }
+  function fillEpitaph(str, p, l, clanName) {
+    const name  = p ? Persons.fullName(p) : 'Someone forgotten'
+    const age   = (p?.diedYear != null && p?.bornYear != null) ? Math.max(0, Math.floor(p.diedYear - p.bornYear)) : ''
+    const realm = CULTIVATION_STAGES[Math.min(l.maxStage ?? 0, CULTIVATION_STAGES.length - 1)]?.realm || ''
+    return String(str).replace(/\{(\w+)\}/g, (m, k) => ({ name, age, realm, clan: clanName || '' }[k] ?? m))
+  }
+
+  function openHallOverlay() {
     const s = gameState.get(), w = s.world
     const clan = w.playerClanId ? w.clans[w.playerClanId] : (w.lastClanId ? w.clans[w.lastClanId] : null)
-    document.getElementById('chronicle-title').textContent = clan ? `Chronicle of the ${clan.name || 'nameless'} clan 族谱` : 'Chronicle 族谱'
+    document.getElementById('hall-title').textContent = clan ? `The ${escHtml(clan.name || 'Nameless')} Clan 祖祠` : 'Ancestral Hall 祖祠'
+
+    document.getElementById('hall-records').innerHTML = clan
+      ? sr('Generation', s.generation || 1) +
+        sr('Best Realm Reached', personStageLabel(clan.bestStageIndex)) +
+        sr('Ancestral Merit', `${fmt(clan.merit)} unspent · ${fmt(clan.meritEarned)} lifetime`) +
+        (clan.ascendedAncestors ? sr('Ascended Ancestors', `★ ${clan.ascendedAncestors}`) : '')
+      : '<div style="color:var(--dim);font-size:10px;">No clan — an orphan of the world.</div>'
+
+    // Family tree: world.pastLives (this clan's line only — a seceded/rival clan starts its own), newest first.
+    const lives = clan ? w.pastLives.filter(l => l.clanId === clan.id).slice().reverse() : []
+    document.getElementById('hall-tree').innerHTML = lives.length
+      ? lives.map(l => {
+          const p = w.persons[l.personId]
+          const line = epitaphFor(l.cause, l.personId)
+          const text = line ? fillEpitaph(line, p, l, clan?.name) : `${p ? escHtml(Persons.fullName(p)) : 'Someone'}, gone from this world.`
+          return `<div class="chron-line${p?.ascendedAncestor ? ' ascended' : ''}">${p?.ascendedAncestor ? '★ ' : ''}${line ? escHtml(text) : text}</div>`
+        }).join('')
+      : '<div class="chron-line" style="color:var(--dim)">No one has come before you yet.</div>'
+
+    // Legacies — bought with Ancestral Merit, any time (clan-legacies.js CLAN_LEGACIES).
+    document.getElementById('hall-legacies').innerHTML = clan ? Object.entries(CLAN_LEGACIES).map(([id, def]) => {
+      const lvl = clan.legacies[id] || 0
+      const locked = def.requires && !clan.firsts[def.requires]
+      const maxed  = lvl >= def.levels.length
+      const nextCost = !maxed ? def.levels[lvl].cost : null
+      const disabled = locked || maxed || clan.merit < (nextCost || 0)
+      const label = locked ? 'Locked' : maxed ? 'Maxed' : `Buy (${nextCost})`
+      return `<div class="legacy-row">
+        <span><span class="legacy-name">${escHtml(def.name)} ${escHtml(def.nameCN)} · Lv ${lvl}/${def.levels.length}</span><span class="legacy-desc">${escHtml(def.desc)}</span></span>
+        <button data-buy-legacy="${escHtml(id)}" ${disabled ? 'disabled' : ''}>${label}</button>
+      </div>`
+    }).join('') : ''
+    document.querySelectorAll('#hall-legacies [data-buy-legacy]').forEach(btn => btn.addEventListener('click', () => {
+      if (gameState.buyLegacy(btn.dataset.buyLegacy).ok) openHallOverlay()   // re-render with the new level/merit
+    }))
+
+    // Chronicle (2.6d, unchanged): clan.history, newest first.
     const hist = clan ? [...clan.history].reverse() : []
-    document.getElementById('chronicle-lines').innerHTML = hist.length
+    document.getElementById('hall-chronicle').innerHTML = hist.length
       ? hist.map(h => `<div class="chron-line">${escHtml(h.text)}</div>`).join('')
       : '<div class="chron-line" style="color:var(--dim)">Nothing is written yet.</div>'
-    document.getElementById('chronicle-overlay').classList.remove('hidden')
+
+    document.getElementById('hall-overlay').classList.remove('hidden')
   }
-  document.getElementById('chronicle-close').addEventListener('click', () => document.getElementById('chronicle-overlay').classList.add('hidden'))
+  document.getElementById('hall-close').addEventListener('click', () => document.getElementById('hall-overlay').classList.add('hidden'))
 
   // ── Proposal overlay (Phase 16-lite, M2 task 2.5) ───────────────────────────
 

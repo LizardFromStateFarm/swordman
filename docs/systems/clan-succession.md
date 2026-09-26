@@ -534,10 +534,10 @@ Same 300px-fits / scrollable / ≥32px tap targets / `BanterSystem.isBlocked` se
 |---|---|
 | 2.7a ✅ | State: Clan fields + `_ensurePhase34Fields()` migration, `clan-legacies.js` data file |
 | 2.7b ✅ | Merit: `_claimFirst` wired into every hook, credited in `_recordLifeInWorld()`, `bestStageIndex` live-updated |
-| 2.7c | Legacies: `buyLegacy`/`setFamilyManual`/`legacyLevel`, applied at `_beginLife()`, heirloom/beast-lineage capture at death |
-| 2.7d | Ascended Ancestor ending: `attemptAscension()` routes to `_die('ascended')`, blessing stacks, dead-zone gone |
-| 2.7e | Ancestral catch-up: Qi/s + BT bonus below clan best, catch-up auto-BT in `_tickAutomation()` |
-| 2.7f | Ancestral Hall UI: `#hall-overlay` (records/tree/legacies/chronicle), Stats button rename |
+| 2.7c ✅ | Legacies: `buyLegacy`/`setFamilyManual`/`legacyLevel`, applied at `_beginLife()`, heirloom/beast-lineage capture at death |
+| 2.7d ✅ | Ascended Ancestor ending: `attemptAscension()` routes to `_die('ascended')`, blessing stacks, dead-zone gone |
+| 2.7e ✅ | Ancestral catch-up: Qi/s + BT bonus below clan best, catch-up auto-BT in `_tickAutomation()` |
+| 2.7f ✅ | Ancestral Hall UI: `#hall-overlay` (records/tree/legacies/chronicle), Stats button rename |
 Sim + docs + scenario checks every sub-task per CLAUDE.md's rules; full evidence (npm test/checks/sim/dist/build:web/
 smoke) at minimum once at the end of 2.7, npm test + checks + sim:quick after each sub-task.
 
@@ -586,3 +586,70 @@ Then 2.8 (tuning): Merit costs, catch-up strength, per PLAN.md's roadmap.
   Full `npm run sim --hours=200 --seeds=2`: 0 errors/0 violations, 50 save round-trips, across 26 lives spanning
   every profile. No new pacing/dead-zone flags beyond the already-known, still-unfixed post-Ascension dead zone
   (2.7d's job).
+
+### 2.7c–2.7f — as built (2026-09-26)
+- **2.7c Legacies:** `_legacyValue(clan, id)`, `buyLegacy(id)` (`{ok,level}` / `{ok:false, reason:'unknown'|'locked'|
+  'maxed'|'merit'}`), `setFamilyManual(techId)` (`{ok:false, reason:'no_legacy'|'unknown'|'tier'}` — tier = the
+  bought level's `family_manual` value, the max technique `minStage` it can pick), `legacyLevel(id)`. Applied at
+  `_beginLife()` via `_applyLegacies(clan, capture)`: `ancestral_stipend` → starting stones; `heirloom` → equipped
+  weapon/artifact (1-2 slots by level); `beast_lineage` → a level-1 offspring of the best beast owned at death;
+  `manualTechId` → `s.inheritedManual` (free in `learnTechnique()` once eligible — one `free` flag added there).
+  `learnTechnique()` also appends every learned id to `clan.techniquesEver` (the Family Manual's own pool).
+  - **Bug found by the new scenario checks, fixed before it ever reached a real save:** heirloom/beast-lineage
+    carry read `clan.pendingSuccession` at `_beginLife()` time — but `_runSuccession()` (called earlier in the
+    SAME interlude, right after death) already deletes `clan.pendingSuccession` once it's done with it, long
+    before `_beginLife()` ever runs. The capture would have silently been `undefined` in every real game, not
+    just the check. Fixed by carrying `{equipped, bestBeast}` forward onto `interlude.legacyCapture` (set right
+    before that delete, read by `_applyLegacies` instead of the now-gone `pendingSuccession`) — `s.interlude`
+    itself survives the whole flow, unlike the transient `pendingSuccession`.
+  - **Known gap:** there's no Hall UI to choose which known technique becomes the Family Manual pick — only the
+    sim bot exercises `setFamilyManual()` (highest-minStage known technique within tier). A human player who buys
+    the legacy has no in-game way to set `manualTechId` yet. Left as a follow-up; the mechanism itself works.
+- **2.7d Ascended Ancestor ending:** `attemptAscension()` success no longer sets `stageIndex=22` and keeps playing
+  at an unreachable stub — confirmed via code read that this was still the case going into 2.7. On success:
+  claims `ascended` (after `asc_attempt`, claimed on every call), `clan.ascendedAncestors++`,
+  `clan.blessingStacks = min(+1, ANCESTOR_BLESSING_QPS_MAX)`, then `_die('ascended')` — the exact same
+  interlude/rebirth flow as any other death. `_recordLifeInWorld()` marks the dying person's record
+  `ascendedAncestor: cause==='ascended'` (a star in the Hall's tree + its own `EPITAPHS.ascended` flavor lines).
+  `DEATH_CAUSE_TEXT.ascended` added to the death overlay; the `ascend-now` click handler no longer manually
+  flashes success text that would fight with the interlude card opening right behind it via the existing
+  `lastReincarnation` watcher (same pattern `passTheMantle()`'s button already used).
+- **2.7e Ancestral catch-up:** in `_recalc()`, `legacyClan = this._playerClan()`; while `stageIndex <
+  legacyClan.bestStageIndex`: Qi/s `× CATCHUP_QPS_MULT`, breakthrough chance `+ CATCHUP_BT_BONUS` (still capped
+  0.98) — plus `refined_meridians`'s Qi/s % and `blessingStacks × ANCESTOR_BLESSING_QPS` apply unconditionally
+  (not catch-up-gated). New `derived.catchUp` (bool). Catch-up auto-BT lives at the TOP of `_tickAutomation()`,
+  **before** its `if (s.playMode !== 'idle') return` — a deliberate difference from Phase 22's opt-in automations
+  right below it, since life-loop.md specifies catch-up auto-BT as a base mechanic that fires in both Active and
+  Idle Mode, with the same Ascension-Trial exclusion the existing Auto-Breakthrough uses.
+- **2.7f Ancestral Hall UI:** the old `#chronicle-overlay` (2.6d, just `clan.history`) is renamed `#hall-overlay`
+  and gains three sections above the unchanged chronicle: **Records** (generation, best realm, Merit
+  unspent/lifetime, Ascended Ancestors), **Family Tree** (`world.pastLives` filtered to the current clan, newest
+  first, joined against `world.persons` for name/spouse/epitaph — deterministically hashed into `EPITAPHS[cause]`,
+  no `Math.random()`, so re-opening the Hall never shows a different line), **Legacies** (buy buttons per
+  `CLAN_LEGACIES`, disabled when locked/maxed/unaffordable). The Stats button is relabeled "Ancestral Hall 祖祠".
+  `#hall-overlay` added to `BanterSystem`'s `isBlocked` selector — `#chronicle-overlay` had never been in it,
+  a small pre-existing gap fixed in passing.
+- **Sim:** `scripts/sim/bot.js` gained `legacies()` (spends Merit in life-loop.md §7's priority order, then picks
+  the clan's highest-eligible-tier known technique for Family Manual), wired into the main action chain; new
+  `buy_legacy` `FEATURES` entry in `report.js`. `scripts/sim/checks/succession.js` +26 (checks 29-35: `_claimFirst`
+  idempotency, the exact Merit-at-death formula, every `buyLegacy`/`setFamilyManual` rejection reason, heirloom +
+  beast-lineage carry — the check that caught the `pendingSuccession` bug above — the Ascended Ancestor ending
+  end-to-end, and catch-up's Qi/s + BT bonus + Active-Mode auto-BT). `scripts/smoke/scenarios/succession.js`
+  extended (Hall records/legacies + a live, button-driven Ascension Trial ending the life) — also fixed two now-
+  stale `#chronicle-*` id references left over from the 2.7f rename.
+- **Evidence:** `npm test` (60 files), `npm run checks` (248, was 222). Full `npm run sim --hours=200 --seeds=3`:
+  0 errors/0 violations, 75 save round-trips. **The dead-zone fix is dramatic and directly measurable:** active's
+  life count over the same 200h window went from ~10 (one life stuck at the Ascension stub for the back half of
+  every run) to **163** — every Ascension now genuinely ends a life and starts the next generation, and catch-up
+  visibly fires (the bot's own `legacies()` bought legacies in every profile that earned any Merit at all).
+  `npm run build:web`, `npm run dist` (after closing four stale `Cultivator Idle.exe` copies left running from an
+  earlier session that were locking `dist/`). Real-app smoke (`succession.js`, extended): Hall records/legacies
+  (bought one, Merit visibly spent), a real Ascension Trial click-through ending the life with the new death-card
+  text, the clan's `ascendedAncestors` counter confirmed — zero console errors.
+- **Pacing fallout (expected, not a bug — 2.8's job):** with the dead zone gone, active's median life in that
+  same 200h/3-seed run fell to **3.3h**, below life-loop.md's `LIFE_TARGETS_H.active` band `[5,15]` — a direct
+  consequence of catch-up + repeated Ascension cycling much faster than the band assumed when it was tuned
+  (task 2.4) against a world where Ascension was a dead end, not a repeatable loop. Left untuned deliberately:
+  2.8 is explicitly "Merit costs, catch-up strength, lifespans, BQ constants" — the same knobs this fallout points
+  at — and re-tuning them now, one task early, would mean re-tuning them again once 2.8's own acceptance criteria
+  (3-5 generations to first Ascension, gen 2+ life ≥ 8h) are actually measured against.

@@ -41,11 +41,11 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   assert(/Standing/i.test(stats) && /Clan Head/i.test(stats) && /Bond/i.test(stats), 'Stats: Standing · Clan Head · bond-with-head rows')
   assert(!/Name an Heir/i.test(stats), 'no heir buttons for a non-head')
   await shot('2.6d-4-stats')
-  await click('#_chronicle')
-  const hist = await ev('document.querySelectorAll("#chronicle-lines .chron-line").length')
-  assert(hist >= 6, `Clan Chronicle overlay: ${hist} lines`)
-  await shot('2.6d-5-chronicle-overlay')
-  await click('#chronicle-close')
+  await click('#_hall')
+  const hist = await ev('document.querySelectorAll("#hall-chronicle .chron-line").length')
+  assert(hist >= 6, `Ancestral Hall chronicle section: ${hist} lines`)
+  await shot('2.6d-5-hall-overlay')
+  await click('#hall-close')
 
   // Upbringing event → family overlay
   await ev(`(() => { const s = gameState.get(); s.upbringing.due = s.world.year; gameState._tickFamily(); gameState._notify() })()`)
@@ -206,4 +206,47 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   const newClanId = await ev('gameState.get().world.playerClanId')
   assert(newClanId !== oldClanId, `secession founds a new clan and the slot follows it (${oldClanId} → ${newClanId})`)
   await shot('2.6f-7-after-secede')
+
+  // ── Phase 31 (M2 task 2.7f, clan-succession.md §2.7): Ancestral Hall — records/tree/legacies, and a
+  // successful Ascension now ending the life (fixes the post-Ascension dead zone) instead of leaving the
+  // character idling at an unreachable stub stage.
+  await ev(`(() => { const w = gameState.get().world, clan = w.clans[w.playerClanId]; clan.merit = 500; gameState._recalc(); gameState._notify() })()`)
+  await click('.tab[data-tab="stats"]')
+  await click('#_hall')
+  await wait('!document.getElementById("hall-overlay").classList.contains("hidden")')
+  const records = await ev('document.getElementById("hall-records").innerText')
+  assert(/Merit/i.test(records), `Hall records show Ancestral Merit: "${records.slice(0, 80)}"`)
+  const legacyBtns = await ev('document.querySelectorAll("#hall-legacies [data-buy-legacy]:not(:disabled)").length')
+  assert(legacyBtns > 0, `at least one legacy is buyable (${legacyBtns})`)
+  await shot('2.7f-1-hall-legacies')
+  const meritBefore = await ev('gameState.get().world.clans[gameState.get().world.playerClanId].merit')
+  await click('#hall-legacies [data-buy-legacy]:not(:disabled)')
+  const meritAfter = await ev('gameState.get().world.clans[gameState.get().world.playerClanId].merit')
+  assert(meritAfter < meritBefore, `buying a legacy from the Hall spends Merit (${meritBefore} → ${meritAfter})`)
+  await shot('2.7f-2-legacy-bought')
+  await click('#hall-close')
+
+  // Force Qi to cap at the last mortal stage, then click through the real Ascension Trial button/overlay.
+  const ascendingClanId = await ev('gameState.get().world.playerClanId')
+  await ev(`(() => {
+    const gs = gameState, s = gs.get(), lastMortal = CULTIVATION_STAGES.length - 2
+    s.stageIndex = lastMortal; s.maxStageThisLife = lastMortal
+    gs._recalc(); s.qi = gs.get().derived.qiCap; gs._recalc(); gs._notify()
+  })()`)
+  await click('#btn-breakthrough')
+  await wait('!document.getElementById("ascension-overlay").classList.contains("hidden")')
+  await shot('2.7f-3-ascension-trial')
+  await ev('window.__savedRandom = Math.random; Math.random = () => 0')   // force the ascension roll to succeed
+  await click('#ascend-now')
+  await ev('Math.random = window.__savedRandom')
+  await wait('!document.getElementById("death-overlay").classList.contains("hidden")')
+  const cause = await ev('document.getElementById("death-cause").textContent')
+  assert(/Ascended Ancestor|Immortal Realms/i.test(cause), `Ascension now ends the life instead of leaving it idle: "${cause}"`)
+  await shot('2.7f-4-ascended-death-card')
+  await ev('gameState.finishInterlude()')
+  await click('#death-ok')   // finishInterlude() bypasses the UI's own re-render (same as every other checks/*-style call above)
+  // Checked against the clan you ASCENDED in, not necessarily the one you're reborn into — rebirth may
+  // land you an orphan if that clan had no other living candidates, which is a separate, unrelated outcome.
+  assert(await ev(`gameState.get().world.clans[${JSON.stringify(ascendingClanId)}]?.ascendedAncestors >= 1`), 'the clan records the Ascended Ancestor')
+  await shot('2.7f-5-after-ascension')
 }

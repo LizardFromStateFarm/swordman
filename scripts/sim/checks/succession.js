@@ -466,6 +466,126 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
     assert(newClan.relations[oldClanId] === res.relation && s2.world.clans[oldClanId].relations[newClan.id] === res.relation, `relation is set both ways (${res.relation})`)
     assert(s2.family.tally.secessions === 1, 'tally records the secession')
   }
+
+  // ── Phase 31 (M2 task 2.7, clan-succession.md §2.7): Ancestral Merit, legacies, Ascended Ancestor, catch-up ──
+
+  // 29. _claimFirst pays Ancestral Merit once per clan; a second identical first is a no-op.
+  { const sim = await createSim({ seed: 200 }); await sim.boot(0); const gs = sim.gs
+    const clan = clanOf(gs)
+    const first = gs._claimFirst('married'), again = gs._claimFirst('married')
+    assert(first === true && again === false, 'first claim pays; a repeat claim is a no-op')
+    assert(clan.firsts.married && gs.get().lifeMerit.length === 1, 'clan.firsts recorded; queued onto lifeMerit')
+  }
+
+  // 30. Merit credited at death = stage term + this life's claimed firsts + capped deeds.
+  { const { gs } = await headWithKids(201, 0)
+    const s = gs.get()
+    s.stageIndex = 18; s.maxStageThisLife = 18
+    s.lifeMerit = [{ id: 'x', label: 'x', merit: 10 }]
+    s.sectWar.warVictories = 2; s.beasts = [{ level: 1 }, { level: 1 }]   // deeds: 2×3 (war) + 2×2 (beast) = 10
+    gs.passTheMantle()
+    const clan = clanOf(gs)
+    const stageTerm = 40 * Math.pow(18 / 22, 2), deeds = Math.min(30, 2 * 3 + 2 * 2)
+    const expected = Math.round(stageTerm + 10 + deeds)
+    assert(clan.merit === expected, `merit = stage(${stageTerm.toFixed(1)}) + firsts(10) + deeds(${deeds}) = ${expected}, got ${clan.merit}`)
+    assert(clan.bestStageIndex >= 18, 'bestStageIndex updates at death too (belt-and-suspenders vs. the live update in attemptBreakthrough)')
+  }
+
+  // 31. buyLegacy: unknown id, locked (missing its required first), not enough merit, a successful buy deducts
+  // merit and bumps the level, and it refuses once maxed.
+  { const sim = await createSim({ seed: 202 }); await sim.boot(0); const gs = sim.gs
+    const clan = clanOf(gs)
+    assert(gs.buyLegacy('nope').reason === 'unknown', 'unknown legacy id rejected')
+    assert(gs.buyLegacy('beast_lineage').reason === 'locked', 'beast_lineage needs first_beast claimed first')
+    clan.merit = 0
+    assert(gs.buyLegacy('ancestral_stipend').reason === 'merit', 'not enough merit rejected')
+    clan.merit = 100
+    const res = gs.buyLegacy('ancestral_stipend')
+    assert(res.ok && res.level === 1 && clan.legacies.ancestral_stipend === 1, `level 1 bought: ${JSON.stringify(res)}`)
+    assert(clan.merit === 85, `cost (15) deducted, merit now ${clan.merit}`)
+    clan.merit = 1000
+    gs.buyLegacy('ancestral_stipend'); gs.buyLegacy('ancestral_stipend')
+    assert(clan.legacies.ancestral_stipend === 3 && gs.buyLegacy('ancestral_stipend').reason === 'maxed', 'refuses once maxed (3 levels)')
+  }
+
+  // 32. setFamilyManual: needs the legacy bought, a technique the clan actually knows, and within the bought
+  // level's tier (level 1's CLAN_LEGACIES.family_manual value is minStage ≤ 3).
+  { const sim = await createSim({ seed: 203 }); await sim.boot(0); const gs = sim.gs
+    const clan = clanOf(gs)
+    assert(gs.setFamilyManual('qi_breathing').reason === 'no_legacy', 'no legacy bought yet')
+    clan.merit = 1000; gs.buyLegacy('family_manual')
+    assert(gs.setFamilyManual('not_a_real_technique').reason === 'unknown', 'unknown technique id rejected')
+    const highTier = sim.data.TECHNIQUES.find(t => t.minStage > 3)
+    if (highTier) {
+      clan.techniquesEver = [highTier.id]
+      assert(gs.setFamilyManual(highTier.id).reason === 'tier', `above level 1's tier rejected (minStage ${highTier.minStage})`)
+    }
+    const lowTier = sim.data.TECHNIQUES.find(t => t.minStage <= 3)
+    clan.techniquesEver = [lowTier.id]
+    const res = gs.setFamilyManual(lowTier.id)
+    assert(res.ok && clan.manualTechId === lowTier.id, `low-tier technique picked (${lowTier.id})`)
+  }
+
+  // 33. Heirloom + Beast Lineage legacies carry equipped items / a beast offspring into the next life.
+  { const { sim, gs, kids } = await headWithKids(204, 1)
+    const s = gs.get(), clan = clanOf(gs)
+    const weaponId   = Object.keys(sim.data.ITEMS).find(id => sim.data.ITEMS[id].type === 'weapon')
+    const artifactId = Object.keys(sim.data.ITEMS).find(id => sim.data.ITEMS[id].type === 'artifact')
+    const beastTypeId = sim.data.BEAST_TYPES[0].id
+    s.equipped = { weapon: weaponId, artifact: artifactId }
+    s.beasts = [{ id: 'b1', typeId: beastTypeId, name: 'Test Beast', level: 5, xp: 0, traits: ['swift'], expedition: null }]
+    clan.merit = 1000
+    gs.buyLegacy('heirloom'); gs.buyLegacy('heirloom')   // level 2 = weapon + artifact
+    gs._claimFirst('first_beast'); gs.buyLegacy('beast_lineage')
+    gs.chooseHeir(kids[0].id)
+    gs.passTheMantle(); gs.finishInterlude('clan')
+    const s2 = gs.get()
+    assert(s2.equipped.weapon === weaponId && s2.equipped.artifact === artifactId, `heirloom carried: ${JSON.stringify(s2.equipped)}`)
+    assert(s2.beasts.length === 1 && s2.beasts[0].level === 1 && s2.beasts[0].traits.includes('swift'), `beast lineage offspring at level 1: ${JSON.stringify(s2.beasts)}`)
+  }
+
+  // 34. A successful Ascension now ENDS the life (fixes the post-Ascension dead zone): the clan records the
+  // Ascended Ancestor + a blessing stack, the ancestor is marked, and it goes through the normal interlude —
+  // exactly like any other death — instead of leaving the character idling at an unreachable stub stage.
+  { const sim = await createSim({ seed: 205 }); await sim.boot(0); const gs = sim.gs
+    const s = gs.get(), lastMortal = sim.data.CULTIVATION_STAGES.length - 2
+    s.stageIndex = lastMortal; s.maxStageThisLife = lastMortal
+    gs._recalc(); s.qi = gs.get().derived.qiCap; gs._recalc()
+    sim.ev('globalThis.__savedRandom = Math.random; Math.random = () => 0')   // force the ascension roll to succeed
+    const res = gs.attemptAscension()
+    sim.ev('Math.random = globalThis.__savedRandom')
+    const s2 = gs.get(), clan = clanOf(gs)
+    assert(res.success && res.ascended, `attemptAscension reports success + ascended: ${JSON.stringify(res)}`)
+    assert(!!s2.interlude && s2.lastReincarnation.cause === 'ascended', `the life ended via the interlude, cause 'ascended' (${s2.lastReincarnation?.cause})`)
+    assert(clan.ascendedAncestors === 1 && clan.blessingStacks === 1, `clan records the Ascended Ancestor + a blessing stack (${clan.ascendedAncestors}, ${clan.blessingStacks})`)
+    const w = s2.world, rec = w.pastLives[w.pastLives.length - 1]
+    assert(w.persons[rec.personId]?.ascendedAncestor === true, 'the ancestor record is marked ascendedAncestor')
+    assert(clan.firsts.ascended && clan.firsts.asc_attempt, 'both the attempt and the survival firsts are claimed')
+  }
+
+  // 35. Ancestral catch-up: below clan.bestStageIndex, Qi/s and breakthrough chance both get a bonus that
+  // disappears once you reach the clan's best — and the auto-BT it drives fires in Active Mode too (a base
+  // mechanic, unlike Phase 22's opt-in automations, which are Idle-Mode only).
+  { const sim = await createSim({ seed: 206 }); await sim.boot(0); const gs = sim.gs
+    const s = gs.get(), clan = clanOf(gs)
+    s.stageIndex = 1; s.maxStageThisLife = 1
+    clan.bestStageIndex = 5
+    gs._recalc()
+    const inCatchUp = gs.get().derived
+    assert(inCatchUp.catchUp === true, 'derived.catchUp true below the clan best')
+    clan.bestStageIndex = 0
+    gs._recalc()
+    const atBest = gs.get().derived
+    assert(atBest.catchUp === false, 'derived.catchUp false at/above the clan best')
+    assert(inCatchUp.qiPerSecond > atBest.qiPerSecond, `catch-up Qi/s (${inCatchUp.qiPerSecond.toFixed(2)}) beats normal (${atBest.qiPerSecond.toFixed(2)})`)
+    assert(inCatchUp.breakthroughChance > atBest.breakthroughChance, 'catch-up breakthrough chance is higher too')
+    clan.bestStageIndex = 5; s.stageIndex = 1; gs.setPlayMode('active'); gs._recalc()
+    s.qi = gs.get().derived.qiCap; gs._recalc()
+    sim.ev('globalThis.__savedRandom = Math.random; Math.random = () => 0')
+    gs._tickAutomation(1)
+    sim.ev('Math.random = globalThis.__savedRandom')
+    assert(gs.get().stageIndex === 2, `catch-up auto-BT fired even in Active Mode (stage now ${gs.get().stageIndex})`)
+  }
 })()
 
 // Mirrors _beginLife's stipend formula (kept here so a formula change shows up as a failing check).
