@@ -9,6 +9,9 @@ See the chat conversation this was set up in for the full reasoning (why Capacit
 instead of the desktop overlay, why TestFlight over sideloading via Google Drive, why porting the
 plumbing now instead of after the game is "done").
 
+> **Android has its own shell + Google Play pipeline** — `android/`, `scripts/release-android.js`,
+> `npm run release:android`. See `docs/systems/android-port.md`. It reuses the same `www/` this doc builds.
+
 ## State
 
 No game state changes. This only adds a platform layer.

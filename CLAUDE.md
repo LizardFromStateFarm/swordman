@@ -145,6 +145,7 @@ docs/
     combat.md           ← SPEC (Phase 35): battle page, fight card generalized to beasts/duelists/arena/bosses
     auction.md          ← SPEC (Phase 36): themed crates, beast/person quality rolls, person `gender`
     scene-art.md        ← SPEC (Phase 38): large-area sect-base + island scenes (view-only, grow as you build)
+    android-port.md     ← Capacitor Android shell + `npm run release:android` → Google Play internal testing
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
   assets.md             ← ASCII art pipeline (create → review → gate ≥8.0)
@@ -153,9 +154,12 @@ docs/
 
 main.js                 ← Electron window, IPC, slot save/load, system tray + notifications (Phase 9A-B), layout-mode geometry (6E)
 preload.js              ← contextBridge — only way renderer talks to Node
-capacitor.config.json     ← Capacitor (iOS) config — webDir "www"
+capacitor.config.json     ← Capacitor (iOS + Android) config — webDir "www"
+ios/                    ← Capacitor iOS Xcode project — committed (minus generated public/); see ios-port.md
+android/                ← Capacitor Android Gradle project — committed (minus generated output); see android-port.md
 scripts/
-  build-ios-web.js      ← Builds www/ (gitignored) from renderer/ + assets/ for Capacitor
+  build-ios-web.js      ← Builds www/ (gitignored) from renderer/ + assets/ for Capacitor (both platforms)
+  release-android.js    ← `npm run release:android` → build .aab + push to Google Play (see android-port.md)
   gen-tray-icon.js      ← One-off generator for assets/icons/tray-icon.png (Phase 9A, not run at boot)
   art-bakeoff/          ← A2 art-direction prototype page (3 renderers, same cultivator) — not part of the game
   check-no-emoji.js     ← Emoji inventory (file:line); --strict exits 1 (A1 adds it to npm test) — no-emoji rule

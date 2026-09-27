@@ -8,5 +8,12 @@ Thumbs.db
 www/
 ios/App/App/public/
 
+# Android — Gradle output, local.properties and the synced web bundle are covered by android/.gitignore
+# Signing + Play credentials (never commit)
+*.jks
+*.keystore
+android/keystore.properties
+google-play-service-account.json
+
 # QA sim harness output (regenerated every run)
 scripts/sim/out/
