@@ -12,15 +12,15 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   assert(empty.length === 0, `every icon draws something (${empty.join(', ') || 'all ok'})`)
 
   // ── Contact sheet ────────────────────────────────────────────────────────────────────────
-  await emulate(900, 1000)
+  await emulate(1240, 1400)
   await ev(`(() => {
     const sheet = document.createElement('div'); sheet.id = 'icon-sheet'
     sheet.style.cssText = 'position:fixed;inset:0;z-index:9999;overflow:auto;background:#08040E;padding:14px;font-family:var(--font);color:var(--text)'
     const cols = ['var(--gold)', 'var(--text)', 'var(--jade)', 'var(--ember)', 'var(--purple)', 'var(--dim)']
-    sheet.innerHTML = '<div style="color:var(--gold);font-size:13px;letter-spacing:1px;margin-bottom:10px">UI icon set · ' + Icon.names().length + ' icons · 14 / 18 / 32 / 64 px</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' + Icon.names().map((n, i) =>
+    sheet.innerHTML = '<div style="color:var(--gold);font-size:13px;letter-spacing:1px;margin-bottom:10px">UI icon set · ' + Icon.names().length + ' icons · 14 / 18 / 32 / 48 px</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">' + Icon.names().map((n, i) =>
         '<div style="border:1px solid var(--border);border-radius:4px;padding:8px;background:var(--bg2);display:flex;align-items:center;gap:10px;color:' + cols[i % cols.length] + '">' +
-          '<span style="font-size:64px;line-height:0">' + Icon(n) + '</span>' +
+          '<span style="font-size:48px;line-height:0">' + Icon(n) + '</span>' +
           '<span style="display:flex;flex-direction:column;gap:6px"><span style="font-size:32px;line-height:0">' + Icon(n) + '</span>' +
           '<span style="display:flex;gap:6px;align-items:center"><span style="font-size:18px;line-height:0">' + Icon(n) + '</span><span style="font-size:14px;line-height:0">' + Icon(n) + '</span></span>' +
           '<span style="font-size:10px;color:var(--dim-hi)">' + n + '</span></span></div>').join('') + '</div>'

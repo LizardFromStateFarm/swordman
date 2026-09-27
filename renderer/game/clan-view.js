@@ -36,8 +36,8 @@ class KinViewBase {
   // Same tile as the Family view: glyph, name, what it does, or 封 why it's sealed.
   _tile(attrs, glyph, name, effect, lock, cls = '') {
     return `<button class="fa-btn${cls ? ' ' + cls : ''}${lock ? ' locked' : ''}" ${attrs} ${lock ? 'disabled' : ''}>
-      <span class="fa-g">${glyph}</span><span class="fa-t"><span class="fa-n">${name}</span>
-      <span class="fa-e">${lock ? `<span class="fa-lock">${this.h.esc(lock)}</span>` : effect}</span></span></button>`
+      <span class="fa-g">${Icon.g(glyph)}</span><span class="fa-t"><span class="fa-n">${name}</span>
+      <span class="fa-e">${lock ? `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i>${this.h.esc(lock)}</span>` : effect}</span></span></button>`
   }
 }
 
@@ -57,10 +57,10 @@ class ClanView extends KinViewBase {
   _orphan(s) {
     const w = s.world, last = w.lastClanId ? w.clans[w.lastClanId] : null
     return `<div class="fam-view kin-view"><div class="fam-col"><section class="fam-card alone">
-      <div class="fc-head"><span class="fc-glyph dim">孤</span><div class="fc-id"><div class="fc-name">An orphan of the world</div>
+      <div class="fc-head"><span class="fc-glyph dim" data-icon="person"></span><div class="fc-id"><div class="fc-name">An orphan of the world</div>
         <div class="fc-sub">You belong to no clan. No head, no lines, no Ancestral Merit to earn.${last ? ` Your forebears' hall still stands: ${this._clanName(last)}.` : ''}</div></div></div>
-      ${last ? this._tile('data-ca="hall"', '祠', 'Visit the Ancestral Hall', '<span class="dim">the family tree and chronicle</span>', '', 'wide') : ''}
-      ${this._tile('id="_pass-mantle"', '傳', 'Pass the Mantle', 'ends this life now; your heir carries on', '', 'wide')}
+      ${last ? this._tile('data-ca="hall"', 'lineage', 'Visit the Ancestral Hall', '<span class="dim">the family tree and chronicle</span>', '', 'wide') : ''}
+      ${this._tile('id="_pass-mantle"', 'mantle', 'Pass the Mantle', 'ends this life now; your heir carries on', '', 'wide')}
     </section></div></div>`
   }
 
@@ -70,20 +70,20 @@ class ClanView extends KinViewBase {
     const branches = clan.lines.length - 1
     const mine = clan.lines.find(l => l.id === w.playerLineId)
     let standing
-    if (clan.headId === s.self.id) standing = '<span class="fam-tag tone-jade"><b>首</b>Clan Head</span>'
-    else if (mine && mine !== clan.lines[0]) standing = `<span class="fam-tag"><b>支</b>${h.esc(mine.name)}${mine.headId === s.self.id ? ' head' : ''}</span>`
-    else standing = '<span class="fam-tag"><b>本</b>Main Line</span>'
+    if (clan.headId === s.self.id) standing = '<span class="fam-tag tone-jade"><b data-icon="crown"></b>Clan Head</span>'
+    else if (mine && mine !== clan.lines[0]) standing = `<span class="fam-tag"><b data-icon="branch"></b>${h.esc(mine.name)}${mine.headId === s.self.id ? ' head' : ''}</span>`
+    else standing = '<span class="fam-tag"><b data-icon="lineage"></b>Main Line</span>'
     const pos = s.birth && typeof POSITION_TEXT !== 'undefined' ? POSITION_TEXT[s.birth.position] : null
     const t = clan.tradition || {}
     const bloody = (t.lethalTournaments || 0) > (t.peacefulSuccessions || 0)
     return `<section class="fam-card clan">
-      <div class="fc-head"><span class="fc-glyph">宗</span><div class="fc-id"><div class="fc-name">${this._clanName(clan)}</div>
+      <div class="fc-head"><span class="fc-glyph" data-icon="lineage"></span><div class="fc-id"><div class="fc-name">${this._clanName(clan)}</div>
         <div class="fc-sub">Founded in year ${clan.foundedYear ?? 1}<br><span class="nw">generation ${s.generation || 1}</span> · ${this._plural(members, 'member')} · ${branches ? this._plural(branches, 'branch') : 'no branches'}</div>
         <div class="fc-tags">${standing}${pos ? `<span class="fam-tag">${h.esc(pos.short)}</span>` : ''}</div></div></div>
       <div class="clan-trad"><span class="ct-k">Tradition</span>
-        <span class="ct-v">${bloody ? '<b class="tone-red">血</b>Blood decides succession' : '<b class="tone-jade">和</b>Succession is settled in peace'}</span>
+        <span class="ct-v">${bloody ? '<b class="tone-red" data-icon="health"></b>Blood decides succession' : '<b class="tone-jade" data-icon="lotus"></b>Succession is settled in peace'}</span>
         <span class="ct-n">Past successions: ${t.lethalTournaments || 0} to the death · ${t.peacefulSuccessions || 0} peaceful · ${t.challenges || 0} challenges</span></div>
-      ${this._tile('data-ca="hall"', '祠', 'Ancestral Hall', `<span class="cost">${h.fmt(clan.merit)} Merit to spend</span> · legacies, firsts, ancestors`, '', 'wide')}
+      ${this._tile('data-ca="hall"', 'lineage', 'Ancestral Hall', `<span class="cost">${h.fmt(clan.merit)} Merit to spend</span> · legacies, firsts, ancestors`, '', 'wide')}
     </section>`
   }
 
@@ -97,9 +97,9 @@ class ClanView extends KinViewBase {
     const bond = known ? Math.round(s.birth.headBond) : null
     const bl = known ? h.bondLabel(bond) : null
     return `<section class="fam-card">
-      <div class="fc-head"><span class="fc-glyph">首</span><div class="fc-id"><div class="fc-name">${this._name(head)}</div>
+      <div class="fc-head"><span class="fc-glyph" data-icon="crown"></span><div class="fc-id"><div class="fc-name">${this._name(head)}</div>
         <div class="fc-sub">Clan Head · ${h.stageLabel(head.stageIndex)}</div>
-        <div class="fc-tags">${st ? `<span class="fam-tag" title="${h.esc(st.blurb)}"><b>養</b>${h.esc(st.name)} parent</span>` : ''}</div></div></div>
+        <div class="fc-tags">${st ? `<span class="fam-tag" title="${h.esc(st.blurb)}"><b data-icon="child"></b>${h.esc(st.name)} parent</span>` : ''}</div></div></div>
       ${st ? `<div class="fc-hint">${h.esc(st.blurb)}</div>` : ''}
       ${known ? `<div class="fc-aff static">
         <span class="fa-row"><span class="fa-k">Your bond</span><span class="fa-v tone-${bl.tone}">${bl.word} · ${bond}</span></span>
@@ -119,7 +119,7 @@ class ClanView extends KinViewBase {
       // Where you stand before you act: your bond weighs on whether the head makes it lethal
       const hb = s.birth?.headBond != null && s.birth.headId === clan.headId ? h.bondLabel(Math.round(s.birth.headBond)) : null
       if (cc.ok || ['cooldown', 'stage_gap'].includes(cc.reason))
-        tiles.push(this._tile('id="_challenge-head"', '挑', 'Challenge the Head',
+        tiles.push(this._tile('id="_challenge-head"', 'sword', 'Challenge the Head',
           `${hb ? `<span class="tone-${hb.tone}">bond ${hb.word.toLowerCase()}</span> · ` : ''}the head decides if it is <span class="down">to the death</span>`, lock))
     }
     if (mine && mine !== clan.lines[0]) {
@@ -127,20 +127,20 @@ class ClanView extends KinViewBase {
       const oc = prev ? (prev.chance < 0.2 ? 'odds-low' : prev.chance < 0.55 ? 'odds-mid' : 'odds-good') : ''
       // One tile, one action: the odds sit inline; tapping them (data-bd) opens the "why" card instead of acting
       // (BreakdownUI handles [data-bd] clicks in the capture phase and stops them there).
-      const odds = prev ? `<span class="odds-in ${oc}" data-bd="branch" title="Why these odds?"><b>${prev.chance < 0.001 ? '&lt;0.1' : (prev.chance * 100).toFixed(1)}%</b> to win <i>詳</i></span>` : ''
+      const odds = prev ? `<span class="odds-in ${oc}" data-bd="branch" title="Why these odds?"><b>${prev.chance < 0.001 ? '&lt;0.1' : (prev.chance * 100).toFixed(1)}%</b> to win <i data-icon="why"></i></span>` : ''
       if (mine.headId === s.self.id) {
         const dw = gs.canDeclareBranchWar()
         const lock = dw.ok ? '' : dw.reason === 'cooldown' ? `Your branch recovers · year ${Math.ceil(dw.readyYear)}` : dw.reason === 'busy' ? 'A contest is already underway' : 'Not now'
-        tiles.push(this._tile('id="_declare-branch-war"', '戰', 'War on the Main Line', `${odds}${odds ? '<br>' : ''}the loser is deposed, or <span class="down">dies</span>`, lock, 'grave'))
+        tiles.push(this._tile('id="_declare-branch-war"', 'flag', 'War on the Main Line', `${odds}${odds ? '<br>' : ''}the loser is deposed, or <span class="down">dies</span>`, lock, 'grave'))
         const sec = gs.canSecede()
-        tiles.push(this._tile('id="_secede"', '離', 'Secede', 'leave with your whole branch; how you part decides whether the old clan becomes friend or rival', sec.ok ? '' : sec.reason === 'busy' ? 'Not while a contest is underway' : 'Not now'))
+        tiles.push(this._tile('id="_secede"', 'split', 'Secede', 'leave with your whole branch; how you part decides whether the old clan becomes friend or rival', sec.ok ? '' : sec.reason === 'busy' ? 'Not while a contest is underway' : 'Not now'))
       } else {
         const pw = gs.canPushBranchWar()
         const lock = pw.ok ? '' : pw.reason === 'cooldown' ? `Too soon · year ${Math.ceil(pw.readyYear)}` : pw.reason === 'busy' ? 'A contest is already underway' : 'Not now'
-        tiles.push(this._tile('id="_push-branch-war"', '促', 'Push your branch to war', `${odds}${odds ? '<br>' : ''}your branch head decides`, lock))
+        tiles.push(this._tile('id="_push-branch-war"', 'flag', 'Push your branch to war', `${odds}${odds ? '<br>' : ''}your branch head decides`, lock))
       }
     }
-    tiles.push(this._tile('id="_pass-mantle"', '傳', 'Pass the Mantle', 'ends this life now; your heir carries on · <span class="down">no undoing it</span>', '', 'grave'))
+    tiles.push(this._tile('id="_pass-mantle"', 'mantle', 'Pass the Mantle', 'ends this life now; your heir carries on · <span class="down">no undoing it</span>', '', 'grave'))
     return `<section class="fam-sec"><div class="fam-sec-title"><span>What you can do</span></div><div class="fa-grid clan-acts">${tiles.join('')}</div></section>`
   }
 
@@ -202,7 +202,7 @@ class HallView extends KinViewBase {
     const clan = this._clan(s) || (w.lastClanId ? w.clans[w.lastClanId] : null)
     if (!clan) {
       this.el.innerHTML = `<div class="fam-view kin-view"><div class="fam-col"><section class="fam-card alone">
-        <div class="fc-head"><span class="fc-glyph dim">祠</span><div class="fc-id"><div class="fc-name">No hall stands for you</div>
+        <div class="fc-head"><span class="fc-glyph dim" data-icon="lineage"></span><div class="fc-id"><div class="fc-name">No hall stands for you</div>
         <div class="fc-sub">An orphan has no ancestors to honor, and no clan to leave anything to.</div></div></div></section></div></div>`
       return
     }
@@ -216,7 +216,7 @@ class HallView extends KinViewBase {
   _records(s, clan) {
     const h = this.h
     return `<section class="fam-card hall">
-      <div class="fc-head"><span class="fc-glyph">祠</span><div class="fc-id"><div class="fc-name">${this._clanName(clan)}</div>
+      <div class="fc-head"><span class="fc-glyph" data-icon="lineage"></span><div class="fc-id"><div class="fc-name">${this._clanName(clan)}</div>
         <div class="fc-sub">The Ancestral Hall · <span class="nw">generation ${s.generation || 1}</span></div></div></div>
       <div class="hall-tiles">
         <div class="ht wide hero"><span class="ht-k">Ancestral Merit to spend</span><span class="ht-v gold">${h.fmt(clan.merit)}</span></div>
@@ -229,7 +229,7 @@ class HallView extends KinViewBase {
   // What this life adds to the ledger when it ends (the real formula, via meritPreview()).
   _thisLife(s) {
     const m = this.gs.meritPreview(), h = this.h
-    const row = (k, v, cls = '') => `<div class="mp-row ${cls}"><span>${k}</span><b>+${Math.round(v)}</b></div>`
+    const row = (k, v, cls = '') => `<div class="mp-row ${cls}"><span>${cls.includes('first') ? '<i class="mp-ic" data-icon="check"></i>' : ''}${k}</span><b>+${Math.round(v)}</b></div>`
     return `<section class="fam-sec"><div class="fam-sec-title"><span>This life will add</span><span class="fam-count gold">+${m.total} Merit</span></div>
       ${row(`Realm reached <span class="nw">${h.esc(stageShortName(Math.max(s.maxStageThisLife || 0, s.stageIndex)))}</span>`, m.stage)}
       ${m.firsts.map(f => row(h.esc(f.label), f.merit, 'first')).join('')}
@@ -244,7 +244,7 @@ class HallView extends KinViewBase {
     return `<section class="fam-sec"><div class="fam-sec-title"><span>Clan firsts</span><span class="fam-count">${done} of ${all.length} claimed</span></div>
       <div class="firsts">${all.map(([id, f]) => {
         const got = clan.firsts[id]
-        return `<div class="fr${got ? ' got' : ''}"><span class="fr-g">${got ? '得' : '○'}</span><span class="fr-l">${h.esc(this._firstLabel(f.label))}</span>
+        return `<div class="fr${got ? ' got' : ''}"><span class="fr-g">${Icon(got ? 'check' : 'ring')}</span><span class="fr-l">${h.esc(this._firstLabel(f.label))}</span>
           <span class="fr-m">${got ? `gen ${got.gen}` : `+${f.merit}`}</span></div>`
       }).join('')}</div>
       <div class="fk-note">Each pays Merit once, to whoever in the clan does it first.</div></section>`
@@ -275,7 +275,7 @@ class HallView extends KinViewBase {
       const next = maxed ? '' : this._legacyValue(id, def.levels[lvl].value)
       let buy
       if (maxed) buy = '<span class="lg-max">Complete</span>'
-      else if (locked) buy = `<span class="fa-lock">Needs the clan first: ${h.esc(this._firstLabel(CLAN_FIRSTS[def.requires]?.label || 'a deed'))}</span>`
+      else if (locked) buy = `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i>Needs the clan first: ${h.esc(this._firstLabel(CLAN_FIRSTS[def.requires]?.label || 'a deed'))}</span>`
       else if (clan.merit < cost) buy = `<span class="lg-short"><span class="lg-prog"><i data-w="${Math.round(100 * clan.merit / cost)}"></i></span>${cost} Merit · ${cost - clan.merit} short</span>`
       else buy = `<button class="lg-buy" data-buy="${h.esc(id)}">${lvl ? 'Raise' : 'Buy'}<span>${cost} Merit</span></button>`
       return `<div class="lg${lvl ? ' owned' : ''}${locked ? ' sealed' : ''}">
@@ -307,7 +307,7 @@ class HallView extends KinViewBase {
       const p = w.persons[l.personId]
       const line = h.epitaphFor(l.cause, l.personId)
       const text = line ? h.fillEpitaph(line, p, l, clan.name) : `${p ? Persons.fullName(p) : 'Someone'}, gone from this world.`
-      return `<div class="chron-line${p?.ascendedAncestor ? ' ascended' : ''}">${p?.ascendedAncestor ? '<b class="kid-star">仙</b>' : ''}${h.esc(text)}</div>`
+      return `<div class="chron-line${p?.ascendedAncestor ? ' ascended' : ''}">${p?.ascendedAncestor ? '<b class="kid-star" data-icon="cloud"></b>' : ''}${h.esc(text)}</div>`
     }).join('')
     return `<details class="fam-sec hall-fold" open><summary class="fam-sec-title"><span>Ancestors</span><span class="fam-count">${this._plural(lives.length, 'life').replace('lifes', 'lives')}</span></summary>
       ${lines || '<div class="fam-empty">No one has come before you yet.</div>'}</details>`

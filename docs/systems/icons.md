@@ -17,6 +17,7 @@ secondary stroke is the family's "detail line" idiom.
 | Play mode | idle (moon) · active (flame) · auto (automation chip) |
 | HUD | meditate · qi (breath/wind) · lineage (ancestral tablet: catch-up) · integrity (stepped foundation altar) · health (blood drop) · stone (spirit stone) · age (hourglass) · breakthrough · why · explore |
 | Items/actions | lock (sealed rows) · crystal (Void Crystal) · sword (weapon slot) · pendant (artifact slot: jade bi disc) · duel (tournament) · token (sect missions) · furnace (craft) · scroll (techniques) · play · pause |
+| People, clan, sect, war (1.8d-2) | bond (red-thread knot: courting, matchmaker, ally) · rings (proposal) · heart (affection, spend time, lover) · couple · child · person · disciple · crown (head/leader) · branch · split (secede/leave) · unbond (end it/let go) · mantle · flag (war) · beast · frost (spouse cooling) · hall · gate (join/found) · rise (rank) · chest · pill (gourd) · shield · lotus (karma, mercy) · cloud (ascended) · lightning (Ascension Trial) · dantian (Qi capacity) · vein (bloodline) · mask (personality) · root (spiritual root) · tea (meeting) · gift · lantern (child wish) · alert · veil (cover tracks, feint) · eye · speech (confess) · skull · yield · broken · check · ring · heir (star) · strip-back |
 | Ornament | taiji (charselect title) |
 
 ## API
@@ -25,6 +26,10 @@ secondary stroke is the family's "detail line" idiom.
 - `<span data-icon="qi"></span>` in static HTML is filled by `Icon.hydrate(root?)`. It runs once when icons.js loads,
   and again when called after an `innerHTML` that carries `data-icon` attributes.
 - `Icon.names()` → every icon name (the contact sheet uses it).
+- `Icon.g(x)` → `Icon(x)` when `x` is an icon name, else `x` as-is. Use it for glyph slots filled from arguments or data
+  (`_act`/`_tile` helpers, breakdown cards, Character tiles, `COURT_WAYS`/`FIGHT_TACTICS.glyph` — which hold icon names).
+- **Auto-hydrate:** a MutationObserver fills any `[data-icon]` node added to the DOM before it paints, so HTML strings
+  (either quote style) can just write `<b data-icon="crown"></b>`.
 
 ## Wiring
 - index.html loads `../assets/icons/ui-icons.js` (with the sprites) and `game/icons.js` (before layout.js). Every later
@@ -38,7 +43,8 @@ secondary stroke is the family's "detail line" idiom.
 1. Icons are decorative. The button or label around one carries the words (`title` + `aria-label` on icon-only buttons).
 2. Size in `em` (`.ic` = 1em): the ⚙ text-size setting scales icons with the text. Color from `currentColor`, so state
    colors and the color-blind tokens apply unchanged. Never hard-code a color inside ui-icons.js.
-3. One family: 24 grid, 1.6 stroke, round joins, ≈2px inner padding. A new icon must read at 14px next to the others
+3. One family: 24 grid, 1.6 stroke, round joins, ≈2px inner padding, **line-only with at most one small accent fill**
+   (a dot, the hourglass sand, a tassel) — never a large filled area. A new icon must read at 14px next to the others
    on the contact sheet, and it goes through the Visual Review Gate (asset score ≥ 8.0).
 
 ## Gotchas
@@ -56,6 +62,12 @@ secondary stroke is the family's "detail line" idiom.
   tip, overlay titles (CN subtitles 布局 修行之道 設置 飞升劫 立嗣 奪 媒人 dropped), banner readouts + quick
   buttons, rail/auto chips, attention header + expedition/missions/technique nudges, lock marks (封) in Techniques/Explore/automation/banner rows, Pack currency/equip/Auto chips, charselect title. Emoji left in UI
   code: none (`check-no-emoji.js`: only the sprite files, which the art track A4 replaces).
-- **1.8d-2 (next):** the other per-action marks in attention.js items, breakdowns.js, family-view.js, clan-view.js,
-  sect-view.js (incl. 封/入 tiles), banner-menus.js row/heading `cn`, the Character tile glyphs, game.js section-title CN suffixes (e.g. "Automation 自動"),
-  plus a chrome-CJK lint (CJK allowlist: nav marks + flavour data).
+- **1.8d-2 (2026-09-27):** +42 icons (78 total) and redraws (lineage, token, scroll, integrity, stone pebble, line taiji).
+  Every chrome mark in attention, breakdowns, Family, Clan/Hall, Sect, Character, fight card, tournament and Mode cards is
+  an icon; CN subtitles beside English dropped (breakdown `cn`, banner menu headings/rows, Mode cards, Banter log, duel
+  title, "Automation 自動"); CSS `content:` glyphs (詳 封 得) replaced by a dot / lock icon / check icon.
+
+## Lint
+`scripts/check-no-chrome-cjk.js --strict` runs in `npm test`: CJK in renderer/ code (comments skipped) fails, except the
+nav-mark lines in nav.js, the 道 rail ornament, and lines carrying a `cjk-ok` comment (deliberate flavour: the canvas 气
+particle, root-name data that `latinOnly()` strips, the stage-name placeholder). assets/data is content and not scanned.

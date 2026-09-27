@@ -282,9 +282,9 @@
     document.getElementById('cultivator-name').textContent = s.name
     updateModeButton(s)
 
-    document.getElementById('stage-realm').textContent = `${st.realm} — ${st.realmCN}`
+    document.getElementById('stage-realm').textContent = st.realm
     document.getElementById('stage-realm').style.color = st.color || 'var(--gold)'
-    document.getElementById('stage-layer').textContent = `${st.layer} · ${st.layerCN}`
+    document.getElementById('stage-layer').textContent = st.layer   // English only (user 2026-09-27)
     document.getElementById('stage-desc').textContent  = st.desc
     document.getElementById('stage-desc').title        = st.desc   // Phase 6E: clipped to one line in Overlay
 
@@ -494,7 +494,7 @@
       ? '<div class="tech-owned">✓ Learned</div>'
       : isLocked
         ? `<div class="tech-cost tech-lock" title="Unlocks at ${stageShortName(t.minStage)}">${Icon('lock')} ${stageShortName(t.minStage)}</div>`
-        : `<div class="tech-cost">石 ${t.cost}</div>`
+        : `<div class="tech-cost">${Icon('stone')} ${t.cost}</div>`
     return `
       <div class="tech-main">
         <div class="tech-name" title="${t.nameCN}">${t.name}</div>
@@ -528,13 +528,13 @@
     const toFill = Math.max(0, d.qiCap * 0.9 - s.qi)
     const barColor = v => v >= 70 ? 'var(--jade)' : v >= 30 ? 'var(--gold)' : 'var(--red)'
     const tile = (bd, key, glyph, val, sub, cls = '', bar) => `<button class="ch-tile ${cls}" data-bd="${bd}">
-        <span class="t-k"><span>${key}</span><i>${glyph}</i></span><span class="t-v">${val}</span>
+        <span class="t-k"><span>${key}</span><i>${Icon.g(glyph)}</i></span><span class="t-v">${val}</span>
         ${sub ? `<span class="t-s">${sub}</span>` : ''}${bar != null ? `<span class="ch-bar"><div data-w="${Math.max(0, Math.min(100, bar))}" data-bar="${barColor(bar)}"></div></span>` : ''}</button>`
 
     let btTile
-    if (st.id === 'ascension') btTile = `<div class="ch-tile wide"><span class="t-k"><span>Ascended</span><i>仙</i></span><span class="t-v">Beyond the mortal path</span></div>`
-    else if (s.stageIndex === lastMortal) btTile = tile('bt', 'Ascension Trial', '劫', (gameState.ascensionChance() * 100).toFixed(1) + '%', 'Failure ends this life', 'wide')
-    else btTile = tile('bt', 'Breakthrough', '破', (d.breakthroughChanceDisplay * 100).toFixed(1) + '%',
+    if (st.id === 'ascension') btTile = `<div class="ch-tile wide"><span class="t-k"><span>Ascended</span><i data-icon="cloud"></i></span><span class="t-v">Beyond the mortal path</span></div>`
+    else if (s.stageIndex === lastMortal) btTile = tile('bt', 'Ascension Trial', 'lightning', (gameState.ascensionChance() * 100).toFixed(1) + '%', 'Failure ends this life', 'wide')
+    else btTile = tile('bt', 'Breakthrough', 'breakthrough', (d.breakthroughChanceDisplay * 100).toFixed(1) + '%',
       fp.guaranteed ? 'Pill guarantees success' : `Fails: −${Math.round(fp.qiLossFrac * 100)}% Qi · −${Math.round(fp.integrityLoss)} Integrity${fp.karmaLoss ? ` · −${Math.round(fp.karmaLoss)} Karma` : ''}${fp.demotes ? ' · fall a stage' : ''}`,
       fp.demotes ? 'warn wide' : 'wide')
 
@@ -546,30 +546,30 @@
         <div class="ch-realm">${escHtml(s.name)}</div>
         <div class="ch-layer">${escHtml(stageShortName(s.stageIndex))}</div>
         <div class="ch-tags">
-          <span class="ch-tag root" title="Spiritual root: multiplies all Qi"><b>根</b>${escHtml(latinOnly(s.root.name))} ×${s.root.mult}</span>
-          ${persona ? `<span class="ch-tag" title="${escHtml(persona.blurb)}"><b>性</b>${escHtml(persona.name)}</span>` : ''}
+          <span class="ch-tag root" title="Spiritual root: multiplies all Qi"><b data-icon="root"></b>${escHtml(latinOnly(s.root.name))} ×${s.root.mult}</span>
+          ${persona ? `<span class="ch-tag" title="${escHtml(persona.blurb)}"><b data-icon="mask"></b>${escHtml(persona.name)}</span>` : ''}
         </div>
-        <div class="ch-meta" title="Age passes only while the game is open. Nothing dies of age."><b>歲</b>Age ${Math.floor(s.age)} ·<b>年</b>Year ${Math.floor(s.world.year)} ·<b>代</b>Gen ${s.generation || 1}</div>
+        <div class="ch-meta" title="Age passes only while the game is open. Nothing dies of age.">Age ${Math.floor(s.age)} · Year ${Math.floor(s.world.year)} · Gen ${s.generation || 1}</div>
         ${persona ? `<div class="ch-persona">${escHtml(persona.blurb)}</div>` : ''}
       </div>
-      ${d.catchUp ? `<button class="ch-catchup" data-bd="qps"><span class="ch-cg">承</span><span class="ch-ct">Catch-up ×${CATCHUP_QPS_MULT} Qi · +${Math.round(CATCHUP_BT_BONUS * 100)}% BT</span><span class="ch-go">詳</span></button>` : ''}
+      ${d.catchUp ? `<button class="ch-catchup" data-bd="qps"><span class="ch-cg" data-icon="lineage"></span><span class="ch-ct">Catch-up ×${CATCHUP_QPS_MULT} Qi · +${Math.round(CATCHUP_BT_BONUS * 100)}% BT</span><span class="ch-go" data-icon="why"></span></button>` : ''}
       <div class="ch-grid">
         <section>
           <div class="ch-sec-title"><span>Cultivation</span></div>
           <div class="ch-tiles">
-            ${tile('qps', 'Qi / second', '氣', fmt(d.qiPerSecondBoosted), `${(d.breakdown?.qps || []).length} sources${d.meditBonus > 1 ? ' · meditating' : ''}`, 'jade')}
-            ${tile('cap', 'Qi capacity', '海', fmt(d.qiCap), toFill > 0 && d.qiPerSecondBoosted > 0 ? `Ready in ${fmtTime(Math.ceil(toFill / d.qiPerSecondBoosted)).replace(/ /g, '\u00a0')}` : 'Ready to break through')}
+            ${tile('qps', 'Qi / second', 'qi', fmt(d.qiPerSecondBoosted), `${(d.breakdown?.qps || []).length} sources${d.meditBonus > 1 ? ' · meditating' : ''}`, 'jade')}
+            ${tile('cap', 'Qi capacity', 'dantian', fmt(d.qiCap), toFill > 0 && d.qiPerSecondBoosted > 0 ? `Ready in ${fmtTime(Math.ceil(toFill / d.qiPerSecondBoosted)).replace(/ /g, '\u00a0')}` : 'Ready to break through')}
             ${btTile}
           </div>
         </section>
         <section>
           <div class="ch-sec-title"><span>Foundation</span></div>
           <div class="ch-tiles">
-            ${tile('integrity', 'Integrity', '基', Math.round(integ), integ >= 100 ? 'Settled' : 'Mending', tone(integ), integ)}
-            ${tile('health', 'Health', '血', Math.round(health), health >= 100 ? 'Whole' : 'Recovering', tone(health), health)}
-            ${tile('karma', 'Karma', '緣', Math.round(s.karma), `+${(s.karma / 10).toFixed(1)}% breakthrough`)}
-            ${bloodlineVisible(s) ? tile('bloodline', 'Bloodline', '脈', Math.round(s.bloodlineQuality || 0), `+${((s.bloodlineQuality || 0) * ASCENSION_BQ_COEF * 100).toFixed(1)}% Ascension`)
-              : `<div class="ch-tile" title="Bloodline Quality is revealed at Spirit Severing, when it starts to matter"><span class="t-k"><span>Bloodline</span><i>脈</i></span><span class="t-v ch-sealed">封</span><span class="t-s">Sealed until Spirit Severing</span></div>`}
+            ${tile('integrity', 'Integrity', 'integrity', Math.round(integ), integ >= 100 ? 'Settled' : 'Mending', tone(integ), integ)}
+            ${tile('health', 'Health', 'health', Math.round(health), health >= 100 ? 'Whole' : 'Recovering', tone(health), health)}
+            ${tile('karma', 'Karma', 'lotus', Math.round(s.karma), `+${(s.karma / 10).toFixed(1)}% breakthrough`)}
+            ${bloodlineVisible(s) ? tile('bloodline', 'Bloodline', 'vein', Math.round(s.bloodlineQuality || 0), `+${((s.bloodlineQuality || 0) * ASCENSION_BQ_COEF * 100).toFixed(1)}% Ascension`)
+              : `<div class="ch-tile" title="Bloodline Quality is revealed at Spirit Severing, when it starts to matter"><span class="t-k"><span>Bloodline</span><i data-icon="vein"></i></span><span class="t-v ch-sealed" data-icon="lock"></span><span class="t-s">Sealed until Spirit Severing</span></div>`}
           </div>
         </section>
         <section>
@@ -707,7 +707,7 @@
   function renderBanterLog(s) {
     const log = s.banter?.log || []
     if (!log.length) return ''
-    return `<div class="banter-log-head">Banter 碎碎念</div>
+    return `<div class="banter-log-head">Banter</div>
       ${log.map(l => `<div class="banter-log-line"><span class="banter-log-ago">${fmtAgo(l.ts)}</span> ${escHtml(banterText(l.text, s))}</div>`).join('')}`
   }
 
@@ -1863,7 +1863,7 @@
       : last.you === last.them ? `You both ${FIGHT_TACTICS[last.you].name.toLowerCase()}; no read wins it, so strength decides. ${last.won ? 'You take the exchange.' : `${opp.given} takes the exchange.`}`
       : `You ${FIGHT_TACTICS[last.you].name.toLowerCase()}; ${opp.given} ${VERB[last.them]}. ${last.won ? 'You take the exchange.' : `${opp.given} takes the exchange.`}`
     const clash = last && !last.yieldRefused
-      ? `<span class="fc-clash"><b class="${last.won ? 'win' : ''}">${FIGHT_TACTICS[last.you].glyph}<small>you</small></b><i>vs</i><b class="${last.won ? '' : 'win'}">${FIGHT_TACTICS[last.them].glyph}<small>them</small></b></span>` : ''
+      ? `<span class="fc-clash"><b class="${last.won ? 'win' : ''}">${Icon.g(FIGHT_TACTICS[last.you].glyph)}<small>you</small></b><i>vs</i><b class="${last.won ? '' : 'win'}">${Icon.g(FIGHT_TACTICS[last.them].glyph)}<small>them</small></b></span>` : ''
     const pct = v => `${Math.round(v * 100)}%`
     document.getElementById('family-desc').innerHTML = `
       <div class="fc-opp"><b>${escHtml(Persons.fullName(opp))}</b><br>${escHtml(stageShortName(opp.stageIndex))} <span class="fc-chip${info.lethal ? ' lethal' : ''}">${info.lethal ? 'to the death' : 'until one yields'}</span></div>
@@ -1874,8 +1874,8 @@
       <div class="fc-first">first to ${info.to} exchanges</div>
       <div class="fc-cap">Your odds this exchange</div>`
     choicesEl.innerHTML = `<div class="fc-tacs">${Object.entries(FIGHT_TACTICS).map(([id, t]) =>
-      `<button class="fc-tac${last && !last.yieldRefused && last.you === id ? ' picked' : ''}" data-tactic="${id}"><span class="fc-g">${t.glyph}</span><span class="fc-t"><span class="fc-n">${t.name}${last && !last.yieldRefused && last.you === id ? ' <em class="fc-lastpick">last</em>' : ''}</span><span class="family-sub">beats ${FIGHT_TACTICS[t.beats].name}</span></span><span class="fc-pct">${pct(info.tactics[id])}<small>win</small></span></button>`).join('')}</div>` +
-      `<button class="fc-tac fc-yield" data-tactic="yield"><span class="fc-g">降</span><span class="fc-t"><span class="fc-n">Yield</span><span class="family-sub">${info.lethal ? `they accept about ${pct(info.yieldAccept)} of the time; ` : ''}${FIGHT_YIELD[info.kind]}</span></span></button>`
+      `<button class="fc-tac${last && !last.yieldRefused && last.you === id ? ' picked' : ''}" data-tactic="${id}"><span class="fc-g">${Icon.g(t.glyph)}</span><span class="fc-t"><span class="fc-n">${t.name}${last && !last.yieldRefused && last.you === id ? ' <em class="fc-lastpick">last</em>' : ''}</span><span class="family-sub">beats ${FIGHT_TACTICS[t.beats].name}</span></span><span class="fc-pct">${pct(info.tactics[id])}<small>win</small></span></button>`).join('')}</div>` +
+      `<button class="fc-tac fc-yield" data-tactic="yield"><span class="fc-g" data-icon="yield"></span><span class="fc-t"><span class="fc-n">Yield</span><span class="family-sub">${info.lethal ? `they accept about ${pct(info.yieldAccept)} of the time; ` : ''}${FIGHT_YIELD[info.kind]}</span></span></button>`
     choicesEl.querySelectorAll('[data-tactic]').forEach(btn => btn.addEventListener('click', () => {
       const r = gameState.fightExchange(btn.dataset.tactic)
       if (!r.ok) return
@@ -1898,7 +1898,7 @@
     if (f.spouse && f.duel) {
       const pct = Math.round(gameState.duelChance() * 100)
       box.classList.add('crisis')
-      document.getElementById('family-title').textContent = 'A Duel to the Death 生死斗'
+      document.getElementById('family-title').textContent = 'A Duel to the Death'
       document.getElementById('family-desc').textContent = `${Persons.fullName(f.spouse)} waits in the courtyard with a drawn blade. One of you will not walk away.`
       choicesEl.innerHTML = `<button data-duel="fight">Fight<span class="family-sub">about ${pct}% to survive — you choose every exchange; if you lose, this life ends</span></button>
         <button data-duel="flee">Flee<span class="family-sub">${escHtml(f.spouse.given)} leaves you for good</span></button>`
@@ -2013,8 +2013,8 @@
     const box = document.getElementById('tournament-box')
     const kid = id => f.children.find(c => c.id === id)
     document.getElementById('tournament-log').innerHTML = _tLog.map(r => {
-      const g = r.died ? '死' : r.spared ? '恕' : r.yielded ? '降' : '敗'
-      return `<div class="t-log ${r.died ? 'died' : r.spared ? 'spared' : ''}"><b>${g}</b><span>${escHtml(r.text)}</span></div>` }).join('')
+      const g = r.died ? 'skull' : r.spared ? 'lotus' : r.yielded ? 'yield' : 'broken'
+      return `<div class="t-log ${r.died ? 'died' : r.spared ? 'spared' : ''}"><b>${Icon(g)}</b><span>${escHtml(r.text)}</span></div>` }).join('')
     if (!info) {   // finished (or called off)
       box.classList.remove('lethal')
       const heir = f.heirId ? kid(f.heirId) : null
@@ -2030,7 +2030,7 @@
     const pairedIds = new Set(_tPairs.flat())
     document.getElementById('tournament-pool').innerHTML = info.pool.map(id => { const c = kid(id)
       const pn = _tPairs.findIndex(p => p.includes(id))
-      return `<button data-fighter="${escHtml(id)}" class="${_tPick === id ? 'picked' : ''}${pairedIds.has(id) ? ' paired' : ''}">${pn >= 0 ? `<span class="t-no">${pn + 1}</span>` : _tPairs.length >= info.fights ? '<span class="t-rest">休</span>' : ''}${escHtml(Persons.fullName(c))}<span class="fam-sub">${childSummary(s, c)}</span></button>` }).join('')
+      return `<button data-fighter="${escHtml(id)}" class="${_tPick === id ? 'picked' : ''}${pairedIds.has(id) ? ' paired' : ''}">${pn >= 0 ? `<span class="t-no">${pn + 1}</span>` : _tPairs.length >= info.fights ? '<span class="t-rest" data-icon="idle"></span>' : ''}${escHtml(Persons.fullName(c))}<span class="fam-sub">${childSummary(s, c)}</span></button>` }).join('')
     // 1.8b-3b: each pairing is a small versus tile — who, how strong, the odds, and (lethal rounds) death or mercy
     document.getElementById('tournament-pairs').innerHTML = _tPairs.map(([a, b], i) => {
       const A = kid(a), B = kid(b), pa = gameState._powerChance(A, B), spare = _tSpare.has(i)
@@ -2041,8 +2041,8 @@
           <span class="t-f r"><b>${escHtml(B.given)}</b><small>${escHtml(stageShortName(B.stageIndex))}</small></span></div>
         <div class="t-odds"><span class="l">${Math.round(pa * 100)}%</span><span class="t-bar"><i data-w="${Math.round(pa * 100)}"></i><em></em></span><span class="r">${Math.round((1 - pa) * 100)}%</span></div>
         ${info.lethal ? `<div class="t-switch" role="group">
-            <button class="${spare ? '' : 'on death'}" data-spare="${i}" data-v="0">死 To the death</button>
-            <button class="${spare ? 'on mercy' : ''}" data-spare="${i}" data-v="1">恕 Spare the loser</button></div>
+            <button class="${spare ? '' : 'on death'}" data-spare="${i}" data-v="0">${Icon('skull')} To the death</button>
+            <button class="${spare ? 'on mercy' : ''}" data-spare="${i}" data-v="1">${Icon('lotus')} Spare the loser</button></div>
           <div class="t-cons">${spare ? 'The loser lives, but leaves the house in disgrace.' : 'The loser dies. Every survivor carries it.'}</div>` : ''}
       </div>` }).join('')
     document.querySelectorAll('#tournament-pairs [data-w]').forEach(b => { b.style.width = b.dataset.w + '%' })
@@ -2131,7 +2131,7 @@
     const pct = x => Math.round(x * 100) + '%'
     const card = (id, glyph, name, cn, sum, lines, on, extra = '') => `
       <button class="mode-card${on ? ' active' : ''}" data-mode="${id}">
-        <span class="mode-card-head"><span class="mode-glyph">${glyph}</span><span class="mode-name">${name} <span class="mode-cn">${cn}</span></span>${on ? '<span class="mode-now">current</span>' : ''}</span>
+        <span class="mode-card-head"><span class="mode-glyph">${Icon.g(glyph)}</span><span class="mode-name">${name}</span>${on ? '<span class="mode-now">current</span>' : ''}</span>
         <span class="mode-sum">${sum} Tap to switch.</span>
         ${lines.map(l => `<span class="mode-line">${l}</span>`).join('')}${extra}
       </button>`
@@ -2144,16 +2144,16 @@
     body.innerHTML = `
       <div class="mode-intro">How you walk the path right now. Switch whenever you like; nothing is lost.</div>
       <div class="mode-cards">
-        ${card('idle', '閒', 'Idle', '閒修', 'Automation works while you are away.', ['For when you step away.', 'Unlocked automation runs for you.', 'Nothing is ever punished for your absence.'], !active, runsLine)}
-        ${card('active', '動', 'Active', '勤修', 'Faster journeys and focus bonuses while you play.', [
+        ${card('idle', 'idle', 'Idle', '', 'Automation works while you are away.', ['For when you step away.', 'Unlocked automation runs for you.', 'Nothing is ever punished for your absence.'], !active, runsLine)}
+        ${card('active', 'active', 'Active', '', 'Faster journeys and focus bonuses while you play.', [
           `Expeditions ${pct(1 - ACTIVE_EXPEDITION_TIME_MULT)} faster, missions ${pct(1 - ACTIVE_SECT_MISSION_TIME_MULT)} faster.`,
           `Breakthrough focus: press within ${ACTIVE_BT_FOCUS_WINDOW_SECONDS}s of it lighting up for +${pct(ACTIVE_BT_FOCUS_BONUS)}.`,
           `A failed breakthrough keeps ${pct(ACTIVE_BT_QI_LOSS_BONUS)} more Qi.`,
-          `Push Harder near an expedition's end (石 ${ACTIVE_PUSH_HARDER_COST}) for an extra roll.`,
+          `Push Harder near an expedition's end (${Icon('stone')} ${ACTIVE_PUSH_HARDER_COST}) for an extra roll.`,
           `Master's Touch: ${pct(ACTIVE_CRAFT_TOUCH_CHANCE)} double crafts while you watch the furnace.`,
           'Automation rests while you play.'], active)}
       </div>
-      <div class="section-title">Automation 自動</div>
+      <div class="section-title">Automation</div>
       <div id="mode-auto"></div>`
     body.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
       if (b.dataset.mode !== gameState.get().playMode) gameState.setPlayMode(b.dataset.mode)

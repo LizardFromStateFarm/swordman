@@ -48,8 +48,8 @@ class FamilyView {
   _act(fa, glyph, name, p, effect, extra = '', cls = '') {
     const why = !p.ok ? this._lockText(p) : ''
     return `<button class="fa-btn${cls ? ' ' + cls : ''}${p.ok ? '' : ' locked'}" data-fa="${fa}"${extra} ${p.ok ? '' : 'disabled'}>
-      <span class="fa-g">${glyph}</span><span class="fa-t"><span class="fa-n">${name}</span>
-      <span class="fa-e">${why ? `<span class="fa-lock">${this.h.esc(why)}</span>` : effect}</span></span></button>`
+      <span class="fa-g">${Icon.g(glyph)}</span><span class="fa-t"><span class="fa-n">${name}</span>
+      <span class="fa-e">${why ? `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i>${this.h.esc(why)}</span>` : effect}</span></span></button>`
   }
 
   _lockText(p) {
@@ -59,7 +59,7 @@ class FamilyView {
       // Say what it costs, not just "no" (user 2026-09-27)
       case 'stones': {
         const cost = p.cost ?? p.stones
-        return cost ? `Costs 石 ${this._num(cost)} · you have ${this._num(Math.floor(this.gs.get().spiritStones))}` : 'Not enough Spirit Stones'
+        return cost ? `Costs ${this._num(cost)} stones · you have ${this._num(Math.floor(this.gs.get().spiritStones))}` : 'Not enough Spirit Stones'
       }
       case 'young':     return `From age ${p.minAge}`
       case 'expecting': return 'A child is already on the way'
@@ -77,7 +77,7 @@ class FamilyView {
   _eff(bits) { return bits.filter(Boolean).map(b => `<span class="${b[1] || ''}">${b[0]}</span>`).join(' · ') }
   _num(n) { return this.h.fmt(n).replace(/\.0+(?=[A-Za-z]*$)/, '') }   // 210.00M → 210M (100M stays 100M)
   _qiBit(q) { return q ? [`−${this._num(q)} Qi`, 'cost'] : null }
-  _stoneBit(n) { return n ? [`石 ${this._num(n)}`, 'cost'] : null }
+  _stoneBit(n) { return n ? [`${Icon('stone')} ${this._num(n)}`, 'cost'] : null }
   _heartBit(n) { return n ? [`affection ${this._signed(n)}`, n > 0 ? 'up' : 'down'] : null }
 
   // A partner's wish for a child ('ask' plan) — the one urgent thing this view can hold.
@@ -89,7 +89,7 @@ class FamilyView {
     const lover = f.spouse?.id !== p.id
     const decline = f.spouse?.id === p.id ? (CHILD_WISH_DECLINE_AFF[p.personality] ?? CHILD_WISH_DECLINE_AFF.default) : 0
     return `<section class="fam-wish">
-      <div class="fw-g">願</div>
+      <div class="fw-g" data-icon="lantern"></div>
       <div class="fw-body">
         <div class="fw-title">${this.h.esc(p.given)} wishes for a child</div>
         <div class="fw-text">${lover ? `Your lover asks it quietly. A child would be yours, and ${f.spouse ? 'harder to hide from your spouse' : 'your clan’s'}.`
@@ -128,10 +128,10 @@ class FamilyView {
     if (f.childWish?.partnerId === sp.id && !c.ok) Object.assign(c, { reason: 'wish' })
     return `<section class="fam-card spouse">
       <div class="fc-head">
-        <span class="fc-glyph">侶</span>
+        <span class="fc-glyph" data-icon="couple"></span>
         <div class="fc-id"><div class="fc-name">${this._name(sp)}</div>
           <div class="fc-sub">${h.stageLabel(sp.stageIndex)} · age ${this._age(s, sp)} · wed in year ${f.marriedYear}</div>
-          ${pers ? `<div class="fc-tags"><span class="fam-tag" title="${h.esc(pers.blurb)}"><b>性</b>${h.esc(pers.name)}</span><span class="fam-tag"><b>根</b>${h.esc(h.latinOnly(sp.root?.name || ''))}</span></div>` : ''}
+          ${pers ? `<div class="fc-tags"><span class="fam-tag" title="${h.esc(pers.blurb)}"><b data-icon="mask"></b>${h.esc(pers.name)}</span><span class="fam-tag"><b data-icon="root"></b>${h.esc(h.latinOnly(sp.root?.name || ''))}</span></div>` : ''}
         </div>
       </div>
       <button class="fc-aff" data-bd="affection">
@@ -142,11 +142,11 @@ class FamilyView {
       ${flags.length ? `<div class="fc-flags">${flags.join('')}</div>` : ''}
       ${pers ? `<div class="fc-hint">${h.esc(pers.blurb)} Every temper is pleased by different things.</div>` : ''}
       <div class="fa-grid">
-        ${this._act('sp-time', '伴', 'Spend time', t, this._eff([this._heartBit(t.aff), this._qiBit(t.qi)]))}
-        ${this._act('sp-gift', '禮', 'Bring a gift', g, this._eff([this._heartBit(g.aff), this._stoneBit(g.stones)]))}
-        ${this._act('sp-dual', '合', 'Dual cultivation', d, d.qiGainFrac != null ? this._eff([[`+${Math.round(d.qiGainFrac * 100)}% Qi`, 'up'], [`${Math.round(d.risk * 100)}% deviation`, d.risk > 0.1 ? 'down' : 'dim']]) : '')}
-        ${expecting.length ? `<div class="fa-btn info"><span class="fa-g">孕</span><span class="fa-t"><span class="fa-n">Expecting</span><span class="fa-e">due in year ${Math.ceil(expecting[0].dueYear)}</span></span></div>`
-          : this._act('sp-child', '嗣', 'Try for a child', c, cEff)}
+        ${this._act('sp-time', 'heart', 'Spend time', t, this._eff([this._heartBit(t.aff), this._qiBit(t.qi)]))}
+        ${this._act('sp-gift', 'gift', 'Bring a gift', g, this._eff([this._heartBit(g.aff), this._stoneBit(g.stones)]))}
+        ${this._act('sp-dual', 'taiji', 'Dual cultivation', d, d.qiGainFrac != null ? this._eff([[`+${Math.round(d.qiGainFrac * 100)}% Qi`, 'up'], [`${Math.round(d.risk * 100)}% deviation`, d.risk > 0.1 ? 'down' : 'dim']]) : '')}
+        ${expecting.length ? `<div class="fa-btn info"><span class="fa-g" data-icon="child"></span><span class="fa-t"><span class="fa-n">Expecting</span><span class="fa-e">due in year ${Math.ceil(expecting[0].dueYear)}</span></span></div>`
+          : this._act('sp-child', 'heir', 'Try for a child', c, cEff)}
       </div>
       <div class="fc-foot"><button class="fa-quiet danger" data-fa="sp-separate">Separate from ${h.esc(sp.given)}</button></div>
     </section>`
@@ -156,14 +156,14 @@ class FamilyView {
     const f = s.family, c = f.court, h = this.h, gs = this.gs
     if (!c.target) {
       return `<section class="fam-card court">
-        <div class="fc-head"><span class="fc-glyph">媒</span><div class="fc-id"><div class="fc-name">Whom will you court?</div>
+        <div class="fc-head"><span class="fc-glyph" data-icon="bond"></span><div class="fc-id"><div class="fc-name">Whom will you court?</div>
           <div class="fc-sub">The go-between waits for your answer. Read them well: each temper wants something different.</div></div></div>
         <div class="cand-grid">${c.candidates.map(p => {
           const pers = this._persona(p.personality)
           return `<div class="cand">
             <div class="cand-name">${this._name(p)}</div>
             <div class="cand-sub">${h.stageLabel(p.stageIndex)} · age ${this._age(s, p)}</div>
-            <div class="cand-tags"><span class="fam-tag" title="${h.esc(pers?.blurb || '')}"><b>性</b>${h.esc(pers?.name || '')}</span><span class="fam-tag"><b>根</b>${h.esc(h.latinOnly(p.root?.name || ''))}</span></div>
+            <div class="cand-tags"><span class="fam-tag" title="${h.esc(pers?.blurb || '')}"><b data-icon="mask"></b>${h.esc(pers?.name || '')}</span><span class="fam-tag"><b data-icon="root"></b>${h.esc(h.latinOnly(p.root?.name || ''))}</span></div>
             ${pers ? `<div class="cand-blurb">${h.esc(pers.blurb)}</div>` : ''}
             <button class="fa-pill gold" data-fa="court-pick" data-id="${h.esc(p.id)}">Court</button></div>`
         }).join('')}</div>
@@ -174,9 +174,9 @@ class FamilyView {
     const beat = c.beat ? gs.courtBeatDef(c.beat) : null
     const pips = Array.from({ length: COURT_BEATS_TO_PROPOSE }, (_, i) => `<i class="${i < c.meetings ? 'on' : ''}"></i>`).join('')
     return `<section class="fam-card court">
-      <div class="fc-head"><span class="fc-glyph">緣</span><div class="fc-id"><div class="fc-name">Courting ${this._name(t)}</div>
+      <div class="fc-head"><span class="fc-glyph" data-icon="bond"></span><div class="fc-id"><div class="fc-name">Courting ${this._name(t)}</div>
         <div class="fc-sub">${h.stageLabel(t.stageIndex)} · age ${this._age(s, t)}</div>
-        ${pers ? `<div class="fc-tags"><span class="fam-tag" title="${h.esc(pers.blurb)}"><b>性</b>${h.esc(pers.name)}</span></div>` : ''}</div></div>
+        ${pers ? `<div class="fc-tags"><span class="fam-tag" title="${h.esc(pers.blurb)}"><b data-icon="mask"></b>${h.esc(pers.name)}</span></div>` : ''}</div></div>
       <div class="fc-aff static${beat ? ' compact' : ''}">
         <span class="fa-row"><span class="fa-k">Interest</span><span class="fa-v">${Math.round(c.interest)}</span><span class="court-pips" title="Meetings before you may propose">${pips}</span></span>
         <span class="fam-bar"><i class="tone-rose" data-w="${Math.round(c.interest)}"></i></span>
@@ -189,16 +189,16 @@ class FamilyView {
           <div class="cb-text">${h.esc(gs.courtText(beat.text))}</div>
           <div class="cb-choices">${beat.choices.map((ch, i) => {
             const cost = gs.familyCost(ch), way = COURT_WAYS[ch.way]
-            const sub = [way ? h.esc(way.hint) : '', cost ? `<span class="cost">石 ${this._num(cost)}</span>` : ''].filter(Boolean).join(' · ')
+            const sub = [way ? h.esc(way.hint) : '', cost ? `<span class="cost">${Icon('stone')} ${this._num(cost)}</span>` : ''].filter(Boolean).join(' · ')
             return `<button class="fa-btn cb-choice" data-fa="court-answer" data-i="${i}" ${s.spiritStones < cost ? 'disabled' : ''}>
-              <span class="fa-g">${way ? way.glyph : '緣'}</span><span class="fa-t"><span class="fa-n">${h.esc(gs.courtText(ch.label))}</span><span class="fa-e">${sub}</span></span></button>`
+              <span class="fa-g">${Icon.g(way ? way.glyph : 'bond')}</span><span class="fa-t"><span class="fa-n">${h.esc(gs.courtText(ch.label))}</span><span class="fa-e">${sub}</span></span></button>`
           }).join('')}</div></div>`
       : `<div class="fa-grid two">
-          ${this._act('court-meet', '約', 'Arrange a meeting', cm, this._eff([['see what they make of you', 'dim']]))}
+          ${this._act('court-meet', 'tea', 'Arrange a meeting', cm, this._eff([['see what they make of you', 'dim']]))}
           <div class="fa-split">
-            ${cp.ok ? `<button class="fa-btn propose" data-fa="court-propose"><span class="fa-g">聘</span><span class="fa-t"><span class="fa-n">Propose</span><span class="fa-e"><span class="up">ask for their hand</span></span></span></button>`
-              : this._act('court-propose', '聘', 'Propose', cp, '')}
-            <button class="fa-why" data-bd="propose" title="Why these odds?"><b>${(pc.total * 100).toFixed(1)}%</b><span>詳</span></button>
+            ${cp.ok ? `<button class="fa-btn propose" data-fa="court-propose"><span class="fa-g" data-icon="rings"></span><span class="fa-t"><span class="fa-n">Propose</span><span class="fa-e"><span class="up">ask for their hand</span></span></span></button>`
+              : this._act('court-propose', 'rings', 'Propose', cp, '')}
+            <button class="fa-why" data-bd="propose" title="Why these odds?"><b>${(pc.total * 100).toFixed(1)}%</b><span data-icon="why"></span></button>
           </div>
         </div>`}
       <div class="fc-foot"><button class="fa-quiet danger" data-fa="court-withdraw">Stop calling on ${h.esc(t.given)}</button></div>
@@ -209,12 +209,12 @@ class FamilyView {
     const f = s.family, h = this.h, sk = this.gs.canSeekMatch()
     const spurned = (f.spurned || []).length
     const seekBtn = sk.ok
-      ? `<button class="fa-btn wide" data-fa="court-seek"><span class="fa-g">媒</span><span class="fa-t"><span class="fa-n">Seek a match</span><span class="fa-e">${this._eff([['meet three candidates', 'dim'], this._stoneBit(sk.cost)])}</span></span></button>`
-      : this._act('court-seek', '媒', 'Seek a match', sk, '', '', 'wide')
+      ? `<button class="fa-btn wide" data-fa="court-seek"><span class="fa-g" data-icon="bond"></span><span class="fa-t"><span class="fa-n">Seek a match</span><span class="fa-e">${this._eff([['meet three candidates', 'dim'], this._stoneBit(sk.cost)])}</span></span></button>`
+      : this._act('court-seek', 'bond', 'Seek a match', sk, '', '', 'wide')
     return `<section class="fam-card alone">
-      <div class="fc-head"><span class="fc-glyph dim">孤</span><div class="fc-id"><div class="fc-name">You walk the path alone</div>
+      <div class="fc-head"><span class="fc-glyph dim" data-icon="person"></span><div class="fc-id"><div class="fc-name">You walk the path alone</div>
         <div class="fc-sub">Pay a go-between to find someone worth courting, wait for a matchmaker's offer, or leave it to the road (Roam → Explore).</div></div></div>
-      ${f.proposal ? `<button class="fa-btn wide urgent" id="_matchmaker"><span class="fa-g">媒</span><span class="fa-t"><span class="fa-n">A matchmaker awaits</span><span class="fa-e">${f.proposal.suitors.length} offer${f.proposal.suitors.length === 1 ? '' : 's'} of marriage</span></span></button>` : ''}
+      ${f.proposal ? `<button class="fa-btn wide urgent" id="_matchmaker"><span class="fa-g" data-icon="bond"></span><span class="fa-t"><span class="fa-n">A matchmaker awaits</span><span class="fa-e">${f.proposal.suitors.length} offer${f.proposal.suitors.length === 1 ? '' : 's'} of marriage</span></span></button>` : ''}
       ${seekBtn}
       ${spurned ? `<div class="fc-hint">${spurned === 1 ? 'One suitor has' : `${spurned} suitors have`} refused you. The road is long; you may meet again.</div>` : ''}
     </section>`
@@ -275,19 +275,19 @@ class FamilyView {
       const t = gs.childActionPreview(c.id, 'time'), te = gs.childActionPreview(c.id, 'teach'), g = gs.childActionPreview(c.id, 'gift')
       const mor = n => n ? [`morality ${this._signed(n)}`, n > 0 ? 'up' : 'down'] : null
       acts = `<div class="kid-acts">
-        ${this._act('ch-time', '伴', 'Spend time', t, this._eff([[`bond ${this._signed(t.bond)}`, t.bond >= 0 ? 'up' : 'down'], this._qiBit(t.qi)]), ` data-id="${h.esc(c.id)}"`)}
-        ${this._act('ch-teach', '授', 'Teach your art', te, this._eff([['progress', 'up'], te.bond ? [`bond ${this._signed(te.bond)}`, te.bond >= 0 ? 'up' : 'down'] : null, mor(te.morality), this._qiBit(te.qi)]), ` data-id="${h.esc(c.id)}"`)}
-        ${this._act('ch-gift', '資', 'Give resources', g, this._eff([['progress', 'up'], [`bond ${this._signed(g.bond)}`, 'up'], mor(g.morality), this._stoneBit(g.stones)]), ` data-id="${h.esc(c.id)}"`)}
+        ${this._act('ch-time', 'heart', 'Spend time', t, this._eff([[`bond ${this._signed(t.bond)}`, t.bond >= 0 ? 'up' : 'down'], this._qiBit(t.qi)]), ` data-id="${h.esc(c.id)}"`)}
+        ${this._act('ch-teach', 'scroll', 'Teach your art', te, this._eff([['progress', 'up'], te.bond ? [`bond ${this._signed(te.bond)}`, te.bond >= 0 ? 'up' : 'down'] : null, mor(te.morality), this._qiBit(te.qi)]), ` data-id="${h.esc(c.id)}"`)}
+        ${this._act('ch-gift', 'stone', 'Give resources', g, this._eff([['progress', 'up'], [`bond ${this._signed(g.bond)}`, 'up'], mor(g.morality), this._stoneBit(g.stones)]), ` data-id="${h.esc(c.id)}"`)}
       </div>
       ${pers ? `<div class="kid-note">${h.esc(pers.blurb)}</div>` : ''}
       <div class="kid-meta">${parent ? `by ${h.esc(parent.given)} · ` : ''}${this._plural(c.raised?.time || 0, 'season')} together · ${this._plural(c.raised?.teach || 0, 'lesson')}</div>`
     }
     return `<div class="kid${open ? ' open' : ''}${heir ? ' heir' : ''}">
       <button class="kid-head" data-fa="ch-open" data-id="${h.esc(c.id)}">
-        <span class="kid-name">${heir ? '<b class="kid-star" title="Named heir">嗣</b>' : ''}${this._name(c)}</span>
+        <span class="kid-name">${heir ? '<b class="kid-star" title="Named heir" data-icon="heir"></b>' : ''}${this._name(c)}</span>
         <span class="kid-age">${age}</span>
         <span class="kid-sub">${stage}</span>
-        <span class="kid-foot"><span class="kid-tags">${pers ? `<span class="fam-tag"><b>性</b>${h.esc(pers.name)}</span>` : ''}<span class="fam-tag tone-${ml.tone}">${ml.word}</span>${c.trauma ? '<span class="fam-tag tone-red">Scarred</span>' : ''}</span>
+        <span class="kid-foot"><span class="kid-tags">${pers ? `<span class="fam-tag"><b data-icon="mask"></b>${h.esc(pers.name)}</span>` : ''}<span class="fam-tag tone-${ml.tone}">${ml.word}</span>${c.trauma ? '<span class="fam-tag tone-red">Scarred</span>' : ''}</span>
         <span class="kid-bond" title="Bond ${Math.round(c.bond ?? 50)} / 100"><span class="kid-bw tone-${bl.tone}">${bl.word}</span><span class="fam-bar thin"><i class="tone-${bl.tone}" data-w="${Math.round(c.bond ?? 50)}"></i></span><span class="kid-bn">${Math.round(c.bond ?? 50)}</span></span></span>
         <span class="kid-chev">${open ? '▴' : '▾'}</span>
       </button>${acts}</div>`
@@ -299,16 +299,16 @@ class FamilyView {
     if (!l) return ''
     const r = this.gs.affairRisk(l.person.id), p = l.person
     return `<section class="fam-wish ult">
-      <div class="fw-g">迫</div>
+      <div class="fw-g" data-icon="alert"></div>
       <div class="fw-body">
         <div class="fw-title">${h.esc(p.given)} will not go on like this</div>
         <div class="fw-text">${f.spouse ? `"Leave ${h.esc(f.spouse.given)} for me, or let me go." It waits on you.` : '"Marry me, or let me go." It waits on you.'}</div>
         <div class="fa-grid ult-acts">
-          ${this._act('ult-marry', f.spouse ? '離' : '聘', f.spouse ? `Leave ${h.esc(f.spouse.given)} for them` : 'Marry them', { ok: true },
+          ${this._act('ult-marry', f.spouse ? 'split' : 'rings', f.spouse ? `Leave ${h.esc(f.spouse.given)} for them` : 'Marry them', { ok: true },
             this._eff(f.spouse ? [[`divorce ${h.esc(f.spouse.given)}`, 'down'], [`wed ${h.esc(p.given)}`, 'up']] : [[`wed ${h.esc(p.given)}`, 'up']]), ` data-id="${h.esc(p.id)}"`, f.spouse ? 'grave' : '')}
-          ${this._act('ult-let_go', '放', 'Let them go', { ok: true },
+          ${this._act('ult-let_go', 'unbond', 'Let them go', { ok: true },
             this._eff([[`${Math.round(r.scorn * 100)}% they won't go quietly`, r.scorn > 0.25 ? 'down' : 'dim'], [f.spouse && !r.tolerant ? `they may tell ${h.esc(f.spouse.given)}` : 'they may become your enemy', 'dim']]), ` data-id="${h.esc(p.id)}"`)}
-          ${this._act('ult-one_more', '延', 'One more season', { ok: true },
+          ${this._act('ult-one_more', 'age', 'One more season', { ok: true },
             this._eff([[`${AFFAIR_EXTEND_YEARS[0]}–${AFFAIR_EXTEND_YEARS[1]} more years`, 'dim'], r.exposed ? [`discovery ×${AFFAIR_HOT_DISCOVERY_MULT} meanwhile`, 'down'] : null]), ` data-id="${h.esc(p.id)}"`)}
         </div>
       </div></section>`
@@ -325,18 +325,18 @@ class FamilyView {
     const id = ` data-id="${h.esc(p.id)}"`
     const tiles = []
     if (f.spouse && !r.tolerant) {
-      tiles.push(this._act('lv-cover', '掩', 'Cover your tracks', r.covered ? { ok: false, reason: 'cooldown', readyYear: r.coverUntil } : s.spiritStones < cc ? { ok: false, reason: 'stones' } : { ok: true },
+      tiles.push(this._act('lv-cover', 'veil', 'Cover your tracks', r.covered ? { ok: false, reason: 'cooldown', readyYear: r.coverUntil } : s.spiritStones < cc ? { ok: false, reason: 'stones' } : { ok: true },
         this._eff([[`discovery ×${COVER_DISCOVERY_MULT} for ${COVER_YEARS} years`, 'up'], this._stoneBit(cc)]), id))
-      tiles.push(this._act('lv-confess', '認', 'Confess', f.duel || f.fight ? { ok: false, reason: 'duel' } : { ok: true },
+      tiles.push(this._act('lv-confess', 'speech', 'Confess', f.duel || f.fight ? { ok: false, reason: 'duel' } : { ok: true },
         this._eff([['they forgive more often', 'up'], [`affection ${CONFESS_AFFECTION}`, 'down']]), id, 'grave'))
     }
-    if (!f.spouse) tiles.push(this._act('lv-marry', '聘', 'Make it official', { ok: true }, this._eff([['marry them', 'up']]), id))
-    tiles.push(this._act('lv-end', '斷', 'End it', { ok: true },
+    if (!f.spouse) tiles.push(this._act('lv-marry', 'rings', 'Make it official', { ok: true }, this._eff([['marry them', 'up']]), id))
+    tiles.push(this._act('lv-end', 'unbond', 'End it', { ok: true },
       this._eff([[`${Math.round(r.scorn * 100)}% they won't go quietly`, r.scorn > 0.25 ? 'down' : 'dim']]), id))
     return `<section class="fam-card lover">
-      <div class="fc-head"><span class="fc-glyph dim">私</span><div class="fc-id"><div class="fc-name">${this._name(p)}</div>
+      <div class="fc-head"><span class="fc-glyph dim" data-icon="heart"></span><div class="fc-id"><div class="fc-name">${this._name(p)}</div>
         <div class="fc-sub">Your lover since year ${l.since} · ${h.stageLabel(p.stageIndex)}</div>
-        ${pers ? `<div class="fc-tags"><span class="fam-tag" title="${h.esc(pers.blurb)}"><b>性</b>${h.esc(pers.name)}</span></div>` : ''}</div></div>
+        ${pers ? `<div class="fc-tags"><span class="fam-tag" title="${h.esc(pers.blurb)}"><b data-icon="mask"></b>${h.esc(pers.name)}</span></div>` : ''}</div></div>
       <div class="lv-risk">${risk}</div>
       <div class="fa-grid">${tiles.join('')}</div>
     </section>`
@@ -357,14 +357,14 @@ class FamilyView {
     const heir = f.heirId ? f.children.find(c => c.id === f.heirId) : null
     const adults = gs.eligibleHeirs().length
     let pending = ''
-    if (h.pendingKey(s)) pending = '<button id="_family-matter" class="fa-btn wide urgent"><span class="fa-g">事</span><span class="fa-t"><span class="fa-n">A family matter awaits</span><span class="fa-e">It waits on your answer</span></span></button>'
+    if (h.pendingKey(s)) pending = '<button id="_family-matter" class="fa-btn wide urgent"><span class="fa-g" data-icon="alert"></span><span class="fa-t"><span class="fa-n">A family matter awaits</span><span class="fa-e">It waits on your answer</span></span></button>'
     if (!gs.isClanHead() || !(adults || heir || f.tournament)) return pending ? `<section class="fam-sec">${pending}</section>` : ''
     return `<section class="fam-sec">${pending}
       <div class="fam-sec-title"><span>Heir</span><span class="fam-count">${adults} eligible</span></div>
-      <div class="heir-line">${heir ? `<b class="kid-star">嗣</b>${this._name(heir)}${heir.trauma ? ' <span class="tone-red">· forged in blood</span>' : ''}` : '<span class="dim">None named. If your path ends, the clan chooses.</span>'}</div>
+      <div class="heir-line">${heir ? `<b class="kid-star" data-icon="heir"></b>${this._name(heir)}${heir.trauma ? ' <span class="tone-red">· forged in blood</span>' : ''}` : '<span class="dim">None named. If your path ends, the clan chooses.</span>'}</div>
       <div class="fa-grid">
-        <button id="_choose-heir" class="fa-btn" ${adults && !f.tournament ? '' : 'disabled'}><span class="fa-g">嗣</span><span class="fa-t"><span class="fa-n">Name an heir</span><span class="fa-e">from ${adults} adult ${adults === 1 ? 'child' : 'children'}</span></span></button>
-        <button id="_tournament" class="fa-btn" ${f.tournament || adults >= 2 ? '' : 'disabled'}><span class="fa-g">奪</span><span class="fa-t"><span class="fa-n">${f.tournament ? 'Continue the tournament' : 'Tournament of Heirs'}</span><span class="fa-e">${f.tournament ? 'it waits on your pairings' : '<span class="down">to the death, until four remain</span>'}</span></span></button>
+        <button id="_choose-heir" class="fa-btn" ${adults && !f.tournament ? '' : 'disabled'}><span class="fa-g" data-icon="heir"></span><span class="fa-t"><span class="fa-n">Name an heir</span><span class="fa-e">from ${adults} adult ${adults === 1 ? 'child' : 'children'}</span></span></button>
+        <button id="_tournament" class="fa-btn" ${f.tournament || adults >= 2 ? '' : 'disabled'}><span class="fa-g" data-icon="duel"></span><span class="fa-t"><span class="fa-n">${f.tournament ? 'Continue the tournament' : 'Tournament of Heirs'}</span><span class="fa-e">${f.tournament ? 'it waits on your pairings' : '<span class="down">to the death, until four remain</span>'}</span></span></button>
       </div></section>`
   }
 

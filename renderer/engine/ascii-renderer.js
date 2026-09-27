@@ -252,7 +252,8 @@ class ASCIIRenderer {
     return rates[this._name] || 2
   }
 
-  static _PARTICLE_CHARS = ['气','✦','✧','·','~','∿','∾','≋','☽','☆','◇','○','·']
+  static _PARTICLE_CHARS = ['气',   // cjk-ok: canvas qi particle (sprite art, not chrome)
+    '✦','✧','·','~','∿','∾','≋','☽','☆','◇','○','·']
 
   _spawnParticle() {
     const { W, H } = this._dims()

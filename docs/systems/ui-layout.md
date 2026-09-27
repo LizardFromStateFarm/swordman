@@ -49,11 +49,11 @@ button in `#tabs` holding 1+ views shown as sub-tabs:
 
 | Group | Views (sub-tabs) | Automation chip |
 |---|---|---|
-| 修 Path | techniques (Techniques) · stats (Character) | — |
+| 修 Path | stats (Character) · techniques (Techniques) — Character first (user 2026-09-27) | — |
 | 歷 Roam | explore (Explore: expedition, locations, road encounters) · beasts (Beasts: wild + tamed) | Auto-Explore |
 | 家 Kin | family (Family) · clan (Clan: clan rows, Hall, Pass the Mantle) | — |
 | 宗 Sect | sect (Overview) · sect-missions (Missions, joined) · sect-halls (Halls, founded) · sect-disciples (Disciples, founded) · sect-war (War, either) — only the views your standing offers are shown (1.8b-5) | Auto-Missions |
-| 囊 Pack | pack (Items) · craft (Craft) — user asked for Craft and Pack together | Auto-Craft (on Craft) |
+| 囊 Pack | craft (Craft) · pack (Items) — user asked for Craft and Pack together; Craft first (user 2026-09-27) | Auto-Craft (on Craft) |
 | 錄 Log | events (Events) · banter (Banter) | — |
 
 - `NavUI` builds every group button and every sub-tab button once; sub-tabs outside the open group are

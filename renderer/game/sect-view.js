@@ -61,8 +61,8 @@ class SectView {
   // ── pieces ──────────────────────────────────────────────────────────────────
   _tile(act, glyph, name, effect, lock, cls = '', extra = '') {
     return `<button class="fa-btn${cls ? ' ' + cls : ''}${lock ? ' locked' : ''}" data-sa="${act}"${extra} ${lock ? 'disabled' : ''}>
-      <span class="fa-g">${glyph}</span><span class="fa-t"><span class="fa-n">${name}</span>
-      <span class="fa-e">${lock ? `<span class="fa-lock">${this.h.esc(lock)}</span>` : effect}</span></span></button>`
+      <span class="fa-g">${Icon.g(glyph)}</span><span class="fa-t"><span class="fa-n">${name}</span>
+      <span class="fa-e">${lock ? `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i>${this.h.esc(lock)}</span>` : effect}</span></span></button>`
   }
   _sec(title, body, count = '', cls = '') {
     return `<section class="fam-sec${cls ? ' ' + cls : ''}"><div class="fam-sec-title"><span>${title}</span>${count !== '' ? `<span class="fam-count">${count}</span>` : ''}</div>${body}</section>`
@@ -95,13 +95,13 @@ class SectView {
       const ok = s.stageIndex >= d.minStage
       return `<div class="sv-sect${ok ? '' : ' locked'}">
         <div class="sv-sect-head"><span class="sv-sect-n" title="${h.esc(d.nameCN)}">${h.esc(d.name)}</span>
-          ${this._tile('join', ok ? '入' : '封', ok ? 'Join' : 'Sealed', '', ok ? '' : stageShortName(d.minStage), 'sv-join', ` data-id="${d.id}"`)}</div>
+          ${this._tile('join', ok ? 'gate' : 'lock', ok ? 'Join' : 'Sealed', '', ok ? '' : stageShortName(d.minStage), 'sv-join', ` data-id="${d.id}"`)}</div>
         <div class="sv-sect-d">${h.esc(d.desc)}</div>${this._effects(d.effects, null)}</div>`
     }).join('')
     const hidden = SECTS.filter(d => d.minStage > s.stageIndex + 3).length
     return `<div class="fam-view sect-view">
       <div class="fam-col">
-        <section class="fam-card alone"><div class="fc-head"><span class="fc-glyph dim">散</span><div class="fc-id">
+        <section class="fam-card alone"><div class="fc-head"><span class="fc-glyph dim" data-icon="person"></span><div class="fc-id">
           <div class="fc-name">A wandering cultivator</div>
           <div class="fc-sub">No sect claims you. A sect lends its blessing, sets you missions for contribution, and calls you to its wars. You may leave at any time, at a small cost in karma.</div></div></div></section>
         ${this._sec('Sects that would take you', cards + (hidden ? `<div class="fk-note">${hidden} more sect${hidden === 1 ? '' : 's'} will not look at you until you are stronger.</div>` : ''), SECTS.length - hidden)}
@@ -116,13 +116,13 @@ class SectView {
     const needs = [[`Spirit Stones`, F.stones, s.spiritStones], ...Object.entries(F.items).map(([id, q]) => [ITEMS[id]?.name || id, q, s.inventory[id] || 0])]
     const canPay = needs.every(([, q, have]) => have >= q)
     const lock = !stageOk ? stageShortName(F.minStage) : s.sect?.id ? 'Leave your sect first' : !canPay ? 'Gather the cost first' : ''
-    return `<section class="fam-card sect"><div class="fc-head"><span class="fc-glyph">創</span><div class="fc-id">
+    return `<section class="fam-card sect"><div class="fc-head"><span class="fc-glyph" data-icon="gate"></span><div class="fc-id">
         <div class="fc-name">Found your own sect</div>
         <div class="fc-sub">Raise halls, take disciples who feed you Qi and stones, and hold your mountain against rivals.</div></div></div>
       <div class="sv-needs">${needs.map(([n, q, have]) => `<div class="sv-need${have >= q ? ' met' : ''}"><span>${h.esc(n)}</span><b>${h.fmt(Math.min(have, q))} / ${h.fmt(q)}</b></div>`).join('')}
         <div class="sv-need wide${stageOk ? ' met' : ''}"><span>Realm</span><b>${h.esc(CULTIVATION_STAGES[F.minStage].realm)}${stageOk ? ' · reached' : ''}</b></div></div>
       ${stageOk ? `<input id="sv-found-name" class="sect-input sv-input" maxlength="${F.maxNameLen}" placeholder="Name your sect…">` : ''}
-      ${this._tile('found', '創', 'Found the sect', 'your name above the mountain gate', lock, 'wide')}</section>`
+      ${this._tile('found', 'gate', 'Found the sect', 'your name above the mountain gate', lock, 'wide')}</section>`
   }
 
   // ── Joined sect ────────────────────────────────────────────────────────────
@@ -132,16 +132,16 @@ class SectView {
     const needC = next ? Math.max(0, next.minContribution - sect.contribution) : 0
     const toRank = next ? Math.ceil(needC / SECT_DONATE_RATE) : 0
     const tiles = [
-      this._tile('rankup', '升', next ? `Rise to ${h.esc(next.name)}` : 'Highest rank', next ? `rewards <span class="up">×${next.rewardMult}</span> (now ×${rank.rewardMult})` : 'nothing above you but the sect master',
+      this._tile('rankup', 'rise', next ? `Rise to ${h.esc(next.name)}` : 'Highest rank', next ? `rewards <span class="up">×${next.rewardMult}</span> (now ×${rank.rewardMult})` : 'nothing above you but the sect master',
         next && needC > 0 ? `${h.fmt(needC)} more Contribution` : !next ? 'You stand at the top' : ''),
-      this._tile('donate', '獻', 'Give 10 stones', `+${Math.floor(10 * SECT_DONATE_RATE)} Contribution`, s.spiritStones < 10 ? 'You carry fewer than 10 stones' : '', '', ' data-n="10"'),
+      this._tile('donate', 'stone', 'Give 10 stones', `+${Math.floor(10 * SECT_DONATE_RATE)} Contribution`, s.spiritStones < 10 ? 'You carry fewer than 10 stones' : '', '', ' data-n="10"'),
     ]
     if (next && needC > 0 && toRank > 10)
-      tiles.push(this._tile('donate', '獻', `Give ${h.fmt(toRank)} stones`, `enough to rise to ${h.esc(next.name)}`, s.spiritStones < toRank ? `You hold ${h.fmt(Math.floor(s.spiritStones))}` : '', 'key', ` data-n="${toRank}"`))
+      tiles.push(this._tile('donate', 'stone', `Give ${h.fmt(toRank)} stones`, `enough to rise to ${h.esc(next.name)}`, s.spiritStones < toRank ? `You hold ${h.fmt(Math.floor(s.spiritStones))}` : '', 'key', ` data-n="${toRank}"`))
     return `<section class="fam-card sect">
-      <div class="fc-head"><span class="fc-glyph">宗</span><div class="fc-id"><div class="fc-name" title="${h.esc(def.nameCN)}">${h.esc(def.name)}</div>
+      <div class="fc-head"><span class="fc-glyph" data-icon="hall"></span><div class="fc-id"><div class="fc-name" title="${h.esc(def.nameCN)}">${h.esc(def.name)}</div>
         <div class="fc-sub">${h.esc(def.desc)}</div>
-        <div class="fc-tags"><span class="fam-tag tone-gold"><b>位</b>${h.esc(rank.name)}</span><span class="fam-tag">rewards ×${rank.rewardMult}</span></div></div></div>
+        <div class="fc-tags"><span class="fam-tag tone-gold"><b data-icon="rise"></b>${h.esc(rank.name)}</span><span class="fam-tag">rewards ×${rank.rewardMult}</span></div></div></div>
       <div class="fc-aff static"><span class="fa-row"><span class="fa-k">Contribution</span><span class="fa-v">${h.fmt(sect.contribution)}${next ? ` <span class="sv-of">/ ${h.fmt(next.minContribution)}</span>` : ''}</span></span>
         <span class="fam-bar"><i class="tone-gold" data-w="${prog}"></i></span>
         <span class="fa-last">${next ? `Earned from missions, war service and gifts. ${h.esc(next.name)} at ${h.fmt(next.minContribution)}.` : 'The highest rank. Contribution still counts in war.'}</span></div>
@@ -163,8 +163,8 @@ class SectView {
         ${this._sec(`The sect's blessing${sup ? ' <span class="tone-red">withheld</span>' : ''}`,
           this._effects(def.effects, s, sup) + (sup ? '<div class="fk-note sv-warn">The sect lost a war and licks its wounds. Its blessing returns in a few hours.</div>' : '<div class="fk-note">Active while you are a member, on top of everything else.</div>'))}
         ${this._sec('Duties', `<div class="fa-grid">
-          ${this._tile('go', '任', `Missions · ${act} of ${SECT_MAX_MISSIONS} underway`, `${open} open to your rank${act < SECT_MAX_MISSIONS ? ' · <span class="up">a slot is free</span>' : ''}`, '', '', ' data-view="sect-missions"')}
-          ${this._tile('go', '戰', warOn ? `War with the ${h.esc(w.enemyName)}` : 'Sect wars', warOn
+          ${this._tile('go', 'token', `Missions · ${act} of ${SECT_MAX_MISSIONS} underway`, `${open} open to your rank${act < SECT_MAX_MISSIONS ? ' · <span class="up">a slot is free</span>' : ''}`, '', '', ' data-view="sect-missions"')}
+          ${this._tile('go', 'flag', warOn ? `War with the ${h.esc(w.enemyName)}` : 'Sect wars', warOn
             ? `battle in ${this._warClock(w)} · <span class="${this._oddsClass(odds?.chance || 0)}">${this._pct(odds?.chance || 0)}</span> to win${w.answered ? '' : ' · <span class="down">unanswered</span>'}`
             : `next call in ${this._warClock(w)} · record ${w.warVictories || 0}–${w.warDefeats || 0}`, '', warOn && !w.answered ? 'urgent' : '', ' data-view="sect-war"')}</div>`)}
         ${this._underway(s)}
@@ -202,7 +202,7 @@ class SectView {
           <span class="fam-bar"><i class="tone-jade" data-barfor="${active.uid}" data-w="${Math.max(0, Math.min(100, 100 - left / (m.duration * 1000) * 100))}"></i></span></div>`
       } else {
         const lock = !unlocked ? `${SECT_RANKS[m.minRank].name} and above` : full ? 'Both mission slots are busy' : ''
-        foot = this._tile('mission', '往', 'Set out', `${dur} away`, lock, 'wide sv-go', ` data-id="${m.id}"`)
+        foot = this._tile('mission', 'explore', 'Set out', `${dur} away`, lock, 'wide sv-go', ` data-id="${m.id}"`)
       }
       return `<div class="sv-card${active ? ' active' : ''}${unlocked ? '' : ' locked'}">
         <div class="sv-card-h"><span class="sv-card-n" title="${h.esc(m.nameCN)}">${h.esc(m.name)}</span><span class="sv-card-t">${dur}</span></div>
@@ -220,14 +220,14 @@ class SectView {
     const f = info.fame
     const builtN = info.buildings.filter(x => x.built).length
     const hallTile = info.hall.cost != null
-      ? this._tile('hall', '堂', `Raise the Sect Hall to Lv.${o.hallLevel + 1}`, `<span class="up">${info.hall.cap} → ${info.hall.nextCap}</span> disciple seats · ${this._cost(info.hall.cost, s.spiritStones)}`, '', info.hall.ok ? '' : 'short')
-      : this._tile('hall', '堂', 'Sect Hall Lv.' + o.hallLevel, '', 'The hall can rise no higher')
+      ? this._tile('hall', 'hall', `Raise the Sect Hall to Lv.${o.hallLevel + 1}`, `<span class="up">${info.hall.cap} → ${info.hall.nextCap}</span> disciple seats · ${this._cost(info.hall.cost, s.spiritStones)}`, '', info.hall.ok ? '' : 'short')
+      : this._tile('hall', 'hall', 'Sect Hall Lv.' + o.hallLevel, '', 'The hall can rise no higher')
     return `<div class="fam-view sect-view">
       <div class="fam-col">
-        <section class="fam-card sect"><div class="fc-head"><span class="fc-glyph">宗</span><div class="fc-id">
+        <section class="fam-card sect"><div class="fc-head"><span class="fc-glyph" data-icon="hall"></span><div class="fc-id">
           <div class="fc-name">${h.esc(o.name)}</div>
           <div class="fc-sub">Your sect, founded by your own hand. Disciples cultivate beside you and share what they gather.</div>
-          <div class="fc-tags"><span class="fam-tag tone-gold"><b>主</b>Sect Leader</span><span class="fam-tag" title="Fame: disciples ${f.disciples} + halls ${f.buildings} + Sect Hall ${f.hall} + victories ${f.wins}. Fame draws stronger rivals, and more often.">Fame ${h.fmt(f.total)}</span></div></div></div>
+          <div class="fc-tags"><span class="fam-tag tone-gold"><b data-icon="crown"></b>Sect Leader</span><span class="fam-tag" title="Fame: disciples ${f.disciples} + halls ${f.buildings} + Sect Hall ${f.hall} + victories ${f.wins}. Fame draws stronger rivals, and more often.">Fame ${h.fmt(f.total)}</span></div></div></div>
           <div class="sv-stats">
             ${this._stat('Spirit Stones', `${info.totals.stonesMin.toFixed(1)}<small>/min</small>`, 'gold')}
             ${this._stat('Spirit Herbs', `${info.totals.herbsMin.toFixed(1)}<small>/min</small>`, 'jade')}
@@ -240,9 +240,9 @@ class SectView {
       </div>
       <div class="fam-col">
         ${this._sec('Your mountain', `<div class="fa-grid sv-links">
-          ${this._tile('go', '徒', `Disciples · ${o.disciples.length} of ${info.hall.cap}`, info.full ? 'every seat is taken' : `<span class="up">${info.hall.cap - o.disciples.length} seat${info.hall.cap - o.disciples.length === 1 ? '' : 's'} open</span> · ${o.recruitPool.length} waiting at the gate`, '', '', ' data-view="sect-disciples"')}
-          ${this._tile('go', '殿', `Buildings · ${builtN} of ${SECT_BUILDINGS.length}`, info.buildings.some(x => x.ok) ? '<span class="up">one is within reach</span>' : builtN === SECT_BUILDINGS.length ? 'all raised' : 'see what each would give', '', '', ' data-view="sect-halls"')}
-          ${this._tile('go', '戰', warOn ? `The ${h.esc(w.enemyName)} march on you` : 'Sect wars', warOn
+          ${this._tile('go', 'disciple', `Disciples · ${o.disciples.length} of ${info.hall.cap}`, info.full ? 'every seat is taken' : `<span class="up">${info.hall.cap - o.disciples.length} seat${info.hall.cap - o.disciples.length === 1 ? '' : 's'} open</span> · ${o.recruitPool.length} waiting at the gate`, '', '', ' data-view="sect-disciples"')}
+          ${this._tile('go', 'hall', `Buildings · ${builtN} of ${SECT_BUILDINGS.length}`, info.buildings.some(x => x.ok) ? '<span class="up">one is within reach</span>' : builtN === SECT_BUILDINGS.length ? 'all raised' : 'see what each would give', '', '', ' data-view="sect-halls"')}
+          ${this._tile('go', 'flag', warOn ? `The ${h.esc(w.enemyName)} march on you` : 'Sect wars', warOn
             ? `${w.phase === 'scouting' ? 'strike' : 'arrive'} in ${this._warClock(w)} · <span class="${this._oddsClass(odds?.chance || 0)}">${this._pct(odds?.chance || 0)}</span> to hold`
             : `next threat in ${this._warClock(w)} · record ${w.warVictories || 0}–${w.warDefeats || 0}`, '', warOn ? 'urgent' : '', ' data-view="sect-war"')}</div>`)}
         ${this._lastWar(s, w, true)}
@@ -277,14 +277,14 @@ class SectView {
         <div class="sv-card-h"><span class="sv-card-n" title="${h.esc(b.nameCN)}">${h.esc(b.name)}</span>${x.built ? '<span class="sv-card-t tone-jade">raised</span>' : ''}</div>
         <div class="sv-card-d">${h.esc(b.desc)}</div>
         <div class="sv-now">${now(x)}</div>
-        ${x.built ? '' : `<div class="sv-gains">${cost}</div>${this._tile('build', '築', 'Build', 'once, for good', lock, 'wide sv-go', ` data-id="${b.id}"`)}`}</div>`
+        ${x.built ? '' : `<div class="sv-gains">${cost}</div>${this._tile('build', 'hall', 'Build', 'once, for good', lock, 'wide sv-go', ` data-id="${b.id}"`)}`}</div>`
     }).join('')
     const hall = info.hall
     const hallCard = `<div class="sv-card hall">
         <div class="sv-card-h"><span class="sv-card-n">Sect Hall</span><span class="sv-card-t">Lv.${o.hallLevel} of ${SECT_HALL_LEVELS.length}</span></div>
         <div class="sv-card-d">The heart of the sect. Each level seats five more disciples.</div>
         <div class="sv-now">${hall.cap} disciple seats · ${o.disciples.length} taken</div>
-        ${hall.cost != null ? this._tile('hall', '堂', `Raise to Lv.${o.hallLevel + 1}`, `<span class="up">${hall.cap} → ${hall.nextCap}</span> seats · ${this._cost(hall.cost, s.spiritStones)}`, '', 'wide sv-go') : '<div class="sv-now dim">The hall stands at its full height.</div>'}</div>`
+        ${hall.cost != null ? this._tile('hall', 'hall', `Raise to Lv.${o.hallLevel + 1}`, `<span class="up">${hall.cap} → ${hall.nextCap}</span> seats · ${this._cost(hall.cost, s.spiritStones)}`, '', 'wide sv-go') : '<div class="sv-now dim">The hall stands at its full height.</div>'}</div>`
     const built = info.buildings.filter(x => x.built).length
     return `<div class="sv-head"><span>${built} of ${SECT_BUILDINGS.length} halls raised</span><span class="sv-head-n">each is built once and works for good</span></div>
       <div class="sv-grid">${hallCard}${cards}</div>`
@@ -301,13 +301,13 @@ class SectView {
     const pool = info.candidates.map(x => `<div class="sv-card sv-cand">
         <div class="sv-card-h"><span class="sv-card-n">${h.esc(x.c.name)}</span>${SV_STARS(x.c.talent)}</div>
         <div class="sv-gains"><span class="sv-gain up">+${(x.qi * 100).toFixed(2)}% Qi/s</span><span class="sv-gain">${x.stonesMin.toFixed(2)} stones/min</span><span class="sv-gain dim">at Lv.1, more as they grow</span></div>
-        ${this._tile('recruit', '收', 'Take <span class="sv-long">them </span>in', this._cost(x.cost, s.spiritStones), x.reason === 'full' ? 'Every seat is taken: raise the Sect Hall' : x.reason === 'stones' ? `${h.fmt(x.cost - Math.floor(s.spiritStones))} stones short` : '', 'wide sv-go', ` data-id="${h.esc(x.c.id)}"`)}</div>`).join('')
+        ${this._tile('recruit', 'disciple', 'Take <span class="sv-long">them </span>in', this._cost(x.cost, s.spiritStones), x.reason === 'full' ? 'Every seat is taken: raise the Sect Hall' : x.reason === 'stones' ? `${h.fmt(x.cost - Math.floor(s.spiritStones))} stones short` : '', 'wide sv-go', ` data-id="${h.esc(x.c.id)}"`)}</div>`).join('')
     return `<div class="fam-view sect-view sv-disc-view">
       <div class="fam-col">${this._sec('Your disciples', (roster || '<div class="fk-note">No one has taken your teaching yet. Candidates wait at the gate.</div>') +
         (o.disciples.length ? `<div class="fk-note sv-together">Together: +${(info.totals.qi * 100).toFixed(1)}% Qi/s · ${info.totals.stonesMin.toFixed(1)} stones and ${info.totals.herbsMin.toFixed(1)} herbs a minute. Talent and level raise all three.</div>` : ''),
         `${o.disciples.length} / ${info.hall.cap}`)}</div>
       <div class="fam-col">${this._sec('At the gate', `<div class="sv-grid tight">${pool}</div>
-        ${this._tile('reroll', '換', 'Call others to the gate', `${this._cost(RECRUIT_REROLL_COST, s.spiritStones)} · or wait: new faces in <span data-pooltimer>${h.fmtTime(Math.max(0, Math.ceil((o.poolRefreshAt - Date.now()) / 1000)))}</span>`, s.spiritStones < RECRUIT_REROLL_COST ? `Costs ${RECRUIT_REROLL_COST} stones` : '', 'wide sv-call')}`, o.recruitPool.length)}</div></div>`
+        ${this._tile('reroll', 'auto', 'Call others to the gate', `${this._cost(RECRUIT_REROLL_COST, s.spiritStones)} · or wait: new faces in <span data-pooltimer>${h.fmtTime(Math.max(0, Math.ceil((o.poolRefreshAt - Date.now()) / 1000)))}</span>`, s.spiritStones < RECRUIT_REROLL_COST ? `Costs ${RECRUIT_REROLL_COST} stones` : '', 'wide sv-call')}`, o.recruitPool.length)}</div></div>`
   }
 
   // ── War (both sides) ───────────────────────────────────────────────────────
@@ -324,9 +324,9 @@ class SectView {
         <span class="fa-v ${this._oddsClass(odds.chance)}">${this._pct(odds.chance)}</span></span>
         <span class="fam-bar"><i class="tone-${odds.chance < 0.35 ? 'red' : odds.chance < 0.6 ? 'gold' : 'jade'}" data-w="${pc}"></i></span>
         <span class="fa-last">Your strength ×${odds.mult.toFixed(2)}; the rival rolls ×0.6 to ×1.4 when battle is joined.${odds.ifAnswered != null ? ` Answering alone: <b class="up">${this._pct(odds.ifAnswered)}</b>.` : ''}</span></button>` : ''
-    const status = `<section class="fam-card sect${on ? ' war' : ''}"><div class="fc-head"><span class="fc-glyph${on ? ' war' : ''}">戰</span><div class="fc-id">
+    const status = `<section class="fam-card sect${on ? ' war' : ''}"><div class="fc-head"><span class="fc-glyph${on ? ' war' : ''}" data-icon="flag"></span><div class="fc-id">
         <div class="fc-name">${title} ${stars}</div><div class="fc-sub">${sub}</div>
-        <div class="fc-tags"><span class="fam-tag"><b>時</b>${clock}</span><span class="fam-tag">wars: ${w.warVictories} won · ${w.warDefeats} lost${w.warsIgnored ? ` · ${w.warsIgnored} ignored` : ''}</span></div></div></div>
+        <div class="fc-tags"><span class="fam-tag"><b data-icon="age"></b>${clock}</span><span class="fam-tag">wars: ${w.warVictories} won · ${w.warDefeats} lost${w.warsIgnored ? ` · ${w.warsIgnored} ignored` : ''}</span></div></div></div>
       ${oddsBtn}${on ? (own ? this._ownActions(s, w, odds) : this._memberActions(s, w)) : ''}
       ${!on && s.derived.sectBuffSuppressed ? '<div class="fk-note sv-warn">The sect lost its last war. Its blessing is withheld for a few hours.</div>' : ''}
       ${!on && own && s.derived.arrayDamaged ? '<div class="fk-note sv-warn">The Defensive Array was damaged in the last defeat. It mends by itself.</div>' : ''}</section>`
@@ -342,18 +342,18 @@ class SectView {
     const give = Math.min(Math.max(10, Math.ceil(full / 4)), left)
     const pct = v => `+${Math.round(v * rankMult * 100)}%`
     const tiles = [
-      this._tile('answer', '應', w.answered ? 'Call answered' : 'Answer the call', w.answered ? `you march with the sect · <span class="up">${pct(MEMBER_WAR_ANSWER_BONUS)}</span>` : `<span class="up">${pct(MEMBER_WAR_ANSWER_BONUS)}</span> sect strength · free`, '', w.answered ? 'done' : 'urgent', w.answered ? ' disabled' : ''),
-      this._tile('chest', '庫', left > 0 ? `Give ${h.fmt(give)} to the war chest` : 'War chest full', left > 0 ? `chest ${h.fmt(w.chestStones)} / ${h.fmt(full)} · full = <span class="up">${pct(MEMBER_WAR_CHEST_MAX_BONUS)}</span>` : `<span class="up">${pct(MEMBER_WAR_CHEST_MAX_BONUS)}</span> strength`,
+      this._tile('answer', 'flag', w.answered ? 'Call answered' : 'Answer the call', w.answered ? `you march with the sect · <span class="up">${pct(MEMBER_WAR_ANSWER_BONUS)}</span>` : `<span class="up">${pct(MEMBER_WAR_ANSWER_BONUS)}</span> sect strength · free`, '', w.answered ? 'done' : 'urgent', w.answered ? ' disabled' : ''),
+      this._tile('chest', 'chest', left > 0 ? `Give ${h.fmt(give)} to the war chest` : 'War chest full', left > 0 ? `chest ${h.fmt(w.chestStones)} / ${h.fmt(full)} · full = <span class="up">${pct(MEMBER_WAR_CHEST_MAX_BONUS)}</span>` : `<span class="up">${pct(MEMBER_WAR_CHEST_MAX_BONUS)}</span> strength`,
         left <= 0 ? '' : s.spiritStones < give ? `${h.fmt(give)} stones needed` : '', left <= 0 ? 'done' : '', left <= 0 ? ' disabled' : ` data-n="${give}"`),
     ]
     const pills = Object.keys(s.inventory).filter(id => ITEMS[id]?.type === 'pill' && s.inventory[id] > 0)
-    for (const id of pills.slice(0, 3)) tiles.push(this._tile('pill', '丹', `Offer ${h.esc(ITEMS[id].name)} <i class="dim">×${s.inventory[id]}</i>`, `<span class="up">${pct(MEMBER_WAR_PILL_BONUS)}</span> · +${MEMBER_WAR_PILL_CONTRIB} Contribution`,
+    for (const id of pills.slice(0, 3)) tiles.push(this._tile('pill', 'pill', `Offer ${h.esc(ITEMS[id].name)} <i class="dim">×${s.inventory[id]}</i>`, `<span class="up">${pct(MEMBER_WAR_PILL_BONUS)}</span> · +${MEMBER_WAR_PILL_CONTRIB} Contribution`,
       w.pillsGiven >= MEMBER_WAR_MAX_PILLS ? `${MEMBER_WAR_MAX_PILLS} pills already given` : '', '', ` data-id="${id}"`))
     const warBeast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
-    if (warBeast) tiles.push(this._tile('beast', '獸', `${h.esc(warBeast.name)} is at the front`, `returns with ${MEMBER_WAR_BEAST_XP} XP`, '', 'done', ' disabled'))
+    if (warBeast) tiles.push(this._tile('beast', 'beast', `${h.esc(warBeast.name)} is at the front`, `returns with ${MEMBER_WAR_BEAST_XP} XP`, '', 'done', ' disabled'))
     else for (const b of (s.beasts || []).filter(b => !b.expedition).slice(0, 3)) {
       const v = Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * b.level)
-      tiles.push(this._tile('beast', '獸', `Send ${h.esc(b.name)} <i class="dim">Lv.${b.level}</i>`, `<span class="up">${pct(v)}</span> · back with ${MEMBER_WAR_BEAST_XP} XP`, '', '', ` data-id="${h.esc(b.id)}"`))
+      tiles.push(this._tile('beast', 'beast', `Send ${h.esc(b.name)} <i class="dim">Lv.${b.level}</i>`, `<span class="up">${pct(v)}</span> · back with ${MEMBER_WAR_BEAST_XP} XP`, '', '', ` data-id="${h.esc(b.id)}"`))
     }
     return `<div class="fa-grid sv-acts">${tiles.join('')}</div>${w.answered || w.chestStones || w.pillsGiven || warBeast ? '' : '<div class="fk-note sv-warn">Ignore the call and you lose Contribution and karma, win or lose.</div>'}`
   }
@@ -361,12 +361,12 @@ class SectView {
   _ownActions(s, w, odds) {
     const h = this.h, rc = odds.reinforceCost, ac = odds.allyCost
     const tiles = []
-    if (w.reinforced) tiles.push(this._tile('reinforce', '固', 'Reinforced', `<span class="up">×${1 + WAR_REINFORCE_POWER_BONUS}</span> strength`, '', 'done', ' disabled'))
-    else tiles.push(this._tile('reinforce', '固', 'Reinforce the defenses', `${odds?.ifReinforced != null ? `odds → <span class="up">${this._pct(odds.ifReinforced)}</span> · ` : ''}${this._cost(rc, s.spiritStones)}`,
+    if (w.reinforced) tiles.push(this._tile('reinforce', 'shield', 'Reinforced', `<span class="up">×${1 + WAR_REINFORCE_POWER_BONUS}</span> strength`, '', 'done', ' disabled'))
+    else tiles.push(this._tile('reinforce', 'shield', 'Reinforce the defenses', `${odds?.ifReinforced != null ? `odds → <span class="up">${this._pct(odds.ifReinforced)}</span> · ` : ''}${this._cost(rc, s.spiritStones)}`,
       w.phase !== 'preparing' ? 'Once they begin preparing' : s.spiritStones < rc ? `${h.fmt(rc - Math.floor(s.spiritStones))} stones short` : ''))
-    if (w.allyId) tiles.push(this._tile('ally', '盟', `${h.esc(SECTS.find(x => x.id === w.allyId)?.name || 'An ally')} fights with you`, `<span class="up">×${1 + WAR_ALLY_POWER_BONUS}</span> strength`, '', 'done', ' disabled'))
+    if (w.allyId) tiles.push(this._tile('ally', 'bond', `${h.esc(SECTS.find(x => x.id === w.allyId)?.name || 'An ally')} fights with you`, `<span class="up">×${1 + WAR_ALLY_POWER_BONUS}</span> strength`, '', 'done', ' disabled'))
     else for (const d of SECTS.filter(d => d.minStage <= s.stageIndex + 3).slice(-1))   // every ally costs and gives the same (sect-war.md)
-      tiles.push(this._tile('ally', '盟', `Ask the ${h.esc(d.name)}`, `${odds?.ifAllied != null ? `odds → <span class="up">${this._pct(odds.ifAllied)}</span> · ` : ''}${this._cost(ac, s.spiritStones)}`,
+      tiles.push(this._tile('ally', 'bond', `Ask the ${h.esc(d.name)}`, `${odds?.ifAllied != null ? `odds → <span class="up">${this._pct(odds.ifAllied)}</span> · ` : ''}${this._cost(ac, s.spiritStones)}`,
         s.spiritStones < ac ? `${h.fmt(ac - Math.floor(s.spiritStones))} stones short` : '', '', ` data-id="${d.id}"`))
     return `<div class="fa-grid sv-acts">${tiles.join('')}</div>`
   }

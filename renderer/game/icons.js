@@ -23,3 +23,16 @@ Icon.names = () => Object.keys(UI_ICONS)
 
 // Static markup (index.html) is already parsed when this script runs (scripts sit at the end of <body>).
 Icon.hydrate()
+
+// A glyph slot that may hold an icon name or plain text (data like COURT_WAYS/FIGHT_TACTICS carries icon names).
+Icon.g = x => (UI_ICONS[x] ? Icon(x) : x)
+
+// Views rebuild their HTML with innerHTML all the time: fill any new [data-icon] node before it paints
+// (MutationObserver callbacks run as microtasks, ahead of rendering), so HTML strings can just say data-icon="…".
+new MutationObserver(recs => {
+  for (const r of recs) for (const n of r.addedNodes) {
+    if (n.nodeType !== 1) continue
+    if (n.dataset?.icon) Icon.hydrate(n.parentNode || n)
+    else if (n.querySelector('[data-icon]')) Icon.hydrate(n)
+  }
+}).observe(document.body, { childList: true, subtree: true })

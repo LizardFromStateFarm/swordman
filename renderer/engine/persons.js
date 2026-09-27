@@ -16,20 +16,20 @@ const Persons = {
     const roll     = Math.random()
     const elements = ['fire', 'water', 'earth', 'wood', 'metal']
     const rnd      = () => elements[Math.floor(Math.random() * elements.length)]
-    if (roll < 0.01) return { type: 'heavenly', name: '天灵根 Heavenly Root', mult: 3.0 }
-    if (roll < 0.05) return { type: 'pure',     name: `纯灵根 Pure ${rnd()} Root`, mult: 1.8 }
-    if (roll < 0.25) return { type: 'dual',     name: '双灵根 Dual Root', mult: 1.4 }
-    return                   { type: 'mixed',   name: '杂灵根 Mixed Root', mult: 1.0 }
+    if (roll < 0.01) return { type: 'heavenly', name: '天灵根 Heavenly Root', mult: 3.0 }   // cjk-ok: root name data; UI strips it with latinOnly()
+    if (roll < 0.05) return { type: 'pure',     name: `纯灵根 Pure ${rnd()} Root`, mult: 1.8 }   // cjk-ok: root name data; UI strips it with latinOnly()
+    if (roll < 0.25) return { type: 'dual',     name: '双灵根 Dual Root', mult: 1.4 }   // cjk-ok: root name data; UI strips it with latinOnly()
+    return                   { type: 'mixed',   name: '杂灵根 Mixed Root', mult: 1.0 }   // cjk-ok: root name data; UI strips it with latinOnly()
   },
 
   specificRoot(type) {
     const elements = ['fire', 'water', 'earth', 'wood', 'metal']
     const rnd = () => elements[Math.floor(Math.random() * elements.length)]
     switch (type) {
-      case 'heavenly': return { type: 'heavenly', name: '天灵根 Heavenly Root', mult: 3.0 }
-      case 'pure':     return { type: 'pure',     name: `纯灵根 Pure ${rnd()} Root`, mult: 1.8 }
-      case 'dual':     return { type: 'dual',     name: '双灵根 Dual Root', mult: 1.4 }
-      default:         return { type: 'mixed',    name: '杂灵根 Mixed Root', mult: 1.0 }
+      case 'heavenly': return { type: 'heavenly', name: '天灵根 Heavenly Root', mult: 3.0 }   // cjk-ok: root name data; UI strips it with latinOnly()
+      case 'pure':     return { type: 'pure',     name: `纯灵根 Pure ${rnd()} Root`, mult: 1.8 }   // cjk-ok: root name data; UI strips it with latinOnly()
+      case 'dual':     return { type: 'dual',     name: '双灵根 Dual Root', mult: 1.4 }   // cjk-ok: root name data; UI strips it with latinOnly()
+      default:         return { type: 'mixed',    name: '杂灵根 Mixed Root', mult: 1.0 }   // cjk-ok: root name data; UI strips it with latinOnly()
     }
   },
 

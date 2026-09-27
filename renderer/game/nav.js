@@ -6,7 +6,7 @@
 // view id = the panel id suffix (#tab-<view>). Add a view: a panel in index.html, an entry here, a render in game.js.
 const NAV_GROUPS = [
   { id: 'cultivate', glyph: '修', name: 'Path',  title: 'Cultivation: techniques and your character',
-    views: [['techniques', 'Techniques'], ['stats', 'Character']] },
+    views: [['stats', 'Character'], ['techniques', 'Techniques']] },
   { id: 'adventure', glyph: '歷', name: 'Roam',  title: 'Adventure: expeditions, the road, spirit beasts',
     views: [['explore', 'Explore'], ['beasts', 'Beasts']], auto: 'autoExplore' },
   { id: 'kin',       glyph: '家', name: 'Kin',   title: 'Family, clan and the Ancestral Hall',
@@ -16,7 +16,7 @@ const NAV_GROUPS = [
     views: [['sect', 'Overview'], ['sect-missions', 'Missions'], ['sect-halls', 'Halls'], ['sect-disciples', 'Disciples'], ['sect-war', 'War']],
     auto: 'autoSectMissions' },
   { id: 'pack',      glyph: '囊', name: 'Pack',  title: 'Your pack and the alchemy furnace',
-    views: [['pack', 'Items'], ['craft', 'Craft']], autoView: { craft: 'autoCraft' } },
+    views: [['craft', 'Craft'], ['pack', 'Items']], autoView: { craft: 'autoCraft' } },
   { id: 'log',       glyph: '錄', name: 'Log',   title: 'Chronicle of events and idle chatter',
     views: [['events', 'Events'], ['banter', 'Banter']] },
 ]
@@ -32,7 +32,7 @@ class NavUI {
     this.group = 'cultivate'
     this.last = {}   // group → last sub-view, so coming back lands where you were
     try { Object.assign(this, JSON.parse(localStorage.getItem(NAV_KEY) || '{}')) } catch {}
-    this.view = this._groupDef(this.group) ? (this.last[this.group] || this._groupDef(this.group).views[0][0]) : 'techniques'
+    this.view = this._groupDef(this.group) ? (this.last[this.group] || this._groupDef(this.group).views[0][0]) : 'stats'
     this.tabs = document.getElementById('tabs')
     this.subs = document.getElementById('subtabs')
     this._badgeSig = ''

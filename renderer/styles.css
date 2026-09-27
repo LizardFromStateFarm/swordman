@@ -47,7 +47,7 @@ body {
 
 .hidden { display: none !important; }
 
-/* UI review: 7.2 (2026-09-27, 1.8d-1, 3 cycles, accepted by the user) */
+/* UI review: 7.2 (2026-09-27, 1.8d-1 + 1.8d-2, 3 cycles each, accepted by the user) */
 /* UI icons (1.8d): inline SVG from Icon() (renderer/game/icons.js, assets/icons/ui-icons.js). 1em square so the
    text-size setting scales them with the text; currentColor so every state color (gold, jade, ember, color-blind
    tokens) applies unchanged. class="f" = a filled part. */
@@ -69,7 +69,7 @@ body {
 #cs-title { display: inline-flex; align-items: center; gap: 8px; }
 .cs-orn .ic { font-size: 17px; color: var(--gold); opacity: .9; }
 .lbl { display: inline-flex; align-items: center; gap: 4px; }
-.lbl-ic .ic { font-size: 14px; }
+.lbl-ic .ic { font-size: 15px; }
 .lbl-ic { transform: translateY(1px); }
 #qi-labels .lbl-ic { color: var(--gold); }
 #integrity-labels .lbl-ic { color: #9090E0; }
@@ -90,6 +90,9 @@ body {
 .pack-chip .ic { vertical-align: -0.12em; }
 #banner-exp .ic, .bm-stone .ic { vertical-align: -0.14em; }
 .pack-currency-row .ic { font-size: 15px; }
+/* Phone width: back + layout fold into the ⋯ menu like Overlay, so the name keeps its room */
+body[data-narrow="1"] #btn-more { display: flex; }
+body[data-narrow="1"] #btn-back, body[data-narrow="1"] #btn-layout:not(.peek) { display: none; }
 #layout-tip .ic { font-size: 13px; vertical-align: -0.2em; color: var(--gold); }
 /* Phone width: the why button sits inside the Breakthrough card, centred, instead of on its corner */
 body[data-narrow="1"] #bt-why { top: 50%; right: 10px; transform: translateY(-50%); width: 28px; height: 28px; }
@@ -2749,7 +2752,7 @@ body[data-layout="overlay"] .ch-persona { display: none; }   /* the 性 tag's to
               linear-gradient(180deg, rgba(34,18,40,0.55), rgba(14,7,20,0.55));
   cursor: pointer; transition: border-color .12s, box-shadow .12s;
 }
-.ch-tile[data-bd]::after { content: '詳'; position: absolute; right: 6px; bottom: 5px; font-size: 10px; color: color-mix(in srgb, var(--gold) 38%, transparent); transition: color .12s; }
+.ch-tile[data-bd]::after { content: ''; width: 5px; height: 5px; border: 1px solid currentColor; border-radius: 50%; position: absolute; right: 6px; bottom: 5px; font-size: 10px; color: color-mix(in srgb, var(--gold) 38%, transparent); transition: color .12s; }
 .ch-tile[data-bd]:hover, .ch-tile[data-bd]:active { border-color: color-mix(in srgb, var(--gold) 70%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 16%, transparent); }
 .ch-tile[data-bd]:hover::after, .ch-tile[data-bd]:active::after { color: var(--gold); }
 .ch-tile:not([data-bd]) { cursor: default; }
@@ -2836,7 +2839,7 @@ body[data-layout="overlay"] .fam-card.spouse .fc-hint { display: none; }   /* th
 .fc-aff { display: flex; flex-direction: column; gap: 3px; width: 100%; margin: 8px 0 2px; padding: 6px 8px; text-align: left; font-family: var(--font); color: var(--text);
   border: 1px solid color-mix(in srgb, var(--purple) 22%, var(--border)); border-radius: 4px; background: var(--fam-ink); cursor: pointer; position: relative;
   transition: border-color .12s, box-shadow .12s; }
-.fc-aff[data-bd]::after { content: '詳'; position: absolute; right: 7px; top: 6px; font-size: 10.5px; color: color-mix(in srgb, var(--gold) 50%, transparent); }
+.fc-aff[data-bd]::after { content: ''; width: 5px; height: 5px; border: 1px solid currentColor; border-radius: 50%; position: absolute; right: 7px; top: 6px; font-size: 10.5px; color: color-mix(in srgb, var(--gold) 50%, transparent); }
 .fc-aff[data-bd]:hover, .fc-aff[data-bd]:focus-visible { border-color: color-mix(in srgb, var(--gold) 70%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 16%, transparent); outline: none; }
 .fc-aff.static { cursor: default; }
 .fa-row { display: flex; align-items: baseline; gap: 8px; padding-right: 16px; }
@@ -2889,7 +2892,8 @@ body[data-layout="overlay"] .fam-card.spouse .fc-hint { display: none; }   /* th
 .fa-e { font-size: 10.5px; color: var(--dim-hi); line-height: 1.3; }
 .fa-e .up { color: var(--jade); } .fa-e .down { color: var(--red-text); } .fa-e .cost { color: color-mix(in srgb, var(--gold) 80%, var(--dim)); } .fa-e .dim { color: var(--dim-hi); }
 .fa-lock { color: color-mix(in srgb, var(--purple) 55%, var(--text)); }
-.fa-lock::before { content: '封 '; color: var(--purple); }
+.fa-lock-ic { color: var(--purple); margin-right: 4px; font-style: normal; }
+.fa-lock-ic .ic { vertical-align: -0.14em; }
 .fc-foot { display: flex; justify-content: flex-end; margin-top: 6px; }
 .fa-link { font-family: var(--font); font-size: 10.5px; color: var(--dim-hi); background: none; border: none; padding: 4px 2px; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .fa-link:hover { color: var(--text); }
@@ -3081,11 +3085,11 @@ body[data-layout="overlay"] .fa-pill.row span::before { content: "· "; }
 .fam-count.gold { color: var(--gold); }
 .mp-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); color: color-mix(in srgb, var(--text) 82%, var(--dim)); }
 .mp-row b { font-weight: normal; color: var(--gold); font-variant-numeric: tabular-nums; }
-.mp-row.first span::before { content: '得 '; color: var(--jade); }
+.mp-row .mp-ic { color: var(--jade); margin-right: 4px; font-style: normal; }
 .mp-row.dim { color: var(--dim-hi); } .mp-row.dim b { color: var(--dim-hi); }
 .firsts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0 12px; }
 .fr { display: flex; gap: 6px; align-items: baseline; font-size: 11.5px; padding: 3px 0; color: color-mix(in srgb, var(--text) 80%, var(--dim)); }
-.fr-g { flex: none; width: 14px; text-align: center; color: var(--dim); }
+.fr-g { flex: none; width: 1.3em; display: inline-flex; justify-content: center; color: var(--dim); }
 .fr.got .fr-g { color: var(--jade); }
 .fr.got .fr-l { color: var(--dim-hi); }
 .fr-l { flex: 1; min-width: 0; }
@@ -3353,6 +3357,13 @@ body:not([data-layout="overlay"]):not([data-layout="banner"]) #family-choices .f
 .t-cons { font-size: 10.5px; color: var(--dim-hi); margin-top: 4px; }
 .t-log { display: flex; gap: 7px; align-items: baseline; margin: 3px 0; }
 .t-log b { font-weight: normal; flex: none; color: var(--dim-hi); }
+.t-log b .ic { font-size: 16px; }
+.ch-tile .t-k i .ic { font-size: 15px; }
+.att-glyph .ic { font-size: 16px; }
+.fa-g .ic { font-size: 16px; }
+/* Icon size scale (1.8d-2): ~14px inline with text · 16px on cards + action tiles · 18px in the 30px card-head badges */
+.fc-glyph .ic { font-size: 18px; }
+.cost .ic, .fa-e .ic, .tech-cost .ic { font-size: 1.15em; vertical-align: -0.2em; }
 .t-log.died b { color: var(--red-text); } .t-log.spared b { color: var(--jade); }
 
 .ult-acts { grid-template-columns: 1fr; margin-top: 6px; }
@@ -3511,7 +3522,7 @@ body:not([data-layout="overlay"]) #family-box.fight .fc-first { display: none; }
 .fa-btn.done { border-color: color-mix(in srgb, var(--jade) 40%, var(--border)); background: color-mix(in srgb, var(--jade) 7%, var(--fam-sunk)); cursor: default; }
 .fa-btn.done .fa-g { color: var(--jade); text-shadow: none; }
 .fa-btn.done .fa-lock { color: var(--jade); }
-.fa-btn.done .fa-lock::before { content: ''; }
+.fa-btn.done .fa-lock-ic { display: none; }
 .sv-timer { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
 .sv-timer .sect-mission-timer { color: var(--jade); font-size: 11px; font-variant-numeric: tabular-nums; }
 

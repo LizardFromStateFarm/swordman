@@ -545,17 +545,18 @@ const COURT_BEATS = [
     ] },
 ]
 
-// How each meeting choice comes across (UI: a glyph + a hint at who likes it; the real effect is the choice's int).
+// How each meeting choice comes across (UI: an icon name from assets/icons/ui-icons.js + a hint at who likes it; the real
+// effect is the choice's int).
 const COURT_WAYS = {
-  bold:     { glyph: '勇', hint: 'bold · the fierce admire it' },
-  gentle:   { glyph: '柔', hint: 'gentle · soft hearts warm to it' },
-  clever:   { glyph: '智', hint: 'clever · the careful take note' },
-  lavish:   { glyph: '財', hint: 'lavish · for lovers of fine things' },
-  playful:  { glyph: '戲', hint: 'playful · odd souls laugh along' },
-  humble:   { glyph: '謙', hint: 'humble · the proud may think it weak' },
-  wild:     { glyph: '狂', hint: 'reckless · the unhinged love it' },
-  cautious: { glyph: '慎', hint: 'cautious · the wary approve' },
-  calm:     { glyph: '靜', hint: 'calm · quiet ones settle beside you' },
+  bold:     { glyph: 'active', hint: 'bold · the fierce admire it' },
+  gentle:   { glyph: 'heart', hint: 'gentle · soft hearts warm to it' },
+  clever:   { glyph: 'eye', hint: 'clever · the careful take note' },
+  lavish:   { glyph: 'gift', hint: 'lavish · for lovers of fine things' },
+  playful:  { glyph: 'mask', hint: 'playful · odd souls laugh along' },
+  humble:   { glyph: 'lotus', hint: 'humble · the proud may think it weak' },
+  wild:     { glyph: 'lightning', hint: 'reckless · the unhinged love it' },
+  cautious: { glyph: 'shield', hint: 'cautious · the wary approve' },
+  calm:     { glyph: 'idle', hint: 'calm · quiet ones settle beside you' },
 }
 
 // Spouse actions — each its own cooldown in game years. aff keyed by the SPOUSE's personality.
@@ -612,9 +613,9 @@ const FIGHT_EXCHANGE_RANGE = [0.05, 0.95]
 const FIGHT_WOUND       = 4        // Health per exchange lost (never below 1 mid-fight)
 const YIELD_ACCEPT_BASE = 0.5      // lethal fight: the opponent accepts your yield with this + morality/100 (+ bond for kin)
 const FIGHT_TACTICS = {
-  press: { name: 'Press', glyph: '攻', beats: 'feint', blurb: 'All-out attack' },
-  guard: { name: 'Guard', glyph: '守', beats: 'press', blurb: 'Hold and counter' },
-  feint: { name: 'Feint', glyph: '詐', beats: 'guard', blurb: 'Draw them open' },
+  press: { name: 'Press', glyph: 'sword', beats: 'feint', blurb: 'All-out attack' },
+  guard: { name: 'Guard', glyph: 'shield', beats: 'press', blurb: 'Hold and counter' },
+  feint: { name: 'Feint', glyph: 'veil', beats: 'guard', blurb: 'Draw them open' },
 }
 // How each temper fights: weights for press / guard / feint, and the hint the player sees.
 const FIGHT_STYLE = {

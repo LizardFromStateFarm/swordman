@@ -17,64 +17,64 @@ function collectAttention(s, gs) {
   const name = p => (p ? (typeof Persons !== 'undefined' ? Persons.fullName(p) : p.given) : 'Someone')
 
   // ── Decisions (a popup is waiting; it never expires) ──
-  if (f.proposal) add('urgent', 'proposal', '媒', 'A matchmaker awaits', 'Offers of marriage have arrived. Accept one or send them away.', 'family', 'proposal')
-  if (f.spouse && f.duel && !f.fight) add('urgent', 'duel', '決', `${f.spouse.given} demands a duel`, 'Your spouse will not let the affair pass. Answer them.', 'family', 'family')
+  if (f.proposal) add('urgent', 'proposal', 'bond', 'A matchmaker awaits', 'Offers of marriage have arrived. Accept one or send them away.', 'family', 'proposal')
+  if (f.spouse && f.duel && !f.fight) add('urgent', 'duel', 'duel', `${f.spouse.given} demands a duel`, 'Your spouse will not let the affair pass. Answer them.', 'family', 'family')
   else if (f.headChallenge) {
     const ch = gs.person?.(f.headChallenge.challengerId)
-    add('urgent', 'head-challenge', '挑', `${ch?.given || 'A rival'} challenges your seat`, 'As clan head, you decide whether this fight is to the death.', 'clan', 'family')
-  } else if (f.stepDownOffer) add('urgent', 'step-down', '讓', 'The clan head steps down', 'Enter the contest for the seat, or stand aside.', 'clan', 'family')
-  else if (f.spouse && f.event) add('urgent', 'marriage-event', '婚', `${f.spouse.given} needs you`, 'A matter in your marriage waits on your answer.', 'family', 'family')
+    add('urgent', 'head-challenge', 'sword', `${ch?.given || 'A rival'} challenges your seat`, 'As clan head, you decide whether this fight is to the death.', 'clan', 'family')
+  } else if (f.stepDownOffer) add('urgent', 'step-down', 'mantle', 'The clan head steps down', 'Enter the contest for the seat, or stand aside.', 'clan', 'family')
+  else if (f.spouse && f.event) add('urgent', 'marriage-event', 'couple', `${f.spouse.given} needs you`, 'A matter in your marriage waits on your answer.', 'family', 'family')
   else if (f.childEvent) {
     const c = (f.children || []).find(k => k.id === f.childEvent.childId)
-    add('urgent', 'child-event', '子', `${c?.given || 'Your child'} needs a parent`, 'A choice about raising them waits on you.', 'family', 'family')
-  } else if (s.upbringing?.event) add('urgent', 'upbringing', '幼', 'A matter from your youth', 'How you answer shapes your bond with the clan head.', 'family', 'family')
+    add('urgent', 'child-event', 'child', `${c?.given || 'Your child'} needs a parent`, 'A choice about raising them waits on you.', 'family', 'family')
+  } else if (s.upbringing?.event) add('urgent', 'upbringing', 'child', 'A matter from your youth', 'How you answer shapes your bond with the clan head.', 'family', 'family')
   // 1.8b-3b: a fight you're in (never resolves without you), and a lover's ultimatum
   if (f.fight) {
     const opp = f.fight.kind === 'duel' ? f.spouse : gs.person?.(f.fight.oppId)
-    add('urgent', 'fight', '鬥', `Your fight with ${opp?.given || 'your rival'}`, `${f.fight.you}–${f.fight.them}, first to ${typeof FIGHT_TO !== 'undefined' ? FIGHT_TO : 2}. Choose your next move.`, f.fight.kind === 'duel' ? 'family' : 'clan', 'family')
+    add('urgent', 'fight', 'duel', `Your fight with ${opp?.given || 'your rival'}`, `${f.fight.you}–${f.fight.them}, first to ${typeof FIGHT_TO !== 'undefined' ? FIGHT_TO : 2}. Choose your next move.`, f.fight.kind === 'duel' ? 'family' : 'clan', 'family')
   }
   const ult = (f.lovers || []).find(l => l.ultimatum)
-  if (ult) add('urgent', 'ultimatum', '迫', `${ult.person.given} wants an answer`, f.spouse ? 'Leave your spouse, let them go, or one more season.' : 'Marry them, let them go, or one more season.', 'family')
+  if (ult) add('urgent', 'ultimatum', 'alert', `${ult.person.given} wants an answer`, f.spouse ? 'Leave your spouse, let them go, or one more season.' : 'Marry them, let them go, or one more season.', 'family')
   // 1.8b-3a: a partner's wish for a child (the 'ask' plan) is a decision; it waits until you answer
   if (f.childWish) {
     const p = f.spouse?.id === f.childWish.partnerId ? f.spouse : (f.lovers || []).find(l => l.person.id === f.childWish.partnerId)?.person
-    if (p) add('urgent', 'child-wish', '願', `${p.given} wishes for a child`, 'Yes, or not now. Nothing happens until you choose.', 'family')
+    if (p) add('urgent', 'child-wish', 'lantern', `${p.given} wishes for a child`, 'Yes, or not now. Nothing happens until you choose.', 'family')
   }
-  if (f.tournament) add('urgent', 'tournament', '奪', 'The Tournament of Heirs waits', 'You pick every pairing. It will not continue without you.', 'family', 'tournament')
+  if (f.tournament) add('urgent', 'tournament', 'duel', 'The Tournament of Heirs waits', 'You pick every pairing. It will not continue without you.', 'family', 'tournament')
 
   // ── Sect wars ──
   const w = s.sectWar
   if (w && (w.phase === 'scouting' || w.phase === 'preparing')) {
     const left = Math.max(0, Math.ceil(((w.phase === 'preparing' ? w.prepEndsAt : w.scoutEndsAt) - Date.now()) / 1000))
     if (w.side === 'member' && s.sect?.id && !w.answered)
-      add('urgent', 'war-call', '戰', `War call: ${w.enemyName}`, 'Your sect calls every disciple to arms. Answer, or lose standing.', 'sect-war', null, left)
+      add('urgent', 'war-call', 'flag', `War call: ${w.enemyName}`, 'Your sect calls every disciple to arms. Answer, or lose standing.', 'sect-war', null, left)
     else if (w.side === 'own' && s.ownSect?.founded)
-      add('urgent', 'own-war', '戰', `${w.enemyName} marches on you`, w.phase === 'preparing' ? 'Reinforce or call an ally before they arrive.' : 'Their scouts are in your hills. Prepare.', 'sect-war', null, left)
+      add('urgent', 'own-war', 'flag', `${w.enemyName} marches on you`, w.phase === 'preparing' ? 'Reinforce or call an ally before they arrive.' : 'Their scouts are in your hills. Prepare.', 'sect-war', null, left)
   }
 
   // ── Opportunities ──
   const road = f.encounters || []
-  if (road.length) add('ready', 'road', '逢', road.length === 1 ? `${road[0].person?.given || 'A stranger'}, met on the road` : `${road.length} strangers on the road`, 'Seduce or leave them. They wait until you choose.', 'explore')
+  if (road.length) add('ready', 'road', 'explore', road.length === 1 ? `${road[0].person?.given || 'A stranger'}, met on the road` : `${road.length} strangers on the road`, 'Seduce or leave them. They wait until you choose.', 'explore')
   const wild = s.beastEncounters || []
   if (wild.length) {
     const t = typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES.find(b => b.id === wild[0].typeId) : null
-    add('ready', 'beasts', '獸', wild.length === 1 ? `A wild ${t?.name || 'beast'} lingers` : `${wild.length} wild beasts linger`, (s.inventory?.beast_taming_talisman || 0) > 0 ? 'You carry a Taming Talisman.' : 'Taming needs a Beast Taming Talisman.', 'beasts')
+    add('ready', 'beasts', 'beast', wild.length === 1 ? `A wild ${t?.name || 'beast'} lingers` : `${wild.length} wild beasts linger`, (s.inventory?.beast_taming_talisman || 0) > 0 ? 'You carry a Taming Talisman.' : 'Taming needs a Beast Taming Talisman.', 'beasts')
   }
   // 1.8b-3a courtship: candidates to choose from, a meeting waiting on your answer, or one you can arrange
   const court = f.court
-  if (court && !court.target && (court.candidates || []).length) add('ready', 'court', '媒', 'The go-between waits', `${court.candidates.length} candidates. Choose whom to court.`, 'family')
-  else if (court?.beat) add('ready', 'court', '緣', `${court.target.given} is waiting`, 'A meeting is underway. Answer them.', 'family')
-  else if (court?.target && gs.canMeet?.().ok) add('ready', 'court', '緣', `You could call on ${court.target.given}`, gs.canPropose?.().ok ? 'Or ask for their hand.' : 'Arrange another meeting.', 'family')
+  if (court && !court.target && (court.candidates || []).length) add('ready', 'court', 'bond', 'The go-between waits', `${court.candidates.length} candidates. Choose whom to court.`, 'family')
+  else if (court?.beat) add('ready', 'court', 'bond', `${court.target.given} is waiting`, 'A meeting is underway. Answer them.', 'family')
+  else if (court?.target && gs.canMeet?.().ok) add('ready', 'court', 'bond', `You could call on ${court.target.given}`, gs.canPropose?.().ok ? 'Or ask for their hand.' : 'Arrange another meeting.', 'family')
   // 1.8b-4 clan: a challenge you can now make; Merit enough for a legacy
   const cc = gs.canChallengeHead?.()
-  if (cc?.ok) add('ready', 'challenge', '挑', 'You could challenge the head', 'You are strong enough to contest the seat. The head decides if it is to the death.', 'clan')
+  if (cc?.ok) add('ready', 'challenge', 'sword', 'You could challenge the head', 'You are strong enough to contest the seat. The head decides if it is to the death.', 'clan')
   const clan = gs._playerClan?.()
   if (clan && typeof CLAN_LEGACIES !== 'undefined' && Object.entries(CLAN_LEGACIES).some(([id, d]) => {
     const lvl = clan.legacies?.[id] || 0
     return lvl < d.levels.length && !(d.requires && !clan.firsts?.[d.requires]) && clan.merit >= d.levels[lvl].cost
-  })) add('idle', 'merit', '祠', 'Ancestral Merit to spend', `${Math.floor(clan.merit)} Merit. A legacy for every heir after you.`, 'hall')
+  })) add('idle', 'merit', 'lineage', 'Ancestral Merit to spend', `${Math.floor(clan.merit)} Merit. A legacy for every heir after you.`, 'hall')
   if (gs.isClanHead?.() && !f.heirId && !f.tournament && (gs.eligibleHeirs?.() || []).length)
-    add('ready', 'heir', '嗣', 'No heir is named', 'If your path ends today, the clan chooses without you.', 'family')
+    add('ready', 'heir', 'heir', 'No heir is named', 'If your path ends today, the clan chooses without you.', 'family')
 
   // ── Idle slots (quiet nudges; hidden while the matching automation is running) ──
   const autoOn = key => s.playMode === 'idle' && s.automation?.[key] && gs.automationUnlocked?.(key)
@@ -85,16 +85,16 @@ function collectAttention(s, gs) {
   const os = s.ownSect?.founded && gs.ownSectInfo?.()
   if (os) {
     const cand = os.candidates.filter(c => c.ok).sort((a, b) => b.c.talent - a.c.talent)[0]
-    if (cand) add('idle', 'recruit', '徒', 'A disciple seat is open', `${cand.c.name} (${cand.c.talent} star${cand.c.talent === 1 ? '' : 's'}) would join for ${cand.cost} stones.`, 'sect-disciples')
+    if (cand) add('idle', 'recruit', 'disciple', 'A disciple seat is open', `${cand.c.name} (${cand.c.talent} star${cand.c.talent === 1 ? '' : 's'}) would join for ${cand.cost} stones.`, 'sect-disciples')
     const bld = os.buildings.find(x => x.ok)
-    if (bld) add('idle', 'build', '殿', `You could raise the ${bld.b.name}`, `${bld.b.desc} Costs ${bld.b.stones} stones.`, 'sect-halls')
+    if (bld) add('idle', 'build', 'hall', `You could raise the ${bld.b.name}`, `${bld.b.desc} Costs ${bld.b.stones} stones.`, 'sect-halls')
   }
   // 1.8b-3a: a spouse cooling toward you, when something can be done about it now
   if (f.spouse && f.affection < 50 && (gs.spouseActionPreview?.('time').ok || gs.spouseActionPreview?.('gift').ok))
-    add('idle', 'spouse-cool', '冷', `${f.spouse.given} is growing distant`, `Affection ${Math.round(f.affection)}. Time together or a gift would help.`, 'family')
+    add('idle', 'spouse-cool', 'frost', `${f.spouse.given} is growing distant`, `Affection ${Math.round(f.affection)}. Time together or a gift would help.`, 'family')
   if (typeof TECHNIQUES !== 'undefined') {
     const t = TECHNIQUES.find(t => !s.techniques.includes(t.id) && s.stageIndex >= t.minStage && (s.spiritStones >= t.cost || t.id === s.inheritedManual))
-    if (t) add('idle', 'technique', 'scroll', `You can learn ${t.name}`, t.id === s.inheritedManual ? 'Your Family Manual: free to learn.' : `Costs 石 ${t.cost}; you have ${Math.floor(s.spiritStones)}.`, 'techniques')
+    if (t) add('idle', 'technique', 'scroll', `You can learn ${t.name}`, t.id === s.inheritedManual ? 'Your Family Manual: free to learn.' : `Costs ${t.cost} stones; you have ${Math.floor(s.spiritStones)}.`, 'techniques')
   }
 
   return out.sort((a, b) => ATTENTION_TIER_ORDER[a.tier] - ATTENTION_TIER_ORDER[b.tier])

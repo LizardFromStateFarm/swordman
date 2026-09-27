@@ -78,7 +78,8 @@ class LayoutUI {
     this.saved = l.mode
     this.edge  = l.bannerEdge || 'top'
     document.getElementById('btn-layout').classList.toggle('hidden', !this.supported)
-    document.getElementById('btn-pin').classList.toggle('hidden', !this.supported)   // no always-on-top on iOS/Android
+    document.getElementById('btn-pin').classList.toggle('hidden', !this.supported)
+    document.querySelector('.tbm-item[data-tbm="layout"]')?.classList.toggle('hidden', !this.supported)   // no always-on-top on iOS/Android
     this._apply(l.current || l.mode)
     if (l.pinned != null) this._syncPin(l.pinned)
   }
@@ -143,7 +144,7 @@ class LayoutUI {
       const back = document.createElement('button')
       back.id = 'layout-back'
       back.className = 'layout-opt active'
-      back.innerHTML = `<span class="layout-opt-icon">${Icon('strip')}</span><span class="layout-opt-name">Back to the banner</span><span class="layout-opt-desc">You opened the full window from the banner.</span>`
+      back.innerHTML = `<span class="layout-opt-icon">${Icon('strip-back')}</span><span class="layout-opt-name">Back to the banner</span><span class="layout-opt-desc">You opened the full window from the banner.</span>`
       back.addEventListener('click', () => { this.close(); this.returnToBanner() })
       list.appendChild(back)
     }
@@ -199,7 +200,7 @@ class LayoutUI {
     this._sizeCanvas()
     const btn = document.getElementById('btn-layout')
     btn.classList.toggle('peek', this.peeking)
-    btn.innerHTML = Icon(this.peeking ? 'strip' : 'window')   // strip = back to the banner (1.8d icons)
+    btn.innerHTML = Icon(this.peeking ? 'strip-back' : 'window')   // strip = back to the banner (1.8d icons)
     btn.title = this.peeking ? 'Window layout (peeking out of the banner)' : 'Window layout'
   }
 

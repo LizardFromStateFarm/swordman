@@ -164,6 +164,7 @@ scripts/
   gen-tray-icon.js      ← One-off generator for assets/icons/tray-icon.png (Phase 9A, not run at boot)
   art-bakeoff/          ← A2 art-direction prototype page (3 renderers, same cultivator) — not part of the game
   check-no-emoji.js     ← Emoji inventory (file:line); --strict exits 1 (A1 adds it to npm test) — no-emoji rule
+  check-no-chrome-cjk.js ← Chrome-CJK lint for renderer/ (allow: nav marks, `cjk-ok` flavour lines); --strict runs in npm test (1.8d-2)
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt
     checks/             ← Scenario checks (`npm run checks`) — force exact situations, print ok/FAIL; run-all.js + one file per system
@@ -195,7 +196,7 @@ renderer/
     family-view.js      ← FamilyView — Kin → Family: spouse/courtship card, child wishes, children + raising actions, heir (1.8b-3a)
     clan-view.js        ← ClanView + HallView — Kin → Clan (lines, head, relations, clan actions) and Kin → Hall (Merit, firsts, legacies, Family Manual picker) (1.8b-4)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
-    icons.js            ← Icon(name) → inline SVG from assets/icons/ui-icons.js; Icon.hydrate() fills [data-icon] (1.8d)
+    icons.js            ← Icon(name) → inline SVG from assets/icons/ui-icons.js; Icon.g() for glyph slots; [data-icon] auto-filled (1.8d)
     combat.js           ← SPEC (Phase 35): the battle page UI (animated exchanges) over the fight card
     base-view.js        ← SPEC (Phase 38A): Sect Base view — the large sect-compound scene
 assets/
@@ -286,7 +287,8 @@ reviewer agent, never the creator.
   `assets/icons/ui-icons.js` via `Icon()` in `renderer/game/icons.js`; the set is monochrome `currentColor` line-art
   in the ink/gold palette. **CJK is reserved for exactly two things: the six nav group marks (修 歷 家 宗 囊 錄) and
   deliberate in-world flavour** (a cultivation term, a sect's `nameCN` shown as content) — never as UI chrome.
-  (Roadmap 1.8d builds the set; A1/`1.8b-6` purge the old emoji + chrome CJK and add the lint.)
+  (1.8d built the set and purged chrome CJK; `npm test` runs `check-no-chrome-cjk.js --strict`. Deliberate flavour in
+  renderer/ code needs a `cjk-ok` comment on its line.)
 - **Sect base & Immortal Island scenes are view-only art** (user rule, 2026-09-27): the large landscape diorama
   (Phase 38A) and top-down island map (38B) reflect your buildings and visibly upgrade as you build, but
   building/upgrading still happens in the existing rows — the scene never becomes a placement UI. Scene parts and

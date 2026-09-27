@@ -32,7 +32,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
 | **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted); 1.8b-5 Sect ✅ (7.0, accepted) |
-| **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ◐ 1.8d-1 built (2026-09-27), gate 7.2 after 3 cycles, accepted by the user; 1.8d-2 next |
+| **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ✅ 1.8d-1 + 1.8d-2 (2026-09-27): 78 icons, 0 chrome CJK (lint in npm test); gates 7.2 / 7.2 accepted by the user |
 | **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate cycle 1 **5.5** (capped by emoji → re-review after 1.8d) |
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
@@ -127,6 +127,22 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 29
+Agent: **1.8d-2 icon set part 2 + chrome-CJK purge + lint** (user approved). As-built: docs/systems/icons.md.
+  - Icon set 36 → 78 (people/clan/sect/war icons) + redraws. Icon.g(x) for glyph slots; a MutationObserver auto-fills
+    any [data-icon] node, so HTML strings just write data-icon="…". COURT_WAYS / FIGHT_TACTICS .glyph now hold icon names.
+  - Every chrome CJK mark → icon: attention items, breakdown cards (cn subtitles removed), Family/Clan/Hall/Sect tiles +
+    tags + card heads, Character tiles/tags (meta is plain "Age · Year · Gen"), fight tactics, tournament results, Mode
+    cards, banner menu headings/rows, CSS content glyphs (詳 → dot, 封 → lock icon, 得 → check icon).
+  - New scripts/check-no-chrome-cjk.js; `npm test` now runs it --strict (allow: nav marks, 道, `cjk-ok` lines).
+  - Tests: npm test (190 + lint clean) · npm run checks (373) · smoke icons/family/clan/sect/character/fights/succession/
+    war-orders/nav-attention/layout-modes/banner-menus/mobile all pass, zero console errors.
+  - Visual Review Gate: FAIL after 3 cycles (asset 7.0 → 7.4 → 7.0, in-context 6.7 → 7.5 → 7.2, never < 6) → **accepted by
+    the user** with 3 culture fixes (gate = paifang, mantle = robe, tea = gaiwan) + one icon size scale (14/16/18px).
+  - User asks, same session: Path opens on Character (before Techniques), Pack on Craft (before Items); the HUD realm +
+    stage lines are English only (no realmCN/layerCN).
+  Next: **1.8b-6** (emoji lint on + fresh re-review of every screen, incl. the mobile pass; ui-review.md has the icon asks).
+
 Date: 2026-09-27 (user present) — part 28
 Agent: **1.8d-1 custom UI icon set, part 1** (user approved; 1.8d split into -1 / -2). First committed the pending
   part-27 mobile + Android work (9c3fe07). As-built: docs/systems/icons.md.

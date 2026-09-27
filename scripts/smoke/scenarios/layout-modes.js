@@ -59,7 +59,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await click('#btn-unbanner')
   await sleep(600)
   z = await size()
-  assert(z.layout === 'overlay' && await ev('!!document.querySelector("#btn-layout .ic-strip")'), 'expand peeks; titlebar shows the back-to-strip icon')
+  assert(z.layout === 'overlay' && await ev('!!document.querySelector("#btn-layout .ic-strip-back")'), 'expand peeks; titlebar shows the back-to-strip icon')
   await shot('layout-banner-peek')
   await click('#btn-layout')
   assert(await ev('!!document.getElementById("layout-back")'), 'picker offers Back to the banner while peeking')

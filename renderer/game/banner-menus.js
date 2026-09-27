@@ -131,13 +131,13 @@ class BannerMenus {
   _frame(title, cn, sub, rows, extra = '', empty = 'Nothing here yet.') {
     const esc = this.h.escHtml
     return `
-      <div class="bm-head"><span class="bm-title">${esc(title)}</span> <span class="bm-titlecn">${esc(cn)}</span>
+      <div class="bm-head"><span class="bm-title">${esc(title)}</span>
         ${sub ? `<div class="bm-sub">${sub}</div>` : ''}</div>
       <div class="bm-orn">◆</div>
       ${extra}
       <div class="bm-list">${rows.length ? rows.map(r => `
         <button class="bm-row ${r.cls || ''}" data-id="${esc(r.id)}" ${r.disabled ? 'disabled' : ''}>
-          <span class="bm-name">${esc(r.name)}${r.cn ? ` <span class="bm-cn">${esc(r.cn)}</span>` : ''}</span>
+          <span class="bm-name">${esc(r.name)}</span>
           <span class="bm-side ${r.sideCls || ''}">${r.side}</span>
           <span class="bm-meta">${r.meta.filter(Boolean).map(p => `<span class="bm-part">${p}</span>`).join('<span class="bm-sep"> · </span>')}</span>
           ${r.desc ? `<span class="bm-desc">${r.desc}</span>` : ''}
@@ -147,7 +147,7 @@ class BannerMenus {
   _dur(sec) { return sec >= 60 ? `${Math.floor(sec / 60)}m${sec % 60 ? ` ${sec % 60}s` : ''}` : `${sec}s` }
   _left(endsAt) { return this.h.fmtTime(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))) }
   _lock(text, html) { return `<span class="bm-seal">${Icon('lock')}</span> ${html ?? this.h.escHtml(text)}` }
-  _stones(n) { return `<span class="bm-stone">石</span> ${this.h.fmt(n)}` }
+  _stones(n) { return `<span class="bm-stone">${Icon('stone')}</span> ${this.h.fmt(n)}` }
 
   _missions(s) {
     const { escHtml: esc, fmt } = this.h
@@ -170,7 +170,7 @@ class BannerMenus {
     }).sort((a, b) => b.running - a.running)   // running missions pinned on top
     const sub = `${esc(def?.name || 'Your sect')} · ${esc(SECT_RANKS[sect.rank]?.name || '')} · contribution ${fmt(sect.contribution)}<br>
       <b>${n}/${SECT_MAX_MISSIONS}</b> missions underway`
-    return this._frame('Sect Missions', '宗门任务', sub, rows)
+    return this._frame('Sect Missions', '', sub, rows)
   }
 
   _explore(s) {
@@ -198,7 +198,7 @@ class BannerMenus {
     const sub = busy
       ? `<span class="bm-live">${esc(cur?.name || 'Expedition')} · ${this._left(e.endsAt)} left</span> · one expedition at a time`
       : 'Choose a destination. Percentages are each drop\'s share of the loot rolls.'
-    return this._frame('Expeditions', '历练', sub, rows)
+    return this._frame('Expeditions', '', sub, rows)
   }
 
   _craft(s) {
@@ -222,7 +222,7 @@ class BannerMenus {
       return { id: r.id, name: item.name, cn: item.nameCN, cls: can ? 'can' : 'locked', disabled: !can,
                side: can ? `${own}Craft ›` : `${own}${this._lock(need)}`, sideCls: can ? 'go' : 'dim', meta }
     })
-    return this._frame('Alchemy & Forging', '炼制', 'Materials shown as have/need · ×N = how many you already own.', rows, chips, 'No recipes in this category.')
+    return this._frame('Alchemy & Forging', '', 'Materials shown as have/need · ×N = how many you already own.', rows, chips, 'No recipes in this category.')
   }
 
   _learn(s) {
@@ -242,7 +242,7 @@ class BannerMenus {
       return { id: t.id, name: t.name, cn: t.nameCN, side, sideCls, cls, disabled,
                meta: [`<span class="bm-eff">${esc(effectText(t.effect))}</span>`], desc: esc(t.desc) }
     })
-    return this._frame('Techniques', '功法', `You hold ${this._stones(s.spiritStones)} spirit stones · ${s.techniques.length} techniques mastered`, rows, '',
+    return this._frame('Techniques', '', `You hold ${this._stones(s.spiritStones)} spirit stones · ${s.techniques.length} techniques mastered`, rows, '',
       'Every technique within your reach is mastered.')
   }
 }
