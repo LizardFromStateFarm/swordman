@@ -26,7 +26,20 @@ meditBonus               — 1 or 3
 meditSecondsLeft         — seconds until meditation expires
 lootMult                 — 1.5 if void_blade weapon equipped, else 1
 hiddenLocations          — true if artifact_void_compass equipped
+catchUp / catchUpUntil   — Phase 31 ancestral catch-up active / the clan's bestStageIndex it runs to
+breakdown                — 1.8b-2: { qps, cap, bt, btFloor, btPill, btRaw } — the terms _recalc applied, in order
 ```
+
+### Breakdowns (1.8b-2)
+`_recalc()` records each term as it applies it (`qMul` / `bAdd` / `cMul` helpers), so the Character view's "why"
+popovers show the real math, never a UI re-derivation. A part is `{ label, op: 'base' | 'x' | '+', value }`; folding
+the parts left to right rebuilds the total (BT then gets `max(btFloor)` and `min(0.98)`). **Adding a new Qi/s, cap or
+BT modifier: apply it through qMul/bAdd/cMul (or push a part), or its breakdown will be missing a term.**
+`scripts/sim/checks/breakdowns.js` pins the rebuild at five stages with every modifier kind stacked.
+Read-only helpers next to `ascensionChance()`: `ascensionBreakdown()` (Ascension Trial parts; prep terms carry
+`want` when not met), `btFailPreview()` (what a failed breakthrough costs right now, mirrors
+attemptBreakthrough's failure branch), `vitalsInfo()` (Integrity/Health regen + what can hurt them, from the same
+constants tick() and the injury sites use).
 
 ## API (game-state.js)
 ```

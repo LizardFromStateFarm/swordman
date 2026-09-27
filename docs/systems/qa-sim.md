@@ -160,6 +160,7 @@ health ∉ [0,100] · bloodlineQuality ∉ [0, BLOODLINE_CAP] · generation < 1 
 | `scenarios/visual-baseline.js` | ui-review.md → Baseline (1.8c) — screenshots every screen/mode/popup/art piece in groups for the Visual Review Gate: vb-1 charselect/settings/picker · vb-2 Overlay HUD + all tabs (top/mid/end) · vb-3 Expanded/Desktop · vb-5 proposal, family event, heir, confirm, tournament, Hall, Ascension, death→interlude · vb-6 every cultivator sprite state ×3 moments at 3× · vb-7 beast encounter cards at 2×. Rerun after 1.8b / A4 for before/after |
 | `scenarios/art-bakeoff.js` | ui-review.md → A2 art bake-off — opens scripts/art-bakeoff/index.html in the app and captures variants a/b/c at Overlay (3×) and Banner (4×) size, idle ×3 moments + breakthrough ×2, 1× shots, the (b) face swap and the side-by-side page (bake-*.png) |
 | `scenarios/nav-attention.js` | ui-layout.md → Navigation + attention (1.8b-1) — Sect Founder: six groups + every view renders alone, no automation panel left in Explore/Sect, a group remembers its sub-view, forced war + beast → attention items, order, badges, +N unfold, item clicks navigate, Mode panel (4 automation rows, Idle/Active cards), rail in Expanded, cards with reasons, banner chip + "+N" peeks. Writes `out/nav-*.png` for the Visual Review Gate |
+| `scenarios/character.js` | ui-layout.md → Breakdowns (1.8b-2) — Sect Elder (damaged, in catch-up) + Pre-Ascension: Character tiles, each breakdown kind opens with rows + total and fits the window, Esc / outside click close, every HUD entry point (Qi rate, Qi numbers, Integrity, Health, 詳), catch-up chip, banner peek, bloodline from Spirit Severing, Ascension card. Writes `out/char-*.png` for the Visual Review Gate |
 | `scenarios/ux-audit.js` | ui-layout.md → UX Audit (1.8a) — loads the Sect Elder + Sect Founder dev presets, screenshots every tab + ⚙/Hall overlays (`out/ux-*.png`) and prints chrome heights + per-tab content height / screens-of-scroll / control count / min font. Rerun after layout/UI work for before/after |
 
 ## Scenario checks (`scripts/sim/checks/`, `npm run checks`)
@@ -170,6 +171,7 @@ check script goes here (not in a temp folder) and is listed below in the same ch
 
 | File | Covers | Checks |
 |---|---|---|
+| `breakdowns.js` | core-loop.md / ui-layout.md → Breakdowns (1.8b-2) — the recorded Qi/s, Qi cap and BT parts rebuild the real totals at 5 stages with everything stacked (techniques, gear, beasts, sect, karma), catch-up is a named part, ascensionBreakdown() sums to ascensionChance(), btFailPreview() matches a forced real failure (Qi, Integrity, karma) and warns of demotion | 29 |
 | `settings.js` | settings.md / notifications.md — Close button: default Quit, closeAction → closeButton migration, explicit tray kept, invalid reset | 5 |
 | `world.js` | clan-succession.md 2.6a — world/life split, 2.5-era + pre-2.2 migrations, death keeps the world, orphan life | 13 |
 | `family-marriage.js` | family.md A — affection, marriage + crisis events, duel win/lose/flee, sabotage, partner BQ term | 21 |

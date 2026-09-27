@@ -304,6 +304,11 @@
       d.meditBonus > 1
         ? `+${fmt(d.qiPerSecondBoosted)} qi/s (${d.meditBonus}×) · ${d.meditSecondsLeft}s`
         : `+${fmt(d.qiPerSecond)} qi/s`
+    // 1.8b-2: ancestral catch-up is visible where the Qi rate is (it opens the same Qi/s breakdown)
+    const cuChip = document.getElementById('catchup-chip')
+    cuChip.classList.toggle('hidden', !d.catchUp)
+    if (d.catchUp) cuChip.title = `Ancestral catch-up: ×${CATCHUP_QPS_MULT} Qi/s until ${stageShortName(d.catchUpUntil)}`
+    breakdownUI.refresh(s)
 
     const btnMed = document.getElementById('btn-meditate')
     if (s.meditating) {
@@ -480,7 +485,7 @@
     const right = isOwned
       ? '<div class="tech-owned">✓ Learned</div>'
       : isLocked
-        ? `<div class="tech-cost" style="color:var(--dim)">Stage ${t.minStage}+</div>`
+        ? `<div class="tech-cost tech-lock" title="Unlocks at ${stageShortName(t.minStage)}">封 ${stageShortName(t.minStage)}</div>`
         : `<div class="tech-cost">🪨 ${t.cost}</div>`
     return `
       <div class="tech-main">
@@ -503,43 +508,91 @@
   // ── Stats tab ─────────────────────────────────────────────────────────────
 
   function renderStats(s) {
-    const d     = s.derived
-    const integ = d.realmIntegrity ?? 100
-    const integColor = integ >= 70 ? 'var(--jade)' : integ >= 30 ? 'var(--gold)' : 'var(--red)'
+    // 1.8b-2: Character view. Every derived number is a tile that opens its breakdown (data-bd → BreakdownUI).
+    const d  = s.derived
+    const st = d.stage
+    const lastMortal = CULTIVATION_STAGES.length - 2
+    const integ  = d.realmIntegrity ?? 100
     const health = s.health ?? 100
-    const healthColor = health >= 70 ? 'var(--jade)' : health >= 30 ? 'var(--gold)' : 'var(--red)'
-    // 1.8b-1: Character only. Family and clan moved to the 家 Kin views, banter to 錄 Log → Banter.
-    // (1.8b-2 rebuilds this view with breakdowns.)
-    document.getElementById('tab-stats').innerHTML = `
-      <div class="root-badge">根 ${s.root.name} · ×${s.root.mult} Qi</div>
-      ${(() => { const p = PERSONALITIES.find(x => x.id === s.personality?.id); return p ? `<div class="persona-badge" title="${escHtml(p.blurb)}">性 ${p.name} · ${p.nameCN}<span class="persona-blurb">${escHtml(p.blurb)}</span></div>` : '' })()}
-      ${sr('Realm', d.stage.realm)} ${sr('Layer', d.stage.layer)}
-      ${sr('Total Qi Gained', fmt(s.stats.totalQiGained))}
-      ${sr('Qi / Second', fmt(d.qiPerSecond))}
-      ${sr('Qi Cap', fmt(d.qiCap))}
-      ${sr('Breakthrough Chance', Math.round(d.breakthroughChance*100)+'%')}
-      ${sr('Realm Integrity', `<span style="color:${integColor}">${Math.round(integ)}</span>`)}
-      ${sr('Health', `<span style="color:${healthColor}">${Math.round(health)}</span>`)}
-      ${sr('Age', Math.floor(s.age))}
-      ${sr('World Year', Math.floor(s.world.year))}
-      ${sr('Breakthroughs', s.stats.breakthroughs)}
-      ${sr('Failed BTs', s.stats.failed)}
-      ${sr('Meditation Sessions', s.stats.meditationSessions)}
-      ${sr('Karma', Math.round(s.karma))}
-      ${sr('Spirit Stones', s.spiritStones)}
-      ${sr('Techniques', s.techniques.length)}
-      ${sr('Beasts', `${(s.beasts||[]).length}/${d.maxBeasts || 3}`)}
-      ${s.ownSect?.founded ? sr('Own Sect', `${escHtml(s.ownSect.name)} · ${s.ownSect.disciples.length}/${d.discipleCap} disciples · Fame ${fmt(d.sectFame)}`) : ''}
-      ${s.ownSect?.founded ? sr('Sect Wars', `${s.sectWar.warVictories}W – ${s.sectWar.warDefeats}L`) : ''}
-      ${s.sect?.id ? sr('Sect', `${SECTS.find(x => x.id === s.sect.id)?.name || '?'} · ${SECT_RANKS[s.sect.rank]?.name || ''}`) : ''}
-      ${sr('Time Cultivating', fmtTime(s.stats.timePlayed))}
-      ${s.equipped.weapon   ? sr('Weapon',   ITEMS[s.equipped.weapon]?.name   || s.equipped.weapon)   : ''}
-      ${s.equipped.artifact ? sr('Artifact', ITEMS[s.equipped.artifact]?.name || s.equipped.artifact) : ''}
-      ${sr('Generation', s.generation || 1)}
-      ${(s.deaths || 0) > 0 ? sr('Deaths', s.deaths) : ''}
-      ${s.stats.ascensionAttempts > 0 ? sr('Bloodline Quality', `${Math.round(s.bloodlineQuality || 0)} / 100`) : ''}
-      ${s.stats.ascensions > 0 ? sr('Ascensions', s.stats.ascensions) : ''}
-    `
+    const tone = v => v >= 70 ? 'jade' : v >= 30 ? '' : 'warn'
+    const persona = PERSONALITIES.find(x => x.id === s.personality?.id)
+    const fp = st.id === 'ascension' ? null : gameState.btFailPreview()
+    const toFill = Math.max(0, d.qiCap * 0.9 - s.qi)
+    const barColor = v => v >= 70 ? 'var(--jade)' : v >= 30 ? 'var(--gold)' : 'var(--red)'
+    const tile = (bd, key, glyph, val, sub, cls = '', bar) => `<button class="ch-tile ${cls}" data-bd="${bd}">
+        <span class="t-k"><span>${key}</span><i>${glyph}</i></span><span class="t-v">${val}</span>
+        ${sub ? `<span class="t-s">${sub}</span>` : ''}${bar != null ? `<span class="ch-bar"><div data-w="${Math.max(0, Math.min(100, bar))}" data-bar="${barColor(bar)}"></div></span>` : ''}</button>`
+
+    let btTile
+    if (st.id === 'ascension') btTile = `<div class="ch-tile wide"><span class="t-k"><span>Ascended</span><i>仙</i></span><span class="t-v">Beyond the mortal path</span></div>`
+    else if (s.stageIndex === lastMortal) btTile = tile('bt', 'Ascension Trial', '劫', (gameState.ascensionChance() * 100).toFixed(1) + '%', 'Failure ends this life', 'wide')
+    else btTile = tile('bt', 'Breakthrough', '破', (d.breakthroughChanceDisplay * 100).toFixed(1) + '%',
+      fp.guaranteed ? 'Pill guarantees success' : `Fails: −${Math.round(fp.qiLossFrac * 100)}% Qi · −${Math.round(fp.integrityLoss)} Integrity${fp.karmaLoss ? ` · −${Math.round(fp.karmaLoss)} Karma` : ''}${fp.demotes ? ' · fall a stage' : ''}`,
+      fp.demotes ? 'warn wide' : 'wide')
+
+    const none = '<span class="ch-none">none</span>'
+    const sectName = s.sect?.id ? SECTS.find(x => x.id === s.sect.id)?.name : null
+    const el = document.getElementById('tab-stats')
+    el.innerHTML = `<div class="ch-view">
+      <div class="ch-head" data-color="${st.color || ''}">
+        <div class="ch-realm">${escHtml(s.name)}</div>
+        <div class="ch-layer">${escHtml(stageShortName(s.stageIndex))}</div>
+        <div class="ch-tags">
+          <span class="ch-tag root" title="Spiritual root: multiplies all Qi"><b>根</b>${escHtml(latinOnly(s.root.name))} ×${s.root.mult}</span>
+          ${persona ? `<span class="ch-tag" title="${escHtml(persona.blurb)}"><b>性</b>${escHtml(persona.name)}</span>` : ''}
+        </div>
+        <div class="ch-meta" title="Age passes only while the game is open. Nothing dies of age."><b>歲</b>Age ${Math.floor(s.age)} ·<b>年</b>Year ${Math.floor(s.world.year)} ·<b>代</b>Gen ${s.generation || 1}</div>
+        ${persona ? `<div class="ch-persona">${escHtml(persona.blurb)}</div>` : ''}
+      </div>
+      ${d.catchUp ? `<button class="ch-catchup" data-bd="qps"><span class="ch-cg">承</span><span class="ch-ct">Catch-up ×${CATCHUP_QPS_MULT} Qi · +${Math.round(CATCHUP_BT_BONUS * 100)}% BT</span><span class="ch-go">詳</span></button>` : ''}
+      <div class="ch-grid">
+        <section>
+          <div class="ch-sec-title"><span>Cultivation</span></div>
+          <div class="ch-tiles">
+            ${tile('qps', 'Qi / second', '氣', fmt(d.qiPerSecondBoosted), `${(d.breakdown?.qps || []).length} sources${d.meditBonus > 1 ? ' · meditating' : ''}`, 'jade')}
+            ${tile('cap', 'Qi capacity', '海', fmt(d.qiCap), toFill > 0 && d.qiPerSecondBoosted > 0 ? `Ready in ${fmtTime(Math.ceil(toFill / d.qiPerSecondBoosted)).replace(/ /g, '\u00a0')}` : 'Ready to break through')}
+            ${btTile}
+          </div>
+        </section>
+        <section>
+          <div class="ch-sec-title"><span>Foundation</span></div>
+          <div class="ch-tiles">
+            ${tile('integrity', 'Integrity', '基', Math.round(integ), integ >= 100 ? 'Settled' : 'Mending', tone(integ), integ)}
+            ${tile('health', 'Health', '血', Math.round(health), health >= 100 ? 'Whole' : 'Recovering', tone(health), health)}
+            ${tile('karma', 'Karma', '緣', Math.round(s.karma), `+${(s.karma / 10).toFixed(1)}% breakthrough`)}
+            ${bloodlineVisible(s) ? tile('bloodline', 'Bloodline', '脈', Math.round(s.bloodlineQuality || 0), `+${((s.bloodlineQuality || 0) * ASCENSION_BQ_COEF * 100).toFixed(1)}% Ascension`)
+              : `<div class="ch-tile" title="Bloodline Quality is revealed at Spirit Severing, when it starts to matter"><span class="t-k"><span>Bloodline</span><i>脈</i></span><span class="t-v ch-sealed">封</span><span class="t-s">Sealed until Spirit Severing</span></div>`}
+          </div>
+        </section>
+        <section>
+          <div class="ch-sec-title"><span>Belongings &amp; Bonds</span></div>
+          <div class="ch-list">
+            ${sr('Weapon', s.equipped.weapon ? escHtml(ITEMS[s.equipped.weapon]?.name || s.equipped.weapon) : none)}
+            ${sr('Artifact', s.equipped.artifact ? escHtml(ITEMS[s.equipped.artifact]?.name || s.equipped.artifact) : none)}
+            ${sr('Techniques', `${s.techniques.length} of ${TECHNIQUES.length}`)}
+            ${sr('Beasts', `${(s.beasts || []).length} / ${d.maxBeasts || 3}`)}
+            ${sr('Spirit Stones', fmt(s.spiritStones))}
+            ${s.ownSect?.founded ? sr('Own Sect', `${escHtml(s.ownSect.name)} · ${s.ownSect.disciples.length}/${d.discipleCap} disciples`) : ''}
+            ${s.ownSect?.founded ? sr('Sect Wars', `${s.sectWar.warVictories} won · ${s.sectWar.warDefeats} lost`) : ''}
+            ${sectName ? sr('Sect', `${escHtml(sectName)} · ${SECT_RANKS[s.sect.rank]?.name || ''}`) : ''}
+          </div>
+        </section>
+        <section>
+          <div class="ch-sec-title"><span>Record</span></div>
+          <div class="ch-list">
+            ${sr('Breakthroughs', `${s.stats.breakthroughs} · ${s.stats.failed} failed`)}
+            ${sr('Meditations', s.stats.meditationSessions)}
+            ${sr('Qi gathered', fmt(s.stats.totalQiGained))}
+            ${sr('Time cultivating', fmtTime(s.stats.timePlayed))}
+            ${(s.deaths || 0) > 0 ? sr('Lives ended', s.deaths) : ''}
+            ${s.stats.ascensionAttempts > 0 ? sr('Ascension Trials', `${s.stats.ascensionAttempts} · ${s.stats.ascensions || 0} survived`) : ''}
+          </div>
+        </section>
+      </div></div>`
+    // Colors + bar widths through CSSOM (CSP blocks inline style attributes)
+    const head = el.querySelector('.ch-head')
+    if (head.dataset.color) head.style.setProperty('--ch-color', head.dataset.color)
+    el.querySelectorAll('.ch-bar > div').forEach(b => { b.style.width = b.dataset.w + '%'; b.style.setProperty('--bar', b.dataset.bar) })
   }
 
   // ── 家 Kin → Family (1.8b-1: moved out of Stats; 1.8b-3 rebuilds it around real choices) ──
@@ -796,7 +849,7 @@
             <div class="sect-desc">${escHtml(d.desc)}</div>
           </div>
           <button class="sect-btn${ok ? ' available' : ''}" data-joinsect="${d.id}" ${ok ? '' : 'disabled'}>
-            ${ok ? 'Join' : `Stg ${d.minStage}`}
+            ${ok ? 'Join' : `封 ${stageShortName(d.minStage)}`}
           </button>`
         el.appendChild(row)
       }
@@ -913,7 +966,7 @@
       <div class="sect-info">
         <div class="sect-name">創派 Found a Sect</div>
         <div class="sect-spec">Cost: ${escHtml(costTxt)}</div>
-        <div class="sect-desc">${ok ? 'Build halls, recruit disciples, and lead a sect of your own.' : `Requires Nascent Soul (stage ${F.minStage}).`}</div>
+        <div class="sect-desc">${ok ? 'Build halls, recruit disciples, and lead a sect of your own.' : `Requires ${stageShortName(F.minStage)}.`}</div>
         ${ok ? `<input id="_found_name" class="sect-input" maxlength="${F.maxNameLen}" placeholder="Name your sect…">` : ''}
       </div>
       <button class="sect-btn${ok && canPay ? ' available' : ''}" id="_found_btn" ${ok && canPay ? '' : 'disabled'}>Found</button>`
@@ -1495,7 +1548,7 @@
       row.innerHTML = `
         <div class="loc-info">
           <div class="loc-name">${escHtml(loc.name)} <span style="color:var(--dim);font-size:9px">${escHtml(loc.nameCN)}</span></div>
-          <div class="loc-meta">${durText} · Tier ${loc.enemyTier}${unlocked ? '' : ` · Stage ${loc.minStage}+`}</div>
+          <div class="loc-meta">${durText} · Tier ${loc.enemyTier}${unlocked ? '' : ` · 封 ${stageShortName(loc.minStage)}`}</div>
         </div>
         ${showAutoToggle ? `<button class="pack-chip${paused ? '' : ' active'}" data-autoloc="${loc.id}" title="Auto-Explore relaunch for this location">${paused ? '⏸ Paused' : '▶ Auto'}</button>` : ''}
         <button class="loc-btn${unlocked && !s.expedition.active ? ' available' : ''}"
@@ -2623,6 +2676,8 @@
     if (!item.open || layoutUI.mode !== 'banner') nav.go(item.view)
   })
   attentionUI.onBannerMore = () => layoutUI.peek(false)
+  // 1.8b-2: tap any [data-bd] number (HUD, Character tiles) for its "why" card (renderer/game/breakdowns.js)
+  const breakdownUI = new BreakdownUI(gameState, { fmt, fmtTime, esc: escHtml })
 
   document.getElementById('btn-pin').addEventListener('click', async () => {
     const btn = document.getElementById('btn-pin')
@@ -2709,6 +2764,11 @@
     if (ago < 60)   return `${ago}s ago`
     if (ago < 3600) return `${Math.floor(ago/60)}m ago`
     return `${Math.floor(ago/3600)}h ago`
+  }
+
+  // "纯灵根 Pure wood Root" → "Pure wood Root": the English beside a colored glyph marker, no plain CJK text (user 2026-09-27)
+  function latinOnly(s) {
+    return String(s).replace(/[\u3400-\u9fff\uf900-\ufaff]+/g, '').replace(/\s+/g, ' ').trim()
   }
 
   function escHtml(s) {

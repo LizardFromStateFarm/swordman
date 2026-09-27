@@ -63,15 +63,15 @@
     <div id="qi-block">
       <div id="qi-labels">
         <span class="lbl">氣 Qi</span>
-        <span id="qi-numbers">0 / 100</span>
+        <span id="qi-numbers" class="bd-link" data-bd="cap" title="What sets your Qi capacity">0 / 100</span>
       </div>
       <div id="qi-track"><div id="qi-fill"></div></div>
-      <div id="qi-rate">+0.5 qi/s</div>
+      <div id="qi-rate-row"><span id="qi-rate" class="bd-link" data-bd="qps" title="Where your Qi comes from">+0.5 qi/s</span><span id="catchup-chip" class="bd-link hidden" data-bd="qps" title="Ancestral catch-up">承 catch-up</span></div>
     </div>
 
     <!-- Integrity · Health · Age: one compact three-column row (Phase 6E) -->
     <div id="vitals">
-      <div id="integrity-block">
+      <div id="integrity-block" class="bd-link" data-bd="integrity" title="What cracks and mends your foundation">
         <div id="integrity-labels">
           <span class="lbl">基 Integrity</span>
           <span id="integrity-numbers">100</span>
@@ -79,7 +79,7 @@
         <div id="integrity-track"><div id="integrity-fill"></div></div>
       </div>
 
-      <div id="health-block">
+      <div id="health-block" class="bd-link" data-bd="health" title="What wounds and heals you">
         <div id="health-labels">
           <span class="lbl">血 Health</span>
           <span id="health-numbers">100</span>
@@ -113,6 +113,7 @@
         <span class="act-name">Breakthrough</span>
         <span class="act-sub">Advance realm</span>
       </button>
+      <button id="bt-why" class="bd-link" data-bd="bt" title="Breakthrough odds, and what a failure costs">詳</button>
     </div>
 
     <!-- Attention strip (1.8b-1): what's waiting on you, rendered by renderer/game/attention.js (AttentionUI). A
@@ -305,6 +306,9 @@
 </div>
 
 <!-- Proposal overlay (Phase 16-lite, M2 task 2.5) — a pending proposal never expires; Stats reopens it -->
+<!-- 1.8b-2: "why" popover for any [data-bd] number (renderer/game/breakdowns.js). An *-overlay so banner mode peeks for it. -->
+<div id="breakdown-overlay" class="hidden"></div>
+
 <div id="proposal-overlay" class="hidden">
   <div id="proposal-box">
     <div id="proposal-title">A Matchmaker Arrives 媒人</div>
@@ -358,6 +362,7 @@
 <script src="game/banner-menus.js"></script>
 <script src="game/attention.js"></script>
 <script src="game/nav.js"></script>
+<script src="game/breakdowns.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

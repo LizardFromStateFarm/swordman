@@ -31,7 +31,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
-| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (review 7.3–7.5 over 7 rounds, accepted by the user); next 1.8b-2 Character + breakdowns |
+| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted by the user); next 1.8b-3 Family agency |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -76,6 +76,9 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 - **Overlay tab body shrank 305 → 236px** (1.8b-1: group row + sub-tabs + attention strip). Views are shorter now
   (Explore 1.4 screens, Craft 2.6), but the founder's Sect is 5.7 screens until 1.8b-5 splits it. Candidates: a 34px nav
   row, hide the strip when calm.
+- **1.8b-2 review leftovers** (7.3 after 3 cycles; ui-review.md): popover has no caret pointing at its source; value
+  colors have no single rule (Qi/s + Health jade, cap/Integrity gold/cream); Desktop leaves empty space under the
+  Character lists; tiles are still fairly plain boxes. Breakdown cards are not zoomed by the ⚙ text-size setting.
 - **1.8b-1 review leftovers** (7 rounds, plateau 7.3–7.5; ui-review.md): Overlay strip height vs. the action row
   (reviewers split on 1- vs 2-line top item); badges ~14px w/ dark ring; the rail's 道 gap could hold an attention
   summary; "自 off" chip → pill-styled "自動 Off"; +N border neutral/gold; Mode cards unbalanced at 640px; attention
@@ -107,6 +110,26 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 20
+Agent: **1.8b-2 Character view + breakdowns** (user approved the assessment). As-built: ui-layout.md → "Breakdowns +
+  Character view", core-loop.md → "Breakdowns".
+  - game-state.js _recalc() now RECORDS each Qi/s, Qi cap and BT term as it applies it (qMul/bAdd/cMul →
+    s.derived.breakdown), so explanations are the real math. New read-only helpers ascensionBreakdown(),
+    btFailPreview(), vitalsInfo(); derived.catchUpUntil. **New modifiers must go through qMul/bAdd/cMul.**
+  - New renderer/game/breakdowns.js: buildBreakdown() (DOM-free) + BreakdownUI popover for any [data-bd] element;
+    stageShortName() replaces "Stage N+" locks (Techniques, Explore, Sect join/found).
+  - HUD: dotted Qi rate / Qi numbers, Integrity + Health blocks, 詳 badge on the Breakthrough button, 承 catch-up
+    chip. Character view rebuilt: tiles (Qi/s, cap + ETA, BT + fail cost / Ascension, Integrity, Health, Karma,
+    Bloodline sealed until Spirit Severing), identity card, lists. Overlay orders it numbers-first.
+  - New check scripts/sim/checks/breakdowns.js (29: parts rebuild totals at 5 stages, fail preview = real failure);
+    new smoke scenarios/character.js (every kind + HUD entry, Esc/outside close, fits window, all 4 modes).
+    Verified: npm test (76), npm run checks (284), smoke character.js zero console errors.
+  - **Visual Review Gate: 6.5 → 7.0 → 7.3 over 3 cycles (no criterion < 6)**; cycle-3 fixes applied after the last
+    review. **User tried it and accepted**, asking for less CJK text: colored glyph markers stay, plain CJK beside
+    English goes (root/personality tags via game.js latinOnly(), stage line, popover subtitles, section suffixes,
+    fail-cost line). Rule for all rebuilt screens. Leftovers in UX Debt.
+  Next: commit (user to confirm), then **1.8b-3 Family view + family agency**.
+
 Date: 2026-09-26 (day session, user present) — part 19
 Agent: **Close button bug** (user: "clicking close doesn't close the instances"). Cause: Phase 9A's ✕ always hid to
   the tray, and there was no single-instance lock, so every relaunch added another invisible copy. User chose

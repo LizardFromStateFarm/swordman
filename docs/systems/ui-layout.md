@@ -97,6 +97,27 @@ directly; the choice is made on a card that says what it does.
 an action the player can't take yet. Applied so far: Challenge the Head, Declare War on the Main Line, Secede, Push
 for War (1.8b-4 extends it across the Clan view).
 
+## Breakdowns + Character view (1.8b-2)
+- **Any element with `data-bd="<kind>"` opens a "why" card** (renderer/game/breakdowns.js). Kinds: `qps` · `cap` ·
+  `bt` (the Ascension Trial card at the last mortal stage) · `integrity` · `health` · `karma` · `bloodline`.
+  `buildBreakdown(kind, s, gs, fmt, fmtTime)` is DOM-free and returns `{ glyph, title, cn, total, rows, sections,
+  notes, state? }`; `BreakdownUI` draws it in `#breakdown-overlay` beside the tapped element (flips above it, clamps
+  inside the window, centers when the anchor is scrolled away). Closes on Esc, ✕, an outside click, or tapping the
+  same element. Refreshed every HUD update (only rewrites when the text changed). `state: true` cards (Integrity,
+  Health, Karma, Bloodline) show the value in the header; formula cards end in an "=" total line.
+- The numbers come from GameState (core-loop.md → Breakdowns), never recomputed in the UI.
+- It is an `*-overlay`, so in banner mode the window peeks open for it and drops back when it closes.
+- **HUD entry points:** `#qi-rate` (qps) and `#qi-numbers` (cap) have dotted underlines; `#integrity-block` /
+  `#health-block` whole blocks; the 詳 badge `#bt-why` on the Breakthrough button (the button itself still
+  attempts). `#catchup-chip` (承 catch-up) sits left of the Qi rate while ancestral catch-up is active.
+- **Character view** (`renderStats`): identity card (full name, stage, root/personality/age/year/generation tags),
+  catch-up banner, tiles for Cultivation (Qi/s, Qi cap + time to ready, Breakthrough + failure cost) and Foundation
+  (Integrity, Health, Karma, Bloodline sealed 封 until Spirit Severing via `bloodlineVisible()`), then Belongings &
+  Bonds and Record lists. Sections flow into two columns when the view is ≥ ~520px (Desktop). In **Overlay** the view is ordered numbers-first (identity card last, catch-up banner hidden: the HUD above already names the realm and carries the 承 chip). Formula cards show a running subtotal per multiplier ("×1.8 → 360K"); percentages always show one decimal.
+- `stageShortName(i)` ("Qi Condensation 4", "Core Formation · Early") replaces "Stage N+" in the Techniques, Explore
+  and Sect locks. Use it for any new stage requirement.
+- Not zoomed by the ⚙ text-size setting yet (that only zooms #tab-body); the card is 11px minimum.
+
 ## Render Function Pattern
 All `render<X>(s)` functions:
 - Receive current state snapshot `s`

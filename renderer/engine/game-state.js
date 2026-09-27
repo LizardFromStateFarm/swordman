@@ -1125,39 +1125,49 @@ class GameState {
     this._ensurePhase34Fields()   // Phase 31 (2.7a) — needs s.world.clans (33), reads maxStageThisLife/techniques
     const st = this._stage()
 
+    // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
+    // are built from the real math, never a UI re-derivation (scripts/sim/checks/breakdowns.js pins that the
+    // parts multiply/add back to the totals). Parts: { label, op: 'base' | 'x' | '+', value }.
+    const qpsParts = [{ label: `${st.realm} base`, op: 'base', value: st.baseQps }, { label: s.root.name.replace(/[\u3400-\u9fff]+/g, '').trim().replace(/^(?!.*root$)(.*)$/i, '$1 root'), op: 'x', value: s.root.mult }]
+    const btParts  = [{ label: `${st.realm} base`, op: 'base', value: st.breakthroughChance }]
+    const capParts = [{ label: `${st.realm} ${st.layer}`.trim(), op: 'base', value: st.qiCap }]
+    const qMul = (label, m) => { qps *= m; if (m !== 1) qpsParts.push({ label, op: 'x', value: m }) }
+    const bAdd = (label, v) => { btBonus += v; if (v) btParts.push({ label, op: '+', value: v }) }
+    const cMul = (label, m) => { capMult *= m; if (m !== 1) capParts.push({ label, op: 'x', value: m }) }
+
     let qps = st.baseQps * s.root.mult
     for (const id of s.techniques) {
       const t = TECHNIQUES.find(t => t.id === id)
-      if (t?.effect?.type === 'qps_mult') qps *= t.effect.value
+      if (t?.effect?.type === 'qps_mult') qMul(t.name, t.effect.value)
     }
 
     let btBonus = 0
     for (const id of s.techniques) {
       const t = TECHNIQUES.find(t => t.id === id)
-      if (t?.effect?.type === 'breakthrough_bonus') btBonus += t.effect.value
+      if (t?.effect?.type === 'breakthrough_bonus') bAdd(t.name, t.effect.value)
     }
 
     let capMult = 1
     for (const id of s.techniques) {
       const t = TECHNIQUES.find(t => t.id === id)
-      if (t?.effect?.type === 'qi_cap_mult') capMult *= t.effect.value
+      if (t?.effect?.type === 'qi_cap_mult') cMul(t.name, t.effect.value)
     }
 
     // Equipped weapon bonuses
     const weapId = s.equipped.weapon
     if (weapId && ITEMS[weapId]) {
       const we = ITEMS[weapId].effect
-      if (we.type === 'qps_mult')   qps     *= we.value
-      if (we.type === 'void_blade') btBonus += we.bt_bonus
+      if (we.type === 'qps_mult')   qMul(ITEMS[weapId].name, we.value)
+      if (we.type === 'void_blade') bAdd(ITEMS[weapId].name, we.bt_bonus)
     }
 
     // Equipped artifact bonuses
     const artId = s.equipped.artifact
     if (artId && ITEMS[artId]) {
       const ae = ITEMS[artId].effect
-      if (ae.type === 'qps_mult')    qps     *= ae.value
-      if (ae.type === 'qi_cap_mult') capMult *= ae.value
-      if (ae.type === 'bt_bonus')    btBonus += ae.value
+      if (ae.type === 'qps_mult')    qMul(ITEMS[artId].name, ae.value)
+      if (ae.type === 'qi_cap_mult') cMul(ITEMS[artId].name, ae.value)
+      if (ae.type === 'bt_bonus')    bAdd(ITEMS[artId].name, ae.value)
     }
 
     const meditBonus = (s.meditating && Date.now() < s.meditationEnds) ? 3 : 1
@@ -1175,16 +1185,19 @@ class GameState {
         if (traitId === 'heavenly_instinct') beastBtBonus    += 0.10 * lvlMult
       }
     }
-    qps      = qps * beastQpsMult + beastPassiveQps
-    btBonus += beastBtBonus
+    qMul('Soul-bonded beasts', beastQpsMult)
+    qps += beastPassiveQps
+    if (beastPassiveQps) qpsParts.push({ label: 'Qi-devouring beasts', op: '+', value: beastPassiveQps })
+    bAdd('Beast instinct', beastBtBonus)
 
     // Sect bonuses (Phase 4) — suppressed for a while after the sect loses a member war (Phase 5C)
     const sectBuffSuppressed = s.sectWar.side === 'member' && Date.now() < (s.sectWar.buffSuppressedUntil || 0)
     const sectFx = sectBuffSuppressed ? {} : (this._sectDef()?.effects || {})
-    if (sectFx.qps_mult)                 qps     *= sectFx.qps_mult
-    if (sectFx.weapon_qps_mult && weapId) qps    *= sectFx.weapon_qps_mult
-    if (sectFx.artifact_qps_mult && artId) qps   *= sectFx.artifact_qps_mult
-    if (sectFx.bt_bonus)                 btBonus += sectFx.bt_bonus
+    const sectName = this._sectDef()?.name || 'Sect'
+    if (sectFx.qps_mult)                 qMul(sectName, sectFx.qps_mult)
+    if (sectFx.weapon_qps_mult && weapId) qMul(`${sectName} (weapon)`, sectFx.weapon_qps_mult)
+    if (sectFx.artifact_qps_mult && artId) qMul(`${sectName} (artifact)`, sectFx.artifact_qps_mult)
+    if (sectFx.bt_bonus)                 bAdd(sectName, sectFx.bt_bonus)
 
     // Own-sect bonuses (Phase 5A)
     const own = s.ownSect
@@ -1210,7 +1223,7 @@ class GameState {
       discCap = SECT_HALL_LEVELS[Math.min(own.hallLevel, SECT_HALL_LEVELS.length) - 1].cap
       fame   += 10 * bIds.length + 25 * own.hallLevel + 5 * (s.sectWar?.warVictories || 0)
     }
-    qps *= 1 + discQi
+    qMul('Disciples’ offerings', 1 + discQi)
 
     // Phase 31 (M2 tasks 2.7d/2.7e, clan-succession.md §2.7): Ancestral catch-up below the clan's best-reached
     // stage, Refined Meridians (permanent, any stage) and the Ancestor Blessing (permanent, unconditional —
@@ -1219,16 +1232,17 @@ class GameState {
     const inCatchUp = !!(legacyClan && s.stageIndex < legacyClan.bestStageIndex)
     let catchUpBtBonus = 0
     if (legacyClan) {
-      if (inCatchUp) { qps *= CATCHUP_QPS_MULT; catchUpBtBonus = CATCHUP_BT_BONUS }
-      qps *= 1 + this._legacyValue(legacyClan, 'refined_meridians')
-      qps *= 1 + (legacyClan.blessingStacks || 0) * ANCESTOR_BLESSING_QPS
+      if (inCatchUp) { qMul('Ancestral catch-up', CATCHUP_QPS_MULT); catchUpBtBonus = CATCHUP_BT_BONUS; btParts.push({ label: 'Ancestral catch-up', op: '+', value: CATCHUP_BT_BONUS }) }
+      qMul('Refined Meridians', 1 + this._legacyValue(legacyClan, 'refined_meridians'))
+      qMul('Ancestor Blessing', 1 + (legacyClan.blessingStacks || 0) * ANCESTOR_BLESSING_QPS)
     }
 
     // Family (docs/systems/family.md): a Devoted spouse steadies your breakthroughs; a betrayed one
     // sabotages the next attempt (cleared by attemptBreakthrough()).
     const fam = s.family
-    if (fam?.spouse && fam.affection >= AFFECTION_DEVOTED) btBonus += DEVOTED_BT_BONUS
-    if (fam?.btSabotage) btBonus -= SABOTAGE_BT_MALUS
+    if (fam?.spouse && fam.affection >= AFFECTION_DEVOTED) bAdd('Devoted spouse', DEVOTED_BT_BONUS)
+    if (fam?.btSabotage) bAdd('Spouse’s sabotage', -SABOTAGE_BT_MALUS)
+    if (s.karma) btParts.push({ label: 'Karma', op: '+', value: s.karma / 1000 })
 
     // Pill preview bonus (for display only — consumed at BT attempt time)
     let pillBtPreview = 0
@@ -1266,6 +1280,12 @@ class GameState {
       arrayDamaged,
       sectBuffSuppressed,
       catchUp:          inCatchUp,   // Phase 31 (2.7e): below the clan's best-reached stage
+      catchUpUntil:     inCatchUp ? legacyClan.bestStageIndex : null,
+      // 1.8b-2: the terms behind qiPerSecond / breakthroughChance / qiCap (see top of _recalc)
+      breakdown: {
+        qps: qpsParts, bt: btParts, cap: capParts,
+        btFloor: sectFx.bt_floor || 0, btPill: pillBtPreview, btRaw: st.breakthroughChance + btBonus + catchUpBtBonus + s.karma / 1000,
+      },
     }
   }
 
@@ -1792,6 +1812,52 @@ class GameState {
   // ── Phase 23A/B/C: Health, Bloodline Quality, Ascension Trial ──────────────
 
   // Hidden from the player except on the Ascension screen and after the first attempt (Phase 23B).
+  // 1.8b-2: the Ascension Trial's terms, same math as ascensionChance() (checks/breakdowns.js pins the sum).
+  ascensionBreakdown() {
+    const s = this._s
+    const bq = s.bloodlineQuality || 0
+    const parts = [{ label: 'Heaven’s mercy', op: 'base', value: ASCENSION_BASE_CHANCE },
+                   { label: `Bloodline ${Math.round(bq)}`, op: '+', value: bq * ASCENSION_BQ_COEF }]
+    parts.push({ label: 'Integrity at 100', op: '+', value: (s.realmIntegrity ?? 100) >= 100 ? ASCENSION_PREP_INTEGRITY : 0, want: ASCENSION_PREP_INTEGRITY })
+    parts.push({ label: 'Health at 100',    op: '+', value: (s.health ?? 100) >= 100 ? ASCENSION_PREP_HEALTH : 0, want: ASCENSION_PREP_HEALTH })
+    return { parts, cap: ASCENSION_CHANCE_CAP, total: this.ascensionChance() }
+  }
+
+  // 1.8b-2: what a failed breakthrough would cost right now (mirrors attemptBreakthrough's failure branch).
+  btFailPreview() {
+    const s = this._s
+    const pe = s.activePill && (s.inventory[s.activePill] || 0) > 0 ? ITEMS[s.activePill]?.effect : null
+    let qiKeep = 0.5
+    if (pe?.type === 'qi_loss_reduce') qiKeep = 0.5 + 0.5 * pe.value
+    if (pe?.qi_loss_reduce != null)    qiKeep = 0.5 + 0.5 * pe.qi_loss_reduce
+    const activeKeep = s.playMode === 'active'
+    if (activeKeep) qiKeep = Math.min(1, qiKeep + ACTIVE_BT_QI_LOSS_BONUS)
+    const integ = s.realmIntegrity ?? 100
+    let after = Math.max(0, integ - 20)
+    if (pe?.integrity_restore) after = Math.min(100, after + pe.integrity_restore)
+    return {
+      guaranteed: pe?.type === 'bt_guarantee',
+      qiLossFrac: 1 - qiKeep, activeKeep, pillSoftens: qiKeep > (activeKeep ? 0.5 + ACTIVE_BT_QI_LOSS_BONUS : 0.5),
+      karmaLoss: Math.min(8, s.karma), integrityLoss: integ - after, integrityAfter: after,
+      demotes: after <= 0 && s.stageIndex > 0,
+    }
+  }
+
+  // 1.8b-2: Integrity + Health explained — regen rates and what can hurt them, from the same constants tick() uses.
+  vitalsInfo() {
+    const s = this._s
+    const expectedTier = 1 + Math.floor(s.stageIndex / 5)
+    const risky = LOCATIONS.filter(l => s.stageIndex >= (l.minStage || 0) && l.enemyTier > expectedTier)
+      .map(l => { const o = l.enemyTier - expectedTier; return { name: l.name, chance: Math.min(1, EXPEDITION_INJURY_CHANCE_PER_TIER * o), dmg: EXPEDITION_INJURY_BASE + EXPEDITION_INJURY_PER_TIER * o } })
+    return {
+      integrity: { value: s.realmIntegrity ?? 100, regenSeconds: 30 / (s.derived?.integrityRegenMult || 1), failLoss: 20, demoteResetTo: 60 },
+      health: {
+        value: s.health ?? 100, regenSeconds: HEALTH_REGEN_SECONDS, regenAmount: HEALTH_REGEN_AMOUNT,
+        risky, warChance: WAR_INJURY_CHANCE, warDmg: WAR_INJURY_AMOUNT, duelCost: DUEL_WIN_HEALTH_COST,
+      },
+    }
+  }
+
   ascensionChance() {
     const s = this._s
     const bq = s.bloodlineQuality || 0

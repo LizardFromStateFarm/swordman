@@ -182,6 +182,7 @@ renderer/
     banner-menus.js     ← BannerMenus — banner strip quick-action dropdowns: missions/explore/craft/learn (1.7b)
     nav.js              ← NavUI + NAV_GROUPS — six nav groups → sub-tab views, badges, automation chip (1.8b-1)
     attention.js        ← collectAttention() (DOM-free) + AttentionUI — the "needs you" strip/cards (1.8b-1)
+    breakdowns.js       ← buildBreakdown() (DOM-free) + BreakdownUI — "why" popovers for any [data-bd] number, stageShortName() (1.8b-2)
 assets/
   icons/
     tray-icon.png       ← System tray icon (Phase 9A) — see scripts/gen-tray-icon.js
