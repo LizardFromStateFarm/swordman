@@ -3172,3 +3172,50 @@ body[data-layout="overlay"] .kin-view .fam-card, body[data-layout="overlay"] .ki
 .lg-buy:not(:disabled) { background: color-mix(in srgb, var(--gold) 8%, transparent); }
 .fr.got { opacity: .78; }
 ::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--gold) 42%, var(--scroll)); }
+
+/* Number fields (user 2026-09-27: "ugly windows arrows"): no native spin buttons anywhere; Standing Orders numbers get
+   themed −/+ steppers (game.js numRow) and the war chest explains itself (.warord-note). */
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.num-step { display: inline-flex; align-items: stretch; border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--border)); border-radius: 4px;
+  overflow: hidden; background: rgba(8,4,14,0.5); }
+.num-step .warord-input { width: 64px; border: none; border-radius: 0; background: transparent; text-align: center; font-variant-numeric: tabular-nums; }
+.num-step .warord-input:focus { outline: none; background: color-mix(in srgb, var(--gold) 8%, transparent); }
+.num-step-btn { width: 26px; min-height: 26px; font-family: var(--font); font-size: 14px; line-height: 1; color: var(--gold); cursor: pointer;
+  background: rgba(24,10,4,0.6); border: none; transition: background .12s; }
+.num-step-btn:first-child { border-right: 1px solid color-mix(in srgb, var(--gold) 20%, var(--border)); }
+.num-step-btn:last-child  { border-left: 1px solid color-mix(in srgb, var(--gold) 20%, var(--border)); }
+.num-step-btn:hover { background: color-mix(in srgb, var(--gold) 16%, rgba(24,10,4,0.6)); }
+.num-step-btn:active { background: color-mix(in srgb, var(--gold) 26%, rgba(24,10,4,0.6)); }
+.warord-note { font-size: 10.5px; line-height: 1.45; color: color-mix(in srgb, var(--text) 70%, var(--dim)); margin: 2px 0 8px; padding: 6px 8px;
+  border-left: 2px solid color-mix(in srgb, var(--gold) 45%, transparent); background: rgba(8,4,14,0.35); border-radius: 0 3px 3px 0; }
+.warord-note b { font-weight: normal; color: var(--gold); }
+.warord-note b.up { color: var(--jade); }
+
+/* War chest review fixes: presets beside the stepper, stepper sized like the segment buttons, a shorter note */
+.num-ctl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.num-presets .set-opt { min-width: 44px; }
+.num-step-btn { width: 30px; min-height: 28px; }
+.num-step .warord-input { width: 56px; }
+.warord-note .wn-you { color: var(--text); }
+.warord-note i { font-style: italic; color: var(--dim-hi); }
+body[data-layout="overlay"] .set-row:has(.num-ctl) { flex-wrap: wrap; row-gap: 5px; }
+body[data-layout="overlay"] .num-ctl { flex: 1 1 100%; justify-content: space-between; }
+body[data-layout="overlay"] .num-step-btn { min-height: 32px; width: 32px; }
+
+/* War chest review 2: the stepper is the same family as the segment buttons beside it (height, border, surface) */
+.num-step { border: 1px solid var(--border); border-radius: 3px; background: rgba(24,10,4,.8); }
+.num-step-btn { width: 24px; min-height: 22px; font-size: 12px; background: transparent; }
+.num-step-btn:first-child { border-right: 1px solid var(--border); }
+.num-step-btn:last-child  { border-left: 1px solid var(--border); }
+.num-step-btn:disabled { color: var(--dim); opacity: .45; cursor: default; background: transparent; }
+.num-step .warord-input { width: 52px; min-height: 22px; font-size: 10.5px; color: var(--gold); }
+.num-ctl { gap: 4px; }
+body[data-layout="overlay"] .num-ctl { justify-content: flex-start; gap: 6px; }
+body[data-layout="overlay"] .num-presets .set-opt, body[data-layout="overlay"] .num-step-btn, body[data-layout="overlay"] .num-step .warord-input { min-height: 30px; }
+body[data-layout="overlay"] .num-step-btn { width: 30px; }
+body[data-layout="overlay"] .warord-note { font-size: 10.5px; line-height: 1.4; }
+/* War chest review 3 (unreviewed): the note is a caption of its row, not a panel */
+.warord-note { background: none; border-left: 1px solid color-mix(in srgb, var(--gold) 30%, transparent); padding: 1px 0 1px 8px; margin: 0 0 8px 2px; color: var(--dim-hi); }
+.warord-note .wn-you { color: color-mix(in srgb, var(--text) 85%, var(--dim)); }
+.num-step .warord-input { background: rgba(24,10,4,.8); }

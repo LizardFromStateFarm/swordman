@@ -96,6 +96,10 @@ the as-built reference.
 ### State
 - `s.warOrders: { answer, chestStones, lendBeast, reinforce, reinforceKeep, ally }` — one object per slot, applies
   to both sides (only the fields relevant to your current side are read/shown).
+- UI (2026-09-27): number orders (`chestStones`, `reinforceKeep`) use themed −/+ steppers (native spin arrows are hidden
+  app-wide), and the war-chest row carries a note with the player's own numbers: full chest at their rank, max bonus
+  (`MEMBER_WAR_CHEST_MAX_BONUS` × rank reward mult), Contribution per stone, and what the current order buys.
+  Smoke: `scripts/smoke/scenarios/war-orders.js`.
   - `answer: 'always' | 'defensive' | 'stay_out'` — member side. Default `'always'`.
   - `chestStones: number ≥ 0` — member side, stones to auto-donate to the war chest per war. Default `0` (off).
   - `lendBeast: 'never' | 'strongest'` — member side. Default `'never'`.

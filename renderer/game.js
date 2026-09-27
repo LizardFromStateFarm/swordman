@@ -1098,7 +1098,8 @@
       el.appendChild(row)
     }
 
-    const numRow = (label, key, hint) => {
+    // opts: { step, presets: [[label, value], …] } — presets are one-click amounts beside the stepper
+    const numRow = (label, key, hint, opts = {}) => {
       const row = document.createElement('div')
       row.className = 'set-row'
       const lab = document.createElement('div')
@@ -1110,18 +1111,65 @@
       input.type = 'number'
       input.className = 'sect-input warord-input'
       input.min = 0
-      input.step = 10
+      input.step = opts.step || 10
       input.value = o[key]
       input.addEventListener('change', () => gameState.setWarOrder(key, input.value))
-      row.appendChild(input)
+      // Themed −/+ steppers (the native Windows spin arrows are hidden app-wide in styles.css)
+      const wrap = document.createElement('div')
+      wrap.className = 'num-step'
+      const stepBtn = (txt, dir) => {
+        const b = document.createElement('button')
+        b.type = 'button'; b.className = 'num-step-btn'; b.textContent = txt
+        b.title = `${dir > 0 ? '+' : '−'}${input.step} stones`
+        b.disabled = dir < 0 ? !(Number(o[key]) > 0) : (opts.max != null && Number(o[key]) >= opts.max)
+        b.addEventListener('click', () => {
+          input.value = Math.min(opts.max ?? Infinity, Math.max(0, (Number(input.value) || 0) + dir * Number(input.step)))
+          gameState.setWarOrder(key, input.value)
+        })
+        return b
+      }
+      wrap.append(stepBtn('−', -1), input, stepBtn('+', 1))
+      const ctl = document.createElement('div')
+      ctl.className = 'num-ctl'
+      if (opts.presets) {
+        const seg = document.createElement('div')
+        seg.className = 'set-seg num-presets'
+        for (const [plabel, pval] of opts.presets) {
+          const b = document.createElement('button')
+          b.type = 'button'; b.className = 'set-opt' + (Number(o[key]) === pval ? ' active' : ''); b.textContent = plabel
+          b.title = pval + ' Spirit Stones'
+          b.addEventListener('click', () => { input.value = pval; gameState.setWarOrder(key, pval) })
+          seg.appendChild(b)
+        }
+        ctl.appendChild(seg)
+      }
+      ctl.appendChild(wrap)
+      row.appendChild(ctl)
       el.appendChild(row)
+    }
+    // What a war-chest order actually buys, with this character's numbers (1.8b quick fix, user 2026-09-27)
+    const chestNote = () => {
+      const full = gameState.memberWarChestFull()
+      const per = Math.min(full, o.chestStones || 0)
+      const rankMult = SECT_RANKS[s.sect?.rank]?.rewardMult || 1
+      const pct = Math.round(MEMBER_WAR_CHEST_MAX_BONUS * Math.min(1, per / full) * rankMult * 100)
+      const note = document.createElement('div')
+      note.className = 'warord-note'
+      note.innerHTML = (per > 0
+          ? `<span class="wn-you">Your tithe: <b>${fmt(per)}</b> stones each war → <b class="up">+${pct}%</b> war strength (better odds of victory), <b>+${fmt(Math.floor(per * SECT_DONATE_RATE))}</b> Contribution${per < full * 0.1 ? ' <i>(a token gesture)</i>' : ''}</span>`
+          : `<span class="wn-you">No tithe: you never give on your own (you can still give by hand during a war).</span>`) +
+        `<br>Paid from your pouch when you answer a call, never more than you hold. The chest takes at most ${fmt(full)} (±${Math.max(10, Math.round(full / 10 / 10) * 10)} per step).`
+      el.appendChild(note)
     }
 
     if (side === 'member') {
       segRow('Answer calls', 'answer', [
         { value: 'always', label: 'Always' }, { value: 'defensive', label: 'Defensive' }, { value: 'stay_out', label: 'Stay out' },
       ], 'Defensive behaves like Always for now — every member war today is your sect being attacked.')
-      numRow('War chest (stones/war)', 'chestStones', '0 = never donate automatically; capped by the chest and what you can afford')
+      { const full = gameState.memberWarChestFull()
+        numRow('War chest', 'chestStones', 'Spirit Stones given each war; capped by the chest and what you hold',
+          { max: full, step: Math.max(10, Math.round(full / 10 / 10) * 10), presets: [['None', 0], ['Half', Math.round(full / 2)], ['Full', full]] }) }
+      chestNote()
       segRow('Lend beast', 'lendBeast', [{ value: 'never', label: 'Never' }, { value: 'strongest', label: 'Strongest' }])
     } else if (side === 'own') {
       segRow('Reinforce', 'reinforce', [{ value: 'never', label: 'Never' }, { value: 'if_affordable', label: 'If affordable' }])

@@ -115,6 +115,12 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 23
+Agent: **Quick fix (user): war chest row** in Sect → Standing Orders. Native number spin arrows hidden app-wide;
+  numRow() got themed −/+ steppers (+ optional presets/max); the war chest row has None/Half/Full, ±10% steps and a
+  caption with the player's numbers (what the tithe buys, when it's paid, the cap). New smoke scenarios/war-orders.js.
+  Visual Review Gate 6.8 → 7.0 → 7.3, accepted by the user. Next: 1.8b-3b.
+
 Date: 2026-09-27 (user present) — part 22
 Agent: **1.8b-4 Clan view + Hall** (user approved; asked for the Clan tab to be easier to read, the Hall to get
   help, the Overlay "Best Realm Reached" spacing bug fixed, and a themed scrollbar). As-built: ui-layout.md → "Clan +
