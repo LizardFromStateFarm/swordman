@@ -134,6 +134,7 @@ docs/
     settings.md         ← ⚙ Settings panel, per-slot presentation prefs (Phase 20C)
     banter.md           ← Personalities + banter engine, bubble, log (Phase 29)
     banter-writing-guide.md ← Voice/tokens/triggers brief for writing banter lines
+    icons.md            ← UI icon set (1.8d): Icon() helper, icon list, emoji/chrome-CJK replacement status
     ui-layout.md        ← Window layout + layout modes (6E), tab pattern, CSS vars, UX Audit (1.8a)
     ui-review.md        ← Visual Review Gate score history (every UI change + asset, 0–10, pass ≥ 8.0)
     notifications.md    ← System tray + opt-in desktop notifications (Phase 9A-B)
@@ -186,7 +187,7 @@ renderer/
     settings.js         ← SettingsUI — ⚙ overlay rendered from SETTINGS_DEFS + applies prefs (Phase 20C, UI only)
     banter.js           ← BanterSystem — picks lines on game events + idle timer, DOM-free (Phase 29)
     notifications.js    ← NotificationSystem — opt-in desktop notification triggers + cooldowns, DOM-free (Phase 9A-B)
-    layout.js           ← LayoutUI — window layout modes: ▣ picker, body[data-layout], canvas sizing, banner peek (Phase 6E)
+    layout.js           ← LayoutUI — window layout modes: layout picker, body[data-layout], canvas sizing, banner peek (Phase 6E)
     banner-menus.js     ← BannerMenus — banner strip quick-action dropdowns: missions/explore/craft/learn (1.7b)
     nav.js              ← NavUI + NAV_GROUPS — six nav groups → sub-tab views, badges, automation chip (1.8b-1)
     attention.js        ← collectAttention() (DOM-free) + AttentionUI — the "needs you" strip/cards (1.8b-1)
@@ -194,13 +195,13 @@ renderer/
     family-view.js      ← FamilyView — Kin → Family: spouse/courtship card, child wishes, children + raising actions, heir (1.8b-3a)
     clan-view.js        ← ClanView + HallView — Kin → Clan (lines, head, relations, clan actions) and Kin → Hall (Merit, firsts, legacies, Family Manual picker) (1.8b-4)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
-    icons.js            ← SPEC (1.8d): Icon(name) → inline SVG from assets/icons/ui-icons.svg; the UI icon set
+    icons.js            ← Icon(name) → inline SVG from assets/icons/ui-icons.js; Icon.hydrate() fills [data-icon] (1.8d)
     combat.js           ← SPEC (Phase 35): the battle page UI (animated exchanges) over the fight card
     base-view.js        ← SPEC (Phase 38A): Sect Base view — the large sect-compound scene
 assets/
   icons/
     tray-icon.png       ← System tray icon (Phase 9A) — see scripts/gen-tray-icon.js
-    ui-icons.svg        ← SPEC (1.8d): custom UI icon sprite — monochrome `currentColor` symbols (replaces emoji + chrome CJK)
+    ui-icons.js         ← UI_ICONS — the custom UI icon set (1.8d): monochrome `currentColor` line-art SVG bodies (replaces emoji + chrome CJK)
   data/
     stages.js           ← CULTIVATION_STAGES[23]
     techniques.js       ← TECHNIQUES
@@ -282,7 +283,7 @@ reviewer agent, never the creator.
   canvas). If a symbol has an emoji-default presentation, don't use it.
 - **UI icons come from the custom SVG icon set**, not from CJK or box/line characters (user rule, 2026-09-27 — this
   is a US App Store release, and scattered Chinese glyphs read as clutter). Draw icons from
-  `assets/icons/ui-icons.svg` via `Icon()` in `renderer/game/icons.js`; the set is monochrome `currentColor` line-art
+  `assets/icons/ui-icons.js` via `Icon()` in `renderer/game/icons.js`; the set is monochrome `currentColor` line-art
   in the ink/gold palette. **CJK is reserved for exactly two things: the six nav group marks (修 歷 家 宗 囊 錄) and
   deliberate in-world flavour** (a cultivation term, a sect's `nameCN` shown as content) — never as UI chrome.
   (Roadmap 1.8d builds the set; A1/`1.8b-6` purge the old emoji + chrome CJK and add the lint.)

@@ -32,6 +32,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
 | **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted); 1.8b-5 Sect ✅ (7.0, accepted) |
+| **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ◐ 1.8d-1 built (2026-09-27), gate 7.2 after 3 cycles, accepted by the user; 1.8d-2 next |
 | **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate cycle 1 **5.5** (capped by emoji → re-review after 1.8d) |
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
@@ -126,6 +127,25 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 28
+Agent: **1.8d-1 custom UI icon set, part 1** (user approved; 1.8d split into -1 / -2). First committed the pending
+  part-27 mobile + Android work (9c3fe07). As-built: docs/systems/icons.md.
+  - New assets/icons/ui-icons.js (UI_ICONS, 36 line-art SVG bodies, currentColor, 1.6 stroke) + renderer/game/icons.js
+    (Icon(name), Icon.hydrate() for [data-icon] in static HTML, Icon.names()). Diverged from the plan: a JS table, not an
+    .svg sprite (external <use>/fetch are blocked on file:// in Electron). .ic in styles.css = 1em, so ⚙ text size scales it.
+  - Converted: titlebar (back/window/strip/Idle-moon/Active-flame chip/settings/pin/close/more), HUD labels (qi, integrity,
+    health, stone, age, lineage catch-up chip), Meditate/Breakthrough/why, layout picker rows + tip, overlay titles (CN
+    subtitles dropped), banner readouts + quick buttons, rail + auto chips, attention header + expedition/missions/technique
+    nudges, 封 lock marks → lock icon (Techniques/Explore/automation/banner), Pack currency/equip/Auto chips, charselect
+    title. check-no-emoji: 0 emoji outside the sprite files.
+  - Tests: npm test (189) · npm run checks (373) · new smoke scenarios/icons.js (contact sheet + no leftover glyph text in
+    titlebar/HUD); layout-modes/nav-attention assertions switched from glyph text to icon classes; layout-modes,
+    banner-menus, nav-attention, mobile, character, sect all pass, zero console errors.
+  - **Visual Review Gate: FAIL after 3 cycles** (asset 6.6 → 7.0 → 6.8, in-context 6.75 → 6.8 → 7.2, never < 6) →
+    **accepted by the user** (remaining redraws — lineage, token, scroll, integrity, stone pebble, one fill rule — folded
+    into 1.8d-2's review of the whole set; asks in ui-review.md).
+  Next: user decides on the gate → commit → **1.8d-2** (attention/family/clan/sect/breakdown marks + chrome-CJK lint) → 1.8b-6.
+
 Date: 2026-09-27 (user present) — part 27
 Agent: two user-requested tasks (tooling + UI), while another agent finished 1.8b-5.
   1) **Android + Google Play pipeline** (build/release tooling; not a game phase). `android/` Capacitor project added;

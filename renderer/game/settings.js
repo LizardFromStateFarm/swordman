@@ -1,4 +1,4 @@
-// SettingsUI — ⚙ panel rendered from SETTINGS_DEFS + applies presentation settings (Phase 20C).
+// SettingsUI — Settings panel rendered from SETTINGS_DEFS + applies presentation settings (Phase 20C).
 // UI only (not loaded by the sim). All writes go through gameState.setSetting(). See docs/systems/settings.md.
 
 class SettingsUI {

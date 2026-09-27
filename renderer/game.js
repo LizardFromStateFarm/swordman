@@ -493,7 +493,7 @@
     const right = isOwned
       ? '<div class="tech-owned">✓ Learned</div>'
       : isLocked
-        ? `<div class="tech-cost tech-lock" title="Unlocks at ${stageShortName(t.minStage)}">封 ${stageShortName(t.minStage)}</div>`
+        ? `<div class="tech-cost tech-lock" title="Unlocks at ${stageShortName(t.minStage)}">${Icon('lock')} ${stageShortName(t.minStage)}</div>`
         : `<div class="tech-cost">石 ${t.cost}</div>`
     return `
       <div class="tech-main">
@@ -735,7 +735,7 @@
 
   // ── Automation panel (Phase 22, section 22D) ───────────────────────────────
   // Lives in the Mode panel only (1.8b-1; it used to render at the top of Explore and both Sect views) — a
-  // roadmap of what's unlocked and what unlocks next. Reuses the ⚙ Settings panel's .set-row/.set-label/.set-seg/.set-opt
+  // roadmap of what's unlocked and what unlocks next. Reuses the Settings panel's .set-row/.set-label/.set-seg/.set-opt
   // CSS (same trick as renderWarOrdersPanel below) so it needs no new stylesheet.
   function renderAutomationPanel(s, el) {
     const box = document.createElement('div')
@@ -759,7 +759,7 @@
       row.className = 'set-row auto-row' + (unlocked ? '' : ' locked')
       const label = document.createElement('div')
       label.className = 'set-label'
-      label.innerHTML = `<span class="auto-name">${unlocked ? '' : '封 '}${name}</span><span class="auto-what">${what}</span>`
+      label.innerHTML = `<span class="auto-name">${unlocked ? '' : `${Icon('lock')} `}${name}</span><span class="auto-what">${what}</span>`
       row.appendChild(label)
       if (unlocked) {
         const seg = document.createElement('div')
@@ -811,7 +811,7 @@
 
   // ── War Standing Orders (Phase 32) ─────────────────────────────────────────
   // Rendered into Sect → War for both sides (SectView calls it through its helpers, 1.8b-5).
-  // Reuses the ⚙ Settings panel's .set-row/.set-label/.set-seg/.set-opt CSS so it fits 300px without
+  // Reuses the Settings panel's .set-row/.set-label/.set-seg/.set-opt CSS so it fits 300px without
   // its own stylesheet (see docs/systems/settings.md).
   function renderWarOrdersPanel(s, el, side) {
     const o = s.warOrders
@@ -1028,11 +1028,11 @@
       row.innerHTML = `
         <div class="loc-info">
           <div class="loc-name" title="${escHtml(loc.nameCN)}">${escHtml(loc.name)}</div>
-          <div class="loc-meta">${durText} · Tier ${loc.enemyTier}${unlocked ? '' : ` · 封 ${stageShortName(loc.minStage)}`}</div>
+          <div class="loc-meta">${durText} · Tier ${loc.enemyTier}${unlocked ? '' : ` · ${Icon('lock')} ${stageShortName(loc.minStage)}`}</div>
           <div class="loc-drops" title="Chance each item comes back from one run, and how many">${gameState.dropPreview(loc.id).map(d =>
             `<span class="ld"><span class="ld-n">${escHtml(d.name)}</span> <span class="ld-q">${d.min === d.max ? d.min : `${d.min}–${d.max}`}</span> <span class="ld-p">${Math.round(d.chance * 100)}%</span></span>`).join('')}</div>
         </div>
-        ${showAutoToggle ? `<button class="pack-chip${paused ? '' : ' active'}" data-autoloc="${loc.id}" title="Auto-Explore relaunch for this location">${paused ? '⏸ Paused' : '▶ Auto'}</button>` : ''}
+        ${showAutoToggle ? `<button class="pack-chip${paused ? '' : ' active'}" data-autoloc="${loc.id}" title="Auto-Explore relaunch for this location">${paused ? `${Icon('pause')} Paused` : `${Icon('play')} Auto`}</button>` : ''}
         <button class="loc-btn${unlocked && !s.expedition.active ? ' available' : ''}"
                 ${(!unlocked || s.expedition.active) ? 'disabled' : ''}
                 data-locid="${loc.id}">
@@ -1258,7 +1258,7 @@
       const slotDiv = document.createElement('div')
       slotDiv.className = 'equip-slot' + (item ? ' filled' : '')
       slotDiv.innerHTML = `
-        <div class="equip-slot-label">${slot === 'weapon' ? '⚔ Weapon' : '💎 Artifact'}</div>
+        <div class="equip-slot-label">${slot === 'weapon' ? `${Icon('sword')} Weapon` : `${Icon('pendant')} Artifact`}</div>
         ${item
           ? `<div class="equip-slot-name">${escHtml(item.name)}</div>`
           : `<div class="equip-slot-empty">— empty —</div>`}
@@ -1482,12 +1482,12 @@
     currency.className = 'pack-currency'
     currency.innerHTML = `
       <div class="pack-currency-row stones">
-        <span>💰 Spirit Stones</span>
+        <span>${Icon('stone')} Spirit Stones</span>
         <span class="pack-currency-val" id="pack-stones-val">${fmt(s.spiritStones)}</span>
         <span id="pack-delta-host">${packDeltaHTML()}</span>
       </div>
       <div class="pack-currency-row">
-        <span class="pack-currency-label">💎 Void Crystals (rare)</span>
+        <span class="pack-currency-label">${Icon('crystal')} Void Crystals (rare)</span>
         <span class="pack-currency-val">×${fmt(s.inventory['void_crystal'] || 0)}</span>
       </div>
     `
@@ -2102,7 +2102,7 @@
 
   // Titlebar ⋯ menu (Overlay only): forwards to the real 窗 / 歸 buttons, which CSS hides in Overlay
   const tbMenu = document.getElementById('tb-menu')
-  document.getElementById('btn-more').addEventListener('click', e => { e.stopPropagation(); tbMenu.classList.toggle('hidden') })
+  document.getElementById('btn-more').addEventListener('click', e => { e.stopPropagation(); tbMenu.classList.toggle('hidden'); document.getElementById('layout-tip')?.click() })   // opening the menu answers the layout tip
   tbMenu.addEventListener('click', e => {
     const it = e.target.closest('[data-tbm]')
     if (!it) return
@@ -2166,7 +2166,8 @@
     const active = s.playMode === 'active'
     if (btn.dataset.mode === s.playMode) return
     btn.dataset.mode = s.playMode
-    btn.innerHTML = active ? '<span class="mb-glyph">動</span><span class="mb-name">Active</span>' : '<span class="mb-glyph">閒</span><span class="mb-name">Idle</span>'
+    btn.innerHTML = `<span class="mb-glyph">${Icon(active ? 'active' : 'idle')}</span><span class="mb-name">${active ? 'Active' : 'Idle'}</span>`
+    document.querySelector('#mode-title [data-icon]').innerHTML = Icon(active ? 'active' : 'idle')
     btn.classList.toggle('mode-active', active)
     btn.title = active ? 'Active Mode · click for Mode and automation' : 'Idle Mode · click for Mode and automation'
   }
@@ -2195,7 +2196,7 @@
 
   document.getElementById('btn-quit').addEventListener('click', () => {
     gameState.forceSave()
-    // ⚙ 'closeButton' (default 'quit' since 1.8b-1, user 2026-09-26): a real quit, or hide to the tray and
+    // Setting 'closeButton' (default 'quit' since 1.8b-1, user 2026-09-26): a real quit, or hide to the tray and
     // keep cultivating. main.js applies the same choice to native closes (Alt+F4, taskbar) via setCloseToTray.
     // See docs/systems/notifications.md.
     if (gameState.getSettings().closeButton === 'tray') window.electron.hideToTray()

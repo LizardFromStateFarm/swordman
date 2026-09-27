@@ -1,13 +1,13 @@
-// LayoutUI — window layout modes (Phase 6E, roadmap 1.7): the ▣ picker, body[data-layout], sprite-canvas sizing,
+// LayoutUI — window layout modes (Phase 6E, roadmap 1.7): the layout picker, body[data-layout], sprite-canvas sizing,
 // the banner strip's extra readouts, "peeking" out of banner mode, and Desktop mode's resize grip. UI only (not
 // loaded by the sim). main.js owns the window geometry; styles.css owns the look. See docs/systems/ui-layout.md →
 // "Layout modes".
 
 const LAYOUT_OPTIONS = [
-  { id: 'overlay',  icon: '▯', name: 'Overlay',  desc: 'Tall side panel, always on top. The default for playing.' },
-  { id: 'expanded', icon: '◫', name: 'Expanded', desc: 'Wider, always on top. Cultivator left, tabs right.' },
-  { id: 'desktop',  icon: '▣', name: 'Desktop',  desc: 'A normal window you can resize. Not pinned on top.' },
-  { id: 'banner',   icon: '▭', name: 'Banner',   desc: 'A slim strip along the screen edge, for while you game or work.' },
+  { id: 'overlay',  icon: 'layout-overlay', name: 'Overlay',  desc: 'Tall side panel, always on top. The default for playing.' },
+  { id: 'expanded', icon: 'layout-expanded', name: 'Expanded', desc: 'Wider, always on top. Cultivator left, tabs right.' },
+  { id: 'desktop',  icon: 'layout-desktop', name: 'Desktop',  desc: 'A normal window you can resize. Not pinned on top.' },
+  { id: 'banner',   icon: 'strip', name: 'Banner',   desc: 'A slim strip along the screen edge, for while you game or work.' },
 ]
 
 // Sprite canvas per mode: [width, height, scale]. Banner draws the whole scene as a ~0.36× miniature.
@@ -21,7 +21,7 @@ const LAYOUT_CANVAS = {
 const LAYOUT_TIP_KEY = 'cultivator-idle:layoutTipSeen'
 
 class LayoutUI {
-  // fmt / fmtTime are game.js's number + duration formatters (so the banner follows the ⚙ Numbers setting).
+  // fmt / fmtTime are game.js's number + duration formatters (so the banner follows the Numbers setting).
   constructor(renderer, { fmt, fmtTime }) {
     this.renderer  = renderer
     this.fmt       = fmt
@@ -123,15 +123,15 @@ class LayoutUI {
   // Per-frame banner readouts (spirit stones + expedition). Cheap no-op in the other modes.
   update(s) {
     if (this.mode !== 'banner' || !s) return
-    document.getElementById('banner-stones').innerHTML = `<span class="bm-stone">石</span> ${this.fmt(s.spiritStones)}`
+    document.getElementById('banner-stones').innerHTML = `<span class="bm-stone">${Icon('stone')}</span> ${this.fmt(s.spiritStones)}`
     const exp = document.getElementById('banner-exp')
     const e = s.expedition
     if (e?.active) {
       const loc = LOCATIONS.find(l => l.id === e.locationId)
-      exp.textContent = `歷 ${loc?.name || 'Expedition'} · ${this.fmtTime(Math.max(0, Math.ceil((e.endsAt - Date.now()) / 1000)))}`
+      exp.innerHTML = `${Icon('explore')} ${loc?.name || 'Expedition'} · ${this.fmtTime(Math.max(0, Math.ceil((e.endsAt - Date.now()) / 1000)))}`
       exp.classList.add('active')
     } else {
-      exp.textContent = '歷 No expedition'
+      exp.innerHTML = `${Icon('explore')} No expedition`
       exp.classList.remove('active')
     }
   }
@@ -143,7 +143,7 @@ class LayoutUI {
       const back = document.createElement('button')
       back.id = 'layout-back'
       back.className = 'layout-opt active'
-      back.innerHTML = '<span class="layout-opt-icon">↩</span><span class="layout-opt-name">Back to the banner</span><span class="layout-opt-desc">You opened the full window from the banner.</span>'
+      back.innerHTML = `<span class="layout-opt-icon">${Icon('strip')}</span><span class="layout-opt-name">Back to the banner</span><span class="layout-opt-desc">You opened the full window from the banner.</span>`
       back.addEventListener('click', () => { this.close(); this.returnToBanner() })
       list.appendChild(back)
     }
@@ -151,7 +151,7 @@ class LayoutUI {
       const b = document.createElement('button')
       b.className = 'layout-opt' + (o.id === this.saved && !this.peeking ? ' active' : '')
       b.dataset.layout = o.id
-      b.innerHTML = `<span class="layout-opt-icon">${o.icon}</span><span class="layout-opt-name">${o.name}</span><span class="layout-opt-desc">${o.desc}</span>`
+      b.innerHTML = `<span class="layout-opt-icon">${Icon(o.icon)}</span><span class="layout-opt-name">${o.name}</span><span class="layout-opt-desc">${o.desc}</span>`
       b.addEventListener('click', () => this.choose(o.id))
       list.appendChild(b)
     }
@@ -199,7 +199,7 @@ class LayoutUI {
     this._sizeCanvas()
     const btn = document.getElementById('btn-layout')
     btn.classList.toggle('peek', this.peeking)
-    btn.textContent = this.peeking ? '條' : '窗'   // 條 = back to the strip (1.8b-1: CJK glyphs like the rest of the titlebar)
+    btn.innerHTML = Icon(this.peeking ? 'strip' : 'window')   // strip = back to the banner (1.8d icons)
     btn.title = this.peeking ? 'Window layout (peeking out of the banner)' : 'Window layout'
   }
 
@@ -240,7 +240,7 @@ class LayoutUI {
     grip.addEventListener('pointercancel', end)
   }
 
-  // One-time pointer at the new ▣ button, so the modes are discoverable.
+  // One-time pointer at the Window layout button, so the modes are discoverable.
   _maybeTip() {
     if (!this.supported) return
     let seen = false
@@ -248,7 +248,7 @@ class LayoutUI {
     if (seen || document.getElementById('layout-tip')) return
     const tip = document.createElement('div')
     tip.id = 'layout-tip'
-    tip.textContent = 'New 窗 Window layouts: a wider two-column view, a resizable desktop window, or a slim banner across the top of your screen while you game.'
+    tip.innerHTML = `New: ${Icon('window')} Window layouts${this.mode === 'overlay' ? ` (under ${Icon('more')} in the titlebar)` : ''}: a wider two-column view, a resizable desktop window, or a slim banner across the top of your screen while you game.`
     tip.addEventListener('click', () => this._dismissTip())
     document.body.appendChild(tip)
   }

@@ -75,7 +75,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   assert(await ev('document.querySelectorAll("#mode-auto .auto-row").length') === 4, 'Mode panel lists all 4 automations')
   await shot('nav-mode-idle')
   await click('.mode-card[data-mode="active"]'); await sleep(200)
-  assert(await ev('gameState.get().playMode') === 'active' && await ev('document.getElementById("btn-mode").textContent') === '動Active', 'Active card switches mode; titlebar shows 動')
+  assert(await ev('gameState.get().playMode') === 'active' && await ev('document.getElementById("btn-mode").textContent') === 'Active' && await ev('!!document.querySelector("#btn-mode .ic-active")'), 'Active card switches mode; titlebar shows the Active flame')
   await shot('nav-mode-active')
   await click('.mode-card[data-mode="idle"]'); await click('#mode-close')
 

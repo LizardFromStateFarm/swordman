@@ -78,9 +78,9 @@ function collectAttention(s, gs) {
 
   // ── Idle slots (quiet nudges; hidden while the matching automation is running) ──
   const autoOn = key => s.playMode === 'idle' && s.automation?.[key] && gs.automationUnlocked?.(key)
-  if (!s.expedition?.active && !autoOn('autoExplore')) add('idle', 'expedition', '歷', 'No expedition underway', 'Send one out: loot, stones and beast sightings.', 'explore')
+  if (!s.expedition?.active && !autoOn('autoExplore')) add('idle', 'expedition', 'explore', 'No expedition underway', 'Send one out: loot, stones and beast sightings.', 'explore')
   if (s.sect?.id && !autoOn('autoSectMissions') && typeof SECT_MAX_MISSIONS !== 'undefined' && (s.sect.activeMissions || []).length < SECT_MAX_MISSIONS)
-    add('idle', 'missions', '任', 'A mission slot is open', `${(s.sect.activeMissions || []).length} of ${SECT_MAX_MISSIONS} missions underway.`, 'sect-missions')
+    add('idle', 'missions', 'token', 'A mission slot is open', `${(s.sect.activeMissions || []).length} of ${SECT_MAX_MISSIONS} missions underway.`, 'sect-missions')
   // 1.8b-5: your own sect — a seat you could fill now, a hall you could raise now
   const os = s.ownSect?.founded && gs.ownSectInfo?.()
   if (os) {
@@ -94,7 +94,7 @@ function collectAttention(s, gs) {
     add('idle', 'spouse-cool', '冷', `${f.spouse.given} is growing distant`, `Affection ${Math.round(f.affection)}. Time together or a gift would help.`, 'family')
   if (typeof TECHNIQUES !== 'undefined') {
     const t = TECHNIQUES.find(t => !s.techniques.includes(t.id) && s.stageIndex >= t.minStage && (s.spiritStones >= t.cost || t.id === s.inheritedManual))
-    if (t) add('idle', 'technique', '功', `You can learn ${t.name}`, t.id === s.inheritedManual ? 'Your Family Manual: free to learn.' : `Costs 石 ${t.cost}; you have ${Math.floor(s.spiritStones)}.`, 'techniques')
+    if (t) add('idle', 'technique', 'scroll', `You can learn ${t.name}`, t.id === s.inheritedManual ? 'Your Family Manual: free to learn.' : `Costs 石 ${t.cost}; you have ${Math.floor(s.spiritStones)}.`, 'techniques')
   }
 
   return out.sort((a, b) => ATTENTION_TIER_ORDER[a.tier] - ATTENTION_TIER_ORDER[b.tier])
@@ -135,7 +135,7 @@ class AttentionUI {
     this._sig = sig
     const esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const row = (i, cls = '') => `<button class="att-item att-${i.tier}${cls}" data-att="${i.id}">
-      <span class="att-glyph">${i.glyph}</span>
+      <span class="att-glyph">${typeof UI_ICONS !== 'undefined' && UI_ICONS[i.glyph] ? Icon(i.glyph) : i.glyph}</span>
       <span class="att-text"><span class="att-title">${esc(i.title)}${i.left != null ? ` <span class="att-left">${attClock(i.left)}</span>` : ''}</span><span class="att-why">${esc(i.why)}</span></span>
       <span class="att-go">›</span></button>`
     const n = t => items.filter(i => i.tier === t).length
@@ -146,12 +146,12 @@ class AttentionUI {
     this.el.classList.toggle('calm', !items.length)
     this.el.classList.toggle('has-urgent', items.some(i => i.tier === 'urgent'))
     if (!items.length) {
-      this.el.innerHTML = `<div class="att-head"><span class="att-head-title">待辦 Attention</span></div>
-        <div class="att-calm"><span class="att-glyph">靜</span><span>All is still. Nothing needs you.</span></div>`
+      this.el.innerHTML = `<div class="att-head"><span class="att-head-title">Attention</span></div>
+        <div class="att-calm"><span class="att-glyph">${Icon('idle')}</span><span>All is still. Nothing needs you.</span></div>`
       return
     }
     const more = items.length - 1
-    this.el.innerHTML = `<div class="att-head"><span class="att-head-title">待辦 Attention</span><span class="att-count">${kinds}</span></div>
+    this.el.innerHTML = `<div class="att-head"><span class="att-head-title">Attention</span><span class="att-count">${kinds}</span></div>
       <div class="att-list${this.open ? ' open' : ''}">${items.map((i, n) => row(i, n ? ' att-rest' : ' att-first')).join('')}${this.open ? '<button class="att-fold" data-att-fold>▴ fold away</button>' : ''}</div>
       ${more ? `<button class="att-more ${worstHidden}" data-att-more title="${more} more waiting"><span class="att-dots">${hiddenDots}</span>+${more} ▾</button>` : ''}`
   }

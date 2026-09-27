@@ -1,5 +1,5 @@
-// BannerMenus — the banner strip's quick-action dropdowns (roadmap 1.7b): ⚔ sect missions · ⛰ explore · ⚒ craft ·
-// 📜 learn, so the everyday actions work without leaving banner mode. While a menu is open, main.js grows the window
+// BannerMenus — the banner strip's quick-action dropdowns (roadmap 1.7b): sect missions · explore · craft ·
+// learn, so the everyday actions work without leaving banner mode. While a menu is open, main.js grows the window
 // by BANNER_MENU_GROW px (window.electron.bannerMenu). Actions go through game.js's shared quickActions, so the tabs
 // and the menus give identical feedback. UI only (not loaded by the sim). See docs/systems/ui-layout.md →
 // "Banner quick actions".
@@ -87,17 +87,17 @@ class BannerMenus {
     if (sect?.id && !s.ownSect?.founded) {
       const n = sect.activeMissions.length
       const startable = n < SECT_MAX_MISSIONS && SECT_MISSIONS.some(m => sect.rank >= m.minRank && !sect.activeMissions.some(a => a.missionId === m.id))
-      out.push({ id: 'missions', icon: '任', label: `Missions ${n}/${SECT_MAX_MISSIONS}`, ready: startable, title: 'Sect missions' })
+      out.push({ id: 'missions', icon: 'token', label: `Missions ${n}/${SECT_MAX_MISSIONS}`, ready: startable, title: 'Sect missions' })
     }
     const e = s.expedition
     out.push(e?.active
-      ? { id: 'explore', icon: '歷', label: `Explore · ${fmtTime(Math.max(0, Math.ceil((e.endsAt - Date.now()) / 1000)))}`, busy: true,
+      ? { id: 'explore', icon: 'explore', label: `Explore · ${fmtTime(Math.max(0, Math.ceil((e.endsAt - Date.now()) / 1000)))}`, busy: true,
           title: `Expedition to ${LOCATIONS.find(l => l.id === e.locationId)?.name || '?'} underway` }
-      : { id: 'explore', icon: '歷', label: 'Explore', ready: true, title: 'Send an expedition' })
+      : { id: 'explore', icon: 'explore', label: 'Explore', ready: true, title: 'Send an expedition' })
     const craftable = RECIPES.filter(r => ITEMS[r.productId] && r.ingredients.every(i => (s.inventory[i.itemId] || 0) >= i.qty)).length
-    out.push({ id: 'craft', icon: '煉', label: 'Craft', badge: craftable || '', title: `${craftable} recipe${craftable === 1 ? '' : 's'} you can craft now` })
+    out.push({ id: 'craft', icon: 'furnace', label: 'Craft', badge: craftable || '', title: `${craftable} recipe${craftable === 1 ? '' : 's'} you can craft now` })
     const learnable = TECHNIQUES.filter(t => !s.techniques.includes(t.id) && s.stageIndex >= t.minStage && s.spiritStones >= t.cost).length
-    out.push({ id: 'learn', icon: '功', label: 'Learn', dot: learnable > 0, ready: learnable > 0, title: learnable ? `${learnable} technique${learnable === 1 ? '' : 's'} you can learn now` : 'Techniques' })
+    out.push({ id: 'learn', icon: 'scroll', label: 'Learn', dot: learnable > 0, ready: learnable > 0, title: learnable ? `${learnable} technique${learnable === 1 ? '' : 's'} you can learn now` : 'Techniques' })
     return out
   }
 
@@ -109,7 +109,7 @@ class BannerMenus {
     const esc = this.h.escHtml
     this.quick.innerHTML = btns.map(b => `
       <button class="bq-btn${b.ready ? ' ready' : ''}${b.busy ? ' busy' : ''}${this.open === b.id ? ' open' : ''}" data-menu="${b.id}" title="${esc(b.title)}">
-        <span class="bq-icon">${b.icon}</span><span class="bq-label">${esc(String(b.label))}</span>${b.badge ? `<span class="bq-badge">${esc(String(b.badge))}</span>` : ''}${b.dot ? '<span class="bq-dot"></span>' : ''}<span class="bq-caret">▾</span>
+        <span class="bq-icon">${Icon(b.icon)}</span><span class="bq-label">${esc(String(b.label))}</span>${b.badge ? `<span class="bq-badge">${esc(String(b.badge))}</span>` : ''}${b.dot ? '<span class="bq-dot"></span>' : ''}<span class="bq-caret">▾</span>
       </button>`).join('')
   }
 
@@ -146,7 +146,7 @@ class BannerMenus {
 
   _dur(sec) { return sec >= 60 ? `${Math.floor(sec / 60)}m${sec % 60 ? ` ${sec % 60}s` : ''}` : `${sec}s` }
   _left(endsAt) { return this.h.fmtTime(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))) }
-  _lock(text, html) { return `<span class="bm-seal">封</span> ${html ?? this.h.escHtml(text)}` }
+  _lock(text, html) { return `<span class="bm-seal">${Icon('lock')}</span> ${html ?? this.h.escHtml(text)}` }
   _stones(n) { return `<span class="bm-stone">石</span> ${this.h.fmt(n)}` }
 
   _missions(s) {

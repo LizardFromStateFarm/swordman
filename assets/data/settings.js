@@ -1,4 +1,4 @@
-// SETTINGS_DEFS — per-slot presentation settings shown in the ⚙ panel (Phase 20C). Used by game-state.js
+// SETTINGS_DEFS — per-slot presentation settings shown in the Settings panel (Phase 20C). Used by game-state.js
 // (defaults, validation, migration), renderer/game/settings.js (panel + apply) and scripts/sim (invariant).
 // To add a setting: append an entry, then read s.settings.<id> where it matters. See docs/systems/settings.md.
 

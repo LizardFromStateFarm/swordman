@@ -42,7 +42,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   z = await size()
   assert(z.layout === 'banner' && z.h === 56 && z.w > 600, `banner: ${z.w}×${z.h}`)
   assert(await ev('document.getElementById("btn-pin").classList.contains("pinned")'), 'banner is pinned on top')
-  assert(await ev('/石/.test(document.getElementById("banner-stones").textContent) && /歷/.test(document.getElementById("banner-exp").textContent)'), 'banner shows stones + expedition')
+  assert(await ev('!!document.querySelector("#banner-stones .ic-stone") && !!document.querySelector("#banner-exp .ic-explore") && /expedition/i.test(document.getElementById("banner-exp").textContent)'), 'banner shows stones + expedition')
   await shot('layout-banner')
 
   // A popup opening in banner mode opens the full window, and closing it drops back to the strip.
@@ -59,7 +59,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await click('#btn-unbanner')
   await sleep(600)
   z = await size()
-  assert(z.layout === 'overlay' && await ev('document.getElementById("btn-layout").textContent === "條"'), '⬡ peeks; titlebar shows 條')
+  assert(z.layout === 'overlay' && await ev('!!document.querySelector("#btn-layout .ic-strip")'), 'expand peeks; titlebar shows the back-to-strip icon')
   await shot('layout-banner-peek')
   await click('#btn-layout')
   assert(await ev('!!document.getElementById("layout-back")'), 'picker offers Back to the banner while peeking')

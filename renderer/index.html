@@ -18,8 +18,8 @@
 <div id="charselect">
 
   <div id="cs-titlebar">
-    <span id="cs-title">☯ Cultivator Idle ☯</span>
-    <button class="tb-btn" id="cs-quit" title="Close">✕</button>
+    <span id="cs-title"><span class="cs-orn" data-icon="taiji"></span>Cultivator Idle<span class="cs-orn" data-icon="taiji"></span></span>
+    <button class="tb-btn" id="cs-quit" title="Close" aria-label="Close" data-icon="close"></button>
   </div>
 
   <div id="cs-header">Select your cultivator</div>
@@ -36,14 +36,14 @@
   <div id="titlebar">
     <span id="cultivator-name" title="Click to rename">Unnamed Cultivator</span>
     <div id="tb-controls">
-      <!-- Overlay only: 歸 + 窗 fold into this menu so the name keeps its room (1.8b-1) -->
-      <button class="tb-btn" id="btn-more" title="More: window layout, character select">⋯</button>
-      <button class="tb-btn" id="btn-back"   title="Back to character select">歸</button>
-      <button class="tb-btn" id="btn-layout" title="Window layout">窗</button>
-      <button class="tb-btn" id="btn-mode" title="Mode and automation">閒</button>
-      <button class="tb-btn" id="btn-settings" title="Settings">設</button>
-      <button class="tb-btn pinned" id="btn-pin" title="Pinned on top (click to unpin)">頂</button>
-      <button class="tb-btn" id="btn-quit"   title="Close">✕</button>
+      <!-- Overlay only: Back + Layout fold into this menu so the name keeps its room (1.8b-1) -->
+      <button class="tb-btn" id="btn-more" title="More: window layout, character select" aria-label="More" data-icon="more"></button>
+      <button class="tb-btn" id="btn-back"   title="Back to character select" aria-label="Character select" data-icon="back"></button>
+      <button class="tb-btn" id="btn-layout" title="Window layout" aria-label="Window layout" data-icon="window"></button>
+      <button class="tb-btn" id="btn-mode" title="Mode and automation" aria-label="Mode and automation"></button>
+      <button class="tb-btn" id="btn-settings" title="Settings" aria-label="Settings" data-icon="settings"></button>
+      <button class="tb-btn pinned" id="btn-pin" title="Pinned on top (click to unpin)" aria-label="Pin on top" data-icon="pin"></button>
+      <button class="tb-btn" id="btn-quit"   title="Close" aria-label="Close" data-icon="close"></button>
     </div>
   </div>
 
@@ -54,7 +54,7 @@
 
     <div id="sprite-wrap">
       <canvas id="sprite-canvas" width="300" height="150"></canvas>
-      <div id="meditate-badge" class="hidden">坐 3× Qi</div>
+      <div id="meditate-badge" class="hidden"><span data-icon="meditate"></span>3× Qi</div>
     </div>
 
     <div id="stage-block">
@@ -65,18 +65,18 @@
 
     <div id="qi-block">
       <div id="qi-labels">
-        <span class="lbl">氣 Qi</span>
+        <span class="lbl"><span class="lbl-ic" data-icon="qi"></span>Qi</span>
         <span id="qi-numbers" class="bd-link" data-bd="cap" title="What sets your Qi capacity">0 / 100</span>
       </div>
       <div id="qi-track"><div id="qi-fill"></div></div>
-      <div id="qi-rate-row"><span id="qi-rate" class="bd-link" data-bd="qps" title="Where your Qi comes from">+0.5 qi/s</span><span id="catchup-chip" class="bd-link hidden" data-bd="qps" title="Ancestral catch-up">承 catch-up</span></div>
+      <div id="qi-rate-row"><span id="qi-rate" class="bd-link" data-bd="qps" title="Where your Qi comes from">+0.5 qi/s</span><span id="catchup-chip" class="bd-link hidden" data-bd="qps" title="Ancestral catch-up"><span data-icon="lineage"></span>catch-up</span></div>
     </div>
 
     <!-- Integrity · Health · Age: one compact three-column row (Phase 6E) -->
     <div id="vitals">
       <div id="integrity-block" class="bd-link" data-bd="integrity" title="What cracks and mends your foundation">
         <div id="integrity-labels">
-          <span class="lbl">基 Integrity</span>
+          <span class="lbl"><span class="lbl-ic" data-icon="integrity"></span>Integrity</span>
           <span id="integrity-numbers">100</span>
         </div>
         <div id="integrity-track"><div id="integrity-fill"></div></div>
@@ -84,7 +84,7 @@
 
       <div id="health-block" class="bd-link" data-bd="health" title="What wounds and heals you">
         <div id="health-labels">
-          <span class="lbl">血 Health</span>
+          <span class="lbl"><span class="lbl-ic" data-icon="health"></span>Health</span>
           <span id="health-numbers">100</span>
         </div>
         <div id="health-track"><div id="health-fill"></div></div>
@@ -93,7 +93,7 @@
       <!-- Spirit Stones (user 2026-09-27): the purse, always in view -->
       <div id="stones-block" title="Spirit Stones: spent on techniques, crafting, gifts, courtship and the war chest">
         <div id="stones-labels">
-          <span class="lbl">石<span class="lbl-long"> Stones</span></span>
+          <span class="lbl"><span class="lbl-ic" data-icon="stone"></span><span class="lbl-long">Stones</span></span>
           <span id="stones-numbers">0</span>
         </div>
       </div>
@@ -101,7 +101,7 @@
       <!-- Age readout (Phase 30) — a stat only: no lifespan, nothing dies of age -->
       <div id="age-block">
         <div id="age-labels">
-          <span class="lbl" title="Age">歲<span class="lbl-long"> Age</span></span>
+          <span class="lbl" title="Age"><span class="lbl-ic" data-icon="age"></span><span class="lbl-long">Age</span></span>
           <span id="age-numbers">16</span>
         </div>
       </div>
@@ -115,28 +115,28 @@
 
     <div id="actions">
       <button id="btn-meditate" class="act-btn">
-        <span class="act-icon">坐</span>
+        <span class="act-icon" data-icon="meditate"></span>
         <span class="act-name">Meditate</span>
         <span class="act-sub">3× Qi · 30s</span>
       </button>
       <button id="btn-breakthrough" class="act-btn" disabled>
-        <span class="act-icon">破</span>
+        <span class="act-icon" data-icon="breakthrough"></span>
         <span class="act-name">Breakthrough</span>
         <span class="act-sub">Advance realm</span>
       </button>
-      <button id="bt-why" class="bd-link" data-bd="bt" title="Breakthrough odds, and what a failure costs">詳</button>
+      <button id="bt-why" class="bd-link" data-bd="bt" title="Breakthrough odds, and what a failure costs" aria-label="Breakthrough odds" data-icon="why"></button>
     </div>
 
     <!-- Attention strip (1.8b-1): what's waiting on you, rendered by renderer/game/attention.js (AttentionUI). A
          one-line strip in Overlay, a card column in Expanded/Desktop, a summary on the banner. -->
     <div id="attention" class="calm"></div>
 
-    <!-- Banner-only quick actions (1.7b): ⚔ ⛰ ⚒ 📜 dropdown buttons, rendered by renderer/game/banner-menus.js -->
+    <!-- Banner-only quick actions (1.7b): missions / explore / craft / learn dropdown buttons, rendered by renderer/game/banner-menus.js -->
     <div id="banner-quick"></div>
 
-    <!-- Banner-only: open the full window (a temporary Overlay "peek"; ▭ in the titlebar returns to the banner) -->
+    <!-- Banner-only: open the full window (a temporary Overlay "peek"; the strip icon in the titlebar returns to the banner) -->
     <div id="banner-btns">
-      <button class="tb-btn" id="btn-unbanner" title="Open the full window">⬡</button>
+      <button class="tb-btn" id="btn-unbanner" title="Open the full window" aria-label="Open the full window" data-icon="expand"></button>
     </div>
 
   </div>
@@ -170,23 +170,23 @@
   </div>
 
   <!-- Desktop mode only: transparent frameless windows get no native resize border on Windows -->
-  <div id="resize-grip" title="Drag to resize">◢</div>
+  <div id="resize-grip" title="Drag to resize" data-icon="grip"></div>
 
 </div>
 
 <!-- Titlebar ⋯ menu (Overlay only, 1.8b-1) -->
 <div id="tb-menu" class="hidden">
-  <button class="tbm-item" data-tbm="layout"><span class="tbm-glyph">窗</span>Window layout</button>
-  <button class="tbm-item" data-tbm="back"><span class="tbm-glyph">歸</span>Character select</button>
+  <button class="tbm-item" data-tbm="layout"><span class="tbm-glyph" data-icon="window"></span>Window layout</button>
+  <button class="tbm-item" data-tbm="back"><span class="tbm-glyph" data-icon="back"></span>Character select</button>
 </div>
 
-<!-- Banner quick-action dropdown (1.7b) — hangs under its ⚔/⛰/⚒/📜 button while the window is grown -->
+<!-- Banner quick-action dropdown (1.7b) — hangs under its strip button while the window is grown -->
 <div id="banner-menu" class="hidden"></div>
 
-<!-- Layout picker (Phase 6E) — opened from the titlebar ▣ button; rows rendered by renderer/game/layout.js -->
+<!-- Layout picker (Phase 6E) — opened from the titlebar window button; rows rendered by renderer/game/layout.js -->
 <div id="layout-picker" class="hidden">
   <div id="layout-box">
-    <div id="layout-title">Window Layout 布局</div>
+    <div id="layout-title"><span data-icon="window"></span>Window Layout</div>
     <div id="layout-list"></div>
     <div id="layout-edge"></div>
     <div id="layout-hint">Remembered on this computer, for every cultivator.</div>
@@ -215,12 +215,12 @@
 <div id="banter-bubble" class="hidden"><div id="banter-text"></div><div id="banter-tail">▼</div></div>
 
 <!-- Mode panel (1.8b-1): Idle vs Active, what each gives, and every automation switch in one place. Opened from
-     the titlebar 閒/動 button and the 自 chip beside the sub-tabs; rendered by game.js renderModePanel(). -->
+     the titlebar mode chip and the automation chip beside the sub-tabs; rendered by game.js renderModePanel(). -->
 <div id="mode-overlay" class="hidden">
   <div id="mode-box">
     <div id="mode-head">
-      <span id="mode-title">Mode 修行之道</span>
-      <button class="tb-btn" id="mode-close" title="Close">✕</button>
+      <span id="mode-title"><span data-icon="idle"></span>Mode</span>
+      <button class="tb-btn" id="mode-close" title="Close" aria-label="Close" data-icon="close"></button>
     </div>
     <div id="mode-body"></div>
   </div>
@@ -230,8 +230,8 @@
 <div id="settings-overlay" class="hidden">
   <div id="settings-box">
     <div id="settings-head">
-      <span id="settings-title">設 Settings 设置</span>
-      <button class="tb-btn" id="settings-close" title="Close">✕</button>
+      <span id="settings-title"><span data-icon="settings"></span>Settings</span>
+      <button class="tb-btn" id="settings-close" title="Close" aria-label="Close" data-icon="close"></button>
     </div>
     <div id="settings-body"></div>
   </div>
@@ -240,7 +240,7 @@
 <!-- Ascension Trial overlay (Phase 23C) -->
 <div id="ascension-overlay" class="hidden">
   <div id="ascension-box">
-    <div id="ascension-title">The Ascension Trial 飞升劫</div>
+    <div id="ascension-title">The Ascension Trial</div>
     <div id="ascension-desc">Attempt to transcend mortality and enter the Immortal Realms. Failure means death.</div>
     <div class="ascension-row"><span>Bloodline Quality</span><span id="asc-bloodline">0 / 100</span></div>
     <div class="ascension-row"><span>Survival Chance</span><span id="asc-chance">0%</span></div>
@@ -279,7 +279,7 @@
 <!-- Heir overlay (clan-succession.md 2.6c) — name any adult child in the household as heir -->
 <div id="heir-overlay" class="hidden">
   <div id="heir-box" class="fam-modal-box">
-    <div class="fam-modal-title">Name an Heir 立嗣</div>
+    <div class="fam-modal-title">Name an Heir</div>
     <div class="fam-modal-desc">Your heir takes over the clan and your sect when your path ends.</div>
     <div id="heir-list"></div>
     <div class="fam-modal-btns"><button id="heir-clear">Clear heir</button><button id="heir-close">Close</button></div>
@@ -289,7 +289,7 @@
 <!-- Tournament of Heirs overlay (2.6c) — you pick every matchup; lethal until the Top 4 -->
 <div id="tournament-overlay" class="hidden">
   <div id="tournament-box" class="fam-modal-box">
-    <div class="fam-modal-title"><b class="fm-g">奪</b>Tournament of Heirs</div>
+    <div class="fam-modal-title"><span class="fm-g" data-icon="duel"></span>Tournament of Heirs</div>
     <div id="tournament-info" class="fam-modal-desc"></div>
     <div id="tournament-pool"></div>
     <div id="tournament-pairs"></div>
@@ -311,7 +311,7 @@
 
 <div id="proposal-overlay" class="hidden">
   <div id="proposal-box">
-    <div id="proposal-title">A Matchmaker Arrives 媒人</div>
+    <div id="proposal-title">A Matchmaker Arrives</div>
     <div id="proposal-desc">Offers of marriage have come for you. Accept one, or send them away.</div>
     <div id="proposal-suitors"></div>
     <div id="proposal-btns">
@@ -343,6 +343,7 @@
 <script src="../assets/data/banter-lines.js"></script>
 <script src="../assets/data/names.js"></script>
 <script src="../assets/data/dev-presets.js"></script>
+<script src="../assets/icons/ui-icons.js"></script>
 <script src="../assets/sprites/cultivator-sprites.js"></script>
 <script src="../assets/sprites/beast-sprites.js"></script>
 <script src="engine/platform-storage.js"></script>
@@ -358,6 +359,7 @@
 <script src="game/settings.js"></script>
 <script src="game/banter.js"></script>
 <script src="game/notifications.js"></script>
+<script src="game/icons.js"></script>
 <script src="game/layout.js"></script>
 <script src="game/banner-menus.js"></script>
 <script src="game/attention.js"></script>

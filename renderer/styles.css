@@ -47,6 +47,54 @@ body {
 
 .hidden { display: none !important; }
 
+/* UI review: 7.2 (2026-09-27, 1.8d-1, 3 cycles, accepted by the user) */
+/* UI icons (1.8d): inline SVG from Icon() (renderer/game/icons.js, assets/icons/ui-icons.js). 1em square so the
+   text-size setting scales them with the text; currentColor so every state color (gold, jade, ember, color-blind
+   tokens) applies unchanged. class="f" = a filled part. */
+.ic {
+  display: inline-block; width: 1em; height: 1em; flex-shrink: 0; vertical-align: -0.16em; overflow: visible;
+  fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.ic .f { fill: currentColor; stroke: none; }
+[data-icon] { display: inline-flex; align-items: center; justify-content: center; }
+/* Where the icons sit (1.8d): titlebar buttons, HUD labels, overlay titles */
+#titlebar .tb-btn:not(#btn-mode):not(.pinned), #cs-titlebar .tb-btn { color: color-mix(in srgb, var(--text) 72%, var(--dim)); }
+#titlebar .tb-btn:not(#btn-mode):hover, #cs-titlebar .tb-btn:hover { color: var(--gold); }
+.tb-btn .ic { font-size: 15px; }
+.tb-btn.pinned, #titlebar .tb-btn.pinned { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, transparent);
+  background: rgba(237,208,80,0.12); box-shadow: none; text-shadow: none; }
+#btn-mode, #rail-mode { font-family: var(--font); }
+#btn-mode .mb-glyph { display: inline-flex; }
+#btn-mode .mb-glyph .ic { font-size: 13px; }
+#cs-title { display: inline-flex; align-items: center; gap: 8px; }
+.cs-orn .ic { font-size: 17px; color: var(--gold); opacity: .9; }
+.lbl { display: inline-flex; align-items: center; gap: 4px; }
+.lbl-ic .ic { font-size: 14px; }
+.lbl-ic { transform: translateY(1px); }
+#qi-labels .lbl-ic { color: var(--gold); }
+#integrity-labels .lbl-ic { color: #9090E0; }
+#health-labels .lbl-ic { color: var(--jade); }
+#stones-labels .lbl-ic { color: var(--gold); }
+#age-labels .lbl-ic { color: var(--dim-hi); }
+#meditate-badge { display: inline-flex; align-items: center; gap: 4px; }
+#catchup-chip { display: inline-flex; align-items: center; gap: 3px; }
+.act-icon .ic { font-size: 17px; }
+#bt-why { display: inline-flex; align-items: center; justify-content: center; }
+#bt-why .ic { font-size: 15px; }
+.tbm-glyph { display: inline-flex; justify-content: center; }
+#layout-title, #mode-title, #settings-title { display: inline-flex; align-items: center; gap: 6px; }
+#layout-title { display: flex; justify-content: center; }
+.layout-opt-icon .ic { font-size: 20px; }
+.fm-g { display: inline-flex; vertical-align: -0.1em; }
+.equip-slot-label, .pack-currency-row > span:first-child { display: inline-flex; align-items: center; gap: 5px; }
+.pack-chip .ic { vertical-align: -0.12em; }
+#banner-exp .ic, .bm-stone .ic { vertical-align: -0.14em; }
+.pack-currency-row .ic { font-size: 15px; }
+#layout-tip .ic { font-size: 13px; vertical-align: -0.2em; color: var(--gold); }
+/* Phone width: the why button sits inside the Breakthrough card, centred, instead of on its corner */
+body[data-narrow="1"] #bt-why { top: 50%; right: 10px; transform: translateY(-50%); width: 28px; height: 28px; }
+body[data-narrow="1"] #btn-breakthrough { padding-right: 46px; }
+
 /* One scrollbar for the whole app (1.8b-4, user: "I hate the look of the default windows scroll bar"): a thin
    gold-ink thread on a faint groove, brighter under the pointer. Chromium/Electron only; iOS draws its own overlay
    bars and ignores these. Don't set `scrollbar-color` anywhere: in Chromium it overrides these rules. */
@@ -2187,7 +2235,7 @@ body[data-layout="banner"] #btn-unbanner { width: 30px; height: 30px; font-size:
   cursor: pointer;
 }
 
-/* ── Banner quick actions (1.7b) — ⚔ ⛰ ⚒ 📜 dropdowns on the strip; see renderer/game/banner-menus.js ── */
+/* ── Banner quick actions (1.7b) — missions / explore / craft / learn dropdowns on the strip; see renderer/game/banner-menus.js ── */
 
 /* The window grows while a menu is open: the strip stays pinned to its screen edge, the rest is see-through */
 body[data-layout="banner"] #app { position: fixed; left: 0; right: 0; top: 0; height: 56px; }
@@ -2315,9 +2363,8 @@ body[data-edge="bottom"] #banner-menu { top: auto; bottom: 60px; }
 .bm-side.dim  { color: var(--dim); }
 .bm-side.live { color: var(--jade); }
 .bm-x     { color: var(--red-text); }
-.bm-seal  {   /* 封 "sealed" stamp in front of a lock reason */
-  display: inline-block; color: var(--red-text); border: 1px solid currentColor; border-radius: 2px;
-  font-size: 9px; line-height: 1; padding: 1px 2px; vertical-align: 1px;
+.bm-seal  {   /* lock icon in front of a lock reason (1.8d) */
+  display: inline-block; color: var(--red-text); font-size: 12px; line-height: 1; vertical-align: -1px;
 }
 .bm-stone { color: var(--gold); }
 .bm-meta { grid-column: 1 / -1; font-size: 11px; color: var(--dim-hi); line-height: 1.45; }

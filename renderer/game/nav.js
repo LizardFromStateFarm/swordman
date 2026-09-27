@@ -52,7 +52,7 @@ class NavUI {
       `<button class="subtab" data-tab="${v}" data-in="${g.id}">${label}</button>`).join('')).join('') +
       '<button class="auto-chip hidden" id="auto-chip" title="Automation: open the Mode panel"></button>'
     // Expanded/Desktop: the rail's foot holds the Mode button (CSS hides it in the other modes)
-    this.tabs.insertAdjacentHTML('beforeend', '<div id="rail-ink">道</div><button id="rail-mode" title="Mode and automation"><span class="rm-glyph">閒</span><span class="rm-name">Idle</span></button>')
+    this.tabs.insertAdjacentHTML('beforeend', `<div id="rail-ink">道</div><button id="rail-mode" title="Mode and automation"><span class="rm-glyph">${Icon('idle')}</span><span class="rm-name">Idle</span></button>`)
     document.getElementById('rail-mode').addEventListener('click', () => this.onMode())
     this.tabs.addEventListener('click', e => {
       const b = e.target.closest('[data-group]')
@@ -151,7 +151,7 @@ class NavUI {
     if (rm && rm.dataset.mode !== s.playMode) {
       rm.dataset.mode = s.playMode
       rm.classList.toggle('active', s.playMode === 'active')
-      rm.innerHTML = s.playMode === 'active' ? '<span class="rm-glyph">動</span><span class="rm-name">Active</span>' : '<span class="rm-glyph">閒</span><span class="rm-name">Idle</span>'
+      rm.innerHTML = `<span class="rm-glyph">${Icon(s.playMode === 'active' ? 'active' : 'idle')}</span><span class="rm-name">${s.playMode === 'active' ? 'Active' : 'Idle'}</span>`
     }
     const autoSig = `${key}|${unlocked}|${on}|${s.playMode}`
     if (autoSig === this._autoSig) return
@@ -160,7 +160,7 @@ class NavUI {
     if (!unlocked) return
     chip.classList.toggle('on', on)
     const state = s.playMode === 'active' ? 'resting (Active Mode)' : on ? 'on' : 'off'
-    chip.innerHTML = `自<span class="ac-label"> ${s.playMode === 'active' ? 'rests' : on ? 'on' : 'off'}</span><span class="ac-dot"></span>`
+    chip.innerHTML = `${Icon('auto')}<span class="ac-label"> ${s.playMode === 'active' ? 'rests' : on ? 'on' : 'off'}</span><span class="ac-dot"></span>`
     chip.title = `${NAV_AUTO_NAMES[key]}: ${state}. Click for the Mode panel.`
     chip.setAttribute('aria-label', chip.title)
   }
