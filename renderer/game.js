@@ -647,8 +647,7 @@
     $('_challenge-head')?.addEventListener('click', () => {
       showConfirm('Challenge the head?', 'The head decides whether this is to the death. If they choose blood and you lose, this life ends.', () => {
         const res = gameState.challengeHead()
-        if (res.outcome === 'won_lethal' || res.outcome === 'won_nonlethal') flashMessage('You seized the head seat.', 'positive')
-        else if (res.outcome === 'lost_nonlethal') flashMessage('You were beaten back.', 'negative')
+        if (res.fight) openFamilyOverlay(gameState.get())   // 1.8b-3b: fight it out on the fight card
       }, 'Challenge')
     })
     $('_declare-branch-war')?.addEventListener('click', () => {
@@ -2297,6 +2296,7 @@
   function familyPendingKey(s) {
     const f = s.family
     if (!f) return null
+    if (f.fight) return `fight:${f.fight.kind}:${f.fight.oppId}:${f.fight.round}`   // 1.8b-3b: a fight underway comes first
     if (f.spouse && f.duel)  return `duel:${f.duel.year}`
     if (f.headChallenge) return `hc:${f.headChallenge.challengerId}:${f.headChallenge.year}`   // 2.6e
     if (f.stepDownOffer) return `sd:${f.stepDownOffer.headId}:${f.stepDownOffer.year}`          // 2.6e
@@ -2306,22 +2306,69 @@
     return null
   }
 
+  // 1.8b-3b: the fight card (spouse duel / head challenge / defending the seat) — every exchange is your move.
+  // Press beats Feint, Feint beats Guard, Guard beats Press; their habits come from their temper (FIGHT_STYLE).
+  const FIGHT_TITLE = { duel: 'A Duel to the Death', challenge: 'Challenge for the Head Seat', defend: 'Defending the Head Seat' }
+  const FIGHT_YIELD = { duel: 'your marriage ends', challenge: 'you lose; heal before you try again', defend: 'you give up the head seat' }
+  function renderFightCard(s) {
+    const info = gameState.fightInfo()
+    if (!info) return
+    const box = document.getElementById('family-box'), choicesEl = document.getElementById('family-choices')
+    const opp = info.opp, pers = PERSONALITIES.find(p => p.id === opp?.personality)
+    box.classList.toggle('crisis', info.lethal)
+    box.classList.add('fight')
+    document.getElementById('family-title').textContent = FIGHT_TITLE[info.kind] || 'A Fight'
+    const pips = (n, cls) => Array.from({ length: info.to }, (_, i) => `<i class="${i < n ? 'on ' + cls : ''}"></i>`).join('')
+    const last = info.log[info.log.length - 1]
+    const VERB = { press: 'presses', guard: 'guards', feint: 'feints' }
+    const lastLine = !last ? 'You circle each other. Choose your first move.'
+      : last.yieldRefused ? `You offered to yield. ${opp.given} refused.`
+      : last.you === last.them ? `You both ${FIGHT_TACTICS[last.you].name.toLowerCase()}; no read wins it, so strength decides. ${last.won ? 'You take the exchange.' : `${opp.given} takes the exchange.`}`
+      : `You ${FIGHT_TACTICS[last.you].name.toLowerCase()}; ${opp.given} ${VERB[last.them]}. ${last.won ? 'You take the exchange.' : `${opp.given} takes the exchange.`}`
+    const clash = last && !last.yieldRefused
+      ? `<span class="fc-clash"><b class="${last.won ? 'win' : ''}">${FIGHT_TACTICS[last.you].glyph}<small>you</small></b><i>vs</i><b class="${last.won ? '' : 'win'}">${FIGHT_TACTICS[last.them].glyph}<small>them</small></b></span>` : ''
+    const pct = v => `${Math.round(v * 100)}%`
+    document.getElementById('family-desc').innerHTML = `
+      <div class="fc-opp"><b>${escHtml(Persons.fullName(opp))}</b><br>${escHtml(stageShortName(opp.stageIndex))} <span class="fc-chip${info.lethal ? ' lethal' : ''}">${info.lethal ? 'to the death' : 'until one yields'}</span></div>
+      <div class="fc-score"><span class="fc-plate"><span class="fc-side">You</span><span class="fc-pips">${pips(info.you, 'you')}</span></span><span class="fc-vs">first to ${info.to}</span><span class="fc-plate r"><span class="fc-pips">${pips(info.them, 'them')}</span><span class="fc-side">${escHtml(opp.given)}</span></span></div>
+      <div class="fc-read"><span class="fc-k">${escHtml(pers ? pers.name : 'Their temper')}</span> ${escHtml(info.hint)}.
+        <span class="fc-habits">Press ${pct(info.habits.press)} · Guard ${pct(info.habits.guard)} · Feint ${pct(info.habits.feint)}</span></div>
+      <div class="fc-last${last && !last.yieldRefused ? (last.won ? ' up' : ' down') : ''}">${clash}<span>${escHtml(lastLine)}</span></div>
+      <div class="fc-first">first to ${info.to} exchanges</div>
+      <div class="fc-cap">Your odds this exchange</div>`
+    choicesEl.innerHTML = `<div class="fc-tacs">${Object.entries(FIGHT_TACTICS).map(([id, t]) =>
+      `<button class="fc-tac${last && !last.yieldRefused && last.you === id ? ' picked' : ''}" data-tactic="${id}"><span class="fc-g">${t.glyph}</span><span class="fc-t"><span class="fc-n">${t.name}${last && !last.yieldRefused && last.you === id ? ' <em class="fc-lastpick">last</em>' : ''}</span><span class="family-sub">beats ${FIGHT_TACTICS[t.beats].name}</span></span><span class="fc-pct">${pct(info.tactics[id])}<small>win</small></span></button>`).join('')}</div>` +
+      `<button class="fc-tac fc-yield" data-tactic="yield"><span class="fc-g">降</span><span class="fc-t"><span class="fc-n">Yield</span><span class="family-sub">${info.lethal ? `they accept about ${pct(info.yieldAccept)} of the time; ` : ''}${FIGHT_YIELD[info.kind]}</span></span></button>`
+    choicesEl.querySelectorAll('[data-tactic]').forEach(btn => btn.addEventListener('click', () => {
+      const r = gameState.fightExchange(btn.dataset.tactic)
+      if (!r.ok) return
+      if (!r.done) return renderFightCard(gameState.get())
+      document.getElementById('family-overlay').classList.add('hidden')
+      const good = ['won', 'won_lethal', 'won_nonlethal'].includes(r.outcome)
+      if (r.outcome && r.outcome !== 'lost' && r.outcome !== 'lost_lethal')
+        flashMessage(good ? 'You stand. It is over.' : r.yielded ? 'You yield, and live.' : 'You are beaten, but alive.', good ? 'positive' : 'negative')
+    }))
+    document.getElementById('family-overlay').classList.remove('hidden')
+  }
+
   function openFamilyOverlay(s) {
     const f = s.family
     if (!familyPendingKey(s)) return
     const box = document.getElementById('family-box')
     const choicesEl = document.getElementById('family-choices')
+    box.classList.remove('fight')
+    if (f.fight) return renderFightCard(s)
     if (f.spouse && f.duel) {
       const pct = Math.round(gameState.duelChance() * 100)
       box.classList.add('crisis')
       document.getElementById('family-title').textContent = 'A Duel to the Death 生死斗'
       document.getElementById('family-desc').textContent = `${Persons.fullName(f.spouse)} waits in the courtyard with a drawn blade. One of you will not walk away.`
-      choicesEl.innerHTML = `<button data-duel="fight">Fight<span class="family-sub">${pct}% to survive — if you lose, this life ends</span></button>
+      choicesEl.innerHTML = `<button data-duel="fight">Fight<span class="family-sub">about ${pct}% to survive — you choose every exchange; if you lose, this life ends</span></button>
         <button data-duel="flee">Flee<span class="family-sub">${escHtml(f.spouse.given)} leaves you for good</span></button>`
       choicesEl.querySelectorAll('[data-duel]').forEach(btn => btn.addEventListener('click', () => {
         document.getElementById('family-overlay').classList.add('hidden')
         const res = gameState.resolveDuel(btn.dataset.duel)
-        if (res.outcome === 'won') flashMessage('You survived the duel.', 'negative')
+        if (res.fight) openFamilyOverlay(gameState.get())   // 1.8b-3b: the fight card
       }))
     } else if (f.headChallenge) {   // 2.6e: an NPC calls you out for the head seat — you decide lethal or not
       const challenger = gameState.person(f.headChallenge.challengerId)
@@ -2335,8 +2382,7 @@
       choicesEl.querySelectorAll('[data-hc]').forEach(btn => btn.addEventListener('click', () => {
         document.getElementById('family-overlay').classList.add('hidden')
         const res = gameState.resolveHeadChallenge(btn.dataset.hc === '1')
-        if (res.outcome === 'won_lethal' || res.outcome === 'won_nonlethal') flashMessage('You held the head seat.', 'positive')
-        else if (res.outcome === 'lost_nonlethal') flashMessage('You were deposed.', 'negative')
+        if (res.fight) openFamilyOverlay(gameState.get())
       }))
     } else if (f.stepDownOffer) {   // 2.6e: the sitting head is stepping down — join the tournament, or watch
       const off = f.stepDownOffer, head = gameState.person(off.headId)
@@ -2419,9 +2465,9 @@
   document.getElementById('heir-close').addEventListener('click', () => document.getElementById('heir-overlay').classList.add('hidden'))
 
   // Pairing state lives in the render layer only (no persisted state): click one fighter, then their opponent.
-  let _tPick = null, _tPairs = [], _tLog = []
+  let _tPick = null, _tPairs = [], _tLog = [], _tSpare = new Set()   // _tSpare: pair indexes whose loser you spare (1.8b-3b)
   function openTournamentOverlay() {
-    _tPick = null; _tPairs = []
+    _tPick = null; _tPairs = []; _tSpare = new Set()
     renderTournament()
     document.getElementById('tournament-overlay').classList.remove('hidden')
   }
@@ -2429,7 +2475,9 @@
     const s = gameState.get(), f = s.family, info = gameState.tournamentInfo()
     const box = document.getElementById('tournament-box')
     const kid = id => f.children.find(c => c.id === id)
-    document.getElementById('tournament-log').innerHTML = _tLog.map(r => `<div class="${r.died ? 'died' : ''}">${escHtml(r.text)}</div>`).join('')
+    document.getElementById('tournament-log').innerHTML = _tLog.map(r => {
+      const g = r.died ? '死' : r.spared ? '恕' : r.yielded ? '降' : '敗'
+      return `<div class="t-log ${r.died ? 'died' : r.spared ? 'spared' : ''}"><b>${g}</b><span>${escHtml(r.text)}</span></div>` }).join('')
     if (!info) {   // finished (or called off)
       box.classList.remove('lethal')
       const heir = f.heirId ? kid(f.heirId) : null
@@ -2440,16 +2488,37 @@
     }
     box.classList.toggle('lethal', info.lethal)
     document.getElementById('tournament-info').textContent = info.lethal
-      ? `Round ${info.round} — TO THE DEATH. ${info.n} remain; pair ${info.fights} fight${info.fights === 1 ? '' : 's'} (the field never drops below ${TOURNAMENT_TOP}). Unpaired fighters rest.`
+      ? `Round ${info.round} — TO THE DEATH. ${info.n} remain; pair ${info.fights} fight${info.fights === 1 ? '' : 's'} (the field never drops below ${TOURNAMENT_TOP}). Unpaired fighters rest. You may spare any loser: they live, but leave the house in disgrace.`
       : `Round ${info.round} — the Top ${info.n}, non-lethal. Pair ${info.fights} fight${info.fights === 1 ? '' : 's'}.`
     const pairedIds = new Set(_tPairs.flat())
     document.getElementById('tournament-pool').innerHTML = info.pool.map(id => { const c = kid(id)
-      return `<button data-fighter="${escHtml(id)}" class="${_tPick === id ? 'picked' : ''}${pairedIds.has(id) ? ' paired' : ''}">${escHtml(Persons.fullName(c))}<span class="fam-sub">${childSummary(s, c)}</span></button>` }).join('')
-    document.getElementById('tournament-pairs').innerHTML = _tPairs.map(([a, b]) => `⚔ ${escHtml(kid(a).given)} vs ${escHtml(kid(b).given)}`).join('<br>')
+      const pn = _tPairs.findIndex(p => p.includes(id))
+      return `<button data-fighter="${escHtml(id)}" class="${_tPick === id ? 'picked' : ''}${pairedIds.has(id) ? ' paired' : ''}">${pn >= 0 ? `<span class="t-no">${pn + 1}</span>` : _tPairs.length >= info.fights ? '<span class="t-rest">休</span>' : ''}${escHtml(Persons.fullName(c))}<span class="fam-sub">${childSummary(s, c)}</span></button>` }).join('')
+    // 1.8b-3b: each pairing is a small versus tile — who, how strong, the odds, and (lethal rounds) death or mercy
+    document.getElementById('tournament-pairs').innerHTML = _tPairs.map(([a, b], i) => {
+      const A = kid(a), B = kid(b), pa = gameState._powerChance(A, B), spare = _tSpare.has(i)
+      return `<div class="t-pair${spare ? ' spared' : ''}">
+        <div class="t-vs"><span class="t-no">${i + 1}</span>
+          <span class="t-f"><b>${escHtml(A.given)}</b><small>${escHtml(stageShortName(A.stageIndex))}</small></span>
+          <i>vs</i>
+          <span class="t-f r"><b>${escHtml(B.given)}</b><small>${escHtml(stageShortName(B.stageIndex))}</small></span></div>
+        <div class="t-odds"><span class="l">${Math.round(pa * 100)}%</span><span class="t-bar"><i data-w="${Math.round(pa * 100)}"></i><em></em></span><span class="r">${Math.round((1 - pa) * 100)}%</span></div>
+        ${info.lethal ? `<div class="t-switch" role="group">
+            <button class="${spare ? '' : 'on death'}" data-spare="${i}" data-v="0">死 To the death</button>
+            <button class="${spare ? 'on mercy' : ''}" data-spare="${i}" data-v="1">恕 Spare the loser</button></div>
+          <div class="t-cons">${spare ? 'The loser lives, but leaves the house in disgrace.' : 'The loser dies. Every survivor carries it.'}</div>` : ''}
+      </div>` }).join('')
+    document.querySelectorAll('#tournament-pairs [data-w]').forEach(b => { b.style.width = b.dataset.w + '%' })
+    document.querySelectorAll('#tournament-pairs [data-spare]').forEach(b => b.addEventListener('click', () => {
+      const i = +b.dataset.spare; if (b.dataset.v === '1') _tSpare.add(i); else _tSpare.delete(i); renderTournament()
+    }))
     document.getElementById('tournament-pool').querySelectorAll('[data-fighter]').forEach(btn => btn.addEventListener('click', () => {
       const id = btn.dataset.fighter
       const existing = _tPairs.findIndex(p => p.includes(id))
-      if (existing >= 0) _tPairs.splice(existing, 1)                       // click a paired fighter → unpair
+      if (existing >= 0) {                                                  // click a paired fighter → unpair
+        _tPairs.splice(existing, 1)
+        _tSpare = new Set([..._tSpare].filter(i => i !== existing).map(i => (i > existing ? i - 1 : i)))
+      }
       else if (_tPick === id) _tPick = null
       else if (_tPick && _tPairs.length < info.fights) { _tPairs.push([_tPick, id]); _tPick = null }
       else _tPick = id
@@ -2466,9 +2535,9 @@
     _tPick = null; renderTournament()
   })
   document.getElementById('tournament-fight').addEventListener('click', () => {
-    const res = gameState.fightTournamentRound(_tPairs)
+    const res = gameState.fightTournamentRound(_tPairs, [..._tSpare])
     if (!res.ok) return flashMessage('Pair every fight first', 'negative')
-    _tLog.push(...res.results); _tPairs = []; _tPick = null
+    _tLog.push(...res.results); _tPairs = []; _tPick = null; _tSpare = new Set()
     renderTournament()
   })
   document.getElementById('tournament-cancel').addEventListener('click', () => {

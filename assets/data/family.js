@@ -1,7 +1,8 @@
 // Family: spouse affection, marriage/crisis events, affairs + discovery reactions (Phase 16-lite+, M2), plus
 // children who grow up, child events and PERSONALITY_MORALITY (clan-succession.md 2.6b).
 // Used by: game-state.js (_tickFamily, resolveMarriageEvent, resolveDuel, encounters), game.js, scripts/sim/*.
-// 1.8b-3a adds courtship (COURT_*), spouse actions, child wishes and raising actions at the bottom.
+// 1.8b-3a adds courtship (COURT_*), spouse actions, child wishes and raising actions; 1.8b-3b adds affair choices
+// (COVER_*, CONFESS_*, LOVER_SCORN) and the fight card (FIGHT_*) at the bottom.
 // Child timing lives in lifespan.js. Spec: docs/systems/family.md. Personality ids: personalities.js.
 // Event text tokens: {spouse} (spouse given name), {name} (you), {child} (youngest living child).
 
@@ -588,3 +589,49 @@ const CHILD_ACTIONS = {
   gift:  { cdYears: 5, stones: 50, xp: 0.2, bond: { default: 4, miser: 9, glutton: 8, arrogant: 6, stoic: 1 },
            spoil: { arrogant: -4, psycho: -4, demonking: -3, miser: -2 } },
 }
+
+// ── 1.8b-3b: affairs on your terms (family.md → "1.8b-3b") ────────────────────
+const COVER_TRACKS_COST        = 60        // stones, scaled like event costs
+const COVER_YEARS              = 20
+const COVER_DISCOVERY_MULT     = 0.3
+const CONFESS_AFFECTION        = -12       // instead of AFFAIR_DISCOVERED_AFFECTION
+const CONFESS_ACCEPT_MULT      = 2
+const CONFESS_VIOLENT_MULT     = 0.5
+const AFFAIR_EXTEND_YEARS      = [10, 20]  // "one more season" after an ultimatum
+const AFFAIR_HOT_DISCOVERY_MULT = 2.5      // …and discovery runs hotter meanwhile
+const LOVER_WED_AFFECTION      = 70
+// Chance a lover you leave does not go quietly (tells your spouse, or becomes a rival), by the LOVER's personality.
+const LOVER_SCORN = { default: 0.15, psycho: 0.6, demonking: 0.45, arrogant: 0.4, paranoid: 0.35, hotblood: 0.3,
+                      poet: 0.25, grumpy: 0.2, niceguy: 0.02, stoic: 0.05, lazy: 0.05, coward: 0.05 }
+
+// ── 1.8b-3b: your own fights (spouse duel, head challenges) ───────────────────
+// First to FIGHT_TO exchanges. Press beats Feint, Feint beats Guard, Guard beats Press (± FIGHT_EDGE on the exchange).
+const FIGHT_TO          = 2
+const FIGHT_EDGE        = 0.18
+const FIGHT_EXCHANGE_RANGE = [0.05, 0.95]
+const FIGHT_WOUND       = 4        // Health per exchange lost (never below 1 mid-fight)
+const YIELD_ACCEPT_BASE = 0.5      // lethal fight: the opponent accepts your yield with this + morality/100 (+ bond for kin)
+const FIGHT_TACTICS = {
+  press: { name: 'Press', glyph: '攻', beats: 'feint', blurb: 'All-out attack' },
+  guard: { name: 'Guard', glyph: '守', beats: 'press', blurb: 'Hold and counter' },
+  feint: { name: 'Feint', glyph: '詐', beats: 'guard', blurb: 'Draw them open' },
+}
+// How each temper fights: weights for press / guard / feint, and the hint the player sees.
+const FIGHT_STYLE = {
+  default:   { press: 34, guard: 33, feint: 33, hint: 'fights without a clear habit' },
+  hotblood:  { press: 60, guard: 15, feint: 25, hint: 'charges in, again and again' },
+  psycho:    { press: 50, guard: 10, feint: 40, hint: 'lunges, grinning, and loves a trick' },
+  demonking: { press: 55, guard: 20, feint: 25, hint: 'wants a grand, crushing blow' },
+  arrogant:  { press: 50, guard: 30, feint: 20, hint: 'attacks first, too proud to trick' },
+  stoic:     { press: 20, guard: 60, feint: 20, hint: 'waits behind a wall of guard' },
+  coward:    { press: 10, guard: 60, feint: 30, hint: 'keeps their distance and covers up' },
+  grumpy:    { press: 25, guard: 55, feint: 20, hint: 'old habits: guard, then punish' },
+  lazy:      { press: 20, guard: 50, feint: 30, hint: 'does as little as possible' },
+  paranoid:  { press: 15, guard: 40, feint: 45, hint: 'suspects every move, answers with tricks' },
+  gremlin:   { press: 30, guard: 15, feint: 55, hint: 'nothing they do makes sense, on purpose' },
+  poet:      { press: 25, guard: 30, feint: 45, hint: 'fights like a verse: turns and feints' },
+  miser:     { press: 20, guard: 45, feint: 35, hint: 'spends nothing it does not have to' },
+  glutton:   { press: 45, guard: 35, feint: 20, hint: 'heavy, straightforward swings' },
+  niceguy:   { press: 25, guard: 50, feint: 25, hint: 'does not want to hurt you' },
+}
+const TOURNAMENT_SPARE_BOND = -20   // a spared loser leaves the house in disgrace

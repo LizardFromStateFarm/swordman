@@ -28,8 +28,8 @@ class FamilyView {
     const f = s.family || {}
     // Two columns in Expanded/Desktop (you + your partner · your children); Overlay stacks them in `order`.
     this.el.innerHTML = `<div class="fam-view">
-      <div class="fam-col">${this._wish(s)}${this._partner(s)}${this._plan(s)}${this._others(s)}${this._heir(s)}</div>
-      <div class="fam-col">${this._children(s)}</div></div>`
+      <div class="fam-col">${this._ultimatum(s)}${this._wish(s)}${this._partner(s)}${this._plan(s)}${this._others(s)}${this._heir(s)}</div>
+      <div class="fam-col">${(s.family.lovers || []).map(l => this._loverCard(s, l)).join('')}${this._children(s)}</div></div>`
     // Bar widths/colors through CSSOM (CSP blocks inline style attributes)
     this.el.querySelectorAll('[data-w]').forEach(b => { b.style.width = b.dataset.w + '%' })
     this.el.querySelectorAll('[data-l]').forEach(b => { b.style.left = b.dataset.l + '%' })
@@ -64,6 +64,7 @@ class FamilyView {
       case 'courting':  return 'You are already courting'
       case 'meetings':  return `${p.left} more meeting${p.left === 1 ? '' : 's'} first`
       case 'pending':   return 'Answer the meeting first'
+      case 'duel':      return 'Not while a duel is pending'
       case 'wish':      return 'They already ask: answer above'
       default:          return 'Not now'
     }
@@ -288,14 +289,58 @@ class FamilyView {
       </button>${acts}</div>`
   }
 
+  // A lover's ultimatum (NPC): "leave them / marry me, or let me go" — urgent, at the top like a wish.
+  _ultimatum(s) {
+    const f = s.family, h = this.h, l = (f.lovers || []).find(x => x.ultimatum)
+    if (!l) return ''
+    const r = this.gs.affairRisk(l.person.id), p = l.person
+    return `<section class="fam-wish ult">
+      <div class="fw-g">迫</div>
+      <div class="fw-body">
+        <div class="fw-title">${h.esc(p.given)} will not go on like this</div>
+        <div class="fw-text">${f.spouse ? `"Leave ${h.esc(f.spouse.given)} for me, or let me go." It waits on you.` : '"Marry me, or let me go." It waits on you.'}</div>
+        <div class="fa-grid ult-acts">
+          ${this._act('ult-marry', f.spouse ? '離' : '聘', f.spouse ? `Leave ${h.esc(f.spouse.given)} for them` : 'Marry them', { ok: true },
+            this._eff(f.spouse ? [[`divorce ${h.esc(f.spouse.given)}`, 'down'], [`wed ${h.esc(p.given)}`, 'up']] : [[`wed ${h.esc(p.given)}`, 'up']]), ` data-id="${h.esc(p.id)}"`, f.spouse ? 'grave' : '')}
+          ${this._act('ult-let_go', '放', 'Let them go', { ok: true },
+            this._eff([[`${Math.round(r.scorn * 100)}% they won't go quietly`, r.scorn > 0.25 ? 'down' : 'dim'], [f.spouse && !r.tolerant ? `they may tell ${h.esc(f.spouse.given)}` : 'they may become your enemy', 'dim']]), ` data-id="${h.esc(p.id)}"`)}
+          ${this._act('ult-one_more', '延', 'One more season', { ok: true },
+            this._eff([[`${AFFAIR_EXTEND_YEARS[0]}–${AFFAIR_EXTEND_YEARS[1]} more years`, 'dim'], r.exposed ? [`discovery ×${AFFAIR_HOT_DISCOVERY_MULT} meanwhile`, 'down'] : null]), ` data-id="${h.esc(p.id)}"`)}
+        </div>
+      </div></section>`
+  }
+
+  _loverCard(s, l) {
+    const f = s.family, h = this.h, gs = this.gs, p = l.person
+    const pers = this._persona(p.personality), r = gs.affairRisk(p.id)
+    const cc = gs.coverCost()
+    let risk
+    if (!f.spouse) risk = '<span class="tone-dim">You are unmarried: there is no one to hide it from.</span>'
+    else if (r.tolerant) risk = `<span class="tone-dim">${h.esc(f.spouse.given)} knows, and tolerates it.</span>`
+    else risk = `Discovery: <b class="${r.perYear > 0.03 ? 'down' : ''}">${(r.perYear * 100).toFixed(1)}%</b> a year · <b>${Math.round(r.onChild * 100)}%</b> if a child is born${r.covered ? ` · tracks covered until year ${r.coverUntil}` : ''}${r.hot ? ' · <span class="down">people are talking</span>' : ''}`
+    const id = ` data-id="${h.esc(p.id)}"`
+    const tiles = []
+    if (f.spouse && !r.tolerant) {
+      tiles.push(this._act('lv-cover', '掩', 'Cover your tracks', r.covered ? { ok: false, reason: 'cooldown', readyYear: r.coverUntil } : s.spiritStones < cc ? { ok: false, reason: 'stones' } : { ok: true },
+        this._eff([[`discovery ×${COVER_DISCOVERY_MULT} for ${COVER_YEARS} years`, 'up'], this._stoneBit(cc)]), id))
+      tiles.push(this._act('lv-confess', '認', 'Confess', f.duel || f.fight ? { ok: false, reason: 'duel' } : { ok: true },
+        this._eff([['they forgive more often', 'up'], [`affection ${CONFESS_AFFECTION}`, 'down']]), id, 'grave'))
+    }
+    if (!f.spouse) tiles.push(this._act('lv-marry', '聘', 'Make it official', { ok: true }, this._eff([['marry them', 'up']]), id))
+    tiles.push(this._act('lv-end', '斷', 'End it', { ok: true },
+      this._eff([[`${Math.round(r.scorn * 100)}% they won't go quietly`, r.scorn > 0.25 ? 'down' : 'dim']]), id))
+    return `<section class="fam-card lover">
+      <div class="fc-head"><span class="fc-glyph dim">私</span><div class="fc-id"><div class="fc-name">${this._name(p)}</div>
+        <div class="fc-sub">Your lover since year ${l.since} · ${h.stageLabel(p.stageIndex)}</div>
+        ${pers ? `<div class="fc-tags"><span class="fam-tag" title="${h.esc(pers.blurb)}"><b>性</b>${h.esc(pers.name)}</span></div>` : ''}</div></div>
+      <div class="lv-risk">${risk}</div>
+      <div class="fa-grid">${tiles.join('')}</div>
+    </section>`
+  }
+
   _others(s) {
     const f = s.family, h = this.h
     let html = ''
-    if ((f.lovers || []).length) {
-      html += `<section class="fam-sec"><div class="fam-sec-title"><span>Lovers</span><span class="fam-count">${f.lovers.length}</span></div>
-        ${f.lovers.map(l => `<div class="lover-row"><span class="lr-name">${this._name(l.person)}</span><span class="lr-sub">since year ${l.since}</span>
-          <button class="fa-link" data-end-affair="${h.esc(l.person.id)}">End it</button></div>`).join('')}</section>`
-    }
     if ((f.formerSpouses || []).length) {
       html += `<details class="fam-fold"><summary>Former spouses · ${f.formerSpouses.length}</summary>${f.formerSpouses.map(x =>
         `<div class="fold-row">${this._name(x)} <span>${h.esc(h.endText[x.endCause] || 'gone')} · year ${x.endedYear}</span></div>`).join('')}</details>`
@@ -354,6 +399,20 @@ class FamilyView {
       case 'ch-time':  gs.childAction(id, 'time'); break
       case 'ch-teach': gs.childAction(id, 'teach'); break
       case 'ch-gift':  gs.childAction(id, 'gift'); break
+      // 1.8b-3b: affairs
+      case 'lv-cover':   gs.coverTracks(id); break
+      case 'lv-marry':   gs.marryLover(id); break
+      case 'lv-confess': {
+        const p = f.lovers.find(l => l.person.id === id)?.person
+        h.confirm(`Confess to ${f.spouse.given}?`, `You tell them everything about ${p?.given || 'your lover'}. They forgive more often than if they found out, but they may not.`, () => {
+          const r = gs.confessAffair(id); if (r.ok) h.flash(r.accepted ? 'They forgive you. It is not mentioned again.' : 'It did not go the way you hoped.', r.accepted ? 'positive' : 'negative')
+        }, 'Confess')
+        break
+      }
+      case 'lv-end': h.confirm('End the affair?', 'Children already born stay yours. Some lovers do not go quietly.', () => {
+        const r = gs.endAffair(id); if (r.scorned) h.flash(r.told ? 'They went straight to your spouse.' : 'They swear you will regret this.', 'negative')
+      }, 'End It'); break
+      case 'ult-marry': case 'ult-let_go': case 'ult-one_more': gs.answerLoverUltimatum(id, b.dataset.fa.slice(4)); break
     }
   }
 }

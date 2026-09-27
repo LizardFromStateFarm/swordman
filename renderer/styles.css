@@ -3219,3 +3219,145 @@ body[data-layout="overlay"] .warord-note { font-size: 10.5px; line-height: 1.4; 
 .warord-note { background: none; border-left: 1px solid color-mix(in srgb, var(--gold) 30%, transparent); padding: 1px 0 1px 8px; margin: 0 0 8px 2px; color: var(--dim-hi); }
 .warord-note .wn-you { color: color-mix(in srgb, var(--text) 85%, var(--dim)); }
 .num-step .warord-input { background: rgba(24,10,4,.8); }
+
+/* ── 1.8b-3b: the fight card (#family-box.fight), tournament mercy, lover cards, the lover's ultimatum ── */
+#family-box.fight #family-desc { color: var(--text); font-size: 11.5px; }
+#family-box.fight .fc-opp { color: color-mix(in srgb, var(--text) 85%, var(--dim)); margin-bottom: 8px; }
+#family-box.fight .fc-opp b { font-weight: normal; color: var(--gold); }
+#family-box.fight .fc-lethal { color: var(--red-text); }
+#family-box.fight .fc-score { display: grid; grid-template-columns: auto auto 1fr auto auto; align-items: center; gap: 6px; padding: 7px 8px;
+  border-radius: 4px; background: rgba(8,4,14,0.55); border: 1px solid color-mix(in srgb, var(--purple) 25%, var(--border)); margin-bottom: 8px; }
+#family-box.fight .fc-side { font-size: 11.5px; color: var(--text); }
+#family-box.fight .fc-vs { text-align: center; font-size: 10.5px; color: var(--dim-hi); }
+#family-box.fight .fc-pips { display: inline-flex; gap: 4px; }
+#family-box.fight .fc-pips i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); }
+#family-box.fight .fc-pips i.on.you  { background: var(--jade); border-color: var(--jade); box-shadow: 0 0 6px color-mix(in srgb, var(--jade) 55%, transparent); }
+#family-box.fight .fc-pips i.on.them { background: var(--red); border-color: var(--red); box-shadow: 0 0 6px color-mix(in srgb, var(--red) 55%, transparent); }
+#family-box.fight .fc-read { font-size: 11px; line-height: 1.45; color: color-mix(in srgb, var(--text) 72%, var(--dim)); margin-bottom: 6px; }
+#family-box.fight .fc-k { color: var(--gold); }
+#family-box.fight .fc-habits { display: block; font-size: 10.5px; color: var(--dim-hi); margin-top: 2px; }
+#family-box.fight .fc-last { font-size: 11.5px; padding: 5px 8px; border-left: 2px solid color-mix(in srgb, var(--gold) 45%, transparent); background: rgba(8,4,14,0.35); }
+#family-box.fight .fc-last.up { border-left-color: var(--jade); color: color-mix(in srgb, var(--jade) 70%, var(--text)); }
+#family-box.fight .fc-last.down { border-left-color: var(--red); color: color-mix(in srgb, var(--red-text) 80%, var(--text)); }
+#family-choices button.fc-tac { display: flex; align-items: center; gap: 9px; text-align: left; }
+#family-choices .fc-g { flex: none; width: 22px; font-size: 16px; text-align: center; color: var(--gold); text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 40%, transparent); }
+#family-choices .fc-t { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#family-choices .fc-n { font-size: 12px; color: var(--text); }
+#family-choices .fc-pct { flex: none; font-size: 13px; color: var(--gold); font-variant-numeric: tabular-nums; }
+#family-choices button.fc-yield { opacity: .9; border-style: dashed; }
+
+/* Tournament: each lethal pairing carries its own mercy toggle */
+#tournament-pairs .t-pair { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; }
+#tournament-pairs .t-pair i { font-style: normal; color: var(--dim-hi); }
+.t-spare { font-family: var(--font); font-size: 10.5px; padding: 3px 8px; min-height: 26px; border-radius: 3px; cursor: pointer;
+  color: var(--red-text); background: rgba(24,10,4,.8); border: 1px solid color-mix(in srgb, var(--red) 45%, var(--border)); }
+.t-spare.on { color: var(--jade); border-color: color-mix(in srgb, var(--jade) 55%, transparent); }
+
+/* Lover cards + the ultimatum */
+.fam-card.lover { border-color: color-mix(in srgb, var(--purple) 40%, var(--border)); }
+.lv-risk { font-size: 11px; line-height: 1.45; margin: 7px 0 0; padding: 5px 8px; border-radius: 3px; background: var(--fam-ink); color: color-mix(in srgb, var(--text) 80%, var(--dim)); }
+.lv-risk b { font-weight: normal; color: var(--gold); } .lv-risk b.down, .lv-risk .down { color: var(--red-text); }
+.fam-wish.ult { border-color: color-mix(in srgb, var(--purple) 60%, transparent);
+  background: radial-gradient(ellipse 70% 100% at 0% 50%, color-mix(in srgb, var(--purple) 16%, transparent), transparent 70%), rgba(20,10,20,0.7); }
+.fam-wish.ult .fw-g, .fam-wish.ult .fw-title { color: color-mix(in srgb, var(--purple) 55%, var(--gold)); }
+.fw-acts.col { flex-direction: column; }
+
+/* 1.8b-3b review 1 fixes: a wider fight card in roomy layouts with the clash shown, a quiet "Later", switch-style
+   mercy toggles on versus tiles, ultimatum rows like every other Family action */
+body:not([data-layout="overlay"]):not([data-layout="banner"]) #family-box.fight { width: min(470px, calc(100vw - 32px)); max-width: none; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) #tournament-box { width: min(520px, calc(100vw - 32px)); max-width: none; }
+#family-box.fight .fc-score { padding: 9px 10px; }
+#family-box.fight .fc-side { font-size: 12px; color: var(--gold); }
+#family-box.fight .fc-pips i { width: 13px; height: 13px; }
+#family-box.fight .fc-last { display: flex; align-items: center; gap: 10px; text-align: left; }
+#family-box.fight .fc-clash { flex: none; display: inline-flex; align-items: center; gap: 5px; }
+#family-box.fight .fc-clash b { font-weight: normal; font-size: 18px; color: var(--dim); opacity: .6; }
+#family-box.fight .fc-clash b.win { color: var(--gold); opacity: 1; text-shadow: 0 0 10px color-mix(in srgb, var(--gold) 60%, transparent); animation: fcWin .5s ease-out; }
+#family-box.fight .fc-clash i { font-style: normal; font-size: 10.5px; color: var(--dim-hi); }
+@keyframes fcWin { from { transform: scale(1.5); } to { transform: none; } }
+:root[data-motion="reduced"] #family-box.fight .fc-clash b.win { animation: none; }
+#family-box.fight .fc-cap { font-size: 10.5px; color: var(--dim-hi); letter-spacing: .6px; text-transform: uppercase; margin: 10px 0 -4px; text-align: left; }
+#family-choices .fc-tacs { display: grid; grid-template-columns: 1fr; gap: 6px; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) #family-choices .fc-tacs { grid-template-columns: repeat(3, 1fr); }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) #family-choices .fc-tac { flex-direction: column; text-align: center; gap: 3px; padding: 10px 6px; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) #family-choices .fc-t { align-items: center; }
+#family-choices button.fc-tac.picked { border-color: color-mix(in srgb, var(--gold) 70%, transparent); background: color-mix(in srgb, var(--gold) 8%, rgba(24,10,4,.9)); }
+#family-choices .fc-pct small { display: block; font-size: 10px; color: var(--dim-hi); text-align: center; }
+#family-choices button.fc-yield { margin-top: 6px; }
+#family-box.fight #family-later { background: none; border: none; color: var(--dim-hi); font-size: 10.5px; text-decoration: underline dotted; text-underline-offset: 3px; min-height: 24px; }
+#family-box.fight #family-later:hover { color: var(--text); }
+
+#tournament-pairs .t-pair { display: block; padding: 7px 8px; margin: 5px 0; border-radius: 4px; background: rgba(8,4,14,0.5);
+  border: 1px solid color-mix(in srgb, var(--red) 30%, var(--border)); }
+#tournament-pairs .t-pair.spared { border-color: color-mix(in srgb, var(--jade) 40%, var(--border)); }
+.t-vs { display: flex; align-items: center; gap: 8px; }
+.t-vs > i { font-style: normal; font-size: 10.5px; color: var(--dim-hi); }
+.t-f { flex: 1; display: flex; flex-direction: column; min-width: 0; font-size: 11.5px; }
+.t-f.r { text-align: right; }
+.t-f b { font-weight: normal; color: var(--text); }
+.t-f small { font-size: 10px; color: var(--dim-hi); }
+.t-no { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font-size: 10px; color: var(--bg2, #120a1c);
+  background: color-mix(in srgb, var(--gold) 80%, transparent); margin-right: 5px; flex: none; }
+.t-switch { display: flex; margin-top: 6px; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+.t-switch button { flex: 1; font-family: var(--font); font-size: 10.5px; min-height: 26px; cursor: pointer; background: rgba(24,10,4,.8); color: var(--dim-hi); border: none; }
+.t-switch button + button { border-left: 1px solid var(--border); }
+.t-switch button.on.death { background: color-mix(in srgb, var(--red) 22%, rgba(24,10,4,.8)); color: var(--red-text); }
+.t-switch button.on.mercy { background: color-mix(in srgb, var(--jade) 18%, rgba(24,10,4,.8)); color: var(--jade); }
+.t-cons { font-size: 10.5px; color: var(--dim-hi); margin-top: 4px; }
+.t-log { display: flex; gap: 7px; align-items: baseline; margin: 3px 0; }
+.t-log b { font-weight: normal; flex: none; color: var(--dim-hi); }
+.t-log.died b { color: var(--red-text); } .t-log.spared b { color: var(--jade); }
+
+.ult-acts { grid-template-columns: 1fr; margin-top: 6px; }
+.fam-wish.ult .fw-body { display: block; }
+.fam-wish.ult { display: flex; }
+body[data-layout="overlay"] .fam-wish.ult { padding: 8px; }
+body[data-layout="overlay"] .fam-wish.ult .fw-text { display: none; }
+
+/* 1.8b-3b review 2 fixes: a duel that feels like one (title, mirrored score plates), readable small text, tournament
+   odds bars and button weights */
+#family-box.fight #family-title { font-size: 15px; letter-spacing: 2px; display: flex; align-items: center; gap: 10px; justify-content: center;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--red) 55%, transparent); }
+#family-box.fight #family-title::before, #family-box.fight #family-title::after { content: ''; flex: 1; max-width: 60px; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--red) 60%, transparent)); }
+#family-box.fight #family-title::after { transform: scaleX(-1); }
+#family-box.fight .fc-chip { font-size: 10.5px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--border); color: var(--dim-hi); white-space: nowrap; }
+#family-box.fight .fc-chip.lethal { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 50%, transparent); }
+#family-box.fight .fc-score { display: flex; justify-content: space-between; align-items: center; }
+#family-box.fight .fc-plate { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+#family-box.fight .fc-vs { white-space: nowrap; }
+#family-box.fight .fc-side { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#family-box.fight .fc-clash b { display: inline-flex; flex-direction: column; align-items: center; line-height: 1; }
+#family-box.fight .fc-clash b small { font-size: 9.5px; color: var(--dim-hi); margin-top: 2px; }
+#family-box.fight .fc-habits, #family-choices .family-sub, #family-choices .fc-pct small { font-size: 10.5px; color: var(--dim-hi); }
+#family-choices button.fc-yield { border-style: dashed; }
+#family-choices button.fc-yield .fc-g { color: var(--dim-hi); text-shadow: none; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) #family-choices button.fc-yield { flex-direction: row; text-align: left; }
+.fa-e .cost { white-space: nowrap; }
+
+.t-odds { display: flex; align-items: center; gap: 7px; margin-top: 5px; font-size: 10.5px; color: var(--dim-hi); font-variant-numeric: tabular-nums; }
+.t-bar { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.t-bar > i { display: block; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 80%, transparent), var(--gold)); }
+.t-rest { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 5px; font-size: 10px; color: var(--dim-hi); border: 1px solid var(--border); border-radius: 50%; }
+.t-f small { font-size: 10.5px; }
+#tournament-fight:not(:disabled) { color: var(--gold); border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, rgba(24,10,4,.9)); }
+#tournament-cancel:not(:disabled) { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 45%, var(--border)); background: transparent; }
+#tournament-close { background: none !important; border: none !important; color: var(--dim-hi); text-decoration: underline dotted; text-underline-offset: 3px; }
+#tournament-auto:not(:disabled) { color: var(--text); border-color: color-mix(in srgb, var(--gold) 35%, var(--border)); }
+body[data-layout="overlay"] #family-box.fight .fc-vs { display: none; }
+body[data-layout="overlay"] #family-box.fight #family-title::before, body[data-layout="overlay"] #family-box.fight #family-title::after { content: none; }
+#family-box.fight .fc-plate .fc-side { flex: 0 1 auto; }
+#family-box.fight .fc-plate:first-child .fc-side { flex: none; }
+
+/* 1.8b-3b after review 3 (unreviewed): a true split odds bar, a "last" tag instead of a recommendation-looking
+   highlight, "first to N" under the plates, Fight! as a real primary, the title glyph */
+.t-bar { position: relative; background: color-mix(in srgb, var(--purple) 55%, transparent); }
+.t-bar > i { background: var(--gold); }
+.t-bar > em { position: absolute; left: 50%; top: -2px; width: 1px; height: 8px; background: color-mix(in srgb, var(--text) 45%, transparent); }
+.t-odds .l { color: var(--gold); } .t-odds .r { color: color-mix(in srgb, var(--purple) 70%, var(--text)); }
+#family-choices button.fc-tac.picked { border-color: color-mix(in srgb, var(--gold) 40%, var(--border)); background: rgba(24,10,4,.9); }
+.fc-lastpick { font-style: normal; font-size: 9.5px; padding: 0 5px; margin-left: 4px; border-radius: 7px; color: var(--dim-hi); border: 1px solid var(--border); vertical-align: 1px; }
+#family-box.fight .fc-first { text-align: center; font-size: 10.5px; color: var(--dim-hi); margin: -4px 0 8px; }
+body:not([data-layout="overlay"]) #family-box.fight .fc-first { display: none; }
+#tournament-fight:not(:disabled) { color: #1a0f06; background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 92%, #fff), color-mix(in srgb, var(--gold) 80%, #8a6a10)); border-color: var(--gold); box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 30%, transparent); }
+.fm-g { font-weight: normal; margin-right: 8px; }

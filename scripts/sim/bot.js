@@ -175,6 +175,26 @@ class Bot {
     // (Was once per run until 2.6d — every later life silently fell back to the default 'many'.)
     // 1.8b-3a: casual keeps the "Ask me" default and answers each wish; afk delegates ('many').
     if (this._plannedFor !== this.s.self.id) { this._plannedFor = this.s.self.id; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : this.profile === 'casual' ? 'ask' : 'many') }
+    // 1.8b-3b: a fight you're in is played out exchange by exchange. 'active' reads the opponent (best tactic, and
+    // yields a hopeless lethal fight when they'd likely accept); casual/afk pick at random.
+    if (f.fight) {
+      const info = this.gs.fightInfo()
+      const ranked = Object.entries(info.tactics).sort((a, b) => b[1] - a[1])
+      let t = this.profile === 'active' ? ranked[0][0] : ranked[Math.floor(this.rand() * ranked.length)][0]
+      if (this.profile === 'active' && info.lethal && ranked[0][1] < 0.2 && info.yieldAccept > 0.5) t = 'yield'
+      return this.do('fight_' + (t === 'yield' ? 'yield' : 'exchange'), this.gs.fightExchange(t))
+    }
+    // 1.8b-3b: a lover's ultimatum — 'active' keeps its marriage safe; casual/afk choose at random.
+    const ult = (f.lovers || []).find(l => l.ultimatum)
+    if (ult) {
+      const opts = f.spouse ? ['let_go', 'one_more', 'marry'] : ['marry', 'let_go', 'one_more']
+      const pick = this.profile === 'active' ? (f.spouse ? 'let_go' : 'marry') : opts[Math.floor(this.rand() * opts.length)]
+      return this.do('lover_' + pick, this.gs.answerLoverUltimatum(ult.person.id, pick))
+    }
+    if (this.profile === 'active' && f.spouse && !f.tolerant) {
+      const l = (f.lovers || []).find(x => this.gs.affairRisk(x.person.id)?.covered === false)
+      if (l && this.s.spiritStones > this.gs.coverCost() * 4 && this.do('cover_tracks', this.gs.coverTracks(l.person.id), false)) return true
+    }
     if (f.childWish) return this.do('child_wish', this.gs.answerChildWish(this.rand() < 0.75))
     if (this.familyAgency()) return true
     // 2.6e: an NPC calls you out for the head seat — decide lethal or not. 'active' plays it savvy (lethal
@@ -208,7 +228,9 @@ class Bot {
       const pool = info.pool.map(id => f.children.find(c => c.id === id)).sort((a, b) => b.stageIndex - a.stageIndex)
       const pairs = []
       while (pairs.length < info.fights) pairs.push([pool.shift().id, pool.pop().id])
-      return this.do('tournament_round', this.gs.fightTournamentRound(pairs))
+      // 1.8b-3b: casual spares a loser now and then (they leave the house instead of dying)
+      const spare = this.profile === 'casual' && info.lethal ? pairs.map((_, i) => i).filter(() => this.rand() < 0.2) : []
+      return this.do('tournament_round', this.gs.fightTournamentRound(pairs, spare))
     }
     const adults = this.gs.eligibleHeirs()
     if (this.profile === 'active' && !f.lastTournament && adults.length >= 6 && this.s.stageIndex >= 16) {

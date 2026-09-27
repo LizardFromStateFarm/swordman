@@ -201,6 +201,9 @@ Then life-loop.md 2.7 (Ancestral Hall, legacies — Sect Continuity legacy is su
   −30 (psycho/demon king +5) — once per child. Winner = heir; ranking 2–4 = future branch founders. A lethal
   tournament bumps `clan.tradition.lethalTournaments`. A field that shrinks to one between rounds (runaway/death)
   ends with that child as heir (handled in `_tickFamily`, never inside `_recalc`).
+  **1.8b-3b:** `fightTournamentRound(pairs, spare)` — in a lethal round you may spare any pair's loser (alive, estranged,
+  `spared`, bond −20); trauma and `lethalFought` only follow a round with a death. Challenging the head / being
+  challenged is now fought exchange by exchange on the fight card (family.md → "1.8b-3b").
 - **Bloodline:** growth += `BLOODLINE_G_HEIR` (4) × (heir stage / 22)² + `BLOODLINE_G_TRAUMA_HEIR` (2) if the heir has
   `trauma`. `lastReincarnation` gained `heirStage`, `heirTrauma`, `heirKind` ('chosen'|'tournament'), `heirTerm`,
   `tournamentDeaths`.

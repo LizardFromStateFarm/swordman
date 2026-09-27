@@ -18,7 +18,7 @@ function collectAttention(s, gs) {
 
   // ── Decisions (a popup is waiting; it never expires) ──
   if (f.proposal) add('urgent', 'proposal', '媒', 'A matchmaker awaits', 'Offers of marriage have arrived. Accept one or send them away.', 'family', 'proposal')
-  if (f.spouse && f.duel) add('urgent', 'duel', '決', `${f.spouse.given} demands a duel`, 'Your spouse will not let the affair pass. Answer them.', 'family', 'family')
+  if (f.spouse && f.duel && !f.fight) add('urgent', 'duel', '決', `${f.spouse.given} demands a duel`, 'Your spouse will not let the affair pass. Answer them.', 'family', 'family')
   else if (f.headChallenge) {
     const ch = gs.person?.(f.headChallenge.challengerId)
     add('urgent', 'head-challenge', '挑', `${ch?.given || 'A rival'} challenges your seat`, 'As clan head, you decide whether this fight is to the death.', 'clan', 'family')
@@ -28,6 +28,13 @@ function collectAttention(s, gs) {
     const c = (f.children || []).find(k => k.id === f.childEvent.childId)
     add('urgent', 'child-event', '子', `${c?.given || 'Your child'} needs a parent`, 'A choice about raising them waits on you.', 'family', 'family')
   } else if (s.upbringing?.event) add('urgent', 'upbringing', '幼', 'A matter from your youth', 'How you answer shapes your bond with the clan head.', 'family', 'family')
+  // 1.8b-3b: a fight you're in (never resolves without you), and a lover's ultimatum
+  if (f.fight) {
+    const opp = f.fight.kind === 'duel' ? f.spouse : gs.person?.(f.fight.oppId)
+    add('urgent', 'fight', '鬥', `Your fight with ${opp?.given || 'your rival'}`, `${f.fight.you}–${f.fight.them}, first to ${typeof FIGHT_TO !== 'undefined' ? FIGHT_TO : 2}. Choose your next move.`, f.fight.kind === 'duel' ? 'family' : 'clan', 'family')
+  }
+  const ult = (f.lovers || []).find(l => l.ultimatum)
+  if (ult) add('urgent', 'ultimatum', '迫', `${ult.person.given} wants an answer`, f.spouse ? 'Leave your spouse, let them go, or one more season.' : 'Marry them, let them go, or one more season.', 'family')
   // 1.8b-3a: a partner's wish for a child (the 'ask' plan) is a decision; it waits until you answer
   if (f.childWish) {
     const p = f.spouse?.id === f.childWish.partnerId ? f.spouse : (f.lovers || []).find(l => l.person.id === f.childWish.partnerId)?.person

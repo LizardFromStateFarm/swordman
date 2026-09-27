@@ -156,3 +156,35 @@ Neglect drift, child events and runaways stay as in 2.6b; these actions are how 
 **Family view (Kin → Family)** — spouse card (or courtship card), wish card, children grid (all children, no
 youngest-12 cap; Overlay = compact rows, tap to expand actions), lovers, former spouses (folded), heir row. Attention:
 urgent 願 child wish; ready 約 courtship meeting; idle 冷 spouse Cool/Cold with an action ready.
+
+## 1.8b-3b — Affairs on your terms + your own fights (spec, 2026-09-27; user approved as one task)
+**Affairs.** The world still rolls discovery, but every player-side choice is explicit (lover cards, Family view):
+- **Cover your tracks** (`coverTracks(id)`): stones (`COVER_TRACKS_COST`, scaled) → that lover's discovery chance
+  × `COVER_DISCOVERY_MULT` for `COVER_YEARS`. `affairRisk(id)` returns the yearly chance and why (shown on the card).
+- **Confess** (`confessAffair(id)`, married, spouse not tolerant): the discovery reaction runs with accept ×
+  `CONFESS_ACCEPT_MULT`, violent × `CONFESS_VIOLENT_MULT`, and a smaller affection hit (`CONFESS_AFFECTION`).
+- **End it** (`endAffair(id)`): the lover takes it by personality — `LOVER_SCORN` chance to go to your spouse
+  (a discovery) or, when you're unmarried, to become a rival (`_noteEnemy`). Otherwise a quiet goodbye.
+- **Make it official** (`marryLover(id)`, unmarried): wed the lover (`LOVER_WED_AFFECTION`).
+- **Ultimatum** (NPC): when an affair reaches `endsYear` it no longer fades silently; the lover asks
+  `lover.ultimatum` — `answerLoverUltimatum(id, 'marry'|'let_go'|'one_more')`: marry (divorces your spouse if you have
+  one), let go (same scorn roll as End it), or one more season (`AFFAIR_EXTEND_YEARS`, discovery ×
+  `AFFAIR_HOT_DISCOVERY_MULT` meanwhile). Never expires.
+**Your fights** (spouse duel, challenging the head, defending the seat): `f.fight = {kind, oppId, lethal, you, them,
+round, log}` — first to `FIGHT_TO` exchanges. `fightInfo()` gives each tactic's win chance this exchange;
+`fightExchange('press'|'guard'|'feint'|'yield')`. Press beats Feint, Feint beats Guard, Guard beats Press
+(± `FIGHT_EDGE`); the opponent's move is drawn from `FIGHT_STYLE[personality]` (shown as a temper hint). The base
+exchange chance is derived from the old match odds (duelChance / expected fight power) so neutral play keeps the
+old balance. Each lost exchange costs `FIGHT_WOUND` Health (never below 1 mid-fight). **Yield**: non-lethal → the
+non-lethal loss at once; lethal → accepted with `YIELD_ACCEPT_BASE` + opponent morality/100 (+ bond for kin), else
+the fight goes on. Outcomes are the old ones (death, deposed, spouse leaves, cooldown…).
+**Tournament of Heirs:** `fightTournamentRound(pairs, spare)` — `spare` = indexes of pairs whose loser you spare in a
+lethal round: they live but leave the house in disgrace (estranged, bond `TOURNAMENT_SPARE_BOND`). Trauma only lands
+on a round where someone died; `lethalFought` only then.
+**As built (2026-09-27):** as specced. Also: `canChallengeHead()`/`_branchWarBusy()` refuse while `f.fight` is set and
+NPC head challenges wait; `familyPendingKey()` puts a fight first; the family overlay renders `renderFightCard()`
+(game.js). The old one-roll `_resolveFight` is still used by NPC-only brackets (step-down tournament). Tests use
+`fought(sim, gs, start, 'win'|'lose')` (checks/succession.js) to play a fight out under a forced RNG.
+Checks: `scripts/sim/checks/family-fights.js` (21). Smoke: `scripts/smoke/scenarios/fights.js` (fight-*.png).
+Sim (60h × 3 profiles × 2 seeds): 0 errors / violations; bot plays exchanges (active reads habits, yields hopeless
+lethal fights), answers ultimatums, covers tracks (active), spares ~20% of tournament losers (casual).

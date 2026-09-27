@@ -649,7 +649,9 @@ class GameState {
              // action cooldowns, why affection last moved + a yearly trail, courtship, suitors who refused you.
              // planVer 1 = the planning value is the player's own (old saves' 'many' default becomes 'ask').
              planVer: 1, childWish: null, expecting: [], spouseCd: {}, childTryYear: null,
-             lastAff: null, affTrail: [], court: null, seekCooldownYear: null, spurned: [] }
+             lastAff: null, affTrail: [], court: null, seekCooldownYear: null, spurned: [],
+             // 1.8b-3b: a fight you are in (spouse duel / head challenge), exchange by exchange
+             fight: null }
   }
 
   _blankFamilyTally() {
@@ -714,6 +716,7 @@ class GameState {
     if (f.childWish && !this._partnerById(f.childWish.partnerId, true)) f.childWish = null
     if (f.court && (typeof f.court !== 'object' || !Array.isArray(f.court.candidates))) f.court = null
     if (f.court && f.spouse) f.court = null
+    if (f.fight && (typeof f.fight !== 'object' || !f.fight.kind || (f.fight.kind === 'duel' ? !f.spouse : !this.person(f.fight.oppId)))) f.fight = null
     for (const c of f.children) {
       if (!c.cd || typeof c.cd !== 'object') c.cd = {}
       if (!c.raised || typeof c.raised !== 'object') c.raised = { time: 0, teach: 0, gift: 0 }
@@ -810,7 +813,7 @@ class GameState {
     const lover = f.lovers.find(l => l.person.id === partnerId)
     if (lover && f.spouse) {
       if (f.tolerant) this._changeAffection(AFFAIR_TOLERATED_AFFECTION, `a child by ${lover.person.given}`)
-      else if (!f.duel && Math.random() < DISCOVERY_ON_LOVER_CHILD) this._discoverAffair(lover, true)
+      else if (!f.duel && Math.random() < DISCOVERY_ON_LOVER_CHILD * this._affairMult(lover)) this._discoverAffair(lover, true)
     }
     return child
   }
@@ -922,19 +925,26 @@ class GameState {
 
   // family.md: the spouse learns of an affair. Affection drops, then a reaction is rolled from the spouse's
   // personality (AFFAIR_REACTIONS), scaled by the affection that's left: accept × aff/50, violent × (100−aff)/50.
-  _discoverAffair(lover, viaChild) {
+  // confessed (1.8b-3b): you told them yourself — a smaller blow, and forgiveness is likelier.
+  _discoverAffair(lover, viaChild, confessed = false) {
     const s = this._s, f = s.family, sp = f.spouse
     if (!sp) return
     const yr = Math.floor(s.world.year), spName = Persons.fullName(sp), loverName = Persons.fullName(lover.person)
     f.tally.discovered++
-    this._changeAffection(AFFAIR_DISCOVERED_AFFECTION + (viaChild ? AFFAIR_CHILD_EXTRA_AFFECTION : 0), viaChild ? 'learned of your affair, and the child' : 'learned of your affair')
-    this.addEvent({ text: `Year ${yr}: ${spName} learns of your affair with ${loverName}${viaChild ? ' — and of the child' : ''}.`, type: 'negative' })
+    if (confessed) {
+      this._changeAffection(CONFESS_AFFECTION, 'you confessed an affair')
+      this.addEvent({ text: `Year ${yr}: you tell ${spName} everything about ${loverName}. They listen without a word.`, type: 'negative' })
+    } else {
+      this._changeAffection(AFFAIR_DISCOVERED_AFFECTION + (viaChild ? AFFAIR_CHILD_EXTRA_AFFECTION : 0), viaChild ? 'learned of your affair, and the child' : 'learned of your affair')
+      this.addEvent({ text: `Year ${yr}: ${spName} learns of your affair with ${loverName}${viaChild ? ' — and of the child' : ''}.`, type: 'negative' })
+    }
     const w = AFFAIR_REACTIONS[sp.personality] || { accept: 30, sabotage: 30, duel: 20, suicide: 10, murder_suicide: 10 }
     // 2.6b: the spouse's morality tilts it too — a righteous spouse forgives more, a ruthless one turns violent.
     const m = sp.morality ?? 0, kind = 1 + Math.max(0, m) / 100, cruel = 1 + Math.max(0, -m) / 100
     const a = f.affection, calm = a / 50, hot = (100 - a) / 50
-    const opts = [['accept', w.accept * calm * kind], ['sabotage', w.sabotage], ['duel', w.duel * hot * cruel],
-                  ['suicide', w.suicide * hot], ['murder_suicide', w.murder_suicide * hot * cruel]]
+    const ca = confessed ? CONFESS_ACCEPT_MULT : 1, cv = confessed ? CONFESS_VIOLENT_MULT : 1
+    const opts = [['accept', w.accept * calm * kind * ca], ['sabotage', w.sabotage], ['duel', w.duel * hot * cruel * cv],
+                  ['suicide', w.suicide * hot * cv], ['murder_suicide', w.murder_suicide * hot * cruel * cv]]
     const total = opts.reduce((sum, o) => sum + o[1], 0)
     let roll = Math.random() * total, reaction = 'sabotage'
     for (const [k, wt] of opts) { roll -= wt; if (wt > 0 && roll <= 0) { reaction = k; break } }
@@ -1046,10 +1056,11 @@ class GameState {
     // Lovers (family.md): each has their own child timer. A lover's child may expose the affair
     // (DISCOVERY_ON_LOVER_CHILD); a tolerant spouse only sighs (AFFAIR_TOLERATED_AFFECTION).
     for (const lover of [...f.lovers]) {
-      if (lover.endsYear != null && y >= lover.endsYear) {   // affairs fade on their own (AFFAIR_YEARS)
-        f.lovers.splice(f.lovers.indexOf(lover), 1)
-        this.addEvent({ text: `Year ${yr}: your affair with ${Persons.fullName(lover.person)} fades, as such things do.`, type: 'neutral' })
-        continue
+      // 1.8b-3b: an affair no longer fades on its own — the lover asks you to choose (answerLoverUltimatum).
+      if (lover.endsYear != null && y >= lover.endsYear && !lover.ultimatum) {
+        lover.ultimatum = { year: yr }
+        this.addEvent({ text: `Year ${yr}: ${Persons.fullName(lover.person)} will not go on like this. ${f.spouse ? '"Leave them for me, or let me go."' : '"Marry me, or let me go."'}`, type: 'special' })
+        this._emit('lover_ultimatum', { name: lover.person.given })
       }
       if (!interval || y < lover.nextChildYear) continue
       if (!ask) {
@@ -1059,7 +1070,7 @@ class GameState {
     }
     // Yearly discovery roll per lover while married (at most one discovery per year).
     if (f.spouse && !f.tolerant && !f.duel) {
-      const found = f.lovers.find(() => Math.random() < DISCOVERY_PER_LOVER_YEAR)
+      const found = f.lovers.find(l => Math.random() < this._affairChance(l))   // 1.8b-3b: covering / "one more season"
       if (found) this._discoverAffair(found, false)
     }
 
@@ -1112,7 +1123,7 @@ class GameState {
 
     // 2.6e: while you hold the head seat, a rival with a real shot may call you out — one pending at a time.
     const clan = this._playerClan()
-    if (clan && this.isClanHead() && !f.headChallenge) {
+    if (clan && this.isClanHead() && !f.headChallenge && !f.fight) {
       if (f.nextChallengerYear == null) f.nextChallengerYear = y + this._randRange(CHALLENGER_EVENT_YEARS)
       else if (y >= f.nextChallengerYear) {
         f.nextChallengerYear = y + this._randRange(CHALLENGER_EVENT_YEARS)
@@ -1661,15 +1672,110 @@ class GameState {
     return { ok: true }
   }
 
-  // Ends an affair. Children already born stay yours.
+  // Ends an affair. Children already born stay yours. 1.8b-3b: the lover may not go quietly (LOVER_SCORN by their
+  // personality) — they go to your spouse, or (if you're unmarried / they already know) become a rival.
   endAffair(personId) {
     const s = this._s, f = s.family
     const idx = f.lovers.findIndex(l => l.person.id === personId)
     if (idx < 0) return { ok: false, reason: 'unknown' }
     const [lover] = f.lovers.splice(idx, 1)
-    this.addEvent({ text: `You end things with ${Persons.fullName(lover.person)}.`, type: 'neutral' })
+    const name = Persons.fullName(lover.person)
+    if (f.childWish?.partnerId === personId) f.childWish = null
+    const scorned = Math.random() < this._keyed(LOVER_SCORN, lover.person.personality)
+    this.addEvent({ text: `You end things with ${name}.`, type: 'neutral' })
+    let told = false
+    if (scorned) {
+      if (f.spouse && !f.tolerant && !f.duel) {
+        this.addEvent({ text: `${name} does not go quietly. By nightfall, ${f.spouse.given} knows everything.`, type: 'negative' })
+        this._discoverAffair(lover, false); told = true
+      } else {
+        this._noteEnemy({ kind: 'person', personId: lover.person.id, name, surname: lover.person.family, why: 'you cast them aside' })
+        this.addEvent({ text: `${name} swears you will regret this.`, type: 'negative' })
+      }
+    }
     this._recalc(); this._notify()
-    return { ok: true }
+    return { ok: true, scorned, told }
+  }
+
+  // ── 1.8b-3b (family.md): affairs on your terms ──────────────────────────
+  _lover(personId) { return this._s.family.lovers.find(l => l.person.id === personId) || null }
+  _affairMult(lover) {
+    const y = this._s.world.year
+    return (lover.coverUntil != null && y < lover.coverUntil ? COVER_DISCOVERY_MULT : 1) *
+           (lover.hotUntil != null && y < lover.hotUntil ? AFFAIR_HOT_DISCOVERY_MULT : 1)
+  }
+  _affairChance(lover) { return Math.min(1, DISCOVERY_PER_LOVER_YEAR * this._affairMult(lover)) }
+
+  // What the Family view shows on a lover card: yearly discovery chance and why.
+  affairRisk(personId) {
+    const s = this._s, f = s.family, l = this._lover(personId)
+    if (!l) return null
+    const y = s.world.year
+    const covered = l.coverUntil != null && y < l.coverUntil, hot = l.hotUntil != null && y < l.hotUntil
+    const exposed = !!f.spouse && !f.tolerant
+    return { perYear: exposed ? this._affairChance(l) : 0, onChild: exposed ? Math.min(1, DISCOVERY_ON_LOVER_CHILD * this._affairMult(l)) : 0,
+             exposed, tolerant: !!f.spouse && f.tolerant, covered, coverUntil: covered ? Math.ceil(l.coverUntil) : null,
+             hot, hotUntil: hot ? Math.ceil(l.hotUntil) : null, scorn: this._keyed(LOVER_SCORN, l.person.personality) }
+  }
+
+  coverCost() { return this.familyCost({ cost: { stones: COVER_TRACKS_COST } }) }
+
+  coverTracks(personId) {
+    const s = this._s, f = s.family, l = this._lover(personId)
+    if (!l) return { ok: false, reason: 'unknown' }
+    if (!f.spouse || f.tolerant) return { ok: false, reason: 'nothing_to_hide' }
+    if (l.coverUntil != null && s.world.year < l.coverUntil) return { ok: false, reason: 'covered', readyYear: Math.ceil(l.coverUntil) }
+    const cost = this.coverCost()
+    if (s.spiritStones < cost) return { ok: false, reason: 'stones', cost }
+    s.spiritStones -= cost
+    l.coverUntil = s.world.year + COVER_YEARS
+    this.addEvent({ text: `You pay for silence and separate roads. Meetings with ${l.person.given} leave no trace — for now.`, type: 'neutral' })
+    this._notify()
+    return { ok: true, cost }
+  }
+
+  confessAffair(personId) {
+    const f = this._s.family, l = this._lover(personId)
+    if (!l) return { ok: false, reason: 'unknown' }
+    if (!f.spouse || f.tolerant) return { ok: false, reason: 'nothing_to_confess' }
+    if (f.duel) return { ok: false, reason: 'duel' }
+    const before = f.tally.accept
+    this._discoverAffair(l, false, true)
+    this._recalc(); this._notify()
+    return { ok: true, accepted: f.tally.accept > before }
+  }
+
+  // Unmarried: wed your lover (they stop being a lover).
+  marryLover(personId) {
+    const f = this._s.family, l = this._lover(personId)
+    if (!l) return { ok: false, reason: 'unknown' }
+    if (f.spouse) return { ok: false, reason: 'married' }
+    f.lovers.splice(f.lovers.indexOf(l), 1)
+    const spouse = this._wed(l.person, LOVER_WED_AFFECTION)
+    this._recalc(); this._notify()
+    this._emit('married', { spouse: spouse.given })
+    return { ok: true, spouse }
+  }
+
+  // The lover's ultimatum: 'marry' (leaving your spouse if you have one), 'let_go' (as endAffair), 'one_more'.
+  answerLoverUltimatum(personId, choice) {
+    const s = this._s, f = s.family, l = this._lover(personId)
+    if (!l?.ultimatum) return { ok: false, reason: 'no_ultimatum' }
+    if (choice === 'marry') {
+      if (f.spouse) this._spouseEnds('divorced', `you leave ${Persons.fullName(f.spouse)} for ${Persons.fullName(l.person)}.`)
+      return this.marryLover(personId)
+    }
+    if (choice === 'let_go') return this.endAffair(personId)
+    if (choice === 'one_more') {
+      l.ultimatum = null
+      const more = this._randRange(AFFAIR_EXTEND_YEARS)
+      l.endsYear = s.world.year + more
+      l.hotUntil = s.world.year + more
+      this.addEvent({ text: `${l.person.given} agrees to wait a little longer. You are careless together; people are starting to talk.`, type: 'neutral' })
+      this._notify()
+      return { ok: true }
+    }
+    return { ok: false, reason: 'bad_choice' }
   }
 
   // ── 2.6b (clan-succession.md): Family Planning + child events ──────────────
@@ -2124,7 +2230,8 @@ class GameState {
   }
 
   // pairs: [[idA, idB], …] — exactly tournamentInfo().fights of them, every id in the pool at most once.
-  fightTournamentRound(pairs) {
+  // spare (1.8b-3b): indexes into pairs whose loser you spare in a lethal round — they live, disgraced and estranged.
+  fightTournamentRound(pairs, spare = []) {
     const s = this._s, f = s.family, info = this.tournamentInfo()
     if (!info) return { ok: false, reason: 'no_tournament' }
     if (!Array.isArray(pairs) || pairs.length !== info.fights) return { ok: false, reason: 'bad_pairs' }
@@ -2135,15 +2242,22 @@ class GameState {
     }
     const t = f.tournament, yr = Math.floor(s.world.year), lethal = info.lethal, results = []
     const kid = id => f.children.find(c => c.id === id)
-    for (const [ia, ib] of pairs) {
+    const spared = new Set((Array.isArray(spare) ? spare : []).map(Number))
+    let deathsThisRound = 0
+    for (const [pi, [ia, ib]] of pairs.entries()) {
       const a = kid(ia), b = kid(ib)
       const pa = this._fightPower(a), pb = this._fightPower(b)
       const aWins = Math.random() < 1 / (1 + Math.exp(-(pa - pb) / TOURNAMENT_SPREAD))
       const win = aWins ? a : b, lose = aWins ? b : a
-      let died = false, yielded = false
+      let died = false, yielded = false, sparedNow = false
       if (lethal) {
         if (lose.personality === 'coward' && Math.random() < TOURNAMENT_COWARD_YIELD) yielded = true
-        else {
+        else if (spared.has(pi)) {   // 1.8b-3b: your mercy — they live, but leave the house in disgrace
+          sparedNow = true
+          lose.estranged = true; lose.leftYear = yr; lose.spared = true
+          lose.bond = Math.max(0, Math.min(100, lose.bond + TOURNAMENT_SPARE_BOND))
+        } else {
+          deathsThisRound++
           died = true
           lose.alive = false; lose.diedYear = yr; lose.cause = 'tournament'
           f.tally.tournamentDeaths++
@@ -2152,14 +2266,14 @@ class GameState {
         }
       }
       t.pool = t.pool.filter(id => id !== lose.id)
-      t.eliminated.push({ id: lose.id, round: t.round, died, yielded, stage: lose.stageIndex })
+      t.eliminated.push({ id: lose.id, round: t.round, died, yielded, spared: sparedNow, stage: lose.stageIndex })
       t.fightsDone++
-      const how = died ? `${lose.given} falls and does not rise` : yielded ? `${lose.given} throws down their sword and yields` : `${lose.given} is beaten`
+      const how = died ? `${lose.given} falls and does not rise` : sparedNow ? `you stay the killing blow; ${lose.given} leaves the house in disgrace` : yielded ? `${lose.given} throws down their sword and yields` : `${lose.given} is beaten`
       const text = `Round ${t.round}: ${Persons.fullName(win)} defeats ${Persons.fullName(lose)} — ${how}.`
       this.addEvent({ text, type: died ? 'negative' : 'neutral' })
-      results.push({ a: ia, b: ib, winner: win.id, loser: lose.id, died, yielded, text })
+      results.push({ a: ia, b: ib, winner: win.id, loser: lose.id, died, yielded, spared: sparedNow, text })
     }
-    if (lethal) {
+    if (lethal && deathsThisRound > 0) {   // 1.8b-3b: only a round with a death marks the survivors
       t.lethalFought = true
       // Everyone who lived through a lethal round carries it — fighters, yielders and those who sat it out and
       // watched (trauma → the Bloodline bonus if they become head). Applied once per child.
@@ -2211,18 +2325,138 @@ class GameState {
       this._recalc(); this._notify()
       return { ok: true, outcome: 'fled', chance: 0 }
     }
+    // 1.8b-3b: the duel is fought exchange by exchange on the fight card (fightExchange) — your moves, not a roll.
     const chance = this.duelChance()
-    if (Math.random() < chance) {
+    this._startFight('duel', f.spouse, true, chance)
+    return { ok: true, fight: true, chance }
+  }
+
+  _duelOutcome(won, yielded) {
+    const s = this._s, f = s.family, name = Persons.fullName(f.spouse)
+    if (yielded) {
+      f.tally.fled++
+      this._spouseEnds('left', `you throw down your sword. ${name} spares you, and walks out of your life.`)
+      this._recalc(); this._notify()
+      return 'fled'
+    }
+    if (won) {
       f.tally.duelWon++
       s.health = Math.max(1, (s.health ?? 100) - DUEL_WIN_HEALTH_COST)
       this._spouseEnds('duel', `the duel ends in the courtyard. ${name} does not rise. You carry the wound, and the silence.`)
       this._recalc(); this._notify()
-      return { ok: true, outcome: 'won', chance }
+      return 'won'
     }
     f.tally.duelLost++
     this.addEvent({ text: `Year ${Math.floor(s.world.year)}: ${name}'s blade is faster. Your path ends in your own courtyard.`, type: 'negative' })
     this._die('spouse_duel')
-    return { ok: true, outcome: 'lost', chance }
+    return 'lost'
+  }
+
+  // ── 1.8b-3b (family.md): your own fights, exchange by exchange ─────────────
+  // kind: 'duel' (your spouse) · 'challenge' (you called out the head) · 'defend' (you hold the seat).
+  // matchChance = the old one-roll odds; the exchange odds are derived so that neutral play keeps them.
+  _startFight(kind, opp, lethal, matchChance) {
+    const s = this._s, f = s.family
+    f.fight = { kind, oppId: opp.id, lethal: !!lethal, p: this._exchangeChance(matchChance), you: 0, them: 0, round: 1,
+                log: [], year: Math.floor(s.world.year) }
+    this._emit('fight_start', { kind, lethal: !!lethal })
+    this._notify()
+  }
+
+  // Solves P(first to FIGHT_TO) = matchChance for the single-exchange chance p (bisection; monotone in p).
+  _exchangeChance(P) {
+    const race = p => { let sum = 0, c = 1
+      for (let k = 0; k < FIGHT_TO; k++) { sum += c * Math.pow(p, FIGHT_TO) * Math.pow(1 - p, k); c = c * (FIGHT_TO + k) / (k + 1) }
+      return sum }
+    let lo = 0, hi = 1
+    for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (race(mid) < P) lo = mid; else hi = mid }
+    return (lo + hi) / 2
+  }
+
+  // Expected (luck-free) fight power — the odds you are shown; the old roll added ± TOURNAMENT_LUCK around it.
+  _expectedPower(c) { return (c.stageIndex || 0) * 100 + Math.round((c.root?.mult || 1) * 10) + (TOURNAMENT_PERSONALITY_POWER[c.personality] || 0) }
+  _powerChance(a, b) { return 1 / (1 + Math.exp(-(this._expectedPower(a) - this._expectedPower(b)) / TOURNAMENT_SPREAD)) }
+
+  _fightOpp() {
+    const f = this._s.family, fi = f.fight
+    if (!fi) return null
+    return fi.kind === 'duel' ? f.spouse : this.person(fi.oppId)
+  }
+
+  _fightStyle(opp) { return FIGHT_STYLE[opp?.personality] || FIGHT_STYLE.default }
+  _tacticEdge(mine, theirs) { return FIGHT_TACTICS[mine].beats === theirs ? FIGHT_EDGE : FIGHT_TACTICS[theirs].beats === mine ? -FIGHT_EDGE : 0 }
+  _clampExchange(q) { return Math.max(FIGHT_EXCHANGE_RANGE[0], Math.min(FIGHT_EXCHANGE_RANGE[1], q)) }
+
+  // Chance they accept your yield in a lethal fight (always accepted when the fight isn't to the death).
+  _yieldAccept(opp) {
+    const f = this._s.family, fi = f.fight
+    if (!fi.lethal) return 1
+    let a = YIELD_ACCEPT_BASE + (opp?.morality ?? 0) / 100
+    if (fi.kind === 'duel') a += (f.affection - 50) / 200
+    else if (fi.kind === 'challenge') a += (this._bondWithHead(opp) - 50) / 200
+    return Math.max(0.05, Math.min(0.95, a))
+  }
+
+  // What the fight card shows: score, each tactic's chance this exchange (against their habits), the temper hint.
+  fightInfo() {
+    const f = this._s.family, fi = f.fight
+    if (!fi) return null
+    const opp = this._fightOpp(), style = this._fightStyle(opp)
+    const w = { press: style.press, guard: style.guard, feint: style.feint }, W = w.press + w.guard + w.feint
+    const tactics = {}
+    for (const t of Object.keys(FIGHT_TACTICS))
+      tactics[t] = Object.keys(w).reduce((acc, o) => acc + (w[o] / W) * this._clampExchange(fi.p + this._tacticEdge(t, o)), 0)
+    return { kind: fi.kind, opp, lethal: fi.lethal, you: fi.you, them: fi.them, to: FIGHT_TO, round: fi.round, base: fi.p,
+             tactics, habits: { press: w.press / W, guard: w.guard / W, feint: w.feint / W }, hint: style.hint,
+             yieldAccept: this._yieldAccept(opp), log: [...fi.log] }
+  }
+
+  fightExchange(tactic) {
+    const s = this._s, f = s.family, fi = f.fight
+    if (!fi) return { ok: false, reason: 'no_fight' }
+    const opp = this._fightOpp()
+    if (!opp) { f.fight = null; this._notify(); return { ok: false, reason: 'no_opponent' } }
+    if (tactic === 'yield') {
+      if (Math.random() < this._yieldAccept(opp)) {
+        f.fight = null
+        return { ok: true, done: true, yielded: true, outcome: this._finishFight(fi, opp, false, true) }
+      }
+      fi.log.push({ round: fi.round, yieldRefused: true })
+      this.addEvent({ text: `You lower your blade — ${opp.given} does not. This ends with one of you.`, type: 'negative' })
+      this._notify()
+      return { ok: true, done: false, refused: true }
+    }
+    if (!FIGHT_TACTICS[tactic]) return { ok: false, reason: 'bad_tactic' }
+    const style = this._fightStyle(opp)
+    let r = Math.random() * (style.press + style.guard + style.feint)
+    const theirs = (r -= style.press) < 0 ? 'press' : (r -= style.guard) < 0 ? 'guard' : 'feint'
+    const q = this._clampExchange(fi.p + this._tacticEdge(tactic, theirs))
+    const won = Math.random() < q
+    if (won) fi.you++
+    else { fi.them++; s.health = Math.max(1, (s.health ?? 100) - FIGHT_WOUND) }
+    fi.log.push({ round: fi.round, you: tactic, them: theirs, won })
+    fi.round++
+    if (fi.you >= FIGHT_TO || fi.them >= FIGHT_TO) {
+      f.fight = null
+      const outcome = this._finishFight(fi, opp, fi.you >= FIGHT_TO, false)
+      return { ok: true, done: true, exchange: { you: tactic, them: theirs, won }, outcome }
+    }
+    this._notify()
+    return { ok: true, done: false, exchange: { you: tactic, them: theirs, won } }
+  }
+
+  // Applies the old outcome of each fight kind. A lethal loser dies — except a cowardly NPC, who may still yield.
+  _finishFight(fi, opp, won, yielded) {
+    if (fi.kind === 'duel') return this._duelOutcome(won, yielded)
+    const s = this._s, me = this._selfAsPerson()
+    let died = false, npcYield = false
+    if (fi.lethal && !yielded) {
+      if (won && opp.personality === 'coward' && Math.random() < TOURNAMENT_COWARD_YIELD) npcYield = true
+      else died = true
+    }
+    const res = won ? { winner: me, loser: opp, died, yielded: npcYield } : { winner: opp, loser: me, died, yielded }
+    const clan = this._playerClan()
+    return fi.kind === 'challenge' ? this._challengeOutcome(clan, opp, fi.lethal, res) : this._defendOutcome(clan, opp, fi.lethal, res)
   }
 
   // ── Phase 23A/B/C: Health, Bloodline Quality, Ascension Trial ──────────────
@@ -2947,6 +3181,7 @@ class GameState {
     const s = this._s, clan = this._playerClan()
     if (!clan) return { ok: false, reason: 'no_clan' }
     if (clan.headId === s.self.id) return { ok: false, reason: 'is_head' }
+    if (s.family.fight) return { ok: false, reason: 'busy' }   // 1.8b-3b: one fight at a time
     const head = clan.headId ? this.person(clan.headId) : null
     if (!head) return { ok: false, reason: 'no_head' }
     if (Math.abs((head.stageIndex || 0) - s.stageIndex) > CHALLENGE_STAGE_GAP) return { ok: false, reason: 'stage_gap' }
@@ -2962,7 +3197,14 @@ class GameState {
     const s = this._s, f = s.family, w = s.world, yr = Math.floor(w.year), clan = this._playerClan(), head = check.head
     const lethal = this._headDecidesLethal(head, clan, this._bondWithHead(head))
     clan.tradition.challenges = (clan.tradition.challenges || 0) + 1
-    const res = this._resolveFight(this._selfAsPerson(), head, lethal)
+    this.addEvent({ text: `Year ${yr}: you call out ${Persons.fullName(head)} before the clan. ${lethal ? 'They answer: to the death.' : 'They answer: until one yields.'}`, type: 'special' })
+    // 1.8b-3b: fought exchange by exchange on the fight card; the outcome lands in _challengeOutcome().
+    this._startFight('challenge', head, lethal, this._powerChance(this._selfAsPerson(), head))
+    return { ok: true, fight: true, lethal }
+  }
+
+  _challengeOutcome(clan, head, lethal, res) {
+    const s = this._s, f = s.family, yr = Math.floor(s.world.year)
     this._applyLethalTrauma(res, lethal)
     const youWon = res.winner.id === s.self.id
     f.tally.challenges++
@@ -2980,7 +3222,7 @@ class GameState {
         this.addEvent({ text: `Year ${yr}: ${Persons.fullName(head)}'s blade is faster. Your challenge for the head seat ends your life.`, type: 'negative' })
         this._recalc(); this._notify()
         this._die('challenge_lost')
-        return { ok: true, outcome: 'lost_lethal', lethal }
+        return 'lost_lethal'
       }
       f.challengeCooldownYear = yr + this._randRange(CHALLENGE_COOLDOWN_YEARS)
       if (s.birth?.headId === head.id) s.birth.headBond = Math.max(0, (s.birth.headBond ?? 50) - CHALLENGE_BOND_LOSS)
@@ -2988,7 +3230,7 @@ class GameState {
       outcome = 'lost_nonlethal'
     }
     this._recalc(); this._notify()
-    return { ok: true, outcome, lethal }
+    return outcome
   }
 
   // A challenger from the roster with a real shot: adult, on the clan roster, within a plausible stage of you.
@@ -3010,7 +3252,13 @@ class GameState {
     if (!clan || !challenger || challenger.alive === false) { this._recalc(); this._notify(); return { ok: true, outcome: 'moot' } }
     clan.tradition.challenges = (clan.tradition.challenges || 0) + 1
     lethal = !!lethal
-    const res = this._resolveFight(this._selfAsPerson(), challenger, lethal)
+    // 1.8b-3b: your call on lethality stays here; the fight itself is on the fight card (→ _defendOutcome).
+    this._startFight('defend', challenger, lethal, this._powerChance(this._selfAsPerson(), challenger))
+    return { ok: true, fight: true, lethal }
+  }
+
+  _defendOutcome(clan, challenger, lethal, res) {
+    const s = this._s, f = s.family, yr = Math.floor(s.world.year)
     this._applyLethalTrauma(res, lethal)
     const youWon = res.winner.id === s.self.id
     f.tally.challenges++
@@ -3019,19 +3267,19 @@ class GameState {
       if (res.died) { this._killPerson(challenger.id, yr, 'challenge'); s.karma = Math.max(0, s.karma + CHALLENGE_KARMA_DEATH) }
       this.addEvent({ text: `Year ${yr}: ${res.died ? `${Persons.fullName(challenger)} falls before you. Your seat is secure` : `you beat ${Persons.fullName(challenger)} down and let them live`}.`, type: res.died ? 'negative' : 'positive' })
       this._recalc(); this._notify()
-      return { ok: true, outcome: res.died ? 'won_lethal' : 'won_nonlethal', lethal }
+      return res.died ? 'won_lethal' : 'won_nonlethal'
     }
     f.tally.challengesLost++
     if (res.died) {
       this.addEvent({ text: `Year ${yr}: ${Persons.fullName(challenger)}'s blade is faster. Your reign ends where it stood.`, type: 'negative' })
       this._recalc(); this._notify()
       this._die('challenged')
-      return { ok: true, outcome: 'lost_lethal', lethal }
+      return 'lost_lethal'
     }
     this._installHead(clan, challenger.id)
     this.addEvent({ text: `Year ${yr}: ${Persons.fullName(challenger)} beats you before the whole clan. You step down; they take the head seat.`, type: 'negative' })
     this._recalc(); this._notify()
-    return { ok: true, outcome: 'lost_nonlethal', lethal }
+    return 'lost_nonlethal'
   }
 
   // Everyone adult who could sign up, excluding the stepping-down head — includes the living player.
@@ -3194,7 +3442,7 @@ class GameState {
   // No pending family matter may overlap a war/secession decision — same "busy" gate chooseHeir/startTournament use.
   _branchWarBusy() {
     const f = this._s.family
-    return !!(f.tournament || f.headChallenge || f.stepDownOffer)
+    return !!(f.tournament || f.headChallenge || f.stepDownOffer || f.fight)
   }
 
   // Public (UI): can you press your branch head to war right now? (member, not head, off cooldown)

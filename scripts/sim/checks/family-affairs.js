@@ -30,7 +30,7 @@ const unrng = sim => sim.ev('Math.random = globalThis.__r')
     const kid = gs.get().family.children.at(-1)
     assert(kid && kid.parents.includes(lover.person.id), 'lover child born with lover as parent')
     lover.endsYear = gs.get().world.year - 1; gs._tickFamily()
-    assert(gs.get().family.lovers.length === 0, 'affair fades after AFFAIR_YEARS')
+    assert(gs.get().family.lovers.length === 1 && gs.get().family.lovers[0].ultimatum, 'at AFFAIR_YEARS the lover asks you to choose (1.8b-3b), no silent fade')
     s.family.encounters.push({ person: gs._rollStranger('stranger'), place: 'X', text: 't', year: 1 })
     assert(gs.dismissEncounter(0).ok && gs.get().family.encounters.length === 0, 'dismiss encounter')
   }

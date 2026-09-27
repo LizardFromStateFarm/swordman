@@ -38,7 +38,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   // Stats: clan rows + chronicle
   await click('[data-tab="clan"]')
   const stats = await ev('document.getElementById("tab-clan").innerText')
-  assert(/Clan Head/i.test(stats) && /Your bond/i.test(stats) && /Lines/i.test(stats), 'Clan view: head card, bond with the head, lines (1.8b-4)')
+  assert(/Lines/i.test(stats) && (/Clan Head/i.test(stats) || /Head of|You lead/i.test(stats)), 'Clan view: lines + who heads the clan (1.8b-4)')
   await click('[data-tab="family"]')
   assert(!/Name an Heir/i.test(await ev('document.getElementById("tab-family").innerText')), 'no heir buttons for a non-head')
   await click('[data-tab="clan"]')
@@ -86,6 +86,10 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await shot('2.6e-1-challenge-confirm')
   await click('#confirm-yes')
   await sleep(300)
+  // 1.8b-3b: the challenge is fought on the fight card, exchange by exchange
+  assert(await ev('!!gameState.get().family.fight && !document.getElementById("family-overlay").classList.contains("hidden")'), 'the challenge opens the fight card')
+  await shot('2.6e-2-fight-card')
+  for (let i = 0; i < 8 && await ev('!!gameState.get().family.fight'); i++) { await click('#family-choices [data-tactic="guard"]'); await sleep(150) }
   await shot('2.6e-2-after-challenge')
   if (await ev('!!gameState.get().interlude')) { await ev('gameState.finishInterlude()'); await click('#death-ok') }   // walked back to a live game if you lost lethally
 
@@ -102,8 +106,9 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   const hcTitle = await ev('document.getElementById("family-title").textContent')
   assert(hcTitle.includes('Challenged'), `head-challenge card: "${hcTitle}"`)
   await shot('2.6e-3-head-challenge-card')
-  await click('#family-choices [data-hc="1"]')
-  assert(await ev('!gameState.get().family.headChallenge'), 'challenge resolved (you decided lethal)')
+  await click('#family-choices [data-hc="1"]'); await sleep(200)
+  for (let i = 0; i < 8 && await ev('!!gameState.get().family.fight'); i++) { await click('#family-choices [data-tactic="press"]'); await sleep(150) }
+  assert(await ev('!gameState.get().family.headChallenge && !gameState.get().family.fight'), 'challenge fought out (you decided lethal)')
   if (await ev('!!gameState.get().interlude')) { await ev('gameState.finishInterlude()'); await click('#death-ok') }   // walked back if you lost lethally
 
   // The sitting (NPC) head steps back — a mass succession tournament, joinable, resolved instantly.

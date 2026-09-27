@@ -6,6 +6,14 @@
 // Run: npm run checks (all) · node scripts/sim/checks/succession.js (this file). Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
+// 1.8b-3b: your fights are played exchange by exchange. Plays one out with the best (want 'win') or worst tactic.
+const fought = (sim, gs, start, want = 'win') => { let r = null
+  sim.ev(`globalThis.__fr = Math.random; Math.random = () => ${want === 'win' ? 0.001 : 0.999}`)   // decide it, not luck
+  for (let i = 0; i < 12 && gs.get().family?.fight; i++) {
+    const t = Object.entries(gs.fightInfo().tactics).sort((a, b) => want === 'win' ? b[1] - a[1] : a[1] - b[1])[0][0]
+    r = gs.fightExchange(t) }
+  sim.ev('Math.random = globalThis.__fr')
+  return { ...start, outcome: r?.outcome } }
 
 // A first-life head (stage 18) married with `nKids` adult children (stages 5…), optional named heir.
 async function headWithKids(seed, nKids, opts = {}) {
@@ -250,12 +258,12 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
   }
 
   // 13. challengeHead — lethal win: the old head dies, you take the seat + the clan's sect, forged in blood.
-  { const { gs } = await nonHeadLife(30, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [100, 100]'] })
+  { const { sim, gs } = await nonHeadLife(30, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [100, 100]'] })
     const s = gs.get(), clan = clanOf(gs), headId = clan.headId
     s.stageIndex = gs.person(headId).stageIndex + 20; s.maxStageThisLife = s.stageIndex
     clan.sect = { name: 'Azure Peak', hallLevel: 2, founded: true, foundedAt: 0, buildings: {}, disciples: [], recruitPool: [], poolRefreshAt: 0, _incomeAcc: { spirit_stone: 0, spirit_herb: 0 } }
     const bqBefore = s.bloodlineQuality, karmaBefore = s.karma
-    const res = gs.challengeHead(); const s2 = gs.get()
+    const res = fought(sim, gs, gs.challengeHead(), 'win'); const s2 = gs.get()
     assert(res.ok && res.outcome === 'won_lethal' && res.lethal, `lethal win: ${res.outcome}`)
     assert(s2.world.persons[headId].alive === false && s2.world.persons[headId].cause === 'challenge', 'the old head is dead')
     assert(clanOf(gs).headId === s2.self.id && s2.self.trauma === true, 'you take the seat, forged in blood')
@@ -265,21 +273,22 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
   }
 
   // 14. challengeHead — non-lethal win: the old head lives on as an elder, no trauma, no Bloodline change.
-  { const { gs } = await nonHeadLife(31, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [0, 0]'] })
+  { const { sim, gs } = await nonHeadLife(31, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [0, 0]'] })
     const s = gs.get(), clan = clanOf(gs), headId = clan.headId
     s.stageIndex = gs.person(headId).stageIndex + 20; s.maxStageThisLife = s.stageIndex
     const bqBefore = s.bloodlineQuality
-    const res = gs.challengeHead(); const s2 = gs.get()
+    const res = fought(sim, gs, gs.challengeHead(), 'win'); const s2 = gs.get()
     assert(res.ok && res.outcome === 'won_nonlethal' && !res.lethal, `non-lethal win: ${res.outcome}`)
     assert(s2.world.persons[headId].alive !== false && s2.world.persons[headId].role === 'elder', 'the old head lives on as an elder')
     assert(clanOf(gs).headId === s2.self.id && !s2.self.trauma && s2.bloodlineQuality === bqBefore, 'you take the seat, unscarred, Bloodline unchanged')
   }
 
   // 15. challengeHead — lethal loss: your challenge ends your life.
-  { const { gs } = await nonHeadLife(32, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [100, 100]'] })
+  { const { sim, gs } = await nonHeadLife(32, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [100, 100]'] })
     const s = gs.get(), clan = clanOf(gs), headId = clan.headId
     s.stageIndex = Math.max(0, gs.person(headId).stageIndex - 20); s.maxStageThisLife = s.stageIndex
-    const res = gs.challengeHead()
+    gs.person(headId).stageIndex = Math.max(gs.person(headId).stageIndex, s.stageIndex + 20)   // a real gap (1.8b-3b: odds, not luck=0)
+    const res = fought(sim, gs, gs.challengeHead(), 'lose')
     assert(res.ok && res.outcome === 'lost_lethal' && res.lethal, `lethal loss: ${res.outcome}`)
     assert(gs.get().interlude && gs.get().lastReincarnation.cause === 'challenge_lost', 'your life ends; the clan you challenged carries on')
     assert(gs.get().world.clans[clan.id].headId === headId, 'the head you failed to topple keeps the seat')
@@ -289,8 +298,10 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
   { const { sim, gs } = await nonHeadLife(33, 3, { overrides: ['CHALLENGE_STAGE_GAP = 50', 'TOURNAMENT_LUCK = 0', 'LETHAL_CHANCE_RANGE = [0, 0]'] })
     const s = gs.get(), clan = clanOf(gs), headId = clan.headId
     s.stageIndex = Math.max(0, gs.person(headId).stageIndex - 20); s.maxStageThisLife = s.stageIndex
+    gs.person(headId).stageIndex = Math.max(gs.person(headId).stageIndex, s.stageIndex + 20)   // a real gap (1.8b-3b: odds, not luck=0)
     const bondBefore = s.birth.headBond, bondLoss = sim.ev('CHALLENGE_BOND_LOSS')
-    const res = gs.challengeHead(); const s2 = gs.get()
+    const st0 = gs.challengeHead()
+    const res = fought(sim, gs, st0, 'lose'); const s2 = gs.get()
     assert(res.ok && res.outcome === 'lost_nonlethal' && !res.lethal, `non-lethal loss: ${res.outcome}`)
     assert(s2.family.challengeCooldownYear > s2.world.year, 'a cooldown before you may try again')
     assert(s2.birth.headId === headId ? s2.birth.headBond === Math.max(0, bondBefore - bondLoss) : true, `bond with the head drops (${bondBefore} → ${s2.birth.headBond})`)
@@ -298,28 +309,28 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
   }
 
   // 17. resolveHeadChallenge — an NPC calls you out while you hold the seat; YOUR call on lethality.
-  { const { gs } = await headWithKids(40, 2, { overrides: ['TOURNAMENT_LUCK = 0'] })   // you are head from birth here
+  { const { sim, gs } = await headWithKids(40, 2, { overrides: ['TOURNAMENT_LUCK = 0'] })   // you are head from birth here
     const s = gs.get(), clan = clanOf(gs)
     const weak = addMember(gs, { stage: 1 })
     s.family.headChallenge = { challengerId: weak.id, year: Math.floor(s.world.year) }
-    const res = gs.resolveHeadChallenge(true)
+    const res = fought(sim, gs, gs.resolveHeadChallenge(true), 'win')
     assert(res.ok && res.outcome === 'won_lethal', `you crush a weak challenger: ${res.outcome}`)
     assert(gs.get().world.persons[weak.id].alive === false, 'the challenger is dead')
     assert(clanOf(gs).headId === s.self.id && clanOf(gs).tradition.challenges === 1, 'your seat is secure; the challenge is recorded')
   }
-  { const { gs } = await headWithKids(41, 2, { overrides: ['TOURNAMENT_LUCK = 0'] })
+  { const { sim, gs } = await headWithKids(41, 2, { overrides: ['TOURNAMENT_LUCK = 0'] })
     const s = gs.get()
     const strong = addMember(gs, { stage: 40 })
     s.family.headChallenge = { challengerId: strong.id, year: Math.floor(s.world.year) }
-    const res = gs.resolveHeadChallenge(false)
+    const res = fought(sim, gs, gs.resolveHeadChallenge(false), 'lose')
     assert(res.ok && res.outcome === 'lost_nonlethal', `overpowered, you choose non-lethal for yourself and lose: ${res.outcome}`)
     assert(clanOf(gs).headId === strong.id && !gs.get().interlude, 'you step down; they take the seat; your life goes on')
   }
-  { const { gs } = await headWithKids(42, 2, { overrides: ['TOURNAMENT_LUCK = 0'] })
+  { const { sim, gs } = await headWithKids(42, 2, { overrides: ['TOURNAMENT_LUCK = 0'] })
     const s = gs.get()
     const strong = addMember(gs, { stage: 40 })
     s.family.headChallenge = { challengerId: strong.id, year: Math.floor(s.world.year) }
-    const res = gs.resolveHeadChallenge(true)
+    const res = fought(sim, gs, gs.resolveHeadChallenge(true), 'lose')
     assert(res.ok && res.outcome === 'lost_lethal', `you gamble lethal and lose: ${res.outcome}`)
     assert(gs.get().interlude && gs.get().lastReincarnation.cause === 'challenged', 'defending the seat to the death costs your life')
   }

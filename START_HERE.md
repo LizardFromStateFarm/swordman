@@ -92,10 +92,11 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   the sprites: ⚡ ×38, ☯ ×25 render as color emoji on canvas). Plan: 1.8c art audit → A1 emoji purge + lint → A2
   bake-off (grid ASCII vs layered glyph compositor vs shape-to-glyph + ink-wash effects; user picks) → A3 engine with
   swappable parts → A4 re-art. **No-emoji rule** is in CLAUDE.md now.
-- **Family agency:** 1.8b-3a (2026-09-27) fixed courtship (you choose), spouse actions, per-child "Ask me" wishes
-  and raising actions. **Still simulated → 1.8b-3b:** affairs discovered by dice with no hide/confess, affairs
-  ending on their own, a lover's child without a say, tournament/duel fights auto-rolled. Rule: CLAUDE.md Depth
-  Pass #6 (player choices are never simulated).
+- **Family agency:** done (1.8b-3a + 3b, 2026-09-27). What the world still rolls on its own (by design): discovery,
+  a lover's ultimatum, a scorned lover's revenge, a spouse's reaction. **Still simulated:** your own bouts inside a
+  step-down mass tournament (the whole bracket resolves at once) — they should use the fight card too.
+- **Fights + affairs leftovers (1.8b-3b, 7.3 accepted):** tournament pool list repeats the versus tiles (collapse
+  paired fighters); Overlay tournament panel unreviewed; pool-row metadata is small/dim.
 - **Clan + Hall leftovers (1.8b-4, 7.5 accepted):** Overlay nests boxes three deep (drop inner borders on small
   panes); fold toggles only on the far-right caret (make the whole header the target); ancestor rows need a leading
   "gen N · realm" marker; Desktop columns still uneven with a long chronicle.
@@ -115,6 +116,22 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 24
+Agent: **1.8b-3b Family agency part 2** (user approved as one task). As-built: family.md → "1.8b-3b".
+  - Affairs: cover your tracks (discovery ×0.3 for 20 yrs), confess (forgiven more often), end it (LOVER_SCORN by the
+    lover's temper: they tell your spouse / become an enemy), make it official; affairs no longer fade silently — the
+    lover's **ultimatum** (marry / let go / one more season, discovery ×2.5). Lover cards + an ultimatum card in Family.
+  - **Your fights are played on a fight card**, exchange by exchange (spouse duel, challenging the head, defending the
+    seat): Press > Feint > Guard > Press, opponent habits by temper (FIGHT_STYLE), odds per tactic, yield (lethal:
+    may be refused). Exchange odds derived from the old one-roll odds, so neutral play keeps the balance.
+    resolveDuel('fight') / challengeHead() / resolveHeadChallenge() now START a fight (`{fight:true}`).
+  - Tournament of Heirs: per pairing "To the death | Spare the loser" (alive, estranged); trauma only after a death.
+  - Checks: new family-fights.js (21); succession.js/family-marriage.js/family-affairs.js play fights out
+    (`fought(sim, gs, start, 'win'|'lose')`). npm run checks 350 ok. Sim 60h × 3 × 2: 0 errors/violations.
+    Smoke: new scenarios/fights.js; succession.js now plays the challenge fights out. All zero console errors.
+  - Visual Review Gate: 6.2 → 7.3 → 7.3 over 3 cycles (no criterion < 6) → accepted by the user.
+  Next: 1.8b-5 Sect sub-views.
+
 Date: 2026-09-27 (user present) — part 23
 Agent: **Quick fix (user): war chest row** in Sect → Standing Orders. Native number spin arrows hidden app-wide;
   numRow() got themed −/+ steppers (+ optional presets/max); the war chest row has None/Half/Full, ±10% steps and a
