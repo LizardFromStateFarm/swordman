@@ -425,7 +425,7 @@ body {
 #vitals {
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr auto auto;   /* integrity · health · stones · age */
   gap: 10px;
   padding: 0 12px 6px;
 }
@@ -3361,3 +3361,14 @@ body[data-layout="overlay"] #family-box.fight #family-title::before, body[data-l
 body:not([data-layout="overlay"]) #family-box.fight .fc-first { display: none; }
 #tournament-fight:not(:disabled) { color: #1a0f06; background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 92%, #fff), color-mix(in srgb, var(--gold) 80%, #8a6a10)); border-color: var(--gold); box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 30%, transparent); }
 .fm-g { font-weight: normal; margin-right: 8px; }
+
+/* Spirit Stones in the HUD vitals row + expedition drop previews (user 2026-09-27) */
+#stones-labels { display: flex; justify-content: space-between; gap: 5px; font-size: 10px; color: var(--dim); margin-bottom: 2px; }
+#stones-labels .lbl { color: var(--gold); }
+#stones-numbers { color: var(--gold); font-variant-numeric: tabular-nums; }
+#vitals .lbl-long { display: none; }   /* the HUD column is 300px in every mode: glyph + number, full name in the tooltip */
+.loc-drops { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 3px; font-size: 10.5px; color: var(--dim-hi); }
+.ld { white-space: nowrap; }
+.ld-n { color: color-mix(in srgb, var(--text) 80%, var(--dim)); }
+.ld-q { color: var(--dim-hi); }
+.ld-p { color: var(--gold); font-variant-numeric: tabular-nums; }

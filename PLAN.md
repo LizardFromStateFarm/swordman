@@ -35,7 +35,7 @@ When an older design section below conflicts with these, the pillars win. The se
   Cite phase numbers in code and docs, never task numbers.
 - **The design sections after the roadmap are grouped by milestone in the same order.** Built phases are in the
   M0 archive.
-- **New ideas** get a new phase number (next free: **33**) and are then *placed* into a milestone. A slot is never
+- **New ideas** get a new phase number (next free: **39**) and are then *placed* into a milestone. A slot is never
   renumbered.
 
 **Definition of done (every task, from CLAUDE.md):**
@@ -66,7 +66,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 22 | Active / Idle toggle + automation | ✅ | M1 |
 | 32 | War Standing Orders (absence never punished) | ✅ | M1 |
 | 6E | Window & layout modes | ✅ (2026-09-26, task 1.7) | M1 |
-| 33 | UI/UX Overhaul (system info + interaction audit, main interaction area out of the bottom strip) | ⬜ | M1 — **priority, next** (user 2026-09-26) |
+| 33 | UI/UX Overhaul (system info + interaction audit, main interaction area out of the bottom strip). Includes **1.8d: a custom SVG icon set** replacing emoji + chrome CJK for the US App Store, keeping the six nav group marks (user 2026-09-27) | ⬜ | M1 — **priority, next** (user 2026-09-26) |
 | 30 | Lifespan & Game Time (寿元 · 岁月) | ◐ (game clock + lifespan, Final Seclusion/Pass the Mantle — task 2.3; pacing compression — task 2.4) | M2 |
 | 31 | Ancestral Hall & Clan Legacies (祖祠) — meta progression; absorbs 8 and 18B | ⬜ | M2 |
 | 16 (lite) | Marriage & children, lite version (spouse/child as person records) | ⬜ | M2 |
@@ -90,6 +90,10 @@ When an older design section below conflicts with these, the pillars win. The se
 | 17 | Secret Realm Dungeons | ⬜ | M8 |
 | 6A–D | Animation & visual overhaul | ↪ folded into Phase 34 (art engine) — particles, event animations, realm ambience are built as compositor effect passes | M1 (art track) |
 | 34 | **Art Engine & Art Direction**: layered glyph compositor, shape-to-glyph rendering, swappable parts, no emoji (user 2026-09-26) | ⬜ | M1 (art track) |
+| 35 | **Combat & Battles (战斗)**: an interactive battle page — turn-based exchanges with animated art, reusing the fight card (user 2026-09-27) | ⬜ | M1 (art track; built after A4) |
+| 36 | **Auction House & Crates (拍卖行)**: buy themed crates, open for a random-quality beast or a person (user 2026-09-27) | ⬜ | M4 |
+| 37 | **Party & Party Combat (结伴 · 群战)**: a party of up to 6; fights become 6 vs N (user 2026-09-27) | ⬜ | M4 (after 35/36) |
+| 38 | **Sect Base & Immortal Island scenes (宗门场景 · 仙岛图)**: large-area art that grows/upgrades as you build (user 2026-09-27) | ⬜ | 38A M1 (art track, after A4); 38B M7 |
 | 10 | Cosmetics (titles, pet, cave) | ⬜ | M8 |
 | 11B–C | Heaven's Will, Scripture Lore | ⬜ | M8 |
 | 20A–B | Permadeath, Challenge modes | ⬜ | M8 |
@@ -134,17 +138,20 @@ When an older design section below conflicts with these, the pillars win. The se
 | 1.8b-3b ✅ | (built 2026-09-27; Visual Review Gate 7.3, accepted by the user; as-built family.md → "1.8b-3b") **Family agency, part 2**: affairs on your terms (end / hide / confess before discovery; a lover's child as a choice), a say in duels + Tournament of Heirs fights (a tactic per round read against stage + personality) | 33 | 1.8b-3a | No player family decision is simulated; gate ≥ 8.0 |
 | 1.8b-4 ✅ | (built 2026-09-27, Visual Review Gate 7.5 after 5 cycles, accepted by the user, user-requested with a themed scrollbar + the Overlay "Best Realm Reached" spacing bug; as-built ui-layout.md → "Clan + Hall views"; Hall is now Kin → Hall, not a pop-over) **Clan view + Hall**: lines/branches, head, relations (`clan.relations`), actions with requirements (lockedAction everywhere), Hall in the nav, Family Manual picker | 33 | 1.8b-1 | Clan state + actions all visible; gate ≥ 8.0 |
 | 1.8b-5 | **Sect sub-views + card grids**: own sect Overview · Buildings · Disciples · War; joined sect overview + war; Tech/Explore/Craft cards in Expanded/Desktop; inline styles → classes in each rebuilt screen | 33 | 1.8b-1 | Founder Sect ≤ 3 screens of scroll; gate ≥ 8.0 |
-| 1.8b-6 | **Emoji lint on + re-review**: `check-no-emoji.js --strict` joins `npm test` for renderer/ + assets/data; rerun visual-baseline + fresh reviews of every reworked screen | 33 | 1.8b-2..5 | 0 emoji outside sprites; every screen ≥ 8.0 |
+| 1.8d | **Custom icon set + symbol purge** (user 2026-09-27): build `assets/icons/ui-icons.svg` (monochrome `currentColor` icons in the ink/gold palette) + `renderer/game/icons.js` (`Icon()` helper); replace every emoji (💰 💎 🪨 ⚔ ☯) and every chrome CJK glyph (titlebar `歸 窗 閒 動 設 頂`, HUD `坐 氣 承 基 血 歲 破 詳 仙 劫 封 根 性`, per-action marks in `attention.js`/`breakdowns.js`/`family-view.js`/`clan-view.js`/`banner-menus.js`, and decorative CN subtitles like `布局 飞升劫 立嗣 奪 媒人 待辦`) with an icon. **Keep the six nav group marks (修 歷 家 宗 囊 錄).** Plain SVG — ships during 1.8b, no art-engine dependency | 33 | 1.8b-1 | 0 emoji and 0 chrome CJK outside the six nav marks + in-world flavour; icons pass the gate zoomed | 
+| 1.8b-6 | **Emoji lint on + re-review**: `check-no-emoji.js --strict` joins `npm test` for renderer/ + assets/data (plus the icon-set sweep from 1.8d); rerun visual-baseline + fresh reviews of every reworked screen | 33 | 1.8b-2..5, 1.8d | 0 emoji outside sprites; every screen ≥ 8.0 |
 | 1.9 | **QA & Balance: layout modes + UI overhaul** (CLAUDE.md → QA & Balance): smoke every mode, UX walkthrough, dist + build:web | — | 1.8b | Zero console errors in all modes; iOS bundle builds |
 
 #### Art track — Phase 34 (user 2026-09-26): plain grid ASCII will rarely clear the 8/10 gate
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
-| A1 ↪ | **→ folded into 1.8b** (user 2026-09-26: the art redraw replaces the sprite emoji, and 1.8b rebuilds most UI screens anyway, so each screen gets glyph/CJK icons as it is rebuilt; the lint turns on for renderer/ + assets/data at the end of 1.8b and for assets/sprites/ after A4). Original scope: **Emoji purge + lint (UI only; after A2)** (reordered by the user 2026-09-26: the sprite emoji die with the old art in A4, so purging them now is wasted work). Replace every emoji in the UI, data and log text with text-presentation glyphs, CJK marks (石 歷 煉 功 …) or box/line characters; add `scripts/check-no-emoji.js` to `npm test` so none can come back; the lint covers renderer/ + assets/data now and `assets/sprites/` once A4 lands | 34 | A2 | `npm test` fails on any emoji outside the not-yet-replaced sprite files; 0 remain in the UI |
+| A1 ↪ | **→ folded into 1.8b** (user 2026-09-26: the art redraw replaces the sprite emoji, and 1.8b rebuilds most UI screens anyway, so each screen gets glyph/CJK icons as it is rebuilt; the lint turns on for renderer/ + assets/data at the end of 1.8b and for assets/sprites/ after A4). Original scope: **Emoji purge + lint (UI only; after A2)** (reordered by the user 2026-09-26: the sprite emoji die with the old art in A4, so purging them now is wasted work). Replace every emoji in the UI, data and log text with an icon from the **custom SVG icon set** (`assets/icons/ui-icons.svg`, built in task **1.8d**; user 2026-09-27 — chrome CJK is replaced too, and CJK is kept only for the six nav group marks and in-world flavour); add `scripts/check-no-emoji.js` to `npm test` so none can come back; the lint covers renderer/ + assets/data now and `assets/sprites/` once A4 lands | 34 | A2 | `npm test` fails on any emoji outside the not-yet-replaced sprite files; 0 remain in the UI |
 | A2 ✅ | **Art direction bake-off** (2026-09-26, 2 rounds: R1 a 4.3 · b 5.2 · c 4.2; R2 b 4.2 · c 4.7 · **hybrid 5.7, ceiling 8.5**). **User chose the HYBRID**: shape-to-glyph ink scene/figure/halo + layered glyph parts (sword, sash, mote ring, effects). Engine requirements: ui-review.md → "A2 art bake-off". Build a throwaway prototype and render the SAME cultivator (one stage, idle + breakthrough) three ways: (a) current grid ASCII, polished as far as it goes; (b) **layered glyph compositor** — layers of glyphs at free position/size/rotation/color/opacity/glow, braille (2×4 dots per cell) + block/shade characters for detail; (c) **shape-to-glyph** — the art is authored as vector shapes and the engine fills them with glyphs (dense inside, braille edges, dithered shading) plus procedural effect passes (ink-wash mist, Qi streams, light). Each is scored by the Visual Review Gate from screenshots in Overlay + Banner sizes | 34 | 1.8c | **User picks the direction** from the three screenshots + scores |
 | A3 | **Art engine: HYBRID** (chosen in A2; start from `scripts/art-bakeoff/bakeoff.js` drawC/{hybrid}, and meet the 6 requirements + the **user's art notes** in ui-review.md → "A2 art bake-off": ink shading, hi-detail face layer, small-size LOD, anatomy cues, brush background, glyph-part layers; no spiral Qi stream, multiple tilted thin rings, straight-rising motes, sleek/clean effects, no dark spots on the figure) (in `renderer/engine/`, replaces the fixed-grid `ascii-renderer.js` path): layer stack; **part slots** (body, face, hair, robe, weapon, aura, effects) so faces/effects are swappable — the customization hook for Phase 10 cosmetics; per-part animation (transforms, frame swaps, breathing/blink), effect passes (Phase 6A–D's particles, BT burst, realm ambience); scales cleanly from the 56px banner to Desktop. New art data format in `assets/sprites/` + an updated Asset Pipeline (`.agents/rules/assets.md`) with authoring templates for the chosen direction | 34, 6A–D | A2 | Engine renders the A2 winner at every layout size; old sprites still load during migration |
 | A4 | **Re-art everything** in the new engine: all cultivator stage sprites, beasts, realm backgrounds/ambience, BT/failure/death moments, UI ornaments. Every piece passes the gate (≥ 8.0) | 34 | A3 | Every art piece ≥ 8.0 in `docs/systems/ui-review.md` |
+| A6 | **Combat page (Phase 35)** (user 2026-09-27): a full-window battle scene on the hybrid engine — your cultivator on one side, a beast/duelist on the other, animated attack/parry/guard/feint exchanges. Reuses the fight card's rules & odds (`FIGHT_TACTICS`/`FIGHT_STYLE`/`_powerChance`/`_exchangeChance`), generalizes `f.fight` to non-family opponents, and adds combat art + animation passes. Reached from a Beast Hunt / Arena entry; duels, tournaments and bosses route in. **Expeditions keep auto-resolving** | 35, 34 | A4 | A battle plays out animated in every layout mode; outcome hooks (health/karma/beasts) verified; gate ≥ 8.0 |
+| A7 | **Sect base scene (Phase 38A)** (user 2026-09-27): a large, **view-only** landscape diorama of your sect compound that grows with `buildings` / `hallLevel` / disciples / fame, on the hybrid engine's new **scene layer** (background + placed building parts + ambient effects; scaffold from the bakeoff's `drawC`). Build/upgrade still happens in the existing rows | 38A, 34 | A4 | Scene reflects live sect state in every layout mode; each building part + the whole scene pass the gate ≥ 8.0 |
 | A5 | *(later, with Phase 10)* **Customization**: pick face/hair/robe/aura parts at character creation + unlockable cosmetics; heirs inherit/blend parts from their parents | 34, 10 | A4 | Parts swap live; saves store part ids |
 
 > **Priority change (2026-09-26, user):** 1.7–1.9 jump ahead of M2 task 2.8. The game now has many systems the
@@ -152,7 +159,11 @@ When an older design section below conflicts with these, the pillars win. The se
 > From now on every task also does the **UX Pass** (CLAUDE.md). Per-task testing is lightweight; heavy testing and
 > tuning are batched into QA & Balance tasks like 1.9 and 2.8. **Order: 1.8a (audit) ✅ → 1.7 (layout modes) ✅ → 1.7b
 > (banner quick actions) ✅ → 1.8c (visual review + art audit) ✅ → A2 art bake-off ✅ (hybrid) → 1.8b (UI
-> overhaul + family agency + UI emoji purge/lint, A1 folded in) → 1.9 → A3 hybrid art engine → A4 re-art (+ sprite lint) → 2.8.** A2/A1 go before 1.8b so the overhaul is
+> overhaul + family agency + 1.8d custom icon set + UI emoji/symbol purge/lint, A1 folded in) → 1.9 → A3 hybrid art
+> engine → A4 re-art (+ sprite lint) → A6 combat page (Phase 35) → A7 sect base scene (Phase 38A) → 2.8.** The
+> **auction house (Phase 36)** and **party combat (Phase 37)** come after M4's living-world persons, and the
+> **Immortal Island scene (Phase 38B)** lands in M7 after Phase 26 — the new systems are built phase-by-phase
+> rather than as one bundle (user 2026-09-27). A2/A1 go before 1.8b so the overhaul is
 > designed around the chosen art direction and the sprite area it needs. The audit comes first so the Expanded/Desktop layouts are designed around what actually needs room.
 
 > The old optional task "Immortal ladder filled by Qi (23D-lite)" was cut. The M2 Ascended-Ancestor ending
@@ -203,6 +214,8 @@ When an older design section below conflicts with these, the pillars win. The se
 | 4.10 | Memory & reputation + 15C direct interactions (gift, duel, mentor, recruit…). Grudges and debts can pass to heirs | 28E, 15C | 4.9 | Memories change NPC behavior toward the player |
 | 4.10b | **Your Rival (宿敌)**: one same-generation, non-family cohort genius per life, a rivalry record (heat, meetings, history), recurring encounters, feud across lives via the rival's clan | 28K | 4.9, 4.10 | Rival appears ≥ N times per casual life in sim; heat moves both ways |
 | 4.11 | Perf pass: Heavy tick ≤ 2 ms, batched Light step, capped offline catch-up | 28B | all M4 | Sim perf section within budget on desktop; spot-check iOS build |
+| 4.12 | **Auction House & Crates** (Phase 36; user 2026-09-27): buy themed crates with Spirit Stones, open for a random weighted result — a Beast Crate yields a random-quality tamed beast, a Slave Crate yields a person who can join your sect or party (a woman can be courted/married into the family). Adds `gender` to the person record | 36 | 4.2, 2.5 | Crates buy + open in sim; beast/person quality distribution verified; `gender` migration safe |
+| 4.13 | **Party System & Party Combat** (Phase 37; user 2026-09-27): a party of up to 6 (you + 5); fights become 6 vs N. Recruit sect members, slaves, family and people met on explorations/missions | 37 | 4.12, A6 (35), M6 family | Party roster ≤ 6, only living members; party fight resolves in every layout mode; bot fields a party in sim |
 
 ### M5 — Deep Sect Management
 
@@ -239,6 +252,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 7.10 | Doctrine: tenets, spread, schisms, scriptures | 25 | 7.8 | — |
 | 7.11 | Secret Arts (boss stand-in first; family library passes Arts to heirs) | 23E | 2.7 | — |
 | 7.12 | Immortal Ranking (仙榜) | 28J | 7.1 | — |
+| 7.13 | **Immortal Island scene (Phase 38B)** (user 2026-09-27): a large top-down island map — tiers reshape the landmass (6×6 → 18×18), each building renders its tile with level 1–5 variants; same scene layer as 38A | 38B, 26, 34 | 7.7 | Scene reflects the plot grid + building levels; gate ≥ 8.0 |
 
 ### M8 — World flavor & polish
 
@@ -1849,6 +1863,157 @@ Collecting all 12 grants a unique title and a permanent BT bonus.
 
 ---
 
+# Battles, Market & Party — Phases 35–37 (added 2026-09-27, user)
+
+> These three phases were requested together but are **built phase-by-phase, not as a bundle** (user 2026-09-27):
+> **35 (combat) lands right after the art engine A4**; **36 (auction) after M4's living-world persons**;
+> **37 (party) after 35 + 36 + M4 + M6 family**. All three reuse existing systems — do not rebuild combat.
+
+---
+
+## Phase 35 — Combat & Battles (战斗) *(user request 2026-09-27)*
+
+A **full-window battle page**: your cultivator on one side, an opponent on the other, animated attack / parry /
+guard / feint exchanges. It is **not a new combat model** — it is the existing fight card (built in 1.8b-3b)
+generalized to non-family opponents and dressed with the hybrid art engine.
+
+**Reuse (do not rebuild):** `_startFight`/`fightInfo`/`fightExchange`/`_finishFight`, `_powerChance`/
+`_exchangeChance`, `FIGHT_TACTICS` (Press/Feint/Guard) and `FIGHT_STYLE` (opponent habits) in
+`assets/data/family.js`, and `renderFightCard()` in `renderer/game.js`. The tournament bracket machinery is reused
+as-is.
+
+**New in the engine (`renderer/engine/game-state.js`):**
+- Generalize `f.fight` beyond family: add `kind: 'beast' | 'duelist' | 'arena' | 'boss'` and an opponent descriptor
+  that is a **beast instance** (`{typeId, level, traits, quality}`) or a **person id**; `_fightOpp()` gains a beast
+  branch. Keep the `f.fight` migration guard and the "one fight at a time" gate.
+- Real battles use an **HP-style pool with per-exchange damage** (flavour duels keep the 2-pip `FIGHT_TO`
+  behaviour). Odds still derive from `_powerChance`/`_exchangeChance`, so neutral play keeps today's balance.
+- New public entry points: `startBeastFight(beast|tierId, {lethal})`, `startArenaFight(tier)`, `startBossFight(id)`.
+  `resolveDuel('fight')`/`challengeHead()`/`resolveHeadChallenge()` route into the battle page unchanged.
+- Outcomes write existing hooks: `s.health` (23A), karma, `_noteEnemy`, tame-instead-of-kill, arena stakes.
+- Track a **bestiary** (`fought / killed / habitKnown` per enemy) so repeat fights read.
+
+**Art (needs A4):** beast combat poses (idle/attack/hurt/down) and a humanoid fighter set via A3's part slots;
+effect passes for lunge/press, block/parry, feint fake-out, stagger, wound flash, victory/defeat. New sprites and
+`assets/data/enemies.js` `spriteState`s all pass the Asset Pipeline (≥ 8.0).
+
+**Reach (user decision — deliberate battles only):** a **Beast Hunt / Arena** entry (Roam group) opens the page;
+duels, the Tournament of Heirs and step-down brackets route the player's own bouts in; boss fights (23E/17) route
+here. **Ordinary expeditions keep auto-resolving** (pillar 4).
+
+**Depth pass (required in the build session):** memory — arena streak/best, a beast's mate as a later hunt, a spared
+rival's grudge; choices — lethal/spare, wager stakes, tame-instead-of-kill, a technique mid-fight; hooks (≥3) —
+23A health/death, beasts/taming, sects/wars, 28J rankings, family; drama — a duel can end a life, a hunt can wound,
+sparing saves a rival for later; feedback — learned habits make repeat fights readable.
+
+**UX pass:** where the battle is reached, how it starts/ends, tactic buttons with shown odds, an exchange log.
+Overlay (300px) swaps the tab body for the battle canvas with compact controls; Expanded/Desktop get the
+side-by-side scene; Banner shows a one-line result. Reuse `BreakdownUI` for "why this odds".
+
+**State / files / sim:** state `f.fight` (generalized) + `s.arena = { streak, best, tier }` +
+`s.bestiary`; `_ensurePhase35Fields()` (Rule 5). New `assets/data/enemies.js` (extend), `assets/data/arena.js`,
+`renderer/game/combat.js`, `docs/systems/combat.md` (**before code**, Rule 6). Sim: bot auto-plays exchanges and
+enters hunts/arena; metrics (fights/h, win rate, arena depth, deaths by fight cause); invariants (health bounds
+across a fight, clean state on finish).
+
+---
+
+## Phase 36 — Auction House & Crates (拍卖行) *(user request 2026-09-27)*
+
+An **Auction House**: spend Spirit Stones on themed **crates**, then open them for a random weighted result.
+
+- **Beast Crate (灵兽匣):** opens → a **Tamed Beast** of a rolled **quality tier** (adds a quality roll on top of
+  `BEAST_TYPES`, so crates range from trash to exceptional).
+- **Slave Crate (奴仆匣):** opens → a random **person** (quality rolled) who can **join your sect** or your
+  **party** (Phase 37); if the person is **female**, they can instead be **courted/married into the family** via the
+  existing M2 family system.
+- Room for more themed crates (materials, techniques, heirlooms) through the same table.
+
+**Requires a small person-record change:** add a **`gender`** field to the 2.2 person record (Phase 28A already
+specifies one; M2 persons are currently gender-neutral). Migration via `_ensurePhase36Fields()` (Rule 5). *Flag the
+gendered-display choice to the user before building.*
+
+**Engine / data:** `assets/data/crates.js` — `CRATES` (id, name, cost, blurb, weighted contents table of
+`item | beast | person`, quality weights) — data only (Rule 2). `game-state.js`: `buyCrate(id)` / `openCrate(id)`
+(cost stones; credit inventory, tame a beast directly, or create a person via `Persons.make`). Reuse `_addBeastXp`,
+the beast cap, and `Persons.make` — no parallel beast/NPC objects.
+
+**Depth pass:** crate quality feeds later systems (a strong beast helps sect war; a gifted slave's loyalty drifts);
+choices (open now vs bank, which theme); hooks (stones economy, beasts, sects, family, party). **UX pass:** an
+Auction House view (Pack/Furnace group) listing crates, costs, odds, and an open reel. **Sim:** bot buys/opens when
+flush; metrics (crates/h, quality distribution); invariants (affordability, valid gender). Docs:
+`docs/systems/auction.md` before code.
+
+---
+
+## Phase 37 — Party System & Party Combat (结伴 · 群战) *(user request 2026-09-27)*
+
+A **party of up to 6** cultivators (you + 5). Combat becomes **6 vs N** — each side of the battle page holds
+multiple combatants. Recruit from **sect members** (5A/27), **slaves** (Phase 36 / 24B), **family** (M2/M6), and
+**people met on explorations/missions** (28I).
+
+**Engine / state:** `s.party = { members: [personId], max: 6 }` (player is slot 0); `addToParty(id)` /
+`removeFromParty(id)` (validity: alive, not already in, capacity free). Extend `f.fight` to hold **combatant
+arrays** (`you[]`, `them[]`) with per-round targeting; generalize `fightExchange` to party scale. Members fight via
+`Persons.powerScore` + their temper/`FIGHT_STYLE`. Non-lethal losses → wounded/downed (recover on game time); an
+optional lethal mode can kill a member (feeds family/grief drama).
+
+**Depth pass:** loyalty/morale from being fielded or sidelined; a member can refuse or betray (personality/morality);
+hooks (combat 35, family, sects, living world, auction). **UX pass:** a party roster (Kin, or a new "Party" view)
+with assign/reorder slots; the battle page shows up to 6 vs N. **Sim:** bot recruits and fields parties; metrics
+(party size over time, party-fight win rate); invariants (party ≤ 6, living members only, no duplicates). Docs:
+extend `docs/systems/combat.md` (or add `docs/systems/party.md`) before code.
+
+---
+
+## Phase 38 — Sect Base & Immortal Island scenes (宗门场景 · 仙岛图) *(user request 2026-09-27)*
+
+Large-area art for the player's **sect base** and, later, the **Immortal Island**, that **visibly grows and upgrades
+as you build**. **View-only** (user 2026-09-27): you still build/upgrade from the existing rows — the scene reacts.
+Split into **38A (sect base, after A4)** and **38B (island, after Phase 26)**.
+
+### 38A — Sect base scene (after A4)
+
+- A new **Base view** in the Sect group (a sub-tab beside Overview/Buildings) with a **new large canvas**
+  (`#scene-canvas`), sized per layout mode — large in Expanded/Desktop, scaled in Overlay, minimised in Banner.
+- **Scene = a layered composition** keyed off live state, deterministic in state and animated by time `t`:
+  - ground/terrace always; the **main hall** grows larger and more ornate with `o.hallLevel` (Lv1→Lv4);
+  - each built building in `o.buildings` adds its structure at a fixed spot (Qi Library pagoda, Pill Hall with
+    furnace smoke, Spirit Beast Pen with beast silhouettes, Training Ground figures, a **glowing Defensive Array
+    ward** — dimmed while `sectWar.arrayDamagedUntil` is in the future, mirroring `_recalc` — and a Treasury vault);
+  - `o.disciples.length` adds small figures/lanterns; `derived.sectFame` adds banners/flags;
+  - a short **build-growth animation** plays when a building is newly completed.
+- **Data (data-only, Rule 2):** add a `scene` descriptor per building in `sect-buildings.js` (`{partId, x, y,
+  scale}`) + a scene layout for the hall/ground; the visual parts live in a new scene-art file.
+
+### 38B — Immortal Island scene (after Phase 26, task 7.7)
+
+- The island's **large top-down map**: tiers 1–5 reshape the landmass (6×6 → 18×18 plot grid); each Phase 26
+  building renders its **tile part** at its plot with **level 1–5 visual variants**; adjacency bonuses may add a
+  glow. Same scene engine as 38A. Needs Phase 26's plot-grid state (`island-buildings.js` / `island.js`) to exist.
+
+### Engine / files
+
+- **Extend the hybrid engine** with a **scene layer** separate from the character sprite: background (reuse the
+  bakeoff `drawC`'s ink sky/braille mountains/mist), placed **building parts** (reuse A3's glyph-part model), and
+  ambient effect passes (motes, smoke, banners). Scaffold from `scripts/art-bakeoff/bakeoff.js` (`drawC`, `part`,
+  raster helpers) — **do not write a new rasteriser**.
+- New: `renderer/engine/scene-renderer.js` (or a scene mode inside the hybrid renderer),
+  `assets/scenes/sect-base-scene.js` + `assets/scenes/island-scene.js` (data-only part/layout tables),
+  `renderer/game/base-view.js` (Base view UI + canvas). New doc `docs/systems/scene-art.md` (or extend
+  `docs/systems/own-sect.md` + `docs/systems/immortal-island.md`) — **before code** (Rule 6).
+
+### Reviews / UX / sim
+
+- **Asset Pipeline + Visual Review Gate (≥8.0):** the scene is a composite — screenshot it whole in **every layout
+  mode** and review with a fresh agent; each new building part is reviewed zoomed.
+- **UX pass:** where the Base view is reached (tab + a first-time hint), how a new building's growth reads
+  (discoverable), and clean degradation at 300px. The build rows stay the functional control (view-only scene).
+- **Sim:** presentation only — no balance change, no bot/metrics work; if the scene module is loaded by the sim it
+  just needs to load without throwing (same treatment as `settings.js`/`banter.js`).
+
+---
+
 # M5 — Deep Sect Management
 
 > Roadmap tasks 5.1–5.5.
@@ -2932,6 +3097,7 @@ renderer/
   engine/
     game-state.js       ✅
     ascii-renderer.js   ✅
+    scene-renderer.js   ← Phase 38 (large-area sect/island scene layer on the hybrid engine)
   game/
     cultivation.js      ✅
     expedition.js       ✅ Phase 2
@@ -2954,6 +3120,9 @@ renderer/
     world-state.js      ← Phase 19
     settings.js         ← Phase 20
     active-mode.js      ← Phase 22 (Active Mode interaction windows)
+    icons.js            ← 1.8d (custom SVG UI icon set — replaces emoji + chrome CJK)
+    combat.js           ← Phase 35 (battle page — animated exchanges over the fight card)
+    base-view.js        ← Phase 38A (Sect Base view — the large sect-compound scene)
 
 assets/
   data/
@@ -2987,13 +3156,19 @@ assets/
     epochs.js           ← Phase 19
     challenge-modes.js  ← Phase 20
     war-orders          ← Phase 32 (constants go in the existing sect-war.js)
+    crates.js           ← Phase 36 (themed crates + weighted contents)
+    arena.js            ← Phase 35 (arena ladder tiers, stakes, duelist pools)
   sprites/
     cultivator-sprites.js  ✅
     enemy-sprites.js        ← Phase 2 (Asset Pipeline)
+    fighter-sprites.js      ← Phase 35 (humanoid duelists — Asset Pipeline, uses A3 part slots)
     beast-sprites.js        ✅ Phase 3 (Asset Pipeline — min score 8.0)
     pet-sprites.js          ← Phase 10 (Asset Pipeline)
     environment-sprites.js  ← Phase 10 (Asset Pipeline)
     tribulation-sprites.js  ← Phase 7 (Asset Pipeline)
+  scenes/
+    sect-base-scene.js     ← Phase 38A (building parts + compound layout — data only)
+    island-scene.js        ← Phase 38B (island landmass + building tiles — data only)
 ```
 
 ---

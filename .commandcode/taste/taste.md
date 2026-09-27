@@ -1,0 +1,7 @@
+- Prefers custom-authored art/icons over emoji and CJK/Chinese glyphs in UI chrome — for a US-facing app, overused characters and emoji read as confusing clutter. Confidence: 0.75
+- Wants existing UI elements they explicitly like (e.g. the main nav bar) preserved while other parts are cleaned up, rather than a blanket redesign. Confidence: 0.6
+- Prefers visual/polish additions to be view-only and non-destructive: keep the existing functional UI (e.g. build/upgrade rows) and add read-only art that reflects state, rather than replacing working screens with new interactive systems. Confidence: 0.7
+- Wants art to visibly reflect progress — large-area scene art (sect base, island) that changes and upgrades as buildings are constructed, not static decoration. Confidence: 0.7
+- Adds features to the roadmap as their own numbered phase (split into sub-parts placed by dependency order, e.g. art right after the art engine), rather than folding them into existing phases or bundling several systems into one build. Confidence: 0.6
+- Runs multiple coding agents concurrently in the same repository/directory and wants them to proceed in parallel without interfering (asks for isolation such as git worktrees so concurrent work can't collide). Confidence: 0.55
+- Frequently asks for concise, high-level project-status rollups framed against the phase/milestone roadmap ("what phase are we on?", "how many phases until done?") — wants the big-picture progress view rather than deep implementation detail. Confidence: 0.55

@@ -116,6 +116,13 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 25
+Agent: **Quick changes (user, no review gate requested):** Spirit Stones in the HUD vitals row (石 · number, beside
+  Age; Stones/Age labels shortened to glyphs + tooltips so the 300px column fits), and every Explore location lists
+  its possible drops with quantity range + chance per run (`gameState.dropPreview(locId)`, exact: mirrors _rollDrops,
+  verified against 20k simulated rolls; Push Harder's extra roll not included). Also: a "not enough stones" lock in the Family view now says the cost and
+  what you hold ("Costs 石 285 · you have 12"). **Uncommitted: waiting on the user's look.**
+
 Date: 2026-09-27 (user present) — part 24
 Agent: **1.8b-3b Family agency part 2** (user approved as one task). As-built: family.md → "1.8b-3b".
   - Affairs: cover your tracks (discovery ×0.3 for 20 yrs), confess (forgiven more often), end it (LOVER_SCORN by the

@@ -56,7 +56,11 @@ class FamilyView {
     switch (p.reason) {
       case 'cooldown':  return `Again in year ${p.readyYear}`
       case 'qi':        return 'Not enough Qi'
-      case 'stones':    return 'Not enough Spirit Stones'
+      // Say what it costs, not just "no" (user 2026-09-27)
+      case 'stones': {
+        const cost = p.cost ?? p.stones
+        return cost ? `Costs 石 ${this._num(cost)} · you have ${this._num(Math.floor(this.gs.get().spiritStones))}` : 'Not enough Spirit Stones'
+      }
       case 'young':     return `From age ${p.minAge}`
       case 'expecting': return 'A child is already on the way'
       case 'cold':      return 'They are too cold toward you'

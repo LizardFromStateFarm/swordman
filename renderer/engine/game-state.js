@@ -1379,6 +1379,33 @@ class GameState {
     window.electron.saveSlot(this._slot, s).catch(() => {})
   }
 
+  // UI (user 2026-09-27): what an expedition can bring back — exact chance each item shows up and its quantity range,
+  // mirroring _rollDrops (1..min(tier,3) weighted picks without repeats, qty × lootMult). Push Harder's extra roll not included.
+  dropPreview(locId) {
+    const loc = LOCATIONS.find(l => l.id === locId)
+    if (!loc) return []
+    const table = loc.dropTable, lootMult = this._s.derived?.lootMult || 1
+    const maxK = Math.min(loc.enemyTier, 3)
+    // P(item i is among the first k picks), weighted without replacement — tables are tiny, so enumerate.
+    const pIn = (items, i, k) => {
+      if (k <= 0 || !items.length) return 0
+      const W = items.reduce((a, d) => a + d.weight, 0)
+      let p = 0
+      for (let j = 0; j < items.length; j++) {
+        const pj = items[j].weight / W
+        if (j === i) p += pj
+        else p += pj * pIn(items.filter((_, x) => x !== j), i < j ? i : i - 1, k - 1)
+      }
+      return p
+    }
+    return table.map((d, i) => {
+      let chance = 0
+      for (let r = 1; r <= maxK; r++) chance += pIn(table, i, Math.min(table.length, r)) / maxK
+      return { itemId: d.itemId, name: ITEMS[d.itemId]?.name || d.itemId, chance,
+               min: Math.max(1, Math.round(d.minQty * lootMult)), max: Math.max(1, Math.round(d.maxQty * lootMult)) }
+    }).sort((a, b) => b.chance - a.chance)
+  }
+
   _rollDrops(loc, lootMultOverride) {
     const lootMult = lootMultOverride ?? (this._s.derived?.lootMult || 1)
     const table    = loc.dropTable

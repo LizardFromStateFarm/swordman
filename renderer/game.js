@@ -377,6 +377,7 @@
 
     // Age readout (Phase 30) — a stat only, nothing dies of age
     document.getElementById('age-numbers').textContent = String(Math.floor(s.age))
+    document.getElementById('stones-numbers').textContent = fmt(s.spiritStones)
 
     // Proposal card (Phase 16-lite, M2 task 2.5) — auto-opens once per proposal
     const prop = s.family?.proposal
@@ -1497,6 +1498,8 @@
         <div class="loc-info">
           <div class="loc-name">${escHtml(loc.name)} <span style="color:var(--dim);font-size:9px">${escHtml(loc.nameCN)}</span></div>
           <div class="loc-meta">${durText} · Tier ${loc.enemyTier}${unlocked ? '' : ` · 封 ${stageShortName(loc.minStage)}`}</div>
+          <div class="loc-drops" title="Chance each item comes back from one run, and how many">${gameState.dropPreview(loc.id).map(d =>
+            `<span class="ld"><span class="ld-n">${escHtml(d.name)}</span> <span class="ld-q">${d.min === d.max ? d.min : `${d.min}–${d.max}`}</span> <span class="ld-p">${Math.round(d.chance * 100)}%</span></span>`).join('')}</div>
         </div>
         ${showAutoToggle ? `<button class="pack-chip${paused ? '' : ' active'}" data-autoloc="${loc.id}" title="Auto-Explore relaunch for this location">${paused ? '⏸ Paused' : '▶ Auto'}</button>` : ''}
         <button class="loc-btn${unlocked && !s.expedition.active ? ' available' : ''}"

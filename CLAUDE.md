@@ -140,8 +140,11 @@ docs/
     life-loop.md        ← M2 build spec: lifespan, heirs, Ancestral Hall, clan legacies (Phases 30/31)
     family.md           ← Spouse affection, marriage/crisis events, duel, lovers + affair discovery (Phase 16-lite+), family agency: courtship, spouse/child actions, "Ask me" wishes (1.8b-3a)
     clan-succession.md  ← SPEC (M2 2.6a–f): world/life split, heirs as NPCs, rebirth as descendant, tournaments, branch wars
-    backpack.md          ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
-    automation.md        ← Active/Idle Mode + staged automation unlocks, Active Mode bonuses (Phase 22)
+    backpack.md         ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
+    automation.md       ← Active/Idle Mode + staged automation unlocks, Active Mode bonuses (Phase 22)
+    combat.md           ← SPEC (Phase 35): battle page, fight card generalized to beasts/duelists/arena/bosses
+    auction.md          ← SPEC (Phase 36): themed crates, beast/person quality rolls, person `gender`
+    scene-art.md        ← SPEC (Phase 38): large-area sect-base + island scenes (view-only, grow as you build)
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
   assets.md             ← ASCII art pipeline (create → review → gate ≥8.0)
@@ -169,6 +172,7 @@ renderer/
     persons.js          ← Persons — shared root/personality/name generators + Person record schema (Phase 30/31, M2 task 2.2)
     game-state.js       ← ALL state mutations — _newGame(), _recalc(), tick()
     ascii-renderer.js   ← Canvas renderer — sprites + particles + aura rings
+    scene-renderer.js   ← SPEC (Phase 38): large-area scene layer (sect base / island) on the hybrid engine
   game/
     cultivation.js      ← Random event scheduler (fires every 30–120s)
     expedition.js       ← ExpeditionSystem — tick-based expedition resolution
@@ -185,9 +189,13 @@ renderer/
     breakdowns.js       ← buildBreakdown() (DOM-free) + BreakdownUI — "why" popovers for any [data-bd] number, stageShortName() (1.8b-2)
     family-view.js      ← FamilyView — Kin → Family: spouse/courtship card, child wishes, children + raising actions, heir (1.8b-3a)
     clan-view.js        ← ClanView + HallView — Kin → Clan (lines, head, relations, clan actions) and Kin → Hall (Merit, firsts, legacies, Family Manual picker) (1.8b-4)
+    icons.js            ← SPEC (1.8d): Icon(name) → inline SVG from assets/icons/ui-icons.svg; the UI icon set
+    combat.js           ← SPEC (Phase 35): the battle page UI (animated exchanges) over the fight card
+    base-view.js        ← SPEC (Phase 38A): Sect Base view — the large sect-compound scene
 assets/
   icons/
     tray-icon.png       ← System tray icon (Phase 9A) — see scripts/gen-tray-icon.js
+    ui-icons.svg        ← SPEC (1.8d): custom UI icon sprite — monochrome `currentColor` symbols (replaces emoji + chrome CJK)
   data/
     stages.js           ← CULTIVATION_STAGES[23]
     techniques.js       ← TECHNIQUES
@@ -209,8 +217,13 @@ assets/
     banter-lines.js     ← BANTER_LINES — 1,695 lines, personality × trigger + generic pool (Phase 29)
     names.js            ← SURNAMES (60) + GIVEN_NAMES (205) — pinyin, gender-neutral (Phase 30/31, M2 task 2.2)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
+    crates.js           ← SPEC (Phase 36): CRATES — themed crate costs + weighted contents (item/beast/person)
+    arena.js            ← SPEC (Phase 35): arena ladder tiers, stakes, duelist pools
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
+  scenes/
+    sect-base-scene.js   ← SPEC (Phase 38A): sect-compound building parts + layout (data only)
+    island-scene.js      ← SPEC (Phase 38B): island landmass + building tiles (data only)
 ```
 
 ---
@@ -261,8 +274,17 @@ reviewer agent, never the creator.
 - Numbers should feel satisfying to watch grow — use `fmt()` to keep them readable
 - **No emoji, ever** (user rule, 2026-09-26): not in UI, sprites, canvas art, data, or log text. Emoji render as
   full-color platform images that break the ink-and-glyph look (Chromium even draws ⚡ ☯ as color emoji on the
-  canvas). Use text glyphs, CJK marks (石 歷 煉 功 封 …) or box/line characters. If a symbol has an emoji-default
-  presentation, don't use it. (Roadmap A1 purges the existing ones and adds a lint.)
+  canvas). If a symbol has an emoji-default presentation, don't use it.
+- **UI icons come from the custom SVG icon set**, not from CJK or box/line characters (user rule, 2026-09-27 — this
+  is a US App Store release, and scattered Chinese glyphs read as clutter). Draw icons from
+  `assets/icons/ui-icons.svg` via `Icon()` in `renderer/game/icons.js`; the set is monochrome `currentColor` line-art
+  in the ink/gold palette. **CJK is reserved for exactly two things: the six nav group marks (修 歷 家 宗 囊 錄) and
+  deliberate in-world flavour** (a cultivation term, a sect's `nameCN` shown as content) — never as UI chrome.
+  (Roadmap 1.8d builds the set; A1/`1.8b-6` purge the old emoji + chrome CJK and add the lint.)
+- **Sect base & Immortal Island scenes are view-only art** (user rule, 2026-09-27): the large landscape diorama
+  (Phase 38A) and top-down island map (38B) reflect your buildings and visibly upgrade as you build, but
+  building/upgrading still happens in the existing rows — the scene never becomes a placement UI. Scene parts and
+  the whole composite follow the Visual Review Gate (≥ 8.0).
 - Every cultivation stage must have a matching `spriteState` in `CULTIVATOR_SPRITES`
 - Breakthrough chance must never exceed 0.98
 - New `RANDOM_EVENTS` must have both positive and negative variants
