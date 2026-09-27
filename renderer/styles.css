@@ -3637,3 +3637,127 @@ body[data-layout="overlay"] .sv-dismiss { min-height: 0; padding: 0 5px; }
 /* Overlay Disciples: your own roster first, then the candidates at the gate (user 2026-09-27) */
 body[data-layout="overlay"] .sv-disc-view .fam-col:first-child .fam-sec { order: 3; }
 body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 4; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOBILE / narrow + touch (Phase 6E mobile pass, 2026-09-27)
+   Phones and both native shells (iOS/Android) report body[data-layout="desktop"] via the platform-storage
+   shim, so the phone layout is a refinement of desktop — NOT a fifth mode. Two queries, two jobs:
+     · (max-width: 599px)              → how a narrow screen arranges (bottom tab bar, full-bleed, safe areas)
+     · (hover: none)/(pointer: coarse) → touch affordances (bigger targets, no 300ms tap delay)
+   game/layout.js also sets body[data-narrow] from the same width so JS and tests share one signal.
+   See docs/systems/ui-layout.md → "Mobile / narrow layout".
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Touch affordances: any coarse pointer (phone OR wide tablet) ────────────────────────── */
+@media (hover: none), (pointer: coarse) {
+  * { -webkit-tap-highlight-color: transparent; }
+  button, .tab, .subtab, input, select, .bd-link { touch-action: manipulation; }
+
+  /* Tap-target minimums. `!important` on purpose: the mode-scoped size rules
+     (`body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .loc-row .loc-btn`, …)
+     carry more specificity, and a touch minimum must win over those. */
+  body[data-layout] .tb-btn { min-width: 40px !important; min-height: 40px !important; }
+  body[data-layout] .subtab { min-height: 34px !important; padding: 4px 12px; font-size: 12px; }
+  body[data-layout] .act-btn { min-height: 48px !important; }
+  body[data-layout] .fa-btn, body[data-layout] .loc-btn, body[data-layout] .sect-btn,
+  body[data-layout] .sv-dismiss, body[data-layout] .fa-link, body[data-layout] .fa-quiet,
+  body[data-layout] .t-spare, body[data-layout] .t-switch button, body[data-layout] .pack-chip,
+  body[data-layout] .pack-sort-btn, body[data-layout] .set-opt, body[data-layout] .cs-btn-new,
+  body[data-layout] .cs-btn-play, body[data-layout] .cs-btn-del, body[data-layout] .cs-dev-select,
+  body[data-layout] .recipe-craft-btn, body[data-layout] .recipe-equip-btn,
+  body[data-layout] .pill-queue-btn { min-height: 38px !important; }
+  body[data-layout] .bm-row.can { min-height: 42px !important; }
+}
+
+/* ── Narrow screens: the phone layout ─────────────────────────────────────────────────────── */
+@media (max-width: 599px) {
+  html { -webkit-text-size-adjust: 100%; }
+  body { overscroll-behavior: none; }
+
+  /* Fill the screen edge to edge — no rounded window chrome on a phone */
+  body[data-layout="desktop"] #app,
+  body[data-layout="desktop"] #charselect {
+    height: 100dvh;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* Keep clear of the notch / home indicator */
+  body[data-layout="desktop"] #titlebar,
+  body[data-layout="desktop"] #cs-titlebar {
+    padding-top: calc(7px + env(safe-area-inset-top));
+    padding-left: calc(12px + env(safe-area-inset-left));
+    padding-right: calc(12px + env(safe-area-inset-right));
+  }
+  body[data-layout="desktop"] .panel,
+  body[data-layout="desktop"] #subtabs {
+    padding-left: calc(14px + env(safe-area-inset-left));
+    padding-right: calc(14px + env(safe-area-inset-right));
+  }
+
+  /* Bottom tab bar for thumb reach: hud → view → tabs */
+  body[data-layout="desktop"] #view { order: 1; }
+  body[data-layout="desktop"] #tabs {
+    order: 2;
+    flex-direction: row;
+    width: auto;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    padding: 0 calc(2px + env(safe-area-inset-left)) env(safe-area-inset-bottom) calc(2px + env(safe-area-inset-right));
+    overflow-x: auto;
+  }
+  body[data-layout="desktop"] .tab {
+    flex: 1 1 0;
+    min-width: 44px;
+    min-height: 52px;
+    border-right: none;
+    border-left: 1px solid rgba(42,26,16,0.5);
+  }
+  body[data-layout="desktop"] .tab:first-child { border-left: none; }
+  body[data-layout="desktop"] .tab-glyph { font-size: 18px; }
+  body[data-layout="desktop"] .tab-name  { font-size: 11px; }
+  body[data-layout="desktop"] .tab.active::after {
+    left: 16%; right: 16%; top: -1px; bottom: auto; width: auto; height: 2px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+  }
+  body[data-layout="desktop"] #rail-ink,
+  body[data-layout="desktop"] #rail-mode { display: none; }
+
+  /* Center the sprite art and tighten the fixed HUD so the view gets more of a short screen */
+  body[data-layout="desktop"] #sprite-wrap { display: flex; justify-content: center; }
+  body[data-layout="desktop"] #sprite-canvas { margin: 0 auto; }
+  body[data-layout="desktop"] #stage-block { padding-top: 4px; padding-bottom: 4px; }
+  body[data-layout="desktop"] #qi-block { padding-top: 5px; padding-bottom: 5px; }
+  body[data-layout="desktop"] #vitals { padding-top: 2px; padding-bottom: 2px; }
+  body[data-layout="desktop"] #actions { padding-top: 5px; padding-bottom: 5px; }
+  body[data-layout="desktop"] #attention { padding-top: 3px; padding-bottom: 3px; }
+
+  /* Readable secondary text at phone size (the viewport meta already un-shrinks everything; this lifts the
+     9–10.5px meta lines). Suffixed classes are this codebase's consistent "secondary text" naming. */
+  body[data-layout="desktop"] [class*="desc"], body[data-layout="desktop"] [class*="meta"],
+  body[data-layout="desktop"] [class*="hint"], body[data-layout="desktop"] [class*="why"],
+  body[data-layout="desktop"] [class*="-sub"],  body[data-layout="desktop"] [class*="-cn"],
+  body[data-layout="desktop"] [class*="traits"], body[data-layout="desktop"] [class*="note"],
+  body[data-layout="desktop"] [class*="sec-title"],
+  body[data-layout="desktop"] .fa-e, body[data-layout="desktop"] .fa-last,
+  body[data-layout="desktop"] .act-sub, body[data-layout="desktop"] .ev-time,
+  body[data-layout="desktop"] .banter-log-ago, body[data-layout="desktop"] .sv-card-d,
+  body[data-layout="desktop"] .mode-line, body[data-layout="desktop"] .mode-runs,
+  body[data-layout="desktop"] #stage-desc, body[data-layout="desktop"] .recipe-ing,
+  body[data-layout="desktop"] .cs-char-persona { font-size: 11.5px; }
+
+  /* Overlays: fit the viewport, clear the safe areas, scroll inside */
+  body > [id$="-overlay"] > div, #layout-box, #settings-box { max-height: 88dvh; }
+  #death-box, #ascension-box, #family-box, #confirm-box, #rename-box, #settings-box, #layout-box {
+    width: min(360px, calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  }
+}
+
+/* Short screens (landscape phones, short windows): a 68px tab rail doesn't fit — tighten it, and keep the
+   rail scrollable for the one or two groups that still overflow. */
+@media (max-height: 520px) {
+  body[data-layout] .tab { min-height: 52px; }
+  body[data-layout] .tab-glyph { font-size: 16px; }
+  body[data-layout] #tabs { -webkit-overflow-scrolling: touch; }
+}

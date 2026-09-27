@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <!-- Mobile (iOS/Android shells + browsers): without this the WebView uses a ~980px layout viewport and the
+       app renders as a small box. viewport-fit=cover lets the safe-area insets reach the CSS. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Cultivator Idle</title>
   <link rel="stylesheet" href="styles.css">
 </head>

@@ -6,6 +6,25 @@ The scoreboard for the visual review gate (CLAUDE.md → "VISUAL REVIEW GATE"). 
 scored 0–10 by a fresh reviewer agent from real screenshots: 0 = garbage, 6 = decent, 8 = polished + atmospheric
 (the pass line), 10 = "can't believe this is CSS and ASCII art". Record every review here, newest first per item.
 
+## Mobile / narrow layout pass (task 1.8e, 2026-09-27)
+`renderer/styles.css` → "MOBILE / narrow + touch"; `renderer/index.html` viewport meta; `renderer/game/layout.js`
+narrow canvas sizing. Screenshots: `scripts/smoke/scenarios/mobile.js` → `scripts/smoke/out/mobile-*.png`
+(390×844 @2×; `mobile-landscape` 844×390).
+
+| Cycle | Score | Result | Notes |
+|---|---|---|---|
+| 1 | **5.5** | **FAIL** (5 criteria at 5) | The reviewer's `vision` tool returned an identical description for every image (tooling glitch, verified with a synthetic PNG), so it audited **rendered geometry + computed styles + DOM** instead and confirmed its numbers matched the PNG pixel maps. Verdict: the layout itself is sound (0 horizontal overflow on all 9 screens, the tab bar is at the bottom, safe-area insets + `viewport-fit=cover` wired), but (a) **colour emoji in Pack/Craft cap criteria 1 & 5 at 5** — that is task **1.8d**, not this pass; (b) the mode-scoped size rules silently out-specified several touch targets; (c) `#hud` used 454 of 844px, leaving a 236px content window. |
+
+**Fixes applied from cycle 1:** touch minimums are now `!important`-guarded (they must beat the mode-scoped size rules)
+and cover `.pack-chip` / `.pack-sort-btn` / `.set-opt` / `.cs-*`; the narrow sprite canvas went 340→280 and is
+centred; HUD paddings tightened; `#stage-desc` / `.recipe-ing` / `.cs-char-persona` lifted; a `max-height: 520px` rule
+tightens the tab rail for landscape; `#btn-pin` is hidden when the shell has no window management (`!supported`).
+
+**Still open (needs cycle 2):** the emoji cap cannot pass until **1.8d** (custom icon set) lands — a re-review is
+required after it. The reviewer also flagged: the character select got no touch pass; the content window is still
+short on a phone (candidate: make `#app` the scroller with a sticky bottom tab bar); `--red` at small sizes where
+`--red-text` exists.
+
 ## Baseline of what already exists (1.8c, 2026-09-26)
 One fresh reviewer per group, one cycle, no fixing. Screenshots: `scripts/smoke/scenarios/visual-baseline.js` →
 `scripts/smoke/out/vb-*.png` (group 4 = banner, `banner-menus.js`). Rerun both after 1.8b / A4 for before/after.

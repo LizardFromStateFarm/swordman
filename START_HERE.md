@@ -32,6 +32,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
 | **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted); 1.8b-5 Sect ✅ (7.0, accepted) |
+| **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate cycle 1 **5.5** (capped by emoji → re-review after 1.8d) |
+| Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -85,7 +87,11 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   cards are flat (no depth). Revisit with the 1.8b-6 re-review.
 - **Inline styles in game.js** (~57 `style="…"`): blocked by CSP, re-applied by a shim since 1.8b-1. Convert to classes
   as each screen is rebuilt (1.8b-2..5).
-- Phone/narrow single-column layout of the new nav is untested (Desktop can't shrink below 640; no Mac).
+- **Mobile/narrow layout (1.8e):** now built (viewport meta + a "mobile" CSS layer + narrow canvas sizing) and
+  smoke-verified (`scenarios/mobile.js`, 19 checks). Still open: the on-phone **content window is short** (~236px of
+  an 844px screen — candidate: make `#app` the scroller with a sticky bottom tab bar); the **character select** got no
+  touch pass; the Visual Review Gate is **5.5 (cycle 1)** and can't pass until the emoji are gone (**1.8d**). Not
+  verified on a real iPhone/Android device (no Mac; no device here).
 - ~~Main interaction area is the smallest part of the window~~ — 1.7: Overlay tab body 105 → 305px, Expanded/Desktop
   656–696px. Still open: 7 tabs at 9px in Overlay, banner has no attention strip yet — 1.8b
 - **Art (→ Phase 34 art track, A1–A5):** plain grid ASCII rarely clears the 8/10 gate. 116 emoji in the game (63 inside
@@ -120,6 +126,36 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 27
+Agent: two user-requested tasks (tooling + UI), while another agent finished 1.8b-5.
+  1) **Android + Google Play pipeline** (build/release tooling; not a game phase). `android/` Capacitor project added;
+     `npm run release:android` = `scripts/release-android.js`: `npm test` → `build:web` → `cap sync android` → Gradle
+     `bundleRelease` (versionCode auto-bumped) → upload to a Play track via the androidpublisher v3 API (dependency-free:
+     hand-signed JWT + plain https, Edits insert/upload/track/commit). It **does not** commit/push or trigger CI. Skips
+     Gradle cleanly with no Android SDK, and the upload cleanly with no `PLAY_SERVICE_ACCOUNT_JSON`. Auto-detects the
+     SDK and a **Java 17–24 JDK** — Android Studio's bundled JBR is Java 25 and fails Gradle 8 with "class file major
+     version 69" (the real gotcha; this box uses `C:\Program Files\Java\jdk-21.0.11`). Signing reads
+     `android/keystore.properties` (gitignored; copy the `.example`). Verified: `npm run release:android` builds a real
+     `app-release.aab` (unsigned until the keystore password is filled in; `jarsigner -verify` confirms). Docs:
+     `docs/systems/android-port.md` (+ ios-port cross-ref). Play Console app + upload-key SHA-256 registered by the user.
+  2) **Mobile / narrow layout pass** — roadmap task **1.8e** (Phase 6E); PLAN.md + CLAUDE.md updated. Root cause found:
+     `renderer/index.html` had **no viewport meta**, so a phone's WebView used a ~980px layout viewport and the app
+     rendered as a tiny box. Fix: the viewport meta (+ `viewport-fit=cover`); a new "MOBILE / narrow + touch" section in
+     `renderer/styles.css` (bottom tab bar for thumb reach, full-bleed `#app`/`#charselect`, `100dvh`, safe-area insets,
+     ≥38px tap targets — `!important`, since the mode-scoped size rules out-specify them — a lifted text floor, and
+     screen-fitting overlays); `renderer/game/layout.js` fits the sprite canvas to the HUD width and sets
+     `body[data-narrow]`; a `max-height:520px` rule tightens the tab rail in landscape; `#btn-pin` is hidden on shells
+     with no window management. New `scripts/smoke/scenarios/mobile.js` (CDP device metrics + touch emulation via a new
+     `emulate()` in cdp.js) — 19 checks: no horizontal overflow on 9 screens, tab bar at the bottom, tap sizes, canvas
+     fit, landscape. All pass, zero console errors. `npm test` (186) · `npm run checks` (373).
+     **Visual Review Gate cycle 1 = 5.5 FAIL** (ui-review.md): the reviewer's image tool glitched, so it audited rendered
+     DOM geometry — it confirmed the layout is sound (0 overflow, bottom bar, safe areas) but the score is capped by
+     **colour emoji still in Pack/Craft, which is task 1.8d**, not this pass. Cycle-1 fixes applied; **a cycle-2
+     re-review is required after 1.8d**. Still open: the content window is short on a phone (candidate: make `#app` the
+     scroller with a sticky bottom bar); the character select got no touch pass.
+  Next: **1.8d (custom icon set)** → 1.8b-6 (emoji lint + re-review, which also re-scores the mobile pass). Note
+    `renderer/` is shared with the other agent — coordinate before touching UI files.
+
 Date: 2026-09-27 (user present) — part 26
 Agent: **1.8b-5 Sect sub-views + card grids** (user approved the assessment). As-built: ui-layout.md → "Sect views".
   - 宗 Sect is now sub-tabs by standing: none → Overview (join list with blessings in words + founding card with

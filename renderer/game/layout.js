@@ -42,6 +42,34 @@ class LayoutUI {
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !this.picker.classList.contains('hidden')) this.close() })
     this._wireGrip()
     this._watchPopups()
+
+    // Mobile pass (Phase 6E): a narrow screen is a refinement of the 'desktop' layout phones already report.
+    // Mirror the width query onto body[data-narrow] so JS/tests share one signal, and re-fit the sprite canvas.
+    this._narrow = window.matchMedia('(max-width: 599px)')
+    const onNarrow = () => {
+      document.body.dataset.narrow = this._narrow.matches ? '1' : '0'
+      this._sizeCanvas()
+    }
+    this._narrow.addEventListener?.('change', onNarrow)
+    window.addEventListener('resize', onNarrow)
+    window.addEventListener('orientationchange', onNarrow)
+    document.body.dataset.narrow = this._narrow.matches ? '1' : '0'
+  }
+
+  // Sprite canvas sizing: the fixed per-mode size, except on a narrow screen where it fits the HUD width.
+  _sizeCanvas() {
+    const wrap = document.getElementById('sprite-wrap')
+    if (this._narrow && this._narrow.matches) {
+      const hud = document.getElementById('hud')
+      const w = Math.max(180, Math.min(Math.round(hud ? hud.clientWidth : window.innerWidth), 280))
+      const h = Math.round(w * 0.5)
+      this.renderer.setSize(w, h, 1)
+      if (wrap) wrap.style.height = h + 'px'
+    } else {
+      const [w, h, k] = LAYOUT_CANVAS[this.mode] || LAYOUT_CANVAS.overlay
+      this.renderer.setSize(w, h, k)
+      if (wrap) wrap.style.height = ''
+    }
   }
 
   async init() {
@@ -50,6 +78,7 @@ class LayoutUI {
     this.saved = l.mode
     this.edge  = l.bannerEdge || 'top'
     document.getElementById('btn-layout').classList.toggle('hidden', !this.supported)
+    document.getElementById('btn-pin').classList.toggle('hidden', !this.supported)   // no always-on-top on iOS/Android
     this._apply(l.current || l.mode)
     if (l.pinned != null) this._syncPin(l.pinned)
   }
@@ -60,6 +89,7 @@ class LayoutUI {
     this.inGame = true
     if (this.saved === 'banner') this._set('banner', false)
     this._maybeTip()
+    requestAnimationFrame(() => this._sizeCanvas())   // #app is visible now, so the HUD has a real width
   }
 
   leaveGame() {
@@ -166,8 +196,7 @@ class LayoutUI {
     document.body.dataset.layout = mode
     document.body.dataset.edge = this.edge
     this.onModeChange?.(mode)
-    const [w, h, k] = LAYOUT_CANVAS[mode] || LAYOUT_CANVAS.overlay
-    this.renderer.setSize(w, h, k)
+    this._sizeCanvas()
     const btn = document.getElementById('btn-layout')
     btn.classList.toggle('peek', this.peeking)
     btn.textContent = this.peeking ? '條' : '窗'   // 條 = back to the strip (1.8b-1: CJK glyphs like the rest of the titlebar)

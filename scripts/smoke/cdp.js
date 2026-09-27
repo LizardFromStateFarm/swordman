@@ -6,6 +6,7 @@
 //   ev(expr)        — evaluate a JS expression in the page (awaits promises, returns by value)
 //   click(selector) — click the first match (throws if none)   · wait(expr, ms) — poll until expr is truthy
 //   shot(name, clip?) — PNG into the output folder (printed at the end); clip {x,y,width,height} crops it · assert(cond, msg) — prints ok/FAIL
+//   emulate(w,h)    — force a phone viewport + touch media (for the mobile pass); clearEmulation() undoes it
 const { spawn } = require('child_process')
 const fs = require('fs'), os = require('os'), path = require('path')
 
@@ -63,8 +64,22 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
       const f = path.join(outDir, `${name}.png`); fs.writeFileSync(f, Buffer.from(r.result.data, 'base64')); shots.push(f)
     }
     const assert = (c, m) => { if (!c) { failed++; console.log('FAIL', m) } else console.log('ok  ', m) }
+    // Force a phone-sized viewport regardless of the real Electron window (the Desktop mode min width is 640),
+    // and emulate a touch device so the @media (hover:none)/(pointer:coarse) rules apply. clearEmulation() undoes it.
+    const emulate = async (width, height, { mobile = true } = {}) => {
+      await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 2, mobile })
+      await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 })   // → (pointer: coarse)
+      await send('Emulation.setEmulatedMedia', { media: 'screen', features: [{ name: 'hover', value: 'none' }, { name: 'pointer', value: 'coarse' }] })
+      await sleep(400)
+    }
+    const clearEmulation = async () => {
+      await send('Emulation.clearDeviceMetricsOverride')
+      await send('Emulation.setTouchEmulationEnabled', { enabled: false })
+      await send('Emulation.setEmulatedMedia', { features: [] })
+      await sleep(200)
+    }
     await wait('document.readyState === "complete" && typeof gameState !== "undefined"', 15000)
-    await require(scenarioPath)({ ev, click, wait, shot, assert, sleep })
+    await require(scenarioPath)({ ev, click, wait, shot, assert, sleep, send, emulate, clearEmulation })
     await sleep(300)
     if (shots.length) console.log('screenshots:\n  ' + shots.join('\n  '))
     ws.close()

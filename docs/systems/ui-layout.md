@@ -306,6 +306,32 @@ shows "Explore · 1:23" while one runs, tooltip names the place) · **煉 Craft 
 mode, Desktop resize IPC, banner readouts, auto-peek and return, ⬡/↩, charselect never a strip, continue restores
 banner). `scenarios/ux-audit.js` gives the per-tab before/after numbers.
 
+## Mobile / narrow layout (Phase 6E mobile pass, 2026-09-27)
+
+Phones and both native shells (iOS/Android) have no Electron window: `platform-storage.js`'s shim answers
+`getLayout()` with `mode: 'desktop'`, so **the phone layout is a refinement of `desktop`, not a fifth mode**
+(no `main.js` geometry, no picker entry). Two media queries do two different jobs:
+
+| Query | Job |
+|---|---|
+| `@media (max-width: 599px)` | *Layout*: full-bleed (`#app`/`#charselect` lose border/radius/shadow), `100dvh`, safe-area insets, and the **bottom tab bar** — `#view { order: 1 }`, `#tabs { order: 2; flex-direction: row; min-height 52px }`, active underline flipped to the top edge. |
+| `@media (hover: none), (pointer: coarse)` | *Touch affordances* on any coarse pointer (phone **or** wide tablet): 38–48px tap targets, 12px sub-tabs, `touch-action: manipulation` (kills the 300ms double-tap delay), no tap highlight, `#subtabs` scrolls sideways. |
+
+Other mobile rules: the smallest (9–10.5px) secondary text is lifted to 11.5px via the codebase's consistent
+"secondary text" class suffixes (`[class*="desc"|"meta"|"hint"|"why"|"-sub"|"-cn"|"traits"|"note"|"sec-title"]`); overlays
+are `width: min(360px, 100vw − safe areas)` and `max-height: 88dvh`.
+
+- **`index.html` has the viewport meta** (`width=device-width, initial-scale=1, viewport-fit=cover`). Without it a
+  phone's WebView uses a ~980px layout viewport and the whole app renders as a tiny box — this was the single biggest
+  mobile bug. `viewport-fit=cover` is what makes `env(safe-area-inset-*)` non-zero.
+- **`renderer/game/layout.js`** mirrors the width query onto `document.body.dataset.narrow` (`'1'`/`'0'`, so JS and
+  tests share one signal) and, when narrow, sizes the sprite canvas to the HUD's width (`min(hudWidth, 340)`, height ×0.5)
+  and sets `#sprite-wrap`'s height to match; it restores `LAYOUT_CANVAS[mode]` and clears the inline height otherwise.
+  Re-fits on `resize` / `orientationchange` and when a slot starts (`enterGame`).
+- A **desktop window dragged below 600px also gets the phone layout** (it *is* a narrow layout). Phone landscape
+  (~844px) keeps the two-column desktop layout.
+- **Not verified on a real device** (no Mac for iOS; no Android device here) — checked via CDP device metrics.
+
 ## UX direction (user, 2026-09-26)
 UI/UX is a first-class deliverable. Every player-facing task does the **UX Pass** in CLAUDE.md (surface /
 interact / discover / feel / UX debt). Roadmap 1.8a (UX audit, below) → 1.7 (layout modes) → 1.8b (overhaul).

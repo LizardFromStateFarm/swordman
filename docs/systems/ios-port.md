@@ -105,14 +105,15 @@ each other, just waiting on credentials/accounts that only a human can create.
 
 ## Gotchas / Not Done Yet
 
-- **UI is not responsive.** `renderer/styles.css` hard-codes `width: 300px` (sized for the desktop
-  overlay window) and uses `-webkit-app-region: drag` (Electron-only, harmless no-op elsewhere).
-  On an iPhone screen this currently renders as a small fixed-size box, not full-screen. Needs a
-  real responsive/mobile-layout pass — deliberately deferred, not part of this plumbing work. This
-  is the single biggest remaining chunk of actual "port" work.
-  **Partly addressed by Phase 6E (2026-09-26):** `#app` now fills the viewport (100vw × 100vh) and the shim's
-  `getLayout()` answers `desktop`, whose CSS drops to one column under 600px wide. Not yet checked on a real
-  phone (no Mac); overlays and tab contents are still tuned for ~300px.
+- **Responsive/mobile layout — ADDRESSED (Phase 6E mobile pass, 2026-09-27).** The old problem was twofold: (1)
+  `index.html` had no `<meta name="viewport">`, so a phone's WebView used a ~980px layout viewport and the whole app
+  rendered as a **tiny box**; and (2) there were no safe-area/touch rules. Now: the viewport meta
+  (`width=device-width, viewport-fit=cover`) is in `renderer/index.html`; `styles.css` has a "MOBILE / narrow + touch"
+  section (full-bleed `#app`/`#charselect`, `100dvh`, safe-area insets, a **bottom tab bar**, 38–48px tap targets,
+  `touch-action`/tap-highlight handling, a lifted text floor, screen-fitting overlays); and `renderer/game/layout.js`
+  fits the sprite canvas to the HUD width on narrow screens. See `docs/systems/ui-layout.md` → "Mobile / narrow
+  layout". **Still not verified on a real iPhone** (no Mac) — checked via CDP device metrics only. `-webkit-app-region:
+  drag` stays in the CSS (Electron-only, a harmless no-op in a WebView).
 - **This machine's `NODE_ENV` is set to `production` globally.** That makes `npm install` silently
   skip all `devDependencies` — which is where `electron`, `electron-builder`, AND all three
   `@capacitor/*` packages live. A plain `npm install` here will silently strip them back out of
