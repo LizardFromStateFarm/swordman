@@ -203,7 +203,7 @@ for War (1.8b-4 extends it across the Clan view).
   26px toggles with a lit gold selected state, labels above their controls), "What rides on it".
 - **Overlay:** cards stack single-column; blurbs (`.sv-card-d`, card `.fc-sub`, sect descriptions), the Fame section,
   the Overview's last-war card, the stakes and the orders footnote are hidden (reachable via tooltips / War / the odds
-  card); the roster is one line per disciple (yields in the row tooltip); candidates are compact rows. Measured with
+  card); the roster is one line per disciple (yields in the row tooltip) and comes before the candidates, which are compact rows. Measured with
   the founder preset during an attack: Overview 2.3 · Halls 2.4 · Disciples 3.0 · War 2.1 Overlay screens (the old
   single list was 14.8).
 - **Timers** are data attributes (`[data-wartimer]`, `[data-pooltimer]`, `.sect-mission-timer` + `[data-barfor]`);

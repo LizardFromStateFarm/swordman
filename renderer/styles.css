@@ -3374,7 +3374,7 @@ body:not([data-layout="overlay"]) #family-box.fight .fc-first { display: none; }
 .ld-p { color: var(--gold); font-variant-numeric: tabular-nums; }
 
 
-/* UI review: 7.0 (2026-09-27, 3 cycles: 6.7 → 7.0 → 7.0; user decision pending) */
+/* UI review: 7.0 (2026-09-27, 3 cycles: 6.7 → 7.0 → 7.0; accepted by the user) */
 /* ══════════════════════════════════════════════════════════════════════════
    SECT VIEWS (1.8b-5, renderer/game/sect-view.js) — built from the Family/Clan components (fam-card, fam-sec,
    fa-btn). Overview · Missions · War (joined) / Overview · Buildings · Disciples · War (founded). Mission and

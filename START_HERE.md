@@ -31,7 +31,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
-| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted); 1.8b-5 Sect ◐ (7.0, user decision) |
+| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted); 1.8b-5 Sect ✅ (7.0, accepted) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -101,7 +101,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   panes); fold toggles only on the far-right caret (make the whole header the target); ancestor rows need a leading
   "gen N · realm" marker; Desktop columns still uneven with a long chronicle.
 - **Sect views leftovers (1.8b-5, 7.0):** every card is the same box (no sect-ledger ornament/texture); Overlay HUD
-  leaves ~200px so each view opens on a cut-off card; Overlay Disciples opens on the gate (roster below); buildings
+  leaves ~200px so each view opens on a cut-off card; buildings
   have no levels, so a founder with all six raised has nothing to do in Halls but the Sect Hall; Explore/Craft grid
   cards keep the old flat row style; standing-order war-chest note is still a paragraph (could be a 詳 card).
 - **Family view leftovers (1.8b-3a):** no hint of what each temper *likes* beyond the blurb and the meeting-choice
@@ -135,16 +135,18 @@ Agent: **1.8b-5 Sect sub-views + card grids** (user approved the assessment). As
   - Tests: new checks/sect-view.js (23: odds = 4,000-war Monte Carlo of the real resolvers, yields = real ticks);
     new smoke scenarios/sect.js; nav-attention + war-orders updated (Sect → War). npm test (87) · npm run checks
     (373) · smoke sect/nav-attention/war-orders/layout-modes/banner-menus: zero console errors.
-  - **Visual Review Gate: 6.7 → 7.0 → 7.0 over 3 cycles (no criterion < 6 after cycle 1) → waiting on the user.**
-    Cycle-3 fixes applied after the last review. Nothing committed yet.
-  Next: user's gate decision + commit, then 1.8d (icon set) or 1.8b-6.
+  - **Visual Review Gate: 6.7 → 7.0 → 7.0 over 3 cycles (no criterion < 6 after cycle 1) → accepted by the user**
+    (agreed more passes weren't worth it: the rest is ornament/icons, which 1.8d + the art track redo, and 1.8b-6
+    re-reviews every screen). Cycle-3 fixes + Overlay Disciples roster-first applied after the last review.
+    Committed as f9df4ae (+ this doc fix).
+  Next: 1.8d custom icon set, then 1.8b-6.
 
 Date: 2026-09-27 (user present) — part 25
 Agent: **Quick changes (user, no review gate requested):** Spirit Stones in the HUD vitals row (石 · number, beside
   Age; Stones/Age labels shortened to glyphs + tooltips so the 300px column fits), and every Explore location lists
   its possible drops with quantity range + chance per run (`gameState.dropPreview(locId)`, exact: mirrors _rollDrops,
   verified against 20k simulated rolls; Push Harder's extra roll not included). Also: a "not enough stones" lock in the Family view now says the cost and
-  what you hold ("Costs 石 285 · you have 12"). **Uncommitted: waiting on the user's look.**
+  what you hold ("Costs 石 285 · you have 12"). (Committed by the user in 7d698f4.)
 
 Date: 2026-09-27 (user present) — part 24
 Agent: **1.8b-3b Family agency part 2** (user approved as one task). As-built: family.md → "1.8b-3b".
