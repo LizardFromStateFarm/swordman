@@ -2,7 +2,7 @@
 // turns the save + GameState's recorded terms (s.derived.breakdown, ascensionBreakdown(), btFailPreview(),
 // vitalsInfo()) into a card model { glyph, title, cn, total, rows, sections, notes }. BreakdownUI draws that card as
 // a popover next to whatever was tapped: any element with data-bd="<kind>" (HUD numbers, Character tiles).
-// Kinds: qps · cap · bt · integrity · health · karma · bloodline. See docs/systems/ui-layout.md → "Breakdowns".
+// Kinds: qps · cap · bt · integrity · health · karma · bloodline · affection + propose (1.8b-3a). See docs/systems/ui-layout.md → "Breakdowns".
 
 // Short stage names for locks and hints ("Qi Condensation 4", "Core Formation · Early") instead of "Stage 12+".
 function stageShortName(i) {
@@ -52,6 +52,35 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
     const notes = [left <= 0 ? 'Your sea of Qi is full enough to attempt a breakthrough.'
       : `Breakthrough opens at 90% of the cap: ${fmt(left)} Qi to go${rate > 0 ? `, about ${fmtTime(Math.ceil(left / rate))} at this rate` : ''}.`]
     return { glyph: '海', title: 'Qi capacity', cn: '氣海', total: fmt(d.qiCap), rows: mulRows(b.cap || [], ''), notes }
+  }
+
+  // 1.8b-3a: spouse affection — what it is, what last moved it, where it drifts, what the tiers do
+  if (kind === 'affection' && s.family?.spouse) {
+    const f = s.family, a = f.affection, sp = f.spouse
+    const trail = f.affTrail || [], then = trail.length > 1 ? trail[Math.max(0, trail.length - 1 - AFF_TREND_YEARS)] : null
+    const rows = []
+    if (f.lastAff) rows.push({ label: `Last: ${f.lastAff.why} (yr ${f.lastAff.year})`, val: f.lastAff.delta ? `${f.lastAff.delta > 0 ? '+' : '−'}${Math.abs(f.lastAff.delta)}` : '', tone: f.lastAff.delta > 0 ? 'up' : f.lastAff.delta < 0 ? 'down' : 'dim' })
+    if (then) rows.push({ label: `Since year ${then[0]}`, val: `${then[1]} → ${Math.round(a)}`, tone: a > then[1] ? 'up' : a < then[1] ? 'down' : 'dim' })
+    rows.push({ label: `Drifts toward ${AFFECTION_REST} by itself`, val: `${AFFECTION_DRIFT_PER_YEAR}/yr`, tone: 'dim' })
+    const tiers = [
+      { label: `Devoted (${AFFECTION_DEVOTED}+): +${Math.round(DEVOTED_BT_BONUS * 100)}% breakthrough, forgives more`, val: a >= AFFECTION_DEVOTED ? 'now' : '', tone: a >= AFFECTION_DEVOTED ? 'up' : 'dim' },
+      { label: `Cold (under ${AFFECTION_CRISIS}): crises, no wish for a child`, val: a < AFFECTION_CRISIS ? 'now' : '', tone: a < AFFECTION_CRISIS ? 'warn' : 'dim' },
+      { label: `Dual cultivation is safe from ${DUAL_SAFE_AFFECTION}`, val: a >= DUAL_SAFE_AFFECTION ? 'safe' : `${Math.round(Math.min(DUAL_RISK_RANGE[1], (DUAL_SAFE_AFFECTION - a) / 100) * 100)}% risk`, tone: a >= DUAL_SAFE_AFFECTION ? 'up' : 'down' },
+    ]
+    return { glyph: '侶', title: 'Affection', cn: '情', total: `${Math.round(a)} / 100`, state: true, rows,
+      sections: [{ title: 'What it does', rows: tiers }],
+      notes: [`How ${sp.given} feels toward you. Time, gifts and how you answer marriage events move it; what pleases depends on their temper.`] }
+  }
+
+  // 1.8b-3a: proposal odds while courting
+  if (kind === 'propose' && s.family?.court?.target) {
+    const pc = gs.proposeChance()
+    const rows = pc.parts.map(p => p.op === 'base' ? { label: p.label, val: BD_PCT(p.value), op: 'base' }
+      : { label: p.label, val: `${p.value < 0 ? '−' : '+'}${BD_PCT(Math.abs(p.value))}`, op: '+', tone: p.value < 0 ? 'down' : p.value > 0 ? 'up' : 'dim' })
+    if (pc.raw !== pc.total) rows.push({ label: pc.raw > pc.total ? 'Nothing is certain' : 'There is always a chance', val: BD_PCT(pc.total), tone: 'dim' })
+    return { glyph: '聘', title: 'Proposal odds', cn: '聘', total: BD_PCT(pc.total), rows,
+      notes: [pc.meetings < pc.need ? `Meet ${pc.need - pc.meetings} more time${pc.need - pc.meetings === 1 ? '' : 's'} before you may ask.` : 'Each meeting can raise their interest, or lower it.',
+              'If they refuse, the courtship ends and a new match takes years to arrange.'] }
   }
 
   if (kind === 'bt' && s.stageIndex === lastMortal) {

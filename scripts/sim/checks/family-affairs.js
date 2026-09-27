@@ -9,6 +9,7 @@ async function setup(seed) {
   s.stageIndex = 12; s.maxStageThisLife = 12; s.spiritStones = 1e6; gs._recalc()
   s.family.nextProposalYear = s.world.year - 1; gs._tickFamily()
   gs.acceptSuitor(gs.get().family.proposal.suitors[0].id)
+  gs.setFamilyPlanning('many')   // timer births are an explicit delegation since 1.8b-3a
   return { sim, gs }
 }
 const rng = (sim, v) => sim.ev(`globalThis.__r = globalThis.__r || Math.random; Math.random = () => ${v}`)
@@ -69,6 +70,10 @@ const unrng = sim => sim.ev('Math.random = globalThis.__r')
   { const sim = await createSim({ seed: 70 }); await sim.boot(0); const gs = sim.gs, f = gs.get().family
     gs.get().maxStageThisLife = 12
     f.lovers.push({ person: gs._rollStranger('lover'), since: 1, nextChildYear: gs.get().world.year - 1, endsYear: 1e9 })
+    // 1.8b-3a default 'ask': the lover wishes, you answer yes, the child arrives a year later
+    rng(sim, 0.0); gs._tickFamily(); unrng(sim)
+    assert(gs.get().family.childWish?.partnerId === f.lovers[0].person.id && !gs.get().family.children.length, 'ask plan: lover raises a wish, no birth on its own')
+    gs.answerChildWish(true); gs.get().world.year += 1
     rng(sim, 0.0); gs._tickFamily(); unrng(sim)
     assert(gs.get().family.children.length === 1 && gs.get().family.tally.discovered === 0, 'unmarried: lover child, nobody to discover')
   }

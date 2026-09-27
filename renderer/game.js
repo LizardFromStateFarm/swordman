@@ -595,15 +595,14 @@
     el.querySelectorAll('.ch-bar > div').forEach(b => { b.style.width = b.dataset.w + '%'; b.style.setProperty('--bar', b.dataset.bar) })
   }
 
-  // ── 家 Kin → Family (1.8b-1: moved out of Stats; 1.8b-3 rebuilds it around real choices) ──
+  // ── 家 Kin → Family (1.8b-3a: renderer/game/family-view.js — spouse/courtship, wishes, children, heir) ──
+  let familyView = null
   function renderFamily(s) {
-    const el = document.getElementById('tab-family')
-    const f = s.family || {}
-    const alone = !f.spouse && !(f.lovers || []).length && !(f.children || []).length && !f.proposal
-    el.innerHTML = `<div class="section-title">Household 家室</div>
-      ${alone ? '<div class="empty-note">You walk the path alone. Matchmakers seek out cultivators of age and standing, and strangers met on the road (Roam → Explore) may become more.</div>' : ''}
-      ${renderFamilyRows(s) || ''}`
-    wireKinButtons(el)
+    familyView ||= new FamilyView(gameState, {
+      esc: escHtml, fmt, stageLabel: personStageLabel, affectionLabel, bondLabel, latinOnly,
+      confirm: showConfirm, flash: flashMessage, wire: wireKinButtons, endText: SPOUSE_END_TEXT, pendingKey: familyPendingKey,
+    })
+    familyView.render(s)
   }
 
   // ── 家 Kin → Clan (1.8b-1: moved out of Stats; 1.8b-4 rebuilds it) ──
@@ -728,67 +727,23 @@
 
   // Affection tiers (family.md) — UI only; the number is shown alongside.
   function affectionLabel(a) {
-    if (a >= AFFECTION_DEVOTED) return { word: 'Devoted', color: 'var(--jade)' }
-    if (a >= 50)                return { word: 'Warm',    color: 'var(--text)' }
-    if (a >= AFFECTION_CRISIS)  return { word: 'Cool',    color: 'var(--gold)' }
-    return                             { word: 'Cold',    color: 'var(--red)' }
+    if (a >= AFFECTION_DEVOTED) return { word: 'Devoted', color: 'var(--jade)', tone: 'jade' }
+    if (a >= 50)                return { word: 'Warm',    color: 'var(--text)', tone: 'warm' }
+    if (a >= AFFECTION_CRISIS)  return { word: 'Cool',    color: 'var(--gold)', tone: 'gold' }
+    return                             { word: 'Cold',    color: 'var(--red)', tone: 'red' }
   }
 
   // Child bond tiers (clan-succession.md 2.6b) — UI only.
   function bondLabel(b) {
-    if (b >= 70)                return { word: 'Close',    color: 'var(--jade)' }
-    if (b >= 45)                return { word: 'Fond',     color: 'var(--text)' }
-    if (b >= CHILD_BOND_CRISIS) return { word: 'Distant',  color: 'var(--gold)' }
-    return                             { word: 'Estranged', color: 'var(--red)' }
+    if (b >= 70)                return { word: 'Close',    color: 'var(--jade)', tone: 'jade' }
+    if (b >= 45)                return { word: 'Fond',     color: 'var(--text)', tone: 'warm' }
+    if (b >= CHILD_BOND_CRISIS) return { word: 'Distant',  color: 'var(--gold)', tone: 'gold' }
+    return                             { word: 'Estranged', color: 'var(--red)', tone: 'red' }
   }
 
   const SPOUSE_END_TEXT = { left: 'left you', divorced: 'divorced', suicide: 'took their own life',
                             murder_suicide: 'died, and took children with them', duel: 'fell in a duel with you' }
 
-  // Stats family section (Phase 16-lite + family.md): spouse + affection, former spouses, children, pending links.
-  function renderFamilyRows(s) {
-    const f = s.family
-    if (!f) return ''
-    let html = ''
-    if (f.spouse) {
-      const al = affectionLabel(f.affection)
-      html += sr('Spouse', `${escHtml(Persons.fullName(f.spouse))} · ${personStageLabel(f.spouse.stageIndex)}`)
-      html += sr('Affection', `<span style="color:${al.color}">${al.word} · ${Math.round(f.affection)}</span>${f.tolerant ? ' · tolerant' : ''}${f.btSabotage ? ' · <span style="color:var(--red)">sabotaging your next breakthrough</span>' : ''}`)
-    }
-    for (const l of f.lovers || []) {
-      html += `<div class="stat-row"><span class="stat-key">Lover</span><span class="stat-val">${escHtml(Persons.fullName(l.person))} · since yr ${l.since}
-        <button class="sect-btn" data-end-affair="${escHtml(l.person.id)}" style="margin-left:4px;padding:1px 6px;min-height:24px">End</button></span></div>`
-    }
-    for (const x of f.formerSpouses || []) {
-      html += sr('Former', `<span style="color:var(--dim)">${escHtml(Persons.fullName(x))} — ${SPOUSE_END_TEXT[x.endCause] || 'gone'} (yr ${x.endedYear})</span>`)
-    }
-    // 2.6b Family Planning — None / Some / Many (covers lover children too)
-    html += `<div class="set-row"><div class="set-label">Family Planning</div><div class="set-seg">${[['none', 'None'], ['some', 'Some'], ['many', 'Many']]
-      .map(([v, l]) => `<button class="set-opt${f.planning === v ? ' active' : ''}" data-plan="${v}">${l}</button>`).join('')}</div></div>`
-    const kids = f.children || []
-    if (kids.length) html += sr('Children', `${kids.filter(c => c.alive).length} living${kids.some(c => !c.alive) ? ` · ${kids.filter(c => !c.alive).length} lost` : ''}`)
-    const shown = kids.slice(-12)   // youngest 12; the rest are summarized
-    if (kids.length > shown.length) html += sr('', `<span style="color:var(--dim)">+${kids.length - shown.length} older children</span>`)
-    for (const c of shown) {
-      const age = Math.max(0, Math.floor((c.alive ? s.world.year : c.diedYear) - c.bornYear))
-      if (!c.alive) { html += sr('Child', `<span style="color:var(--dim)">${escHtml(Persons.fullName(c))} · died at ${age}</span>`); continue }
-      if (c.estranged) { html += sr('Child', `<span style="color:var(--dim)">${escHtml(Persons.fullName(c))} · left the clan (yr ${c.leftYear})</span>`); continue }
-      const bl = bondLabel(c.bond ?? 50)
-      html += sr('Child', `${escHtml(Persons.fullName(c))} · ${age}${age >= AWAKENING_AGE ? ` · ${personStageLabel(c.stageIndex)}` : ''} · <span style="color:${bl.color}">${bl.word}</span>`)
-    }
-    if (f.proposal) html += `<button id="_matchmaker" class="sect-btn" style="width:100%;margin:6px 0 2px;">A matchmaker awaits</button>`
-    if (familyPendingKey(s)) html += `<button id="_family-matter" class="sect-btn" style="width:100%;margin:6px 0 2px;">A family matter awaits</button>`
-    // 2.6c: heir + Tournament of Heirs
-    const heir = f.heirId ? f.children.find(c => c.id === f.heirId) : null
-    const adults = gameState.eligibleHeirs().length
-    if (gameState.isClanHead() && (adults || heir || f.tournament)) {
-      html += sr('Heir', heir ? `${escHtml(Persons.fullName(heir))}${heir.trauma ? ' <span style="color:var(--red)">· forged in blood</span>' : ''}` : '<span style="color:var(--dim)">None named</span>')
-      html += `<div style="display:flex;gap:6px;margin:6px 0 2px">
-        <button id="_choose-heir" class="sect-btn" style="flex:1" ${adults && !f.tournament ? '' : 'disabled'}>Name an Heir</button>
-        <button id="_tournament" class="sect-btn" style="flex:1" ${f.tournament || adults >= 2 ? '' : 'disabled'}>${f.tournament ? 'Continue Tournament' : 'Tournament of Heirs'}</button></div>`
-    }
-    return html
-  }
 
   // ── Banter (Phase 29) ─────────────────────────────────────────────────────
 

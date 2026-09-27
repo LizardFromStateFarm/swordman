@@ -23,7 +23,10 @@ class SettingsUI {
     const root = document.documentElement
 
     if (changed('animSpeed'))     this.renderer.setSpeed(set.animSpeed)
-    if (changed('reducedMotion')) this.renderer.setReducedMotion(set.reducedMotion)
+    if (changed('reducedMotion')) {
+      this.renderer.setReducedMotion(set.reducedMotion)
+      root.dataset.motion = set.reducedMotion ? 'reduced' : 'full'   // CSS pulses (e.g. the Family wish card) honor it too
+    }
     if (changed('colorblind')) {
       if (set.colorblind === 'off') delete root.dataset.cb
       else root.dataset.cb = set.colorblind

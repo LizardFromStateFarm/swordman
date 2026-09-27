@@ -644,7 +644,12 @@ class GameState {
              challengeCooldownYear: null, headChallenge: null, nextChallengerYear: null,
              stepDownOffer: null, nextStepDownYear: null,
              // 2.6f: branch wars (push/declare) — one cooldown, since only one branch line is ever yours
-             branchWarCooldownYear: null }
+             branchWarCooldownYear: null,
+             // 1.8b-3a (family.md): player agency — a partner's wish for a child, children on the way, spouse
+             // action cooldowns, why affection last moved + a yearly trail, courtship, suitors who refused you.
+             // planVer 1 = the planning value is the player's own (old saves' 'many' default becomes 'ask').
+             planVer: 1, childWish: null, expecting: [], spouseCd: {}, childTryYear: null,
+             lastAff: null, affTrail: [], court: null, seekCooldownYear: null, spurned: [] }
   }
 
   _blankFamilyTally() {
@@ -687,6 +692,8 @@ class GameState {
     const s = this._s
     if (!s.family || typeof s.family !== 'object') s.family = this._blankFamily()
     const f = s.family, blank = this._blankFamily()
+    // 1.8b-3a: 'many' was the silent default before "Ask me" existed — it becomes 'ask'. some/none were chosen.
+    if (f.planVer === undefined && (f.planning === 'many' || f.planning === undefined)) f.planning = 'ask'
     for (const k of Object.keys(blank)) if (f[k] === undefined) f[k] = blank[k]
     if (!Array.isArray(f.children)) f.children = []
     if (!Array.isArray(f.formerSpouses)) f.formerSpouses = []
@@ -699,7 +706,17 @@ class GameState {
     delete f.pastSpouses; delete f.mourningUntil   // spouse death/mourning removed 2026-09-26
     // 2.6b backfill (no Math.random() in an _ensure method: morality falls back to the personality base).
     if (!(f.planning in CHILD_INTERVAL_BY_PLAN)) f.planning = FAMILY_PLAN_DEFAULT
+    // 1.8b-3a shapes
+    if (!Array.isArray(f.expecting)) f.expecting = []
+    if (!Array.isArray(f.affTrail))  f.affTrail = []
+    if (!Array.isArray(f.spurned))   f.spurned = []
+    if (!f.spouseCd || typeof f.spouseCd !== 'object') f.spouseCd = {}
+    if (f.childWish && !this._partnerById(f.childWish.partnerId, true)) f.childWish = null
+    if (f.court && (typeof f.court !== 'object' || !Array.isArray(f.court.candidates))) f.court = null
+    if (f.court && f.spouse) f.court = null
     for (const c of f.children) {
+      if (!c.cd || typeof c.cd !== 'object') c.cd = {}
+      if (!c.raised || typeof c.raised !== 'object') c.raised = { time: 0, teach: 0, gift: 0 }
       if (!(typeof c.bond === 'number' && isFinite(c.bond))) c.bond = CHILD_BOND_START
       if (!(typeof c.xp === 'number' && isFinite(c.xp))) c.xp = 0
       if (typeof c.morality !== 'number') c.morality = PERSONALITY_MORALITY[c.personality] ?? 0
@@ -720,12 +737,24 @@ class GameState {
     if (f.stepDownOffer) { const clan = this._playerClan(); if (!clan || clan.headId !== f.stepDownOffer.headId) f.stepDownOffer = null }
   }
 
-  _changeAffection(delta) {
+  // `why` (1.8b-3a) is shown in the Family view and the affection breakdown: "Anniversary +8 (yr 412)".
+  _changeAffection(delta, why) {
     const f = this._s.family
     if (!f.spouse) return 0
     const before = f.affection
     f.affection = Math.max(0, Math.min(100, f.affection + delta))
-    return f.affection - before
+    const moved = f.affection - before
+    if (why && moved) f.lastAff = { delta: Math.round(moved), why, year: Math.floor(this._s.world.year) }
+    return moved
+  }
+
+  // 1.8b-3a: a partner (current spouse, lover, or — for a child already on the way — a former spouse) by id.
+  _partnerById(id, currentOnly = false) {
+    const f = this._s.family
+    if (f.spouse?.id === id) return f.spouse
+    const lover = f.lovers.find(l => l.person.id === id)
+    if (lover) return lover.person
+    return currentOnly ? null : (f.formerSpouses.find(p => p.id === id) || null)
   }
 
   // Fills {spouse}/{name}/{child} in family event text. ctx.childId (child events) or ctx.child (a given name).
@@ -763,11 +792,35 @@ class GameState {
     child.bond     = CHILD_BOND_START
     child.morality = this._rollMorality(child.personality, (s.karma - 50) * MORALITY_KARMA_WEIGHT)
     child.xp       = 0
+    child.cd       = {}                                // 1.8b-3a: raising-action cooldowns (game years)
+    child.raised   = { time: 0, teach: 0, gift: 0 }
     f.children.push(child)
     this.addEvent({ text: `Year ${yr}: a child is born — ${Persons.fullName(child)} (${child.root.name}).`, type: 'special' })
     this._claimFirst('first_child')
     this._emit('child_born', { child: child.given })
     return child
+  }
+
+  // 1.8b-3a: every birth goes through here (delegated timer or an answered wish / try). A lover's child may
+  // expose the affair (DISCOVERY_ON_LOVER_CHILD); a tolerant spouse only sighs (AFFAIR_TOLERATED_AFFECTION).
+  _birth(partnerId) {
+    const f = this._s.family, partner = this._partnerById(partnerId)
+    if (!partner) return null
+    const child = this._makeChild(partner)
+    const lover = f.lovers.find(l => l.person.id === partnerId)
+    if (lover && f.spouse) {
+      if (f.tolerant) this._changeAffection(AFFAIR_TOLERATED_AFFECTION, `a child by ${lover.person.given}`)
+      else if (!f.duel && Math.random() < DISCOVERY_ON_LOVER_CHILD) this._discoverAffair(lover, true)
+    }
+    return child
+  }
+
+  // 1.8b-3a ('ask' plan): a partner wishes for a child. One at a time; never expires; the player answers.
+  _raiseChildWish(partner) {
+    const f = this._s.family, yr = Math.floor(this._s.world.year)
+    f.childWish = { partnerId: partner.id, year: yr }
+    this.addEvent({ text: `Year ${yr}: ${Persons.fullName(partner)} speaks, softly, of wanting a child with you.`, type: 'special' })
+    this._emit('child_wish', { partner: partner.given })
   }
 
   // The marriage ends. endCause: left | divorced | suicide | murder_suicide | duel (family.md). Death causes
@@ -782,6 +835,9 @@ class GameState {
     f.formerSpouses.push(former)
     f.spouse = null; f.affection = null; f.tolerant = false
     f.nextChildYear = null; f.event = null; f.nextEventYear = null; f.duel = null; f.btSabotage = false
+    f.spouseCd = {}; f.lastAff = null; f.affTrail = []   // 1.8b-3a (a child already on the way is still born)
+    if (f.childWish?.partnerId === sp.id) f.childWish = null
+    if (died) f.expecting = f.expecting.filter(e => e.partnerId !== sp.id)
     f.nextProposalYear = y + this._randRange(PROPOSAL_RETRY_YEARS)
     if (!died) f.tally.left++
     if (text) this.addEvent({ text: `Year ${yr}: ${text}`, type })
@@ -871,7 +927,7 @@ class GameState {
     if (!sp) return
     const yr = Math.floor(s.world.year), spName = Persons.fullName(sp), loverName = Persons.fullName(lover.person)
     f.tally.discovered++
-    this._changeAffection(AFFAIR_DISCOVERED_AFFECTION + (viaChild ? AFFAIR_CHILD_EXTRA_AFFECTION : 0))
+    this._changeAffection(AFFAIR_DISCOVERED_AFFECTION + (viaChild ? AFFAIR_CHILD_EXTRA_AFFECTION : 0), viaChild ? 'learned of your affair, and the child' : 'learned of your affair')
     this.addEvent({ text: `Year ${yr}: ${spName} learns of your affair with ${loverName}${viaChild ? ' — and of the child' : ''}.`, type: 'negative' })
     const w = AFFAIR_REACTIONS[sp.personality] || { accept: 30, sabotage: 30, duel: 20, suicide: 10, murder_suicide: 10 }
     // 2.6b: the spouse's morality tilts it too — a righteous spouse forgives more, a ruthless one turns violent.
@@ -950,13 +1006,28 @@ class GameState {
       // Affection drifts slowly back toward AFFECTION_REST.
       const gap = AFFECTION_REST - f.affection
       f.affection += Math.sign(gap) * Math.min(Math.abs(gap), AFFECTION_DRIFT_PER_YEAR)
+      f.affTrail.push([yr, Math.round(f.affection)])   // 1.8b-3a: the trend arrow
+      if (f.affTrail.length > AFF_TRAIL_MAX) f.affTrail.splice(0, f.affTrail.length - AFF_TRAIL_MAX)
+    }
+
+    // 1.8b-3a: children already on the way arrive (a lover's child may still expose the affair).
+    for (const e of [...f.expecting]) {
+      if (y < e.dueYear) continue
+      f.expecting.splice(f.expecting.indexOf(e), 1)
+      this._birth(e.partnerId)
     }
 
     // Children with the spouse: paced by Family Planning (2.6b), no cap. 'none' pauses births entirely.
-    const interval = this._childInterval()
+    // 'ask' (1.8b-3a default) only raises the spouse's WISH for a child — the player answers it.
+    const interval = this._childInterval(), ask = f.planning === 'ask'
     if (f.spouse && interval && f.nextChildYear != null && y >= f.nextChildYear) {
-      this._makeChild(f.spouse)
-      f.nextChildYear = y + this._randRange(interval)
+      if (!ask) {
+        this._birth(f.spouse.id)
+        f.nextChildYear = y + this._randRange(interval)
+      } else if (!f.childWish) {
+        if (f.affection >= AFFECTION_CRISIS) this._raiseChildWish(f.spouse)
+        else f.nextChildYear = y + this._randRange(interval)   // a Cold spouse doesn't ask
+      }
     }
 
     // 2.6b: children cultivate from AWAKENING_AGE — a stage per CHILD_YEARS_PER_STAGE ÷ root.mult years, never
@@ -981,10 +1052,10 @@ class GameState {
         continue
       }
       if (!interval || y < lover.nextChildYear) continue
-      this._makeChild(lover.person)
-      lover.nextChildYear = y + this._randRange(interval)
-      if (f.spouse && f.tolerant) this._changeAffection(AFFAIR_TOLERATED_AFFECTION)
-      else if (f.spouse && !f.duel && Math.random() < DISCOVERY_ON_LOVER_CHILD) this._discoverAffair(lover, true)
+      if (!ask) {
+        lover.nextChildYear = y + this._randRange(interval)
+        this._birth(lover.person.id)
+      } else if (!f.childWish) this._raiseChildWish(lover.person)
     }
     // Yearly discovery roll per lover while married (at most one discovery per year).
     if (f.spouse && !f.tolerant && !f.duel) {
@@ -1477,23 +1548,31 @@ class GameState {
     if (!f.proposal) return { ok: false, reason: 'no_proposal' }
     const suitor = f.proposal.suitors.find(p => p.id === personId)
     if (!suitor) return { ok: false, reason: 'unknown' }
-    const y = s.world.year
-    const spouse = { ...suitor, role: 'spouse', spouseIds: [...(suitor.spouseIds || []), s.self.id] }
+    const spouse = this._wed(suitor, AFFECTION_START + (suitor.personality === s.personality?.id ? AFFECTION_SAME_PERSONALITY : 0))
+    this._recalc(); this._notify()
+    this._emit('married', { spouse: spouse.given })
+    return { ok: true, spouse }
+  }
+
+  // Shared by the matchmaker's proposal and a courtship (1.8b-3a). Clears both.
+  _wed(person, affection) {
+    const s = this._s, f = s.family, y = s.world.year
+    const spouse = { ...person, role: 'spouse', spouseIds: [...(person.spouseIds || []), s.self.id] }
     s.self.spouseIds = [...(s.self.spouseIds || []), spouse.id]
     f.spouse          = spouse
     f.marriedYear     = Math.floor(y)
     f.spouseStageYear = y
     f.proposal        = null
+    f.court           = null
     f.nextProposalYear = null
     f.nextChildYear   = this._childInterval() ? y + this._randRange(FIRST_CHILD_YEARS) : null   // 2.6b planning
-    f.affection       = AFFECTION_START + (spouse.personality === s.personality?.id ? AFFECTION_SAME_PERSONALITY : 0)
+    f.affection       = Math.max(0, Math.min(100, Math.round(affection)))
     f.tolerant        = false
     f.nextEventYear   = null
+    f.spouseCd = {}; f.affTrail = []; f.lastAff = null
     this.addEvent({ text: `Year ${Math.floor(y)}: ${s.name} and ${Persons.fullName(spouse)} are wed. Two paths become one.`, type: 'special' })
     this._claimFirst('married')
-    this._recalc(); this._notify()
-    this._emit('married', { spouse: spouse.given })
-    return { ok: true, spouse }
+    return spouse
   }
 
   // "Decline all" — "Decide later" is UI-only (the proposal just stays pending; it never expires).
@@ -1521,17 +1600,17 @@ class GameState {
     const ctx = f.event
     s.spiritStones -= cost
     this._applyFamilyEffect(ch.effect)
-    const delta = this._changeAffection(ch.aff ? (ch.aff[f.spouse.personality] ?? ch.aff.default ?? 0) : 0)
+    const delta = this._changeAffection(ch.aff ? (ch.aff[f.spouse.personality] ?? ch.aff.default ?? 0) : 0, def.title)
     f.lastEventId = f.event.id
     f.event = null
     if (ctx.crisis) f.tally.crises++; else f.tally.events++
     const who = f.spouse.given
-    const heart = delta ? ` (${who} ♥${delta > 0 ? '+' : ''}${Math.round(delta)})` : ''
+    const heart = delta ? ` (${who}: affection ${delta > 0 ? '+' : ''}${Math.round(delta)})` : ''
     if (ch.result) this.addEvent({ text: this.familyText(`${def.title}: ${ch.result}${heart}`, ctx), type: delta < 0 ? 'negative' : 'positive' })
 
     let outcome = null
     if (ch.outcome === 'forgive') {
-      this._changeAffection(FORGIVE_AFFECTION); outcome = 'forgiven'
+      this._changeAffection(FORGIVE_AFFECTION, 'you forgave them'); outcome = 'forgiven'
     } else if (ch.outcome === 'duel') {
       f.duel = { year: Math.floor(s.world.year), reason: 'betrayal' }; outcome = 'duel'
       this._noteEnemy({ kind: 'person', personId: f.spouse.id, name: Persons.fullName(f.spouse), surname: f.spouse.family, why: 'betrayed you' })   // 2.6d
@@ -1543,6 +1622,7 @@ class GameState {
     } else if (ch.outcome === 'beg') {
       if (Math.random() < BEG_STAY_CHANCE) {
         f.affection = BEG_STAY_AFFECTION; outcome = 'stayed'
+        f.lastAff = { delta: 0, why: 'you begged them to stay', year: Math.floor(s.world.year) }
         this.addEvent({ text: `${who} sets down the bags. They will stay — for now.`, type: 'positive' })
       } else {
         this._spouseEnds('left', `${Persons.fullName(f.spouse)} hears you out, then leaves anyway.`); outcome = 'left'
@@ -1637,10 +1717,346 @@ class GameState {
       child.estranged = true; child.leftYear = Math.floor(s.world.year); f.tally.runaways++; outcome = 'estranged'
     }
     const delta = child.bond - before
-    const heart = delta ? ` (${child.given} ♥${delta > 0 ? '+' : ''}${Math.round(delta)})` : ''
+    const heart = delta ? ` (${child.given}: bond ${delta > 0 ? '+' : ''}${Math.round(delta)})` : ''
     if (ch.result) this.addEvent({ text: this.familyText(`${def.title}: ${ch.result}${heart}`, ev), type: delta < 0 || outcome === 'estranged' ? 'negative' : 'positive' })
     this._recalc(); this._notify()
     return { ok: true, bond: child.bond, outcome }
+  }
+
+  // ── 1.8b-3a (family.md): family agency — the player's own choices ────────
+  // Every action has a *Preview() the UI shows before the click (costs, odds, why it's locked) and the action
+  // itself returns {ok, …} | {ok:false, reason}. Cooldowns are game years (f.spouseCd / child.cd).
+
+  _yr() { return Math.floor(this._s.world.year) }
+  _qiSlice(frac) { const cap = this._s.derived.qiCap; return isFinite(cap) ? frac * cap : 0 }
+  _keyed(map, id) { return map ? (map[id] ?? map.default ?? 0) : 0 }
+
+  // Courtship ────────────────────────────────────────────────────────────────
+  courtCost() { return this.familyCost({ cost: { stones: COURT_SEEK_COST } }) }
+
+  canSeekMatch() {
+    const s = this._s, f = s.family
+    if (f.spouse) return { ok: false, reason: 'married' }
+    if (f.court) return { ok: false, reason: 'courting' }
+    if (Math.max(s.maxStageThisLife || 0, s.stageIndex) < PROPOSAL_MIN_STAGE) return { ok: false, reason: 'stage', minStage: PROPOSAL_MIN_STAGE }
+    if (f.seekCooldownYear != null && s.world.year < f.seekCooldownYear) return { ok: false, reason: 'cooldown', readyYear: Math.ceil(f.seekCooldownYear) }
+    if (s.spiritStones < this.courtCost()) return { ok: false, reason: 'stones', cost: this.courtCost() }
+    return { ok: true, cost: this.courtCost() }
+  }
+
+  // Pays the go-between and shows COURT_CANDIDATES strangers near your stage. Nothing else happens until you pick.
+  seekMatch() {
+    const chk = this.canSeekMatch()
+    if (!chk.ok) return chk
+    const s = this._s, f = s.family
+    s.spiritStones -= chk.cost
+    const candidates = []
+    for (let i = 0; i < COURT_CANDIDATES; i++) candidates.push(this._rollStranger('suitor'))
+    f.court = { candidates, target: null, interest: 0, meetings: 0, nextMeetYear: null, beat: null, lastBeatId: null }
+    this.addEvent({ text: `A go-between brings word of ${COURT_CANDIDATES} cultivators who might be courted.`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true, candidates }
+  }
+
+  courtTarget(personId) {
+    const s = this._s, f = s.family, c = f.court
+    if (!c || c.target) return { ok: false, reason: 'no_court' }
+    const p = c.candidates.find(x => x.id === personId)
+    if (!p) return { ok: false, reason: 'unknown' }
+    c.target = p; c.candidates = []
+    c.interest = COURT_INTEREST_START + (p.personality === s.personality?.id ? COURT_SAME_PERSONALITY : 0)
+    c.nextMeetYear = s.world.year
+    this.addEvent({ text: `You begin to court ${Persons.fullName(p)}.`, type: 'special' })
+    this._notify()
+    return { ok: true }
+  }
+
+  canMeet() {
+    const s = this._s, c = s.family.court
+    if (!c?.target) return { ok: false, reason: 'no_target' }
+    if (c.beat) return { ok: false, reason: 'pending' }
+    if (s.world.year < c.nextMeetYear) return { ok: false, reason: 'cooldown', readyYear: Math.ceil(c.nextMeetYear) }
+    return { ok: true }
+  }
+
+  // Draws the next meeting (a COURT_BEATS card). It waits until you answer it.
+  meetTarget() {
+    const chk = this.canMeet()
+    if (!chk.ok) return chk
+    const c = this._s.family.court
+    let pool = COURT_BEATS.filter(b => b.id !== c.lastBeatId && !(c.seen || []).includes(b.id))
+    if (!pool.length) pool = COURT_BEATS.filter(b => b.id !== c.lastBeatId)
+    const b = pool[Math.floor(Math.random() * pool.length)]
+    c.beat = { id: b.id }
+    this._notify()
+    return { ok: true, beat: b }
+  }
+
+  courtBeatDef(beat) { return COURT_BEATS.find(b => b.id === beat?.id) || null }
+
+  courtText(str) {
+    const t = this._s.family.court?.target
+    return String(str || '').replace(/\{them\}/g, t ? t.given : 'them').replace(/\{name\}/g, this._s.name)
+  }
+
+  resolveCourtBeat(i) {
+    const s = this._s, c = s.family.court
+    if (!c?.beat) return { ok: false, reason: 'no_beat' }
+    const def = this.courtBeatDef(c.beat), ch = def?.choices?.[i]
+    if (!ch) return { ok: false, reason: 'bad_choice' }
+    const cost = this.familyCost(ch)
+    if (s.spiritStones < cost) return { ok: false, reason: 'cant_afford' }
+    s.spiritStones -= cost
+    this._applyFamilyEffect(ch.effect)
+    const before = c.interest
+    c.interest = Math.max(0, Math.min(100, c.interest + this._keyed(ch.int, c.target.personality)))
+    const delta = Math.round(c.interest - before)
+    c.meetings++
+    c.lastBeatId = c.beat.id
+    c.seen = [...(c.seen || []), c.beat.id]
+    c.lastResult = { title: def.title, text: this.courtText(ch.result), delta }   // shown on the card (1.8b-3a)
+    c.beat = null
+    c.nextMeetYear = s.world.year + COURT_BEAT_GAP_YEARS
+    this.addEvent({ text: this.courtText(`${def.title}: ${ch.result}${delta ? ` (interest ${delta > 0 ? '+' : ''}${delta})` : ''}`), type: delta < 0 ? 'negative' : 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true, interest: c.interest, delta }
+  }
+
+  // Proposal odds, as parts (shown as a breakdown before you ask).
+  proposeChance() {
+    const s = this._s, c = s.family.court, t = c?.target
+    if (!t) return null
+    const gap = s.stageIndex - t.stageIndex
+    const parts = [
+      { label: `${t.given}'s interest`, value: c.interest / 100, op: 'base' },
+      { label: gap >= 0 ? `You stand ${gap} stage${gap === 1 ? '' : 's'} above them` : `They stand ${-gap} stage${gap === -1 ? '' : 's'} above you`, value: gap * COURT_STAGE_WEIGHT },
+      { label: 'Your karma', value: (s.karma - 50) * COURT_KARMA_WEIGHT },
+    ]
+    const raw = parts.reduce((a, p) => a + p.value, 0)
+    return { total: Math.max(COURT_PROPOSE_RANGE[0], Math.min(COURT_PROPOSE_RANGE[1], raw)), raw, parts,
+             meetings: c.meetings, need: COURT_BEATS_TO_PROPOSE, range: COURT_PROPOSE_RANGE }
+  }
+
+  canPropose() {
+    const c = this._s.family.court
+    if (!c?.target) return { ok: false, reason: 'no_target' }
+    if (c.beat) return { ok: false, reason: 'pending' }
+    if (c.meetings < COURT_BEATS_TO_PROPOSE) return { ok: false, reason: 'meetings', left: COURT_BEATS_TO_PROPOSE - c.meetings }
+    return { ok: true, chance: this.proposeChance().total }
+  }
+
+  propose() {
+    const chk = this.canPropose()
+    if (!chk.ok) return chk
+    const s = this._s, f = s.family, c = f.court, t = c.target
+    if (Math.random() < chk.chance) {
+      const spouse = this._wed(t, AFFECTION_START + (c.interest - 50) * COURT_AFFECTION_CARRY)
+      this._recalc(); this._notify()
+      this._emit('married', { spouse: spouse.given })
+      return { ok: true, accepted: true, chance: chk.chance, spouse }
+    }
+    f.spurned.push({ person: { ...t, role: 'spurned' }, interest: Math.round(c.interest), year: this._yr() })
+    if (f.spurned.length > SPURNED_MAX) f.spurned.shift()
+    f.court = null
+    f.seekCooldownYear = s.world.year + COURT_SEEK_COOLDOWN_YEARS
+    this.addEvent({ text: `${Persons.fullName(t)} hears your proposal out, and gently declines. The road stretches on.`, type: 'negative' })
+    this._recalc(); this._notify()
+    return { ok: true, accepted: false, chance: chk.chance }
+  }
+
+  withdrawCourtship() {
+    const s = this._s, f = s.family, c = f.court
+    if (!c) return { ok: false, reason: 'no_court' }
+    if (c.target) {
+      this.addEvent({ text: `You stop calling on ${Persons.fullName(c.target)}.`, type: 'neutral' })
+      f.seekCooldownYear = s.world.year + COURT_SEEK_COOLDOWN_YEARS
+    }
+    f.court = null
+    this._notify()
+    return { ok: true }
+  }
+
+  // Spouse actions ───────────────────────────────────────────────────────────
+  // kind: time | gift | dual. Preview fields: qi (cost), stones, aff (expected delta), qiGain + risk (dual).
+  spouseActionPreview(kind) {
+    const s = this._s, f = s.family, sp = f.spouse, def = SPOUSE_ACTIONS[kind]
+    if (!sp) return { ok: false, reason: 'no_spouse' }
+    if (!def) return { ok: false, reason: 'invalid' }
+    const out = { ok: true, kind }
+    const ready = f.spouseCd[kind]
+    if (ready != null && s.world.year < ready) Object.assign(out, { ok: false, reason: 'cooldown', readyYear: Math.ceil(ready) })
+    if (def.qiFrac) out.qi = this._qiSlice(def.qiFrac)
+    if (def.stones) out.stones = this.familyCost({ cost: { stones: def.stones } })
+    if (def.aff) out.aff = this._keyed(def.aff, sp.personality)
+    if (kind === 'dual') {
+      out.qiGainFrac = Math.max(DUAL_QI_RANGE[0], Math.min(DUAL_QI_RANGE[1], DUAL_QI_BASE + DUAL_QI_PER_STAGE * (sp.stageIndex - s.stageIndex)))
+      out.qiGain = this._qiSlice(out.qiGainFrac)
+      out.risk = Math.max(DUAL_RISK_RANGE[0], Math.min(DUAL_RISK_RANGE[1], (DUAL_SAFE_AFFECTION - f.affection) / 100))
+      out.aff = DUAL_AFFECTION
+    }
+    if (out.ok && out.qi && s.qi < out.qi) Object.assign(out, { ok: false, reason: 'qi' })
+    if (out.ok && out.stones && s.spiritStones < out.stones) Object.assign(out, { ok: false, reason: 'stones' })
+    return out
+  }
+
+  spouseAction(kind) {
+    const p = this.spouseActionPreview(kind)
+    if (!p.ok) return p
+    const s = this._s, f = s.family, sp = f.spouse, yr = this._yr()
+    f.spouseCd[kind] = s.world.year + SPOUSE_ACTIONS[kind].cdYears
+    if (p.qi) s.qi = Math.max(0, s.qi - p.qi)
+    if (p.stones) s.spiritStones -= p.stones
+    let res = { ok: true, kind }
+    if (kind === 'time') {
+      const d = this._changeAffection(p.aff, 'time spent together')
+      this.addEvent({ text: `Year ${yr}: you set cultivation aside for a season with ${sp.given}. (affection ${d >= 0 ? '+' : ''}${Math.round(d)})`, type: 'positive' })
+      res.aff = d
+    } else if (kind === 'gift') {
+      const d = this._changeAffection(p.aff, 'a gift')
+      this.addEvent({ text: `Year ${yr}: you bring ${sp.given} a gift from the market. (affection ${d >= 0 ? '+' : ''}${Math.round(d)})`, type: 'positive' })
+      res.aff = d
+    } else if (kind === 'dual') {
+      if (Math.random() < p.risk) {
+        const dv = DUAL_DEVIATION
+        this._applyFamilyEffect({ health: dv.health, integrity: dv.integrity })
+        const d = this._changeAffection(dv.aff, 'a dual cultivation gone wrong')
+        this.addEvent({ text: `Year ${yr}: your meridians and ${sp.given}'s will not align — the Qi turns on you both. (Health ${dv.health}, Integrity ${dv.integrity}, affection ${Math.round(d)})`, type: 'negative' })
+        res = { ...res, deviation: true, aff: d }
+      } else {
+        if (isFinite(s.derived.qiCap)) s.qi = Math.min(s.derived.qiCap, s.qi + p.qiGain)
+        const d = this._changeAffection(p.aff, 'dual cultivation')
+        this.addEvent({ text: `Year ${yr}: you and ${sp.given} cultivate as one; your Qi deepens. (+${Math.round(p.qiGainFrac * 100)}% of capacity, affection +${Math.round(d)})`, type: 'positive' })
+        res = { ...res, deviation: false, qiGain: p.qiGain, aff: d }
+      }
+    }
+    this._recalc(); this._notify()
+    return res
+  }
+
+  // Try for a child with your spouse — any Family Planning. A Cold spouse refuses (and says so).
+  tryChildPreview() {
+    const s = this._s, f = s.family
+    if (!f.spouse) return { ok: false, reason: 'no_spouse' }
+    if (f.expecting.some(e => e.partnerId === f.spouse.id)) return { ok: false, reason: 'expecting' }
+    if (f.childTryYear != null && s.world.year < f.childTryYear) return { ok: false, reason: 'cooldown', readyYear: Math.ceil(f.childTryYear) }
+    if (f.affection < AFFECTION_CRISIS) return { ok: false, reason: 'cold' }
+    return { ok: true }
+  }
+
+  tryForChild() {
+    const p = this.tryChildPreview()
+    const s = this._s, f = s.family
+    if (!p.ok) {
+      if (p.reason === 'cold') { this.addEvent({ text: `${f.spouse.given} turns away. "Not like this. Not now."`, type: 'negative' }); this._notify() }
+      return p
+    }
+    this._conceive(f.spouse)
+    if (f.childWish?.partnerId === f.spouse.id) f.childWish = null
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  _conceive(partner) {
+    const s = this._s, f = s.family
+    f.expecting.push({ partnerId: partner.id, dueYear: s.world.year + PREGNANCY_YEARS })
+    f.childTryYear = s.world.year + CHILD_TRY_GAP_YEARS
+    // The partner's own timer restarts from now (whatever the plan).
+    const interval = this._childInterval()
+    if (interval) {
+      if (f.spouse?.id === partner.id) f.nextChildYear = s.world.year + this._randRange(interval)
+      const lover = f.lovers.find(l => l.person.id === partner.id)
+      if (lover) lover.nextChildYear = s.world.year + this._randRange(interval)
+    }
+    this.addEvent({ text: `Year ${this._yr()}: ${Persons.fullName(partner)} is with child. The birth is due within the year.`, type: 'special' })
+  }
+
+  // Answer a partner's wish for a child ('ask' plan). No → the wish passes; the partner may be hurt.
+  answerChildWish(yes) {
+    const s = this._s, f = s.family, w = f.childWish
+    if (!w) return { ok: false, reason: 'no_wish' }
+    const partner = this._partnerById(w.partnerId, true)
+    f.childWish = null
+    if (!partner) { this._notify(); return { ok: false, reason: 'gone' } }
+    if (yes) {
+      this._conceive(partner)
+    } else {
+      const interval = this._childInterval() || CHILD_INTERVAL_BY_PLAN.ask
+      const next = s.world.year + this._randRange(interval)
+      let d = 0
+      if (f.spouse?.id === partner.id) { f.nextChildYear = next; d = this._changeAffection(this._keyed(CHILD_WISH_DECLINE_AFF, partner.personality), 'you said not now to a child') }
+      else { const l = f.lovers.find(x => x.person.id === partner.id); if (l) l.nextChildYear = next }
+      this.addEvent({ text: `You tell ${partner.given}: not now.${d ? ` (affection ${Math.round(d)})` : ''}`, type: 'neutral' })
+    }
+    this._recalc(); this._notify()
+    return { ok: true, yes: !!yes }
+  }
+
+  // Delegated plans (some/many): skip the next scheduled birth with your spouse — one more interval.
+  postponeChild() {
+    const s = this._s, f = s.family, interval = this._childInterval()
+    if (!f.spouse || f.planning === 'ask' || !interval || f.nextChildYear == null) return { ok: false, reason: 'nothing_scheduled' }
+    f.nextChildYear = Math.max(f.nextChildYear, s.world.year) + this._randRange(interval)
+    this.addEvent({ text: `You and ${f.spouse.given} agree: not yet.`, type: 'neutral' })
+    this._notify()
+    return { ok: true, nextYear: Math.ceil(f.nextChildYear) }
+  }
+
+  // Leave your spouse by choice. Children you share with them take it hard.
+  separateFromSpouse() {
+    const s = this._s, f = s.family, sp = f.spouse
+    if (!sp) return { ok: false, reason: 'no_spouse' }
+    for (const c of this._homeChildren()) if ((c.parents || []).includes(sp.id)) c.bond = Math.max(0, c.bond + SEPARATE_CHILD_BOND)
+    this._spouseEnds('divorced', `you and ${Persons.fullName(sp)} part ways. The marriage is over.`)
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  // Raising a child ──────────────────────────────────────────────────────────
+  // kind: time | teach | gift. Preview: qi, stones, bond (expected), xp, morality (expected shift), minAge.
+  childActionPreview(childId, kind) {
+    const s = this._s, c = s.family.children.find(x => x.id === childId), def = CHILD_ACTIONS[kind]
+    if (!c || !def) return { ok: false, reason: 'unknown' }
+    if (!c.alive || c.estranged) return { ok: false, reason: 'gone' }
+    const age = this._childAge(c)
+    const out = { ok: true, kind, bond: this._keyed(def.bond, c.personality) }
+    const minAge = kind === 'teach' ? TEACH_MIN_AGE : kind === 'gift' ? GIFT_MIN_AGE : 0
+    if (def.qiFrac) out.qi = this._qiSlice(def.qiFrac)
+    if (def.stones) out.stones = this.familyCost({ cost: { stones: def.stones } })
+    if (def.xp) out.xp = def.xp
+    if (kind === 'teach') out.morality = Math.round((this._selfMorality() - (c.morality ?? 0)) * TEACH_MORALITY_PULL)
+    if (kind === 'gift' && def.spoil?.[c.personality]) out.morality = def.spoil[c.personality]
+    const ready = c.cd?.[kind]
+    if (age < minAge) return { ...out, ok: false, reason: 'young', minAge }
+    if (ready != null && s.world.year < ready) return { ...out, ok: false, reason: 'cooldown', readyYear: Math.ceil(ready) }
+    if (out.qi && s.qi < out.qi) return { ...out, ok: false, reason: 'qi' }
+    if (out.stones && s.spiritStones < out.stones) return { ...out, ok: false, reason: 'stones' }
+    return out
+  }
+
+  childAction(childId, kind) {
+    const p = this.childActionPreview(childId, kind)
+    if (!p.ok) return p
+    const s = this._s, c = s.family.children.find(x => x.id === childId), def = CHILD_ACTIONS[kind]
+    c.cd = c.cd || {}; c.raised = c.raised || { time: 0, teach: 0, gift: 0 }
+    c.cd[kind] = s.world.year + def.cdYears
+    c.raised[kind] = (c.raised[kind] || 0) + 1
+    if (p.qi) s.qi = Math.max(0, s.qi - p.qi)
+    if (p.stones) s.spiritStones -= p.stones
+    const before = c.bond
+    c.bond = Math.max(0, Math.min(100, c.bond + p.bond))
+    if (p.morality) c.morality = Math.max(-100, Math.min(100, (c.morality ?? 0) + p.morality))
+    if (p.xp) {
+      c.xp += p.xp
+      // Before awakening it's a head start (banked, at most one stage); after, it's real progress.
+      if (this._childAge(c) >= AWAKENING_AGE) this._growChild(c, Math.min(SPOUSE_STAGE_CAP, s.stageIndex))
+      else c.xp = Math.min(c.xp, 1)
+    }
+    const d = Math.round(c.bond - before)
+    const text = { time: `you spend a season with ${c.given}`, teach: `you teach ${c.given} your art`,
+                   gift: `you give ${c.given} pills and spirit stones` }[kind]
+    this.addEvent({ text: `Year ${this._yr()}: ${text}. (${c.given}: bond ${d >= 0 ? '+' : ''}${d})`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true, bond: c.bond, delta: d }
   }
 
   // ── 2.6c (clan-succession.md): heirs + the Tournament of Heirs ─────────────
@@ -1732,7 +2148,7 @@ class GameState {
           lose.alive = false; lose.diedYear = yr; lose.cause = 'tournament'
           f.tally.tournamentDeaths++
           s.karma = Math.max(0, s.karma + TOURNAMENT_KARMA_PER_DEATH)
-          if (f.spouse && (lose.parents || []).includes(f.spouse.id)) this._changeAffection(TOURNAMENT_SPOUSE_AFFECTION_PER_DEATH)
+          if (f.spouse && (lose.parents || []).includes(f.spouse.id)) this._changeAffection(TOURNAMENT_SPOUSE_AFFECTION_PER_DEATH, `${lose.given} died in the tournament`)
         }
       }
       t.pool = t.pool.filter(id => id !== lose.id)
@@ -3078,10 +3494,14 @@ class GameState {
     const fam = s.family
     if (fam && Array.isArray(fam.encounters) && s.world && (s.maxStageThisLife || 0) >= PROPOSAL_MIN_STAGE && fam.encounters.length < LOVER_ENCOUNTER_MAX &&
         Math.random() < LOVER_ENCOUNTER_CHANCE) {
-      const person = this._rollStranger('stranger')
-      const flavor = LOVER_ENCOUNTER_TEXT[Math.floor(Math.random() * LOVER_ENCOUNTER_TEXT.length)]
-      fam.encounters.push({ person, place: loc.name, text: flavor, year: Math.floor(s.world.year) })
-      this.addEvent({ text: `At ${loc.name}, ${Persons.fullName(person)} ${flavor}. (Explore tab)`, type: 'special' })
+      // 1.8b-3a: sometimes it's a suitor who once refused you (family.md → spurned).
+      const old = Array.isArray(fam.spurned) && fam.spurned.length && Math.random() < SPURNED_ENCOUNTER_CHANCE
+        ? fam.spurned.splice(Math.floor(Math.random() * fam.spurned.length), 1)[0] : null
+      const person = old ? { ...old.person, role: 'stranger' } : this._rollStranger('stranger')
+      const flavor = old ? 'once refused your proposal, and now falls into step beside you'
+        : LOVER_ENCOUNTER_TEXT[Math.floor(Math.random() * LOVER_ENCOUNTER_TEXT.length)]
+      fam.encounters.push({ person, place: loc.name, text: flavor, year: Math.floor(s.world.year), ...(old ? { spurned: true } : {}) })
+      this.addEvent({ text: `At ${loc.name}, ${Persons.fullName(person)} ${flavor}. (Roam → Explore)`, type: 'special' })
       this._emit('lover_encounter', { name: Persons.fullName(person) })
     }
 

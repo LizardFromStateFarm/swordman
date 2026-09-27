@@ -15,7 +15,7 @@ const tickYears = (gs, n) => { for (let i = 0; i < n; i++) { gs.get().world.year
 ;(async () => {
   // Planning
   { const { sim, gs } = await married(1); const f = gs.get().family
-    assert(f.planning === 'many' && f.nextChildYear != null, 'default planning many, first child scheduled')
+    assert(f.planning === 'ask' && f.nextChildYear != null, 'default planning ask (1.8b-3a), first wish scheduled')
     gs.setFamilyPlanning('none'); const n0 = f.children.length; tickYears(gs, 200)
     assert(gs.get().family.children.length === n0, `planning none: no births in 200 years (${n0})`)
     gs.setFamilyPlanning('some'); const due = gs.get().family.nextChildYear - gs.get().world.year
@@ -79,5 +79,5 @@ const tickYears = (gs, n) => { for (let i = 0; i < n; i++) { gs.get().world.year
   // Migration backfill (child from 2.5-era save: no bond/morality/xp)
   { const { sim, gs } = await married(6); const f = gs.get().family
     const c = gs._makeChild(f.spouse); delete c.bond; delete c.morality; delete c.xp; delete f.planning; gs._recalc()
-    assert(c.bond === 50 && c.xp === 0 && c.morality === (sim.data && 0 || c.morality) && f.planning === 'many', `old child backfilled (bond ${c.bond}, morality ${c.morality}, planning ${f.planning})`) }
+    assert(c.bond === 50 && c.xp === 0 && c.morality === (sim.data && 0 || c.morality) && f.planning === 'ask', `old child backfilled (old default many → ask) (bond ${c.bond}, morality ${c.morality}, planning ${f.planning})`) }
 })()

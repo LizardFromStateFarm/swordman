@@ -9,6 +9,7 @@ async function married(seed) {
   s.stageIndex = 12; s.maxStageThisLife = 12; s.spiritStones = 1e6; gs._recalc()
   s.family.nextProposalYear = s.world.year - 1; gs._tickFamily()
   const r = gs.acceptSuitor(gs.get().family.proposal.suitors[0].id)
+  gs.setFamilyPlanning('many')   // timer births are an explicit delegation since 1.8b-3a
   return { sim, gs, s: gs.get(), r }
 }
 const years = (sim, n) => { for (let i = 0; i < n * 120 + 5; i++) sim.step(1) }

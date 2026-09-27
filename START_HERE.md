@@ -31,7 +31,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
-| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted by the user); next 1.8b-3 Family agency |
+| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family view + agency ✅ (7.5, accepted); next: Clan view + Hall (user) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -93,10 +93,13 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   the sprites: ⚡ ×38, ☯ ×25 render as color emoji on canvas). Plan: 1.8c art audit → A1 emoji purge + lint → A2
   bake-off (grid ASCII vs layered glyph compositor vs shape-to-glyph + ink-wash effects; user picks) → A3 engine with
   swappable parts → A4 re-art. **No-emoji rule** is in CLAUDE.md now.
-- **Family agency (→ 1.8b):** player decisions currently simulated: courtship only via matchmaker, spouse affection
-  only drifts/random events, children born on a timer (None/Some/Many), child bond only via random events/neglect,
-  affairs discovered by dice and ending on their own, tournament/duel fights auto-rolled. Rule: CLAUDE.md Depth
+- **Family agency:** 1.8b-3a (2026-09-27) fixed courtship (you choose), spouse actions, per-child "Ask me" wishes
+  and raising actions. **Still simulated → 1.8b-3b:** affairs discovered by dice with no hide/confess, affairs
+  ending on their own, a lover's child without a say, tournament/duel fights auto-rolled. Rule: CLAUDE.md Depth
   Pass #6 (player choices are never simulated).
+- **Family view leftovers (1.8b-3a):** no hint of what each temper *likes* beyond the blurb and the meeting-choice
+  approach hints (a "likes/dislikes" line per personality would need data); lovers are still a plain list (3b);
+  Overlay tab pane is small, so the married view is ~3 screens.
 - **1.8c baseline bugs** (ui-review.md → "Bugs found by the baseline"): breakthrough sprite never displays (overwritten by
   the same-frame notify); beasts show frame 0 only. (Fixed in 1.8b-1: banter bubble over popups, toasts over content,
   Stats row collisions, duplicated automation, Hall see-through, titlebar name wrap.)
@@ -110,6 +113,26 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 21
+Agent: **1.8b-3a Family view + family agency, part 1** (user approved the split into 3a/3b and "Ask me" as the
+  default plan). As-built: family.md → "1.8b-3a", ui-layout.md → "Family view".
+  - Courtship you choose: seek a match (stones) → 3 candidates → meetings (COURT_BEATS, each choice has an approach
+    seal + hint, COURT_WAYS) → propose with shown odds (data-bd="propose"). Refusal → f.spurned → can return as a road
+    encounter. Matchmaker proposals unchanged.
+  - Spouse actions (time · gift · dual cultivation w/ deviation risk · try for a child · separate), per-action cooldowns;
+    affection records its cause (f.lastAff) + yearly trail (trend arrow) + data-bd="affection" card.
+  - FAMILY_PLAN_DEFAULT 'ask': partner timers raise a wish (f.childWish, urgent 願 attention item); Yes → f.expecting →
+    born next year. Few/Many = explicit delegation + "Not this time". Migration: old 'many' → 'ask' (planVer).
+  - Raising: per-child time · teach (morality pulled toward yours, head-start xp before awakening) · resources.
+  - New renderer/game/family-view.js; old renderFamilyRows removed; all children listed. ♥ replaced by words
+    (emoji lint). ⚙ Reduce motion now also sets :root[data-motion] for CSS pulses.
+  - Tests: new checks/family-agency.js (44); 4 older checks now set 'many' explicitly; new smoke scenarios/family.js.
+    npm test (79) · npm run checks (329) · smoke zero console errors · sim 60h × 3 profiles × 2 seeds: 0 errors/violations.
+  - **Visual Review Gate: 7.0 → 7.2 → 7.5 over 3 cycles (no criterion < 6) → accepted by the user** ("the family tab
+    gets a pass"). Remaining asks in ui-review.md. User asked next for: Clan tab (hard to read), Ancestral Hall,
+    Overlay spacing bugs ("beast realm reach and other things"), and a themed scrollbar instead of the Windows one.
+  Next: **1.8b-4 Clan view + Hall** (+ scrollbar, Overlay spacing), then 1.8b-3b.
+
 Date: 2026-09-26 (day session, user present) — part 20
 Agent: **1.8b-2 Character view + breakdowns** (user approved the assessment). As-built: ui-layout.md → "Breakdowns +
   Character view", core-loop.md → "Breakdowns".

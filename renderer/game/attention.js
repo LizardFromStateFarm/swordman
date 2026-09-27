@@ -28,6 +28,11 @@ function collectAttention(s, gs) {
     const c = (f.children || []).find(k => k.id === f.childEvent.childId)
     add('urgent', 'child-event', '子', `${c?.given || 'Your child'} needs a parent`, 'A choice about raising them waits on you.', 'family', 'family')
   } else if (s.upbringing?.event) add('urgent', 'upbringing', '幼', 'A matter from your youth', 'How you answer shapes your bond with the clan head.', 'family', 'family')
+  // 1.8b-3a: a partner's wish for a child (the 'ask' plan) is a decision; it waits until you answer
+  if (f.childWish) {
+    const p = f.spouse?.id === f.childWish.partnerId ? f.spouse : (f.lovers || []).find(l => l.person.id === f.childWish.partnerId)?.person
+    if (p) add('urgent', 'child-wish', '願', `${p.given} wishes for a child`, 'Yes, or not now. Nothing happens until you choose.', 'family')
+  }
   if (f.tournament) add('urgent', 'tournament', '奪', 'The Tournament of Heirs waits', 'You pick every pairing. It will not continue without you.', 'family', 'tournament')
 
   // ── Sect wars ──
@@ -48,6 +53,11 @@ function collectAttention(s, gs) {
     const t = typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES.find(b => b.id === wild[0].typeId) : null
     add('ready', 'beasts', '獸', wild.length === 1 ? `A wild ${t?.name || 'beast'} lingers` : `${wild.length} wild beasts linger`, (s.inventory?.beast_taming_talisman || 0) > 0 ? 'You carry a Taming Talisman.' : 'Taming needs a Beast Taming Talisman.', 'beasts')
   }
+  // 1.8b-3a courtship: candidates to choose from, a meeting waiting on your answer, or one you can arrange
+  const court = f.court
+  if (court && !court.target && (court.candidates || []).length) add('ready', 'court', '媒', 'The go-between waits', `${court.candidates.length} candidates. Choose whom to court.`, 'family')
+  else if (court?.beat) add('ready', 'court', '緣', `${court.target.given} is waiting`, 'A meeting is underway. Answer them.', 'family')
+  else if (court?.target && gs.canMeet?.().ok) add('ready', 'court', '緣', `You could call on ${court.target.given}`, gs.canPropose?.().ok ? 'Or ask for their hand.' : 'Arrange another meeting.', 'family')
   if (gs.isClanHead?.() && !f.heirId && !f.tournament && (gs.eligibleHeirs?.() || []).length)
     add('ready', 'heir', '嗣', 'No heir is named', 'If your path ends today, the clan chooses without you.', 'family')
 
@@ -56,6 +66,9 @@ function collectAttention(s, gs) {
   if (!s.expedition?.active && !autoOn('autoExplore')) add('idle', 'expedition', '歷', 'No expedition underway', 'Send one out: loot, stones and beast sightings.', 'explore')
   if (s.sect?.id && !autoOn('autoSectMissions') && typeof SECT_MAX_MISSIONS !== 'undefined' && (s.sect.activeMissions || []).length < SECT_MAX_MISSIONS)
     add('idle', 'missions', '任', 'A mission slot is open', `${(s.sect.activeMissions || []).length} of ${SECT_MAX_MISSIONS} missions underway.`, 'sect')
+  // 1.8b-3a: a spouse cooling toward you, when something can be done about it now
+  if (f.spouse && f.affection < 50 && (gs.spouseActionPreview?.('time').ok || gs.spouseActionPreview?.('gift').ok))
+    add('idle', 'spouse-cool', '冷', `${f.spouse.given} is growing distant`, `Affection ${Math.round(f.affection)}. Time together or a gift would help.`, 'family')
   if (typeof TECHNIQUES !== 'undefined') {
     const t = TECHNIQUES.find(t => !s.techniques.includes(t.id) && s.stageIndex >= t.minStage && (s.spiritStones >= t.cost || t.id === s.inheritedManual))
     if (t) add('idle', 'technique', '功', `You can learn ${t.name}`, t.id === s.inheritedManual ? 'Your Family Manual: free to learn.' : `Costs 石 ${t.cost}; you have ${Math.floor(s.spiritStones)}.`, 'techniques')

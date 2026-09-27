@@ -134,12 +134,49 @@ class Bot {
     return false
   }
 
+  // 1.8b-3a (family.md): the player's own family actions. 'active' courts, tends its spouse (time/gift below
+  // Warm, dual cultivation only when nearly safe) and spends time with its most distant child; casual does each
+  // now and then; afk only courts once in a while (so every path is exercised). One action per call.
+  familyAgency() {
+    const f = this.s.family, gs = this.gs, active = this.profile === 'active', odds = active ? 1 : this.profile === 'casual' ? 0.05 : 0.01
+    if (!f.spouse) {
+      const c = f.court
+      if (c?.beat) {
+        const def = gs.courtBeatDef(c.beat), p = c.target.personality
+        const opts = def.choices.map((ch, i) => ({ i, v: ch.int ? (ch.int[p] ?? ch.int.default ?? 0) : 0, cost: gs.familyCost(ch) })).filter(o => this.s.spiritStones >= o.cost)
+        const pick = active ? opts.sort((a, b) => b.v - a.v)[0] : opts[Math.floor(this.rand() * opts.length)]
+        return pick ? this.do('court_meeting', gs.resolveCourtBeat(pick.i)) : this.do('court_withdraw', gs.withdrawCourtship(), false)
+      }
+      if (c?.target) {
+        if (gs.canPropose().ok) { const r = gs.propose(); return this.do(r.accepted ? 'court_wed' : 'court_refused', r) }
+        if (gs.canMeet().ok) return this.do('court_meet', gs.meetTarget(), false)
+        return false
+      }
+      if (c?.candidates?.length) {
+        const best = [...c.candidates].sort((a, b) => b.stageIndex - a.stageIndex)[0]
+        return this.do('court_target', gs.courtTarget(best.id), false)
+      }
+      if (!f.proposal && gs.canSeekMatch().ok && this.rand() < odds * 0.2) return this.do('seek_match', gs.seekMatch())
+      return false
+    }
+    if (this.rand() >= odds) return false
+    if (f.affection < 60) for (const k of ['time', 'gift']) if (gs.spouseActionPreview(k).ok) return this.do('spouse_' + k, gs.spouseAction(k))
+    const dual = gs.spouseActionPreview('dual')
+    if (dual.ok && dual.risk <= 0.05) return this.do('spouse_dual', gs.spouseAction('dual'))
+    const kid = gs._homeChildren().filter(c => gs.childActionPreview(c.id, 'time').ok).sort((a, b) => a.bond - b.bond)[0]
+    if (kid && kid.bond < 45) return this.do('child_time', gs.childAction(kid.id, 'time'))
+    return false
+  }
+
   family() {
     const f = this.s.family
     if (!f) return false
     // 2.6b Family Planning, set once per life: 'active' keeps families small ('some'), casual/afk go big ('many').
     // (Was once per run until 2.6d — every later life silently fell back to the default 'many'.)
-    if (this._plannedFor !== this.s.self.id) { this._plannedFor = this.s.self.id; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : 'many') }
+    // 1.8b-3a: casual keeps the "Ask me" default and answers each wish; afk delegates ('many').
+    if (this._plannedFor !== this.s.self.id) { this._plannedFor = this.s.self.id; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : this.profile === 'casual' ? 'ask' : 'many') }
+    if (f.childWish) return this.do('child_wish', this.gs.answerChildWish(this.rand() < 0.75))
+    if (this.familyAgency()) return true
     // 2.6e: an NPC calls you out for the head seat — decide lethal or not. 'active' plays it savvy (lethal
     // only when clearly favored); casual/afk decide at random.
     if (f.headChallenge) {

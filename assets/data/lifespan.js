@@ -21,6 +21,8 @@ const SPOUSE_STAGE_CAP            = 21          // ...never ascends. Spouses nev
 // No cap on children (user, 2026-09-26) — each partner (spouse or lover) has their own timer, paced by the
 // player's Family Planning choice (2.6b, clan-succession.md). 'none' = no children at all.
 const FIRST_CHILD_YEARS           = [8, 20]     // after a couple gets together (or planning turns back on)
-const CHILD_INTERVAL_BY_PLAN      = { none: null, some: [40, 70], many: [15, 30] }
-const FAMILY_PLAN_DEFAULT         = 'many'
+// 'ask' (1.8b-3a default): the timer only raises a partner's WISH for a child; you answer it (family.md).
+// some/many = births delegated to the timer (still overridable per case); none = no children.
+const CHILD_INTERVAL_BY_PLAN      = { ask: [15, 30], none: null, some: [40, 70], many: [15, 30] }
+const FAMILY_PLAN_DEFAULT         = 'ask'
 const ADULT_AGE                   = 16          // heir-eligible

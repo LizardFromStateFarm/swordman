@@ -1,5 +1,5 @@
 # Family — Reference & Build Spec
-_Covers: assets/data/family.js · assets/data/lifespan.js (child timing) · game-state.js (`s.family`, `_tickFamily`) ·
+_Covers: assets/data/family.js · assets/data/lifespan.js (child timing) · game-state.js (`s.family`, `_tickFamily`) · renderer/game/family-view.js (1.8b-3a) ·
 game.js (family overlay, Stats family section, Explore encounter cards) · scripts/sim/* · Phase: 16-lite+ (M2) ·
 Updated: 2026-09-26_
 
@@ -54,7 +54,7 @@ tally: {events, crises, affairs, discovered, accept, sabotage, duel, suicide, mu
   Family Planning interval (`CHILD_INTERVAL_BY_PLAN`, 2.6b). Children growing up, bond, child events and morality:
   see clan-succession.md §2.6b.
 
-## API (game-state.js)
+## API (game-state.js) — see also "1.8b-3a → As built" below
 - `resolveMarriageEvent(i)` → `{ok, affection, outcome}` · `{ok:false, reason:'no_event'|'bad_choice'|'cant_afford'}`
 - `resolveDuel('fight'|'flee')` → `{ok, outcome:'won'|'lost'|'fled', chance}` · `{ok:false, reason:'no_duel'|'bad_choice'}`
 - [B] `seduceEncounter(i)` → `{ok, success}` · `dismissEncounter(i)` → `{ok}` · `endAffair(personId)` → `{ok}`
@@ -93,3 +93,66 @@ duels fled; active: 106 affairs → 47 discovered, duels 4 won / 4 lost / 11 fle
 **Open tuning question:** casual lives now average ~49 children (lives run ~1,100 game years with no cap). Stats shows
 the 12 youngest; save size grows ~0.3 KB per child. A genre-flavored fix would be longer child intervals at higher
 realms ("the higher the realm, the harder to conceive") — not done without the user's call.
+
+## 1.8b-3a — Family agency + Family view (spec, 2026-09-27; user approved the split + "Ask me" default)
+Depth Pass rule 6: nothing the player would decide about courtship, their spouse or their children is decided for
+them. NPCs still act (a matchmaker's offer, a spouse's wish for a child, a spouse refusing when Cold). 1.8b-3b
+(next) covers affairs on your terms (end/hide/confess, a lover's child as a choice) and a say in duel/tournament fights.
+
+**Courtship (you choose who).** Unmarried, from `PROPOSAL_MIN_STAGE`: **Seek a match** (stones, `COURT_SEEK_COST`
+scaled like event costs) shows `COURT_CANDIDATES` strangers. Pick one → `f.court.target`, `interest` starts at
+`COURT_INTEREST_START` (+`COURT_SAME_PERSONALITY`). Each **meeting** (one per `COURT_BEAT_GAP_YEARS`) draws a
+`COURT_BEATS` card, 3 choices, interest delta keyed by the *target's* personality. After `COURT_BEATS_TO_PROPOSE`
+meetings you may **Propose**: chance = interest/100 + `COURT_STAGE_WEIGHT` × (your stage − theirs) + (karma − 50) ×
+`COURT_KARMA_WEIGHT`, clamped to `COURT_PROPOSE_RANGE` (breakdown `data-bd="propose"`). Yes → wed, affection starts
+at `AFFECTION_START + (interest − 50) × COURT_AFFECTION_CARRY`. No → they join `f.spurned` (≤ `SPURNED_MAX`), and
+**Seek** cools down `COURT_SEEK_COOLDOWN_YEARS`. **Withdraw** any time (same cooldown). A spurned suitor can later
+turn up as a road encounter (`SPURNED_ENCOUNTER_CHANCE` of encounters, "an old flame"). Matchmaker proposals stay.
+
+**Spouse actions** (`SPOUSE_ACTIONS`, each on its own cooldown in `f.spouseCd`):
+- 伴 **Spend time** — costs a slice of Qi (`qiFrac`), affection by personality.
+- 禮 **Bring a gift** — stones (scaled), affection by personality (misers and gluttons love it).
+- 合 **Dual cultivation** — gain Qi = `DUAL_QI_BASE + DUAL_QI_PER_STAGE × (spouse stage − yours)` (clamped
+  `DUAL_QI_RANGE`) of the cap, +affection. Risk of a **qi deviation** = clamp((`DUAL_SAFE_AFFECTION` − affection)/100,
+  `DUAL_RISK_RANGE`) → `DUAL_DEVIATION` (Health, Integrity, affection). Both numbers shown on the button.
+- 嗣 **Try for a child** — if affection < `AFFECTION_CRISIS` the spouse refuses (says so in the log); else a child is
+  expected in `PREGNANCY_YEARS`. Cooldown `CHILD_TRY_GAP_YEARS`.
+- **Separate** — divorce by choice (confirm). Children shared with that spouse lose `SEPARATE_CHILD_BOND` bond.
+Every affection change records its cause (`f.lastAff = {delta, why, year}`); `f.affTrail` samples affection each
+game year (last `AFF_TRAIL_MAX`) for the trend arrow. Breakdown `data-bd="affection"`.
+
+**Children: "Ask me" is the default plan.** `planning` ∈ `ask` (default) · none · some · many. Under `ask` a
+partner's child timer raises a **wish** (`f.childWish = {partnerId, year}`, one at a time, never expires) — Yes →
+expecting; Not now → affection `CHILD_WISH_DECLINE_AFF` (by personality) and the timer restarts. Some/Many are an
+explicit delegation (births as before) and stay overridable: **Try for a child** always works, and **Not this time**
+pushes the next delegated birth back one interval. Migration: saves on the old default `many` become `ask` (some/none
+were explicit choices and are kept). `f.expecting = [{partnerId, dueYear}]` → born on the year tick.
+
+**Raising a child** (`CHILD_ACTIONS`, per-child cooldowns `c.cd`, tallies `c.raised`):
+- 伴 **Spend time** (any age) — Qi slice, bond by the child's personality.
+- 授 **Teach your art** (from `TEACH_MIN_AGE`) — bigger Qi slice, xp (a head start banked before awakening), bond by
+  personality, and morality pulled `TEACH_MORALITY_PULL` toward *your* morality (karma shapes your children).
+- 資 **Give resources** (from `GIFT_MIN_AGE`) — stones, xp, bond; spoils some personalities (morality −).
+Neglect drift, child events and runaways stay as in 2.6b; these actions are how you fight the drift.
+
+**As built (2026-09-27):**
+- API (game-state.js): `canSeekMatch()` · `seekMatch()` · `courtTarget(id)` · `canMeet()` · `meetTarget()` ·
+  `courtBeatDef()` · `courtText()` · `resolveCourtBeat(i)` · `proposeChance()` → `{total, raw, parts, meetings, need}` ·
+  `canPropose()` · `propose()` → `{accepted}` · `withdrawCourtship()` · `spouseActionPreview(kind)` / `spouseAction(kind)`
+  (time · gift · dual) · `tryChildPreview()` / `tryForChild()` · `answerChildWish(yes)` · `postponeChild()` ·
+  `separateFromSpouse()` · `childActionPreview(id, kind)` / `childAction(id, kind)` (time · teach · gift). Previews return
+  `{ok, reason?, readyYear?, minAge?, qi?, stones?, aff?/bond?, xp?, morality?, qiGain?, risk?}`; reasons: cooldown ·
+  qi · stones · young · gone · expecting · cold · stage · courting · meetings · pending · married.
+- Internals: `_wed(person, affection)` (shared with `acceptSuitor`), `_birth(partnerId)` (every birth; lover-child
+  discovery moved here), `_raiseChildWish`, `_conceive`, `_partnerById`, `_changeAffection(delta, why)`.
+- New state: `planVer, childWish, expecting[], spouseCd{}, childTryYear, lastAff, affTrail[], court, seekCooldownYear,
+  spurned[]` on `s.family`; `cd{}` + `raised{}` on each child. `court = {candidates[], target, interest, meetings,
+  nextMeetYear, beat, lastBeatId, seen[]}`. Emits `child_wish`.
+- Seek unlocks at `max(maxStageThisLife, stageIndex) ≥ PROPOSAL_MIN_STAGE` (dev presets leave maxStageThisLife at 0).
+- Sim (60h × 3 profiles × 2 seeds, bot: casual keeps "Ask me" and says yes 75%, active delegates 'some', afk 'many'):
+  0 errors, 0 invariant violations; casual median children per life 11 (was ~49 under the old 'many' default).
+- Checks: `scripts/sim/checks/family-agency.js` (44). Smoke: `scripts/smoke/scenarios/family.js` (fam-*.png).
+
+**Family view (Kin → Family)** — spouse card (or courtship card), wish card, children grid (all children, no
+youngest-12 cap; Overlay = compact rows, tap to expand actions), lovers, former spouses (folded), heir row. Attention:
+urgent 願 child wish; ready 約 courtship meeting; idle 冷 spouse Cool/Cold with an action ready.

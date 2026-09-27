@@ -117,6 +117,28 @@ for War (1.8b-4 extends it across the Clan view).
 - `stageShortName(i)` ("Qi Condensation 4", "Core Formation · Early") replaces "Stage N+" in the Techniques, Explore
   and Sect locks. Use it for any new stage requirement.
 - Not zoomed by the ⚙ text-size setting yet (that only zooms #tab-body); the card is 11px minimum.
+- 1.8b-3a adds `affection` (spouse card meter) and `propose` (courtship odds) kinds.
+
+## Family view (1.8b-3a)
+- `renderer/game/family-view.js` → `FamilyView(gameState, helpers)`; game.js `renderFamily()` creates it lazily and
+  passes `esc, fmt, stageLabel, affectionLabel, bondLabel, latinOnly, confirm, flash, wire (wireKinButtons),
+  endText, pendingKey`. One delegated click listener on `#tab-family` handles every `data-fa` action; the old ids
+  (`_matchmaker`, `_family-matter`, `_choose-heir`, `_tournament`, `data-plan`, `data-end-affair`) still go through
+  `wireKinButtons`. The open child card (`openChild`) is view state only.
+- **Structure:** `.fam-view` = two `.fam-col`s (wish + partner card + lovers/former + heir · children). Columns flow
+  side by side from ~530px (Desktop); Expanded and Overlay get one column. In **Overlay** the columns are
+  `display: contents` and ordered wish → partner → children → the rest.
+- **Partner card** is one of: spouse (`.fam-card.spouse`: affection meter `data-bd="affection"` with the 25/75 tier
+  ticks, trend arrow over `AFF_TREND_YEARS`, last cause; flags; 4 actions in `.fa-grid`), courtship (`.court`:
+  candidate cards → interest meter + meeting pips → the meeting card inline, `.court-beat`), or alone (`.alone`: seek +
+  a pending matchmaker). A partner's wish is `.fam-wish` above it (a slow gold pulse, off with ⚙ Reduce motion or
+  `prefers-reduced-motion`, via `:root[data-motion]` set by settings.js).
+- **Action button** `.fa-btn` = glyph + name + effect line (`.up` jade / `.down` red / `.cost` gold) or a `封` lock
+  reason from the `*Preview()` result. Tones `.tone-jade/-warm/-gold/-red/-dim` are shared by bars, words and tags
+  (`affectionLabel`/`bondLabel` now return `tone`).
+- **Children:** `.kid` cards (name, age, stage or "not yet awakened", personality + morality tags, bond meter);
+  tap to open `.kid-acts`. All children are listed (the old "youngest 12" cap is gone); the dead and estranged fold
+  into "Gone from the house". Family Planning is the segmented control at the top (Ask me · Few · Many · None).
 
 ## Render Function Pattern
 All `render<X>(s)` functions:
@@ -288,7 +310,7 @@ Home: **O** Overlay · **E** Expanded · **D** Desktop · **B** Banner.
 | Member wars + Standing Orders | Win odds only shown during a call; order effects are hover-only text | Orders mixed into the mission list | M | War as its own section, orders beside it |
 | Own sect | Building effects are one line each; per-disciple contribution hidden; **15 screens** of scroll | Everything in one list | **H** | Sub-views: Overview · Buildings · Disciples · War (E/D) |
 | Automation / Active-Idle mode | What Active Mode actually gives (BT focus window, Push Harder, Master's Touch) is never explained | Duplicated in 3 places | H | One Mode panel off the 💤/⚡ button |
-| Family (spouse, lovers, children) | Why affection changes, and its trend, are not shown; morality/tolerance hidden (`morality` has **0** UI references); children shown minimally (youngest 12 only) | All in Stats, 5+ screens down; pending matters come only as a modal or a buried button | **H** | Family view (E/D) + attention strip |
+| Family (spouse, lovers, children) | Why affection changes, and its trend, are not shown; morality/tolerance hidden (`morality` has **0** UI references); children shown minimally (youngest 12 only) | All in Stats, 5+ screens down; pending matters come only as a modal or a buried button | **H** | Family view (E/D) + attention strip — **fixed in 1.8b-3a** (affection trend + cause + breakdown, morality words on every child, all children, actions on the cards) |
 | Heir / Tournament | Heir candidates aren't compared (strength, bond, trauma) | Buttons deep in Stats | H | Family → Succession panel |
 | Clan politics (2.6e/f) | Clan relations (rival/ally, `clan.relations`) have **0** UI; other clans are invisible; branch strength is a bare "A vs B" | Challenge/war/secede buttons deep in Stats, and **absent** (not disabled + explained) when unavailable | **H** | Clan view: lines/branches, head, relations, actions with requirements shown |
 | Ancestral Hall / legacies | Merit sources per life not shown; blessingStacks hidden; Buy buttons look active with 0 Merit | **No UI to choose the Family Manual technique**; the Hall is only reachable from Stats | H | Hall reachable from nav; manual picker |

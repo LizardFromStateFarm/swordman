@@ -31,7 +31,7 @@ const years = (sim, n) => { for (let i = 0; i < n * 120 + 5; i++) sim.step(1) }
   // 4. Death: the world persists, family goes on the roster, clock keeps running
   { const sim = await createSim({ seed: 4 }); await sim.boot(0); const gs = sim.gs
     let s = gs.get(); s.stageIndex = 12; s.maxStageThisLife = 12; gs._recalc()
-    s.family.nextProposalYear = s.world.year - 1; gs._tickFamily(); gs.acceptSuitor(gs.get().family.proposal.suitors[0].id)
+    s.family.nextProposalYear = s.world.year - 1; gs._tickFamily(); gs.acceptSuitor(gs.get().family.proposal.suitors[0].id); gs.setFamilyPlanning('many')
     for (let i = 0; i < 3; i++) { gs.get().family.nextChildYear = gs.get().world.year - 1; gs._tickFamily() }
     years(sim, 10); s = gs.get()
     const me = s.self.id, spouse = s.family.spouse.id, kids = s.family.children.map(c => c.id), yearAtDeath = s.world.year
@@ -49,7 +49,7 @@ const years = (sim, n) => { for (let i = 0; i < n * 120 + 5; i++) sim.step(1) }
   { const sim = await createSim({ seed: 5 }); await sim.boot(0); const gs = sim.gs
     let s = gs.get(); s.world.playerClanId = null; s.world.playerLineId = null
     s.stageIndex = 12; s.maxStageThisLife = 12; s.spiritStones = 1e6; gs._recalc()
-    s.family.nextProposalYear = s.world.year - 1; gs._tickFamily(); gs.acceptSuitor(gs.get().family.proposal.suitors[0].id)
+    s.family.nextProposalYear = s.world.year - 1; gs._tickFamily(); gs.acceptSuitor(gs.get().family.proposal.suitors[0].id); gs.setFamilyPlanning('many')
     gs.get().family.nextChildYear = gs.get().world.year - 1; gs._tickFamily()
     years(sim, 60)
     assert(gs.get().family.children.length >= 1 && gs.get().family.children[0].family === '', 'orphan: children born, no clan surname')

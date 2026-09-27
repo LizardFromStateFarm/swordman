@@ -1,6 +1,7 @@
 // Family: spouse affection, marriage/crisis events, affairs + discovery reactions (Phase 16-lite+, M2), plus
 // children who grow up, child events and PERSONALITY_MORALITY (clan-succession.md 2.6b).
 // Used by: game-state.js (_tickFamily, resolveMarriageEvent, resolveDuel, encounters), game.js, scripts/sim/*.
+// 1.8b-3a adds courtship (COURT_*), spouse actions, child wishes and raising actions at the bottom.
 // Child timing lives in lifespan.js. Spec: docs/systems/family.md. Personality ids: personalities.js.
 // Event text tokens: {spouse} (spouse given name), {name} (you), {child} (youngest living child).
 
@@ -449,3 +450,141 @@ const TOURNAMENT_SURVIVOR_BOND  = -30     // every lethal-round survivor's bond 
 const TOURNAMENT_RUTHLESS       = ['psycho', 'demonking']
 const TOURNAMENT_KARMA_PER_DEATH = -3
 const TOURNAMENT_SPOUSE_AFFECTION_PER_DEATH = -15   // per child of your current spouse who dies
+
+// ── 1.8b-3a: family agency (family.md → "1.8b-3a"). The player's own choices — courtship, spouse actions,
+// whether to have a child, raising a child. All deltas keyed by the OTHER person's personality. ───────────────
+// Courtship: you pick who. Stone costs scale like event costs (familyCost).
+const COURT_CANDIDATES          = 3
+const COURT_SEEK_COST           = 30        // stones, × (1 + stage × FAMILY_STONE_SCALE)
+const COURT_SEEK_COOLDOWN_YEARS = 6         // after a refusal or a withdrawn courtship
+const COURT_INTEREST_START      = 40
+const COURT_SAME_PERSONALITY    = 10
+const COURT_BEAT_GAP_YEARS      = 1         // one meeting per game year (~2 open minutes)
+const COURT_BEATS_TO_PROPOSE    = 2
+const COURT_STAGE_WEIGHT        = 0.03      // proposal chance per stage you stand above them
+const COURT_KARMA_WEIGHT        = 0.004     // per karma point above 50
+const COURT_PROPOSE_RANGE       = [0.05, 0.95]
+const COURT_AFFECTION_CARRY     = 0.5       // wedding affection = AFFECTION_START + (interest − 50) × this
+const SPURNED_MAX               = 5
+const SPURNED_ENCOUNTER_CHANCE  = 0.3       // share of road encounters that are a suitor who once refused you
+
+// Courtship meetings. `int` = interest delta keyed by the TARGET's personality. Tokens: {them}, {name}.
+const COURT_BEATS = [
+  { id: 'tea_house', title: 'A Tea House by the River', text: '{them} has chosen a tea house where the river is loud enough to hide an awkward silence.',
+    choices: [
+      { label: 'Recite a poem you wrote', way: 'gentle', result: '{them} listens to the end, which is more than most would.',
+        int: { default: 6, poet: 18, niceguy: 8, stoic: -2, hotblood: -6, gremlin: 4 } },
+      { label: 'Talk cultivation theory', way: 'clever', result: 'An hour passes over meridian diagrams.',
+        int: { default: 4, stoic: 10, paranoid: 6, grumpy: 8, lazy: -8, glutton: -4 } },
+      { label: 'Order everything on the menu', way: 'lavish', cost: { stones: 20 }, result: 'The table groans. So does your purse.',
+        int: { default: 5, glutton: 18, arrogant: 8, miser: -12, stoic: -2 } },
+    ] },
+  { id: 'bandits', title: 'Bandits on the Pass', text: 'Walking {them} home, a dozen bandits step onto the mountain road.',
+    choices: [
+      { label: 'Cut them down', way: 'bold', effect: { health: -8, karma: -2 }, result: 'It is over quickly. {them} is watching you differently now.',
+        int: { default: 8, hotblood: 16, psycho: 16, demonking: 14, arrogant: 10, niceguy: -6, coward: -4 } },
+      { label: 'Talk them into leaving', way: 'clever', effect: { karma: 3 }, result: 'Somehow the bandits leave with directions to an honest job.',
+        int: { default: 6, niceguy: 16, poet: 8, gremlin: 10, hotblood: -8, psycho: -10 } },
+      { label: 'Grab {them} and run', way: 'cautious', result: 'You arrive home breathless and laughing.',
+        int: { default: 2, coward: 16, lazy: 8, gremlin: 8, arrogant: -12, demonking: -12, hotblood: -10 } },
+    ] },
+  { id: 'rival_suitor', title: 'A Rival Suitor', text: 'A young master arrives bearing a spirit-beast pelt as a courting gift for {them}. He looks at you and smirks.',
+    choices: [
+      { label: 'Challenge him to a spar', way: 'bold', effect: { health: -5 }, result: 'He leaves with the pelt and without his pride.',
+        int: { default: 6, hotblood: 14, arrogant: 12, demonking: 10, niceguy: -4, coward: -6 } },
+      { label: 'Outbid him with a finer gift', way: 'lavish', cost: { stones: 40 }, result: 'The pelt looks shabby beside yours.',
+        int: { default: 5, miser: 16, arrogant: 10, glutton: 6, stoic: -4, niceguy: -2 } },
+      { label: 'Let {them} choose', way: 'humble', result: '{them} raises an eyebrow, then walks out with you.',
+        int: { default: 7, stoic: 10, niceguy: 10, paranoid: 8, arrogant: -6, demonking: -8 } },
+    ] },
+  { id: 'lantern_night', title: 'The Lantern Festival', text: 'The town floats a thousand lanterns tonight. {them} asks what you wished for.',
+    choices: [
+      { label: 'Immortality', way: 'wild', result: '{them} laughs. "Of course you did."',
+        int: { default: 2, stoic: 6, demonking: 12, arrogant: 8, poet: -6, niceguy: -4 } },
+      { label: '"That you would ask me that"', way: 'gentle', result: 'The lantern light hides nothing.',
+        int: { default: 8, poet: 16, niceguy: 10, stoic: -4, paranoid: -8, grumpy: -6 } },
+      { label: 'Dumplings, forever', way: 'playful', result: 'It is honest, at least.',
+        int: { default: 3, glutton: 18, gremlin: 14, lazy: 8, arrogant: -8, stoic: -4 } },
+    ] },
+  { id: 'their_family', title: 'Meeting the Elders', text: 'The elders of {them}\'s family receive you in a cold hall and ask what your prospects are.',
+    choices: [
+      { label: 'Boast of your cultivation', way: 'bold', result: 'The eldest nods, once. It is a start.',
+        int: { default: 4, arrogant: 12, demonking: 10, hotblood: 6, niceguy: -4, stoic: -2 } },
+      { label: 'Bow low and bring gifts', way: 'humble', cost: { stones: 30 }, result: 'Courtesy is remembered. So are the gifts.',
+        int: { default: 7, grumpy: 14, miser: 10, niceguy: 8, paranoid: 4, demonking: -6 } },
+      { label: 'Tell them it is not their decision', way: 'wild', result: 'The hall goes silent. {them} hides a smile, or a grimace.',
+        int: { default: -2, psycho: 14, demonking: 12, hotblood: 8, gremlin: 6, grumpy: -12, niceguy: -8 } },
+    ] },
+  { id: 'secret_realm', title: 'A Small Secret Realm', text: '{them} knows of a minor secret realm and wants to see if you can keep up.',
+    choices: [
+      { label: 'Race them to the treasure', way: 'bold', effect: { qiFrac: 0.03 }, result: 'You both come out scratched and grinning.',
+        int: { default: 6, hotblood: 14, arrogant: 8, lazy: -6, coward: -8 } },
+      { label: 'Let them take the prize', way: 'humble', result: '{them} notices you slowed down. Whether that pleases them is another matter.',
+        int: { default: 5, niceguy: 10, poet: 8, arrogant: 6, demonking: -6, hotblood: -8 } },
+      { label: 'Scout for traps first', way: 'cautious', effect: { integrity: 2 }, result: 'There were three. You found all of them.',
+        int: { default: 4, paranoid: 16, stoic: 8, coward: 10, hotblood: -6, gremlin: -2 } },
+    ] },
+  { id: 'rainy_day', title: 'Caught in the Rain', text: 'A storm pins you both under a pavilion for an afternoon.',
+    choices: [
+      { label: 'Share old stories', way: 'gentle', result: 'You learn more of {them} in one afternoon than in a month.',
+        int: { default: 7, niceguy: 10, grumpy: 10, poet: 8, psycho: -2, stoic: 2 } },
+      { label: 'Meditate in silence', way: 'calm', effect: { qiFrac: 0.02 }, result: 'The rain drums. Neither of you minds.',
+        int: { default: 3, stoic: 16, lazy: 12, hotblood: -8, gremlin: -8, poet: -2 } },
+      { label: 'Invent a ridiculous game', way: 'playful', result: 'By dusk there are rules, a scoreboard and one accusation of cheating.',
+        int: { default: 4, gremlin: 18, glutton: 6, hotblood: 6, grumpy: -8, stoic: -6 } },
+    ] },
+  { id: 'old_wound', title: 'An Old Wound', text: '{them} admits, quietly, to a past they are not proud of.',
+    choices: [
+      { label: 'It changes nothing', way: 'gentle', result: '{them} lets out a breath held for years.',
+        int: { default: 9, niceguy: 12, poet: 12, paranoid: 6, psycho: 4 } },
+      { label: 'Ask for every detail', way: 'clever', result: 'You get them. Every one.',
+        int: { default: -2, paranoid: 12, psycho: 10, gremlin: 4, poet: -8, niceguy: -6 } },
+      { label: 'Confess something worse', way: 'wild', effect: { karma: -1 }, result: '{them} stares, then laughs until they cry.',
+        int: { default: 6, demonking: 14, psycho: 12, gremlin: 12, stoic: -4, niceguy: -2 } },
+    ] },
+]
+
+// How each meeting choice comes across (UI: a glyph + a hint at who likes it; the real effect is the choice's int).
+const COURT_WAYS = {
+  bold:     { glyph: '勇', hint: 'bold · the fierce admire it' },
+  gentle:   { glyph: '柔', hint: 'gentle · soft hearts warm to it' },
+  clever:   { glyph: '智', hint: 'clever · the careful take note' },
+  lavish:   { glyph: '財', hint: 'lavish · for lovers of fine things' },
+  playful:  { glyph: '戲', hint: 'playful · odd souls laugh along' },
+  humble:   { glyph: '謙', hint: 'humble · the proud may think it weak' },
+  wild:     { glyph: '狂', hint: 'reckless · the unhinged love it' },
+  cautious: { glyph: '慎', hint: 'cautious · the wary approve' },
+  calm:     { glyph: '靜', hint: 'calm · quiet ones settle beside you' },
+}
+
+// Spouse actions — each its own cooldown in game years. aff keyed by the SPOUSE's personality.
+const SPOUSE_ACTIONS = {
+  time: { cdYears: 3, qiFrac: 0.03, aff: { default: 4, lazy: 7, poet: 7, niceguy: 6, grumpy: 5, stoic: 2, demonking: 2, hotblood: 3 } },
+  gift: { cdYears: 5, stones: 40, aff: { default: 6, miser: 12, glutton: 10, arrogant: 9, gremlin: 8, stoic: 2, niceguy: 4 } },
+  dual: { cdYears: 8 },
+}
+const DUAL_QI_BASE          = 0.12    // share of the Qi cap gained
+const DUAL_QI_PER_STAGE     = 0.02    // per stage your spouse stands above you
+const DUAL_QI_RANGE         = [0.04, 0.25]
+const DUAL_AFFECTION        = 3
+const DUAL_SAFE_AFFECTION   = 60      // deviation risk = clamp((this − affection)/100, DUAL_RISK_RANGE)
+const DUAL_RISK_RANGE       = [0.03, 0.6]
+const DUAL_DEVIATION        = { health: -15, integrity: -8, aff: -6 }
+const CHILD_TRY_GAP_YEARS   = 3
+const PREGNANCY_YEARS       = 1
+const SEPARATE_CHILD_BOND   = -10     // every child shared with a spouse you leave
+const AFF_TRAIL_MAX         = 12      // yearly affection samples kept for the trend arrow
+const AFF_TREND_YEARS       = 10      // trend = now vs this many years ago
+// Declining a partner's wish for a child ("Not now"), keyed by the partner's personality.
+const CHILD_WISH_DECLINE_AFF = { default: -4, niceguy: -2, stoic: -1, lazy: -1, poet: -8, hotblood: -6, demonking: -6 }
+
+// Raising a child — per-child cooldowns. bond keyed by the CHILD's personality.
+const TEACH_MIN_AGE         = 12
+const GIFT_MIN_AGE          = 6
+const TEACH_MORALITY_PULL   = 0.15    // the child's morality moves this share of the way toward yours
+const CHILD_ACTIONS = {
+  time:  { cdYears: 3, qiFrac: 0.02, bond: { default: 6, lazy: 8, niceguy: 8, poet: 8, grumpy: 5, stoic: 3, psycho: 2, demonking: 3 } },
+  teach: { cdYears: 6, qiFrac: 0.06, xp: 0.35, bond: { default: 3, hotblood: 6, stoic: 5, paranoid: 4, arrogant: -2, lazy: -3 } },
+  gift:  { cdYears: 5, stones: 50, xp: 0.2, bond: { default: 4, miser: 9, glutton: 8, arrogant: 6, stoic: 1 },
+           spoil: { arrogant: -4, psycho: -4, demonking: -3, miser: -2 } },
+}
