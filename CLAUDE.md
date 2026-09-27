@@ -101,14 +101,20 @@ Every **UI change** (screens, tabs, panels, overlays, menus, layout modes, compo
 see) and every **visual asset** (sprites, animations, palettes, color tokens) is scored **0–10 by a separate
 reviewer agent** from real screenshots. The author never grades their own work (user rule, 2026-09-26).
 
-- **Scale:** 0 = garbage/broken · 2 = works but ugly · 4 = plain developer UI · 6 = decent, nothing special ·
-  **8 = polished + atmospheric, would pass in a released indie game** · 10 = *"can't believe this is CSS and ASCII art"*.
-- **How:** screenshot the change in the real app in every layout mode it appears in (smoke scenario + `shot()`),
-  spawn a **fresh** reviewer agent with the prompt in `.agents/rules/ui-review.md`, and apply its fixes.
-- **Gate:** average **≥ 8.0 and no criterion below 6** → done; record it in `docs/systems/ui-review.md` and put a
-  `/* UI review: X.X (date) */` comment on the CSS section. Otherwise fix → re-screenshot → re-review with a fresh
-  agent. After 3 failing cycles, show the user the screenshots + scores and let them decide.
-- Sprites and other assets use the Asset Pipeline below, on this same anchored scale.
+- **Scale (reference class = mobile indie idle games — this game's genre, not AAA or a generic web app):**
+  0 = garbage/broken · 2 = works but ugly · 4 = plain developer UI · 6 = below par ·
+  **7.5 = average for a mobile indie idle game — the UI pass bar** · **8 = above average** ·
+  **9 = extremely good, better than most/all indie idle games** · **10 = perfect, better than any idle game's UI**.
+- **How:** screenshot the change in the real app in every layout mode it appears in (smoke scenario + `shot()`), spawn
+  **one fresh** reviewer agent per cycle (sequentially, never several at once) with the prompt **plus the Reviewer
+  brief verbatim** from `.agents/rules/ui-review.md`, and apply its **blockers**.
+- **Label issues `[blocker]` / `[polish]`.** Only `[blocker]` fails a review (broken, unreadable, unusable,
+  overlapping, regressed, a missing lock reason); `[polish]` is logged as UX debt. Reviewers get the brief (art
+  direction + a "settled / do not re-raise" list) and the previous cycle's result, so they don't contradict each other.
+- **Gate (UI):** average **≥ 7.5, no criterion below 6, and no open `[blocker]`** → done; record it in
+  `docs/systems/ui-review.md` and put a `/* UI review: X.X (date) */` comment on the CSS section. Otherwise fix →
+  re-screenshot → re-review with a fresh agent. After 3 cycles, show the user the screenshots + scores and let them decide.
+- Sprites and other assets use the Asset Pipeline below, on this **same scale but their own gate: ≥ 8.0**.
 
 ---
 
@@ -136,7 +142,7 @@ docs/
     banter-writing-guide.md ← Voice/tokens/triggers brief for writing banter lines
     icons.md            ← UI icon set (1.8d): Icon() helper, icon list, emoji/chrome-CJK replacement status
     ui-layout.md        ← Window layout + layout modes (6E), tab pattern, CSS vars, UX Audit (1.8a)
-    ui-review.md        ← Visual Review Gate score history (every UI change + asset, 0–10, pass ≥ 8.0)
+    ui-review.md        ← Visual Review Gate score history (every UI change + asset, 0–10; UI passes ≥ 7.5, assets ≥ 8.0)
     notifications.md    ← System tray + opt-in desktop notifications (Phase 9A-B)
     life-loop.md        ← M2 build spec: lifespan, heirs, Ancestral Hall, clan legacies (Phases 30/31)
     family.md           ← Spouse affection, marriage/crisis events, duel, lovers + affair discovery (Phase 16-lite+), family agency: courtship, spouse/child actions, "Ask me" wishes (1.8b-3a)
@@ -151,7 +157,7 @@ docs/
   general.md            ← Always-on rules (code style, Electron security)
   assets.md             ← ASCII art pipeline (create → review → gate ≥8.0)
   game-design.md        ← Design rules (pacing, flavor text, event structure)
-  ui-review.md          ← Visual Review Gate: anchored 0–10 scale, reviewer prompt, gate (all UI + assets)
+  ui-review.md          ← Visual Review Gate: 0–10 scale, Reviewer brief (art direction + settled list), reviewer prompt, [blocker]/[polish] labels, gate (UI ≥ 7.5; assets ≥ 8.0)
 
 main.js                 ← Electron window, IPC, slot save/load, system tray + notifications (Phase 9A-B), layout-mode geometry (6E)
 preload.js              ← contextBridge — only way renderer talks to Node
@@ -350,8 +356,8 @@ Per-task testing is kept light on purpose. Spend the time on the feature and its
 - `PLAN.md` reflects the new state
 - Relevant system doc is current
 - The UX Pass was done for player-facing work, and any leftover UX debt is logged in START_HERE.md
-- Visible changes passed the **Visual Review Gate** (≥ 8.0 from a fresh reviewer agent, recorded in
-  `docs/systems/ui-review.md`), or the user accepted them after 3 cycles
+- Visible changes passed the **Visual Review Gate** (UI: average ≥ 7.5, no criterion < 6, no `[blocker]`, from a fresh
+  reviewer agent, recorded in `docs/systems/ui-review.md`; assets: ≥ 8.0), or the user accepted them after 3 cycles
 
 **Not required per task** (these move to QA & Balance): `npm run sim`, `npm run dist`, `npm run build:web`, CDP
 smoke scenarios, writing new scenario checks, teaching the sim bot, balance tuning. Do run one of them anyway

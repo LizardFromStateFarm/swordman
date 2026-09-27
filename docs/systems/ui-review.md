@@ -3,8 +3,19 @@ _Covers: visual design review results for every screen, component and asset · R
 
 ## What this is
 The scoreboard for the visual review gate (CLAUDE.md → "VISUAL REVIEW GATE"). Every UI change and visual asset is
-scored 0–10 by a fresh reviewer agent from real screenshots: 0 = garbage, 6 = decent, 8 = polished + atmospheric
-(the pass line), 10 = "can't believe this is CSS and ASCII art". Record every review here, newest first per item.
+scored 0–10 by a fresh reviewer agent from real screenshots, against **mobile indie idle games** as the reference
+class: 0 = garbage · 6 = below par · **7.5 = average for a mobile indie idle game — the UI pass bar** · 8 = above
+average · 9 = extremely good (better than most/all) · 10 = perfect. **UI passes at average ≥ 7.5, no criterion < 6,
+no open `[blocker]`; asset reviews still pass at ≥ 8.0** (`.agents/rules/assets.md`). Record every review here,
+newest first.
+
+> **2026-09-27 — the UI bar moved 8.0 → 7.5 and the scale was re-anchored to mobile indie idle games** (7.5 = average
+> for the genre = pass; 8 = above average; 9 = extremely good; 10 = perfect). The review prompt also gained a shared
+> **Reviewer brief** (art direction + a "settled / do not re-raise" list) and `[blocker]`/`[polish]` labels
+> (`.agents/rules/ui-review.md`). Reason: screens kept plateauing at 7.0–7.5 and reviewers contradicted each other,
+> because the old 8.0 anchor ("would pass in a released indie game") was near-unreachable and each fresh agent
+> invented its own standard. **Scores recorded before this date used the old bar** — treat them as roughly 0.5 lower
+> than they'd score now.
 
 ## Mobile / narrow layout pass (task 1.8e, 2026-09-27)
 `renderer/styles.css` → "MOBILE / narrow + touch"; `renderer/index.html` viewport meta; `renderer/game/layout.js`
