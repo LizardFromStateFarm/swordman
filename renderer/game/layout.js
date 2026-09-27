@@ -170,7 +170,7 @@ class LayoutUI {
     this.renderer.setSize(w, h, k)
     const btn = document.getElementById('btn-layout')
     btn.classList.toggle('peek', this.peeking)
-    btn.textContent = this.peeking ? '▭' : '▣'
+    btn.textContent = this.peeking ? '條' : '窗'   // 條 = back to the strip (1.8b-1: CJK glyphs like the rest of the titlebar)
     btn.title = this.peeking ? 'Window layout (peeking out of the banner)' : 'Window layout'
   }
 
@@ -219,7 +219,7 @@ class LayoutUI {
     if (seen || document.getElementById('layout-tip')) return
     const tip = document.createElement('div')
     tip.id = 'layout-tip'
-    tip.textContent = 'New ▣ Window layouts: a wider two-column view, a resizable desktop window, or a slim banner across the top of your screen while you game.'
+    tip.textContent = 'New 窗 Window layouts: a wider two-column view, a resizable desktop window, or a slim banner across the top of your screen while you game.'
     tip.addEventListener('click', () => this._dismissTip())
     document.body.appendChild(tip)
   }

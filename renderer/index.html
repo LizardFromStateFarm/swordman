@@ -33,11 +33,13 @@
   <div id="titlebar">
     <span id="cultivator-name" title="Click to rename">Unnamed Cultivator</span>
     <div id="tb-controls">
-      <button class="tb-btn" id="btn-back"   title="Back to character select">◀</button>
-      <button class="tb-btn" id="btn-layout" title="Window layout">▣</button>
-      <button class="tb-btn" id="btn-mode" title="Idle Mode (click for Active Mode)">💤</button>
-      <button class="tb-btn" id="btn-settings" title="Settings">⚙</button>
-      <button class="tb-btn pinned" id="btn-pin" title="Pinned on top (click to unpin)">📌</button>
+      <!-- Overlay only: 歸 + 窗 fold into this menu so the name keeps its room (1.8b-1) -->
+      <button class="tb-btn" id="btn-more" title="More: window layout, character select">⋯</button>
+      <button class="tb-btn" id="btn-back"   title="Back to character select">歸</button>
+      <button class="tb-btn" id="btn-layout" title="Window layout">窗</button>
+      <button class="tb-btn" id="btn-mode" title="Mode and automation">閒</button>
+      <button class="tb-btn" id="btn-settings" title="Settings">設</button>
+      <button class="tb-btn pinned" id="btn-pin" title="Pinned on top (click to unpin)">頂</button>
       <button class="tb-btn" id="btn-quit"   title="Close">✕</button>
     </div>
   </div>
@@ -49,7 +51,7 @@
 
     <div id="sprite-wrap">
       <canvas id="sprite-canvas" width="300" height="150"></canvas>
-      <div id="meditate-badge" class="hidden">🧘 3× Qi</div>
+      <div id="meditate-badge" class="hidden">坐 3× Qi</div>
     </div>
 
     <div id="stage-block">
@@ -71,7 +73,7 @@
     <div id="vitals">
       <div id="integrity-block">
         <div id="integrity-labels">
-          <span class="lbl">⚖ Integrity</span>
+          <span class="lbl">基 Integrity</span>
           <span id="integrity-numbers">100</span>
         </div>
         <div id="integrity-track"><div id="integrity-fill"></div></div>
@@ -79,7 +81,7 @@
 
       <div id="health-block">
         <div id="health-labels">
-          <span class="lbl">♥ Health</span>
+          <span class="lbl">血 Health</span>
           <span id="health-numbers">100</span>
         </div>
         <div id="health-track"><div id="health-fill"></div></div>
@@ -102,16 +104,20 @@
 
     <div id="actions">
       <button id="btn-meditate" class="act-btn">
-        <span class="act-icon">🧘</span>
+        <span class="act-icon">坐</span>
         <span class="act-name">Meditate</span>
         <span class="act-sub">3× Qi · 30s</span>
       </button>
       <button id="btn-breakthrough" class="act-btn" disabled>
-        <span class="act-icon">⚡</span>
+        <span class="act-icon">破</span>
         <span class="act-name">Breakthrough</span>
         <span class="act-sub">Advance realm</span>
       </button>
     </div>
+
+    <!-- Attention strip (1.8b-1): what's waiting on you, rendered by renderer/game/attention.js (AttentionUI). A
+         one-line strip in Overlay, a card column in Expanded/Desktop, a summary on the banner. -->
+    <div id="attention" class="calm"></div>
 
     <!-- Banner-only quick actions (1.7b): ⚔ ⛰ ⚒ 📜 dropdown buttons, rendered by renderer/game/banner-menus.js -->
     <div id="banner-quick"></div>
@@ -124,30 +130,37 @@
   </div>
 
   <div id="main-pane">
-    <div id="tabs">
-      <button class="tab active" data-tab="techniques">Tech</button>
-      <button class="tab"        data-tab="stats">Stats</button>
-      <button class="tab"        data-tab="explore">Explore</button>
-      <button class="tab"        data-tab="craft">Craft</button>
-      <button class="tab"        data-tab="pack">Pack</button>
-      <button class="tab"        data-tab="sect">Sect</button>
-      <button class="tab"        data-tab="events">Log</button>
-    </div>
+    <!-- Grouped navigation (1.8b-1): group buttons + sub-tabs, built from NAV_GROUPS by renderer/game/nav.js.
+         A row of groups in Overlay, a vertical rail in Expanded/Desktop. -->
+    <nav id="tabs"></nav>
 
-    <div id="tab-body">
-      <div id="tab-techniques" class="panel active"></div>
-      <div id="tab-stats"      class="panel"></div>
-      <div id="tab-explore"    class="panel"></div>
-      <div id="tab-craft"      class="panel"></div>
-      <div id="tab-pack"       class="panel"></div>
-      <div id="tab-sect"       class="panel"></div>
-      <div id="tab-events"     class="panel"></div>
+    <div id="view">
+      <div id="subtabs"></div>
+      <div id="tab-body">
+        <div id="tab-techniques" class="panel active"></div>
+        <div id="tab-stats"      class="panel"></div>
+        <div id="tab-explore"    class="panel"></div>
+        <div id="tab-beasts"     class="panel"></div>
+        <div id="tab-family"     class="panel"></div>
+        <div id="tab-clan"       class="panel"></div>
+        <div id="tab-sect"       class="panel"></div>
+        <div id="tab-pack"       class="panel"></div>
+        <div id="tab-craft"      class="panel"></div>
+        <div id="tab-events"     class="panel"></div>
+        <div id="tab-banter"     class="panel"></div>
+      </div>
     </div>
   </div>
 
   <!-- Desktop mode only: transparent frameless windows get no native resize border on Windows -->
   <div id="resize-grip" title="Drag to resize">◢</div>
 
+</div>
+
+<!-- Titlebar ⋯ menu (Overlay only, 1.8b-1) -->
+<div id="tb-menu" class="hidden">
+  <button class="tbm-item" data-tbm="layout"><span class="tbm-glyph">窗</span>Window layout</button>
+  <button class="tbm-item" data-tbm="back"><span class="tbm-glyph">歸</span>Character select</button>
 </div>
 
 <!-- Banner quick-action dropdown (1.7b) — hangs under its ⚔/⛰/⚒/📜 button while the window is grown -->
@@ -184,11 +197,23 @@
 <!-- Banter speech bubble (Phase 29) — shown by game.js on s.banter.last change; tap to dismiss -->
 <div id="banter-bubble" class="hidden"><div id="banter-text"></div><div id="banter-tail">▼</div></div>
 
+<!-- Mode panel (1.8b-1): Idle vs Active, what each gives, and every automation switch in one place. Opened from
+     the titlebar 閒/動 button and the 自 chip beside the sub-tabs; rendered by game.js renderModePanel(). -->
+<div id="mode-overlay" class="hidden">
+  <div id="mode-box">
+    <div id="mode-head">
+      <span id="mode-title">Mode 修行之道</span>
+      <button class="tb-btn" id="mode-close" title="Close">✕</button>
+    </div>
+    <div id="mode-body"></div>
+  </div>
+</div>
+
 <!-- Settings overlay (Phase 20C) — rows rendered from SETTINGS_DEFS by renderer/game/settings.js -->
 <div id="settings-overlay" class="hidden">
   <div id="settings-box">
     <div id="settings-head">
-      <span id="settings-title">⚙ Settings 设置</span>
+      <span id="settings-title">設 Settings 设置</span>
       <button class="tb-btn" id="settings-close" title="Close">✕</button>
     </div>
     <div id="settings-body"></div>
@@ -331,6 +356,8 @@
 <script src="game/notifications.js"></script>
 <script src="game/layout.js"></script>
 <script src="game/banner-menus.js"></script>
+<script src="game/attention.js"></script>
+<script src="game/nav.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

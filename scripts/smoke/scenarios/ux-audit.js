@@ -4,12 +4,12 @@
 // Rerun it after layout/UI changes (1.7, 1.8b) to compare before/after: screenshots land in scripts/smoke/out/ux-*.png.
 // Run: node scripts/smoke/cdp.js scripts/smoke/scenarios/ux-audit.js
 module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
-  const TABS = ['techniques', 'stats', 'explore', 'craft', 'pack', 'sect', 'events']
+  const TABS = ['techniques', 'stats', 'explore', 'beasts', 'family', 'clan', 'sect', 'pack', 'craft', 'events', 'banter']   // 1.8b-1 views
   const metrics = []
 
   const measureTabs = async label => {
     for (const t of TABS) {
-      await click(`.tab[data-tab="${t}"]`)
+      await click(`[data-tab="${t}"]`)
       await sleep(200)
       const m = await ev(`(() => {
         const p = document.getElementById('tab-${t}')
@@ -51,12 +51,12 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
     for (let i = 0; i < 4; i++) { const c = gs._makeChild(f.spouse); c.bornYear -= 20 + i * 5; c.stageIndex = 4 + i }
     gs._recalc(); gs._notify()
   })()`)
-  await click('.tab[data-tab="stats"]')
+  await click('[data-tab="family"]')
   await sleep(200)
-  const st = await ev(`(() => { const p = document.getElementById('tab-stats'); return { view: p.clientHeight, content: p.scrollHeight, buttons: p.querySelectorAll('button').length } })()`)
-  metrics.push({ label: 'family', tab: 'stats', ...st, screens: +(st.content / st.view).toFixed(1) })
+  const st = await ev(`(() => { const p = document.getElementById('tab-family'); return { view: p.clientHeight, content: p.scrollHeight, buttons: p.querySelectorAll('button').length } })()`)
+  metrics.push({ label: 'family', tab: 'family', ...st, screens: +(st.content / st.view).toFixed(1) })
   await shot('ux-family-stats')
-  await ev('document.getElementById("tab-stats").scrollTop = 99999')
+  await ev('document.getElementById("tab-family").scrollTop = 99999')
   await shot('ux-family-stats-bottom')
 
   // Overlays
@@ -64,7 +64,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   const setH = await ev(`(() => { const b = document.getElementById('settings-body'); return b.scrollHeight + '/' + b.clientHeight })()`)
   console.log('SETTINGS content/visible', setH)
   await click('#settings-close')
-  await click('.tab[data-tab="stats"]')
+  await click('[data-tab="clan"]')
   await click('#_hall'); await sleep(200); await shot('ux-overlay-hall')
   const hallH = await ev(`(() => { const b = document.getElementById('hall-box'); return b.scrollHeight + '/' + b.clientHeight })()`)
   console.log('HALL content/visible', hallH)

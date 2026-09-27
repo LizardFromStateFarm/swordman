@@ -31,7 +31,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
-| **UI/UX overhaul — NEXT, priority** (nav regroup, attention strip, Stats split, breakdowns) | ⬜ Phase 33 (M1 1.8b, then 1.9 QA) |
+| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (review 7.3–7.5 over 7 rounds, accepted by the user); next 1.8b-2 Character + breakdowns |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -73,6 +73,16 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ## UX Debt — known gaps in what the player can see / do (add here; remove when fixed)
 
+- **Overlay tab body shrank 305 → 236px** (1.8b-1: group row + sub-tabs + attention strip). Views are shorter now
+  (Explore 1.4 screens, Craft 2.6), but the founder's Sect is 5.7 screens until 1.8b-5 splits it. Candidates: a 34px nav
+  row, hide the strip when calm.
+- **1.8b-1 review leftovers** (7 rounds, plateau 7.3–7.5; ui-review.md): Overlay strip height vs. the action row
+  (reviewers split on 1- vs 2-line top item); badges ~14px w/ dark ring; the rail's 道 gap could hold an attention
+  summary; "自 off" chip → pill-styled "自動 Off"; +N border neutral/gold; Mode cards unbalanced at 640px; attention
+  cards are flat (no depth). Revisit with the 1.8b-6 re-review.
+- **Inline styles in game.js** (~57 `style="…"`): blocked by CSP, re-applied by a shim since 1.8b-1. Convert to classes
+  as each screen is rebuilt (1.8b-2..5).
+- Phone/narrow single-column layout of the new nav is untested (Desktop can't shrink below 640; no Mac).
 - No in-game UI to pick the Family Manual technique (only the sim bot calls `setFamilyManual()`) — 2.7
 - ~~Main interaction area is the smallest part of the window~~ — 1.7: Overlay tab body 105 → 305px, Expanded/Desktop
   656–696px. Still open: 7 tabs at 9px in Overlay, banner has no attention strip yet — 1.8b
@@ -85,8 +95,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   affairs discovered by dice and ending on their own, tournament/duel fights auto-rolled. Rule: CLAUDE.md Depth
   Pass #6 (player choices are never simulated).
 - **1.8c baseline bugs** (ui-review.md → "Bugs found by the baseline"): breakthrough sprite never displays (overwritten by
-  the same-frame notify); banter bubble covers death/ascension cards; toasts cover tab bottoms + Settings; Stats rows
-  collide; automation checkbox + ON/OFF duplicated in 2 tabs; Hall doesn't cover the titlebar; beasts show frame 0 only.
+  the same-frame notify); beasts show frame 0 only. (Fixed in 1.8b-1: banter bubble over popups, toasts over content,
+  Stats row collisions, duplicated automation, Hall see-through, titlebar name wrap.)
 - **Full itemized list: `docs/systems/ui-layout.md` → "UX Audit"** (1.8a, 2026-09-26): 7 structural findings + a
   per-system gap table. Headline items: tab body is only ~105px of the 600px window; own-sect Sect tab = 15 screens
   of scroll; Stats is a junk drawer holding every family/clan decision; automation panel duplicated at the top of
@@ -97,6 +107,45 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-26 (day session, user present) — part 19
+Agent: **Close button bug** (user: "clicking close doesn't close the instances"). Cause: Phase 9A's ✕ always hid to
+  the tray, and there was no single-instance lock, so every relaunch added another invisible copy. User chose
+  **✕ = Quit by default**.
+  - Setting renamed closeAction (default tray) → **closeButton (default quit)** so every save gets the new default;
+    Hide to tray stays as an option. Native closes (Alt+F4, taskbar) follow it via new IPC setCloseToTray
+    (preload + main + iOS shim no-op, Rule 7).
+  - main.js: **single-instance lock** (packaged builds only): a relaunch shows the running window.
+  - New check scripts/sim/checks/settings.js (5). Verified: npm test, npm run checks (253), build:web, and a real
+    packaged build in scratch (2nd launch exits, no new processes; in-game ✕ → 0 processes). dist/ itself NOT
+    rebuilt: the user's old copies still lock it; quit them from the tray, then npm run dist.
+  Next: commit 1.8b-1 + this fix (user to confirm), then **1.8b-2 Character view + breakdowns**.
+
+Date: 2026-09-26 (day session, user present) — part 18
+Agent: **1.8b-1 Navigation + attention layer** (user approved the split of 1.8b into 1.8b-1…6 and this task; user
+  change: "Craft and Pack together"). As-built: ui-layout.md → "Navigation", "Attention layer", "Mode panel".
+  - Six groups 修 Path (Techniques · Character) · 歷 Roam (Explore · Beasts) · 家 Kin (Family · Clan) · 宗 Sect ·
+    囊 Pack (Items · Craft) · 錄 Log (Events · Banter), sub-tabs, badges; a rail in Expanded/Desktop. New
+    renderer/game/nav.js (NAV_GROUPS, NavUI) + renderer/game/attention.js (collectAttention DOM-free + AttentionUI).
+    Group names shortened to Path/Roam so six fit in 300px.
+  - Stats split: Character (stats) / Family / Clan (+ Hall, Pass the Mantle) / Banter; Beasts split out of Explore;
+    Explore's duplicate inventory dropped. Clan actions show "封 why" when locked (lockedAction helper).
+  - Mode panel (titlebar 閒/動, rail foot, 自 chip): Idle/Active cards listing what each gives + all automation rows;
+    removed from Explore + both Sect views. Titlebar/HUD emoji → 閒 動 設 頂 坐 破 基 血 根 性.
+  - Fixed: toasts now on the sprite scene; banter bubble hidden under any popup; Hall opaque; Stats rows; title wrap.
+  - **Found + fixed: CSP (style-src 'self') silently dropped all ~57 inline style="…" in game.js** — shim re-applies
+    them via CSSOM (colors/widths now show as originally written).
+  - New smoke scenario nav-attention.js; layout-modes/succession/ux-audit/visual-baseline updated to the new views.
+    Verified: npm test (72), npm run checks (248), build:web, smoke nav-attention + layout-modes + banner-menus +
+    ux-audit + succession (zero console errors; succession's "overwhelming branch wins" assert is a pre-existing
+    random flake — failed once, also fails on the old code, passed twice after).
+  - **Visual Review Gate: 6.7 → 6.8 → 7.3 → 7.2 → 7.5 → 7.5 → 7.3** over 7 rounds (user asked for 2 + 2 extra); never a
+    criterion < 6; **accepted by the user** ("2 more rounds then it should be good"). Details ui-review.md.
+    Titlebar: 歸 窗 [閒 Idle] 設 頂 ✕ (Overlay folds 歸 + 窗 into ⋯).
+  - **Stale-build gotcha (user saw no UI changes):** closing the window only hides the app to the tray, and the old
+    dist exe kept running from dist/ (2 copies, 8 processes), locking the folder — so npm run dist could not replace
+    it and the always-on-top old window sat over the npm start one. Quit every copy from the tray before rebuilding.
+  Next: user decision on the gate, then **1.8b-2 Character view + breakdowns**.
+
 Date: 2026-09-26 (day session, user present) — part 17
 Agent: **A2 art bake-off** (user approved; user reordered A2 before A1). Standalone prototype
   `scripts/art-bakeoff/` renders the same seated cultivator 3 ways; `scripts/smoke/scenarios/art-bakeoff.js` captures

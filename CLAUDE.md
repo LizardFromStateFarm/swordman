@@ -180,6 +180,8 @@ renderer/
     notifications.js    ← NotificationSystem — opt-in desktop notification triggers + cooldowns, DOM-free (Phase 9A-B)
     layout.js           ← LayoutUI — window layout modes: ▣ picker, body[data-layout], canvas sizing, banner peek (Phase 6E)
     banner-menus.js     ← BannerMenus — banner strip quick-action dropdowns: missions/explore/craft/learn (1.7b)
+    nav.js              ← NavUI + NAV_GROUPS — six nav groups → sub-tab views, badges, automation chip (1.8b-1)
+    attention.js        ← collectAttention() (DOM-free) + AttentionUI — the "needs you" strip/cards (1.8b-1)
 assets/
   icons/
     tray-icon.png       ← System tray icon (Phase 9A) — see scripts/gen-tray-icon.js

@@ -29,6 +29,7 @@ class SettingsUI {
       else root.dataset.cb = set.colorblind
       this._palette = null
     }
+    if (changed('closeButton'))   window.electron.setCloseToTray?.(set.closeButton === 'tray')   // native closes follow ✕
     if (changed('bgOpacity'))        root.style.setProperty('--bg-opacity', set.bgOpacity)
     if (changed('fontSize'))         document.getElementById('tab-body').style.zoom = set.fontSize / 13
     if (changed('canvasBrightness')) document.getElementById('sprite-canvas').style.filter =

@@ -36,10 +36,12 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   assert(await ev('document.getElementById("death-overlay").classList.contains("hidden")'), 'birth card closes')
 
   // Stats: clan rows + chronicle
-  await click('.tab[data-tab="stats"]')
-  const stats = await ev('document.getElementById("tab-stats").innerText')
+  await click('[data-tab="clan"]')
+  const stats = await ev('document.getElementById("tab-clan").innerText')
   assert(/Standing/i.test(stats) && /Clan Head/i.test(stats) && /Bond/i.test(stats), 'Stats: Standing · Clan Head · bond-with-head rows')
-  assert(!/Name an Heir/i.test(stats), 'no heir buttons for a non-head')
+  await click('[data-tab="family"]')
+  assert(!/Name an Heir/i.test(await ev('document.getElementById("tab-family").innerText')), 'no heir buttons for a non-head')
+  await click('[data-tab="clan"]')
   await shot('2.6d-4-stats')
   await click('#_hall')
   const hist = await ev('document.querySelectorAll("#hall-chronicle .chron-line").length')
@@ -73,7 +75,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   assert(await ev('!gameState.get().interlude && gameState.get().generation === 3'), 'third life begins')
 
   // ── 2.6e (clan-succession.md): challenge the head, be challenged as head, step-down tournament ──────
-  await click('.tab[data-tab="stats"]')
+  await click('[data-tab="clan"]')
   // Tie your stage with the head so the button is always enabled (outcome may go either way — the point
   // here is the UI wiring, not the fight; scripted checks cover the win/lose logic deterministically).
   await ev('(() => { const gs = gameState, s = gs.get(); s.stageIndex = gs.person(s.world.clans[s.world.playerClanId].headId).stageIndex; gs._recalc(); gs._notify() })()')
@@ -125,7 +127,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await shot('2.6e-4-stepdown-card')
   await click('#family-choices [data-sd="1"]')
   assert(await ev('!gameState.get().family.stepDownOffer'), 'step-down tournament resolved')
-  const stats2 = await ev('document.getElementById("tab-stats").innerText')
+  const stats2 = await ev('document.getElementById("tab-clan").innerText')
   assert(/You lead the clan/i.test(stats2), 'you dominated the tournament and now lead the clan')
   await shot('2.6e-5-after-stepdown')
 
@@ -145,8 +147,8 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
     s.stageIndex = 200; s.maxStageThisLife = 200; s.family.branchWarCooldownYear = null
     gs._recalc(); gs._notify()
   })()`)
-  await click('.tab[data-tab="stats"]')
-  const stats3 = await ev('document.getElementById("tab-stats").innerText')
+  await click('[data-tab="clan"]')
+  const stats3 = await ev('document.getElementById("tab-clan").innerText')
   assert(/Branch Strength/i.test(stats3) && /Declare War/i.test(stats3) && /Secede/i.test(stats3), 'Stats: branch strength preview + Declare War / Secede for a branch head')
   await shot('2.6f-1-branch-stats')
   await click('#_declare-branch-war')
@@ -197,7 +199,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
     gs._recalc(); gs._notify()
   })()`)
   const oldClanId = await ev('gameState.get().world.playerClanId')
-  await click('.tab[data-tab="stats"]')
+  await click('[data-tab="clan"]')
   await click('#_secede')
   await wait('!document.getElementById("confirm-overlay").classList.contains("hidden")')
   await shot('2.6f-6-secede-confirm')
@@ -211,7 +213,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   // successful Ascension now ending the life (fixes the post-Ascension dead zone) instead of leaving the
   // character idling at an unreachable stub stage.
   await ev(`(() => { const w = gameState.get().world, clan = w.clans[w.playerClanId]; clan.merit = 500; gameState._recalc(); gameState._notify() })()`)
-  await click('.tab[data-tab="stats"]')
+  await click('[data-tab="clan"]')
   await click('#_hall')
   await wait('!document.getElementById("hall-overlay").classList.contains("hidden")')
   const records = await ev('document.getElementById("hall-records").innerText')

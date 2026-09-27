@@ -18,7 +18,7 @@ will be missed if ignored).
   no new `_ensurePhaseNFields()` was needed):
   | id | type | values | default |
   |----|------|--------|---------|
-  | `closeAction` | choice | `tray` / `quit` | `tray` |
+  | `closeButton` (was `closeAction` until 1.8b-1) | choice | `quit` / `tray` | `quit` (user 2026-09-26; was `tray`) |
   | `notifyBreakthrough` | choice | `false`/`true` | `false` |
   | `notifyExpedition` | choice | `false`/`true` | `false` |
   | `notifyWar` | choice | `false`/`true` | `false` |
@@ -59,11 +59,20 @@ will be missed if ignored).
 - `game.js`: `const notifSys = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(), (title, body) => window.electron.notify(title, body))`, ticked once per frame like the other systems.
 - `game.js` also diffs `s.name` + the stage label once per HUD update and calls
   `window.electron.updateTrayInfo(name, stageLabel)` only when either changed (cheap IPC, not every frame).
-- `#btn-quit` click handler now branches on `gameState.getSettings().closeAction`: `'tray'` (default)
-  calls `forceSave()` then `hideToTray()`; `'quit'` calls `forceSave()` then the existing `quit()`.
+- `#btn-quit` click handler branches on `gameState.getSettings().closeButton`: `'quit'` (default since 1.8b-1)
+  calls `forceSave()` then `quit()`; `'tray'` calls `forceSave()` then `hideToTray()`. `SettingsUI.apply` sends the
+  choice to main.js (`window.electron.setCloseToTray(bool)`, IPC `set-close-to-tray`; no-op in the iOS shim) so
+  native closes (Alt+F4, taskbar "Close window") follow it too.
+- **Why the default changed (1.8b-1, user report):** with always-hide, ✕ never ended the app, and with no
+  single-instance lock every relaunch started another full copy. The user ended up with 2 invisible copies
+  (8 processes) that locked `dist/`, so `npm run dist` silently kept the stale build.
+- **Single instance (packaged builds only):** `app.requestSingleInstanceLock()`; a second launch quits at once
+  and the running copy's `second-instance` handler shows + focuses its window. Not applied to `npm start`, so dev
+  can run beside an installed copy. Verified on a packaged build: 2nd launch exits 0 with no new processes, and
+  in-game ✕ leaves 0 processes.
 - `main.js`: `Tray` built from `assets/icons/tray-icon.png` (nativeImage), tooltip + a disabled
   `"<name> — <stage>"` menu line + `Open` + `Quit`. `click`/`double-click` both toggle
-  show/hide+focus. `win.on('close', …)` is intercepted: unless a real quit is in flight
+  show/hide+focus. `win.on('close', …)` is intercepted **only when `closeToTray` is set**: unless a real quit is in flight
   (`isQuitting`, set by the app-wide `before-quit` handler — covers the tray's Quit item *and*
   `window.electron.quit()`), it calls `e.preventDefault(); win.hide()` instead of closing — this is
   what makes "close = hide to tray" hold even if something calls the window's native close outside

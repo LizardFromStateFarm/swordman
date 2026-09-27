@@ -2,6 +2,18 @@
 
 ;(async function () {
 
+  // CSP shim (1.8b-1): index.html's CSP (style-src 'self') blocks style="…" attributes parsed from innerHTML, so
+  // the ~57 inline styles in the render functions (affection/bond colors, widths, margins) were silently dropped.
+  // Styles set through CSSOM are allowed, so re-apply each new element's attribute that way. New UI code should
+  // use classes in styles.css instead of inline styles.
+  const applyInlineStyles = root => {
+    if (root.nodeType !== 1) return
+    if (root.hasAttribute('style')) root.style.cssText = root.getAttribute('style')
+    for (const n of root.querySelectorAll('[style]')) n.style.cssText = n.getAttribute('style')
+  }
+  new MutationObserver(muts => { for (const m of muts) for (const n of m.addedNodes) applyInlineStyles(n) })
+    .observe(document.body, { childList: true, subtree: true })
+
   // ── Character Select ───────────────────────────────────────────────────────
 
   let slots = await window.electron.loadAllSlots()
@@ -189,7 +201,9 @@
   }
   const bannerMenus = new BannerMenus(gameState, quickActions, { fmt, fmtTime, escHtml, effectText, personStageLabel })
   layoutUI.onModeChange = mode => { if (mode !== 'banner') bannerMenus.close() }
-  const banterSys  = new BanterSystem(gameState, () => !!document.querySelector('#settings-overlay:not(.hidden), #ascension-overlay:not(.hidden), #death-overlay:not(.hidden), #rename-overlay:not(.hidden), #confirm-overlay:not(.hidden), #proposal-overlay:not(.hidden), #family-overlay:not(.hidden), #heir-overlay:not(.hidden), #tournament-overlay:not(.hidden), #hall-overlay:not(.hidden)'))
+  // Any popup open? Banter holds new lines while one is, and hides a bubble already showing (1.8b-1).
+  const isPopupOpen = () => !!document.querySelector('body > [id$="-overlay"]:not(.hidden)')
+  const banterSys  = new BanterSystem(gameState, isPopupOpen)
   // Phase 9A/B: window "active" = visible AND focused; notifications only fire otherwise (news, not a summons).
   const notifSys   = new NotificationSystem(gameState, () => !document.hidden && document.hasFocus(),
     (title, body) => window.electron.notify(title, body))
@@ -378,7 +392,15 @@
     layoutUI.update(s)   // Phase 6E: banner-strip stones + expedition readout (no-op in other modes)
     if (layoutUI.mode === 'banner') bannerMenus.update(s, fromTick)   // 1.7b: quick-action buttons + open menu
 
-    const activeTab = document.querySelector('.tab.active')?.dataset?.tab
+    // 1.8b-1: the attention list feeds the strip, the group badges and the banner summary
+    const att = collectAttention(s, gameState)
+    attentionUI.render(att)
+    nav.update(s, att, k => gameState.automationUnlocked(k))
+    // A banter bubble never sits on top of a popup (1.8c bug: it covered the death + ascension cards)
+    if (isPopupOpen()) document.getElementById('banter-bubble').classList.add('hidden')
+    if (!document.getElementById('mode-overlay').classList.contains('hidden') && !fromTick) renderModePanel(s)
+
+    const activeTab = nav.view
     if (fromTick) {
       // On every tick: only update the live expedition timer without re-rendering
       if (activeTab === 'explore') updateExpeditionTimerInPlace(s)
@@ -386,14 +408,20 @@
       if (activeTab === 'pack')    updatePackDeltaInPlace(s)   // Phase 21: per-frame currency delta fade
     } else {
       // On explicit state changes: full tab re-render (safe, buttons will be stable until next change)
-      if (activeTab === 'techniques') renderTechniques(s)
-      if (activeTab === 'stats')      renderStats(s)
-      if (activeTab === 'events')     renderEvents(s)
-      if (activeTab === 'explore')    renderExplore(s)
-      if (activeTab === 'craft')      renderCraft(s)
-      if (activeTab === 'pack')       renderPack(s)
-      if (activeTab === 'sect')       renderSect(s)
+      renderView(activeTab, s)
     }
+  }
+
+  // 1.8b-1: one entry point per view (NAV_GROUPS in renderer/game/nav.js)
+  const VIEW_RENDER = {
+    techniques: s => renderTechniques(s), stats: s => renderStats(s), explore: s => renderExplore(s),
+    beasts: s => renderBeasts(s), family: s => renderFamily(s), clan: s => renderClan(s), sect: s => renderSect(s),
+    pack: s => renderPack(s), craft: s => renderCraft(s), events: s => renderEvents(s), banter: s => renderBanter(s),
+  }
+  function renderView(view, s) {
+    if (!s) return
+    VIEW_RENDER[view]?.(s)
+    if (view === 'sect') nav.setContext(s.ownSect?.founded ? s.ownSect.name : s.sect?.id ? SECTS.find(x => x.id === s.sect.id)?.name : 'no sect yet')
   }
 
   function updateExpeditionTimerInPlace(s) {
@@ -480,9 +508,11 @@
     const integColor = integ >= 70 ? 'var(--jade)' : integ >= 30 ? 'var(--gold)' : 'var(--red)'
     const health = s.health ?? 100
     const healthColor = health >= 70 ? 'var(--jade)' : health >= 30 ? 'var(--gold)' : 'var(--red)'
+    // 1.8b-1: Character only. Family and clan moved to the 家 Kin views, banter to 錄 Log → Banter.
+    // (1.8b-2 rebuilds this view with breakdowns.)
     document.getElementById('tab-stats').innerHTML = `
-      <div class="root-badge">⚗ ${s.root.name} · ×${s.root.mult} Qi</div>
-      ${(() => { const p = PERSONALITIES.find(x => x.id === s.personality?.id); return p ? `<div class="persona-badge" title="${escHtml(p.blurb)}">☯ ${p.name} · ${p.nameCN}<span class="persona-blurb">${escHtml(p.blurb)}</span></div>` : '' })()}
+      <div class="root-badge">根 ${s.root.name} · ×${s.root.mult} Qi</div>
+      ${(() => { const p = PERSONALITIES.find(x => x.id === s.personality?.id); return p ? `<div class="persona-badge" title="${escHtml(p.blurb)}">性 ${p.name} · ${p.nameCN}<span class="persona-blurb">${escHtml(p.blurb)}</span></div>` : '' })()}
       ${sr('Realm', d.stage.realm)} ${sr('Layer', d.stage.layer)}
       ${sr('Total Qi Gained', fmt(s.stats.totalQiGained))}
       ${sr('Qi / Second', fmt(d.qiPerSecond))}
@@ -491,7 +521,6 @@
       ${sr('Realm Integrity', `<span style="color:${integColor}">${Math.round(integ)}</span>`)}
       ${sr('Health', `<span style="color:${healthColor}">${Math.round(health)}</span>`)}
       ${sr('Age', Math.floor(s.age))}
-      ${renderClanRows(s)}
       ${sr('World Year', Math.floor(s.world.year))}
       ${sr('Breakthroughs', s.stats.breakthroughs)}
       ${sr('Failed BTs', s.stats.failed)}
@@ -510,54 +539,88 @@
       ${(s.deaths || 0) > 0 ? sr('Deaths', s.deaths) : ''}
       ${s.stats.ascensionAttempts > 0 ? sr('Bloodline Quality', `${Math.round(s.bloodlineQuality || 0)} / 100`) : ''}
       ${s.stats.ascensions > 0 ? sr('Ascensions', s.stats.ascensions) : ''}
-      ${renderFamilyRows(s)}
-      <button id="_pass-mantle" class="sect-btn" style="width:100%;margin:6px 0 2px;">Pass the Mantle</button>
-      ${renderBanterLog(s)}
     `
-    document.getElementById('_matchmaker')?.addEventListener('click', () => openProposalOverlay(gameState.get()))
-    document.getElementById('_family-matter')?.addEventListener('click', () => openFamilyOverlay(gameState.get()))
-    document.getElementById('_choose-heir')?.addEventListener('click', () => openHeirOverlay())
-    document.getElementById('_hall')?.addEventListener('click', () => openHallOverlay())
-    document.getElementById('_tournament')?.addEventListener('click', () => {
+  }
+
+  // ── 家 Kin → Family (1.8b-1: moved out of Stats; 1.8b-3 rebuilds it around real choices) ──
+  function renderFamily(s) {
+    const el = document.getElementById('tab-family')
+    const f = s.family || {}
+    const alone = !f.spouse && !(f.lovers || []).length && !(f.children || []).length && !f.proposal
+    el.innerHTML = `<div class="section-title">Household 家室</div>
+      ${alone ? '<div class="empty-note">You walk the path alone. Matchmakers seek out cultivators of age and standing, and strangers met on the road (Roam → Explore) may become more.</div>' : ''}
+      ${renderFamilyRows(s) || ''}`
+    wireKinButtons(el)
+  }
+
+  // ── 家 Kin → Clan (1.8b-1: moved out of Stats; 1.8b-4 rebuilds it) ──
+  function renderClan(s) {
+    const el = document.getElementById('tab-clan')
+    el.innerHTML = `<div class="section-title">Clan 宗族</div>${renderClanRows(s)}
+      ${sr('Generation', s.generation || 1)}
+      <div class="section-title">Succession 傳承</div>
+      <div class="kin-note">End this life by choice. Your heir, or the clan, carries on.</div>
+      <button id="_pass-mantle" class="sect-btn" style="width:100%;margin:6px 0 2px;">Pass the Mantle</button>`
+    wireKinButtons(el)
+  }
+
+  // ── 錄 Log → Banter (1.8b-1: was at the bottom of Stats) ──
+  function renderBanter(s) {
+    const el = document.getElementById('tab-banter')
+    el.innerHTML = renderBanterLog(s) || '<div class="empty-note">No idle chatter yet. Your cultivator mutters to the wind now and then.</div>'
+  }
+
+  function wireKinButtons(root) {
+    const $ = id => root.querySelector('#' + id)
+    $('_matchmaker')?.addEventListener('click', () => openProposalOverlay(gameState.get()))
+    $('_family-matter')?.addEventListener('click', () => openFamilyOverlay(gameState.get()))
+    $('_choose-heir')?.addEventListener('click', () => openHeirOverlay())
+    $('_hall')?.addEventListener('click', () => openHallOverlay())
+    $('_tournament')?.addEventListener('click', () => {
       if (gameState.get().family.tournament) return openTournamentOverlay()
       showConfirm('Host a Tournament of Heirs?', 'Every adult child fights. Rounds are to the death until four remain. It cannot be stopped once blood is spilled.', () => {
         if (gameState.startTournament().ok) openTournamentOverlay()
       }, 'Begin')
     })
-    document.querySelectorAll('#tab-stats [data-plan]').forEach(btn => btn.addEventListener('click', () => gameState.setFamilyPlanning(btn.dataset.plan)))
-    document.querySelectorAll('#tab-stats [data-end-affair]').forEach(btn => btn.addEventListener('click', () => {
+    root.querySelectorAll('[data-plan]').forEach(btn => btn.addEventListener('click', () => gameState.setFamilyPlanning(btn.dataset.plan)))
+    root.querySelectorAll('[data-end-affair]').forEach(btn => btn.addEventListener('click', () => {
       showConfirm('End the affair?', 'Children already born stay yours.', () => gameState.endAffair(btn.dataset.endAffair), 'End It')
     }))
-    document.getElementById('_pass-mantle')?.addEventListener('click', () => {
+    $('_pass-mantle')?.addEventListener('click', () => {
       showConfirm('Pass the Mantle?', 'This ends your life peacefully, now. Cannot be undone.', () => {
         gameState.passTheMantle()
       }, 'Pass the Mantle')
     })
-    document.getElementById('_challenge-head')?.addEventListener('click', () => {
+    $('_challenge-head')?.addEventListener('click', () => {
       showConfirm('Challenge the head?', 'The head decides whether this is to the death. If they choose blood and you lose, this life ends.', () => {
         const res = gameState.challengeHead()
         if (res.outcome === 'won_lethal' || res.outcome === 'won_nonlethal') flashMessage('You seized the head seat.', 'positive')
         else if (res.outcome === 'lost_nonlethal') flashMessage('You were beaten back.', 'negative')
       }, 'Challenge')
     })
-    document.getElementById('_declare-branch-war')?.addEventListener('click', () => {
+    $('_declare-branch-war')?.addEventListener('click', () => {
       showConfirm('Declare war on the main line?', 'Your branch marches against the clan you were born into. The losing head is deposed — or does not survive it.', () => {
         const res = gameState.declareBranchWar()
         if (res.ok && res.won) flashMessage('Your branch prevails. The clan is yours.', 'positive')
         else if (res.ok && !res.died) flashMessage('Your branch is put down. You are deposed.', 'negative')
       }, 'Declare War')
     })
-    document.getElementById('_push-branch-war')?.addEventListener('click', () => {
+    $('_push-branch-war')?.addEventListener('click', () => {
       showConfirm('Press your branch head to war?', 'They decide for themselves whether to march, weighing their temper against the odds.', () => {
         const res = gameState.pushBranchWar()
         if (res.ok && res.declared === false) flashMessage('They refuse — not yet.', 'neutral')
       }, 'Push')
     })
-    document.getElementById('_secede')?.addEventListener('click', () => {
+    $('_secede')?.addEventListener('click', () => {
       showConfirm('Secede and found a new clan?', 'You leave with your whole branch. The old clan lives on as a rival or ally, depending on how you part.', () => {
         gameState.secede()
       }, 'Secede')
     })
+  }
+
+  // 1.8b-1: an action the player can't take yet, shown with why (never just absent). 封 = sealed.
+  function lockedAction(label, why) {
+    return `<button class="sect-btn locked-action" disabled><span class="la-name">${label}</span><span class="la-why">封 ${escHtml(why)}</span></button>`
   }
 
   // 2.6d: clan, your place in it, the head (their style + your bond), and the Ancestral Hall (2.7f).
@@ -582,9 +645,11 @@
         html += sr(s.birth.headId === c.headId ? 'Your Bond' : `Bond · ${escHtml(bh?.given || '')}`, `<span style="color:${bl.color}">${bl.word} · ${Math.round(s.birth.headBond)}</span>`)
       }
       // 2.6e: challenge the head for the seat (only when you're a plausible threat and not on cooldown).
+      // 1.8b-1: shown locked with its reason instead of vanishing, so the player learns it exists.
       const cc = gameState.canChallengeHead()
       if (cc.ok) html += `<button id="_challenge-head" class="sect-btn" style="width:100%;margin:6px 0 2px;">Challenge the Head</button>`
-      else if (cc.reason === 'cooldown') html += sr('', '<span style="color:var(--dim)">Still too weak from your last challenge to try again.</span>')
+      else if (cc.reason === 'cooldown') html += lockedAction('Challenge the Head', `Still recovering from your last challenge · ready in year ${cc.readyYear}`)
+      else if (cc.reason === 'stage_gap') html += lockedAction('Challenge the Head', `Come within ${CHALLENGE_STAGE_GAP} stages of the head's cultivation`)
       // 2.6f: branch politics — only when you're on a branch, not the main line.
       if (mine && mine !== c.lines[0]) {
         const prev = gameState.branchWarPreview()
@@ -592,13 +657,16 @@
         if (mine.headId === s.self.id) {
           const dw = gameState.canDeclareBranchWar()
           if (dw.ok) html += `<button id="_declare-branch-war" class="sect-btn" style="width:100%;margin:6px 0 2px;">Declare War on the Main Line</button>`
-          else if (dw.reason === 'cooldown') html += sr('', '<span style="color:var(--dim)">Your branch is still recovering to try again.</span>')
+          else if (dw.reason === 'cooldown') html += lockedAction('Declare War on the Main Line', `Your branch is still recovering · ready in year ${dw.readyYear}`)
+          else if (dw.reason === 'busy') html += lockedAction('Declare War on the Main Line', 'A branch war is already underway')
           const sec = gameState.canSecede()
           if (sec.ok) html += `<button id="_secede" class="sect-btn" style="width:100%;margin:2px 0 2px;">Secede — Found a New Clan</button>`
+          else if (sec.reason === 'busy') html += lockedAction('Secede — Found a New Clan', 'Not while a branch war is underway')
         } else {
           const pw = gameState.canPushBranchWar()
           if (pw.ok) html += `<button id="_push-branch-war" class="sect-btn" style="width:100%;margin:6px 0 2px;">Push for War</button>`
-          else if (pw.reason === 'cooldown') html += sr('', '<span style="color:var(--dim)">Too soon to press the matter again.</span>')
+          else if (pw.reason === 'cooldown') html += lockedAction('Push for War', `Too soon to press the matter again · year ${pw.readyYear}`)
+          else if (pw.reason === 'busy') html += lockedAction('Push for War', 'A branch war is already underway')
         }
       }
     }
@@ -706,7 +774,6 @@
     const el = document.getElementById('tab-sect')
     el.innerHTML = ''
     if (s.ownSect?.founded) { renderOwnSect(s); return }
-    renderAutomationPanel(s, el)
     const sect = s.sect || { id: null }
     const def  = SECTS.find(x => x.id === sect.id)
 
@@ -969,45 +1036,39 @@
   }
 
   // ── Automation panel (Phase 22, section 22D) ───────────────────────────────
-  // Shown near the top of the Explore tab and both branches of the Sect tab — a roadmap of what's
-  // unlocked and what unlocks next. Reuses the ⚙ Settings panel's .set-row/.set-label/.set-seg/.set-opt
+  // Lives in the Mode panel only (1.8b-1; it used to render at the top of Explore and both Sect views) — a
+  // roadmap of what's unlocked and what unlocks next. Reuses the ⚙ Settings panel's .set-row/.set-label/.set-seg/.set-opt
   // CSS (same trick as renderWarOrdersPanel below) so it needs no new stylesheet.
   function renderAutomationPanel(s, el) {
     const box = document.createElement('div')
-    const title = document.createElement('div')
-    title.className = 'section-title'
-    title.textContent = 'Automation'
-    box.appendChild(title)
-
+    box.className = 'auto-list' + (s.playMode === 'active' ? ' resting' : '')
     if (s.playMode === 'active') {
       const note = document.createElement('div')
-      note.className = 'sect-desc'
-      note.textContent = 'Inert in Active Mode — switch to Idle Mode (titlebar) to use automation.'
+      note.className = 'auto-note'
+      note.textContent = 'Resting while you play Active. Your switches are kept; they resume in Idle.'
       box.appendChild(note)
-      el.appendChild(box)
-      return
     }
 
     const ROWS = [
-      ['autoExplore', 'Auto-Explore'],
-      ['autoSectMissions', 'Auto-Missions'],
-      ['autoCraft', 'Auto-Craft'],
-      ['autoBreakthrough', 'Auto-Breakthrough'],
+      ['autoExplore', 'Auto-Explore', 'Sends you back to your last location when an expedition returns. Pause a location in Explore.'],
+      ['autoSectMissions', 'Auto-Missions', 'Re-takes a finished sect mission while a slot is free.'],
+      ['autoCraft', 'Auto-Craft', 'Crafts every recipe you mark Auto in Pack → Craft, whenever materials allow.'],
+      ['autoBreakthrough', 'Auto-Breakthrough', 'Attempts a breakthrough once Qi reaches the threshold.'],
     ]
-    for (const [key, name] of ROWS) {
+    for (const [key, name, what] of ROWS) {
       const unlocked = gameState.automationUnlocked(key)
       const row = document.createElement('div')
-      row.className = 'set-row'
+      row.className = 'set-row auto-row' + (unlocked ? '' : ' locked')
       const label = document.createElement('div')
       label.className = 'set-label'
-      label.textContent = `${unlocked ? '✅' : '🔒'} ${name}`
+      label.innerHTML = `<span class="auto-name">${unlocked ? '' : '封 '}${name}</span><span class="auto-what">${what}</span>`
       row.appendChild(label)
       if (unlocked) {
         const seg = document.createElement('div')
         seg.className = 'set-seg'
-        for (const [val, lab] of [[true, 'ON'], [false, 'OFF']]) {
+        for (const [val, lab] of [[true, 'On'], [false, 'Off']]) {
           const b = document.createElement('button')
-          b.className = 'set-opt' + (s.automation[key] === val ? ' active' : '')
+          b.className = 'set-opt' + (s.automation[key] === val ? ' active' : '') + (val ? ' is-on' : '')
           b.textContent = lab
           b.addEventListener('click', () => {
             const res = gameState.setAutomation(key, val)
@@ -1018,10 +1079,8 @@
         row.appendChild(seg)
       } else {
         const hint = document.createElement('div')
-        hint.className = 'set-label'
-        hint.style.color = 'var(--dim)'
-        hint.style.fontSize = '9px'
-        hint.textContent = `unlocks at ${AUTOMATION_UNLOCKS[key].label}`
+        hint.className = 'auto-unlock'
+        hint.textContent = `at ${AUTOMATION_UNLOCKS[key].label}`
         row.appendChild(hint)
       }
       box.appendChild(row)
@@ -1219,7 +1278,6 @@
     el.innerHTML = ''
     el.appendChild(head)
 
-    renderAutomationPanel(s, el)
     renderSectWarPanel(s, el)
     renderWarOrdersPanel(s, el, 'own')
 
@@ -1382,7 +1440,6 @@
   function renderExplore(s) {
     const el = document.getElementById('tab-explore')
     el.innerHTML = ''
-    renderAutomationPanel(s, el)
 
     // Expedition status block
     const statusDiv = document.createElement('div')
@@ -1462,35 +1519,48 @@
       btn.addEventListener('click', () => quickActions.sendExpedition(btn.dataset.locid))
     })
 
-    // Inventory
-    const invEntries = Object.entries(s.inventory).filter(([, qty]) => qty > 0)
-    if (invEntries.length > 0) {
-      const invTitle = document.createElement('div')
-      invTitle.className = 'section-title'
-      invTitle.textContent = 'Inventory'
-      el.appendChild(invTitle)
-
-      const groups = { resource: [], pill: [], elixir: [], weapon: [], artifact: [], talisman: [] }
-      for (const [itemId, qty] of invEntries) {
-        const item = ITEMS[itemId]
-        if (item && groups[item.type]) groups[item.type].push([itemId, qty, item])
-      }
-
-      for (const [groupKey, entries] of Object.entries(groups)) {
-        if (!entries.length) continue
-        const grid = document.createElement('div')
-        grid.className = 'inv-grid'
-        for (const [itemId, qty, item] of entries) {
-          const cell = document.createElement('div')
-          cell.className = 'inv-item'
-          cell.title = item.desc
-          cell.innerHTML = `<span class="inv-item-name">${escHtml(item.name)}</span><span class="inv-item-qty">×${qty}</span>`
-          grid.appendChild(cell)
-        }
-        el.appendChild(grid)
-      }
+    // ── Encounters on the Road (family.md) — potential lovers, never expire ────
+    const people = s.family?.encounters || []
+    if (people.length > 0) {
+      const pTitle = document.createElement('div')
+      pTitle.className = 'section-title'
+      pTitle.textContent = 'Encounters on the Road'
+      el.appendChild(pTitle)
+      people.forEach((enc, i) => {
+        const p = enc.person
+        const pers = PERSONALITIES.find(x => x.id === p.personality)
+        const row = document.createElement('div')
+        row.className = 'suitor-card'
+        row.style.marginBottom = '6px'
+        row.innerHTML = `
+          <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
+          <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
+          <div style="margin:3px 0">At ${escHtml(enc.place)}, they ${escHtml(enc.text || '')}.</div>
+          <div style="display:flex;gap:6px">
+            <button class="sect-btn" style="flex:1;min-height:32px" data-seduce="${i}">Seduce</button>
+            <button class="sect-btn" style="flex:1;min-height:32px" data-leave="${i}">Leave</button>
+          </div>${s.family.spouse && !s.family.tolerant ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)">${escHtml(s.family.spouse.given)} may find out.</div>` : ''}`
+        el.appendChild(row)
+      })
+      el.querySelectorAll('[data-seduce]').forEach(btn => btn.addEventListener('click', () => {
+        const res = gameState.seduceEncounter(+btn.dataset.seduce)
+        if (res.ok) flashMessage(res.success ? 'An affair begins.' : 'Rebuffed.', res.success ? 'special' : 'negative')
+      }))
+      el.querySelectorAll('[data-leave]').forEach(btn => btn.addEventListener('click', () => gameState.dismissEncounter(+btn.dataset.leave)))
     }
 
+  }
+
+  // ── 歷 Roam → Beasts (1.8b-1: split out of Explore) ─────────────────────────
+  function renderBeasts(s) {
+    const el = document.getElementById('tab-beasts')
+    el.innerHTML = ''
+    const cap = s.derived.maxBeasts || 3
+    const talismans = s.inventory['beast_taming_talisman'] || 0
+    const head = document.createElement('div')
+    head.className = 'view-lede'
+    head.innerHTML = `Companions ${(s.beasts || []).length} / ${cap} · Taming Talismans <b>${talismans}</b>${talismans ? '' : ' <span class="lede-hint">(craft them, or find them on expeditions)</span>'}`
+    el.appendChild(head)
     // ── Beast Encounters ──────────────────────────────────────────────────────
     const encounters = s.beastEncounters || []
     if (encounters.length > 0) {
@@ -1533,36 +1603,6 @@
           }
         })
       })
-    }
-
-    // ── Encounters on the Road (family.md) — potential lovers, never expire ────
-    const people = s.family?.encounters || []
-    if (people.length > 0) {
-      const pTitle = document.createElement('div')
-      pTitle.className = 'section-title'
-      pTitle.textContent = 'Encounters on the Road'
-      el.appendChild(pTitle)
-      people.forEach((enc, i) => {
-        const p = enc.person
-        const pers = PERSONALITIES.find(x => x.id === p.personality)
-        const row = document.createElement('div')
-        row.className = 'suitor-card'
-        row.style.marginBottom = '6px'
-        row.innerHTML = `
-          <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
-          <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
-          <div style="margin:3px 0">At ${escHtml(enc.place)}, they ${escHtml(enc.text || '')}.</div>
-          <div style="display:flex;gap:6px">
-            <button class="sect-btn" style="flex:1;min-height:32px" data-seduce="${i}">Seduce</button>
-            <button class="sect-btn" style="flex:1;min-height:32px" data-leave="${i}">Leave</button>
-          </div>${s.family.spouse && !s.family.tolerant ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)">${escHtml(s.family.spouse.given)} may find out.</div>` : ''}`
-        el.appendChild(row)
-      })
-      el.querySelectorAll('[data-seduce]').forEach(btn => btn.addEventListener('click', () => {
-        const res = gameState.seduceEncounter(+btn.dataset.seduce)
-        if (res.ok) flashMessage(res.success ? 'An affair begins.' : 'Rebuffed.', res.success ? 'special' : 'negative')
-      }))
-      el.querySelectorAll('[data-leave]').forEach(btn => btn.addEventListener('click', () => gameState.dismissEncounter(+btn.dataset.leave)))
     }
 
     // ── Active Beasts ─────────────────────────────────────────────────────────
@@ -1655,6 +1695,12 @@
           else flashMessage('Cannot release', 'negative')
         })
       })
+    }
+    if (!encounters.length && !beasts.length) {
+      const empty = document.createElement('div')
+      empty.className = 'empty-note'
+      empty.textContent = 'No beasts yet. Wild ones are sighted on expeditions; tame them with a Beast Taming Talisman.'
+      el.appendChild(empty)
     }
   }
 
@@ -2492,39 +2538,91 @@
     document.getElementById('proposal-overlay').classList.add('hidden')
   })
 
-  document.querySelectorAll('.tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'))
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'))
-      btn.classList.add('active')
-      document.getElementById('tab-' + btn.dataset.tab)?.classList.add('active')
-      const s = gameState.get()
-      if (s) {
-        if (btn.dataset.tab === 'techniques') renderTechniques(s)
-        if (btn.dataset.tab === 'stats')      renderStats(s)
-        if (btn.dataset.tab === 'events')     renderEvents(s)
-        if (btn.dataset.tab === 'explore')    renderExplore(s)
-        if (btn.dataset.tab === 'craft')      renderCraft(s)
-        if (btn.dataset.tab === 'pack')       renderPack(s)
-        if (btn.dataset.tab === 'sect')       renderSect(s)
-      }
-    })
-  })
-
   document.getElementById('btn-settings').addEventListener('click', () => settingsUI.open())
 
-  // ── Active / Idle Mode toggle (Phase 22) ───────────────────────────────────
-  document.getElementById('btn-mode').addEventListener('click', () => {
-    const cur = gameState.get()?.playMode || 'idle'
-    gameState.setPlayMode(cur === 'idle' ? 'active' : 'idle')
+  // Titlebar ⋯ menu (Overlay only): forwards to the real 窗 / 歸 buttons, which CSS hides in Overlay
+  const tbMenu = document.getElementById('tb-menu')
+  document.getElementById('btn-more').addEventListener('click', e => { e.stopPropagation(); tbMenu.classList.toggle('hidden') })
+  tbMenu.addEventListener('click', e => {
+    const it = e.target.closest('[data-tbm]')
+    if (!it) return
+    tbMenu.classList.add('hidden')
+    document.getElementById(it.dataset.tbm === 'layout' ? 'btn-layout' : 'btn-back').click()
   })
+  document.addEventListener('click', e => { if (!tbMenu.contains(e.target)) tbMenu.classList.add('hidden') })
+
+  // ── Mode panel: Active / Idle (Phase 22) + every automation switch (1.8b-1) ─
+  // One home for automation (it used to render at the top of Explore and both Sect views). Opened from the
+  // titlebar 閒/動 button and from the 自 chip beside the sub-tabs.
+  function openModePanel() {
+    renderModePanel(gameState.get())
+    document.getElementById('mode-overlay').classList.remove('hidden')
+  }
+  function closeModePanel() { document.getElementById('mode-overlay').classList.add('hidden') }
+  document.getElementById('btn-mode').addEventListener('click', openModePanel)
+  document.getElementById('mode-close').addEventListener('click', closeModePanel)
+  document.getElementById('mode-overlay').addEventListener('click', e => { if (e.target.id === 'mode-overlay') closeModePanel() })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModePanel() })
+
+  function renderModePanel(s) {
+    if (!s) return
+    const body = document.getElementById('mode-body')
+    const active = s.playMode === 'active'
+    const pct = x => Math.round(x * 100) + '%'
+    const card = (id, glyph, name, cn, sum, lines, on, extra = '') => `
+      <button class="mode-card${on ? ' active' : ''}" data-mode="${id}">
+        <span class="mode-card-head"><span class="mode-glyph">${glyph}</span><span class="mode-name">${name} <span class="mode-cn">${cn}</span></span>${on ? '<span class="mode-now">current</span>' : ''}</span>
+        <span class="mode-sum">${sum} Tap to switch.</span>
+        ${lines.map(l => `<span class="mode-line">${l}</span>`).join('')}${extra}
+      </button>`
+    // What Idle would actually run right now (so the Idle card says something concrete)
+    const AUTO_NAMES = { autoExplore: 'Auto-Explore', autoSectMissions: 'Auto-Missions', autoCraft: 'Auto-Craft', autoBreakthrough: 'Auto-Breakthrough' }
+    const runs = Object.keys(AUTO_NAMES).filter(k => gameState.automationUnlocked(k) && s.automation[k]).map(k => AUTO_NAMES[k])
+    const firstLock = Object.keys(AUTO_NAMES).find(k => !gameState.automationUnlocked(k))
+    const runsLine = runs.length ? `<span class="mode-runs">Runs: ${runs.join(', ')}</span>`
+      : `<span class="mode-runs none">Nothing switched on yet${firstLock ? `; the first unlocks at ${AUTOMATION_UNLOCKS[firstLock].label}` : ''}.</span>`
+    body.innerHTML = `
+      <div class="mode-intro">How you walk the path right now. Switch whenever you like; nothing is lost.</div>
+      <div class="mode-cards">
+        ${card('idle', '閒', 'Idle', '閒修', 'Automation works while you are away.', ['For when you step away.', 'Unlocked automation runs for you.', 'Nothing is ever punished for your absence.'], !active, runsLine)}
+        ${card('active', '動', 'Active', '勤修', 'Faster journeys and focus bonuses while you play.', [
+          `Expeditions ${pct(1 - ACTIVE_EXPEDITION_TIME_MULT)} faster, missions ${pct(1 - ACTIVE_SECT_MISSION_TIME_MULT)} faster.`,
+          `Breakthrough focus: press within ${ACTIVE_BT_FOCUS_WINDOW_SECONDS}s of it lighting up for +${pct(ACTIVE_BT_FOCUS_BONUS)}.`,
+          `A failed breakthrough keeps ${pct(ACTIVE_BT_QI_LOSS_BONUS)} more Qi.`,
+          `Push Harder near an expedition's end (石 ${ACTIVE_PUSH_HARDER_COST}) for an extra roll.`,
+          `Master's Touch: ${pct(ACTIVE_CRAFT_TOUCH_CHANCE)} double crafts while you watch the furnace.`,
+          'Automation rests while you play.'], active)}
+      </div>
+      <div class="section-title">Automation 自動</div>
+      <div id="mode-auto"></div>`
+    body.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.mode !== gameState.get().playMode) gameState.setPlayMode(b.dataset.mode)
+    }))
+    renderAutomationPanel(s, document.getElementById('mode-auto'))
+  }
+
   function updateModeButton(s) {
     const btn = document.getElementById('btn-mode')
     const active = s.playMode === 'active'
-    btn.textContent = active ? '⚡' : '💤'
+    if (btn.dataset.mode === s.playMode) return
+    btn.dataset.mode = s.playMode
+    btn.innerHTML = active ? '<span class="mb-glyph">動</span><span class="mb-name">Active</span>' : '<span class="mb-glyph">閒</span><span class="mb-name">Idle</span>'
     btn.classList.toggle('mode-active', active)
-    btn.title = active ? 'Active Mode (click for Idle Mode)' : 'Idle Mode (click for Active Mode)'
+    btn.title = active ? 'Active Mode · click for Mode and automation' : 'Idle Mode · click for Mode and automation'
   }
+
+
+  // ── Navigation + attention (1.8b-1) ─────────────────────────────────────────
+  const nav = new NavUI({ onShow: view => renderView(view, gameState.get()), onMode: openModePanel })
+  const attentionUI = new AttentionUI(item => {
+    if (layoutUI.mode === 'banner' && !item.open) layoutUI.peek(false)   // a nav target needs the full window
+    const s = gameState.get()
+    if (item.open === 'proposal') openProposalOverlay(s)
+    else if (item.open === 'family') openFamilyOverlay(s)
+    else if (item.open === 'tournament') openTournamentOverlay()
+    if (!item.open || layoutUI.mode !== 'banner') nav.go(item.view)
+  })
+  attentionUI.onBannerMore = () => layoutUI.peek(false)
 
   document.getElementById('btn-pin').addEventListener('click', async () => {
     const btn = document.getElementById('btn-pin')
@@ -2535,11 +2633,11 @@
 
   document.getElementById('btn-quit').addEventListener('click', () => {
     gameState.forceSave()
-    // Phase 9A: default hides to tray (the app keeps running, tray icon remains); the ⚙ setting
-    // 'closeAction' can switch this button back to a real quit. Real quit is otherwise only via the
-    // tray's own "Quit" item. See docs/systems/notifications.md.
-    if (gameState.getSettings().closeAction === 'quit') window.electron.quit()
-    else window.electron.hideToTray()
+    // ⚙ 'closeButton' (default 'quit' since 1.8b-1, user 2026-09-26): a real quit, or hide to the tray and
+    // keep cultivating. main.js applies the same choice to native closes (Alt+F4, taskbar) via setCloseToTray.
+    // See docs/systems/notifications.md.
+    if (gameState.getSettings().closeButton === 'tray') window.electron.hideToTray()
+    else window.electron.quit()
   })
 
   document.getElementById('cultivator-name').addEventListener('click', () => {
@@ -2568,9 +2666,13 @@
     if (!toast) {
       toast = document.createElement('div')
       toast.id = '_toast'
-      toast.style.cssText = 'position:fixed;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(8,4,14,.95);border:1px solid;padding:5px 13px;border-radius:4px;font-size:12px;z-index:300;pointer-events:none;transition:opacity .3s;font-family:var(--font)'
-      document.body.appendChild(toast)
+      document.body.appendChild(toast)   // look: styles.css #_toast
     }
+    // 1.8b-1: land on the lower edge of the sprite scene, never over tab content or a popup's rows (1.8c bug).
+    // Banner mode positions it in the strip via CSS instead.
+    const scene = document.getElementById('sprite-wrap').getBoundingClientRect()
+    toast.style.top  = Math.max(4, scene.bottom - 34) + 'px'
+    toast.style.left = (scene.left + scene.width / 2) + 'px'
     if (flashTimer) clearTimeout(flashTimer)
     const color = type === 'special' ? 'var(--gold)' : type === 'negative' ? 'var(--red)' : type === 'neutral' ? 'var(--dim)' : 'var(--jade)'
     toast.style.borderColor = color

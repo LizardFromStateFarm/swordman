@@ -27,9 +27,11 @@ const SETTINGS_DEFS = [
   // Own group (not 'Window') so it doesn't reopen that section non-contiguously in the panel — see
   // renderer/game/settings.js render(): a group header prints whenever def.group differs from the
   // previous entry's, so appending to a name already used earlier in the array duplicates the header.
-  { id: 'closeAction', label: 'Close button', group: 'Desktop', type: 'choice', default: 'tray',
-    options: [{ value: 'tray', label: 'Hide to tray' }, { value: 'quit', label: 'Quit' }],
-    hint: 'Quit fully only from the tray icon\'s Quit, or here' },
+  // Was 'closeAction' (default tray) until 1.8b-1; renamed so old saves get the new default (user 2026-09-26:
+  // ✕ quits, like any app). The old key is dropped by game-state's unknown-settings cleanup.
+  { id: 'closeButton', label: 'Close button', group: 'Desktop', type: 'choice', default: 'quit',
+    options: [{ value: 'quit', label: 'Quit' }, { value: 'tray', label: 'Hide to tray' }],
+    hint: 'Hide to tray keeps cultivating in the background; quit it from the tray icon' },
   // Phase 9B: opt-in desktop notifications, ALL off by default (pillar 4 — never punish absence).
   // Only fire while the window is hidden/minimized/unfocused; see renderer/game/notifications.js.
   { id: 'notifyBreakthrough', label: 'Breakthrough ready', group: 'Notifications', type: 'choice', default: false,

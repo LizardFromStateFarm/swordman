@@ -6,7 +6,7 @@
 // (Group 4 = the banner, see banner-menus.js.) Rerun after 1.8b / A4 for before/after comparisons.
 // Run: node scripts/smoke/cdp.js scripts/smoke/scenarios/visual-baseline.js
 module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
-  const TABS = ['techniques', 'stats', 'explore', 'craft', 'pack', 'sect', 'events']
+  const TABS = ['techniques', 'stats', 'explore', 'beasts', 'family', 'clan', 'sect', 'pack', 'craft', 'events', 'banter']   // 1.8b-1 views
   const visible = id => ev(`!document.getElementById(${JSON.stringify(id)}).classList.contains('hidden')`)
   const rect = sel => ev(`(() => { const r = document.querySelector(${JSON.stringify(sel)})?.getBoundingClientRect(); return r ? { x: Math.max(0, r.left), y: Math.max(0, r.top), width: r.width, height: r.height } : null })()`)
   const pick = async mode => {
@@ -51,7 +51,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
 
   // ── Group 2: Overlay (default) — HUD + every tab, top and scrolled ─────────
   for (const t of TABS) {
-    await click(`.tab[data-tab="${t}"]`); await sleep(250)
+    await click(`[data-tab="${t}"]`); await sleep(250)
     await shot(`vb-2-overlay-${t}`)
     const h = await ev(`(() => { const p = document.getElementById('tab-${t}'); return [p.scrollHeight, p.clientHeight] })()`)
     if (h[0] > h[1] * 1.6) {
@@ -66,11 +66,11 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   // ── Group 3: Expanded + Desktop ────────────────────────────────────────────
   await pick('expanded')
   for (const t of ['stats', 'sect', 'explore', 'craft', 'pack']) {
-    await click(`.tab[data-tab="${t}"]`); await sleep(250); await shot(`vb-3-expanded-${t}`)
+    await click(`[data-tab="${t}"]`); await sleep(250); await shot(`vb-3-expanded-${t}`)
   }
   await pick('desktop')
   for (const t of ['techniques', 'stats', 'sect']) {
-    await click(`.tab[data-tab="${t}"]`); await sleep(250); await shot(`vb-3-desktop-${t}`)
+    await click(`[data-tab="${t}"]`); await sleep(250); await shot(`vb-3-desktop-${t}`)
   }
   await pick('overlay')
 
@@ -79,14 +79,16 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await sleep(500)
   if (await visible('family-overlay')) { await shot('vb-5-family-event'); await click('#family-choices [data-choice]:not([disabled])') }
 
-  await click('.tab[data-tab="stats"]'); await sleep(200)
+  await click('[data-tab="family"]'); await sleep(200)
   if (await ev('!!document.getElementById("_choose-heir") && !document.getElementById("_choose-heir").disabled')) {
     await click('#_choose-heir'); await sleep(250); await shot('vb-5-heir'); await click('#heir-close')
   }
+  await click('[data-tab="clan"]'); await sleep(200)
   await click('#_hall'); await sleep(300); await shot('vb-5-hall')
   await ev('for (const id of ["hall-box", "hall-overlay"]) document.getElementById(id).scrollTop = 1e6'); await sleep(150); await shot('vb-5-hall-end')
   await click('#hall-close')
 
+  await click('[data-tab="family"]'); await sleep(200)
   if (await ev('!!document.getElementById("_tournament") && !document.getElementById("_tournament").disabled')) {
     await click('#_tournament'); await sleep(250)
     if (await visible('confirm-overlay')) { await shot('vb-5-confirm-dialog'); await click('#confirm-yes'); await sleep(300) }
@@ -137,7 +139,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   // ── Group 7: beast sprites (encounter cards on Explore), 2× ────────────────
   await ev(`(() => { const gs = gameState, s = gs.get(); s.stageIndex = Math.max(s.stageIndex, 10); s.beastEncounters = Object.keys(BEAST_SPRITES).map((t, i) => ({ id: 'vb' + i, typeId: t, traits: [], seenAt: Date.now() })); gs._recalc(); gs._notify() })()`)
   await pick('expanded')
-  await click('.tab[data-tab="explore"]'); await sleep(300)
+  await click('[data-tab="explore"]'); await sleep(300)
   await ev(`(() => { const el = document.querySelector('.beast-encounter-row'); el?.scrollIntoView({ block: 'start' }) })()`)
   await sleep(200)
   const enc = await ev(`(() => { const rows = [...document.querySelectorAll('.beast-encounter-row')]; if (!rows.length) return null; const a = rows[0].getBoundingClientRect(), b = rows[rows.length - 1].getBoundingClientRect(); return { x: a.left, y: a.top, width: a.width, height: Math.min(b.bottom, innerHeight) - a.top } })()`)

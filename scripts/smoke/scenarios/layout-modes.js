@@ -25,7 +25,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   assert(await ev('!document.getElementById("layout-tip")'), 'opening the picker dismisses the tip')
   z = await size()
   assert(z.layout === 'expanded' && z.w === 640, `expanded: ${z.w}×${z.h}, tab body ${z.tabBody}px`)
-  await click('.tab[data-tab="stats"]')
+  await click('[data-tab="stats"]')
   await shot('layout-expanded')
 
   await pick('desktop')
@@ -59,7 +59,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await click('#btn-unbanner')
   await sleep(600)
   z = await size()
-  assert(z.layout === 'overlay' && await ev('document.getElementById("btn-layout").textContent === "▭"'), '⬡ peeks; titlebar shows ▭')
+  assert(z.layout === 'overlay' && await ev('document.getElementById("btn-layout").textContent === "條"'), '⬡ peeks; titlebar shows 條')
   await shot('layout-banner-peek')
   await click('#btn-layout')
   assert(await ev('!!document.getElementById("layout-back")'), 'picker offers Back to the banner while peeking')

@@ -1,5 +1,5 @@
 # UI Layout — Reference
-_Covers: renderer/index.html · renderer/styles.css · renderer/game.js · renderer/game/layout.js · main.js (window geometry) · Phase: 1–2, 6E · Updated: 2026-09-26 (layout modes)_
+_Covers: renderer/index.html · renderer/styles.css · renderer/game.js · renderer/game/layout.js · renderer/game/nav.js · renderer/game/attention.js · main.js (window geometry) · Phase: 1–2, 6E, 33 · Updated: 2026-09-26 (1.8b-1 navigation + attention)_
 
 ## Window Structure
 The window size comes from the **layout mode** (Phase 6E, see "Layout modes" below). `#app` / `#charselect` fill
@@ -7,18 +7,21 @@ the window (`100vw × 100vh`); nothing in CSS hard-codes the window size any mor
 (clamped to the screen's work area). Measured before 1.7: a 300×600 window with a 101–112px tab body (UX Audit).
 
 ```
-#titlebar            ~39px  drag region; name (click → rename) + ◀ ▣ 💤 ⚙ 📌 ✕
+#titlebar            ~39px  drag region; name (click → rename, one line + ellipsis) + 歸 窗 [閒 Idle|動 Active] 設 頂 ✕
 #hud                         the always-visible readout (wrapper, Phase 6E)
   #sprite-wrap       150px   canvas (size set per mode by LayoutUI → renderer.setSize); meditate-badge overlay
   #stage-block       ~50px   realm + layer + desc (desc clipped to one line in Overlay; full text in its title)
   #qi-block          ~40px   labels + track + rate
   #vitals            ~26px   Integrity · Health · Age on ONE row (3-column grid; values out of 100, no "/ 100")
   #banner-info               banner only: stones + expedition
-  #actions           ~46px   Meditate + Breakthrough (icon left, name over sub)
-  #banner-btns               banner only: ⬡ open the full window
-#main-pane                   wrapper for the tabs (Phase 6E)
-  #tabs              ~24px   7 equal-flex tabs; 9px in Overlay, 11px in Expanded/Desktop
-  #tab-body          flex:1  ~305px in Overlay (was ~105); overflow:hidden; active .panel scrolls internally
+  #actions           ~46px   Meditate (坐) + Breakthrough (破) (icon left, name over sub)
+  #attention         ~32px   1.8b-1: what's waiting (Overlay: one line + "+N" unfold; Expanded/Desktop: card column)
+  #banner-quick / #banner-btns  banner only: quick menus, ⬡ open the full window
+#main-pane                   wrapper for the navigation (Phase 6E); a row in Expanded/Desktop (rail | view)
+  #tabs              ~38px   1.8b-1: six group buttons (glyph over name); a 64px vertical rail in Expanded/Desktop
+  #view                      sub-tab row + tab body
+    #subtabs         ~30px   pill sub-tabs of the open group + the 自 automation chip (hidden for 1-view groups w/o chip)
+    #tab-body        flex:1  ~246px in Overlay (was 305 after 1.7; nav + strip cost ~60px); active .panel scrolls
 #resize-grip                 Desktop only: ◢ bottom-right
 ```
 
@@ -40,20 +43,59 @@ Defined in `:root` at top of styles.css — always use these, never raw hex in n
 `:root[data-cb="deuteranopia"|"protanopia"]` overrides `--red`/`--jade` (color-blind setting). Never hard-code
 red/green hex in JS: use `var(--red)` or `settingsUI.palette()` (see settings.md).
 
-## Tab System
-7 tabs: Techniques · Stats · Explore · Craft · Pack (Phase 21) · Sect · Log
-- Tab buttons: `.tab` class, `data-tab="<name>"` attribute
-- Panels: `#tab-<name>`, `.panel` class; `.panel.active` shown
-- Tab click handler in `game.js` calls the relevant `render<X>(s)` function
-- `updateHUD(s)` also calls the active tab's render function every frame (for live data like timers)
+## Navigation (1.8b-1, Phase 33) — groups → views
+`NAV_GROUPS` in `renderer/game/nav.js` is the single source. A **view** is one panel (`#tab-<view>`); a **group** is a
+button in `#tabs` holding 1+ views shown as sub-tabs:
 
-## Adding a New Tab
-1. HTML: `<button class="tab" data-tab="<name>"><name></button>` in `#tabs`
-2. HTML: `<div id="tab-<name>" class="panel"></div>` in `#tab-body`
-3. `game.js`: add `if (activeTab === '<name>') render<Name>(s)` in `updateHUD`
-4. `game.js`: add `if (btn.dataset.tab === '<name>') render<Name>(s)` in tab click handler
-5. CSS: add panel-specific styles in styles.css (see Explore/Craft sections for pattern)
-6. Consider whether 6 tabs at 300px needs a font-size reduction (currently 10px for 5 tabs)
+| Group | Views (sub-tabs) | Automation chip |
+|---|---|---|
+| 修 Path | techniques (Techniques) · stats (Character) | — |
+| 歷 Roam | explore (Explore: expedition, locations, road encounters) · beasts (Beasts: wild + tamed) | Auto-Explore |
+| 家 Kin | family (Family) · clan (Clan: clan rows, Hall, Pass the Mantle) | — |
+| 宗 Sect | sect | Auto-Missions |
+| 囊 Pack | pack (Items) · craft (Craft) — user asked for Craft and Pack together | Auto-Craft (on Craft) |
+| 錄 Log | events (Events) · banter (Banter) | — |
+
+- `NavUI` builds every group button and every sub-tab button once; sub-tabs outside the open group are
+  `.hidden` but stay in the DOM, so `[data-tab="<view>"]` always resolves (smoke scenarios click them).
+- `nav.go(view)` switches group + panel and calls `renderView(view, s)` (game.js `VIEW_RENDER` map). A group
+  remembers its last sub-view (localStorage `cultivator-idle:nav`, per computer).
+- `updateHUD` re-renders `nav.view` on explicit state changes and runs the in-place timer updaters on ticks.
+- `nav.update(s, attentionItems, automationUnlocked)` redraws badges + the automation chip (DOM only on change).
+- Group names are ≤ 5 chars so six fit in 300px with the glyph above (the approved "Cultivate/Adventure" became
+  "Path/Roam" for width).
+
+## Adding a New View
+1. HTML: `<div id="tab-<view>" class="panel"></div>` in `#tab-body`
+2. `nav.js`: add `['<view>', 'Label']` to a group's `views` (or a new group: glyph, ≤ 5-char name, title)
+3. `game.js`: add `<view>: s => render<View>(s)` to `VIEW_RENDER`
+4. If something in it can wait on the player, add an item in `collectAttention()` with `view: '<view>'`
+5. CSS in styles.css; use classes, not inline `style="…"` (see the CSP gotcha)
+
+## Attention layer (1.8b-1)
+`collectAttention(s, gameState)` (renderer/game/attention.js, DOM-free, `require`-able from Node) returns ranked
+items `{ id, tier, glyph, title, why, view, open?, left? }`:
+- **urgent** (a decision; red): proposal 媒, duel 決, head challenge 挑, step-down 讓, marriage event 婚, child event 子,
+  upbringing 幼, tournament 奪, member war call 戰 (until answered), own-sect war 戰 (with countdown)
+- **ready** (an opportunity; jade): road strangers 逢, wild beasts 獸, clan head with adults but no heir 嗣
+- **idle** (a nudge; dim; hidden while the matching automation runs): no expedition 歷, open mission slot 任,
+  an affordable technique 功
+Clicking an item opens its popup (`open`: proposal / family / tournament) or navigates to `view`; on the banner a
+nav target first peeks the full window. Group badges: red count = has urgent, jade count = ready only, gold dot =
+nudges only. Rendering: Overlay one line + "+N" (unfolds a floating list with reasons, folds on outside click);
+Expanded/Desktop a card column under the actions with every reason; Banner one chip after the quick menus, "+N"
+peeks the full window.
+
+## Mode panel (1.8b-1)
+`#mode-overlay`, rendered by game.js `renderModePanel()`: Idle / Active cards (Active lists its bonuses from the
+ACTIVE_* constants) + the automation rows (`renderAutomationPanel`, now only here; locked rows show 封 + unlock
+requirement). Opened by the titlebar 閒/動 button and by the 自 chip. The titlebar button no longer toggles the mode
+directly; the choice is made on a card that says what it does.
+
+## "Locked because…" (1.8b-1)
+`lockedAction(label, why)` in game.js renders a dashed, disabled button with "封 <why>". Use it instead of omitting
+an action the player can't take yet. Applied so far: Challenge the Head, Declare War on the Main Line, Secede, Push
+for War (1.8b-4 extends it across the Clan view).
 
 ## Render Function Pattern
 All `render<X>(s)` functions:
@@ -63,7 +105,9 @@ All `render<X>(s)` functions:
 - Are called every frame when tab is active — keep them fast; avoid layout thrashing
 
 ## Flash Message
-`flashMessage(msg, type)` — shows a toast and calls `gameState.addEvent`.
+`flashMessage(msg, type)` — shows a toast and calls `gameState.addEvent`. Since 1.8b-1 the toast sits on the lower
+edge of the sprite scene (positioned from `#sprite-wrap`'s rect; styled by `#_toast` in CSS), never over tab content;
+the banner keeps its own in-strip position.
 Types: `'positive'` (jade), `'negative'` (red), `'special'` (gold), `'neutral'` (dim)
 
 ## Overlays
@@ -71,7 +115,8 @@ Overlays in HTML: `#rename-overlay`, `#confirm-overlay`, `#settings-overlay` (Ph
 `#confirm-overlay` is a generic one-shot confirm (Phase 21: `showConfirm(msg, sub, onYes)` in game.js) — charselect's
 delete-slot flow and the Pack tab's Discard button both call it. Don't hardcode a new pending-action sentinel if you
 add a third caller.
-`#banter-bubble` (Phase 29) is `position: fixed`, z 210, so it sits above overlays. It needs `width: max-content`, because `left:50%` + translate otherwise caps it at half the window.
+`#banter-bubble` (Phase 29) is `position: fixed`, z 210. Since 1.8b-1 `updateHUD` hides it whenever any
+`body > [id$="-overlay"]` is open (`isPopupOpen()`, also BanterSystem's block check), so it never covers a popup. It needs `width: max-content`, because `left:50%` + translate otherwise caps it at half the window.
 Pattern: `.hidden` class toggle. Always `z-index: 200`. Wire buttons directly in the IIFE.
 
 ## Invariants
@@ -252,6 +297,9 @@ Home: **O** Overlay · **E** Expanded · **D** Desktop · **B** Banner.
    hidden buttons.
 
 ## Gotchas
+- **CSP blocks inline style attributes.** index.html's CSP is `style-src 'self'`, so `style="…"` in HTML set via
+  innerHTML is ignored by Chromium. Until 1.8b-1 ~57 of them in game.js were silently dropped (colors, widths). A
+  MutationObserver shim at the top of game.js re-applies them through CSSOM (allowed). New code: use classes.
 - `#tab-body` has `overflow: hidden`; individual `.panel` divs have `overflow-y: auto` — add scrollable content inside panels, not on tab-body
 - Rendering on every frame (not just on state change) is intentional for live timers (expedition countdown) — this is acceptable at 300px scale
 - The "Events" tab was renamed "Log" in Phase 2 HTML (tab label) but its panel id remains `tab-events` and its data-tab is `events` — don't rename the id/attr without updating all references

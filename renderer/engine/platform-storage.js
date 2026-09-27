@@ -47,6 +47,7 @@ if (!window.electron) {
     // save flush on iOS/browser — all safe no-ops (see docs/systems/notifications.md). Nothing else
     // in the renderer needs to branch on platform to call these.
     hideToTray: () => {},
+    setCloseToTray: () => {},   // 1.8b-1: no window/tray on iOS/browser
     updateTrayInfo: () => {},
     notify: () => {},
     onRequestSave: () => {},

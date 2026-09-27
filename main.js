@@ -5,9 +5,11 @@ const fs   = require('fs')
 let win
 let tray = null
 // Set only by the app-wide quit path (before-quit) — distinguishes a real quit from the window's
-// native close (taskbar "Close window", Alt+F4, etc.), which should hide to tray instead. See
+// native close (taskbar "Close window", Alt+F4, etc.), which hides to tray only when closeToTray is set. See
 // docs/systems/notifications.md.
 let isQuitting = false
+// Mirrors the ⚙ Close button setting (renderer → set-close-to-tray). false = native closes really quit (1.8b-1).
+let closeToTray = false
 let trayInfo = { name: 'Unnamed Cultivator', stage: '' }
 
 const trayIconPath = () => path.join(__dirname, 'assets', 'icons', 'tray-icon.png')
@@ -142,14 +144,11 @@ function createWindow() {
 
   win.on('closed', () => { win = null })
 
-  // Phase 9A: close button (or any other native close — taskbar "Close window", Alt+F4) hides to
-  // tray instead of quitting, unless a real quit is already in flight (before-quit sets isQuitting
-  // for every quit path: tray "Quit", window.electron.quit(), app.quit()). The renderer's ✕ button
-  // still has its own choice (closeAction setting) between hideToTray() and quit() — this handler
-  // is the backstop that makes "quit only via tray Quit" hold even if something else tries to close
-  // the window directly. See docs/systems/notifications.md.
+  // Native closes (taskbar "Close window", Alt+F4) follow the ⚙ Close button setting (1.8b-1): the renderer
+  // reports it via set-close-to-tray. Default false = a real quit (user 2026-09-26: the old always-hide default
+  // left invisible copies running). Hide-to-tray players keep the Phase 9A behavior. See notifications.md.
   win.on('close', (e) => {
-    if (!isQuitting) { e.preventDefault(); win.hide() }
+    if (!isQuitting && closeToTray) { e.preventDefault(); win.hide() }
   })
 }
 
@@ -183,7 +182,17 @@ function createTray() {
   tray.on('double-click', toggle)
 }
 
+// 1.8b-1: one copy per install. A second launch (or double-clicking the exe while it hides in the tray) brings the
+// running window back instead of starting another full copy. Packaged builds only, so `npm start` can still run
+// next to an installed copy, and smoke runs (throwaway --user-data-dir) are unaffected either way.
+if (app.isPackaged && !app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', () => showWindow())
+}
+
 app.whenReady().then(() => {
+  if (app.isPackaged && !app.hasSingleInstanceLock()) return
   createWindow()
   createTray()
   app.on('activate', () => { if (!win) createWindow() })
@@ -228,6 +237,7 @@ ipcMain.handle('delete-slot', (_e, i) => {
 ipcMain.handle('is-dev', () => !app.isPackaged)
 
 ipcMain.on('quit-app', () => app.quit())
+ipcMain.on('set-close-to-tray', (_e, on) => { closeToTray = !!on })
 
 // ── Layout modes (Phase 6E) ───────────────────────────────────────────────
 ipcMain.handle('get-layout', () => ({ ...layoutCfg(), current: currentMode, supported: true, pinned: win ? win.isAlwaysOnTop() : true }))
