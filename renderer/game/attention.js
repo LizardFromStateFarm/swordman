@@ -47,9 +47,9 @@ function collectAttention(s, gs) {
   if (w && (w.phase === 'scouting' || w.phase === 'preparing')) {
     const left = Math.max(0, Math.ceil(((w.phase === 'preparing' ? w.prepEndsAt : w.scoutEndsAt) - Date.now()) / 1000))
     if (w.side === 'member' && s.sect?.id && !w.answered)
-      add('urgent', 'war-call', '戰', `War call: ${w.enemyName}`, 'Your sect calls every disciple to arms. Answer, or lose standing.', 'sect', null, left)
+      add('urgent', 'war-call', '戰', `War call: ${w.enemyName}`, 'Your sect calls every disciple to arms. Answer, or lose standing.', 'sect-war', null, left)
     else if (w.side === 'own' && s.ownSect?.founded)
-      add('urgent', 'own-war', '戰', `${w.enemyName} marches on you`, w.phase === 'preparing' ? 'Reinforce or call an ally before they arrive.' : 'Their scouts are in your hills. Prepare.', 'sect', null, left)
+      add('urgent', 'own-war', '戰', `${w.enemyName} marches on you`, w.phase === 'preparing' ? 'Reinforce or call an ally before they arrive.' : 'Their scouts are in your hills. Prepare.', 'sect-war', null, left)
   }
 
   // ── Opportunities ──
@@ -80,7 +80,15 @@ function collectAttention(s, gs) {
   const autoOn = key => s.playMode === 'idle' && s.automation?.[key] && gs.automationUnlocked?.(key)
   if (!s.expedition?.active && !autoOn('autoExplore')) add('idle', 'expedition', '歷', 'No expedition underway', 'Send one out: loot, stones and beast sightings.', 'explore')
   if (s.sect?.id && !autoOn('autoSectMissions') && typeof SECT_MAX_MISSIONS !== 'undefined' && (s.sect.activeMissions || []).length < SECT_MAX_MISSIONS)
-    add('idle', 'missions', '任', 'A mission slot is open', `${(s.sect.activeMissions || []).length} of ${SECT_MAX_MISSIONS} missions underway.`, 'sect')
+    add('idle', 'missions', '任', 'A mission slot is open', `${(s.sect.activeMissions || []).length} of ${SECT_MAX_MISSIONS} missions underway.`, 'sect-missions')
+  // 1.8b-5: your own sect — a seat you could fill now, a hall you could raise now
+  const os = s.ownSect?.founded && gs.ownSectInfo?.()
+  if (os) {
+    const cand = os.candidates.filter(c => c.ok).sort((a, b) => b.c.talent - a.c.talent)[0]
+    if (cand) add('idle', 'recruit', '徒', 'A disciple seat is open', `${cand.c.name} (${cand.c.talent} star${cand.c.talent === 1 ? '' : 's'}) would join for ${cand.cost} stones.`, 'sect-disciples')
+    const bld = os.buildings.find(x => x.ok)
+    if (bld) add('idle', 'build', '殿', `You could raise the ${bld.b.name}`, `${bld.b.desc} Costs ${bld.b.stones} stones.`, 'sect-halls')
+  }
   // 1.8b-3a: a spouse cooling toward you, when something can be done about it now
   if (f.spouse && f.affection < 50 && (gs.spouseActionPreview?.('time').ok || gs.spouseActionPreview?.('gift').ok))
     add('idle', 'spouse-cool', '冷', `${f.spouse.given} is growing distant`, `Affection ${Math.round(f.affection)}. Time together or a gift would help.`, 'family')

@@ -29,7 +29,8 @@ _Covers: sects.js (data) · renderer/game/sect.js · game-state.js · game.js (r
 - `game-state.js _newGame()` seeds `sect`; `_ensurePhase4Fields()` migrates old saves (called from `_recalc`).
 - `_recalc()` folds sect `effects` into qps/BT and exposes `derived.sect*` fields.
 - `renderer/game/sect.js SectSystem.tick()` → resolves missions whose `endsAt` has passed.
-- `game.js bootGame()` adds `sectSys.tick(dt)`; `renderSect(s)` drives the Sect tab; timers update in place.
+- `game.js bootGame()` adds `sectSys.tick(dt)`; the Sect views live in `renderer/game/sect-view.js` (1.8b-5: Overview ·
+  Missions · War for a member, the join list when you have no sect — ui-layout.md → "Sect views"); timers update in place.
 
 ## Invariants
 1. `sect.id` null ⇒ `rank === 0`, `contribution === 0`, `activeMissions === []`.

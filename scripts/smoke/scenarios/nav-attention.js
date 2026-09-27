@@ -64,7 +64,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
     await click('#proposal-later')
   }
   await click('#attention [data-att-more]'); await click('#attention [data-att="own-war"]'); await sleep(200)
-  assert(await ev('document.getElementById("tab-sect").classList.contains("active")'), 'clicking the war item opens Sect')
+  assert(await ev('document.getElementById("tab-sect-war").classList.contains("active")'), 'clicking the war item opens Sect → War (1.8b-5)')
 
   for (const g of ['cultivate', 'kin', 'sect', 'pack']) { await click(`#tabs [data-group="${g}"]`); await sleep(150); await shot(`nav-overlay-${g}`) }
   await click('[data-tab="clan"]'); await sleep(150); await shot('nav-overlay-clan')

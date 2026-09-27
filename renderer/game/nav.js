@@ -11,8 +11,10 @@ const NAV_GROUPS = [
     views: [['explore', 'Explore'], ['beasts', 'Beasts']], auto: 'autoExplore' },
   { id: 'kin',       glyph: '家', name: 'Kin',   title: 'Family, clan and the Ancestral Hall',
     views: [['family', 'Family'], ['clan', 'Clan'], ['hall', 'Hall']] },
+  // 1.8b-5: which sub-views show depends on your standing (NavUI.setAvailable, from game.js sectViews())
   { id: 'sect',      glyph: '宗', name: 'Sect',  title: 'Your sect: missions, wars, buildings',
-    views: [['sect', 'Sect']], auto: 'autoSectMissions' },
+    views: [['sect', 'Overview'], ['sect-missions', 'Missions'], ['sect-halls', 'Halls'], ['sect-disciples', 'Disciples'], ['sect-war', 'War']],
+    auto: 'autoSectMissions' },
   { id: 'pack',      glyph: '囊', name: 'Pack',  title: 'Your pack and the alchemy furnace',
     views: [['pack', 'Items'], ['craft', 'Craft']], autoView: { craft: 'autoCraft' } },
   { id: 'log',       glyph: '錄', name: 'Log',   title: 'Chronicle of events and idle chatter',
@@ -34,6 +36,7 @@ class NavUI {
     this.tabs = document.getElementById('tabs')
     this.subs = document.getElementById('subtabs')
     this._badgeSig = ''
+    this.avail = null   // Set of views currently offered (null = all); hides sub-tabs that don't apply
     this._build()
     this._showPanel()
   }
@@ -55,7 +58,8 @@ class NavUI {
       const b = e.target.closest('[data-group]')
       if (!b) return
       const g = this._groupDef(b.dataset.group)
-      this.go(this.last[g.id] || g.views[0][0])
+      const last = this.last[g.id]
+      this.go(last && this._offered(last) ? last : g.views.find(v => this._offered(v[0]))[0])
     })
     this.subs.addEventListener('click', e => {
       if (e.target.closest('#auto-chip')) return this.onMode()
@@ -75,14 +79,28 @@ class NavUI {
     this.onShow(view)
   }
 
+  _offered(view) { return !this.avail || this.avail.has(view) }
+
+  // 1.8b-5: offer only these views (views of other groups must be listed too). If the open view is withdrawn
+  // (you left the sect, or founded one), fall back to its group's first offered view.
+  setAvailable(views) {
+    const sig = [...views].sort().join('|')
+    if (sig === this._availSig) return
+    this._availSig = sig
+    this.avail = new Set(views)
+    const g = this.groupOf(this.view)
+    if (g && !this._offered(this.view)) return this.go(g.views.find(v => this._offered(v[0]))[0])
+    this._showPanel()
+  }
+
   _showPanel() {
     const g = this._groupDef(this.group)
     this.tabs.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.group === this.group))
     this.subs.querySelectorAll('.subtab').forEach(b => {
-      b.classList.toggle('hidden', b.dataset.in !== this.group)
+      b.classList.toggle('hidden', b.dataset.in !== this.group || !this._offered(b.dataset.tab))
       b.classList.toggle('active', b.dataset.tab === this.view)
     })
-    this.subs.classList.toggle('single', g.views.length < 2)
+    this.subs.classList.toggle('single', g.views.filter(v => this._offered(v[0])).length < 2)
     document.getElementById('sub-group').innerHTML = `<span class="sub-group-glyph">${g.glyph}</span><span id="sub-group-sub">${g.name}</span>`
     document.querySelectorAll('#tab-body .panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + this.view))
     this._autoSig = null
@@ -105,6 +123,14 @@ class NavUI {
       else count[g] = (count[g] || 0) + 1
     }
     const urgent = new Set(items.filter(i => i.tier === 'urgent').map(i => this.groupOf(i.view)?.id))
+    // 1.8b-5: sub-tabs carry a small mark too, so a group with several views says which one wants you
+    const subTier = {}
+    for (const i of items) if (!subTier[i.view] || ATTENTION_TIER_ORDER[i.tier] < ATTENTION_TIER_ORDER[subTier[i.view]]) subTier[i.view] = i.tier
+    const subSig = JSON.stringify(subTier)
+    if (subSig !== this._subSig) {
+      this._subSig = subSig
+      this.subs.querySelectorAll('.subtab').forEach(b => { b.dataset.att = subTier[b.dataset.tab] || '' })
+    }
     const sig = JSON.stringify([count, dot, [...urgent]])
     if (sig !== this._badgeSig) {
       this._badgeSig = sig
@@ -134,7 +160,7 @@ class NavUI {
     if (!unlocked) return
     chip.classList.toggle('on', on)
     const state = s.playMode === 'active' ? 'resting (Active Mode)' : on ? 'on' : 'off'
-    chip.innerHTML = `自 ${s.playMode === 'active' ? 'rests' : on ? 'on' : 'off'}<span class="ac-dot"></span>`
+    chip.innerHTML = `自<span class="ac-label"> ${s.playMode === 'active' ? 'rests' : on ? 'on' : 'off'}</span><span class="ac-dot"></span>`
     chip.title = `${NAV_AUTO_NAMES[key]}: ${state}. Click for the Mode panel.`
     chip.setAttribute('aria-label', chip.title)
   }

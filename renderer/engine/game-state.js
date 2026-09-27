@@ -4544,6 +4544,78 @@ class GameState {
     return { bonus, rankMult, power: 1 + bonus * rankMult }
   }
 
+  // ── 1.8b-5 (UI read helpers, no state changes) ─────────────────────────────
+
+  // Win odds of the coming (or next) sect war, rolled exactly as _resolveSectWar/_resolveMemberWar roll it: your
+  // power multiplier m against an enemy of ×(0.6–1.4, uniform) → P(win) = mean of m/(m+u) = (m/0.8)·ln((m+1.4)/(m+0.6)).
+  // parts: { label, op: 'base' | '+' | 'x', value } — the terms of m, for the "why" card.
+  sectWarOdds() {
+    const s = this._s, w = s.sectWar, d = s.derived || {}
+    const odds = m => (m <= 0 ? 0 : (m / 0.8) * Math.log((m + 1.4) / (m + 0.6)))
+    if (w?.side === 'member' && s.sect?.id) {
+      const { rankMult, power } = this.memberWarPower()
+      const full = this.memberWarChestFull()
+      const beast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
+      const parts = [{ label: 'Your sect alone', op: 'base', value: 1 }]
+      const add = (label, v) => { if (v > 0) parts.push({ label, op: '+', value: v * rankMult }) }
+      if (w.answered) add('You answered the call', MEMBER_WAR_ANSWER_BONUS)
+      add(`War chest ${Math.min(w.chestStones, full)}/${full}`, MEMBER_WAR_CHEST_MAX_BONUS * Math.min(1, w.chestStones / full))
+      add(`Pills offered ×${w.pillsGiven}`, MEMBER_WAR_PILL_BONUS * w.pillsGiven)
+      if (beast) add(`${beast.name} at the front`, Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * beast.level))
+      return { side: 'member', mult: power, chance: odds(power), parts, rankMult,
+               ifAnswered: w.answered ? null : odds(power + MEMBER_WAR_ANSWER_BONUS * rankMult) }
+    }
+    if (w?.side === 'own' && s.ownSect?.founded) {
+      let m = 1 + (d.warDefense || 0)
+      const parts = [{ label: 'Your sect alone', op: 'base', value: 1 }]
+      if (d.warDefense) parts.push({ label: 'Defensive Array', op: '+', value: d.warDefense })
+      if (w.reinforced) { m *= 1 + WAR_REINFORCE_POWER_BONUS; parts.push({ label: 'Reinforced', op: 'x', value: 1 + WAR_REINFORCE_POWER_BONUS }) }
+      if (w.allyId) { m *= 1 + WAR_ALLY_POWER_BONUS; parts.push({ label: `${SECTS.find(x => x.id === w.allyId)?.name || 'Ally'} fights with you`, op: 'x', value: 1 + WAR_ALLY_POWER_BONUS }) }
+      return { side: 'own', mult: m, chance: odds(m), parts, arrayDamaged: !!d.arrayDamaged,
+               reinforceCost: this._warReinforceCost(), allyCost: this._warAllyCost(),
+               ifReinforced: w.reinforced ? null : odds(m * (1 + WAR_REINFORCE_POWER_BONUS)),
+               ifAllied: w.allyId ? null : odds(m * (1 + WAR_ALLY_POWER_BONUS)) }
+    }
+    return null
+  }
+
+  // Your own sect in numbers: what each disciple adds, each candidate would add, each building costs/does, fame terms.
+  ownSectInfo() {
+    const s = this._s, o = s.ownSect, d = s.derived || {}
+    if (!o?.founded) return null
+    const inc = d.ownSectIncomeMult || 1, xpMult = d.discipleXpMult || 1
+    let lib = 1
+    for (const id of Object.keys(o.buildings)) if (o.buildings[id]) lib *= SECT_BUILDINGS.find(b => b.id === id)?.effects?.disciple_qi_mult || 1
+    const yieldOf = (talent, level) => {
+      const lm = 1 + 0.1 * (level - 1)
+      return { qi: DISCIPLE_QI_FRAC * talent * lm * lib, stonesMin: DISCIPLE_STONE_RATE * talent * lm * inc * 60, herbsMin: DISCIPLE_HERB_RATE * talent * lm * inc * 60 }
+    }
+    const disciples = o.disciples.map(dc => {
+      const max = dc.level >= DISCIPLE_MAX_LEVEL
+      const need = DISCIPLE_XP_PER_LEVEL * dc.level, rate = (DISCIPLE_XP_BASE + DISCIPLE_XP_PER_TALENT * dc.talent) * xpMult
+      return { d: dc, ...yieldOf(dc.talent, dc.level), max, xpFrac: max ? 1 : Math.min(1, dc.xp / need), eta: max ? 0 : Math.ceil((need - dc.xp) / rate), fame: dc.talent * dc.level }
+    })
+    const full = o.disciples.length >= (d.discipleCap || 0)
+    const candidates = o.recruitPool.map(c => {
+      const cost = DISCIPLE_RECRUIT_COST * c.talent * c.talent
+      return { c, cost, ...yieldOf(c.talent, 1), ok: !full && s.spiritStones >= cost, reason: full ? 'full' : s.spiritStones < cost ? 'stones' : null }
+    })
+    const buildings = SECT_BUILDINGS.map(b => {
+      const missing = Object.entries(b.items).map(([id, need]) => ({ id, need, have: s.inventory[id] || 0 })).filter(x => x.have < x.need)
+      const built = !!o.buildings[b.id]
+      return { b, built, stonesShort: Math.max(0, b.stones - s.spiritStones), missing, ok: !built && s.spiritStones >= b.stones && !missing.length }
+    })
+    const lvl = Math.min(o.hallLevel, SECT_HALL_LEVELS.length)
+    const hallNext = SECT_HALL_LEVELS[lvl - 1]?.upgradeStones ?? null
+    const builtN = buildings.filter(x => x.built).length
+    return {
+      disciples, candidates, buildings, full,
+      totals: { stonesMin: disciples.reduce((a, x) => a + x.stonesMin, 0), herbsMin: disciples.reduce((a, x) => a + x.herbsMin, 0), qi: d.discipleQiFrac || 0 },
+      hall: { level: o.hallLevel, cap: d.discipleCap || 0, nextCap: SECT_HALL_LEVELS[lvl]?.cap ?? null, cost: hallNext, ok: hallNext != null && s.spiritStones >= hallNext },
+      fame: { total: d.sectFame || 0, disciples: disciples.reduce((a, x) => a + x.fame, 0), buildings: 10 * builtN, hall: 25 * o.hallLevel, wins: 5 * (s.sectWar?.warVictories || 0) },
+    }
+  }
+
   // Brings a war-lent beast home (war resolved, sect left, or state reset). Safe if it was dismissed meanwhile.
   _releaseWarBeast(xp) {
     const s = this._s, w = s.sectWar

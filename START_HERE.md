@@ -31,7 +31,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
-| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted) |
+| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted); 1.8b-5 Sect ◐ (7.0, user decision) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -100,6 +100,10 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 - **Clan + Hall leftovers (1.8b-4, 7.5 accepted):** Overlay nests boxes three deep (drop inner borders on small
   panes); fold toggles only on the far-right caret (make the whole header the target); ancestor rows need a leading
   "gen N · realm" marker; Desktop columns still uneven with a long chronicle.
+- **Sect views leftovers (1.8b-5, 7.0):** every card is the same box (no sect-ledger ornament/texture); Overlay HUD
+  leaves ~200px so each view opens on a cut-off card; Overlay Disciples opens on the gate (roster below); buildings
+  have no levels, so a founder with all six raised has nothing to do in Halls but the Sect Hall; Explore/Craft grid
+  cards keep the old flat row style; standing-order war-chest note is still a paragraph (could be a 詳 card).
 - **Family view leftovers (1.8b-3a):** no hint of what each temper *likes* beyond the blurb and the meeting-choice
   approach hints (a "likes/dislikes" line per personality would need data); lovers are still a plain list (3b);
   Overlay tab pane is small, so the married view is ~3 screens.
@@ -116,6 +120,25 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 26
+Agent: **1.8b-5 Sect sub-views + card grids** (user approved the assessment). As-built: ui-layout.md → "Sect views".
+  - 宗 Sect is now sub-tabs by standing: none → Overview (join list with blessings in words + founding card with
+    have/need); joined → Overview · Missions · War; founded → Overview · Halls · Disciples · War. New
+    renderer/game/sect-view.js (SectView); the old renderSect/renderOwnSect/…War panels in game.js are gone.
+  - NavUI: setAvailable(views) (sub-tabs only for what applies; falls back if withdrawn), sub-tab attention dots,
+    #subtabs is a size container (pills never ellipsize; fits Expanded's ~275px column).
+  - game-state read helpers: sectWarOdds() (exact odds of the real roll, what-ifs, costs; the old UI's
+    power/(power+1) was slightly off) and ownSectInfo() (per-disciple yields, candidates, buildings, hall, fame terms).
+    Breakdown kind 'sectwar'. Attention: war → sect-war, missions → sect-missions, new nudges 徒 recruit / 殿 build.
+  - Founder Sect: every view ≤ 3 Overlay screens (was 14.8). Techniques/Explore/Craft are card grids in
+    Expanded/Desktop. Defensive Array desc de-dev-speaked. Tech cost 🪨 → 石.
+  - Tests: new checks/sect-view.js (23: odds = 4,000-war Monte Carlo of the real resolvers, yields = real ticks);
+    new smoke scenarios/sect.js; nav-attention + war-orders updated (Sect → War). npm test (87) · npm run checks
+    (373) · smoke sect/nav-attention/war-orders/layout-modes/banner-menus: zero console errors.
+  - **Visual Review Gate: 6.7 → 7.0 → 7.0 over 3 cycles (no criterion < 6 after cycle 1) → waiting on the user.**
+    Cycle-3 fixes applied after the last review. Nothing committed yet.
+  Next: user's gate decision + commit, then 1.8d (icon set) or 1.8b-6.
+
 Date: 2026-09-27 (user present) — part 25
 Agent: **Quick changes (user, no review gate requested):** Spirit Stones in the HUD vitals row (石 · number, beside
   Age; Stones/Age labels shortened to glyphs + tooltips so the 300px column fits), and every Explore location lists

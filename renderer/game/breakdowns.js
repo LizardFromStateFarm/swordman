@@ -2,7 +2,7 @@
 // turns the save + GameState's recorded terms (s.derived.breakdown, ascensionBreakdown(), btFailPreview(),
 // vitalsInfo()) into a card model { glyph, title, cn, total, rows, sections, notes }. BreakdownUI draws that card as
 // a popover next to whatever was tapped: any element with data-bd="<kind>" (HUD numbers, Character tiles).
-// Kinds: qps · cap · bt · integrity · health · karma · bloodline · affection + propose (1.8b-3a). See docs/systems/ui-layout.md → "Breakdowns".
+// Kinds: qps · cap · bt · integrity · health · karma · bloodline · affection + propose (1.8b-3a) · branch (1.8b-4) · sectwar (1.8b-5). See docs/systems/ui-layout.md → "Breakdowns".
 
 // Short stage names for locks and hints ("Qi Condensation 4", "Core Formation · Early") instead of "Stage 12+".
 function stageShortName(i) {
@@ -93,6 +93,29 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
       { label: p.ours >= p.main ? 'You lead by' : 'The main line leads by', val: fmt(Math.abs(p.ours - p.main)), tone: p.ours >= p.main ? 'up' : 'down' },
     ], sections: [{ title: 'If you lose', rows: [{ label: 'You are deposed, or you die', val: '', tone: 'warn' }] }],
       notes: ['Other branches pick a side when war is declared, which can tip it either way. Stronger children and your own breakthroughs raise your line.'] }
+  }
+
+  // 1.8b-5: sect war odds — the real roll (gs.sectWarOdds): your strength multiplier against a rival of ×0.6–1.4
+  if (kind === 'sectwar') {
+    const o = gs.sectWarOdds()
+    if (!o) return null
+    const rows = o.parts.map(p => p.op === 'base' ? { label: p.label, val: '×1.00', op: 'base' }
+      : { label: p.label, val: p.op === 'x' ? `×${p.value.toFixed(2)}` : `+${p.value.toFixed(2)}`, op: p.op === 'x' ? 'x' : '+', tone: 'up' })
+    rows.push({ label: 'Your strength', val: `×${o.mult.toFixed(2)}`, tone: '' })
+    const notes = ['The rival rolls its strength when battle is joined: anywhere from ×0.6 to ×1.4 of an even match. These odds average over every roll.']
+    if (o.side === 'member') {
+      if (o.rankMult !== 1) notes.push(`Your rank multiplies everything you give by ×${o.rankMult}.`)
+      if (o.ifAnswered != null) notes.push(`Answering the call alone would raise this to ${BD_PCT(o.ifAnswered)}.`)
+    } else {
+      if (o.ifReinforced != null) notes.push(`Reinforcing: ${BD_PCT(o.ifReinforced)}.`)
+      if (o.ifAllied != null) notes.push(`With an ally: ${BD_PCT(o.ifAllied)}.`)
+      if (o.arrayDamaged) notes.push('Your Defensive Array is damaged and counts for nothing until it mends.')
+    }
+    // What rides on it (the Sect → War view lists this too, except in Overlay)
+    notes.push(o.side === 'own'
+      ? `Defeat: you lose ${Math.round(WAR_LOSS_RESOURCE_FRAC * 100)}% of your stones, the Defensive Array goes dark ${WAR_ARRAY_DAMAGE_HOURS}h, and you may be wounded.`
+      : `Defeat: the sect's blessing is withheld ${MEMBER_WAR_BUFF_SUPPRESS_HOURS}h. Ignoring the call costs Contribution and karma, even in victory.`)
+    return { glyph: '戰', title: 'Sect war odds', cn: '戰', total: BD_PCT(o.chance), totalLabel: 'Your odds to win', rows, notes }
   }
 
   if (kind === 'bt' && s.stageIndex === lastMortal) {

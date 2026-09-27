@@ -189,6 +189,7 @@ renderer/
     breakdowns.js       ← buildBreakdown() (DOM-free) + BreakdownUI — "why" popovers for any [data-bd] number, stageShortName() (1.8b-2)
     family-view.js      ← FamilyView — Kin → Family: spouse/courtship card, child wishes, children + raising actions, heir (1.8b-3a)
     clan-view.js        ← ClanView + HallView — Kin → Clan (lines, head, relations, clan actions) and Kin → Hall (Merit, firsts, legacies, Family Manual picker) (1.8b-4)
+    sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
     icons.js            ← SPEC (1.8d): Icon(name) → inline SVG from assets/icons/ui-icons.svg; the UI icon set
     combat.js           ← SPEC (Phase 35): the battle page UI (animated exchanges) over the fight card
     base-view.js        ← SPEC (Phase 38A): Sect Base view — the large sect-compound scene

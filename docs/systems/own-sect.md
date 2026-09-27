@@ -20,6 +20,9 @@ computed here, and can zero out Defensive Array's `war_defense` contribution via
 - `rerollRecruitPool()` → `{ ok, reason? }` — costs `RECRUIT_REROLL_COST` stones
 - `dismissDisciple(id)` → `{ ok }` — free, no refund
 - `disbandOwnSect()` → `{ ok }` — wipes `ownSect`, karma −10; buildings/disciples are lost
+- `ownSectInfo()` → UI read helper (1.8b-5, no state change): per-disciple `{ d, qi, stonesMin, herbsMin, max, xpFrac, eta, fame }`,
+  candidates `{ c, cost, qi, stonesMin, herbsMin, ok, reason }`, buildings `{ b, built, stonesShort, missing, ok }`, `totals`,
+  `hall { level, cap, nextCap, cost, ok }`, `fame` terms. Mirrors _recalc/tickOwnSect exactly (checks/sect-view.js).
 - `tickOwnSect(dt)` → void — internal; called from `tick(dt)` and from offline catch-up in `initSlot`
 
 ## Data Shape (assets/data/sect-buildings.js)
@@ -36,7 +39,8 @@ computed here, and can zero out Defensive Array's `war_defense` contribution via
   `warDefense`, `discipleCap`, `sectFame`, `ownSectIncomeMult`.
 - `tick(dt)` → `tickOwnSect(dt)`: income (stones/herbs), disciple XP/levels, recruit-pool refresh.
 - `initSlot()` offline catch-up applies `tickOwnSect(elapsed)` (elapsed capped at 8h like Qi).
-- `game.js renderSect(s)` dispatches: founded → `renderOwnSect`; else Phase 4 join/member view (+ "Found a Sect" panel).
+- UI: `renderer/game/sect-view.js` (1.8b-5) — Sect → Overview · Halls · Disciples · War for a founder; the no-sect
+  Overview holds the founding card. See ui-layout.md → "Sect views".
 
 ## Invariants
 1. `ownSect.founded` ⇒ `sect.id === null` (can't be in both; `joinSect` rejects `own_sect`).
@@ -51,4 +55,7 @@ computed here, and can zero out Defensive Array's `war_defense` contribution via
   Recruiting picks from a 3-candidate pool instead of a blind roll.
 - Disbanding is destructive and asks for a double-click confirm in the UI.
 - Beast cap was hard-coded `3` in game.js (Explore/Stats) and game-state.js (`tameEncounteredBeast`); all now read `derived.maxBeasts`.
-- Re-rendering the Sect tab on any state change wipes the founding name input; the value is read at click time, not stored.
+- Re-rendering the Sect tab on any state change used to wipe the founding name input; since 1.8b-5 SectView keeps the
+  typed name in `foundName` and restores it after each render.
+- Defensive Array's desc was dev-speak ("used by sect wars, Phase 5B"); reworded 1.8b-5.
+- Buildings have no levels: once all six are raised the Halls view has nothing left to do but the Sect Hall (UX debt).

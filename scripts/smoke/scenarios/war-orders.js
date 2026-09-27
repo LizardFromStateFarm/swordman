@@ -1,4 +1,4 @@
-// Real-app smoke scenario — Standing Orders number fields (docs/systems/sect-war.md → Standing Orders): no native spin
+// Real-app smoke scenario (Sect → War since 1.8b-5) — Standing Orders number fields (docs/systems/sect-war.md → Standing Orders): no native spin
 // arrows, the themed −/+ steppers change the order, and the war-chest note explains the stones with live numbers.
 // Screenshots: scripts/smoke/out/orders-*.png. Run: node scripts/smoke/cdp.js scripts/smoke/scenarios/war-orders.js
 module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
@@ -12,7 +12,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await ev('document.getElementById("layout-tip")?.click()')
   await ev('(() => { const s = gameState.get(); s.sectWar.nextWarAt = Date.now() + 3600e3; gameState._notify() })()')
   const show = async () => {
-    await click('[data-tab="sect"]'); await sleep(250)
+    await click('[data-tab="sect-war"]'); await sleep(250)   // 1.8b-5: orders live in Sect → War
     await ev(`document.querySelector('.num-step')?.scrollIntoView({ block: 'center' })`); await sleep(150)
   }
   await show()

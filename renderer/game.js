@@ -401,6 +401,7 @@
     // 1.8b-1: the attention list feeds the strip, the group badges and the banner summary
     const att = collectAttention(s, gameState)
     attentionUI.render(att)
+    nav.setAvailable(ALL_VIEWS.filter(v => !v.startsWith('sect') || SectView.viewsFor(s).includes(v)))   // 1.8b-5
     nav.update(s, att, k => gameState.automationUnlocked(k))
     // A banter bubble never sits on top of a popup (1.8c bug: it covered the death + ascension cards)
     if (isPopupOpen()) document.getElementById('banter-bubble').classList.add('hidden')
@@ -410,7 +411,7 @@
     if (fromTick) {
       // On every tick: only update the live expedition timer without re-rendering
       if (activeTab === 'explore') updateExpeditionTimerInPlace(s)
-      if (activeTab === 'sect')    updateSectTimersInPlace(s)
+      if (activeTab.startsWith('sect')) updateSectTimersInPlace(s)
       if (activeTab === 'pack')    updatePackDeltaInPlace(s)   // Phase 21: per-frame currency delta fade
     } else {
       // On explicit state changes: full tab re-render (safe, buttons will be stable until next change)
@@ -418,16 +419,19 @@
     }
   }
 
+  const ALL_VIEWS = NAV_GROUPS.flatMap(g => g.views.map(v => v[0]))
   // 1.8b-1: one entry point per view (NAV_GROUPS in renderer/game/nav.js)
   const VIEW_RENDER = {
     techniques: s => renderTechniques(s), stats: s => renderStats(s), explore: s => renderExplore(s),
     beasts: s => renderBeasts(s), family: s => renderFamily(s), clan: s => renderClan(s), hall: s => renderHall(s), sect: s => renderSect(s),
+    'sect-missions': s => renderSect(s, 'sect-missions'), 'sect-halls': s => renderSect(s, 'sect-halls'),
+    'sect-disciples': s => renderSect(s, 'sect-disciples'), 'sect-war': s => renderSect(s, 'sect-war'),
     pack: s => renderPack(s), craft: s => renderCraft(s), events: s => renderEvents(s), banter: s => renderBanter(s),
   }
   function renderView(view, s) {
     if (!s) return
     VIEW_RENDER[view]?.(s)
-    if (view === 'sect') nav.setContext(s.ownSect?.founded ? s.ownSect.name : s.sect?.id ? SECTS.find(x => x.id === s.sect.id)?.name : 'no sect yet')
+    if (view.startsWith('sect')) nav.setContext(s.ownSect?.founded ? s.ownSect.name : s.sect?.id ? SECTS.find(x => x.id === s.sect.id)?.name : 'no sect yet')
   }
 
   function updateExpeditionTimerInPlace(s) {
@@ -462,11 +466,14 @@
     const el = document.getElementById('tab-techniques')
     el.innerHTML = ''
 
+    const grid = document.createElement('div')   // 1.8b-5: cards side by side in Expanded/Desktop
+    grid.className = 'card-grid'
+    el.appendChild(grid)
     const qb    = TECHNIQUES.find(t => t.id === 'qi_breathing')
     const qbRow = document.createElement('div')
     qbRow.className = 'tech-row owned'
     qbRow.innerHTML = techRowHTML(qb, true, false)
-    el.appendChild(qbRow)
+    grid.appendChild(qbRow)
 
     for (const t of TECHNIQUES) {
       if (t.id === 'qi_breathing') continue
@@ -478,7 +485,7 @@
       if (!isOwned && !isLocked) {
         row.addEventListener('click', () => quickActions.learn(t.id))
       }
-      el.appendChild(row)
+      grid.appendChild(row)
     }
   }
 
@@ -487,10 +494,10 @@
       ? '<div class="tech-owned">✓ Learned</div>'
       : isLocked
         ? `<div class="tech-cost tech-lock" title="Unlocks at ${stageShortName(t.minStage)}">封 ${stageShortName(t.minStage)}</div>`
-        : `<div class="tech-cost">🪨 ${t.cost}</div>`
+        : `<div class="tech-cost">石 ${t.cost}</div>`
     return `
       <div class="tech-main">
-        <div class="tech-name">${t.name} <span style="color:var(--dim);font-size:10px">${t.nameCN}</span></div>
+        <div class="tech-name" title="${t.nameCN}">${t.name}</div>
         <div class="tech-sub">${t.desc}</div>
       </div>
       <div class="tech-right">${right}<div class="tech-bonus">${effectText(t.effect)}</div></div>
@@ -720,274 +727,11 @@
     document.getElementById('banter-bubble').classList.add('hidden')
   })
 
-  // ── Sect tab (Phase 4) ────────────────────────────────────────────────────
-
-  let _sectLeaveArmed = false
-
-  function renderSect(s) {
-    const el = document.getElementById('tab-sect')
-    el.innerHTML = ''
-    if (s.ownSect?.founded) { renderOwnSect(s); return }
-    const sect = s.sect || { id: null }
-    const def  = SECTS.find(x => x.id === sect.id)
-
-    if (!def) {
-      _sectLeaveArmed = false
-      const title = document.createElement('div')
-      title.className = 'section-title'
-      title.textContent = 'Join a Sect'
-      el.appendChild(title)
-
-      for (const d of SECTS) {
-        if (d.minStage > s.stageIndex + 3) continue
-        const ok  = s.stageIndex >= d.minStage
-        const row = document.createElement('div')
-        row.className = 'sect-row' + (ok ? '' : ' locked')
-        row.innerHTML = `
-          <div class="sect-info">
-            <div class="sect-name">${escHtml(d.name)} <span class="sect-cn">${escHtml(d.nameCN)}</span></div>
-            <div class="sect-spec">${escHtml(d.specialty)}</div>
-            <div class="sect-desc">${escHtml(d.desc)}</div>
-          </div>
-          <button class="sect-btn${ok ? ' available' : ''}" data-joinsect="${d.id}" ${ok ? '' : 'disabled'}>
-            ${ok ? 'Join' : `封 ${stageShortName(d.minStage)}`}
-          </button>`
-        el.appendChild(row)
-      }
-      el.querySelectorAll('[data-joinsect]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const res = gameState.joinSect(btn.dataset.joinsect)
-          if (!res.ok) flashMessage({ stage:'Realm too low', in_sect:'Already in a sect', own_sect:'You lead your own sect', unknown:'Unknown sect' }[res.reason] || 'Cannot join', 'negative')
-          else flashMessage(`Joined ${res.sect.name}!`, 'special')
-        })
-      })
-      renderFoundPanel(s, el)
-      return
-    }
-
-    // ── Member view ──
-    const rank     = SECT_RANKS[sect.rank]
-    const nextRank = SECT_RANKS[sect.rank + 1]
-    const canRank  = nextRank && sect.contribution >= nextRank.minContribution
-    const head = document.createElement('div')
-    head.className = 'sect-header'
-    head.innerHTML = `
-      <div class="sect-name">${escHtml(def.name)} <span class="sect-cn">${escHtml(def.nameCN)}</span></div>
-      <div class="sect-spec">${escHtml(def.specialty)}</div>
-      <div class="sect-rank">${escHtml(rank.name)} <span class="sect-cn">${escHtml(rank.nameCN)}</span></div>
-      <div class="sect-contrib">Contribution: ${fmt(sect.contribution)}${nextRank ? ` / ${fmt(nextRank.minContribution)} for ${escHtml(nextRank.name)}` : ' (max rank)'}</div>
-      ${nextRank ? `<div class="beast-xp-bar-wrap"><div class="beast-xp-bar" id="_sect_rank_bar"></div></div>` : ''}
-      <div class="sect-btns">
-        <button class="sect-btn${canRank ? ' available' : ''}" id="_sect_rankup" ${canRank ? '' : 'disabled'}>Advance Rank</button>
-        <button class="sect-btn" id="_sect_donate" ${s.spiritStones >= 10 ? '' : 'disabled'}>Donate 10 Stones</button>
-        <button class="sect-btn sect-leave" id="_sect_leave">${_sectLeaveArmed ? 'Confirm Leave?' : 'Leave'}</button>
-      </div>`
-    el.appendChild(head)
-    if (s.stageIndex >= SECT_FOUNDING.minStage) {
-      const hint = document.createElement('div')
-      hint.className = 'sect-desc'
-      hint.style.marginBottom = '6px'
-      hint.textContent = 'Nascent Soul reached: leave this sect if you wish to found your own.'
-      el.appendChild(hint)
-    }
-    const rankBar = head.querySelector('#_sect_rank_bar')
-    if (rankBar) rankBar.style.width = Math.min(100, (sect.contribution - rank.minContribution) / (nextRank.minContribution - rank.minContribution) * 100) + '%'
-    renderMemberWarPanel(s, el)
-    renderWarOrdersPanel(s, el, 'member')
-    // Mission bars: set via JS (CSP blocks inline style attributes in innerHTML)
-    const mt = document.createElement('div')
-    mt.className = 'section-title'
-    mt.textContent = `Missions (${sect.activeMissions.length}/${SECT_MAX_MISSIONS} active)`
-    el.appendChild(mt)
-
-    for (const m of SECT_MISSIONS) {
-      const active   = sect.activeMissions.find(a => a.missionId === m.id)
-      const unlocked = sect.rank >= m.minRank
-      const full     = sect.activeMissions.length >= SECT_MAX_MISSIONS
-      const durText  = m.duration >= 60 ? `${Math.floor(m.duration / 60)}m` : `${m.duration}s`
-      const rewards  = [...m.rewards.map(r => `${ITEMS[r.itemId]?.name || r.itemId}`), ...(m.beastXp ? ['Beast XP'] : []), 'Contribution'].join(', ')
-      const row = document.createElement('div')
-      row.className = 'loc-row' + (unlocked ? '' : ' locked')
-      let status = ''
-      if (active) {
-        const msLeft = Math.max(0, active.endsAt - Date.now())
-        const pct = Math.max(0, Math.min(100, 100 - msLeft / (m.duration * 1000) * 100))
-        status = `<div class="sect-mission-timer" data-uid="${active.uid}" data-mid="${m.id}">${fmtTime(Math.ceil(msLeft / 1000))} remaining</div>
-                  <div class="exp-timer-bar-wrap"><div class="exp-timer-bar" data-barfor="${active.uid}" style="width:${pct}%"></div></div>`
-      }
-      row.innerHTML = `
-        <div class="loc-info">
-          <div class="loc-name">${escHtml(m.name)} <span style="color:var(--dim);font-size:9px">${escHtml(m.nameCN)}</span></div>
-          <div class="loc-meta">${durText} · ${escHtml(rewards)}${unlocked ? '' : ` · ${escHtml(SECT_RANKS[m.minRank].name)}+`}</div>
-          ${status}
-        </div>
-        <button class="loc-btn${unlocked && !active && !full ? ' available' : ''}" data-mission="${m.id}"
-                ${(!unlocked || active || full) ? 'disabled' : ''}>${active ? 'Active' : unlocked ? 'Start' : 'Locked'}</button>`
-      el.appendChild(row)
-    }
-
-    updateSectTimersInPlace(s)
-    el.querySelectorAll('[data-mission]').forEach(btn => {
-      btn.addEventListener('click', () => quickActions.startMission(btn.dataset.mission))
-    })
-    document.getElementById('_sect_rankup')?.addEventListener('click', () => {
-      const res = gameState.rankUpSect()
-      if (!res.ok) flashMessage('Not enough contribution', 'negative')
-    })
-    document.getElementById('_sect_donate')?.addEventListener('click', () => {
-      const res = gameState.donateToSect(10)
-      if (res.ok) flashMessage(`Donated 10 Spirit Stones (+${res.gained} Contribution)`, 'positive')
-      else flashMessage('Not enough Spirit Stones', 'negative')
-    })
-    document.getElementById('_sect_leave')?.addEventListener('click', () => {
-      if (!_sectLeaveArmed) { _sectLeaveArmed = true; renderSect(gameState.get()); return }
-      _sectLeaveArmed = false
-      gameState.leaveSect()
-    })
-  }
-
-  // ── Own sect (Phase 5A) ───────────────────────────────────────────────────
-
-  let _ownDisbandArmed = false
-
-  function renderFoundPanel(s, el) {
-    const F = SECT_FOUNDING
-    if (s.stageIndex < F.minStage - 3) return
-    const ok       = s.stageIndex >= F.minStage
-    const haveItems = Object.entries(F.items).every(([id, q]) => (s.inventory[id] || 0) >= q)
-    const canPay   = s.spiritStones >= F.stones && haveItems
-    const costTxt  = [`${F.stones} Spirit Stones`, ...Object.entries(F.items).map(([id, q]) => `${q} ${ITEMS[id]?.name || id}`)].join(' + ')
-    const title = document.createElement('div')
-    title.className = 'section-title'
-    title.textContent = 'Found Your Own Sect'
-    el.appendChild(title)
-    const box = document.createElement('div')
-    box.className = 'sect-row' + (ok ? '' : ' locked')
-    box.innerHTML = `
-      <div class="sect-info">
-        <div class="sect-name">創派 Found a Sect</div>
-        <div class="sect-spec">Cost: ${escHtml(costTxt)}</div>
-        <div class="sect-desc">${ok ? 'Build halls, recruit disciples, and lead a sect of your own.' : `Requires ${stageShortName(F.minStage)}.`}</div>
-        ${ok ? `<input id="_found_name" class="sect-input" maxlength="${F.maxNameLen}" placeholder="Name your sect…">` : ''}
-      </div>
-      <button class="sect-btn${ok && canPay ? ' available' : ''}" id="_found_btn" ${ok && canPay ? '' : 'disabled'}>Found</button>`
-    el.appendChild(box)
-    document.getElementById('_found_btn')?.addEventListener('click', () => {
-      const name = document.getElementById('_found_name')?.value || ''
-      const res = gameState.foundOwnSect(name)
-      const msgs = { stage:'Realm too low', in_sect:'Leave your current sect first', founded:'Already founded', stones:'Not enough Spirit Stones', crystals:'Not enough Void Crystals' }
-      if (!res.ok) flashMessage(msgs[res.reason] || 'Cannot found sect', 'negative')
-      else flashMessage('Your sect is founded!', 'special')
-    })
-  }
-
-  // ── Member wars (Phase 5C) ─────────────────────────────────────────────────
-
-  function renderMemberWarPanel(s, el) {
-    const w = s.sectWar
-    if (!w || w.side !== 'member') return
-
-    if (w.lastResult?.side === 'member') {
-      const r = w.lastResult
-      const bits = []
-      if (r.stones) bits.push(`+${r.stones} stones`)
-      if (r.contribDelta) bits.push(`${r.contribDelta > 0 ? '+' : ''}${r.contribDelta} contribution`)
-      if (r.rareItem) bits.push(ITEMS[r.rareItem]?.name || r.rareItem)
-      if (!r.seen && !r.engaged) bits.push('fought without you')
-      else if (!r.engaged) bits.push('you ignored the call')
-      const box = document.createElement('div')
-      box.className = 'war-banner ' + (r.win ? 'win' : 'loss')
-      box.textContent = `Last War: ${r.win ? 'Victory' : 'Defeat'} vs ${r.enemyName}${bits.length ? ' — ' + bits.join(', ') : ''}`
-      el.appendChild(box)
-    }
-
-    const panel = document.createElement('div')
-    panel.className = 'war-banner ' + (w.phase === 'none' ? '' : w.phase)
-    if (w.phase === 'none') {
-      panel.innerHTML = `
-        <div class="sect-name">⚔ Sect Wars</div>
-        <div class="sect-desc">Next call to arms in <span id="_war_timer"></span> · Record ${w.warVictories}W–${w.warDefeats}L${w.warsIgnored ? ` · ${w.warsIgnored} ignored` : ''}</div>
-        ${s.derived.sectBuffSuppressed ? '<div class="sect-desc war-warn">The sect licks its wounds — its bonuses are suppressed for now.</div>' : ''}`
-      el.appendChild(panel)
-      return
-    }
-
-    const { bonus, power, rankMult } = gameState.memberWarPower()
-    const winPct = Math.round(100 * power / (power + 1))   // vs the average enemy (power 1.0)
-    const calling = w.phase === 'scouting'
-    const chestFull = gameState.memberWarChestFull()
-    const chestLeft = chestFull - w.chestStones
-    const give = Math.min(Math.max(10, Math.ceil(chestFull / 4)), chestLeft)
-    const warBeast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
-    panel.innerHTML = `
-      <div class="sect-name">⚔ ${escHtml(w.enemyName)} ${'★'.repeat(w.enemyTier)}</div>
-      <div class="sect-desc">${calling ? 'Call to Arms — the elders summon every disciple.' : 'Muster — the sect gathers at the mountain gate.'}</div>
-      <div class="war-timer">Battle in <span id="_war_timer"></span></div>
-      <div class="sect-desc">Your commitment: +${Math.round(bonus * rankMult * 100)}% sect strength · ~${winPct}% to win</div>
-      ${bonus ? '' : '<div class="sect-desc war-warn">Ignoring the call costs contribution and karma.</div>'}
-      <div class="sect-btns">
-        <button class="sect-btn${!w.answered ? ' available' : ''}" id="_war_answer" ${w.answered ? 'disabled' : ''}>${w.answered ? 'Answered ✓' : 'Answer the Call'}</button>
-        <button class="sect-btn${chestLeft > 0 && s.spiritStones >= give ? ' available' : ''}" id="_war_chest" ${chestLeft <= 0 || s.spiritStones < give ? 'disabled' : ''}>${chestLeft <= 0 ? 'War Chest Full ✓' : `War Chest +${give} (${w.chestStones}/${chestFull})`}</button>
-      </div>`
-    el.appendChild(panel)
-
-    // Pill + beast offerings
-    const pills = Object.keys(s.inventory).filter(id => ITEMS[id]?.type === 'pill' && s.inventory[id] > 0)
-    const idleBeasts = (s.beasts || []).filter(b => !b.expedition)
-    const canPill  = w.pillsGiven < MEMBER_WAR_MAX_PILLS && pills.length > 0
-    const canBeast = !warBeast && idleBeasts.length > 0
-    if (canPill || canBeast || warBeast || w.pillsGiven) {
-      const ot = document.createElement('div')
-      ot.className = 'section-title'
-      ot.textContent = `War Offerings (pills ${w.pillsGiven}/${MEMBER_WAR_MAX_PILLS}${warBeast ? ` · ${warBeast.name} at the front` : ''})`
-      el.appendChild(ot)
-      if (canPill) for (const id of pills) {
-        const row = document.createElement('div')
-        row.className = 'loc-row'
-        row.innerHTML = `
-          <div class="loc-info">
-            <div class="loc-name">${escHtml(ITEMS[id].name)} <span class="sect-cn">×${s.inventory[id]}</span></div>
-            <div class="loc-meta">+${Math.round(MEMBER_WAR_PILL_BONUS * rankMult * 100)}% strength · +${MEMBER_WAR_PILL_CONTRIB} contribution</div>
-          </div>
-          <button class="loc-btn available" data-warpill="${id}">Offer</button>`
-        el.appendChild(row)
-      }
-      if (canBeast) for (const b of idleBeasts) {
-        const pct = Math.round(Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * b.level) * rankMult * 100)
-        const row = document.createElement('div')
-        row.className = 'loc-row'
-        row.innerHTML = `
-          <div class="loc-info">
-            <div class="loc-name">${escHtml(b.name)} <span class="beast-level">Lv.${b.level}</span></div>
-            <div class="loc-meta">+${pct}% strength · returns with ${MEMBER_WAR_BEAST_XP} XP</div>
-          </div>
-          <button class="loc-btn available" data-warbeast="${escHtml(b.id)}">Send</button>`
-        el.appendChild(row)
-      }
-    }
-
-    const msgs = { already:'Already done', full:'Nothing more needed', stones:'Not enough Spirit Stones', none:'None left', busy:'That beast is busy', no_war:'The war is over' }
-    document.getElementById('_war_answer')?.addEventListener('click', () => {
-      const r = gameState.answerWarCall()
-      if (!r.ok) flashMessage(msgs[r.reason] || 'Cannot answer', 'negative')
-      else flashMessage('You answered the call to arms', 'positive')
-    })
-    document.getElementById('_war_chest')?.addEventListener('click', () => {
-      const r = gameState.donateWarChest(give)
-      if (!r.ok) flashMessage(msgs[r.reason] || 'Cannot donate', 'negative')
-      else flashMessage(`War chest +${r.given} stones (+${r.gained} Contribution)`, 'positive')
-    })
-    el.querySelectorAll('[data-warpill]').forEach(btn => btn.addEventListener('click', () => {
-      const r = gameState.offerWarPill(btn.dataset.warpill)
-      if (!r.ok) flashMessage(msgs[r.reason] || 'Cannot offer', 'negative')
-      else flashMessage(`Pill offered (+${r.gained} Contribution)`, 'positive')
-    }))
-    el.querySelectorAll('[data-warbeast]').forEach(btn => btn.addEventListener('click', () => {
-      const r = gameState.sendBeastToWar(btn.dataset.warbeast)
-      if (!r.ok) flashMessage(msgs[r.reason] || 'Cannot send', 'negative')
-      else flashMessage(`${r.beast.name} marches to war`, 'positive')
-    }))
-  }
+  // ── 宗 Sect (1.8b-5): Overview · Missions/Buildings/Disciples · War — renderer/game/sect-view.js ──────────
+  let sectView = null
+  const sectHelpers = () => ({ esc: escHtml, fmt, fmtTime, flash: flashMessage, confirm: showConfirm, go: v => nav.go(v),
+    orders: (s, el, side) => renderWarOrdersPanel(s, el, side), startMission: id => quickActions.startMission(id) })
+  function renderSect(s, view = 'sect') { (sectView ||= new SectView(gameState, sectHelpers())).render(view, s) }
 
   // ── Automation panel (Phase 22, section 22D) ───────────────────────────────
   // Lives in the Mode panel only (1.8b-1; it used to render at the top of Explore and both Sect views) — a
@@ -1066,7 +810,7 @@
   }
 
   // ── War Standing Orders (Phase 32) ─────────────────────────────────────────
-  // Compact section shown in both the member view (renderSect) and the own-sect view (renderOwnSect).
+  // Rendered into Sect → War for both sides (SectView calls it through its helpers, 1.8b-5).
   // Reuses the ⚙ Settings panel's .set-row/.set-label/.set-seg/.set-opt CSS so it fits 300px without
   // its own stylesheet (see docs/systems/settings.md).
   function renderWarOrdersPanel(s, el, side) {
@@ -1178,232 +922,15 @@
     }
   }
 
-  function renderSectWarPanel(s, el) {
-    const w = s.sectWar
-    if (!w) return
-    const d = s.derived
-
-    if (w.lastResult) {
-      const r = w.lastResult
-      const box = document.createElement('div')
-      box.className = 'war-banner ' + (r.win ? 'win' : 'loss')
-      box.textContent = r.win
-        ? `Last War: Victory vs ${r.enemyName} — +${r.spoils.spirit_stone} stones, +${r.spoils.spirit_herb} herbs`
-        : `Last War: Defeat vs ${r.enemyName} — lost ${r.spoilsLost} stones${r.arrayHit ? ' · array damaged' : ''}`
-      el.appendChild(box)
-    }
-
-    const panel = document.createElement('div')
-    panel.className = 'war-banner ' + (w.phase === 'none' ? '' : w.phase)
-    if (w.phase === 'none') {
-      panel.innerHTML = `
-        <div class="sect-name">⚔ Sect Wars</div>
-        <div class="sect-desc">Next threat in <span id="_war_timer"></span> · Record ${w.warVictories}W–${w.warDefeats}L</div>
-        ${d.arrayDamaged ? '<div class="sect-desc" style="color:var(--red)">Defensive Array damaged — offline until repaired by time.</div>' : ''}`
-      el.appendChild(panel)
-      return
-    }
-
-    const scouting = w.phase === 'scouting'
-    panel.innerHTML = `
-      <div class="sect-name">⚔ ${escHtml(w.enemyName)} ${'★'.repeat(w.enemyTier)}</div>
-      <div class="sect-desc">${scouting ? 'Scouted near your borders.' : 'Preparing to strike!'}</div>
-      <div class="war-timer">${scouting ? 'Strikes in' : 'Preparation ends in'} <span id="_war_timer"></span></div>
-      <div class="sect-desc">${w.allyId ? `Allied with ${SECTS.find(x => x.id === w.allyId)?.name || w.allyId}` : ''}${w.reinforced ? ' · Reinforced' : ''}</div>
-      <div class="sect-btns">
-        ${!scouting ? `<button class="sect-btn${!w.reinforced && s.spiritStones >= _warReinforceCost(s) ? ' available' : ''}" id="_war_reinforce" ${w.reinforced || s.spiritStones < _warReinforceCost(s) ? 'disabled' : ''}>${w.reinforced ? 'Reinforced ✓' : `Reinforce (${_warReinforceCost(s)})`}</button>` : ''}
-      </div>`
-    el.appendChild(panel)
-
-    if (!w.allyId) {
-      const at = document.createElement('div')
-      at.className = 'section-title'
-      at.textContent = 'Request Alliance'
-      el.appendChild(at)
-      const allyCost = _warAllyCost(s)
-      for (const def of SECTS) {
-        if (def.minStage > s.stageIndex + 3) continue
-        const can = s.spiritStones >= allyCost
-        const row = document.createElement('div')
-        row.className = 'loc-row'
-        row.innerHTML = `
-          <div class="loc-info">
-            <div class="loc-name">${escHtml(def.name)} <span style="color:var(--dim);font-size:9px">${escHtml(def.nameCN)}</span></div>
-            <div class="loc-meta">${allyCost} Spirit Stones</div>
-          </div>
-          <button class="loc-btn${can ? ' available' : ''}" data-warally="${def.id}" ${can ? '' : 'disabled'}>Ally</button>`
-        el.appendChild(row)
-      }
-      el.querySelectorAll('[data-warally]').forEach(btn => btn.addEventListener('click', () => {
-        const r = gameState.requestWarAlly(btn.dataset.warally)
-        if (!r.ok) flashMessage(r.reason === 'stones' ? 'Not enough Spirit Stones' : 'Cannot request alliance', 'negative')
-        else flashMessage(`${r.ally.name} will aid you in this war`, 'positive')
-      }))
-    }
-
-    document.getElementById('_war_reinforce')?.addEventListener('click', () => {
-      const r = gameState.reinforceForWar()
-      if (!r.ok) flashMessage(r.reason === 'stones' ? 'Not enough Spirit Stones' : 'Cannot reinforce', 'negative')
-      else flashMessage(`Defenses reinforced (-${r.cost} stones)`, 'positive')
-    })
-  }
-
-  function _warReinforceCost(s) {
-    return Math.round(Math.max(20, (s.derived?.sectFame || 0) * WAR_REINFORCE_COST_PER_FAME))
-  }
-  function _warAllyCost(s) {
-    return Math.round(WAR_ALLY_COST_BASE + (s.derived?.sectFame || 0) * WAR_ALLY_COST_PER_FAME)
-  }
-
-  function renderOwnSect(s) {
-    const el = document.getElementById('tab-sect')
-    const o  = s.ownSect
-    const d  = s.derived
-    const inc = d.ownSectIncomeMult || 1
-    let stonesS = 0, herbsS = 0
-    for (const dc of o.disciples) {
-      const lm = 1 + 0.1 * (dc.level - 1)
-      stonesS += DISCIPLE_STONE_RATE * dc.talent * lm
-      herbsS  += DISCIPLE_HERB_RATE  * dc.talent * lm
-    }
-    const hallNext = SECT_HALL_LEVELS[o.hallLevel - 1]?.upgradeStones
-    const head = document.createElement('div')
-    head.className = 'sect-header'
-    head.innerHTML = `
-      <div class="sect-name">${escHtml(o.name)} <span class="sect-cn">宗主 Sect Leader</span></div>
-      <div class="sect-spec">Fame ${fmt(d.sectFame)} · Hall Lv.${o.hallLevel} · ${o.disciples.length}/${d.discipleCap} disciples</div>
-      <div class="sect-contrib">Income: ${(stonesS * inc * 60).toFixed(1)} stones/min · ${(herbsS * inc * 60).toFixed(1)} herbs/min<br>Disciple Qi bonus: +${(d.discipleQiFrac * 100).toFixed(1)}% Qi/s${d.warDefense ? `<br>War defense: +${Math.round(d.warDefense * 100)}%` : ''}</div>
-      <div class="sect-btns">
-        <button class="sect-btn${hallNext != null && s.spiritStones >= hallNext ? ' available' : ''}" id="_hall_up" ${hallNext != null && s.spiritStones >= hallNext ? '' : 'disabled'}>${hallNext != null ? `Upgrade Hall (${hallNext})` : 'Hall Max'}</button>
-        <button class="sect-btn sect-leave" id="_own_disband">${_ownDisbandArmed ? 'Confirm Disband?' : 'Disband'}</button>
-      </div>`
-    el.innerHTML = ''
-    el.appendChild(head)
-
-    renderSectWarPanel(s, el)
-    renderWarOrdersPanel(s, el, 'own')
-
-    // Buildings
-    const bt = document.createElement('div')
-    bt.className = 'section-title'
-    bt.textContent = 'Buildings'
-    el.appendChild(bt)
-    for (const b of SECT_BUILDINGS) {
-      const built = !!o.buildings[b.id]
-      const costTxt = [`${b.stones} stones`, ...Object.entries(b.items).map(([id, q]) => `${q} ${ITEMS[id]?.name || id}`)].join(', ')
-      const afford = s.spiritStones >= b.stones && Object.entries(b.items).every(([id, q]) => (s.inventory[id] || 0) >= q)
-      const row = document.createElement('div')
-      row.className = 'loc-row' + (built ? ' sect-built' : '')
-      row.innerHTML = `
-        <div class="loc-info">
-          <div class="loc-name">${escHtml(b.name)} <span style="color:var(--dim);font-size:9px">${escHtml(b.nameCN)}</span></div>
-          <div class="loc-meta">${escHtml(b.desc)}${built ? '' : ` · ${escHtml(costTxt)}`}</div>
-        </div>
-        <button class="loc-btn${!built && afford ? ' available' : ''}" data-build="${b.id}" ${built || !afford ? 'disabled' : ''}>${built ? 'Built' : 'Build'}</button>`
-      el.appendChild(row)
-    }
-
-    // Disciples
-    const dt = document.createElement('div')
-    dt.className = 'section-title'
-    dt.textContent = `Disciples (${o.disciples.length}/${d.discipleCap})`
-    el.appendChild(dt)
-    if (!o.disciples.length) {
-      const empty = document.createElement('div')
-      empty.className = 'sect-desc'
-      empty.textContent = 'No disciples yet — recruit below.'
-      el.appendChild(empty)
-    }
-    for (const dc of o.disciples) {
-      const row = document.createElement('div')
-      row.className = 'beast-row'
-      row.innerHTML = `
-        <div class="beast-row-header">
-          <div>
-            <span class="beast-name">${escHtml(dc.name)}</span>
-            <span class="sect-stars">${'★'.repeat(dc.talent)}${'☆'.repeat(5 - dc.talent)}</span>
-            <span class="beast-level">Lv.${dc.level}${dc.level >= DISCIPLE_MAX_LEVEL ? ' MAX' : ''}</span>
-          </div>
-          <button class="beast-dismiss-btn" data-dismissdisc="${escHtml(dc.id)}">Dismiss</button>
-        </div>
-        <div class="beast-xp-bar-wrap"><div class="beast-xp-bar" data-xpw="${dc.level >= DISCIPLE_MAX_LEVEL ? 100 : Math.min(100, dc.xp / (DISCIPLE_XP_PER_LEVEL * dc.level) * 100)}"></div></div>`
-      el.appendChild(row)
-    }
-
-    // Recruitment
-    const rt = document.createElement('div')
-    rt.className = 'section-title'
-    rt.textContent = 'Recruit'
-    el.appendChild(rt)
-    const full = o.disciples.length >= d.discipleCap
-    for (const c of o.recruitPool) {
-      const cost = DISCIPLE_RECRUIT_COST * c.talent * c.talent
-      const can  = !full && s.spiritStones >= cost
-      const row = document.createElement('div')
-      row.className = 'loc-row'
-      row.innerHTML = `
-        <div class="loc-info">
-          <div class="loc-name">${escHtml(c.name)} <span class="sect-stars">${'★'.repeat(c.talent)}${'☆'.repeat(5 - c.talent)}</span></div>
-          <div class="loc-meta">${cost} Spirit Stones</div>
-        </div>
-        <button class="loc-btn${can ? ' available' : ''}" data-recruit="${escHtml(c.id)}" ${can ? '' : 'disabled'}>${full ? 'Full' : 'Recruit'}</button>`
-      el.appendChild(row)
-    }
-    const rr = document.createElement('div')
-    rr.className = 'sect-btns'
-    rr.style.margin = '4px 0 8px'
-    rr.innerHTML = `
-      <button class="sect-btn" id="_recruit_reroll" ${s.spiritStones >= RECRUIT_REROLL_COST ? '' : 'disabled'}>Reroll (${RECRUIT_REROLL_COST})</button>
-      <span class="sect-desc" id="_pool_timer" style="align-self:center"></span>`
-    el.appendChild(rr)
-
-    // Apply bar widths via JS (CSP blocks inline style attributes)
-    el.querySelectorAll('[data-xpw]').forEach(b => { b.style.width = b.dataset.xpw + '%' })
-    updateSectTimersInPlace(s)
-
-    // Wire
-    const msgs = { stones:'Not enough Spirit Stones', items:'Missing materials', built:'Already built', full:'Sect is full — upgrade the Hall', not_found:'Candidate gone' }
-    el.querySelectorAll('[data-build]').forEach(btn => btn.addEventListener('click', () => {
-      const r = gameState.buildSectBuilding(btn.dataset.build)
-      if (!r.ok) flashMessage(msgs[r.reason] || 'Cannot build', 'negative')
-      else flashMessage(`Built ${r.building.name}`, 'positive')
-    }))
-    el.querySelectorAll('[data-recruit]').forEach(btn => btn.addEventListener('click', () => {
-      const r = gameState.recruitDisciple(btn.dataset.recruit)
-      if (!r.ok) flashMessage(msgs[r.reason] || 'Cannot recruit', 'negative')
-      else flashMessage(`${r.disciple.name} joined your sect`, 'positive')
-    }))
-    el.querySelectorAll('[data-dismissdisc]').forEach(btn => btn.addEventListener('click', () => {
-      gameState.dismissDisciple(btn.dataset.dismissdisc)
-    }))
-    document.getElementById('_recruit_reroll')?.addEventListener('click', () => {
-      const r = gameState.rerollRecruitPool()
-      if (!r.ok) flashMessage(msgs.stones, 'negative')
-    })
-    document.getElementById('_hall_up')?.addEventListener('click', () => {
-      const r = gameState.upgradeSectHall()
-      if (!r.ok) flashMessage(r.reason === 'max_level' ? 'Hall is at max level' : msgs.stones, 'negative')
-      else flashMessage(`Sect Hall upgraded to Lv.${r.level}`, 'positive')
-    })
-    document.getElementById('_own_disband')?.addEventListener('click', () => {
-      if (!_ownDisbandArmed) { _ownDisbandArmed = true; renderOwnSect(gameState.get()); return }
-      _ownDisbandArmed = false
-      gameState.disbandOwnSect()
-    })
-  }
-
   function updateSectTimersInPlace(s) {
-    const pt = document.getElementById('_pool_timer')
-    if (pt && s.ownSect?.founded) {
-      pt.textContent = `New candidates in ${fmtTime(Math.max(0, Math.ceil((s.ownSect.poolRefreshAt - Date.now()) / 1000)))}`
-    }
-    const wt = document.getElementById('_war_timer')
-    if (wt && s.sectWar) {
-      const w = s.sectWar
+    const secs = at => fmtTime(Math.max(0, Math.ceil((at - Date.now()) / 1000)))
+    if (s.ownSect?.founded) document.querySelectorAll('[data-pooltimer]').forEach(n => { n.textContent = secs(s.ownSect.poolRefreshAt) })
+    const w = s.sectWar
+    if (w) {
       // Member wars show time to battle for the whole window; own-sect wars count down each phase
       const target = w.phase === 'scouting' ? w.scoutEndsAt + (w.side === 'member' ? MEMBER_WAR_PREP_SECONDS * 1000 : 0)
                    : w.phase === 'preparing' ? w.prepEndsAt : w.nextWarAt
-      wt.textContent = fmtTime(Math.max(0, Math.ceil((target - Date.now()) / 1000)))
+      document.querySelectorAll('[data-wartimer]').forEach(n => { n.textContent = secs(target) })
     }
     document.querySelectorAll('.sect-mission-timer').forEach(node => {
       const a = s.sect?.activeMissions?.find(x => x.uid === node.dataset.uid)
@@ -1415,6 +942,7 @@
       if (bar) bar.style.width = Math.max(0, Math.min(100, 100 - msLeft / (m.duration * 1000) * 100)) + '%'
     })
   }
+
 
   function sr(k, v) {
     return `<div class="stat-row"><span class="stat-key">${k}</span><span class="stat-val">${v}</span></div>`
@@ -1462,7 +990,7 @@
     } else {
       statusDiv.innerHTML = `
         <div class="exp-status-label">Expedition</div>
-        <div style="color:var(--dim)">Idle — choose a location below</div>
+        <div class="exp-idle">Idle — choose a location below</div>
       `
     }
     el.appendChild(statusDiv)
@@ -1477,6 +1005,9 @@
     locTitle.className = 'section-title'
     locTitle.textContent = 'Locations'
     el.appendChild(locTitle)
+    const locGrid = document.createElement('div')   // 1.8b-5: cards side by side in Expanded/Desktop
+    locGrid.className = 'card-grid'
+    el.appendChild(locGrid)
 
     for (const loc of LOCATIONS) {
       if (loc.minStage > s.stageIndex && !s.derived.hiddenLocations) {
@@ -1496,7 +1027,7 @@
       const paused = !!s.automation.autoExplorePaused[loc.id]
       row.innerHTML = `
         <div class="loc-info">
-          <div class="loc-name">${escHtml(loc.name)} <span style="color:var(--dim);font-size:9px">${escHtml(loc.nameCN)}</span></div>
+          <div class="loc-name" title="${escHtml(loc.nameCN)}">${escHtml(loc.name)}</div>
           <div class="loc-meta">${durText} · Tier ${loc.enemyTier}${unlocked ? '' : ` · 封 ${stageShortName(loc.minStage)}`}</div>
           <div class="loc-drops" title="Chance each item comes back from one run, and how many">${gameState.dropPreview(loc.id).map(d =>
             `<span class="ld"><span class="ld-n">${escHtml(d.name)}</span> <span class="ld-q">${d.min === d.max ? d.min : `${d.min}–${d.max}`}</span> <span class="ld-p">${Math.round(d.chance * 100)}%</span></span>`).join('')}</div>
@@ -1505,10 +1036,10 @@
         <button class="loc-btn${unlocked && !s.expedition.active ? ' available' : ''}"
                 ${(!unlocked || s.expedition.active) ? 'disabled' : ''}
                 data-locid="${loc.id}">
-          ${s.expedition.active && s.expedition.locationId === loc.id ? 'Active' : unlocked ? 'Send' : `Stg ${loc.minStage}`}
+          ${s.expedition.active && s.expedition.locationId === loc.id ? 'Active' : unlocked ? 'Send' : 'Sealed'}
         </button>
       `
-      el.appendChild(row)
+      locGrid.appendChild(row)
     }
 
     el.querySelectorAll('[data-autoloc]').forEach(btn => {
@@ -1760,7 +1291,10 @@
     }
     el.appendChild(subTabBar)
 
-    // Recipe list for active sub-tab
+    // Recipe list for active sub-tab (1.8b-5: cards side by side in Expanded/Desktop)
+    const recipeGrid = document.createElement('div')
+    recipeGrid.className = 'card-grid'
+    el.appendChild(recipeGrid)
     const recipes = RECIPES.filter(r => r.category === _craftSubTab)
     for (const recipe of recipes) {
       const item = ITEMS[recipe.productId]
@@ -1818,14 +1352,14 @@
 
       row.innerHTML = `
         <div class="recipe-header">
-          <span class="recipe-name">${escHtml(item.name)}<span class="recipe-namecn">${escHtml(item.nameCN)}</span></span>
-          ${inInv ? `<span style="font-size:10px;color:var(--jade)">×${s.inventory[recipe.productId]} owned</span>` : ''}
+          <span class="recipe-name" title="${escHtml(item.nameCN)}">${escHtml(item.name)}</span>
+          ${inInv ? `<span class="recipe-owned">×${s.inventory[recipe.productId]} owned</span>` : ''}
         </div>
         <div class="recipe-desc">${escHtml(item.desc)}</div>
         <div class="recipe-ings">${ingsHTML}</div>
         <div class="recipe-btns">${btnsHTML}</div>
       `
-      el.appendChild(row)
+      recipeGrid.appendChild(row)
     }
 
     // Wire craft buttons

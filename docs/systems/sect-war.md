@@ -43,6 +43,10 @@ framing: `seen` is now presentation-only.
   - `sendBeastToWar(beastId)` → `{ ok, beast, reason? }` — one idle beast per war. Reasons: `already`, `not_found`, `busy`.
   - `memberWarPower()` → `{ bonus, power, rankMult }` — current commitment bonus (UI and resolution share it).
   - `memberWarChestFull()` → Spirit Stones that max the chest bonus at your rank.
+- `sectWarOdds()` → UI read helper (1.8b-5): `{ side, mult, chance, parts[], … }` — `chance` is the exact mean of the real
+  roll, `(m/0.8)·ln((m+1.4)/(m+0.6))` for your power multiplier m against a uniform ×0.6–1.4 rival (both sides resolve
+  that way). Member adds `rankMult`, `ifAnswered`; own adds `ifReinforced`, `ifAllied`, `reinforceCost`, `allyCost`,
+  `arrayDamaged`. The old UI showed `power/(power+1)`, which was slightly off. Verified by checks/sect-view.js.
 - Internal: `_scheduleNextWar(baseTs?)` (own: fame-scaled; member: rank-scaled), `_advanceSectWarStep()` (one phase
   transition, returns bool), `_resolveSectWar()` (own) / `_resolveMemberWar()` (member), `_releaseWarBeast(xp)`, `_warSide()`, `_warEndsAt()`.
 

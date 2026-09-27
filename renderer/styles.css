@@ -3372,3 +3372,268 @@ body:not([data-layout="overlay"]) #family-box.fight .fc-first { display: none; }
 .ld-n { color: color-mix(in srgb, var(--text) 80%, var(--dim)); }
 .ld-q { color: var(--dim-hi); }
 .ld-p { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+
+/* UI review: 7.0 (2026-09-27, 3 cycles: 6.7 → 7.0 → 7.0; user decision pending) */
+/* ══════════════════════════════════════════════════════════════════════════
+   SECT VIEWS (1.8b-5, renderer/game/sect-view.js) — built from the Family/Clan components (fam-card, fam-sec,
+   fa-btn). Overview · Missions · War (joined) / Overview · Buildings · Disciples · War (founded). Mission and
+   building cards flow into a grid in Expanded/Desktop and stack in Overlay.
+══════════════════════════════════════════════════════════════════════════ */
+.fam-card.sect { border-color: color-mix(in srgb, var(--gold) 30%, var(--border)); }
+.fam-card.sect.war { border-color: color-mix(in srgb, var(--red) 50%, var(--border));
+  background: radial-gradient(ellipse 90% 60% at 15% 0%, color-mix(in srgb, var(--red) 10%, transparent), transparent 70%), linear-gradient(180deg, rgba(40,14,20,0.55), rgba(14,7,20,0.55)); }
+.fc-glyph.war { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 55%, transparent);
+  background: radial-gradient(circle, color-mix(in srgb, var(--red) 18%, transparent), transparent 70%); text-shadow: 0 0 8px color-mix(in srgb, var(--red) 55%, transparent); }
+.sect-view .fc-sub { white-space: normal; }
+.sv-of { color: var(--dim-hi); font-size: 11.5px; }
+.sv-warn { color: var(--red-text); }
+
+/* A sect's blessing in words */
+.sv-fx { display: flex; flex-direction: column; gap: 2px; margin: 6px 0 4px; }
+.sv-fx-row { display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; color: color-mix(in srgb, var(--text) 85%, var(--dim)); padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.sv-fx-row:last-child { border-bottom: none; }
+.sv-fx-row > span { flex: 1; min-width: 0; }
+.sv-fx-row b { font-weight: normal; color: var(--jade); font-variant-numeric: tabular-nums; }
+.sv-fx-row em { font-style: normal; font-size: 10.5px; color: var(--dim-hi); border: 1px solid var(--border); border-radius: 8px; padding: 0 5px; }
+.sv-fx-row.off b { color: var(--dim-hi); }
+.sv-fx.suppressed .sv-fx-row b { color: var(--dim-hi); text-decoration: line-through; }
+
+/* Sects that would take you */
+.sv-sect { padding: 7px 0 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.sv-sect:last-of-type { border-bottom: none; }
+.sv-sect-head { display: flex; align-items: center; gap: 8px; }
+.sv-sect-n { flex: 1; min-width: 0; font-size: 12.5px; color: var(--gold); letter-spacing: .4px; }
+.sv-sect.locked .sv-sect-n { color: var(--dim-hi); }
+.sv-sect-d { font-size: 11px; color: var(--dim-hi); font-style: italic; line-height: 1.4; margin-top: 3px; }
+.fa-btn.sv-join { flex: none; min-height: 30px; padding: 3px 10px 3px 7px; }
+.fa-btn.sv-join .fa-e:empty { display: none; }
+
+/* Founding */
+.sv-needs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 8px; }
+.sv-need { display: flex; flex-direction: column; padding: 5px 8px; border-radius: 4px; background: var(--fam-ink); border: 1px solid color-mix(in srgb, var(--red) 30%, var(--border)); font-size: 10.5px; color: var(--dim-hi); }
+.sv-need b { font-weight: normal; font-size: 12px; color: var(--red-text); font-variant-numeric: tabular-nums; }
+.sv-need.met { border-color: color-mix(in srgb, var(--jade) 35%, var(--border)); }
+.sv-need.met b { color: var(--jade); }
+.sv-input { margin-top: 8px; padding: 6px 8px; font-size: 12px; }
+
+/* Stat tiles (own sect overview) */
+.sv-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 8px; }
+.sv-stat { display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; border-radius: 4px; background: var(--fam-ink); border: 1px solid color-mix(in srgb, var(--purple) 22%, var(--border)); min-width: 0; }
+.sv-k { font-size: 10.5px; color: var(--dim-hi); letter-spacing: .4px; }
+.sv-v { font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
+.sv-v small { font-size: 10.5px; color: var(--dim-hi); margin-left: 2px; }
+.sv-n { font-size: 10.5px; color: var(--dim-hi); }
+
+/* View header line (Missions, Buildings) */
+.sv-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; margin: 0 0 8px; padding: 0 2px 6px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border)); font-size: 12px; color: var(--gold); letter-spacing: .4px; }
+.sv-head-n { font-size: 10.5px; color: var(--dim-hi); letter-spacing: 0; }
+.sv-head-btn { font-family: var(--font); font-size: 11px; color: var(--dim-hi); padding: 4px 10px; min-height: 28px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--btn-bg); }
+.sv-head-btn.ok { color: var(--text); border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
+.sv-head-btn.ok:hover { border-color: var(--gold); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 18%, transparent); }
+.sv-head-btn:disabled { cursor: default; opacity: .7; }
+
+/* Mission / building / candidate cards */
+.sv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(236px, 100%), 1fr)); gap: 8px; align-items: stretch; }
+.sv-grid.tight { gap: 6px; }
+.sv-card { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 8px 9px; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--purple) 26%, var(--border));
+  background: linear-gradient(180deg, rgba(34,18,40,0.5), rgba(14,7,20,0.5)); }
+.sv-card.active { border-color: color-mix(in srgb, var(--jade) 45%, var(--border)); }
+.sv-card.built  { border-color: color-mix(in srgb, var(--jade) 30%, var(--border)); background: linear-gradient(180deg, rgba(14,34,26,0.45), rgba(8,14,12,0.5)); }
+.sv-card.locked { opacity: .72; }
+.sv-card.sv-cand { background: var(--fam-ink); }
+.sv-card-h { display: flex; align-items: baseline; gap: 6px; }
+.sv-card-n { flex: 1; min-width: 0; font-size: 12.5px; color: var(--gold); letter-spacing: .3px; }
+.sv-card.locked .sv-card-n { color: var(--dim-hi); }
+.sv-card-t { font-size: 10.5px; color: var(--dim-hi); font-variant-numeric: tabular-nums; }
+.sv-card-d { font-size: 11px; color: var(--dim-hi); line-height: 1.4; }
+.sv-now { font-size: 11px; color: var(--jade); line-height: 1.35; }
+.sv-card.built .sv-now::before { content: '\25C6  '; font-size: 8px; vertical-align: 1px; }
+.sv-gains { display: flex; flex-wrap: wrap; gap: 3px 4px; margin-top: auto; padding-top: 2px; }
+.sv-gain { font-size: 10.5px; padding: 0 6px; line-height: 17px; border-radius: 9px; border: 1px solid var(--border); color: var(--text); background: rgba(0,0,0,0.25); white-space: nowrap; }
+.sv-gain.up { color: var(--jade); border-color: color-mix(in srgb, var(--jade) 35%, transparent); }
+.sv-gain.short { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 40%, transparent); }
+.sv-gain.dim { color: var(--dim-hi); border-style: dashed; }
+.sv-gain i { font-style: normal; color: var(--dim-hi); }
+.sv-gain .up { color: var(--jade); } .sv-gain .down { color: var(--red-text); } .sv-gain .dim { color: var(--dim-hi); }
+.fa-btn.sv-go { margin-top: 4px; min-height: 34px; }
+.fa-e .down { color: var(--red-text); }
+.fa-btn.done { border-color: color-mix(in srgb, var(--jade) 40%, var(--border)); background: color-mix(in srgb, var(--jade) 7%, var(--fam-sunk)); cursor: default; }
+.fa-btn.done .fa-g { color: var(--jade); text-shadow: none; }
+.fa-btn.done .fa-lock { color: var(--jade); }
+.fa-btn.done .fa-lock::before { content: ''; }
+.sv-timer { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+.sv-timer .sect-mission-timer { color: var(--jade); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+/* Disciples */
+.sv-disc { padding: 6px 0 7px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 4px; }
+.sv-disc:last-of-type { border-bottom: none; }
+.sv-disc-h { display: flex; align-items: baseline; gap: 6px; }
+.sv-disc-n { font-size: 12px; color: var(--text); }
+.sv-stars { font-size: 10.5px; color: var(--gold); letter-spacing: 1px; }
+.sv-stars i { font-style: normal; color: color-mix(in srgb, var(--gold) 18%, transparent); }
+.sv-lv { font-size: 10.5px; color: var(--dim-hi); font-variant-numeric: tabular-nums; }
+.sv-lv b { font-weight: normal; color: var(--jade); }
+.sv-dismiss { margin-left: auto; padding: 0 2px; }
+.sv-disc-y { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 10.5px; color: color-mix(in srgb, var(--text) 75%, var(--dim)); font-variant-numeric: tabular-nums; }
+.sv-disc-y .up { color: var(--jade); } .sv-disc-y .dim { color: var(--dim-hi); }
+.sv-reroll { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-top: 8px; }
+
+/* War */
+.sv-odds .fa-v.odds-low { color: var(--red-text); } .sv-odds .fa-v.odds-mid { color: var(--gold); } .sv-odds .fa-v.odds-good { color: var(--jade); }
+.fa-e .odds-low { color: var(--red-text); } .fa-e .odds-mid { color: var(--gold); } .fa-e .odds-good { color: var(--jade); }
+.sv-tier { font-size: 11px; color: var(--red-text); letter-spacing: 1px; margin-left: 4px; }
+.sv-acts { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.sv-last.win  { border-color: color-mix(in srgb, var(--jade) 35%, var(--border)); }
+.sv-last.loss { border-color: color-mix(in srgb, var(--red) 40%, var(--border)); }
+.sv-last-t { font-size: 11.5px; color: var(--text); margin: 4px 0 6px; }
+.sv-stake { display: flex; gap: 8px; font-size: 11px; line-height: 1.4; padding: 3px 0; color: color-mix(in srgb, var(--text) 78%, var(--dim)); }
+.sv-stake b { flex: none; width: 62px; font-weight: normal; }
+.sv-stake b.up { color: var(--jade); } .sv-stake b.down { color: var(--red-text); }
+
+/* Sub-tabs carry the attention list's mark (NavUI.update): red = a decision, jade = a chance, gold = a nudge */
+.subtab { position: relative; }
+.subtab[data-att="urgent"]::after, .subtab[data-att="ready"]::after, .subtab[data-att="idle"]::after {
+  content: ''; position: absolute; top: 2px; right: 3px; width: 5px; height: 5px; border-radius: 50%; }
+.subtab[data-att="urgent"]::after { background: var(--red); box-shadow: 0 0 5px var(--red); }
+.subtab[data-att="ready"]::after  { background: var(--jade); }
+.subtab[data-att="idle"]::after   { background: var(--gold); opacity: .7; }
+
+/* Overlay (300px): the sect sub-tab row holds four labels, so pills tighten; single-column cards */
+body[data-layout="overlay"] #subtabs .subtab[data-in="sect"] { padding: 2px 6px; }
+body[data-layout="overlay"] .sv-grid { grid-template-columns: 1fr; gap: 6px; }
+body[data-layout="overlay"] .sv-card-d { display: none; }
+body[data-layout="overlay"] .sect-view .fam-card .fc-sub { display: none; }
+body[data-layout="overlay"] .sv-sect-d { display: none; }
+
+/* Card grids for Techniques / Explore / Craft in the roomy layouts (1.8b-5): rows become cards side by side */
+.card-grid { display: flex; flex-direction: column; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px; align-items: stretch; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > * { margin-bottom: 0; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .tech-row { align-items: flex-start; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .tech-row .tech-name { white-space: normal; }
+.cn-sub { color: var(--dim); font-size: 10px; }
+.exp-idle { color: var(--dim); }
+.recipe-owned { font-size: 10px; color: var(--jade); }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .recipe-row { display: flex; flex-direction: column; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .recipe-row .recipe-btns { margin-top: auto; }
+
+/* Overlay: the roster is one line per disciple (yields in the row's tooltip), candidates are compact rows */
+body[data-layout="overlay"] .sv-disc { gap: 3px; padding: 5px 0; }
+body[data-layout="overlay"] .sv-disc-y { display: none; }
+body[data-layout="overlay"] .sv-card.sv-cand { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 8px; padding: 6px 8px; }
+body[data-layout="overlay"] .sv-card.sv-cand .sv-gains { grid-column: 1; margin: 0; padding: 0; }
+body[data-layout="overlay"] .sv-card.sv-cand .sv-gain:not(.up) { display: none; }
+body[data-layout="overlay"] .sv-card.sv-cand .fa-btn.sv-go { grid-column: 2; grid-row: 1 / span 2; width: auto; margin: 0; min-height: 36px; padding: 4px 8px; }
+body[data-layout="overlay"] .sv-card.sv-cand .fa-btn.sv-go .fa-g { display: none; }
+body[data-layout="overlay"] .sv-disc { position: relative; padding: 4px 0 6px; border-bottom: none; }
+body[data-layout="overlay"] .sv-disc .fam-bar { position: absolute; left: 0; right: 0; bottom: 1px; height: 2px; }
+body[data-layout="overlay"] .sv-together { display: none; }   /* Overview carries the totals */
+body[data-layout="overlay"] .sv-stakes, body[data-layout="overlay"] .sv-orders-note { display: none; }   /* stakes live in the odds card too */
+body[data-layout="overlay"] .sv-card.sv-cand { padding: 4px 8px; }
+.sect-view .fc-name { white-space: normal; }
+.sv-orders > .section-title { display: none; }   /* the Standing orders section already names it */
+
+/* 1.8b-5 review cycle 1 fixes: sub-tabs that fit any column (Expanded's right column is ~275px), readable meta text,
+   standing orders sized like the rest, the hall as a card, fame on the founder overview */
+#subtabs { container-type: inline-size; }
+.subtab { white-space: nowrap; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@container (max-width: 380px) {
+  #subtabs .subtab[data-in="sect"] { padding: 3px 7px; }
+  #subtabs .auto-chip { padding: 2px 7px; }
+  #subtabs .auto-chip .ac-label { display: none; }
+}
+body[data-layout="overlay"] #subtabs .subtab[data-in="sect"] { padding: 2px 6px; }
+.sv-disc-y, .sv-lv, .sv-card-t, .sv-stake, .sv-n { font-size: 11px; }
+.sv-disc-y, .sv-stake span, .sv-n { color: color-mix(in srgb, var(--text) 80%, var(--dim)); }
+.sv-disc .fam-bar { height: 3px; }
+.sv-disc .fam-bar > i { background: var(--gold); }
+.sv-card.hall { border-color: color-mix(in srgb, var(--gold) 34%, var(--border));
+  background: radial-gradient(ellipse 90% 60% at 15% 0%, color-mix(in srgb, var(--gold) 7%, transparent), transparent 70%), linear-gradient(180deg, rgba(34,18,40,0.55), rgba(14,7,20,0.55)); }
+.sv-now.dim { color: var(--dim-hi); }
+.sv-card.built .sv-card-t { color: color-mix(in srgb, var(--jade) 70%, var(--dim)); }
+.sv-need.wide { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: baseline; }
+.fa-btn.sv-call { margin-top: 8px; }
+.fa-btn.sv-call .fa-e { color: var(--dim-hi); }
+.sv-links { grid-template-columns: 1fr; }
+.sv-fame { display: flex; flex-direction: column; gap: 1px; margin: 4px 0 6px; }
+.sv-fame .sv-fx-row b { color: var(--gold); }
+.fam-sec-title .fam-count { color: var(--gold); }
+/* Standing orders inside Sect → War: toggles as tall as the steppers, a clear lit state, notes like the others */
+.sv-orders .set-row { flex-wrap: wrap; gap: 5px 8px; }
+.sv-orders .set-opt { min-height: 26px; font-size: 11px; padding: 2px 8px; }
+.sv-orders .set-opt.active { color: var(--bg2); background: var(--gold); border-color: var(--gold); font-weight: bold; }
+.sv-orders .num-ctl { flex-wrap: nowrap; margin-left: auto; }
+.sv-orders .warord-note { font-weight: normal; border-left: none; background: none; padding: 0 0 4px; margin: 0 0 6px; color: color-mix(in srgb, var(--text) 72%, var(--dim)); }
+.sv-orders .warord-note .wn-you { color: var(--text); }
+/* Explore cards: Send sits bottom-right like "Set out" */
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .loc-row { align-items: flex-end; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .loc-row .loc-btn { min-height: 28px; padding: 3px 12px; }
+/* Overlay: the alone card keeps its one line; the odds card drops its caption (its "why" card has it) */
+body[data-layout="overlay"] .sect-view .fam-card.alone .fc-sub { display: block; }
+body[data-layout="overlay"] .sv-odds .fa-last { display: none; }
+@container (max-width: 300px) {
+  #subtabs .subtab[data-in="sect"] { padding: 3px 6px; font-size: 11px; letter-spacing: 0; }
+  #subtabs .auto-chip { padding: 2px 5px; }
+}
+/* Expanded: the right column is ~275px, so the sub-tab row keeps Overlay-like padding */
+body[data-layout="expanded"] #subtabs { padding: 7px 8px; gap: 3px; }
+body[data-layout="overlay"] .sv-fame-sec, body[data-layout="overlay"] #tab-sect .sv-last { display: none; }   /* Fame is in the tag tooltip; War holds the result */
+body[data-layout="overlay"] .fa-btn.sv-call { min-height: 32px; }
+body[data-layout="overlay"] .fa-btn.sv-call .fa-g { display: none; }
+body[data-layout="overlay"] .fa-btn.sv-call { min-height: 30px; margin-top: 6px; padding: 3px 7px; }
+body[data-layout="overlay"] .sv-card.sv-cand .sv-card-h { line-height: 1.2; }
+.sv-card-n, .sv-disc-n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 1.8b-5 review cycle 2 fixes: sub-tab pills never shrink into an ellipsis (the row scrolls sideways as a last
+   resort), readable tile sub-lines, bigger destructive links, grid-mode buttons sized like the new tiles */
+#subtabs .subtab { flex-shrink: 0; text-overflow: clip; }
+#subtabs { overflow-x: auto; overflow-y: hidden; }
+#subtabs::-webkit-scrollbar { display: none; }
+@container (max-width: 300px) {
+  #subtabs .subtab[data-in="sect"] { padding: 3px 5px; }
+  #subtabs .auto-chip { padding: 2px 4px; margin-left: 2px; }
+}
+.sect-view .fa-e, .sv-grid .fa-e, .sv-acts .fa-e { font-size: 11px; color: color-mix(in srgb, var(--text) 72%, var(--dim)); }
+.sect-view .fa-e .up, .sv-grid .fa-e .up { color: var(--jade); }
+.sect-view .fa-link, .sv-disc .fa-link { min-height: 28px; padding: 4px 6px; }
+.sect-view .fa-link.danger:hover { color: var(--red-text); text-decoration-color: var(--red); }
+body[data-layout="overlay"] .sv-long { display: none; }
+.sv-under { padding: 4px 0 6px; }
+.sv-under-n { font-size: 11.5px; color: var(--text); }
+body[data-layout="overlay"] .sv-under-sec { display: none; }   /* Missions shows the timers */
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid .recipe-craft-btn,
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid .recipe-equip-btn,
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid .pill-queue-btn { min-height: 26px; font-size: 11px; padding: 3px 10px; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid .recipe-desc,
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid .tech-sub { font-size: 11px; color: var(--dim-hi); }
+body[data-layout="overlay"] .sv-disc .fa-link { min-height: 0; padding: 0 4px; }
+@container (max-width: 300px) { #subtabs .subtab[data-in="sect"] { padding: 3px 4px; } }
+body[data-layout="overlay"] .sv-cand .fa-e { font-size: 10.5px; }
+
+/* 1.8b-5 review cycle 3 fixes: no sideways overflow in narrow columns, countdowns never split, a visible XP track,
+   a real dismiss button, locked tiles that don't read as live, one emphasized gift, raised halls quieter */
+.sv-orders .num-ctl { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.sect-view, .sv-grid, .sv-orders .set-row { min-width: 0; max-width: 100%; }
+.panel[id^="tab-sect"] { overflow-x: hidden; }
+.nw { white-space: nowrap; }
+.sv-disc .fam-bar { height: 4px; background: color-mix(in srgb, var(--gold) 14%, rgba(255,255,255,0.06)); }
+.sv-disc .fam-bar > i { min-width: 3px; box-shadow: 0 0 4px color-mix(in srgb, var(--gold) 40%, transparent); }
+.sv-dismiss { margin-left: auto; font-family: var(--font); font-size: 10.5px; color: var(--dim-hi); background: none; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 3px; padding: 2px 7px; min-height: 22px; }
+.sv-dismiss:hover { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 60%, transparent); }
+.sect-view .fa-btn.locked, .sv-grid .fa-btn.locked { border-style: dashed; background: none; }
+.sect-view .fa-btn.locked .fa-n { color: var(--dim); }
+.fa-btn.key { border-color: color-mix(in srgb, var(--gold) 60%, transparent); background: color-mix(in srgb, var(--gold) 8%, var(--fam-ember)); }
+.sv-card.built { padding-top: 6px; padding-bottom: 6px; background: linear-gradient(180deg, rgba(14,28,22,0.35), rgba(8,12,10,0.4)); border-color: color-mix(in srgb, var(--jade) 20%, var(--border)); }
+.sv-card.built .sv-card-d { opacity: .75; }
+.sv-head { background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 7%, transparent), transparent 70%); padding: 5px 8px 6px; border-radius: 4px 4px 0 0;
+  border-bottom: 1px solid; border-image: linear-gradient(90deg, color-mix(in srgb, var(--gold) 45%, transparent), transparent) 1; }
+body[data-layout="overlay"] .sv-dismiss { min-height: 0; padding: 0 5px; }
+/* Overlay Disciples: your own roster first, then the candidates at the gate (user 2026-09-27) */
+body[data-layout="overlay"] .sv-disc-view .fam-col:first-child .fam-sec { order: 3; }
+body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 4; }

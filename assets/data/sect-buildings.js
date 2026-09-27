@@ -35,7 +35,7 @@ const SECT_BUILDINGS = [
   },
   {
     id: 'defensive_array', name: 'Defensive Array', nameCN: '防御阵',
-    desc: 'War defense +40% (used by sect wars, Phase 5B).',
+    desc: 'Wards woven into the mountain itself: war defense +40%.',
     stones: 200, items: { void_crystal: 5 }, effects: { war_defense: 0.4 },
   },
   {

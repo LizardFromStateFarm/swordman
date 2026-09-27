@@ -52,7 +52,7 @@ button in `#tabs` holding 1+ views shown as sub-tabs:
 | 修 Path | techniques (Techniques) · stats (Character) | — |
 | 歷 Roam | explore (Explore: expedition, locations, road encounters) · beasts (Beasts: wild + tamed) | Auto-Explore |
 | 家 Kin | family (Family) · clan (Clan: clan rows, Hall, Pass the Mantle) | — |
-| 宗 Sect | sect | Auto-Missions |
+| 宗 Sect | sect (Overview) · sect-missions (Missions, joined) · sect-halls (Halls, founded) · sect-disciples (Disciples, founded) · sect-war (War, either) — only the views your standing offers are shown (1.8b-5) | Auto-Missions |
 | 囊 Pack | pack (Items) · craft (Craft) — user asked for Craft and Pack together | Auto-Craft (on Craft) |
 | 錄 Log | events (Events) · banter (Banter) | — |
 
@@ -62,6 +62,15 @@ button in `#tabs` holding 1+ views shown as sub-tabs:
   remembers its last sub-view (localStorage `cultivator-idle:nav`, per computer).
 - `updateHUD` re-renders `nav.view` on explicit state changes and runs the in-place timer updaters on ticks.
 - `nav.update(s, attentionItems, automationUnlocked)` redraws badges + the automation chip (DOM only on change).
+- **Offered views (1.8b-5):** `nav.setAvailable(views)` hides sub-tabs that don't apply (game.js passes every view
+  except the sect ones `SectView.viewsFor(s)` withholds, each HUD update; cheap signature check). If the open view is
+  withdrawn (you leave/found a sect) the nav falls back to the group's first offered view; a group button never
+  lands on a withdrawn "last" view. A group with one offered view shows the context line instead of sub-tabs.
+- **Sub-tab marks (1.8b-5):** `nav.update` sets `data-att` on each sub-tab to the most urgent attention tier aimed at
+  that view (CSS dot: red decision · jade chance · gold nudge), so a many-view group says which view wants you.
+- **Sub-tab row width (1.8b-5):** `#subtabs` is a size container; `@container` rules tighten the pills below 380px /
+  300px and fold the automation chip to "自 ●". Expanded's right column is only ~275px, so Expanded keeps Overlay-like
+  row padding. Sub-tabs never wrap (they ellipsize as a last resort); smoke sect.js asserts all sect tabs fit.
 - Group names are ≤ 5 chars so six fit in 300px with the glyph above (the approved "Cultivate/Adventure" became
   "Path/Roam" for width).
 
@@ -162,6 +171,49 @@ for War (1.8b-4 extends it across the Clan view).
   replaced the per-element ones. Never set `scrollbar-color` (Chromium lets it override these).
 - **Stat rows:** `.stat-row .stat-key` may now shrink and `.stat-val` takes ≥ half the row, so a long label beside a
   long value no longer collapses into a one-word column (the old Hall's "Best Realm Reached").
+
+## Sect views (1.8b-5)
+- `renderer/game/sect-view.js` → `SectView` renders all five sect panels (`#tab-sect`, `#tab-sect-missions`,
+  `#tab-sect-halls`, `#tab-sect-disciples`, `#tab-sect-war`); game.js `renderSect(s, view)` creates it lazily with
+  `sectHelpers()` (esc, fmt, fmtTime, flash, confirm, go, `orders` = the Standing Orders renderer, `startMission`).
+  One delegated click handler per panel on `[data-sa]`; no element ids, so stale hidden panels never collide.
+  The old renderSect/renderOwnSect/renderFoundPanel/renderMemberWarPanel/renderSectWarPanel are gone.
+- **No sect:** a "wandering cultivator" card, every sect within 3 stages as a row with its blessing in words
+  (`sectEffectList()`: "Qi per second ×1.4", "Breakthrough chance never below 50%"…) and a Join / sealed-until tile;
+  a founding card with have/need tiles (stones, Void Crystals, realm) and the name field (`foundName` survives
+  re-renders).
+- **Joined → Overview:** rank card (contribution bar to the next rank, "Rise to X" with the next rank's reward mult or
+  "N more Contribution", Give 10 stones, Give-enough-to-rise, Leave behind a confirm); the sect's blessing (items
+  that don't apply now — weapon/artifact bonuses without the gear — say "not now"; struck through while suppressed
+  after a lost war); Duties tiles linking Missions (slots, open count) and War (countdown, odds, unanswered).
+  **Missions:** a card per mission (duration, rewards and contribution already × your rank mult, beast XP, rank lock,
+  "Set out" or the live timer bar). **War:** see below.
+- **Founded → Overview:** sect card (Fame tag with its terms in the tooltip), stat tiles (stones/min, herbs/min, Qi/s
+  from disciples, war defense / array damaged), the hall upgrade tile (seats before → after, cost / short); right
+  column: links to Disciples / Halls / War, the Fame breakdown, the last war. **Halls:** the Sect Hall card (level,
+  seats, raise tile) then a card per building with "what it does now, in your numbers" (e.g. "double crafts:
+  35% → 75%", "beast slots: 3 → 5") and its cost with what you hold. **Disciples:** roster (stars, level, XP bar,
+  +Qi/s, stones/min, herbs/min, time to next level, dismiss behind a confirm) and the candidates at the gate (their
+  Lv.1 yield, cost or "N stones short" / "raise the Sect Hall"), a "Call others" tile with the refresh countdown.
+- **War (both sides):** status card (enemy + tier stars, phase clock, record), the **odds card** (`gameState.sectWarOdds()`,
+  the exact mean of the real roll; tap → breakdown `data-bd="sectwar"`: strength terms, what-ifs, the stakes), then
+  the actions for the phase — member: Answer the call · War chest · offer up to 3 pill kinds · send an idle beast;
+  own: Reinforce (preparing only, odds after) · ask the strongest reachable sect as ally (every ally costs/gives the
+  same). Last war's result card, Standing orders (the existing `renderWarOrdersPanel`, restyled inside `.sv-orders`:
+  26px toggles with a lit gold selected state, labels above their controls), "What rides on it".
+- **Overlay:** cards stack single-column; blurbs (`.sv-card-d`, card `.fc-sub`, sect descriptions), the Fame section,
+  the Overview's last-war card, the stakes and the orders footnote are hidden (reachable via tooltips / War / the odds
+  card); the roster is one line per disciple (yields in the row tooltip); candidates are compact rows. Measured with
+  the founder preset during an attack: Overview 2.3 · Halls 2.4 · Disciples 3.0 · War 2.1 Overlay screens (the old
+  single list was 14.8).
+- **Timers** are data attributes (`[data-wartimer]`, `[data-pooltimer]`, `.sect-mission-timer` + `[data-barfor]`);
+  `updateSectTimersInPlace` runs on ticks for any `sect*` view.
+- **Attention:** war call / attack → `sect-war`; open mission slot → `sect-missions`; new idle nudges 徒 (a seat is open
+  and you can afford a candidate) → `sect-disciples`, 殿 (a building you can afford) → `sect-halls`.
+- **Card grids:** Techniques, Explore locations and Craft recipes are wrapped in `.card-grid` — a column in Overlay /
+  Banner, an auto-fill grid (≥ 250px cards) in Expanded/Desktop. Their plain CJK subtitles moved into tooltips; the
+  Technique cost glyph is 石 (was an emoji).
+- Smoke: `scripts/smoke/scenarios/sect.js`. Checks: `scripts/sim/checks/sect-view.js`.
 
 ## Render Function Pattern
 All `render<X>(s)` functions:
