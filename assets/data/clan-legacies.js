@@ -2,7 +2,7 @@
 // Data only. Numbers per docs/systems/life-loop.md §3.2; state shape + hooks per clan-succession.md §2.7 (Merit/
 // firsts/legacies/bestStageIndex live on the real per-world Clan object, not a standalone s.clan).
 // Used by: game-state.js (_claimFirst, _recordLifeInWorld merit credit, buyLegacy/setFamilyManual, _recalc catch-up
-// + Ancestor Blessing, attemptAscension), game.js (Ancestral Hall overlay), scripts/sim/*.
+// + Ancestor Blessing, attemptAscension), renderer/game/clan-view.js (Kin → Hall view, 1.8b-4), scripts/sim/*.
 // sect_continuity (life-loop.md draft) is cut — the 2.6d reign sim already hands a founded sect to the heir for
 // free. longevity_blood was already cut when age stopped being able to kill (life-loop.md §15).
 

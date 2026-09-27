@@ -31,13 +31,13 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
-| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family view + agency ✅ (7.5, accepted); next: Clan view + Hall (user) |
+| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
 | Game Time & Age (age passes only while open; **age never kills** since 2026-09-26) | ◐ Phase 30 (M2) — game clock + age stat + Pass the Mantle; lifespan/twilight/Final Seclusion removed; pacing (2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
-| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ✅ Phase 31 (M2) — 2.6a–f (world/clan registry, children, heirs + tournament, reign + rebirth, challenge/step-down, branch wars + secession) and 2.7a–f (Ancestral Merit, legacies, Ascended Ancestor ending fixes the post-Ascension dead zone, ancestral catch-up, Hall UI) all built. Known gap: no in-game UI yet to pick the Family Manual technique (only the sim bot exercises it). Next: 2.8 tuning |
+| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ✅ Phase 31 (M2) — 2.6a–f (world/clan registry, children, heirs + tournament, reign + rebirth, challenge/step-down, branch wars + secession) and 2.7a–f (Ancestral Merit, legacies, Ascended Ancestor ending fixes the post-Ascension dead zone, ancestral catch-up, Hall UI) all built. Family Manual picker in Kin → Hall (1.8b-4). Next: 2.8 tuning |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
 | Body Constitution & Physical Tempering | ⬜ Phase 14 |
@@ -86,7 +86,6 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 - **Inline styles in game.js** (~57 `style="…"`): blocked by CSP, re-applied by a shim since 1.8b-1. Convert to classes
   as each screen is rebuilt (1.8b-2..5).
 - Phone/narrow single-column layout of the new nav is untested (Desktop can't shrink below 640; no Mac).
-- No in-game UI to pick the Family Manual technique (only the sim bot calls `setFamilyManual()`) — 2.7
 - ~~Main interaction area is the smallest part of the window~~ — 1.7: Overlay tab body 105 → 305px, Expanded/Desktop
   656–696px. Still open: 7 tabs at 9px in Overlay, banner has no attention strip yet — 1.8b
 - **Art (→ Phase 34 art track, A1–A5):** plain grid ASCII rarely clears the 8/10 gate. 116 emoji in the game (63 inside
@@ -97,6 +96,9 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   and raising actions. **Still simulated → 1.8b-3b:** affairs discovered by dice with no hide/confess, affairs
   ending on their own, a lover's child without a say, tournament/duel fights auto-rolled. Rule: CLAUDE.md Depth
   Pass #6 (player choices are never simulated).
+- **Clan + Hall leftovers (1.8b-4, 7.5 accepted):** Overlay nests boxes three deep (drop inner borders on small
+  panes); fold toggles only on the far-right caret (make the whole header the target); ancestor rows need a leading
+  "gen N · realm" marker; Desktop columns still uneven with a long chronicle.
 - **Family view leftovers (1.8b-3a):** no hint of what each temper *likes* beyond the blurb and the meeting-choice
   approach hints (a "likes/dislikes" line per personality would need data); lovers are still a plain list (3b);
   Overlay tab pane is small, so the married view is ~3 screens.
@@ -113,6 +115,24 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 22
+Agent: **1.8b-4 Clan view + Hall** (user approved; asked for the Clan tab to be easier to read, the Hall to get
+  help, the Overlay "Best Realm Reached" spacing bug fixed, and a themed scrollbar). As-built: ui-layout.md → "Clan +
+  Hall views". Family work (1.8b-3a) committed first as f48f432.
+  - New renderer/game/clan-view.js (ClanView + HallView). **The Hall is now Kin → Hall** (was a pop-over;
+    #hall-overlay markup + CSS removed; openHallOverlay() now navigates). Family Manual picker built (UX debt since 2.7).
+  - game-state read helpers: meritPreview(), familyManualOptions(), clanRelations(); branchWarPreview() adds chance.
+    Breakdown card 'branch' (+ optional totalLabel for the "=" row). Attention: ready 挑 challenge, idle 祠 Merit.
+  - One global themed scrollbar (styles.css top); per-element scrollbar rules removed. Stat rows no longer collapse
+    a long value into a one-word column.
+  - **Bugs found + fixed:** BreakdownUI rebuilt the card every HUD tick (live-number cards flickered / stayed
+    invisible); attention strip ignored changes in an item's reason text (stale "75 Merit"); epitaph age blank when
+    a person had no diedYear (falls back to the life's end year).
+  - Smoke: new scenarios/clan.js; succession/visual-baseline/ux-audit updated to the Hall tab. All pass, zero console
+    errors; npm test (81), npm run checks (329).
+  - **Visual Review Gate: 7.3 → 7.2 → 7.5 → 7.5 → 7.5 over 5 cycles (no criterion < 6) → accepted by the user.**
+  Next: 1.8b-3b (affairs, duel/tournament say) or 1.8b-5 (Sect).
+
 Date: 2026-09-27 (user present) — part 21
 Agent: **1.8b-3a Family view + family agency, part 1** (user approved the split into 3a/3b and "Ask me" as the
   default plan). As-built: family.md → "1.8b-3a", ui-layout.md → "Family view".

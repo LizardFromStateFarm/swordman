@@ -84,9 +84,9 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
     await click('#_choose-heir'); await sleep(250); await shot('vb-5-heir'); await click('#heir-close')
   }
   await click('[data-tab="clan"]'); await sleep(200)
-  await click('#_hall'); await sleep(300); await shot('vb-5-hall')
-  await ev('for (const id of ["hall-box", "hall-overlay"]) document.getElementById(id).scrollTop = 1e6'); await sleep(150); await shot('vb-5-hall-end')
-  await click('#hall-close')
+  await click('[data-tab="hall"]'); await sleep(300); await shot('vb-5-hall')   // 1.8b-4: Kin → Hall view
+  await ev('for (let n = document.getElementById("tab-hall"); n; n = n.parentElement) n.scrollTop = 1e6'); await sleep(150); await shot('vb-5-hall-end')
+  await click('[data-tab="clan"]')
 
   await click('[data-tab="family"]'); await sleep(200)
   if (await ev('!!document.getElementById("_tournament") && !document.getElementById("_tournament").disabled')) {

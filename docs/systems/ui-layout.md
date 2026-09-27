@@ -140,6 +140,29 @@ for War (1.8b-4 extends it across the Clan view).
   tap to open `.kid-acts`. All children are listed (the old "youngest 12" cap is gone); the dead and estranged fold
   into "Gone from the house". Family Planning is the segmented control at the top (Ask me · Few · Many · None).
 
+## Clan + Hall views (1.8b-4)
+- `renderer/game/clan-view.js` → `ClanView` (#tab-clan) and `HallView` (#tab-hall), sharing `KinViewBase` (click
+  delegation, `_tile()` = the Family view's `.fa-btn`, bar painting). game.js `renderClan()/renderHall()` create them
+  lazily with `kinHelpers()`. **The Hall is a nav view now** (Kin → Family · Clan · Hall); the old `#hall-overlay` is
+  gone and `openHallOverlay(view)` just peeks the banner and `nav.go('hall')`.
+- **Clan:** clan card (founded, members, branches, generation, your standing tag, tradition = lethal vs peaceful
+  successions, Hall tile with Merit) → head card (style + blurb, your bond meter, only when someone else leads) →
+  "What you can do" tiles (Challenge the Head, War on the Main Line + odds `data-bd="branch"`, Secede, Push, Pass the
+  Mantle; locks say why). Right column: lines & branches as a small ┌├└ tree (yours highlighted), branch strength
+  meter, other clans (`clanRelations()`, words Blood feud / Rivals / Wary peace / Friendly / Allied + a centered
+  diverging bar), the last 3 chronicle lines. Orphans get one card (+ the last clan's Hall).
+- **Hall:** records card (Merit to spend, earned, furthest realm, Ascended Ancestors + blessing) → "This life will
+  add" (`meritPreview()`, the real `_recordLifeInWorld` terms) → clan firsts (claimed 得 / open +Merit). Right:
+  legacy cards (level pips, Now / Next effect, buy or "need N more", sealed with the first it needs) with the
+  **Family Manual picker** inside its card (`familyManualOptions()`, `setFamilyManual`), then the family tree and
+  chronicle as `<details>` folds.
+- Existing ids still go through `wireKinButtons`: `_challenge-head`, `_declare-branch-war`, `_push-branch-war`,
+  `_secede`, `_pass-mantle`. Attention: ready 挑 (a challenge is possible), idle 祠 (Merit enough for a legacy).
+- **Scrollbar:** one global `::-webkit-scrollbar` (8px, gold-ink thumb on a faint groove) near the top of styles.css
+  replaced the per-element ones. Never set `scrollbar-color` (Chromium lets it override these).
+- **Stat rows:** `.stat-row .stat-key` may now shrink and `.stat-val` takes ≥ half the row, so a long label beside a
+  long value no longer collapses into a one-word column (the old Hall's "Best Realm Reached").
+
 ## Render Function Pattern
 All `render<X>(s)` functions:
 - Receive current state snapshot `s`

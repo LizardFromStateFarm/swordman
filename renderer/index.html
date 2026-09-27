@@ -144,6 +144,7 @@
         <div id="tab-beasts"     class="panel"></div>
         <div id="tab-family"     class="panel"></div>
         <div id="tab-clan"       class="panel"></div>
+        <div id="tab-hall"       class="panel"></div>
         <div id="tab-sect"       class="panel"></div>
         <div id="tab-pack"       class="panel"></div>
         <div id="tab-craft"      class="panel"></div>
@@ -249,22 +250,6 @@
   </div>
 </div>
 
-<!-- Ancestral Hall (Phase 31, M2 task 2.7f, clan-succession.md §2.7) — records, family tree (world.pastLives/
-     persons), legacies (bought with Ancestral Merit), and the clan chronicle (2.6d, clan.history). Opened from
-     Stats at any time. -->
-<div id="hall-overlay" class="hidden">
-  <div id="hall-box">
-    <div id="hall-title">Ancestral Hall 祖祠</div>
-    <div id="hall-records"></div>
-    <div class="hall-section-label">Family Tree</div>
-    <div id="hall-tree"></div>
-    <div class="hall-section-label">Clan Legacies</div>
-    <div id="hall-legacies"></div>
-    <div class="hall-section-label">Chronicle</div>
-    <div id="hall-chronicle"></div>
-    <button id="hall-close">Close</button>
-  </div>
-</div>
 
 <!-- Family overlay (docs/systems/family.md) — marriage/crisis events and the duel card; never expires, Stats reopens it -->
 <div id="family-overlay" class="hidden">
@@ -364,6 +349,7 @@
 <script src="game/nav.js"></script>
 <script src="game/breakdowns.js"></script>
 <script src="game/family-view.js"></script>
+<script src="game/clan-view.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

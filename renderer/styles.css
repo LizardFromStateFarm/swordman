@@ -47,6 +47,19 @@ body {
 
 .hidden { display: none !important; }
 
+/* One scrollbar for the whole app (1.8b-4, user: "I hate the look of the default windows scroll bar"): a thin
+   gold-ink thread on a faint groove, brighter under the pointer. Chromium/Electron only; iOS draws its own overlay
+   bars and ignores these. Don't set `scrollbar-color` anywhere: in Chromium it overrides these rules. */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: linear-gradient(90deg, transparent 3px, rgba(237,208,80,0.06) 3px, rgba(237,208,80,0.06) 5px, transparent 5px); }
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent; background-clip: padding-box; border-radius: 4px;
+  background-color: color-mix(in srgb, var(--gold) 32%, var(--scroll));
+}
+::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--gold) 65%, var(--scroll)); }
+::-webkit-scrollbar-thumb:active { background-color: var(--gold); }
+::-webkit-scrollbar-corner, ::-webkit-scrollbar-button { display: none; background: transparent; }
+
 /* ══════════════════════════════════════════════════════════════════════════
    CHARACTER SELECT SCREEN
 ══════════════════════════════════════════════════════════════════════════ */
@@ -102,9 +115,6 @@ body {
   gap: 10px;
 }
 
-#cs-slots::-webkit-scrollbar       { width: 4px }
-#cs-slots::-webkit-scrollbar-track { background: transparent }
-#cs-slots::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px }
 
 .cs-slot {
   border: 1px solid var(--border);
@@ -703,10 +713,6 @@ body {
 }
 .panel.active { display: block; }
 
-.panel::-webkit-scrollbar       { width: 4px }
-.panel::-webkit-scrollbar-track { background: rgba(255,255,255,0.04) }
-.panel::-webkit-scrollbar-thumb { background: #4A3A28; border-radius: 2px }
-.panel::-webkit-scrollbar-thumb:hover { background: var(--dim) }
 
 /* ── Techniques ─────────────────────────────────────────────────────────── */
 
@@ -1011,8 +1017,7 @@ body {
 #interlude-body .chron-bet { color: var(--gold); margin-top: 6px; }
 #interlude-body .chron-bet.lost { color: var(--red); }
 #interlude-choices { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-#interlude-choices button,
-#hall-close {
+#interlude-choices button {
   background: rgba(24,10,4,.9);
   border: 1px solid var(--border);
   color: var(--text);
@@ -1027,35 +1032,6 @@ body {
 }
 #interlude-choices button:hover { border-color: var(--gold); color: var(--gold); }
 
-/* Ancestral Hall overlay (2.6d chronicle + Phase 31 records/tree/legacies, task 2.7f) */
-#hall-overlay {
-  position: fixed; inset: 0; background: rgba(8,4,14,0.9);
-  display: flex; align-items: center; justify-content: center; z-index: 190;
-}
-#hall-box {
-  background: var(--bg2); border: 1px solid var(--gold); border-radius: 5px;
-  padding: 14px 16px; width: min(260px, calc(100vw - 32px)); max-height: 88vh; overflow-y: auto; box-sizing: border-box;
-}
-#hall-title { font-size: 13px; color: var(--gold); margin-bottom: 8px; text-align: center; }
-.hall-section-label { font-size: 10px; color: var(--dim); margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-#hall-records { font-size: 10px; color: var(--text); line-height: 1.55; }
-#hall-tree, #hall-chronicle { font-size: 10px; color: var(--text); line-height: 1.55; max-height: 140px; overflow-y: auto; }
-#hall-tree .chron-line, #hall-chronicle .chron-line { margin-bottom: 5px; }
-#hall-tree .chron-line.ascended { color: var(--gold); }
-#hall-legacies .legacy-row {
-  display: flex; justify-content: space-between; align-items: center; gap: 6px;
-  padding: 5px 0; border-bottom: 1px solid rgba(237,208,80,0.08); font-size: 10px;
-}
-#hall-legacies .legacy-name { color: var(--text); }
-#hall-legacies .legacy-desc { color: var(--dim); font-size: 9px; display: block; }
-#hall-legacies button {
-  font-size: 9px; padding: 3px 7px; border: 1px solid var(--gold); border-radius: 3px;
-  background: transparent; color: var(--gold); cursor: pointer; white-space: nowrap;
-}
-#hall-legacies button:disabled { border-color: var(--dim); color: var(--dim); cursor: default; }
-#hall-legacies button:not(:disabled):hover { background: rgba(237,208,80,0.12); }
-#hall-close { text-align: center; margin-top: 6px; }
-#hall-close:hover { border-color: var(--gold); color: var(--gold); }
 
 
 /* ── Proposal overlay (Phase 16-lite, M2 task 2.5) ─────────────────── */
@@ -1649,8 +1625,6 @@ body {
 #settings-title { font-size: 12px; color: var(--gold); letter-spacing: 1px; white-space: nowrap; }
 
 #settings-body { overflow-y: auto; padding: 4px 10px 10px; }
-#settings-body::-webkit-scrollbar { width: 4px }
-#settings-body::-webkit-scrollbar-thumb { background: #4A3A28; border-radius: 2px }
 
 .set-group {
   font-size: 9px;
@@ -2312,8 +2286,6 @@ body[data-edge="bottom"] #banner-menu { top: auto; bottom: 60px; }
   -webkit-mask-image: linear-gradient(#000 calc(100% - 22px), transparent);   /* fades: "there's more below" */
           mask-image: linear-gradient(#000 calc(100% - 22px), transparent);
 }
-.bm-list::-webkit-scrollbar       { width: 6px }
-.bm-list::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 3px }
 
 .bm-row {
   display: grid;
@@ -2530,8 +2502,6 @@ body[data-layout="banner"] #attention.calm { flex: 0 1 220px; }
 #mode-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border); }
 #mode-title { font-size: 12px; color: var(--gold); letter-spacing: 1px; }
 #mode-body { overflow-y: auto; padding: 8px 10px 26px; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); }
-#mode-body::-webkit-scrollbar { width: 4px }
-#mode-body::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 2px }
 .mode-intro { font-size: 10px; color: var(--dim-hi); margin-bottom: 8px; line-height: 1.4; font-style: italic; }
 .mode-cards { display: grid; grid-template-columns: 1fr; gap: 6px; align-items: start; }
 @media (min-width: 380px) { .mode-cards { grid-template-columns: 1fr 1fr; } }
@@ -2608,7 +2578,6 @@ body[data-layout="banner"] #attention.calm { flex: 0 1 220px; }
 .stat-key { flex-shrink: 0; }
 .stat-val { text-align: right; min-width: 0; overflow-wrap: anywhere; }
 /* Ancestral Hall: opaque enough that the titlebar/sprite never show through (1.8c bug) */
-#hall-overlay { background: rgba(8,4,14,0.97); }
 
 /* Titlebar ⋯ menu (1.8b-1): in Overlay 歸 + 窗 fold into it so the cultivator's name keeps ~12 characters.
    While peeking out of the banner, 條 (the way back) stays in the titlebar. */
@@ -2666,8 +2635,6 @@ body[data-layout="banner"] #bt-why { top: -6px; right: -8px; }
   box-shadow: 0 14px 36px rgba(0,0,0,0.85), 0 0 0 1px rgba(0,0,0,0.6), inset 0 1px 0 color-mix(in srgb, var(--gold) 12%, transparent);
   animation: bdIn .14s ease-out;
 }
-.bd-pop::-webkit-scrollbar { width: 5px; }
-.bd-pop::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 3px; }
 @keyframes bdIn { from { opacity: 0; transform: translateY(-3px) scale(.985) } to { opacity: 1; transform: none } }
 .bd-head { display: flex; align-items: center; gap: 8px; padding-bottom: 7px; margin-bottom: 6px;
   border-bottom: 1px solid color-mix(in srgb, var(--gold) 22%, transparent); }
@@ -3025,3 +2992,183 @@ body[data-layout="overlay"] .fw-acts { flex-direction: column; }
 .fa-pill.row span { white-space: nowrap; }
 body:not([data-layout="overlay"]) .fa-pill.row { flex-direction: column; gap: 1px; }
 body[data-layout="overlay"] .fa-pill.row span::before { content: "· "; }
+
+/* ── Clan + Hall views (1.8b-4, renderer/game/clan-view.js) — built from the Family view's components. ── */
+.fam-card.clan, .fam-card.hall { border-color: color-mix(in srgb, var(--gold) 28%, var(--border)); }
+.clan-trad { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 8px 0 0; padding: 6px 8px; border-radius: 4px;
+  background: var(--fam-ink); border: 1px solid color-mix(in srgb, var(--purple) 20%, var(--border)); font-size: 11.5px; }
+.ct-k { font-size: 10.5px; color: var(--dim-hi); letter-spacing: .8px; text-transform: uppercase; }
+.ct-n { flex-basis: 100%; font-size: 10.5px; color: var(--dim-hi); }
+.clan-acts { grid-template-columns: 1fr; }
+.fa-split > .fa-btn.locked + .fa-why { opacity: .7; }
+
+.line-tree { display: flex; flex-direction: column; }
+.line-row { display: flex; gap: 8px; align-items: flex-start; padding: 5px 4px; border-radius: 3px; }
+.line-row.yours { background: color-mix(in srgb, var(--gold) 7%, transparent); }
+.lr-tree { color: color-mix(in srgb, var(--gold) 45%, var(--dim)); font-size: 13px; line-height: 1.1; }
+.lr-main { display: flex; flex-direction: column; min-width: 0; }
+.lr-n { font-size: 11.5px; color: var(--text); }
+.lr-you { font-size: 10.5px; color: var(--gold); border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); border-radius: 8px; padding: 0 5px; margin-left: 4px; }
+.lr-s { font-size: 10.5px; color: var(--dim-hi); }
+.fam-sec .chron-line { font-size: 11.5px; line-height: 1.45; color: color-mix(in srgb, var(--text) 78%, var(--dim)); padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.fam-sec .chron-line:last-of-type { border-bottom: none; }
+.fam-sec .chron-line.ascended { color: var(--gold); }
+.fam-sec > .fa-quiet { margin-top: 6px; }
+
+.rel-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "n w" "bar bar"; gap: 2px 8px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.rel-n { grid-area: n; font-size: 11.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rel-w { grid-area: w; font-size: 10.5px; }
+.rel-bar { grid-area: bar; position: relative; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.07); }
+.rel-bar > i { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--text); }
+.rel-bar > i.tone-red { background: var(--red); } .rel-bar > i.tone-gold { background: var(--gold); } .rel-bar > i.tone-jade { background: var(--jade); } .rel-bar > i.tone-dim { background: var(--dim); }
+.rel-bar > em { position: absolute; left: 50%; top: -2px; width: 1px; height: 8px; background: color-mix(in srgb, var(--text) 35%, transparent); }
+
+/* Hall */
+.hall-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 8px; }
+.ht { display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; border-radius: 4px; background: var(--fam-ink); border: 1px solid color-mix(in srgb, var(--purple) 22%, var(--border)); min-width: 0; }
+.ht.wide { grid-column: 1 / -1; }
+.ht-k { font-size: 10.5px; color: var(--dim-hi); }
+.ht-v { font-size: 13px; color: var(--text); }
+.ht-v.gold { color: var(--gold); font-size: 17px; text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 30%, transparent); }
+.ht-v.jade { color: var(--jade); font-size: 11.5px; }
+.fam-count.gold { color: var(--gold); }
+.mp-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); color: color-mix(in srgb, var(--text) 82%, var(--dim)); }
+.mp-row b { font-weight: normal; color: var(--gold); font-variant-numeric: tabular-nums; }
+.mp-row.first span::before { content: '得 '; color: var(--jade); }
+.mp-row.dim { color: var(--dim-hi); } .mp-row.dim b { color: var(--dim-hi); }
+.firsts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0 12px; }
+.fr { display: flex; gap: 6px; align-items: baseline; font-size: 11.5px; padding: 3px 0; color: color-mix(in srgb, var(--text) 80%, var(--dim)); }
+.fr-g { flex: none; width: 14px; text-align: center; color: var(--dim); }
+.fr.got .fr-g { color: var(--jade); }
+.fr.got .fr-l { color: var(--dim-hi); }
+.fr-l { flex: 1; min-width: 0; }
+.fr-m { font-size: 10.5px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.fr.got .fr-m { color: var(--dim-hi); }
+.lg-list { display: flex; flex-direction: column; gap: 6px; }
+.lg { position: relative; padding: 8px 9px; border-radius: 4px; background: var(--fam-ink); border: 1px solid color-mix(in srgb, var(--purple) 22%, var(--border)); }
+.lg.owned { border-color: color-mix(in srgb, var(--gold) 35%, var(--border)); }
+.lg.sealed { opacity: .8; }
+.lg-top { display: flex; align-items: center; gap: 8px; }
+.lg-n { flex: 1; font-size: 13px; color: var(--gold); }
+.lg.sealed .lg-n { color: var(--dim-hi); }
+.lg-pips i { border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
+.lg-pips i.on { background: var(--gold); box-shadow: 0 0 5px color-mix(in srgb, var(--gold) 55%, transparent); border-color: var(--gold); }
+.lg-d { font-size: 11.5px; color: color-mix(in srgb, var(--text) 72%, var(--dim)); line-height: 1.4; margin: 3px 0 6px; }
+.lg-bot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lg-now { font-size: 10.5px; color: var(--dim-hi); line-height: 1.45; }
+.lg-now b { font-weight: normal; color: var(--text); }
+.lg-buy { flex: none; display: flex; flex-direction: column; align-items: center; min-width: 76px; min-height: 36px; padding: 4px 9px; font-family: var(--font); font-size: 11.5px;
+  color: var(--gold); background: var(--fam-ember); border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent); border-radius: 4px; cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+.lg-buy span { font-size: 10.5px; color: var(--dim-hi); }
+.lg-buy:hover:not(:disabled) { border-color: var(--gold); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 20%, transparent); }
+.lg-buy:disabled { color: var(--dim-hi); border-color: var(--border); background: var(--fam-sunk); cursor: default; }
+.lg-max { font-size: 10.5px; color: var(--jade); }
+.lg .fa-lock { font-size: 10.5px; text-align: right; }
+.manual { margin-top: 8px; padding-top: 7px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 4px; }
+.manual-k { font-size: 10.5px; color: var(--dim-hi); }
+.manual-o { display: flex; justify-content: space-between; gap: 8px; min-height: 30px; padding: 4px 8px; font-family: var(--font); font-size: 11.5px; text-align: left;
+  color: var(--text); background: var(--fam-sunk); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; }
+.manual-o:hover:not(:disabled) { border-color: color-mix(in srgb, var(--gold) 60%, transparent); }
+.manual-o.on { border-color: var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--fam-sunk)); }
+.manual-o:disabled { color: var(--dim); cursor: default; }
+.mo-s { font-size: 10.5px; color: var(--dim-hi); }
+.manual-o.on .mo-s { color: var(--gold); }
+.hall-fold > summary { cursor: pointer; list-style: none; }
+.hall-fold > summary::-webkit-details-marker { display: none; }
+.hall-fold > summary::after { content: '▾'; color: color-mix(in srgb, var(--gold) 55%, transparent); margin-left: 8px; }
+.hall-fold[open] > summary::after { content: '▴'; }
+.hall-fold > summary .fam-count { margin-left: auto; }
+.hall-fold:not([open]) > summary { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+/* Stat rows anywhere (spacing bug, user 2026-09-27: a long label beside a long value broke into a narrow column):
+   the label keeps its words, the value wraps as a block on the right. */
+.stat-row { gap: 10px; }
+.stat-row .stat-key { flex: 0 1 auto; min-width: 0; }
+.stat-row .stat-val { flex: 1 1 50%; min-width: 0; text-align: right; overflow-wrap: anywhere; }
+
+/* 1.8b-4 review cycle 1 fixes: no orphaned numbers, obvious buy state, odds colored by how good they are */
+.nw { white-space: nowrap; }
+.fa-row.stack { flex-direction: column; align-items: flex-start; gap: 1px; }
+.fa-row.stack .fa-v { white-space: nowrap; }
+.manual-o { flex-direction: column; align-items: flex-start; gap: 0; }
+.fa-why.odds-low b { color: var(--red-text); }
+.fa-why.odds-mid b { color: var(--gold); }
+.fa-why.odds-good b { color: var(--jade); }
+.fa-e .down { color: color-mix(in srgb, var(--red-text) 75%, var(--text)); }
+.lg-buy:not(:disabled) { background: color-mix(in srgb, var(--gold) 12%, var(--fam-ember)); border-color: var(--gold); }
+.lg-buy:not(:disabled) span { color: var(--gold); }
+.lg-buy:disabled { border-style: dashed; color: var(--dim-hi); background: transparent; }
+.lg-buy:disabled span { color: color-mix(in srgb, var(--red-text) 65%, var(--dim-hi)); }
+/* Overlay: the Hall and Clan read top to bottom in source order (the Family view's column reordering doesn't apply) */
+body[data-layout="overlay"] .kin-view .fam-card, body[data-layout="overlay"] .kin-view .fam-sec, body[data-layout="overlay"] .kin-view .fam-fold { order: 0; }
+
+/* 1.8b-4 review cycle 2 fixes: legacy footer row, red only for the stakes, tiles that read as actions, a ceremonial
+   Hall header, a scannable chronicle */
+.lg-bot { flex-direction: column; align-items: stretch; gap: 6px; }
+.lg-now { display: block; }
+.lg-buy { align-self: flex-end; flex-direction: row; gap: 7px; align-items: baseline; }
+.lg .fa-lock { align-self: flex-end; }
+.lg-max { align-self: flex-end; }
+.lg-buy:disabled span { color: color-mix(in srgb, var(--gold) 45%, var(--dim-hi)); }
+.ct-v b { font-weight: normal; margin-right: 5px; }
+.ct-v { color: var(--text); }
+.clan-acts .fa-btn:not(.locked)::after { content: '›'; margin-left: auto; padding-left: 6px; font-size: 15px; color: color-mix(in srgb, var(--gold) 60%, transparent); transition: color .12s, transform .12s; }
+.clan-acts .fa-btn:not(.locked):hover::after { color: var(--gold); transform: translateX(2px); }
+.clan-acts .fa-split > .fa-btn:not(.locked)::after { content: none; }
+.fam-card.hall .fc-name, .fam-card.clan .fc-name { font-size: 15px; letter-spacing: 2px; }
+.fam-card.hall .fc-head, .fam-card.clan .fc-head { padding-bottom: 8px; border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gold) 55%, transparent), transparent) 1; }
+.chron-line .yr { font-weight: normal; color: var(--gold); margin-right: 2px; }
+.hall-fold > summary::after { font-size: 13px; color: var(--gold); }
+.manual-more { font-size: 10.5px; color: var(--dim-hi); font-style: italic; padding: 2px 2px 0; }
+.fam-sec > .fa-quiet[data-ca]::after { content: ' ›'; color: var(--gold); }
+.fc-tags .fam-tag { white-space: normal; max-width: 100%; }
+
+/* 1.8b-4 review cycle 3 fixes: Merit as the hero stat, a plain "short" line for unaffordable legacies, inline odds,
+   spaced glyph markers, readable tile text in Overlay */
+.ht.hero { flex-direction: row; align-items: baseline; justify-content: space-between; padding: 8px 10px;
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--border));
+  background: radial-gradient(ellipse 80% 120% at 100% 50%, color-mix(in srgb, var(--gold) 12%, transparent), transparent 70%), var(--fam-ink); }
+.ht.hero .ht-k { font-size: 11.5px; color: var(--text); }
+.ht.hero .ht-v.gold { font-size: 22px; }
+.ht.minor { background: transparent; border-color: var(--border); }
+.ht.minor .ht-v { font-size: 11.5px; color: color-mix(in srgb, var(--text) 80%, var(--dim)); }
+.lg-short { align-self: flex-end; display: flex; align-items: center; gap: 7px; font-size: 10.5px; color: var(--dim-hi); }
+.lg-prog { position: relative; width: 54px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.08); }
+.lg-prog > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: color-mix(in srgb, var(--gold) 55%, var(--dim)); }
+.odds-in { display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 6px; margin: 1px 0 2px; border-radius: 9px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--border)); background: var(--fam-sunk); color: var(--dim-hi); }
+.odds-in b { font-weight: normal; }
+.odds-in i { font-style: normal; color: color-mix(in srgb, var(--gold) 60%, transparent); }
+.odds-in:hover { border-color: var(--gold); }
+.odds-in.odds-low b { color: var(--red-text); } .odds-in.odds-mid b { color: var(--gold); } .odds-in.odds-good b { color: var(--jade); }
+.fam-tag b, .ct-v b, .fr-g { margin-right: .35em; }
+.fam-tag b { margin-right: .35em; }
+.fa-e { color: color-mix(in srgb, var(--text) 62%, var(--dim)); line-height: 1.35; }
+
+/* 1.8b-4 review cycle 4 fixes: stacked hero stat, stat tiles that never break a label, a real odds pill, grave
+   actions marked, claimed firsts pushed back */
+.hall-tiles { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
+.ht.hero { flex-direction: column; align-items: flex-start; gap: 0; }
+.ht.hero .ht-k { font-size: 10.5px; color: var(--dim-hi); letter-spacing: .8px; text-transform: uppercase; }
+.ht.hero .ht-v.gold { line-height: 1.15; }
+.ht-k { white-space: nowrap; }
+.odds-in { min-height: 22px; padding: 2px 8px; gap: 6px; align-items: center; text-decoration: underline dotted color-mix(in srgb, var(--gold) 40%, transparent); text-underline-offset: 3px; }
+.odds-in i { margin-left: 2px; }
+.fa-btn.grave { border-left: 2px solid color-mix(in srgb, var(--red) 60%, transparent); }
+.fa-btn.grave .fa-g { color: color-mix(in srgb, var(--red-text) 70%, var(--gold)); }
+.fr.got { opacity: .62; }
+.fr:not(.got) .fr-l { color: var(--text); }
+.bd-total span:first-child { font-size: 11.5px; color: var(--dim-hi); }
+
+/* 1.8b-4 after review cycle 5 (unreviewed): branches hang off the main line, two-up minor stats, lighter buy chip,
+   readable claimed firsts, a slightly brighter idle scrollbar thumb */
+.line-row.branch { margin-left: 14px; }
+.line-row.root .lr-tree { color: var(--gold); font-size: 10.5px; line-height: 1.6; }
+.hall-tiles { grid-template-columns: 1fr 1fr; }
+.ht.hero { grid-column: 1 / -1; }
+.ht.minor { padding: 5px 7px; }
+.lg-buy { min-height: 30px; min-width: 0; padding: 3px 10px; font-size: 11.5px; background: transparent; }
+.lg-buy:not(:disabled) { background: color-mix(in srgb, var(--gold) 8%, transparent); }
+.fr.got { opacity: .78; }
+::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--gold) 42%, var(--scroll)); }

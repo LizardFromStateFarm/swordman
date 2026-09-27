@@ -3233,11 +3233,50 @@ class GameState {
     return { ok: true, clan: info.clan, mine: info.mine }
   }
 
-  // Public (UI): rough strength preview for the Stats panel — your line vs. the main line, pre-war.
+  // Public (UI): rough strength preview — your line vs. the main line, pre-war. `chance` is the win odds before
+  // the other branches pick sides (_resolveBranchWar adds their weight at declaration).
   branchWarPreview() {
     const info = this._branchInfo()
     if (!info || info.isMain) return null
-    return { ours: Math.round(this._lineStrength(info.clan, info.mine)), main: Math.round(this._lineStrength(info.clan, info.main)) }
+    const ours = this._lineStrength(info.clan, info.mine), main = this._lineStrength(info.clan, info.main)
+    return { ours: Math.round(ours), main: Math.round(main), chance: 1 / (1 + Math.exp(-(ours - main) / BRANCH_WAR_SPREAD)) }
+  }
+
+  // ── 1.8b-4 (UI read helpers, no state changes) ─────────────────────────────
+
+  // What this life would add to the clan's Ancestral Merit if it ended now — same terms as _recordLifeInWorld.
+  meritPreview() {
+    const s = this._s
+    const maxStage = Math.max(s.maxStageThisLife || 0, s.stageIndex)
+    const stage = MERIT_STAGE * Math.pow(maxStage / (CULTIVATION_STAGES.length - 1), 2)
+    const firsts = (s.lifeMerit || []).map(m => ({ label: m.label, merit: m.merit }))
+    const wars = (s.sectWar?.warVictories || 0) * MERIT_DEED_WAR_WON
+    const beasts = (s.beasts || []).length * MERIT_DEED_BEAST
+    const disciples = (s.ownSect?.disciples || []).length * MERIT_DEED_DISCIPLE
+    const deedsRaw = wars + beasts + disciples
+    const deeds = Math.min(MERIT_DEED_CAP, deedsRaw)
+    const firstsTotal = firsts.reduce((a, m) => a + m.merit, 0)
+    return { stage, firsts, firstsTotal, wars, beasts, disciples, deedsRaw, deeds, cap: MERIT_DEED_CAP,
+             total: Math.round(stage + firstsTotal + deeds), orphan: !this._playerClan() }
+  }
+
+  // Family Manual choices: every technique the clan has ever learned, with whether this legacy level allows it.
+  familyManualOptions() {
+    const clan = this._playerClan()
+    const lvl = clan?.legacies?.family_manual || 0
+    if (!clan || !lvl) return null
+    const maxTier = CLAN_LEGACIES.family_manual.levels[lvl - 1].value
+    return { maxTier, current: clan.manualTechId, options: clan.techniquesEver
+      .map(id => TECHNIQUES.find(t => t.id === id)).filter(Boolean)
+      .map(t => ({ id: t.id, name: t.name, minStage: t.minStage, allowed: t.minStage <= maxTier })) }
+  }
+
+  // Other clans your clan has feelings about (clan.relations: −100 feud … +100 allied), strongest first.
+  clanRelations() {
+    const clan = this._playerClan(), w = this._s.world
+    if (!clan) return []
+    return Object.entries(clan.relations || {}).map(([id, value]) => ({ id, value, clan: w.clans[id] || null }))
+      .filter(r => r.clan).sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
   }
 
   // Resolves attackerLine's war on the main line at once. Only ever called with the PLAYER's own line as the

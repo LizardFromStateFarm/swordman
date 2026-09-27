@@ -83,6 +83,18 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
               'If they refuse, the courtship ends and a new match takes years to arrange.'] }
   }
 
+  // 1.8b-4: your branch against the main line
+  if (kind === 'branch') {
+    const p = gs.branchWarPreview()
+    if (!p) return null
+    return { glyph: '戰', title: 'Branch war odds', cn: '戰', total: p.chance < 0.001 ? '<0.1%' : BD_PCT(p.chance), totalLabel: 'Your odds to win', rows: [
+      { label: "Your line's strength", val: fmt(p.ours), tone: 'up' },
+      { label: "The main line's strength", val: fmt(p.main), tone: 'down' },
+      { label: p.ours >= p.main ? 'You lead by' : 'The main line leads by', val: fmt(Math.abs(p.ours - p.main)), tone: p.ours >= p.main ? 'up' : 'down' },
+    ], sections: [{ title: 'If you lose', rows: [{ label: 'You are deposed, or you die', val: '', tone: 'warn' }] }],
+      notes: ['Other branches pick a side when war is declared, which can tip it either way. Stronger children and your own breakthroughs raise your line.'] }
+  }
+
   if (kind === 'bt' && s.stageIndex === lastMortal) {
     const ab = gs.ascensionBreakdown()
     const rows = ab.parts.map(p => p.op === 'base' ? { label: p.label, val: BD_PCT(p.value), op: 'base' }
@@ -187,6 +199,7 @@ class BreakdownUI {
     this.kind = kind
     this.anchor = anchor
     this._sig = ''
+    this.el.innerHTML = ''   // a fresh card (and its fade-in) on every open; refresh() then only swaps contents
     this.el.classList.remove('hidden')
     this.refresh(this.gs.get())
     // Opening from the banner peeks the window open first (layout.js watches *-overlay); place after that reflow.
@@ -207,18 +220,24 @@ class BreakdownUI {
     if (!m) return this.close()
     const esc = this.h.esc
     const row = r => `<div class="bd-row ${r.tone || ''}${r.op === 'base' ? ' base' : ''}"><span class="bd-l">${esc(r.label)}</span><span class="bd-v">${esc(r.val)}${r.run ? `<span class="bd-run">→ ${esc(r.run)}</span>` : ''}</span></div>`
-    const html = `<div class="bd-pop" role="dialog" aria-label="${esc(m.title)}">
-      <div class="bd-head"><span class="bd-glyph">${m.glyph}</span><span class="bd-title"><span class="bd-tt">${esc(m.title)}</span></span>
+    const inner = `<div class="bd-head"><span class="bd-glyph">${m.glyph}</span><span class="bd-title"><span class="bd-tt">${esc(m.title)}</span></span>
         ${m.state ? `<span class="bd-total-v bd-head-v">${esc(m.total)}</span>` : ''}<button class="bd-x" data-bd-close title="Close (Esc)">✕</button></div>
       <div class="bd-rows">${m.rows.map(row).join('')}</div>
-      ${m.state ? '' : `<div class="bd-total"><span>=</span><span class="bd-total-v">${esc(m.total)}</span></div>`}
+      ${m.state ? '' : `<div class="bd-total"><span>${m.totalLabel ? esc(m.totalLabel) : "="}</span><span class="bd-total-v">${esc(m.total)}</span></div>`}
       ${(m.sections || []).map(sec => `<div class="bd-sec-title">${esc(sec.title)}</div><div class="bd-rows">${sec.rows.map(row).join('')}</div>`).join('')}
-      ${(m.notes || []).map(n => `<div class="bd-note">${esc(n)}</div>`).join('')}
-    </div>`
-    if (html === this._sig) return
-    this._sig = html
-    this.el.innerHTML = html
-    this.el.querySelector('[data-bd-close]').addEventListener('click', () => this.close())
+      ${(m.notes || []).map(n => `<div class="bd-note">${esc(n)}</div>`).join('')}`
+    if (inner === this._sig) return
+    this._sig = inner
+    // 1.8b-4: build the card element once per open and only swap its contents after that. Re-creating it restarted
+    // the bdIn fade on every HUD tick, so a card with live numbers (branch strength, Qi) flickered or stayed invisible.
+    let pop = this.el.querySelector('.bd-pop')
+    if (!pop || pop.dataset.kind !== this.kind) {
+      this.el.innerHTML = `<div class="bd-pop" role="dialog" data-kind="${esc(this.kind)}"></div>`
+      pop = this.el.querySelector('.bd-pop')
+    }
+    pop.setAttribute('aria-label', m.title)
+    pop.innerHTML = inner
+    pop.querySelector('[data-bd-close]').addEventListener('click', () => this.close())
     this._place()
   }
 

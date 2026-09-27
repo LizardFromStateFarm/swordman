@@ -58,6 +58,14 @@ function collectAttention(s, gs) {
   if (court && !court.target && (court.candidates || []).length) add('ready', 'court', '媒', 'The go-between waits', `${court.candidates.length} candidates. Choose whom to court.`, 'family')
   else if (court?.beat) add('ready', 'court', '緣', `${court.target.given} is waiting`, 'A meeting is underway. Answer them.', 'family')
   else if (court?.target && gs.canMeet?.().ok) add('ready', 'court', '緣', `You could call on ${court.target.given}`, gs.canPropose?.().ok ? 'Or ask for their hand.' : 'Arrange another meeting.', 'family')
+  // 1.8b-4 clan: a challenge you can now make; Merit enough for a legacy
+  const cc = gs.canChallengeHead?.()
+  if (cc?.ok) add('ready', 'challenge', '挑', 'You could challenge the head', 'You are strong enough to contest the seat. The head decides if it is to the death.', 'clan')
+  const clan = gs._playerClan?.()
+  if (clan && typeof CLAN_LEGACIES !== 'undefined' && Object.entries(CLAN_LEGACIES).some(([id, d]) => {
+    const lvl = clan.legacies?.[id] || 0
+    return lvl < d.levels.length && !(d.requires && !clan.firsts?.[d.requires]) && clan.merit >= d.levels[lvl].cost
+  })) add('idle', 'merit', '祠', 'Ancestral Merit to spend', `${Math.floor(clan.merit)} Merit. A legacy for every heir after you.`, 'hall')
   if (gs.isClanHead?.() && !f.heirId && !f.tournament && (gs.eligibleHeirs?.() || []).length)
     add('ready', 'heir', '嗣', 'No heir is named', 'If your path ends today, the clan chooses without you.', 'family')
 
@@ -107,7 +115,7 @@ class AttentionUI {
   // Cheap to call every frame: only touches the DOM when the list (or a countdown) changed.
   render(items) {
     this.items = items
-    const sig = items.map(i => i.id + i.title + (i.left ?? '')).join('|') + this.open
+    const sig = items.map(i => i.id + i.title + i.why + (i.left ?? '')).join('|') + this.open   // why too: its counts change (Merit, affection)
     if (sig === this._sig) return
     this._sig = sig
     const esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

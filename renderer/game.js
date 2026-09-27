@@ -420,7 +420,7 @@
   // 1.8b-1: one entry point per view (NAV_GROUPS in renderer/game/nav.js)
   const VIEW_RENDER = {
     techniques: s => renderTechniques(s), stats: s => renderStats(s), explore: s => renderExplore(s),
-    beasts: s => renderBeasts(s), family: s => renderFamily(s), clan: s => renderClan(s), sect: s => renderSect(s),
+    beasts: s => renderBeasts(s), family: s => renderFamily(s), clan: s => renderClan(s), hall: s => renderHall(s), sect: s => renderSect(s),
     pack: s => renderPack(s), craft: s => renderCraft(s), events: s => renderEvents(s), banter: s => renderBanter(s),
   }
   function renderView(view, s) {
@@ -605,15 +605,16 @@
     familyView.render(s)
   }
 
-  // ── 家 Kin → Clan (1.8b-1: moved out of Stats; 1.8b-4 rebuilds it) ──
-  function renderClan(s) {
-    const el = document.getElementById('tab-clan')
-    el.innerHTML = `<div class="section-title">Clan 宗族</div>${renderClanRows(s)}
-      ${sr('Generation', s.generation || 1)}
-      <div class="section-title">Succession 傳承</div>
-      <div class="kin-note">End this life by choice. Your heir, or the clan, carries on.</div>
-      <button id="_pass-mantle" class="sect-btn" style="width:100%;margin:6px 0 2px;">Pass the Mantle</button>`
-    wireKinButtons(el)
+  // ── 家 Kin → Clan + Hall (1.8b-4: renderer/game/clan-view.js) ──
+  let clanView = null, hallView = null
+  const kinHelpers = () => ({ esc: escHtml, fmt, stageLabel: personStageLabel, bondLabel, confirm: showConfirm, flash: flashMessage,
+    wire: wireKinButtons, go: view => openHallOverlay(view), epitaphFor, fillEpitaph })
+  function renderClan(s) { (clanView ||= new ClanView(gameState, kinHelpers())).render(s) }
+  function renderHall(s) { (hallView ||= new HallView(gameState, kinHelpers())).render(s) }
+  // The Hall was a pop-over until 1.8b-4; it is now Kin → Hall. Kept as the one entry point (banner peeks open).
+  function openHallOverlay(view = 'hall') {
+    if (layoutUI.mode === 'banner') layoutUI.peek(false)
+    nav.go(view)
   }
 
   // ── 錄 Log → Banter (1.8b-1: was at the bottom of Stats) ──
@@ -668,61 +669,6 @@
         gameState.secede()
       }, 'Secede')
     })
-  }
-
-  // 1.8b-1: an action the player can't take yet, shown with why (never just absent). 封 = sealed.
-  function lockedAction(label, why) {
-    return `<button class="sect-btn locked-action" disabled><span class="la-name">${label}</span><span class="la-why">封 ${escHtml(why)}</span></button>`
-  }
-
-  // 2.6d: clan, your place in it, the head (their style + your bond), and the Ancestral Hall (2.7f).
-  function renderClanRows(s) {
-    const w = s.world, c = w.playerClanId ? w.clans[w.playerClanId] : null
-    const chron = (c || w.lastClanId) ? '<button id="_hall" class="sect-btn" style="width:100%;margin:4px 0 2px;">Ancestral Hall 祖祠</button>' : ''
-    if (!c) return sr('Clan', 'None — an orphan of the world') + chron
-    const members = new Set(c.lines.flatMap(l => l.memberIds)).size
-    const mine = c.lines.find(l => l.id === w.playerLineId)
-    let html = sr('Clan', `${escHtml(c.name || 'Unnamed')} clan · ${members} member${members === 1 ? '' : 's'}${c.lines.length > 1 ? ` · ${c.lines.length - 1} branch${c.lines.length > 2 ? 'es' : ''}` : ''}`)
-    if (c.headId === s.self.id) html += sr('Standing', 'You lead the clan')
-    else {
-      const pos = s.birth ? POSITION_TEXT[s.birth.position] : null
-      html += sr('Standing', `${escHtml(mine?.name || 'Main Line')}${pos ? ` · ${pos.short}` : ''}`)
-      const head = c.headId ? gameState.person(c.headId) : null
-      if (head) {
-        const st = head.parentingStyle ? PARENTING_STYLES[head.parentingStyle] : null
-        html += sr('Clan Head', `${escHtml(Persons.fullName(head))} · ${personStageLabel(head.stageIndex)}${st ? ` · <span title="${escHtml(st.blurb)}">${st.name}</span>` : ''}`)
-      }
-      if (s.birth?.headBond != null && s.birth.headId) {
-        const bh = gameState.person(s.birth.headId), bl = bondLabel(s.birth.headBond)
-        html += sr(s.birth.headId === c.headId ? 'Your Bond' : `Bond · ${escHtml(bh?.given || '')}`, `<span style="color:${bl.color}">${bl.word} · ${Math.round(s.birth.headBond)}</span>`)
-      }
-      // 2.6e: challenge the head for the seat (only when you're a plausible threat and not on cooldown).
-      // 1.8b-1: shown locked with its reason instead of vanishing, so the player learns it exists.
-      const cc = gameState.canChallengeHead()
-      if (cc.ok) html += `<button id="_challenge-head" class="sect-btn" style="width:100%;margin:6px 0 2px;">Challenge the Head</button>`
-      else if (cc.reason === 'cooldown') html += lockedAction('Challenge the Head', `Still recovering from your last challenge · ready in year ${cc.readyYear}`)
-      else if (cc.reason === 'stage_gap') html += lockedAction('Challenge the Head', `Come within ${CHALLENGE_STAGE_GAP} stages of the head's cultivation`)
-      // 2.6f: branch politics — only when you're on a branch, not the main line.
-      if (mine && mine !== c.lines[0]) {
-        const prev = gameState.branchWarPreview()
-        if (prev) html += sr('Branch Strength', `${prev.ours} vs. the main line's ${prev.main}`)
-        if (mine.headId === s.self.id) {
-          const dw = gameState.canDeclareBranchWar()
-          if (dw.ok) html += `<button id="_declare-branch-war" class="sect-btn" style="width:100%;margin:6px 0 2px;">Declare War on the Main Line</button>`
-          else if (dw.reason === 'cooldown') html += lockedAction('Declare War on the Main Line', `Your branch is still recovering · ready in year ${dw.readyYear}`)
-          else if (dw.reason === 'busy') html += lockedAction('Declare War on the Main Line', 'A branch war is already underway')
-          const sec = gameState.canSecede()
-          if (sec.ok) html += `<button id="_secede" class="sect-btn" style="width:100%;margin:2px 0 2px;">Secede — Found a New Clan</button>`
-          else if (sec.reason === 'busy') html += lockedAction('Secede — Found a New Clan', 'Not while a branch war is underway')
-        } else {
-          const pw = gameState.canPushBranchWar()
-          if (pw.ok) html += `<button id="_push-branch-war" class="sect-btn" style="width:100%;margin:6px 0 2px;">Push for War</button>`
-          else if (pw.reason === 'cooldown') html += lockedAction('Push for War', `Too soon to press the matter again · year ${pw.readyYear}`)
-          else if (pw.reason === 'busy') html += lockedAction('Push for War', 'A branch war is already underway')
-        }
-      }
-    }
-    return html + chron
   }
 
   // Affection tiers (family.md) — UI only; the number is shown alongside.
@@ -2261,60 +2207,12 @@
   }
   function fillEpitaph(str, p, l, clanName) {
     const name  = p ? Persons.fullName(p) : 'Someone forgotten'
-    const age   = (p?.diedYear != null && p?.bornYear != null) ? Math.max(0, Math.floor(p.diedYear - p.bornYear)) : ''
+    const died  = p?.diedYear ?? l?.year   // 1.8b-4: fall back to the year the life ended (the age went missing)
+    const age   = (died != null && p?.bornYear != null) ? Math.max(0, Math.floor(died - p.bornYear)) : ''
     const realm = CULTIVATION_STAGES[Math.min(l.maxStage ?? 0, CULTIVATION_STAGES.length - 1)]?.realm || ''
     return String(str).replace(/\{(\w+)\}/g, (m, k) => ({ name, age, realm, clan: clanName || '' }[k] ?? m))
   }
 
-  function openHallOverlay() {
-    const s = gameState.get(), w = s.world
-    const clan = w.playerClanId ? w.clans[w.playerClanId] : (w.lastClanId ? w.clans[w.lastClanId] : null)
-    document.getElementById('hall-title').textContent = clan ? `The ${escHtml(clan.name || 'Nameless')} Clan 祖祠` : 'Ancestral Hall 祖祠'
-
-    document.getElementById('hall-records').innerHTML = clan
-      ? sr('Generation', s.generation || 1) +
-        sr('Best Realm Reached', personStageLabel(clan.bestStageIndex)) +
-        sr('Ancestral Merit', `${fmt(clan.merit)} unspent · ${fmt(clan.meritEarned)} lifetime`) +
-        (clan.ascendedAncestors ? sr('Ascended Ancestors', `★ ${clan.ascendedAncestors}`) : '')
-      : '<div style="color:var(--dim);font-size:10px;">No clan — an orphan of the world.</div>'
-
-    // Family tree: world.pastLives (this clan's line only — a seceded/rival clan starts its own), newest first.
-    const lives = clan ? w.pastLives.filter(l => l.clanId === clan.id).slice().reverse() : []
-    document.getElementById('hall-tree').innerHTML = lives.length
-      ? lives.map(l => {
-          const p = w.persons[l.personId]
-          const line = epitaphFor(l.cause, l.personId)
-          const text = line ? fillEpitaph(line, p, l, clan?.name) : `${p ? escHtml(Persons.fullName(p)) : 'Someone'}, gone from this world.`
-          return `<div class="chron-line${p?.ascendedAncestor ? ' ascended' : ''}">${p?.ascendedAncestor ? '★ ' : ''}${line ? escHtml(text) : text}</div>`
-        }).join('')
-      : '<div class="chron-line" style="color:var(--dim)">No one has come before you yet.</div>'
-
-    // Legacies — bought with Ancestral Merit, any time (clan-legacies.js CLAN_LEGACIES).
-    document.getElementById('hall-legacies').innerHTML = clan ? Object.entries(CLAN_LEGACIES).map(([id, def]) => {
-      const lvl = clan.legacies[id] || 0
-      const locked = def.requires && !clan.firsts[def.requires]
-      const maxed  = lvl >= def.levels.length
-      const nextCost = !maxed ? def.levels[lvl].cost : null
-      const disabled = locked || maxed || clan.merit < (nextCost || 0)
-      const label = locked ? 'Locked' : maxed ? 'Maxed' : `Buy (${nextCost})`
-      return `<div class="legacy-row">
-        <span><span class="legacy-name">${escHtml(def.name)} ${escHtml(def.nameCN)} · Lv ${lvl}/${def.levels.length}</span><span class="legacy-desc">${escHtml(def.desc)}</span></span>
-        <button data-buy-legacy="${escHtml(id)}" ${disabled ? 'disabled' : ''}>${label}</button>
-      </div>`
-    }).join('') : ''
-    document.querySelectorAll('#hall-legacies [data-buy-legacy]').forEach(btn => btn.addEventListener('click', () => {
-      if (gameState.buyLegacy(btn.dataset.buyLegacy).ok) openHallOverlay()   // re-render with the new level/merit
-    }))
-
-    // Chronicle (2.6d, unchanged): clan.history, newest first.
-    const hist = clan ? [...clan.history].reverse() : []
-    document.getElementById('hall-chronicle').innerHTML = hist.length
-      ? hist.map(h => `<div class="chron-line">${escHtml(h.text)}</div>`).join('')
-      : '<div class="chron-line" style="color:var(--dim)">Nothing is written yet.</div>'
-
-    document.getElementById('hall-overlay').classList.remove('hidden')
-  }
-  document.getElementById('hall-close').addEventListener('click', () => document.getElementById('hall-overlay').classList.add('hidden'))
 
   // ── Proposal overlay (Phase 16-lite, M2 task 2.5) ───────────────────────────
 

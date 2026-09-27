@@ -65,10 +65,10 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   console.log('SETTINGS content/visible', setH)
   await click('#settings-close')
   await click('[data-tab="clan"]')
-  await click('#_hall'); await sleep(200); await shot('ux-overlay-hall')
-  const hallH = await ev(`(() => { const b = document.getElementById('hall-box'); return b.scrollHeight + '/' + b.clientHeight })()`)
+  await click('[data-tab="hall"]'); await sleep(200); await shot('ux-overlay-hall')
+  const hallH = await ev(`(() => { const b = document.getElementById('tab-body'); return b.scrollHeight + '/' + b.clientHeight })()`)
   console.log('HALL content/visible', hallH)
-  await click('#hall-close')
+  await click('[data-tab="clan"]')
 
   console.log('\nTAB METRICS (view px · content px · screens · controls · sections · min font px)')
   for (const m of metrics) console.log(`  ${m.label.padEnd(8)} ${m.tab.padEnd(11)} ${String(m.view).padStart(4)} ${String(m.content).padStart(5)} ${String(m.screens).padStart(5)}× ${String(m.buttons).padStart(3)} ${String(m.sections ?? '').padStart(3)} ${m.minFont ?? ''}`)
