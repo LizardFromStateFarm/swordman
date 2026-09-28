@@ -1643,6 +1643,7 @@
       flashMessage(`Breakthrough! ${res.newStage.realm} · ${res.newStage.layer}`, 'special')
       setTimeout(() => renderer.setState(gameState.get()?.derived?.stage?.spriteState || 'meditating'), 2500)
     } else {
+      renderer.triggerFailure(!!res.demoted)   // ink art: the Qi collapses (halo cracks / shatters on demotion)
       if (res.demoted) {
         const app = document.getElementById('app')
         app.classList.add('shake')

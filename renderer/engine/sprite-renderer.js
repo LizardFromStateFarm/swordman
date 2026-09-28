@@ -14,11 +14,17 @@ class SpriteRenderer {
     this.base   = null        // last non-breakthrough state: decides which engine has art for this stage
     this.size   = [300, 150, 1]
     this.color  = null
+    this.holdUntil = 0        // a breakthrough / failure moment plays out before the per-notify stage state resumes
   }
 
   setArtStyle(style) { this.style = style === 'ink' ? 'ink' : 'classic'; this._route() }
 
   setState(name) {
+    // game.js re-sends the stage state on every notify; without this hold that overwrote the breakthrough moment the
+    // same frame (the 1.8c baseline bug). game.js sends the stage state again when the moment ends (2.5s / 1.5s).
+    const now = performance.now()
+    if (name === 'breakthrough') this.holdUntil = now + 2400
+    else if (now < this.holdUntil) return
     this.state = name
     if (name !== 'breakthrough') this.base = name
     this._route()
@@ -30,6 +36,8 @@ class SpriteRenderer {
   setSpeed(m) { this.ascii.setSpeed(m); this.ink.setSpeed(m) }
   setReducedMotion(on) { this.ascii.setReducedMotion(on); this.ink.setReducedMotion(on) }
   triggerBreakthroughBurst() { this.active.triggerBreakthroughBurst() }
+  triggerFailure(demoted) { this.holdUntil = performance.now() + 1400; this.active.triggerFailure?.(demoted) }       // ink only; the classic sprite has the window shake
+  setSlots(sel) { this.ink.setSlots(sel) }                                // ink part slots (A3-2); A5 wires a player choice
   stop() { this.ascii.stop(); this.ink.stop() }
 
   isInk() { return this.active === this.ink }

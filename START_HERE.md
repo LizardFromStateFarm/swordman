@@ -127,8 +127,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 - **Family view leftovers (1.8b-3a):** no hint of what each temper *likes* beyond the blurb and the meeting-choice
   approach hints (a "likes/dislikes" line per personality would need data); lovers are still a plain list (3b);
   Overlay tab pane is small, so the married view is ~3 screens.
-- **1.8c baseline bugs** (ui-review.md → "Bugs found by the baseline"): breakthrough sprite never displays (overwritten by
-  the same-frame notify); beasts show frame 0 only. (Fixed in 1.8b-1: banter bubble over popups, toasts over content,
+- **1.8c baseline bugs** (ui-review.md → "Bugs found by the baseline"): beasts show frame 0 only. (The breakthrough
+  sprite never displaying was fixed in A3-2 by SpriteRenderer's moment hold.) (Fixed in 1.8b-1: banter bubble over popups, toasts over content,
   Stats row collisions, duplicated automation, Hall see-through, titlebar name wrap.)
 - **Full itemized list: `docs/systems/ui-layout.md` → "UX Audit"** (1.8a, 2026-09-26): 7 structural findings + a
   per-system gap table. Headline items: tab body is only ~105px of the 600px window; own-sect Sect tab = 15 screens
@@ -159,7 +159,13 @@ Agent: **Dev docs: `docs/commands.html`** — one-page HTML reference (for human
     crops; smoke writes ink-still-face.png / ink-still-hilt.png close-ups. User then asked for face options; 4 smooth styles were **rejected** ("like clip art"). **User rule: only objects
     (sword, hairpin) are solid; everything else is ink dots** → face/hands/neck/collar/locks/halo back to pixelated dots
     (dotFeatures for eyes/brows/mouth, grid centred on x=150), face slot kept with one style (dotted). **Accepted** ("much better"), committed. Reviewed from scripts/smoke/out/ink-still-*.png + ink-{mode}-{idle,bt}.png; logged in ui-review.md.
-  Next: A3-2 (part slots, authoring template) → A4 re-art every stage.
+  - **A3-2** (same session, user: "commit and continue"): part slots — assets/sprites/ink-parts.js (INK_PARTS: face calm/
+    stern/youthful, hair bun/loose/crown, robe moon/azure/crimson/ink, weapon sword/flute/none, aura orbit/still/tempest),
+    `setSlots` / `_effective()` merge, expression frames (eyes lit on breakthrough, strain on failure), `triggerFailure`
+    (halo cracks / shatters on demotion, rings stutter, figure shudders) wired from game.js, and a SpriteRenderer moment
+    hold that fixes the 1.8c "breakthrough sprite never displays" bug. Authoring template: .agents/rules/assets.md → Ink
+    art. Smoke: ink-slots-sheet.png, ink-still-fail/demote/face-bt/face-strain.png. **Accepted by the user** ("it looks fine"), committed.
+  Next: user look at A3-2 → A4 re-art every stage in ink (Mortal, Foundation, Core…) so Ink can become the default; A5 (Phase 10) lets the player pick slots.
 
 Date: 2026-09-27 (user present) — part 30
 Agent: **1.8b-6 emoji lint on + re-review of every reworked screen** (user approved; user asked to combine groups per reviewer).

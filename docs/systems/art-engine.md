@@ -6,8 +6,8 @@ scripts/smoke/scenarios/ink-art.js · Phase: 34 (roadmap A3-1) · Updated: 2026-
 The HYBRID direction the user picked in A2 (ui-review.md → "A2 art bake-off"): (c)'s ink figure/scene/halo + (b)'s
 glyph parts and thin rotating mote rings. A3-1 = the engine core + ONE cultivator (Qi Condensation, idle +
 breakthrough) in the real game behind **Settings → Motion → Sprite art = Ink** (default Classic). Every other sprite
-state keeps the old grid ASCII until A4 re-arts it. A3-2 (next): part slots for customization, art-format docs,
-`.agents/rules/assets.md` authoring template.
+state keeps the old grid ASCII until A4 re-arts it. A3-2 (done 2026-09-27): part slots, expression frames, the failure/demotion
+moment, authoring template in `.agents/rules/assets.md` → "Ink art".
 
 ## State
 No game state. One presentation setting: `settings.artStyle` — `'classic'` | `'ink'` (per slot, SETTINGS_DEFS).
@@ -17,7 +17,8 @@ No game state. One presentation setting: `settings.artStyle` — `'classic'` | `
   `ASCIIRenderer` — `setState, setStageColor, setSize(w,h,scale), setSpeed, setReducedMotion,
   triggerBreakthroughBurst, stop` — plus `setArtStyle(style)`, `isInk()`. Routes to `.ink` when the style is Ink AND
   the last non-breakthrough state has `INK_ART[state]`; otherwise `.ascii`. Only the active engine runs its loop.
-- `InkRenderer` — same API. Test hooks: `freeze(t, bt)` / `resume()` (hold one moment), `still(w,h,dpr,t,bt,crop?)` → PNG
+- `InkRenderer` — same API + `triggerFailure(demoted)`, `setSlots`. Test hooks: `freeze(t, bt, fail, demote)` / `resume()`,
+  `still(w,h,dpr,t,{bt, crop, slots, fail, demote})` / `stillCanvas(...)` → PNG
   data URL at any size without touching the canvas, `perf(n)` → avg ms per frame.
 
 ## Data Shape (`INK_ART[spriteState]`, assets/sprites/ink-cultivator.js)
@@ -33,8 +34,20 @@ No game state. One presentation setting: `settings.artStyle` — `'classic'` | `
 - `dotFeatures[]` `{ part, color, w, pts }`: dots of that part within `w` of the polyline take the colour (eyes, brows,
   mouth, hand seal) — the pixelated dot face. The grid is aligned so a column sits on x = 150 (`_gx0`), rows at
   y = row × 1.5155; put features exactly on a row with `w` 0.6 so they are one dot tall and symmetric.
-- **Face slot**: `faces.{dotted}` `{ label, features, palette?, d? }`, `setFaceStyle` / `faceStyles()`, merged by
-  `_effective()`. Live strokes (hair locks) and the halo ring are drawn as grid-snapped dots each frame.
+- **Slots (A3-2)**: `INK_ART.slots` = default option per kind; `INK_PARTS[kind][option]` (assets/sprites/ink-parts.js):
+  face (calm / stern / youthful), hair (bun / loose / crown), robe (moon / azure / crimson / ink), weapon (sword / flute /
+  none), aura (orbit / still / tempest). `_effective()` merges them in order robe → hair → weapon → face → aura: parts
+  go `before`/`after` an anchor id, strokes + features appended, palette overrides, aura `effects` replace
+  halo/rings/motes. API: `setSlots({kind: option|null})`, `slots()`, `InkRenderer.slotOptions(kind)`; SpriteRenderer
+  forwards `setSlots`. No player UI yet (A5 / Phase 10: pick at creation, heirs inherit).
+- **Expression frames**: face options carry `frames.bt` / `frames.strain` (feature overrides by `id`); the cache holds
+  a head-layer variant per frame; the frame picks strain while failing, bt while bt > 0.5. `eyeGlow` dots glow.
+- **Failure moment**: `triggerFailure(demoted)` (game.js on a failed breakthrough): `fail` eases 1 → 0 over 1.8 s —
+  glow reddens, rings wobble and stall, the pearl gutters, the figure shudders, the scene dims, the halo cracks (dots
+  drop out); demoted = the halo shatters and its dots fall. Breakthrough glow drops fast.
+- **Moment hold**: SpriteRenderer ignores the per-notify stage state for 2.4 s after `breakthrough` (1.4 s after a
+  failure) — fixes the 1.8c bug where the same-frame notify overwrote the breakthrough sprite (both engines).
+- Live strokes (hair locks) and the halo ring are drawn as grid-snapped dots each frame.
 - Equipment may be solid (user): the sword is vector parts `blade guard grip pommel` (mats `steel`/`grip`/`trim`) +
   strokes (edge highlight, fuller, grip wrap, tassel strands). Box-drawing glyphs for hilts rendered broken — avoid.
 - `glyphs[]` = (b)-style glyph runs (sword across the knees, sash knot) with per-char palette `map`.

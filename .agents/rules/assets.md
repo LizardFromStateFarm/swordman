@@ -118,3 +118,38 @@ Required output:
 | `levitating` | Core Formation + Nascent Soul | Figure hovering, purple energy tether |
 | `transcending` | Nascent Soul+ | Gold everywhere, lightning accents |
 | `breakthrough` | Breakthrough attempt animation | Fast-fps, white/gold flashes |
+
+---
+
+## Ink art (hybrid engine) — authoring template (A3-2, 2026-09-27)
+
+New art is authored for the hybrid ink engine (`renderer/engine/ink-renderer.js`, doc: `docs/systems/art-engine.md`),
+not as grid ASCII. **Review:** the user reviews art directly (screenshots from `scripts/smoke/scenarios/ink-art.js`),
+no reviewer agents for now.
+
+**Binding rules (user):**
+1. Only OBJECTS may be solid fills (mats `metal steel grip jade`: weapons, hairpins, crowns, instruments). Everything
+   else (skin, face, hands, hair, robe, trim, halo) is ink dots. Solid faces/halos were rejected as "clip art".
+2. Faces are pixelated dot faces: features are `features` (dot runs), one dot tall (`w: 0.6`) on an exact grid row,
+   symmetric about x = 150. Grid: a column on x = 150, rows at y = row × 1.5155 (odd rows offset ±0.875).
+3. Effects stay sleek and clean: thin tilted orbit rings, straight-rising motes behind the figure, no spiral streams,
+   no dark fold lines or spots on the figure. No emoji anywhere.
+
+**A new base figure** (`INK_ART[spriteState]`, `assets/sprites/ink-*.js`): 300×150 scene, figure centred on x = 150;
+`parts` back → front (`{ id, layer: lap|body|head, mat, d, fold? }`, `d` = flat `M L Q C E Z` command array);
+`body.anchorY` for breathing; `palette` keys only (no literals in parts); `slots` = the default option per slot;
+`halo`, `rings`, `motes`, `qiPearl`, `background`, `figureBox` (banner framing).
+
+**A new slot option** (`INK_PARTS[kind][id]` in `assets/sprites/ink-parts.js`; kinds face / hair / robe / weapon / aura):
+```js
+myOption: { label: 'Shown name',
+  parts:    [{ id, before: 'face' | after: 'lap', layer, mat, d }],   // hair / weapon shapes
+  strokes:  [{ layer, color, alpha, w, pts, after?, live? }],          // object details; live = swaying dotted strand
+  features: [{ id, part: 'face', color, w: 0.6, pts }],               // face: dot features
+  frames:   { bt: [{ id, color: 'eyeGlow' }], strain: [{ id, pts }] }, // face: expression frames by id
+  palette:  { robe: '#…', … },                                        // robe colours
+  effects:  { rings: [...], motes: {...} } },                         // aura
+```
+**Check it:** `node scripts/smoke/cdp.js scripts/smoke/scenarios/ink-art.js` → `out/ink-slots-sheet.png` (every option),
+`ink-still-*.png` (4×/12× stills incl. fail / demote / face-bt / face-strain), in-app captures per layout mode. Hand the
+screenshots to the user.

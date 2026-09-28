@@ -13,7 +13,8 @@ const INK_FONT = '"Courier New", "Segoe UI Symbol", "Noto Sans Symbols 2", monos
 
 class InkRenderer {
   // Materials drawn as solid fills: objects only (sword, hairpin). Everything else is ink dots (user 2026-09-27).
-  static SOLID = new Set(['metal', 'steel', 'grip'])
+  static SOLID = new Set(['metal', 'steel', 'grip', 'jade'])
+  static SLOT_KINDS = ['robe', 'hair', 'weapon', 'face', 'aura']   // merge order (later palette wins)
 
   static has(state) { return typeof INK_ART !== 'undefined' && !!INK_ART[state] }
 
@@ -21,8 +22,9 @@ class InkRenderer {
     this.cv  = canvas
     this.ctx = canvas.getContext('2d')
     this.base = null            // INK_ART entry for the current sprite state
-    this.art = null             // base + the chosen face slot merged in (what every painter reads)
-    this.faceStyle = 'dotted'
+    this.art = null             // base + the chosen slot options merged in (what every painter reads)
+    this.slotSel = {}           // player/dev choices per slot kind; unset kinds use base.slots
+    this.fail = 0; this.demote = false   // failed-breakthrough moment, eases 1 → 0
     this.t = 0
     this.bt = 0; this.btTarget = 0; this.btStart = 0     // breakthrough intensity eases between 0 and 1
     this.speed = 1
@@ -41,7 +43,7 @@ class InkRenderer {
     if (name === 'breakthrough') { this.btTarget = 1; this.btStart = this.t }
     else if (InkRenderer.has(name)) {
       if (INK_ART[name] !== this.base) { this.base = INK_ART[name]; this.art = this._effective(); this.cache = null }
-      this.btTarget = 0
+      if (this.fail < 0.05) this.btTarget = 0
     }
     if (!this.running) this._start()
   }
@@ -63,28 +65,51 @@ class InkRenderer {
     this.cache = null
   }
 
-  // Face slot (art.faces). Unknown style falls back to the first one.
-  setFaceStyle(style) {
-    this.faceStyle = style || 'dotted'
+  // Part slots (INK_PARTS: face / hair / robe / weapon / aura). setSlots({ hair: 'crown' }) changes only the kinds given;
+  // null resets a kind to the art's default. The hook for Phase 10 cosmetics and heirs inheriting a look (A5).
+  setSlots(sel) {
+    for (const [k, v] of Object.entries(sel || {})) { if (v == null) delete this.slotSel[k]; else this.slotSel[k] = v }
     if (this.base) { this.art = this._effective(); this.cache = null }
   }
-  faceStyles() { return Object.keys(this.base?.faces || {}) }
+  slots() { return { ...(this.base?.slots || {}), ...this.slotSel } }
+  static slotOptions(kind) { return typeof INK_PARTS !== 'undefined' ? Object.keys(INK_PARTS[kind] || {}) : [] }
 
-  // Base art with the face slot merged in: its shape replaces the face part, its palette overrides, its dot features join
-  // the base ones, its strokes join the head layer.
+  // Base art with each slot's chosen option merged in: parts inserted before/after an anchor part (else appended),
+  // strokes and dot features added, palette overrides (robe first, so a face palette could still win), aura effects
+  // replace halo/rings/motes, face frames kept for the expression swaps.
   _effective() {
-    const B = this.base, faces = B.faces || {}, F = faces[this.faceStyle] || faces[Object.keys(faces)[0]] || null
-    if (!F) return { ...B, dotFeatures: B.dotFeatures || [] }
-    return { ...B, face: F,
-      palette: { ...B.palette, ...(F.palette || {}) },
-      parts: B.parts.map(p => p.id === 'face' && F.d ? { ...p, d: F.d } : p),
-      dotFeatures: [...(B.dotFeatures || []), ...(F.features || [])],
-      strokes: [...B.strokes, ...(F.strokes || []).map(st => ({ layer: 'head', ...st }))] }
+    const B = this.base, sel = { ...(B.slots || {}), ...this.slotSel }
+    const A = { ...B, palette: { ...B.palette }, parts: B.parts.slice(), strokes: B.strokes.slice(),
+      dotFeatures: (B.dotFeatures || []).slice(), frames: {}, slots: sel }
+    if (typeof INK_PARTS === 'undefined') return A
+    for (const kind of InkRenderer.SLOT_KINDS) {
+      const O = (INK_PARTS[kind] || {})[sel[kind]]
+      if (!O) continue
+      Object.assign(A.palette, O.palette || {})
+      for (const part of O.parts || []) {
+        const anchor = part.before || part.after, i = anchor ? A.parts.findIndex(q => q.id === anchor) : -1
+        if (i < 0) A.parts.push(part); else A.parts.splice(part.before ? i : i + 1, 0, part)
+      }
+      A.strokes.push(...(O.strokes || []))
+      A.dotFeatures.push(...(O.features || []))
+      Object.assign(A.frames, O.frames || {})
+      Object.assign(A, O.effects || {})
+    }
+    return A
+  }
+
+  // Dot features for an expression frame ('bt' | 'strain'): frame entries override features with the same id.
+  _featuresFor(frame) {
+    const over = (frame && this.art.frames[frame]) || []
+    return this.art.dotFeatures.map(ft => { const o = ft.id && over.find(g => g.id === ft.id); return o ? { ...ft, ...o } : ft })
   }
 
   setSpeed(mult) { this.speed = mult > 0 ? mult : 1 }
   setReducedMotion(on) { this.reducedMotion = !!on }
   triggerBreakthroughBurst() { this.btTarget = 1; this.btStart = this.t; this.bt = Math.max(this.bt, 0.6) }
+  // Failed breakthrough: the gathered Qi collapses (halo cracks, rings stutter and redden, the figure shudders, the
+  // face strains). demoted = the realm shatters: the halo breaks apart and falls.
+  triggerFailure(demoted = false) { this.fail = 1; this.demote = !!demoted; this.btTarget = 0; this.failStart = this.t }
 
   stop() {
     this.running = false
@@ -93,23 +118,28 @@ class InkRenderer {
   }
 
   // Test hooks (scripts/smoke/scenarios/ink-art.js): hold one exact moment for repeatable screenshots.
-  freeze(t, bt = 0) { this.frozen = true; this.t = t; this.bt = bt; this.btStart = t - 0.4; this._draw() }
+  freeze(t, bt = 0, fail = 0, demote = false) {
+    this.frozen = true; this.t = t; this.bt = bt; this.btStart = t - 0.4
+    this.fail = fail; this.demote = demote; this.failStart = t - (1 - fail) * 1.8
+    this._draw()
+  }
   resume() { this.frozen = false }
   // Render one still at any size / pixel ratio into a PNG data URL (close-ups for review), without touching the canvas.
-  // crop = [x, y, w, h] in logical scene units → only that part (e.g. the face at a high dpr).
+  // opts: { bt, crop: [x, y, w, h] in logical units, slots: {kind: option}, fail, demote }.
   still(...args) { return this.stillCanvas(...args).toDataURL('image/png') }
   // Same, as a canvas (the page CSP blocks data: images, so compose sheets from canvases).
-  stillCanvas(w, h, dpr, t, bt = 0, crop = null, face = null) {
-    const prevFace = this.faceStyle
-    if (face) { this.faceStyle = face; this.art = this._effective() }
+  stillCanvas(w, h, dpr, t, opts = {}) {
+    const { bt = 0, crop = null, slots = null, fail = 0, demote = false } = opts
+    const prevSel = { ...this.slotSel }
+    if (slots) { this.slotSel = { ...this.slotSel, ...slots }; this.art = this._effective() }
     const cv = document.createElement('canvas')
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr)
     const cache = this._buildCache(w, h, dpr)
-    const saved = [this.t, this.bt, this.btStart]
-    this.t = t; this.bt = bt; this.btStart = t - 0.4
+    const saved = [this.t, this.bt, this.btStart, this.fail, this.demote, this.failStart]
+    this.t = t; this.bt = bt; this.btStart = t - 0.4; this.fail = fail; this.demote = demote; this.failStart = t - (1 - fail) * 1.8
     this._drawTo(cv.getContext('2d'), cache)
-    ;[this.t, this.bt, this.btStart] = saved
-    if (face) { this.faceStyle = prevFace; this.art = this._effective() }
+    ;[this.t, this.bt, this.btStart, this.fail, this.demote, this.failStart] = saved
+    if (slots) { this.slotSel = prevSel; this.art = this._effective() }
     if (!crop) return cv
     const out = document.createElement('canvas')
     out.width = Math.round(crop[2] * cache.S); out.height = Math.round(crop[3] * cache.S)
@@ -140,7 +170,8 @@ class InkRenderer {
         const step = this._acc; this._acc = 0
         if (!this.frozen) {
           if (!this.reducedMotion) this.t += step * this.speed
-          const k = Math.min(1, step * (this.btTarget > this.bt ? 4 : 1.2))
+          const k = Math.min(1, step * (this.btTarget > this.bt ? 4 : this.fail > 0 ? 5 : 1.2))
+          if (this.fail > 0) this.fail = Math.max(0, this.fail - step / 1.8)
           this.bt += (this.btTarget - this.bt) * k
         }
         this._draw()
@@ -172,7 +203,9 @@ class InkRenderer {
     const k = 1 + A.body.breathe * breath                     // body vertical scale
     const headDy = -(k - 1) * (A.body.anchorY - 45)           // the head rides on the shoulders
     const qi = this.stageColor
-    const glowCol = bt > 0.01 ? inkMix(qi, P.gold, bt) : qi
+    const fail = this.fail
+    const glowCol = inkMix(bt > 0.01 ? inkMix(qi, P.gold, bt) : qi, P.failRed || '#C8453A', fail * 0.85)
+    const shake = calm ? 0 : fail * fail * 1.3 * Math.sin(t * 57) * C.S   // the figure shudders (device px)
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalAlpha = 1
@@ -205,14 +238,15 @@ class InkRenderer {
     // Figure layers: lap (still) → body (breathes) → head (rides the shoulders)
     const ay = A.body.anchorY
     const layer = (img, fn) => { ctx.save(); fn(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(img, 0, 0); ctx.restore() }
-    const bodyTf = () => ctx.setTransform(1, 0, 0, k, 0, (C.oy + ay * C.S) * (1 - k))
-    const headTf = () => ctx.setTransform(1, 0, 0, 1, 0, headDy * C.S)
+    const bodyTf = () => ctx.setTransform(1, 0, 0, k, shake, (C.oy + ay * C.S) * (1 - k))
+    const headTf = () => ctx.setTransform(1, 0, 0, 1, shake, headDy * C.S)
+    const headImg = fail > 0.08 ? C.frames.strain : bt > 0.5 ? C.frames.bt : C.layers.head   // expression frames
     layer(C.layers.lap, () => {})
     if (bt > 0.01) { ctx.globalAlpha = bt; layer(C.rim.lap, () => {}); ctx.globalAlpha = 1 }
     ctx.save(); bodyTf(); ctx.drawImage(C.layers.body, 0, 0)
     if (bt > 0.01) { ctx.globalAlpha = bt; ctx.drawImage(C.rim.body, 0, 0); ctx.globalAlpha = 1 }
     ctx.restore()
-    ctx.save(); headTf(); ctx.drawImage(C.layers.head, 0, 0)
+    ctx.save(); headTf(); ctx.drawImage(headImg, 0, 0)
     if (bt > 0.01) { ctx.globalAlpha = bt; ctx.drawImage(C.rim.head, 0, 0); ctx.globalAlpha = 1 }
     ctx.restore()
     ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
@@ -229,11 +263,16 @@ class InkRenderer {
     // The Qi pearl in the hand seal
     const pr = A.qiPearl, pulse = calm ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2)
     const pdy = (pr.y - ay) * (k - 1)
-    inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r * (2.6 + bt * 2), glowCol, 0.18 + 0.12 * pulse + 0.25 * bt)
-    inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r, inkMix(glowCol, '#FFFFFF', 0.45), 0.95)
+    const lit = 1 - fail * (0.6 + 0.4 * Math.abs(Math.sin(t * 31)))                  // the pearl gutters when Qi collapses
+    inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r * (2.6 + bt * 2), glowCol, (0.18 + 0.12 * pulse + 0.25 * bt) * lit)
+    inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r, inkMix(glowCol, '#FFFFFF', 0.45), 0.95 * lit)
 
     this._rings(ctx, C, glowCol, t, bt, 'front')
     if (bt > 0.01) this._ripples(ctx, C, t, bt, headDy)
+    if (fail > 0.01) {                                          // the scene dims as the Qi drains away
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.fillStyle = inkRgba('#06030A', 0.28 * fail); ctx.fillRect(0, 0, C.cw, C.ch)
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalAlpha = 1
   }
@@ -248,14 +287,24 @@ class InkRenderer {
     ctx.beginPath(); ctx.arc(h.x, y, r * 1.25, 0, Math.PI * 2); ctx.fill()
     // the ring itself: grid-snapped dots (user: the halo reads better as dots), in head-local grid coordinates
     const P = this.art.dot.pitch, RY = P * 0.866, gx0 = this._gx0(), ring = new Path2D(), rr = P * 0.4
+    const fail = this.fail, prog = 1 - fail, falling = new Path2D()
+    let idx = 0
     for (let row = Math.floor((h.y - r - 2) / RY); row * RY <= h.y + r + 2; row++) {
       const gy = row * RY, off = gx0 + (row & 1 ? P / 2 : 0)
       for (let gx = Math.floor((h.x - r - 2 - off) / P) * P + off; gx <= h.x + r + 2; gx += P) {
         if (Math.abs(Math.hypot(gx - h.x, gy - h.y) - r) > P * 0.52) continue
+        const n = inkRnd(++idx * 3.1)
+        if (fail > 0.01 && n < fail * 0.45 && !this.demote) continue                       // cracks: dots go dark
+        if (fail > 0.01 && this.demote && n < 0.65) {                                     // shatter: most dots fall
+          const fx = gx + (inkRnd(idx * 7.3) - 0.5) * 14 * prog, fy = gy + (y - h.y) + prog * prog * (30 + 40 * inkRnd(idx * 5.7))
+          falling.moveTo(fx + rr, fy); falling.arc(fx, fy, rr, 0, Math.PI * 2)
+          continue
+        }
         ring.moveTo(gx + rr, gy + (y - h.y)); ring.arc(gx, gy + (y - h.y), rr, 0, Math.PI * 2)
       }
     }
     ctx.fillStyle = inkRgba(col, 0.75 + 0.25 * bt); ctx.fill(ring)
+    if (fail > 0.01 && this.demote) { ctx.fillStyle = inkRgba(col, 0.9 * fail); ctx.fill(falling) }
   }
 
   // x of dot column 0, chosen so a column sits exactly on the figure's centre line (x = scene width / 2).
@@ -285,7 +334,8 @@ class InkRenderer {
     const back = half === 'back'
     const grow = 1 + 0.12 * bt
     for (const R of rings) {
-      const rx = R.rx * grow, ry = R.ry * grow, ct = Math.cos(R.tilt), st = Math.sin(R.tilt)
+      const wob = 1 + 0.07 * this.fail * Math.sin(t * 23 + R.rx)
+      const rx = R.rx * grow * wob, ry = R.ry * grow * wob, ct = Math.cos(R.tilt), st = Math.sin(R.tilt)
       const pt = a => { const x = Math.cos(a) * rx, y = Math.sin(a) * ry; return [R.cx + x * ct - y * st, R.cy + x * st + y * ct] }
       // the orbit line, far half fainter
       ctx.beginPath()
@@ -295,7 +345,7 @@ class InkRenderer {
       ctx.strokeStyle = inkRgba(col, R.alpha * (back ? 0.12 : 0.22) * (1 + bt))
       ctx.stroke()
       // motes riding the orbit, each with a short tail
-      const spin = this.reducedMotion ? 0 : t * R.speed * (1 + 2.5 * bt)
+      const spin = this.reducedMotion ? 0 : t * R.speed * (1 + 2.5 * bt) - this.fail * 0.6 * R.speed
       for (let m = 0; m < R.motes; m++) {
         const a = spin + m / R.motes * Math.PI * 2 + inkRnd(m + R.rx) * 0.8
         const far = Math.sin(a) < 0
@@ -360,10 +410,15 @@ class InkRenderer {
 
     C.bg = mk(); this._paintBackground(C.bg.getContext('2d'), C)
     if (!lod) { C.mist = document.createElement('canvas'); C.mist.width = Math.round(600 * S); C.mist.height = Math.round(150 * S); this._paintMist(C.mist.getContext('2d'), S) }
-    C.layers = {}; C.rim = {}
+    C.layers = {}; C.rim = {}; C.frames = {}
     for (const L of ['lap', 'body', 'head']) {
       C.layers[L] = mk(); this._paintLayer(C.layers[L].getContext('2d'), C, parts, grid, L, false)
       C.rim[L] = mk();    this._paintLayer(C.rim[L].getContext('2d'), C, parts, grid, L, true)
+    }
+    // expression frames: the head layer again with the frame's dot features (falls back to the plain head)
+    for (const fr of ['bt', 'strain']) {
+      if (!this.art.frames[fr]) { C.frames[fr] = C.layers.head; continue }
+      C.frames[fr] = mk(); this._paintLayer(C.frames[fr].getContext('2d'), C, parts, grid, 'head', false, fr)
     }
     return C
   }
@@ -388,8 +443,9 @@ class InkRenderer {
     return { P, RY, cols, rows, ids, gx0 }
   }
 
-  _paintLayer(ctx, C, parts, grid, layer, rim) {
+  _paintLayer(ctx, C, parts, grid, layer, rim, frame = null) {
     const A = this.art, PAL = A.palette
+    this._feats = this._featuresFor(frame)
     ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
     for (const p of parts) {
       if (p.layer !== layer) continue
@@ -400,7 +456,7 @@ class InkRenderer {
       if (!rim) for (const s of A.strokes) if (s.after === p.id && !s.live) this._stroke(ctx, C, s, PAL)
     }
     if (rim) return
-    if (C.lod) for (const f of A.dotFeatures || []) if (parts.find(q => q.id === f.part)?.layer === layer) inkBrush(ctx, f.pts.length > 1 ? f.pts : [f.pts[0], f.pts[0]], f.w, PAL[f.color], 1, C.minW)
+    if (C.lod) for (const f of this._feats) if (parts.find(q => q.id === f.part)?.layer === layer) inkBrush(ctx, f.pts.length > 1 ? f.pts : [f.pts[0], f.pts[0]], f.w, PAL[f.color], 1, C.minW)
     for (const s of A.strokes) if (s.layer === layer && !s.live && !s.after) this._stroke(ctx, C, s, PAL)
     for (const g of A.glyphs) if (g.layer === layer) inkGlyphRun(ctx, g, PAL, C.lod, C.S)
   }
@@ -422,7 +478,7 @@ class InkRenderer {
     const { P, RY, cols, rows, ids, gx0 } = grid
     const PAL = this.art.palette
     const gold = PAL.gold
-    const feats = (this.art.dotFeatures || []).filter(ft => ft.part === p.id)
+    const feats = (this._feats || this.art.dotFeatures).filter(ft => ft.part === p.id)
     if (!rim) this._underpaint(ctx, p)                         // a wash under the dots, so cloth reads as mass, not an LED field
     const buckets = new Map()                                  // colour|alpha|radius → Path2D (one fill per bucket)
     const add = (key, x, y, r) => {
@@ -465,7 +521,7 @@ class InkRenderer {
           col = inkMix(PAL.sashShade, PAL.sash, 0.3 + 0.7 * q); a = '1'; rad = P * 0.45
         } else if (p.mat === 'skin') {
           const hit = feats.find(ft => inkPolyDist(x, y, ft.pts) < ft.w)
-          if (hit) { col = PAL[hit.color]; a = '1'; rad = P * 0.48 }
+          if (hit) { col = PAL[hit.color]; a = hit.color === 'eyeGlow' ? '0.999' : '1'; rad = P * 0.48 }
           else { const q = Math.round(L * 10) / 10; col = inkMix(PAL.skinShade, PAL.skin, 0.35 + 0.65 * q); a = '1'; rad = P * 0.46 }
         } else if (p.mat === 'trim') {
           const q = Math.round(L * 8) / 8
@@ -481,6 +537,7 @@ class InkRenderer {
       const [col, a] = key.split('|')
       ctx.globalAlpha = +a; ctx.fillStyle = col
       if (rim) { ctx.shadowColor = gold; ctx.shadowBlur = 3 * C.S }
+      else if (a === '0.999') { ctx.shadowColor = col; ctx.shadowBlur = 3 * C.S }   // glowing feature dots (eyes lit on breakthrough)
       ctx.fill(path)
       ctx.shadowBlur = 0
     }

@@ -238,7 +238,8 @@ assets/
     arena.js            ← SPEC (Phase 35): arena ladder tiers, stakes, duelist pools
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
-    ink-cultivator.js   ← INK_ART — hybrid ink art data (vector parts, strokes, glyph parts, effects); Qi Condensation so far
+    ink-cultivator.js   ← INK_ART — hybrid ink art base figure (body parts, strokes, effects, default slots); Qi Condensation so far
+    ink-parts.js        ← INK_PARTS — ink part slots: face / hair / robe / weapon / aura options (A3-2; Phase 10 cosmetics hook)
   scenes/
     sect-base-scene.js   ← SPEC (Phase 38A): sect-compound building parts + layout (data only)
     island-scene.js      ← SPEC (Phase 38B): island landmass + building tiles (data only)

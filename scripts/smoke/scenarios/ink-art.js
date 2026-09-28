@@ -68,35 +68,52 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   await clearEmulation()
   await ev('window.dispatchEvent(new Event("resize"))'); await sleep(400)
 
-  // High-res stills for review (not screen captures: rendered at 3× straight from the engine)
+  // High-res stills for review (not screen captures: rendered at 4× straight from the engine)
   for (const [name, w, h, bt] of [['ink-still-idle', 300, 150, 0], ['ink-still-bt', 300, 150, 1], ['ink-still-banner-idle', 80, 56, 0], ['ink-still-banner-bt', 80, 56, 1]]) {
-    savePng(name, await ev(`spriteRenderer.ink.still(${w}, ${h}, 4, ${T}, ${bt})`))
+    savePng(name, await ev(`spriteRenderer.ink.still(${w}, ${h}, 4, ${T}, { bt: ${bt} })`))
   }
   // Close-ups: the face and the sword hilt at 12× (what the eye reads first; the user reviews these)
-  savePng('ink-still-face', await ev(`spriteRenderer.ink.still(300, 150, 12, ${T}, 0, [128, 4, 44, 44])`))
-  savePng('ink-still-hilt', await ev(`spriteRenderer.ink.still(300, 150, 12, ${T}, 0, [190, 100, 44, 26])`))
+  savePng('ink-still-face', await ev(`spriteRenderer.ink.still(300, 150, 12, ${T}, { crop: [128, 4, 44, 44] })`))
+  savePng('ink-still-hilt', await ev(`spriteRenderer.ink.still(300, 150, 12, ${T}, { crop: [190, 100, 44, 26] })`))
+  // The failure moment (A3-2): cracked halo + strained face, and the demotion (halo shatters and falls)
+  savePng('ink-still-fail', await ev(`spriteRenderer.ink.still(300, 150, 4, ${T}, { fail: 0.75 })`))
+  savePng('ink-still-demote', await ev(`spriteRenderer.ink.still(300, 150, 4, ${T}, { fail: 0.45, demote: true })`))
+  savePng('ink-still-face-bt', await ev(`spriteRenderer.ink.still(300, 150, 12, ${T}, { bt: 1, crop: [128, 4, 44, 44] })`))
+  savePng('ink-still-face-strain', await ev(`spriteRenderer.ink.still(300, 150, 12, ${T}, { fail: 0.8, crop: [128, 4, 44, 44] })`))
 
-  // Face slot options side by side (ink-faces-sheet.png): per style a 12× face close-up, the head + shoulders at 4×,
-  // and the whole figure at real Overlay size (1×, enlarged without smoothing so the pixels are honest)
-  const styles = await ev('spriteRenderer.ink.faceStyles()')
-  assert(styles.length >= 1, `the art has ${styles.length} face styles (${styles.join(', ')})`)
-  const sheet = await ev(`(async () => {
-    const ink = spriteRenderer.ink, styles = ${JSON.stringify(styles)}
-    const COL = 560, cv = document.createElement('canvas'); cv.width = COL * styles.length; cv.height = 40 + 528 + 20 + 360 + 20 + 300
+  // Part slots (A3-2): every option of every slot on the default figure (ink-slots-sheet.png, one row per slot)
+  const kinds = ['face', 'hair', 'robe', 'weapon', 'aura']
+  const options = await ev(`(() => { const o = {}; for (const k of ${JSON.stringify(kinds)}) o[k] = InkRenderer.slotOptions(k); return o })()`)
+  for (const k of kinds) assert(options[k].length >= 3, `slot ${k}: ${options[k].length} options (${options[k].join(', ')})`)
+  const sheet = await ev(`(() => {
+    const ink = spriteRenderer.ink, kinds = ${JSON.stringify(kinds)}, options = ${JSON.stringify(options)}
+    const crops = { face: [128, 4, 44, 44], hair: [118, 0, 64, 72], robe: [84, 20, 136, 108], weapon: [80, 92, 156, 36], aura: [30, 0, 240, 150] }
+    const CW = 480, CH = 300, cols = Math.max(...kinds.map(k => options[k].length))
+    const cv = document.createElement('canvas'); cv.width = 140 + CW * cols; cv.height = kinds.length * (CH + 44)
     const g = cv.getContext('2d'); g.fillStyle = '#0A0612'; g.fillRect(0, 0, cv.width, cv.height)
-    for (const [i, st] of styles.entries()) {
-      const x = i * COL + (COL - 528) / 2
-      g.fillStyle = '#E8D9B0'; g.font = '22px Georgia, serif'; g.textAlign = 'center'
-      g.fillText(ink.base.faces[st].label, i * COL + COL / 2, 28)
-      g.drawImage(ink.stillCanvas(300, 150, 12, ${T}, 0, [128, 4, 44, 44], st), x, 40, 528, 528)
-      g.drawImage(ink.stillCanvas(300, 150, 4, ${T}, 0, [105, 0, 90, 60], st), i * COL + 10, 588, 540, 360)
-      g.imageSmoothingEnabled = false
-      g.drawImage(ink.stillCanvas(300, 150, 1, ${T}, 0, null, st), i * COL + (COL - 600) / 2 + 20, 968, 520, 260)
-      g.imageSmoothingEnabled = true
-    }
+    g.font = '20px Georgia, serif'; g.fillStyle = '#E8D9B0'
+    kinds.forEach((k, r) => {
+      const y0 = r * (CH + 44)
+      g.textAlign = 'left'; g.fillText(k, 16, y0 + 44 + CH / 2)
+      options[k].forEach((opt, c) => {
+        const cr = crops[k], sc = Math.min(CW / cr[2], CH / cr[3])
+        const im = ink.stillCanvas(300, 150, sc, ${T}, { crop: cr, slots: { [k]: opt } })
+        const x = 140 + c * CW + (CW - im.width) / 2
+        g.drawImage(im, x, y0 + 40 + (CH - im.height) / 2)
+        g.textAlign = 'center'; g.fillText(INK_PARTS[k][opt].label, 140 + c * CW + CW / 2, y0 + 28)
+      })
+    })
     return cv.toDataURL('image/png')
   })()`)
-  savePng('ink-faces-sheet', sheet)
+  savePng('ink-slots-sheet', sheet)
+
+  // The breakthrough moment is held against the per-notify stage state (the 1.8c "breakthrough never displays" bug)
+  await ev('spriteRenderer.ink.resume(); spriteRenderer.setState("breakthrough"); spriteRenderer.setState("meditating")')
+  assert(await ev('spriteRenderer.ink.btTarget === 1'), 'a stage-state notify right after a breakthrough does not cancel the moment')
+  await ev('spriteRenderer.triggerFailure(false)')
+  assert(await ev('spriteRenderer.ink.fail > 0.9 && spriteRenderer.ink.btTarget === 0'), 'triggerFailure starts the collapse and drops the breakthrough glow')
+  await sleep(2200)
+  assert(await ev('spriteRenderer.ink.fail === 0'), 'the failure moment fades out by itself (~1.8 s)')
 
   // Stages without ink art fall back to the classic sprite; Classic turns it off
   await ev('(() => { const gs = gameState, s = gs.get(); s.stageIndex = 12; gs._recalc(); gs._notify() })()'); await sleep(300)
