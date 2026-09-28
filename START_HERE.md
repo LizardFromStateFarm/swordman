@@ -35,7 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ✅ 1.8d-1 + 1.8d-2 (2026-09-27): 78 icons, 0 chrome CJK (lint in npm test); gates 7.2 / 7.2 accepted by the user |
 | **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate **7.6 PASS** (1.8b-6 cycle 2) |
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
-| Hybrid ink art engine (A3) | ◐ A3-1 ✅ 2026-09-27 (Qi Condensation, Settings → Sprite art = Ink; accepted by the user); A3-2 part slots next |
+| Hybrid ink art engine (A3) + re-art (A4) | ◐ A3-1 + A3-2 ✅ (accepted); **A4-1 every realm in ink** built 2026-09-27, awaiting the user's look; A4-2 beasts next |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -140,6 +140,23 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user AFK; said "continue work", review by email) — part 32
+Agent: **A4-1 ink cultivator for every realm** (A4 split: A4-1 cultivator realms → A4-2 beasts → A4-3 realm
+  backgrounds + death moment → A4-4 Ink default + sprite emoji lint). The assessment was shown in the terminal and not
+  approved (the user was AFK and had asked the agent to continue). As-built: art-engine.md → "Realm variants".
+  - assets/sprites/ink-cultivator.js: data-only variants `INK_ART.idle / meditating_deep / levitating / transcending`
+    (`extends: 'meditating'`). Mortal = plain hemp (new robe option `hemp` in ink-parts.js), empty hands, no halo/rings/
+    pearl; Foundation = a turning formation array on the ground; Core = floating (ground shadow) + golden core pearl;
+    Nascent Soul → Immortal = double halo, 4th ring, an infant soul seated on a cloud above the crown.
+  - ink-renderer.js: `InkRenderer.resolve()` (variant merge), `view` zoom box, `float`, `_formation`, `_groundShadow`,
+    `_avatar`/`_paintAvatar` (soul re-sampled on the figure's own dot pitch, infant head via headScale), `halo: null`,
+    `qiPearl: null`, `halo.outer`. The whole figure (lap too) now shudders on failure.
+  - Smoke ink-art.js: asserts all 23 stages render in ink, frame < 6 ms on the heaviest realm (0.65 ms), writes
+    out/ink-realms-sheet.png + ink-realm-{mortal,foundation,core,nascent,immortal}.png. npm test · npm run checks (373) ·
+    smoke ink-art passes, zero console errors.
+  - Review: emailed the realm sheet to the user (no bot reviewers, per the user rule). Logged as pending in ui-review.md.
+  Next: user's verdict on A4-1 (esp. the Nascent Soul: small at Overlay size; transcending zooms the view out) → A4-2 beasts.
+
 Date: 2026-09-27 (user present) — part 31
 Agent: **Dev docs: `docs/commands.html`** — one-page HTML reference (for human devs) of every npm command: dev run,
   test/checks, QA sim bot + flags, CDP smoke, desktop builds, release, Android (`release:android` + env vars + signing/Java/Play

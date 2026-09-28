@@ -18,6 +18,26 @@ class InkRenderer {
 
   static has(state) { return typeof INK_ART !== 'undefined' && !!INK_ART[state] }
 
+  // A realm variant (A4-1) names its base with `extends` and overrides only what changes: palette / background /
+  // slots / halo / qiPearl / body merge key by key, every other key replaces. `aura: false` = the aura slot's effects
+  // are ignored (the Mortal has no Qi to shape). Resolved once per state and kept.
+  static resolve(state) {
+    const R = InkRenderer._resolved || (InkRenderer._resolved = new Map())
+    if (R.has(state)) return R.get(state)
+    const V = INK_ART[state]
+    let out = V
+    if (V && V.extends) {
+      const B = InkRenderer.resolve(V.extends)
+      out = { ...B, ...V }
+      for (const k of ['palette', 'background', 'slots', 'halo', 'qiPearl', 'body']) {
+        if (V[k] && B[k]) out[k] = { ...B[k], ...V[k] }
+      }
+      delete out.extends
+    }
+    R.set(state, out)
+    return out
+  }
+
   constructor(canvas) {
     this.cv  = canvas
     this.ctx = canvas.getContext('2d')
@@ -42,7 +62,8 @@ class InkRenderer {
   setState(name) {
     if (name === 'breakthrough') { this.btTarget = 1; this.btStart = this.t }
     else if (InkRenderer.has(name)) {
-      if (INK_ART[name] !== this.base) { this.base = INK_ART[name]; this.art = this._effective(); this.cache = null }
+      const art = InkRenderer.resolve(name)
+      if (art !== this.base) { this.base = art; this.art = this._effective(); this.cache = null }
       if (this.fail < 0.05) this.btTarget = 0
     }
     if (!this.running) this._start()
@@ -84,7 +105,7 @@ class InkRenderer {
     if (typeof INK_PARTS === 'undefined') return A
     for (const kind of InkRenderer.SLOT_KINDS) {
       const O = (INK_PARTS[kind] || {})[sel[kind]]
-      if (!O) continue
+      if (!O || (kind === 'aura' && B.aura === false)) continue
       Object.assign(A.palette, O.palette || {})
       for (const part of O.parts || []) {
         const anchor = part.before || part.after, i = anchor ? A.parts.findIndex(q => q.id === anchor) : -1
@@ -232,17 +253,27 @@ class InkRenderer {
     }
 
     if (!calm) this._risingMotes(ctx, C, glowCol, t, bt)
+
+    // Realm ground effects (A4-1): the Foundation array under the lap; the shadow left on the mist by a floating body
+    const F = A.float
+    const fy = F ? F.y + (calm ? 0 : Math.sin(t * 0.8) * F.bob) : 0           // logical units, negative = lifted
+    if (A.formation) this._formation(ctx, C, glowCol, t, bt)
+    if (F) this._groundShadow(ctx, F, fy, glowCol)
+
+    ctx.save(); ctx.translate(0, fy)                                          // everything below rides with the body
     this._rings(ctx, C, glowCol, t, bt, 'back')
-    this._halo(ctx, C, glowCol, t, bt, headDy)
+    if (A.avatar && C.avatar) this._avatar(ctx, C, t, fy)
+    if (A.halo) this._halo(ctx, C, glowCol, t, bt, headDy)
+    ctx.restore()
 
     // Figure layers: lap (still) → body (breathes) → head (rides the shoulders)
-    const ay = A.body.anchorY
-    const layer = (img, fn) => { ctx.save(); fn(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(img, 0, 0); ctx.restore() }
-    const bodyTf = () => ctx.setTransform(1, 0, 0, k, shake, (C.oy + ay * C.S) * (1 - k))
-    const headTf = () => ctx.setTransform(1, 0, 0, 1, shake, headDy * C.S)
+    const ay = A.body.anchorY, fyD = fy * C.S
+    const layer = img => { ctx.save(); ctx.setTransform(1, 0, 0, 1, shake, fyD); ctx.drawImage(img, 0, 0); ctx.restore() }
+    const bodyTf = () => ctx.setTransform(1, 0, 0, k, shake, (C.oy + ay * C.S) * (1 - k) + fyD)
+    const headTf = () => ctx.setTransform(1, 0, 0, 1, shake, headDy * C.S + fyD)
     const headImg = fail > 0.08 ? C.frames.strain : bt > 0.5 ? C.frames.bt : C.layers.head   // expression frames
-    layer(C.layers.lap, () => {})
-    if (bt > 0.01) { ctx.globalAlpha = bt; layer(C.rim.lap, () => {}); ctx.globalAlpha = 1 }
+    layer(C.layers.lap)
+    if (bt > 0.01) { ctx.globalAlpha = bt; layer(C.rim.lap); ctx.globalAlpha = 1 }
     ctx.save(); bodyTf(); ctx.drawImage(C.layers.body, 0, 0)
     if (bt > 0.01) { ctx.globalAlpha = bt; ctx.drawImage(C.rim.body, 0, 0); ctx.globalAlpha = 1 }
     ctx.restore()
@@ -250,6 +281,7 @@ class InkRenderer {
     if (bt > 0.01) { ctx.globalAlpha = bt; ctx.drawImage(C.rim.head, 0, 0); ctx.globalAlpha = 1 }
     ctx.restore()
     ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
+    ctx.translate(0, fy)
 
     // Live strokes (hair locks sway) on the head
     const sway = calm ? 0 : Math.sin(t * 0.9) * 0.9
@@ -260,12 +292,16 @@ class InkRenderer {
     }
     ctx.restore()
 
-    // The Qi pearl in the hand seal
-    const pr = A.qiPearl, pulse = calm ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2)
-    const pdy = (pr.y - ay) * (k - 1)
-    const lit = 1 - fail * (0.6 + 0.4 * Math.abs(Math.sin(t * 31)))                  // the pearl gutters when Qi collapses
-    inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r * (2.6 + bt * 2), glowCol, (0.18 + 0.12 * pulse + 0.25 * bt) * lit)
-    inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r, inkMix(glowCol, '#FFFFFF', 0.45), 0.95 * lit)
+    // The Qi pearl in the hand seal (a golden core from Core Formation on: `qiPearl.color` pins its colour)
+    const pr = A.qiPearl
+    if (pr) {
+      const pulse = calm ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2)
+      const pdy = (pr.y - ay) * (k - 1)
+      const lit = 1 - fail * (0.6 + 0.4 * Math.abs(Math.sin(t * 31)))                  // the pearl gutters when Qi collapses
+      const pc = pr.color ? inkMix(P[pr.color], P.gold, bt) : glowCol
+      inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r * (2.6 + bt * 2), pc, (0.18 + 0.12 * pulse + 0.25 * bt) * lit * (pr.glow || 1))
+      inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r, inkMix(pc, '#FFFFFF', 0.45), 0.95 * lit)
+    }
 
     this._rings(ctx, C, glowCol, t, bt, 'front')
     if (bt > 0.01) this._ripples(ctx, C, t, bt, headDy)
@@ -286,9 +322,14 @@ class InkRenderer {
     ctx.fillStyle = g
     ctx.beginPath(); ctx.arc(h.x, y, r * 1.25, 0, Math.PI * 2); ctx.fill()
     // the ring itself: grid-snapped dots (user: the halo reads better as dots), in head-local grid coordinates
+    // `outer` (a ratio) adds a second, fainter ring outside the first (Nascent Soul and beyond)
+    for (const [rad, a] of h.outer ? [[r, 1], [r * h.outer, 0.45]] : [[r, 1]]) this._haloRing(ctx, h, rad, y, col, a, bt)
+  }
+
+  _haloRing(ctx, h, r, y, col, alpha, bt) {
     const P = this.art.dot.pitch, RY = P * 0.866, gx0 = this._gx0(), ring = new Path2D(), rr = P * 0.4
     const fail = this.fail, prog = 1 - fail, falling = new Path2D()
-    let idx = 0
+    let idx = Math.round(r * 50)
     for (let row = Math.floor((h.y - r - 2) / RY); row * RY <= h.y + r + 2; row++) {
       const gy = row * RY, off = gx0 + (row & 1 ? P / 2 : 0)
       for (let gx = Math.floor((h.x - r - 2 - off) / P) * P + off; gx <= h.x + r + 2; gx += P) {
@@ -303,8 +344,117 @@ class InkRenderer {
         ring.moveTo(gx + rr, gy + (y - h.y)); ring.arc(gx, gy + (y - h.y), rr, 0, Math.PI * 2)
       }
     }
-    ctx.fillStyle = inkRgba(col, 0.75 + 0.25 * bt); ctx.fill(ring)
-    if (fail > 0.01 && this.demote) { ctx.fillStyle = inkRgba(col, 0.9 * fail); ctx.fill(falling) }
+    ctx.fillStyle = inkRgba(col, (0.75 + 0.25 * bt) * alpha); ctx.fill(ring)
+    if (fail > 0.01 && this.demote) { ctx.fillStyle = inkRgba(col, 0.9 * fail * alpha); ctx.fill(falling) }
+  }
+
+  // Foundation array (A4-1): a formation etched in light on the ground under the lap — two counter-turning rings of
+  // grid-free dots with gaps that travel, and short rune ticks between them. Drawn behind the figure.
+  _formation(ctx, C, col, t, bt) {
+    const Fm = this.art.formation, spin = this.reducedMotion ? 0 : t * Fm.speed
+    const a = Fm.alpha * (1 + 0.6 * bt) * (1 - 0.7 * this.fail)
+    ctx.save(); ctx.translate(Fm.cx, Fm.cy); ctx.scale(1, Fm.ry / Fm.rx)
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, Fm.rx)
+    g.addColorStop(0, inkRgba(col, 0.14 * a)); g.addColorStop(0.7, inkRgba(col, 0.05 * a)); g.addColorStop(1, inkRgba(col, 0))
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, Fm.rx, 0, Math.PI * 2); ctx.fill()
+    ctx.restore()
+    const lod = C.lod, pt = (r, ang) => [Fm.cx + Math.cos(ang) * r, Fm.cy + Math.sin(ang) * r * Fm.ry / Fm.rx]
+    const dotRing = (r, n, rot, gap, rad, al) => {
+      const path = new Path2D()
+      for (let i = 0; i < n; i++) {
+        if (i % gap < 2) continue                                          // gaps make the turning visible
+        const [x, y] = pt(r, rot + i / n * Math.PI * 2)
+        path.moveTo(x + rad, y); path.arc(x, y, rad, 0, Math.PI * 2)
+      }
+      ctx.fillStyle = inkRgba(inkMix(col, '#FFFFFF', 0.25), al); ctx.fill(path)
+    }
+    dotRing(Fm.rx, lod ? 48 : 120, spin, 20, lod ? 0.9 : 0.55, 0.7 * a)
+    dotRing(Fm.rx * 0.74, lod ? 36 : 90, -spin * 1.4, 15, lod ? 0.8 : 0.5, 0.55 * a)
+    if (lod) return
+    // rune ticks: eight short spokes of three dots between the rings, turning with the outer ring
+    const ticks = new Path2D()
+    for (let i = 0; i < 8; i++) {
+      const ang = spin + i / 8 * Math.PI * 2 + Math.PI / 8
+      for (const f of [0.8, 0.87, 0.94]) { const [x, y] = pt(Fm.rx * f, ang); ticks.moveTo(x + 0.6, y); ticks.arc(x, y, 0.6, 0, Math.PI * 2) }
+    }
+    ctx.fillStyle = inkRgba(col, 0.75 * a); ctx.fill(ticks)
+  }
+
+  // A floating body (Core Formation on) leaves a soft shadow on the mist below; it fades as the body rises.
+  _groundShadow(ctx, F, fy, col) {
+    const s = F.shadow, h = Math.max(0, -fy), k = Math.max(0.4, 1 - h / 30)
+    ctx.save(); ctx.translate(s.x, s.y); ctx.scale(1, s.ry / s.rx)
+    const r = s.rx * (0.8 + 0.2 * k)
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r)
+    g.addColorStop(0, inkRgba('#05030A', 0.75 * k)); g.addColorStop(1, inkRgba('#05030A', 0))
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill()
+    const q = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.3)                // the Qi pressing down on the ground
+    q.addColorStop(0, inkRgba(col, 0.1)); q.addColorStop(1, inkRgba(col, 0))
+    ctx.fillStyle = q; ctx.beginPath(); ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2); ctx.fill()
+    ctx.restore()
+  }
+
+  // Nascent Soul and beyond: the soul itself — a small self seated on a cloud of light above the crown (the Daoist
+  // image of the infant soul leaving through the crown). Baked in the cache on the SAME dot pitch as the figure (the
+  // shape is re-sampled at its small size, not scaled down), so it stays crisp ink dots; it drifts and breathes gently.
+  _avatar(ctx, C, t, fy) {
+    const V = this.art.avatar, calm = this.reducedMotion
+    const rise = calm ? 0 : 0.9 * Math.sin(t * 0.5)                              // drifts a little on its own
+    const by = V.y + V.dy + fy + rise                                            // the soul's seat
+    const a = V.alpha * (calm ? 1 : 0.85 + 0.15 * Math.sin(t * 0.9)) * (1 - 0.8 * this.fail) * (1 + 0.4 * this.bt)
+    // the cloud it sits on: a soft, flattened glow
+    ctx.save(); ctx.translate(V.x, by); ctx.scale(1, 0.28)
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, V.cloud)
+    g.addColorStop(0, inkRgba(this.stageColor, 0.35 * a)); g.addColorStop(1, inkRgba(this.stageColor, 0))
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, V.cloud, 0, Math.PI * 2); ctx.fill()
+    ctx.restore()
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, (fy + rise) * C.S)
+    ctx.globalAlpha = Math.min(1, a); ctx.drawImage(C.avatar, 0, 0)
+    ctx.restore()
+  }
+
+  _paintAvatar(ctx, C, parts, grid) {
+    const { P, RY, gx0 } = grid, V = this.art.avatar, s = V.scale, probe = this._probe
+    const col = inkMix(this.stageColor, '#FFFFFF', 0.35)
+    const body = parts.filter(p => !InkRenderer.SOLID.has(p.mat))                 // objects stay with the body
+    const toFig = (x, y) => [V.x + (x - V.x) / s, V.y + (y - V.y - V.dy) / s]  // soul space → figure space
+    // an infant's proportions: the head parts are sampled larger (headScale) about the neck, so the head reads
+    const hs = s * (V.headScale || 1), ny = V.y + V.dy + (V.neckY - V.y) * s
+    const toHead = (x, y) => [V.x + (x - V.x) / hs, V.neckY + (y - ny) / hs]
+    const y0 = ny - V.neckY * hs - 2, y1 = V.y + V.dy + 2, x0 = V.x - 70 * s, x1 = V.x + 70 * s
+    const r0 = Math.floor(y0 / RY), r1 = Math.ceil(y1 / RY), c0 = Math.floor((x0 - gx0) / P) - 1, c1 = Math.ceil((x1 - gx0) / P) + 1
+    const W = c1 - c0 + 1, H = r1 - r0 + 1, own = new Int16Array(W * H).fill(-1)
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+      const x = gx0 + c * P + (r & 1 ? P / 2 : 0), F = toFig(x, r * RY), Hd = toHead(x, r * RY)
+      for (let i = body.length - 1; i >= 0; i--) {
+        const q = body[i], bb = q.box, [fx, fy] = q.layer === 'head' ? Hd : F
+        if (fx < bb[0] || fx > bb[2] || fy < bb[1] || fy > bb[3]) continue
+        if (probe.isPointInPath(q.path, fx, fy)) { own[(r - r0) * W + (c - c0)] = i; break }
+      }
+    }
+    const at = (c, r) => (c < 0 || r < 0 || c >= W || r >= H) ? -1 : own[r * W + c]
+    // tones by material so the tiny figure still reads: a bright face, deep hair, a robe of light
+    const tone = { skin: [inkMix(col, '#FFFFFF', 0.6), 0.95], hair: [inkMix(this.stageColor, '#140C22', 0.45), 0.9] }
+    const paths = new Map(), edgePath = new Path2D()
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+      const id = own[r * W + c]
+      if (id < 0) continue
+      const x = gx0 + (c + c0) * P + ((r + r0) & 1 ? P / 2 : 0), y = (r + r0) * RY
+      const edge = at(c - 1, r) < 0 || at(c + 1, r) < 0 || at(c, r - 1) < 0 || at(c, r + 1) < 0
+      const mat = body[id].mat, key = edge && mat !== 'skin' && mat !== 'hair' ? 'edge' : tone[mat] ? mat : 'robe'
+      const path = key === 'edge' ? edgePath : (paths.get(key) || paths.set(key, new Path2D()).get(key))
+      const rad = P * (key === 'robe' ? 0.3 : 0.4)
+      path.moveTo(x + rad, y); path.arc(x, y, rad, 0, Math.PI * 2)
+    }
+    ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
+    ctx.shadowColor = this.stageColor; ctx.shadowBlur = 2.5 * C.S
+    ctx.fillStyle = col; ctx.globalAlpha = 0.95; ctx.fill(edgePath)
+    ctx.shadowBlur = 0
+    for (const [key, path] of paths) {
+      const [c2, a2] = tone[key] || [col, 0.5]
+      ctx.fillStyle = c2; ctx.globalAlpha = a2; ctx.fill(path)
+    }
+    ctx.globalAlpha = 1
   }
 
   // x of dot column 0, chosen so a column sits exactly on the figure's centre line (x = scene width / 2).
@@ -381,7 +531,7 @@ class InkRenderer {
 
   // Breakthrough: clean rings rippling out from the head.
   _ripples(ctx, C, t, bt, headDy) {
-    const h = this.art.halo, gold = this.art.palette.gold
+    const h = this.art.halo || { x: 150, y: 32, r: 14 }, gold = this.art.palette.gold
     for (let i = 0; i < 3; i++) {
       const ph = (((t - this.btStart) / 1.1 + i / 3) % 1 + 1) % 1
       const r = h.r + ph * 62
@@ -398,7 +548,7 @@ class InkRenderer {
     const [SW, SH] = A.scene
     const cw = Math.round(w * dpr), ch = Math.round(h * dpr)
     const lod = Math.min(w / SW, h / SH) < 0.5                 // banner-sized: fine dots would turn to noise
-    const box = lod ? A.figureBox : [0, 0, SW, SH]
+    const box = lod ? A.figureBox : (A.view || [0, 0, SW, SH])   // `view` zooms out for headroom (floating realms)
     const bw = box[2] - box[0], bh = box[3] - box[1]
     const S = Math.min(cw / bw, ch / bh)                       // device px per logical unit
     const ox = (cw - bw * S) / 2 - box[0] * S, oy = (ch - bh * S) / 2 - box[1] * S
@@ -420,6 +570,7 @@ class InkRenderer {
       if (!this.art.frames[fr]) { C.frames[fr] = C.layers.head; continue }
       C.frames[fr] = mk(); this._paintLayer(C.frames[fr].getContext('2d'), C, parts, grid, 'head', false, fr)
     }
+    if (A.avatar && grid) { C.avatar = mk(); this._paintAvatar(C.avatar.getContext('2d'), C, parts, grid) }
     return C
   }
 

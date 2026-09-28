@@ -1,7 +1,7 @@
 // SpriteRenderer — picks the art engine for the sprite canvas (roadmap A3-1). Wraps the old grid ASCIIRenderer and the
 // new hybrid InkRenderer behind the one API game.js / layout.js / settings.js already call. The Settings "Sprite art" setting
-// (artStyle) chooses Ink or Classic; Ink is used only for sprite states that have INK_ART (Qi Condensation so far),
-// every other state falls back to the classic sprite. Only the active engine runs its animation loop.
+// (artStyle) chooses Ink or Classic; Ink is used for sprite states that have INK_ART;
+// every stage has ink art since A4-1; a state without INK_ART still falls back to the classic sprite. Only the active engine runs its loop.
 // See docs/systems/art-engine.md.
 
 class SpriteRenderer {

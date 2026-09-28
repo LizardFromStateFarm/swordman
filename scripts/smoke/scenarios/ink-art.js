@@ -115,9 +115,45 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   await sleep(2200)
   assert(await ev('spriteRenderer.ink.fail === 0'), 'the failure moment fades out by itself (~1.8 s)')
 
-  // Stages without ink art fall back to the classic sprite; Classic turns it off
-  await ev('(() => { const gs = gameState, s = gs.get(); s.stageIndex = 12; gs._recalc(); gs._notify() })()'); await sleep(300)
-  assert(!(await ev('spriteRenderer.isInk()')), 'a stage without ink art falls back to the classic sprite')
+  // A4-1: every cultivation stage has ink art now (realm variants) — walk them all in the real app
+  const nStages = await ev('CULTIVATION_STAGES.length')
+  const missing = []
+  for (let i = 0; i < nStages; i++) {
+    await ev(`(() => { const gs = gameState, s = gs.get(); s.stageIndex = ${i}; gs._recalc(); gs._notify() })()`); await sleep(120)
+    if (!(await ev('spriteRenderer.isInk()'))) missing.push(i)
+  }
+  assert(missing.length === 0, `every stage (${nStages}) renders in ink${missing.length ? ' — missing: ' + missing.join(', ') : ''}`)
+  // one in-app capture per realm art (Overlay), at the frozen moment
+  const firstOf = st => ev(`CULTIVATION_STAGES.findIndex(s => s.spriteState === '${st}')`)
+  for (const [name, idx] of [['mortal', 0], ['foundation', await firstOf('meditating_deep')], ['core', await firstOf('levitating')], ['nascent', await firstOf('transcending')], ['immortal', nStages - 1]]) {
+    await ev(`(() => { const gs = gameState, s = gs.get(); s.stageIndex = ${idx}; gs._recalc(); gs._notify() })()`); await sleep(250)
+    await ev(`spriteRenderer.ink.freeze(${T}, 0)`); await sleep(120); await shot(`ink-realm-${name}`, await canvasClip(3))
+  }
+  const fr = await ev('(() => { const i = spriteRenderer.ink; i._buildCache(i.w, i.h, i._dpr()); return i.perf(90) })()')
+  assert(fr < 6, `the heaviest realm (Nascent Soul + 4 rings) draws in < 6 ms (${fr.toFixed(2)} ms)`)
+
+  // Realm sheet: every realm variant rendered straight from the engine at 3×, idle row + breakthrough row
+  // the first stage of each sprite state, plus the last stage (Immortal)
+  const realms = await ev('(() => { const out = [], seen = new Set(); CULTIVATION_STAGES.forEach((s, i) => { if (!seen.has(s.spriteState)) { seen.add(s.spriteState); out.push([s.spriteState, i]) } }); const L = CULTIVATION_STAGES.length - 1; out.push([CULTIVATION_STAGES[L].spriteState, L]); return out })()')
+  const realmSheet = await ev(`(() => {
+    const realms = ${JSON.stringify(realms)}, W = 900, H = 450
+    const cv = document.createElement('canvas'); cv.width = W * 3; cv.height = (H + 40) * 4
+    const g = cv.getContext('2d'); g.fillStyle = '#0A0612'; g.fillRect(0, 0, cv.width, cv.height)
+    g.font = '24px Georgia, serif'; g.fillStyle = '#E8D9B0'; g.textAlign = 'center'
+    realms.forEach(([state, idx], n) => {
+      const r = new InkRenderer(document.createElement('canvas')), st = CULTIVATION_STAGES[idx]
+      r.setStageColor(st.color); r.base = InkRenderer.resolve(state); r.art = r._effective()
+      const col = n % 3, row = Math.floor(n / 3) * 2
+      for (const bt of [0, 1]) {
+        const im = r.stillCanvas(300, 150, 3, ${T}, { bt })
+        g.drawImage(im, col * W, (row + bt) * (H + 40) + 40)
+        g.fillText(st.realm + ' · ' + st.layer + (bt ? ' — breakthrough' : ''), col * W + W / 2, (row + bt) * (H + 40) + 30)
+      }
+    })
+    return cv.toDataURL('image/png')
+  })()`)
+  savePng('ink-realms-sheet', realmSheet)
+
   await ev('(() => { const gs = gameState, s = gs.get(); s.stageIndex = 3; gs._recalc(); gs._notify() })()'); await sleep(300)
   assert(await ev('spriteRenderer.isInk()'), 'back at Qi Condensation → ink again')
   await ev('spriteRenderer.ink.resume()')

@@ -150,6 +150,13 @@ myOption: { label: 'Shown name',
   palette:  { robe: '#…', … },                                        // robe colours
   effects:  { rings: [...], motes: {...} } },                         // aura
 ```
+**A realm variant** (A4-1; one per sprite state in `assets/sprites/ink-cultivator.js`): `INK_ART.<state> = { extends:
+'meditating', … }` overrides only what the realm changes (palette / background / slots / halo / qiPearl / body merge key
+by key; the rest replaces). Realm effects: `aura: false` (ignore the aura slot), `halo: null` / `qiPearl: null`,
+`halo.outer` (second ring, ratio), `qiPearl.color` (palette key, e.g. the golden core), `formation {cx cy rx ry speed
+alpha}`, `float {y bob shadow}`, `view` (zoom-out box for headroom), `avatar {scale headScale neckY x y dy alpha cloud}`
+(the Nascent Soul above the crown). `out/ink-realms-sheet.png` shows every realm, idle + breakthrough.
+
 **Check it:** `node scripts/smoke/cdp.js scripts/smoke/scenarios/ink-art.js` → `out/ink-slots-sheet.png` (every option),
 `ink-still-*.png` (4×/12× stills incl. fail / demote / face-bt / face-strain), in-app captures per layout mode. Hand the
 screenshots to the user.

@@ -5,9 +5,26 @@ scripts/smoke/scenarios/ink-art.js · Phase: 34 (roadmap A3-1) · Updated: 2026-
 
 The HYBRID direction the user picked in A2 (ui-review.md → "A2 art bake-off"): (c)'s ink figure/scene/halo + (b)'s
 glyph parts and thin rotating mote rings. A3-1 = the engine core + ONE cultivator (Qi Condensation, idle +
-breakthrough) in the real game behind **Settings → Motion → Sprite art = Ink** (default Classic). Every other sprite
-state keeps the old grid ASCII until A4 re-arts it. A3-2 (done 2026-09-27): part slots, expression frames, the failure/demotion
+breakthrough) in the real game behind **Settings → Motion → Sprite art = Ink** (default Classic). A4-1 (below) gave every other sprite
+state its ink art (realm variants). A3-2 (done 2026-09-27): part slots, expression frames, the failure/demotion
 moment, authoring template in `.agents/rules/assets.md` → "Ink art".
+
+## Realm variants (A4-1, 2026-09-27)
+Every sprite state now has ink art, so Sprite art = Ink covers all 23 stages. Each variant `extends: 'meditating'` (or
+another variant) and overrides only what changes; `InkRenderer.resolve(state)` merges it once (palette / background /
+slots / halo / qiPearl / body key by key, everything else replaces) and caches the result.
+
+| State | Stages | What the realm adds |
+|---|---|---|
+| `idle` | Mortal | plain hemp robe (`robe: 'hemp'`), empty hands, `aura: false`, no halo / rings / pearl / knot glyph, 5 faint motes |
+| `meditating` | Qi Condensation | the base figure |
+| `meditating_deep` | Foundation | `formation`: a ground array of two counter-turning dotted rings with travelling gaps + rune ticks; halo r 26 |
+| `levitating` | Core Formation | `float` (lifted 9, bobbing) + a ground shadow; `qiPearl.color: 'gold'` (the golden core); `view` zoomed out for headroom |
+| `transcending` | Nascent Soul → Immortal | double halo (`halo.outer`), a 4th ring, and `avatar`: the infant soul (big head via `headScale`) seated on a cloud of light above the crown, re-sampled on the figure's own dot pitch; `view` zoomed out more (figure ~25% smaller) |
+
+Engine support: `view` (fit box instead of the scene; LOD still frames `figureBox`), `float`, `_groundShadow`,
+`_formation`, `_avatar` / `_paintAvatar` (cached per size), `halo: null`, `qiPearl: null`, `halo.outer`. The whole
+figure (lap included) now shudders on failure. Heaviest realm still draws in ~0.65 ms.
 
 ## Planned (PLAN.md Phase 39, user 2026-09-27)
 - A5: the player picks face / hair / robe at every creation and rebirth (live ink preview); robe + effect changeable

@@ -124,6 +124,10 @@ const INK_PARTS = {
   // ── Robe: palette only (the cut is the base figure) ──
   robe: {
     moon: { label: 'Moon-white', palette: {} },
+    // the Mortal's plain hemp (A4-1): undyed cloth, a cord sash, no gold on the collar
+    hemp: { label: 'Plain hemp', palette: {
+      robe: '#C4B69A', robeShade: '#6E6450', robeDeep: '#39332A', rim: '#EFE6D0', cuff: '#463E31',
+      sash: '#7A6444', sashShade: '#3C3022', trim: '#A6977A', trimShade: '#5A513F' } },
     azure: { label: 'Azure', palette: {
       robe: '#BCD2E8', robeShade: '#4E6C90', robeDeep: '#26405E', rim: '#EAF6FF', cuff: '#2C4868',
       sash: '#D8B04A', sashShade: '#7A5E1E' } },

@@ -118,3 +118,59 @@ const INK_ART = {
     },
   },
 }
+
+// ── Realm variants (A4-1): each sprite state `extends` the Qi Condensation figure and overrides only what its realm
+// changes (renderer/engine/ink-renderer.js `InkRenderer.resolve`). The robe / hair / weapon / aura slots stay the
+// player's (A5); a variant only sets the default look for that realm. Stage colour (stages.js) tints every effect.
+//   idle            Mortal            no Qi yet: plain hemp, empty hands, no halo, rings or pearl; a few faint motes
+//   meditating      Qi Condensation   the base figure above
+//   meditating_deep Foundation        a formation array turns on the ground under the lap; brighter halo
+//   levitating      Core Formation    the body lifts off the ground (shadow on the mist); the pearl is a golden core
+//   transcending    Nascent Soul →    a double halo, a fourth ring, and the Nascent Soul itself: a smaller dotted
+//                   Immortal          self seated above the crown (the view zooms out to make room)
+INK_ART.idle = {
+  extends: 'meditating', id: 'cultivator_mortal',
+  aura: false,                                            // no Qi to shape: the aura slot has nothing to show yet
+  slots: { robe: 'hemp', weapon: 'none' },
+  halo: null, qiPearl: null, rings: [], glyphs: [],
+  body: { breathe: 0.045 },                               // a mortal's breath is deeper and plainer
+  motes: { count: 5, btCount: 26, x0: 96, x1: 204, speed: 0.05 },
+  background: { glow: { x: 150, y: 70, r: 80 } },
+}
+
+INK_ART.meditating_deep = {
+  extends: 'meditating', id: 'cultivator_foundation',
+  formation: { cx: 150, cy: 124, rx: 86, ry: 12.5, speed: 0.07, alpha: 0.9 },
+  halo: { r: 26 },
+  motes: { count: 16, btCount: 34, x0: 60, x1: 240, speed: 0.12 },
+  background: { glow: { x: 150, y: 56, r: 140 } },
+}
+
+INK_ART.levitating = {
+  extends: 'meditating', id: 'cultivator_core',
+  float: { y: -9, bob: 1.6, shadow: { x: 150, y: 133, rx: 50, ry: 5.5 } },
+  view: [-12, -12, 324, 162],                             // zoomed out a little: headroom for the lifted halo
+  figureBox: [84, -10, 220, 128],
+  halo: { r: 23 },
+  qiPearl: { r: 2.3, color: 'gold', glow: 1.6 },          // the golden core, formed
+  motes: { count: 18, btCount: 36, x0: 56, x1: 244, speed: 0.13 },
+  background: { glow: { x: 150, y: 52, r: 145 } },
+}
+
+INK_ART.transcending = {
+  extends: 'levitating', id: 'cultivator_nascent',
+  float: { y: -2, bob: 1.2, shadow: { x: 150, y: 132, rx: 54, ry: 4.5 } },
+  view: [-52, -52, 404, 202],                             // room above the crown for the soul
+  halo: { r: 20, outer: 1.1 },
+  // the Nascent Soul: a small self (scale) with an infant's big head (headScale, about neckY) seated on a cloud of
+  // light (cloud = glow radius) above the crown; its seat is at y + dy, re-sampled on the figure's own dot pitch
+  avatar: { scale: 0.38, headScale: 1.75, neckY: 46, x: 150, y: 125, dy: -118, alpha: 0.95, cloud: 22 },
+  rings: [
+    { cx: 150, cy: 76, rx: 80, ry: 15, tilt: -0.16, speed: 0.32, motes: 5, alpha: 0.9 },
+    { cx: 150, cy: 70, rx: 70, ry: 22, tilt: 0.3, speed: -0.24, motes: 4, alpha: 0.75 },
+    { cx: 150, cy: 82, rx: 96, ry: 9, tilt: 0.06, speed: 0.18, motes: 3, alpha: 0.6 },
+    { cx: 150, cy: 60, rx: 112, ry: 12, tilt: -0.08, speed: -0.12, motes: 4, alpha: 0.5 },
+  ],
+  motes: { count: 22, btCount: 42, x0: 40, x1: 260, speed: 0.15 },
+  background: { glow: { x: 150, y: 50, r: 160 } },
+}
