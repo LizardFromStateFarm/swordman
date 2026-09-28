@@ -94,6 +94,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 36 | **Auction House & Crates (拍卖行)**: buy themed crates, open for a random-quality beast or a person (user 2026-09-27) | ⬜ | M4 |
 | 37 | **Party & Party Combat (结伴 · 群战)**: a party of up to 6; fights become 6 vs N (user 2026-09-27) | ⬜ | M4 (after 35/36) |
 | 38 | **Sect Base & Immortal Island scenes (宗门场景 · 仙岛图)**: large-area art that grows/upgrades as you build (user 2026-09-27) | ⬜ | 38A M1 (art track, after A4); 38B M7 |
+| 39 | **Cultivation Path & Appearance (修途 · 仪容)**: Basic method until Core, then Virtuous / Neutral / Demonic (changes arts + look, anchors the alignment meter, one costly Dao Reversal per life); appearance chosen at every creation/rebirth; effects unlocked by realm, arts and path; robes unlocked by positions + in-world rankings; NPC portraits (user 2026-09-27) | ⬜ | 39A–B M3 (tasks 3.2b–c); 39C–F art track (A5, A8–A10) |
 | 10 | Cosmetics (titles, pet, cave) | ⬜ | M8 |
 | 11B–C | Heaven's Will, Scripture Lore | ⬜ | M8 |
 | 20A–B | Permadeath, Challenge modes | ⬜ | M8 |
@@ -157,7 +158,10 @@ When an older design section below conflicts with these, the pillars win. The se
 | A4 | **Re-art everything** in the new engine: all cultivator stage sprites, beasts, realm backgrounds/ambience, BT/failure/death moments, UI ornaments. Every piece passes the gate (≥ 8.0) | 34 | A3 | Every art piece ≥ 8.0 in `docs/systems/ui-review.md` |
 | A6 | **Combat page (Phase 35)** (user 2026-09-27): a full-window battle scene on the hybrid engine — your cultivator on one side, a beast/duelist on the other, animated attack/parry/guard/feint exchanges. Reuses the fight card's rules & odds (`FIGHT_TACTICS`/`FIGHT_STYLE`/`_powerChance`/`_exchangeChance`), generalizes `f.fight` to non-family opponents, and adds combat art + animation passes. Reached from a Beast Hunt / Arena entry; duels, tournaments and bosses route in. **Expeditions keep auto-resolving** | 35, 34 | A4 | A battle plays out animated in every layout mode; outcome hooks (health/karma/beasts) verified; gate ≥ 8.0 |
 | A7 | **Sect base scene (Phase 38A)** (user 2026-09-27): a large, **view-only** landscape diorama of your sect compound that grows with `buildings` / `hallLevel` / disciples / fame, on the hybrid engine's new **scene layer** (background + placed building parts + ambient effects; scaffold from the bakeoff's `drawC`). Build/upgrade still happens in the existing rows | 38A, 34 | A4 | Scene reflects live sect state in every layout mode; each building part + the whole scene pass the gate ≥ 8.0 |
-| A5 | *(later, with Phase 10)* **Customization**: pick face/hair/robe/aura parts at character creation + unlockable cosmetics; heirs inherit/blend parts from their parents | 34, 10 | A4 | Parts swap live; saves store part ids |
+| A5 | **Appearance at creation and rebirth** (Phase 39C, user 2026-09-27): an "Appearance" step when you create a character AND at every reincarnation / rebirth as a descendant: pick **face, hair, robe** (from unlocked robes) with a live ink preview; new characters start from a random roll, heirs from a blend of their parents' looks, always overridable (player choice, never rolled for you). Face + hair are fixed for that life; robe + effect can be changed any time in the new **Wardrobe** (Path → Character) | 34, 39 | A4, 2.6 | Choose at creation + every rebirth; saves store the look per life; wardrobe works in every layout mode |
+| A8 | **Effect unlocks** (Phase 39D): effects (aura, halo style, mote style) are unlocked by **cultivation level** (each realm opens one), **Arts** (Techniques now; Secret Arts from 7.11 each grant a matching effect) and **cultivation path** (39A: Virtuous / Neutral / Demonic sets). The player picks the active effect from the unlocked set in the Wardrobe; unlocks persist across lives in the clan's Ancestral Wardrobe | 34, 39, 23E | A5 | Every unlock source grants its effect; locked effects show how to earn them |
+| A9 | **Robe unlocks by standing** (Phase 39E): new robes for becoming **family head, clan head, sect leader** (founder or risen), sect ranks (Inner Disciple, Elder), path robes, and **Heavenly Rankings** placings (in-world boards, 4.8): Top 10 and #1 of each board. Unlock toast + Wardrobe dot; kept across lives | 39, 28J | A5 (rankings part after 4.8) | Each standing grants its robe once; the Wardrobe shows how every locked robe is earned |
+| A10 | **Inspect a person** (Phase 39F): click any named person (spouse, child, clan, sect, rival, ranking row) → a card with their **ink portrait**. NPCs roll a random face/hair/robe at creation (heirs from their parents) and always show the **highest effect** their realm/arts/path unlock (derived, not stored) | 39, 28 | A5 (family/clan/sect persons now; everyone once M4 lands) | Portrait renders in every layout mode; cached per person; < 5 ms per card |
 
 > **Priority change (2026-09-26, user):** 1.7–1.9 jump ahead of M2 task 2.8. The game now has many systems the
 > player can't read or interact with well, and the main interaction happens in the smallest part of the window.
@@ -165,7 +169,7 @@ When an older design section below conflicts with these, the pillars win. The se
 > tuning are batched into QA & Balance tasks like 1.9 and 2.8. **Order: 1.8a (audit) ✅ → 1.7 (layout modes) ✅ → 1.7b
 > (banner quick actions) ✅ → 1.8c (visual review + art audit) ✅ → A2 art bake-off ✅ (hybrid) → 1.8b (UI
 > overhaul + family agency + 1.8d custom icon set + UI emoji/symbol purge/lint, A1 folded in) → 1.9 → A3 hybrid art
-> engine → A4 re-art (+ sprite lint) → A6 combat page (Phase 35) → A7 sect base scene (Phase 38A) → 2.8.** The
+> engine → A4 re-art (+ sprite lint) → A5 appearance at creation/rebirth → A8 effect unlocks → A9 robe unlocks (standing part) → A10 inspect portraits → A6 combat page (Phase 35) → A7 sect base scene (Phase 38A) → 2.8.** Phase 39's path choice (3.2b–c) lands in M3 with the alignment meter (user 2026-09-27). The
 > **auction house (Phase 36)** and **party combat (Phase 37)** come after M4's living-world persons, and the
 > **Immortal Island scene (Phase 38B)** lands in M7 after Phase 26 — the new systems are built phase-by-phase
 > rather than as one bundle (user 2026-09-27). A2/A1 go before 1.8b so the overhaul is
@@ -200,6 +204,8 @@ When an older design section below conflicts with these, the pillars win. The se
 | 3.1 | Birth Origin: regions, family types, special constitutions. An heir's origin comes from the clan | 12 | 2.2, 2.6 | Regions become the world map for M4 |
 | 3.2 | Alignment meter, tiers, shift sources, gating table | 13 | 2.2 | Choice events shift alignment; gates enforced |
 | 3.3 | Body Constitution & tempering | 14 | 3.1 | Parallel track, one tempering at a time |
+| 3.2b | **Cultivation Path choice at Core Formation** (Phase 39A): everyone cultivates the Basic Method until the first Core Formation breakthrough, then chooses **Virtuous / Neutral / Demonic** on a choice card (offer follows the alignment meter; locked options say why). The path gates Arts, sects and Phase 24 Immortal Paths, pulls alignment toward itself, and changes the cultivator's look | 39 | 3.2 | The choice is the player's, every option shows its trade-offs; path-locked Arts gate correctly; look changes in every layout mode |
+| 3.2c | **Dao Reversal** (Phase 39B): once per life, a costly, risky switch (fall into the demonic / repent and purify). Success seals the old path's Arts; failure cripples. Family, clan and sect react | 39 | 3.2b | Once-per-life enforced; success/failure both play; NPC reactions fire |
 | 3.4 | Dao Paths | 7A | 3.2 | Path chosen at Foundation Building |
 | 3.5 | Heavenly Tribulation (+ wire it as a 23A health-damage source) | 7C | — | Tribulation animation passes Asset Pipeline; bot faces it |
 
@@ -214,7 +220,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 4.5 | Tier promotion/demotion, **familiarity, known-first casting, new-name throttle** | 28B | 4.4 | Distinct-names-per-open-hour metric within target |
 | 4.6 | **Replacement controller** (births, awakening waves, wanderers, hidden masters, succession) + Chronicle | 28H | 4.3 | Band populations flat over 500h sim, no extinction/explosion |
 | 4.7 | World tab: person inspector, Known People (★ pins), Chronicle, clickable names in the log | 28F | 4.2 | Fits 300 px overlay + iOS |
-| 4.8 | **Heavenly Rankings** (in-world, not an online leaderboard): Heaven Ranking + Rising Dragon (young cultivators, by game-time age) + **Your Class board**, published each game year | 28J | 4.3, 2.2 | Player row always visible; Class board keeps fallen/ascended; your heirs appear on it |
+| 4.8 | **Heavenly Rankings** (in-world, not an online leaderboard): Heaven Ranking + Rising Dragon (young cultivators, by game-time age) + **Your Class board**, published each game year. Top 10 / #1 placings unlock robes (Phase 39E, task A9) | 28J | 4.3, 2.2 | Player row always visible; Class board keeps fallen/ascended; your heirs appear on it |
 | 4.9 | **Encounters** on expeditions + sect missions, stance setting, choice cards | 28I | 4.4, 4.5 | Bot has a stance; encounters/h by type in report |
 | 4.10 | Memory & reputation + 15C direct interactions (gift, duel, mentor, recruit…). Grudges and debts can pass to heirs | 28E, 15C | 4.9 | Memories change NPC behavior toward the player |
 | 4.10b | **Your Rival (宿敌)**: one same-generation, non-family cohort genius per life, a rivalry record (heat, meetings, history), recurring encounters, feud across lives via the rival's clan | 28K | 4.9, 4.10 | Rival appears ≥ N times per casual life in sim; heat moves both ways |
@@ -1269,6 +1275,9 @@ Special constitution shown on Stats tab with golden border. No tempering needed 
 Not all power is the same. Some spiritual roots carry a heavenly mandate; others carry a demonic hunger.
 Alignment is a second moral axis orthogonal to Karma — it shifts based on *how* you cultivate, not just *how much*.
 
+> **Phase 39 (2026-09-27):** at Core Formation the player picks a Cultivation Path (Virtuous / Neutral / Demonic) whose
+> offer follows this meter; the path then anchors the meter (pulls it toward its band). See Phase 39A–B.
+
 ### 13A — Root Alignment Inclinations
 
 Every spiritual root type is categorized at game start:
@@ -2024,6 +2033,96 @@ Split into **38A (sect base, after A4)** and **38B (island, after Phase 26)**.
 > Roadmap tasks 5.1–5.5.
 
 ---
+
+## Phase 39 — Cultivation Path & Appearance (修途 · 仪容) *(user request 2026-09-27)*
+
+> Two linked ideas from the user: **who you are cultivating to become** (a path chosen at Core Formation that changes
+> your Arts and your look) and **how you look** (chosen at every creation and rebirth; effects and robes earned by
+> play; NPCs you can inspect). Build tasks: 3.2b, 3.2c (M3) and A5, A8, A9, A10 (art track). The ink engine already has
+> the slots (A3-2: face / hair / robe / weapon / aura, docs/systems/art-engine.md). **Art rule (user):** only objects
+> are solid; faces, halos, robes, effects are ink dots.
+
+### 39A — Cultivation Paths (chosen at Core Formation)
+- **Basic Method (基础功法)** for everyone from Mortal through Foundation Building. No path, no path Arts.
+- On the **first Core Formation breakthrough** ("forming the Core"), a choice card. Which paths are open follows the
+  **alignment meter (Phase 13)** (user decision 2026-09-27: the path *anchors* the meter, it doesn't replace it):
+
+| Path | Open when alignment is | Cultivation | Arts it opens | Look (a "path" layer over the chosen robe) |
+|---|---|---|---|---|
+| **Virtuous (正道)** | ≥ −10 | Steady: BT chance +5%, Integrity loss −25%, Karma gains ×1.2 | Orthodox arts (sword, heaven, life) | White-gold accents, a clean dotted halo, eyes lit gold on breakthrough, rising motes |
+| **Neutral (散修)** | always | Flexible: Comprehension ×1.1; may learn Neutral arts + the lower tiers of either side | Neutral arts + low-tier of both | Jade/grey accents, the halo becomes a drifting mist ring of dots |
+| **Demonic (魔道)** | ≤ +10 | Fast and dangerous: Qi/s ×1.35, BT chance −5%, more inner-demon events, some arts cost health | Blood / soul arts | Crimson-black accents, red eye dots, a jagged "thorn" ring of dots, motes that fall instead of rise |
+
+  All numbers are placeholders for the QA & Balance task. Locked options stay visible with the reason ("Your alignment
+  is −42: the orthodox path will not open to a heart this dark").
+- **Anchoring:** after the choice the path pulls alignment toward its band a little each game year; your choices
+  still move it. Drift far enough out of band and a warning event fires ("Your Dao heart wavers") — the opening for 39B.
+- **Arts get a `path` tag** (`any | virtuous | neutral | demonic`) on Techniques now and Secret Arts later (23E);
+  path Arts need the path. Phase 24 Immortal Paths read the path + alignment.
+- **Sects:** righteous sects refuse and later hunt Demonic cultivators (war targets, assassination events); a
+  Demonic sect opens to them; Neutral are welcome anywhere but trusted nowhere (lower max rank in orthodox sects).
+
+### 39B — Dao Reversal (once per life, at a steep price)
+- Offered by an event when alignment drifts out of band, or by a temptation / mentor encounter: **fall into the
+  demonic** (Virtuous/Neutral → Demonic) or **repent and purify** (Demonic/Neutral → Virtuous). Always the player's
+  choice, with the odds shown.
+- **Trial:** chance from Integrity, Comprehension and how far alignment has already moved. **Success:** the path
+  changes, the old path's Arts are **sealed** for this life, Integrity −30, the look shifts. **Failure:** crippled —
+  demoted one stage, Health −50, path unchanged, and the reversal is spent.
+- **Reactions (drama):** spouse affection moves by their personality's morality (PERSONALITY_MORALITY); the clan head
+  may disown you; your sect may expel or welcome you; a rival gloats; a Chronicle line records it.
+- Once per life. **Every reincarnation chooses a path fresh at Core.**
+
+### 39C — Appearance at creation and rebirth (task A5)
+- An **Appearance** step at character creation and at every reincarnation / rebirth as a descendant: face, hair and
+  robe from the unlocked sets, live ink preview. Defaults: random for a new character; for an heir, a blend of the
+  parents' looks. **Always the player's pick** (Depth rule 6): the default is only a suggestion.
+- Face + hair are fixed for that life. Robe and effect can be changed any time in the **Wardrobe** (Path →
+  Character), since they are earned things you wear.
+- State: `s.appearance = { face, hair, robe, effect }` per life; the unlock library lives with the clan's meta
+  (Ancestral Hall), so unlocks survive death: the **Ancestral Wardrobe**.
+
+### 39D — Effects unlocked by realm, Arts and path (task A8)
+- **Realm:** each realm opens one effect (Qi Condensation: orbiting rings · Foundation: still water · Core: tempest ·
+  Nascent Soul: soul-flame motes · Spirit Severing: severed-thread halo …).
+- **Arts:** each Art grants a matching effect when learned (e.g. Ten Thousand Swords → a ring of sword-glyph dots;
+  Tortoise Breath → still water; Blood Refinement → falling crimson motes). Techniques now, Secret Arts from 7.11.
+- **Path:** each 39A path has its own effect set (lotus halo / mist ring / thorn ring).
+- The player picks the active effect in the Wardrobe. Locked effects show how to earn them.
+
+### 39E — Robes unlocked by standing (task A9)
+- **Family head**, **clan head**, **sect leader** (founded or risen to it), sect ranks (Inner Disciple, Elder), path
+  robes (39A), **Heavenly Rankings** (4.8, in-world boards only — pillar 6 forbids online leaderboards): Top 10 and #1
+  of each board. Kept across lives. Unlock toast + a dot on the Wardrobe.
+
+### 39F — Inspect a person (task A10)
+- Every person record (family, clan, sect, rivals, ranking rows; all Phase 28 persons later) gets
+  `look = { face, hair, robe }`: random at creation, heirs from their parents. Their **effect is derived**: the highest
+  one their realm / Arts / path unlock.
+- Click a name → an inspect card with the ink portrait (a cached `stillCanvas` render; the LOD at small sizes) +
+  realm, path, personality and your relation.
+
+### 39 — Depth pass
+1. **Memory:** the path, the reversal (spent or not), the Ancestral Wardrobe (unlocks across lives), each NPC's look.
+2. **Choices:** the Core path card (options read alignment, root and karma); the reversal event (odds from Integrity /
+   Comprehension / alignment); appearance picks at every rebirth.
+3. **Hooks:** alignment (13), Arts (Techniques, 23E), Immortal Paths (24), sects + wars (4, 5), family / clan
+   reactions (16-lite, 2.6), rankings (28J), heirs (a blended look), breakthroughs (path modifiers), inner demons.
+4. **Drama:** best — a Virtuous heir of a demonic father purifies the line and tops the Heaven Ranking in the
+   #1 robe; worst — a failed reversal cripples you and your righteous spouse walks out; a Demonic cultivator hunted by
+   their old sect.
+5. **Feedback:** past paths colour the clan (a line with demonic ancestors meets more suspicion from orthodox sects;
+   robes earned by ancestors are worn by descendants).
+6. **Agency:** the path, the reversal, every look choice and the active effect are explicit player choices; NPC
+   looks and NPC reactions are rolled.
+
+### 39 — UX pass
+- **Surface:** the path + its modifiers in the Character view (a breakdown card like BT chance); locked options with
+  reasons; the Wardrobe lists every robe/effect with its unlock source.
+- **Interact:** the path card at Core (a modal, like the breakthrough card); the Appearance step in charselect +
+  the rebirth flow; the Wardrobe in Path → Character (Expanded/Desktop grid, Overlay list, phone full-width).
+- **Discover:** a pre-Core hint ("At Core Formation you will choose your path"); unlock toasts; a Wardrobe dot.
+- **Feel:** the preview is the real ink figure; path looks are dotted accents, never solid (user art rule).
 
 ## Phase 27 — Deep Sect Management (宗门管理)
 
@@ -3019,6 +3118,9 @@ settings.bannerEdge: 'top',        // 'top' | 'bottom' — only used in banner m
 ---
 
 ## Phase 10 — Cosmetic & Personalization
+
+> **Phase 39 (2026-09-27):** appearance (face / hair / robe / effect), robe + effect unlocks and the Wardrobe moved to
+> Phase 39C–E (art-track tasks A5, A8, A9). Titles, pet and cave below are unchanged.
 
 ### 10A — Title System
 Earn titles displayed under the cultivator's name in the UI.

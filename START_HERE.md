@@ -165,6 +165,12 @@ Agent: **Dev docs: `docs/commands.html`** — one-page HTML reference (for human
     (halo cracks / shatters on demotion, rings stutter, figure shudders) wired from game.js, and a SpriteRenderer moment
     hold that fixes the 1.8c "breakthrough sprite never displays" bug. Authoring template: .agents/rules/assets.md → Ink
     art. Smoke: ink-slots-sheet.png, ink-still-fail/demote/face-bt/face-strain.png. **Accepted by the user** ("it looks fine"), committed.
+  - **Plan update** (user, same session; answers: the path anchors the alignment meter; one costly Dao Reversal per
+    life): new **Phase 39 Cultivation Path & Appearance** in PLAN.md — M3 tasks 3.2b (Virtuous / Neutral / Demonic chosen
+    at Core Formation: arts, sects, look, alignment pull) + 3.2c (Dao Reversal); art track A5 rewritten (appearance at
+    every creation + rebirth, Wardrobe), new A8 (effects unlocked by realm / Arts / path), A9 (robes from family/clan
+    head, sect leader, sect ranks, in-world ranking Top 10 / #1), A10 (inspect a person → ink portrait). Cross-links in
+    Phases 10, 13, 4.8. Docs only.
   Next: user look at A3-2 → A4 re-art every stage in ink (Mortal, Foundation, Core…) so Ink can become the default; A5 (Phase 10) lets the player pick slots.
 
 Date: 2026-09-27 (user present) — part 30

@@ -9,6 +9,12 @@ breakthrough) in the real game behind **Settings → Motion → Sprite art = Ink
 state keeps the old grid ASCII until A4 re-arts it. A3-2 (done 2026-09-27): part slots, expression frames, the failure/demotion
 moment, authoring template in `.agents/rules/assets.md` → "Ink art".
 
+## Planned (PLAN.md Phase 39, user 2026-09-27)
+- A5: the player picks face / hair / robe at every creation and rebirth (live ink preview); robe + effect changeable
+  in a Wardrobe. A8: effects unlocked by realm, Arts and cultivation path. A9: robes unlocked by family/clan head, sect
+  leader, sect ranks and in-world ranking placings. A10: inspect any person → their ink portrait (random look, highest
+  unlocked effect). 3.2b: a `path` accent layer (Virtuous / Neutral / Demonic) over the robe, changing halo + motes.
+
 ## State
 No game state. One presentation setting: `settings.artStyle` — `'classic'` | `'ink'` (per slot, SETTINGS_DEFS).
 
