@@ -72,6 +72,31 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   for (const [name, w, h, bt] of [['ink-still-idle', 300, 150, 0], ['ink-still-bt', 300, 150, 1], ['ink-still-banner-idle', 80, 56, 0], ['ink-still-banner-bt', 80, 56, 1]]) {
     savePng(name, await ev(`spriteRenderer.ink.still(${w}, ${h}, 4, ${T}, ${bt})`))
   }
+  // Close-ups: the face and the sword hilt at 12× (what the eye reads first; the user reviews these)
+  savePng('ink-still-face', await ev(`spriteRenderer.ink.still(300, 150, 12, ${T}, 0, [128, 4, 44, 44])`))
+  savePng('ink-still-hilt', await ev(`spriteRenderer.ink.still(300, 150, 12, ${T}, 0, [190, 100, 44, 26])`))
+
+  // Face slot options side by side (ink-faces-sheet.png): per style a 12× face close-up, the head + shoulders at 4×,
+  // and the whole figure at real Overlay size (1×, enlarged without smoothing so the pixels are honest)
+  const styles = await ev('spriteRenderer.ink.faceStyles()')
+  assert(styles.length >= 1, `the art has ${styles.length} face styles (${styles.join(', ')})`)
+  const sheet = await ev(`(async () => {
+    const ink = spriteRenderer.ink, styles = ${JSON.stringify(styles)}
+    const COL = 560, cv = document.createElement('canvas'); cv.width = COL * styles.length; cv.height = 40 + 528 + 20 + 360 + 20 + 300
+    const g = cv.getContext('2d'); g.fillStyle = '#0A0612'; g.fillRect(0, 0, cv.width, cv.height)
+    for (const [i, st] of styles.entries()) {
+      const x = i * COL + (COL - 528) / 2
+      g.fillStyle = '#E8D9B0'; g.font = '22px Georgia, serif'; g.textAlign = 'center'
+      g.fillText(ink.base.faces[st].label, i * COL + COL / 2, 28)
+      g.drawImage(ink.stillCanvas(300, 150, 12, ${T}, 0, [128, 4, 44, 44], st), x, 40, 528, 528)
+      g.drawImage(ink.stillCanvas(300, 150, 4, ${T}, 0, [105, 0, 90, 60], st), i * COL + 10, 588, 540, 360)
+      g.imageSmoothingEnabled = false
+      g.drawImage(ink.stillCanvas(300, 150, 1, ${T}, 0, null, st), i * COL + (COL - 600) / 2 + 20, 968, 520, 260)
+      g.imageSmoothingEnabled = true
+    }
+    return cv.toDataURL('image/png')
+  })()`)
+  savePng('ink-faces-sheet', sheet)
 
   // Stages without ink art fall back to the classic sprite; Classic turns it off
   await ev('(() => { const gs = gameState, s = gs.get(); s.stageIndex = 12; gs._recalc(); gs._notify() })()'); await sleep(300)

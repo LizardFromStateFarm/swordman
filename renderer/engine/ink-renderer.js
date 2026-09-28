@@ -12,12 +12,17 @@
 const INK_FONT = '"Courier New", "Segoe UI Symbol", "Noto Sans Symbols 2", monospace'
 
 class InkRenderer {
+  // Materials drawn as solid fills: objects only (sword, hairpin). Everything else is ink dots (user 2026-09-27).
+  static SOLID = new Set(['metal', 'steel', 'grip'])
+
   static has(state) { return typeof INK_ART !== 'undefined' && !!INK_ART[state] }
 
   constructor(canvas) {
     this.cv  = canvas
     this.ctx = canvas.getContext('2d')
-    this.art = null
+    this.base = null            // INK_ART entry for the current sprite state
+    this.art = null             // base + the chosen face slot merged in (what every painter reads)
+    this.faceStyle = 'dotted'
     this.t = 0
     this.bt = 0; this.btTarget = 0; this.btStart = 0     // breakthrough intensity eases between 0 and 1
     this.speed = 1
@@ -35,7 +40,7 @@ class InkRenderer {
   setState(name) {
     if (name === 'breakthrough') { this.btTarget = 1; this.btStart = this.t }
     else if (InkRenderer.has(name)) {
-      if (INK_ART[name] !== this.art) { this.art = INK_ART[name]; this.cache = null }
+      if (INK_ART[name] !== this.base) { this.base = INK_ART[name]; this.art = this._effective(); this.cache = null }
       this.btTarget = 0
     }
     if (!this.running) this._start()
@@ -58,6 +63,25 @@ class InkRenderer {
     this.cache = null
   }
 
+  // Face slot (art.faces). Unknown style falls back to the first one.
+  setFaceStyle(style) {
+    this.faceStyle = style || 'dotted'
+    if (this.base) { this.art = this._effective(); this.cache = null }
+  }
+  faceStyles() { return Object.keys(this.base?.faces || {}) }
+
+  // Base art with the face slot merged in: its shape replaces the face part, its palette overrides, its dot features join
+  // the base ones, its strokes join the head layer.
+  _effective() {
+    const B = this.base, faces = B.faces || {}, F = faces[this.faceStyle] || faces[Object.keys(faces)[0]] || null
+    if (!F) return { ...B, dotFeatures: B.dotFeatures || [] }
+    return { ...B, face: F,
+      palette: { ...B.palette, ...(F.palette || {}) },
+      parts: B.parts.map(p => p.id === 'face' && F.d ? { ...p, d: F.d } : p),
+      dotFeatures: [...(B.dotFeatures || []), ...(F.features || [])],
+      strokes: [...B.strokes, ...(F.strokes || []).map(st => ({ layer: 'head', ...st }))] }
+  }
+
   setSpeed(mult) { this.speed = mult > 0 ? mult : 1 }
   setReducedMotion(on) { this.reducedMotion = !!on }
   triggerBreakthroughBurst() { this.btTarget = 1; this.btStart = this.t; this.bt = Math.max(this.bt, 0.6) }
@@ -72,7 +96,12 @@ class InkRenderer {
   freeze(t, bt = 0) { this.frozen = true; this.t = t; this.bt = bt; this.btStart = t - 0.4; this._draw() }
   resume() { this.frozen = false }
   // Render one still at any size / pixel ratio into a PNG data URL (close-ups for review), without touching the canvas.
-  still(w, h, dpr, t, bt = 0) {
+  // crop = [x, y, w, h] in logical scene units → only that part (e.g. the face at a high dpr).
+  still(...args) { return this.stillCanvas(...args).toDataURL('image/png') }
+  // Same, as a canvas (the page CSP blocks data: images, so compose sheets from canvases).
+  stillCanvas(w, h, dpr, t, bt = 0, crop = null, face = null) {
+    const prevFace = this.faceStyle
+    if (face) { this.faceStyle = face; this.art = this._effective() }
     const cv = document.createElement('canvas')
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr)
     const cache = this._buildCache(w, h, dpr)
@@ -80,7 +109,12 @@ class InkRenderer {
     this.t = t; this.bt = bt; this.btStart = t - 0.4
     this._drawTo(cv.getContext('2d'), cache)
     ;[this.t, this.bt, this.btStart] = saved
-    return cv.toDataURL('image/png')
+    if (face) { this.faceStyle = prevFace; this.art = this._effective() }
+    if (!crop) return cv
+    const out = document.createElement('canvas')
+    out.width = Math.round(crop[2] * cache.S); out.height = Math.round(crop[3] * cache.S)
+    out.getContext('2d').drawImage(cv, cache.ox + crop[0] * cache.S, cache.oy + crop[1] * cache.S, out.width, out.height, 0, 0, out.width, out.height)
+    return out
   }
   // Average ms per frame over n frames at the current size (cache already built).
   perf(n = 60) {
@@ -188,7 +222,7 @@ class InkRenderer {
     ctx.save(); ctx.translate(0, headDy)
     for (const s of A.strokes) if (s.live) {
       const pts = s.pts.map(([x, y], i) => [x + sway * (i / (s.pts.length - 1)) ** 1.5, y])
-      inkBrush(ctx, pts, s.w, P[s.color], s.alpha, C.minW)
+      this._dotLine(ctx, pts, P[s.color], s.alpha, s.w)
     }
     ctx.restore()
 
@@ -212,10 +246,37 @@ class InkRenderer {
     g.addColorStop(0, inkRgba(col, 0.07 + 0.08 * bt)); g.addColorStop(1, inkRgba(col, 0))
     ctx.fillStyle = g
     ctx.beginPath(); ctx.arc(h.x, y, r * 1.25, 0, Math.PI * 2); ctx.fill()
-    ctx.lineWidth = Math.max(0.7, C.minW); ctx.strokeStyle = inkRgba(col, 0.14 + 0.2 * bt)
-    ctx.beginPath(); ctx.arc(h.x, y, r + 0.9, 0, Math.PI * 2); ctx.stroke()
-    ctx.lineWidth = Math.max(0.45, C.minW); ctx.strokeStyle = inkRgba(col, 0.55 + 0.35 * bt)
-    ctx.beginPath(); ctx.arc(h.x, y, r, 0, Math.PI * 2); ctx.stroke()
+    // the ring itself: grid-snapped dots (user: the halo reads better as dots), in head-local grid coordinates
+    const P = this.art.dot.pitch, RY = P * 0.866, gx0 = this._gx0(), ring = new Path2D(), rr = P * 0.4
+    for (let row = Math.floor((h.y - r - 2) / RY); row * RY <= h.y + r + 2; row++) {
+      const gy = row * RY, off = gx0 + (row & 1 ? P / 2 : 0)
+      for (let gx = Math.floor((h.x - r - 2 - off) / P) * P + off; gx <= h.x + r + 2; gx += P) {
+        if (Math.abs(Math.hypot(gx - h.x, gy - h.y) - r) > P * 0.52) continue
+        ring.moveTo(gx + rr, gy + (y - h.y)); ring.arc(gx, gy + (y - h.y), rr, 0, Math.PI * 2)
+      }
+    }
+    ctx.fillStyle = inkRgba(col, 0.75 + 0.25 * bt); ctx.fill(ring)
+  }
+
+  // x of dot column 0, chosen so a column sits exactly on the figure's centre line (x = scene width / 2).
+  _gx0() { const P = this.art.dot.pitch; return (this.art.scene[0] / 2) % P - P }
+
+  // A polyline drawn as grid-snapped ink dots (hair locks): pixelated like the rest of the figure, never a solid line.
+  _dotLine(ctx, pts, col, alpha, w) {
+    const P = this.art.dot.pitch, RY = P * 0.866, gx0 = this._gx0(), seen = new Set(), path = new Path2D(), rr = P * (w > 1.2 ? 0.47 : 0.36)
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 0.4)
+      for (let k = 0; k <= n; k++) {
+        const x = x0 + (x1 - x0) * k / n, y = y0 + (y1 - y0) * k / n
+        const row = Math.round(y / RY), off = gx0 + (row & 1 ? P / 2 : 0), c = Math.round((x - off) / P)
+        const key = row * 10000 + c
+        if (seen.has(key)) continue
+        seen.add(key)
+        const gx = c * P + off, gy = row * RY
+        path.moveTo(gx + rr, gy); path.arc(gx, gy, rr, 0, Math.PI * 2)
+      }
+    }
+    ctx.globalAlpha = alpha; ctx.fillStyle = col; ctx.fill(path); ctx.globalAlpha = 1
   }
 
   // Tilted orbit rings with motes and short comet tails. The half with sin(a) < 0 is the far side (behind the figure).
@@ -309,14 +370,14 @@ class InkRenderer {
 
   // Which part owns each ink-dot position (hex-staggered grid), painter's order: the front-most part wins.
   _sampleGrid(parts, A) {
-    const P = A.dot.pitch, RY = P * 0.866
+    const P = A.dot.pitch, RY = P * 0.866, gx0 = this._gx0()   // grid aligned to the centre line: features stay symmetric
     const cols = Math.ceil(A.scene[0] / P) + 2, rows = Math.ceil(A.scene[1] / RY) + 2
     const ids = new Int16Array(cols * rows).fill(-1)
     const probe = this._probe
     for (let r = 0; r < rows; r++) {
       const y = r * RY
       for (let c = 0; c < cols; c++) {
-        const x = c * P + (r & 1 ? P / 2 : 0)
+        const x = gx0 + c * P + (r & 1 ? P / 2 : 0)
         for (let i = parts.length - 1; i >= 0; i--) {
           const b = parts[i].box
           if (x < b[0] || x > b[2] || y < b[1] || y > b[3]) continue
@@ -324,7 +385,7 @@ class InkRenderer {
         }
       }
     }
-    return { P, RY, cols, rows, ids }
+    return { P, RY, cols, rows, ids, gx0 }
   }
 
   _paintLayer(ctx, C, parts, grid, layer, rim) {
@@ -332,13 +393,15 @@ class InkRenderer {
     ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
     for (const p of parts) {
       if (p.layer !== layer) continue
-      const dotted = !C.lod && (p.mat === 'robe' || p.mat === 'cuff' || p.mat === 'sash' || p.mat === 'hair')
+      const dotted = !C.lod && !InkRenderer.SOLID.has(p.mat)          // only objects are solid (user rule)
       if (dotted) this._paintDots(ctx, C, p, parts, grid, rim)
       else if (!rim) this._paintSmooth(ctx, C, p)
       else if (p.mat !== 'skin') this._paintSmoothRim(ctx, C, p)
+      if (!rim) for (const s of A.strokes) if (s.after === p.id && !s.live) this._stroke(ctx, C, s, PAL)
     }
     if (rim) return
-    for (const s of A.strokes) if (s.layer === layer && !s.live) inkBrush(ctx, s.pts, s.w, PAL[s.color], s.alpha, C.minW)
+    if (C.lod) for (const f of A.dotFeatures || []) if (parts.find(q => q.id === f.part)?.layer === layer) inkBrush(ctx, f.pts.length > 1 ? f.pts : [f.pts[0], f.pts[0]], f.w, PAL[f.color], 1, C.minW)
+    for (const s of A.strokes) if (s.layer === layer && !s.live && !s.after) this._stroke(ctx, C, s, PAL)
     for (const g of A.glyphs) if (g.layer === layer) inkGlyphRun(ctx, g, PAL, C.lod, C.S)
   }
 
@@ -356,9 +419,10 @@ class InkRenderer {
   }
 
   _paintDots(ctx, C, p, parts, grid, rim) {
-    const { P, RY, cols, rows, ids } = grid
+    const { P, RY, cols, rows, ids, gx0 } = grid
     const PAL = this.art.palette
     const gold = PAL.gold
+    const feats = (this.art.dotFeatures || []).filter(ft => ft.part === p.id)
     if (!rim) this._underpaint(ctx, p)                         // a wash under the dots, so cloth reads as mass, not an LED field
     const buckets = new Map()                                  // colour|alpha|radius → Path2D (one fill per bucket)
     const add = (key, x, y, r) => {
@@ -370,7 +434,7 @@ class InkRenderer {
       const odd = r & 1, y = r * RY
       for (let c = 0; c < cols; c++) {
         if (ids[r * cols + c] !== p.i) continue
-        const x = c * P + (odd ? P / 2 : 0)
+        const x = gx0 + c * P + (odd ? P / 2 : 0)
         // neighbours on the hex grid; "outside" = empty or a part behind this one (its silhouette edge)
         const up = odd ? [at(c, r - 1), at(c + 1, r - 1)] : [at(c - 1, r - 1), at(c, r - 1)]
         const dn = odd ? [at(c, r + 1), at(c + 1, r + 1)] : [at(c - 1, r + 1), at(c, r + 1)]
@@ -399,6 +463,13 @@ class InkRenderer {
         } else if (p.mat === 'sash') {
           const q = Math.round(L * 8) / 8
           col = inkMix(PAL.sashShade, PAL.sash, 0.3 + 0.7 * q); a = '1'; rad = P * 0.45
+        } else if (p.mat === 'skin') {
+          const hit = feats.find(ft => inkPolyDist(x, y, ft.pts) < ft.w)
+          if (hit) { col = PAL[hit.color]; a = '1'; rad = P * 0.48 }
+          else { const q = Math.round(L * 10) / 10; col = inkMix(PAL.skinShade, PAL.skin, 0.35 + 0.65 * q); a = '1'; rad = P * 0.46 }
+        } else if (p.mat === 'trim') {
+          const q = Math.round(L * 8) / 8
+          col = inkMix(PAL.trimShade, PAL.trim, 0.35 + 0.65 * q); a = '1'; rad = P * 0.44
         } else {                                               // cuff: the shadowed sleeve opening
           const q = Math.round(L * 8) / 8
           col = inkMix(PAL.robeDeep, PAL.cuff, q); a = '0.9'; rad = P * 0.4
@@ -422,6 +493,7 @@ class InkRenderer {
     const [c0, c1, a] = {
       robe: [PAL.robeShade, PAL.robeDeep, 0.6], hair: [PAL.hair, PAL.hair, 0.95],
       sash: [PAL.sashShade, PAL.sashShade, 0.8], cuff: [PAL.robeDeep, PAL.robeDeep, 0.85],
+      skin: [PAL.skinShade, PAL.skinShade, 0.55], trim: [PAL.trimShade, PAL.trimShade, 0.5],
     }[p.mat]
     const g = ctx.createLinearGradient(b[0], b[1], b[2], b[3])
     g.addColorStop(0, inkRgba(c0, a)); g.addColorStop(1, inkRgba(c1, a))
@@ -435,19 +507,20 @@ class InkRenderer {
     const pair = {
       skin: [PAL.skin, PAL.skinShade], trim: [PAL.trim, PAL.trimShade], robe: [PAL.robe, PAL.robeShade],
       cuff: [PAL.cuff, PAL.robeDeep], sash: [PAL.sash, PAL.sashShade], hair: [PAL.hairHi, PAL.hair],
+      steel: [PAL.steel, PAL.steelShade], grip: [PAL.grip, PAL.grip], metal: [PAL.trim, PAL.trimShade],
     }[p.mat] || [PAL.robe, PAL.robeShade]
     g.addColorStop(0, p.mat === 'hair' ? inkMix(pair[1], pair[0], 0.35) : pair[0])
     g.addColorStop(1, pair[1])
     ctx.fillStyle = g
-    if (p.mat === 'trim') { ctx.shadowColor = PAL.trim; ctx.shadowBlur = 3 * C.S }
+    if (p.mat === 'trim' || p.mat === 'metal') { ctx.shadowColor = PAL.trim; ctx.shadowBlur = 3 * C.S }
     ctx.fill(p.path)
     ctx.shadowBlur = 0
-    if (p.mat === 'skin' && p.id === 'face') {                 // soft cheek warmth + a shadow under the hairline
-      for (const s of [-1, 1]) inkSoftDot(ctx, 150 + s * 5, 36.5, 2.6, PAL.lip, 0.14)
-      const sh = ctx.createLinearGradient(0, 24, 0, 30)
-      sh.addColorStop(0, inkRgba(PAL.skinShade, 0.55)); sh.addColorStop(1, inkRgba(PAL.skinShade, 0))
-      ctx.save(); ctx.clip(p.path); ctx.fillStyle = sh; ctx.fillRect(b[0], 20, b[2] - b[0], 10); ctx.restore()
-    }
+  }
+
+  _stroke(ctx, C, s, PAL) {
+    if (s.glow) { ctx.save(); ctx.shadowColor = PAL[s.color]; ctx.shadowBlur = s.glow * C.S }
+    inkBrush(ctx, s.pts, s.w, PAL[s.color], s.alpha, C.minW)
+    if (s.glow) ctx.restore()
   }
 
   _paintSmoothRim(ctx, C, p) {
@@ -535,6 +608,18 @@ function inkMix(a, b, f) {
   return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * Math.max(0, Math.min(1, f))).toString(16).padStart(2, '0')).join('')
 }
 function inkRgba(hex, a) { const [r, g, b] = inkHexRgb(hex); return `rgba(${r},${g},${b},${Math.max(0, Math.min(1, a)).toFixed(3)})` }
+
+// Distance from a point to a polyline (a single point counts as a zero-length segment).
+function inkPolyDist(x, y, pts) {
+  let best = Infinity
+  for (let i = 0; i < Math.max(1, pts.length - 1); i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[Math.min(i + 1, pts.length - 1)]
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy
+    const t = L2 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)) : 0
+    best = Math.min(best, Math.hypot(x - ax - t * dx, y - ay - t * dy))
+  }
+  return best
+}
 
 // A glowing dot without shadowBlur (cheap): a radial gradient disc.
 function inkSoftDot(ctx, x, y, r, col, a) {

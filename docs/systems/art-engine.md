@@ -17,7 +17,7 @@ No game state. One presentation setting: `settings.artStyle` — `'classic'` | `
   `ASCIIRenderer` — `setState, setStageColor, setSize(w,h,scale), setSpeed, setReducedMotion,
   triggerBreakthroughBurst, stop` — plus `setArtStyle(style)`, `isInk()`. Routes to `.ink` when the style is Ink AND
   the last non-breakthrough state has `INK_ART[state]`; otherwise `.ascii`. Only the active engine runs its loop.
-- `InkRenderer` — same API. Test hooks: `freeze(t, bt)` / `resume()` (hold one moment), `still(w,h,dpr,t,bt)` → PNG
+- `InkRenderer` — same API. Test hooks: `freeze(t, bt)` / `resume()` (hold one moment), `still(w,h,dpr,t,bt,crop?)` → PNG
   data URL at any size without touching the canvas, `perf(n)` → avg ms per frame.
 
 ## Data Shape (`INK_ART[spriteState]`, assets/sprites/ink-cultivator.js)
@@ -25,7 +25,18 @@ No game state. One presentation setting: `settings.artStyle` — `'classic'` | `
 - `parts[]` back → front: `{ id, layer: lap|body|head, mat, d, fold? }`. `d` = flat command array
   (`M L Q C` + `E cx cy rx ry` ellipse + `Z`). Materials: `robe cuff sash hair` → ink dots; `skin trim` → smooth fills.
   `fold {k, ang, warp, amp}` = soft tonal bands (never dark lines — user note).
-- `strokes[]` = tapered brush strokes `{ layer, color, alpha, w, pts }`; `live: true` ones sway per frame (hair locks).
+- `strokes[]` = tapered brush strokes `{ layer, color, alpha, w, pts, after? }`; `after: <part id>` paints it right after
+  that part (so later parts, e.g. the sword over the lap folds, cover it); `live: true` ones sway per frame (hair locks).
+- **Only objects are solid** (user 2026-09-27, binding): `InkRenderer.SOLID` = mats `metal steel grip` (sword, hairpin,
+  guard, pommel). Everything else (face, hands, neck, collar trim, hair, locks, halo) is ink dots. Smooth-filled faces
+  (a portrait and abstract/gothic/sumi-e variants) were tried and rejected as "clip art".
+- `dotFeatures[]` `{ part, color, w, pts }`: dots of that part within `w` of the polyline take the colour (eyes, brows,
+  mouth, hand seal) — the pixelated dot face. The grid is aligned so a column sits on x = 150 (`_gx0`), rows at
+  y = row × 1.5155; put features exactly on a row with `w` 0.6 so they are one dot tall and symmetric.
+- **Face slot**: `faces.{dotted}` `{ label, features, palette?, d? }`, `setFaceStyle` / `faceStyles()`, merged by
+  `_effective()`. Live strokes (hair locks) and the halo ring are drawn as grid-snapped dots each frame.
+- Equipment may be solid (user): the sword is vector parts `blade guard grip pommel` (mats `steel`/`grip`/`trim`) +
+  strokes (edge highlight, fuller, grip wrap, tassel strands). Box-drawing glyphs for hilts rendered broken — avoid.
 - `glyphs[]` = (b)-style glyph runs (sword across the knees, sash knot) with per-char palette `map`.
 - Effects: `qiPearl`, `halo`, `rings[]` (tilted orbits: `rx ry tilt speed motes alpha`), `motes` (straight-rising),
   `background` (glow, moon, two ridge sine sums, mist band y's). Colours are palette keys only.
@@ -59,4 +70,4 @@ No game state. One presentation setting: `settings.artStyle` — `'classic'` | `
 - Dot sampling uses `isPointInPath` on a hex-staggered grid (pitch 1.75): ~20 ms per cache build at Overlay size.
 - Visual review: per the user's rule (2026-09-27) the user reviews art themselves — capture with
   `node scripts/smoke/cdp.js scripts/smoke/scenarios/ink-art.js` → `scripts/smoke/out/ink-*.png`
-  (`ink-still-*.png` = 4× engine renders; the rest are in-app captures per layout mode + phone).
+  (`ink-still-*.png` = 4× engine renders, `ink-still-face/hilt.png` = 12× close-ups; the rest are in-app captures per layout mode + phone).

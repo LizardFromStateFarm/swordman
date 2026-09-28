@@ -7,7 +7,8 @@
 //   'M', x, y · 'L', x, y · 'Q', cx, cy, x, y · 'C', c1x, c1y, c2x, c2y, x, y · 'E', cx, cy, rx, ry (ellipse) · 'Z'
 // Parts are listed back → front. `layer` says which motion group a part rides with:
 //   lap  = still · body = breathes (vertical scale about body.anchorY) · head = rides on top of the breathing body.
-// Materials: robe / cuff / sash / hair = ink dots (tone from the light model + folds); skin / trim = smooth fills.
+// Materials: everything is ink dots (tone from the light model + folds) EXCEPT objects: metal / steel / grip = solid
+// fills (user 2026-09-27: only objects like the sword and hairpin are solid; a solid face or halo reads as clip art).
 // Colours are palette keys (see `palette`), never literals in the parts.
 
 // Review: accepted by the user 2026-09-27 (A3-1; user reviews art directly, see docs/systems/ui-review.md)
@@ -27,7 +28,8 @@ const INK_ART = {
       trim: '#DCBC68', trimShade: '#8A6E30',
       skin: '#EED3AE', skinShade: '#B08C66', lip: '#A85A52', eye: '#2A1820', brow: '#262A40',
       hair: '#262B45', hairMid: '#3C4570', hairHi: '#8490C0',
-      steel: '#CFD8E8', hilt: '#EDD050', tassel: '#C83030', gold: '#F0D060',
+      steel: '#D6DEEC', steelShade: '#6E7890', grip: '#4A3230', gripHi: '#9A7A58',
+      tassel: '#C83030', gold: '#F0D060', eyeInk: '#3A2826',
     },
     parts: [
       // ── lap: crossed legs in lotus, knees wide ──
@@ -60,60 +62,83 @@ const INK_ART = {
       { id: 'lapelOver', layer: 'body', mat: 'trim',
         d: ['M', 141, 49.5, 'L', 144.8, 49.5, 'L', 159.8, 70.4, 'L', 157.2, 72.2, 'Z'] },
       { id: 'hands', layer: 'body', mat: 'skin', d: ['E', 150, 90, 8.8, 4.7] },
+      // ── the sword across the knees: blade, guard, wrapped grip, pommel (y(x) = 114 − 0.035·(x − 150)) ──
+      { id: 'blade', layer: 'lap', mat: 'steel',
+        d: ['M', 85.5, 116.4, 'L', 92, 114.8, 'L', 204, 110.85, 'L', 204, 113.4, 'L', 92, 117.35, 'Z'] },
+      { id: 'guard', layer: 'lap', mat: 'metal',
+        d: ['M', 203.6, 108.6, 'Q', 205.6, 107.9, 207.6, 108.4, 'L', 207.6, 115.6, 'Q', 205.6, 116.1, 203.6, 115.6, 'Z'] },
+      { id: 'grip', layer: 'lap', mat: 'grip',
+        d: ['M', 207.6, 110.35, 'L', 221, 109.9, 'L', 221, 112.85, 'L', 207.6, 113.35, 'Z'] },
+      { id: 'pommel', layer: 'lap', mat: 'metal', d: ['E', 222.5, 111.35, 1.5, 1.75] },
       // ── head ──
       { id: 'hairBack', layer: 'head', mat: 'hair', d: ['E', 150, 30, 13, 14] },
-      { id: 'face', layer: 'head', mat: 'skin', d: ['E', 150, 33, 10, 12] },
+      { id: 'face', layer: 'head', mat: 'skin',
+        d: ['M', 140.4, 30, 'Q', 140, 21.5, 150, 21.3, 'Q', 160, 21.5, 159.6, 30, 'Q', 159.7, 38.2, 155.6, 42.6,
+            'Q', 152.6, 45.4, 150, 45.4, 'Q', 147.4, 45.4, 144.4, 42.6, 'Q', 140.3, 38.2, 140.4, 30, 'Z'] },
       { id: 'cap', layer: 'head', mat: 'hair',
         d: ['M', 138.6, 32, 'Q', 138, 18, 150, 17.5, 'Q', 162, 18, 161.4, 32, 'Q', 158, 25, 153, 27,
             'Q', 150, 24.5, 147, 27, 'Q', 142, 25, 138.6, 32, 'Z'] },
       { id: 'bun', layer: 'head', mat: 'hair', d: ['E', 150, 12, 6.8, 5.6] },
-      { id: 'pin', layer: 'head', mat: 'trim',
+      { id: 'pin', layer: 'head', mat: 'metal',
         d: ['M', 151, 11.8, 'L', 166.6, 6.6, 'L', 166.9, 7.8, 'L', 151.3, 13, 'Z'] },
-      { id: 'pinBead', layer: 'head', mat: 'trim', d: ['E', 167.4, 7, 1.4, 1.4] },
+      { id: 'pinBead', layer: 'head', mat: 'metal', d: ['E', 167.4, 7, 1.4, 1.4] },
     ],
     // Brush strokes (tapered at both ends): folds, contours and the face. `w` = max width in logical px.
-    // `live: true` strokes sway a little each frame (hair locks); the rest are baked into their layer.
+    // `after: <part id>` paints a stroke right after that part (so later parts cover it); `live: true` strokes sway per frame and are drawn as grid-snapped dots (hair locks) a little each frame (hair locks); the rest are baked into their layer.
     strokes: [
       // lap: the upper shin crossing, and the hem
-      { layer: 'lap', color: 'robeDeep', alpha: 0.55, w: 1.3, pts: [[97, 111], [122, 103.5], [150, 102.5], [177, 104], [203, 111.5]] },
-      { layer: 'lap', color: 'robeShade', alpha: 0.5, w: 0.9, pts: [[100, 117], [126, 122.5], [150, 123.5], [174, 122.5], [200, 117]] },
-      { layer: 'lap', color: 'robeShade', alpha: 0.45, w: 0.8, pts: [[118, 97], [130, 101], [140, 107]] },
-      { layer: 'lap', color: 'robeShade', alpha: 0.45, w: 0.8, pts: [[182, 97], [170, 101], [160, 107]] },
+      { layer: 'lap', after: 'lap', color: 'robeDeep', alpha: 0.55, w: 1.3, pts: [[97, 111], [122, 103.5], [150, 102.5], [177, 104], [203, 111.5]] },
+      { layer: 'lap', after: 'lap', color: 'robeShade', alpha: 0.5, w: 0.9, pts: [[100, 117], [126, 122.5], [150, 123.5], [174, 122.5], [200, 117]] },
+      { layer: 'lap', after: 'lap', color: 'robeShade', alpha: 0.45, w: 0.8, pts: [[118, 97], [130, 101], [140, 107]] },
+      { layer: 'lap', after: 'lap', color: 'robeShade', alpha: 0.45, w: 0.8, pts: [[182, 97], [170, 101], [160, 107]] },
+      // sword: edge highlight, the fuller, grip wrap, tassel on its cord
+      { layer: 'lap', color: 'rim', alpha: 0.6, w: 0.45, pts: [[93, 115.35], [150, 113.35], [202, 111.55]] },
+      { layer: 'lap', color: 'steelShade', alpha: 0.55, w: 0.4, pts: [[97, 116.35], [150, 114.5], [199, 112.8]] },
+      { layer: 'lap', color: 'gripHi', alpha: 0.7, w: 0.45, pts: [[209, 110.25], [210.3, 112.85]] },
+      { layer: 'lap', color: 'gripHi', alpha: 0.7, w: 0.45, pts: [[211.6, 110.16], [212.9, 112.76]] },
+      { layer: 'lap', color: 'gripHi', alpha: 0.7, w: 0.45, pts: [[214.2, 110.07], [215.5, 112.67]] },
+      { layer: 'lap', color: 'gripHi', alpha: 0.7, w: 0.45, pts: [[216.8, 109.98], [218.1, 112.58]] },
+      { layer: 'lap', color: 'gripHi', alpha: 0.7, w: 0.45, pts: [[219.4, 109.89], [220.7, 112.49]] },
+      { layer: 'lap', color: 'tassel', alpha: 0.95, w: 0.55, pts: [[224, 111.6], [226, 113.6], [226.9, 116.4]] },
+      { layer: 'lap', color: 'gold', alpha: 0.9, w: 0.9, pts: [[226.6, 116.3], [227, 116.8], [227.4, 117.3]] },
+      { layer: 'lap', color: 'tassel', alpha: 0.9, w: 0.5, pts: [[226.7, 117], [226.2, 119.8], [225.9, 122.6]] },
+      { layer: 'lap', color: 'tassel', alpha: 0.95, w: 0.5, pts: [[227, 117.1], [227.1, 120], [227.2, 123]] },
+      { layer: 'lap', color: 'tassel', alpha: 0.9, w: 0.5, pts: [[227.3, 117], [227.9, 119.8], [228.5, 122.5]] },
       // sleeves: long folds falling from the shoulder
-      { layer: 'body', color: 'robeShade', alpha: 0.55, w: 0.9, pts: [[128, 55], [117, 70], [112, 93]] },
-      { layer: 'body', color: 'robeShade', alpha: 0.4, w: 0.7, pts: [[133, 62], [127, 78], [124, 90]] },
-      { layer: 'body', color: 'robeShade', alpha: 0.55, w: 0.9, pts: [[172, 55], [183, 70], [188, 93]] },
-      { layer: 'body', color: 'robeShade', alpha: 0.4, w: 0.7, pts: [[167, 62], [173, 78], [176, 90]] },
+      { layer: 'body', after: 'sleeveR', color: 'robeShade', alpha: 0.55, w: 0.9, pts: [[128, 55], [117, 70], [112, 93]] },
+      { layer: 'body', after: 'sleeveR', color: 'robeShade', alpha: 0.4, w: 0.7, pts: [[133, 62], [127, 78], [124, 90]] },
+      { layer: 'body', after: 'sleeveR', color: 'robeShade', alpha: 0.55, w: 0.9, pts: [[172, 55], [183, 70], [188, 93]] },
+      { layer: 'body', after: 'sleeveR', color: 'robeShade', alpha: 0.4, w: 0.7, pts: [[167, 62], [173, 78], [176, 90]] },
       // torso: the robe gathered under the sash
       { layer: 'body', color: 'robeShade', alpha: 0.4, w: 0.7, pts: [[141, 74], [143, 80], [144, 83]] },
       { layer: 'body', color: 'robeShade', alpha: 0.4, w: 0.7, pts: [[160, 76], [158, 80.5], [157, 83]] },
       // sash tassel hanging from the knot
       { layer: 'body', color: 'sash', alpha: 0.9, w: 1.0, pts: [[165, 88.5], [166.2, 94], [165.4, 100]] },
-      // the hand seal: thumbs touching over the palms
-      { layer: 'body', color: 'skinShade', alpha: 0.85, w: 0.55, pts: [[147.2, 88.2], [150, 86.6], [152.8, 88.2]] },
-      { layer: 'body', color: 'skinShade', alpha: 0.6, w: 0.45, pts: [[150, 90], [150, 93.4]] },
-      { layer: 'body', color: 'skinShade', alpha: 0.5, w: 0.4, pts: [[142.5, 91.5], [145.5, 93.2], [148.5, 93.6]] },
-      { layer: 'body', color: 'skinShade', alpha: 0.5, w: 0.4, pts: [[157.5, 91.5], [154.5, 93.2], [151.5, 93.6]] },
-      // face: brows, closed eyes, nose, mouth
-      { layer: 'head', color: 'brow', alpha: 0.95, w: 0.75, pts: [[143.6, 29.6], [145.8, 28.7], [148.1, 29.2]] },
-      { layer: 'head', color: 'brow', alpha: 0.95, w: 0.75, pts: [[151.9, 29.2], [154.2, 28.7], [156.4, 29.6]] },
-      { layer: 'head', color: 'eye', alpha: 0.95, w: 0.62, pts: [[143.7, 32.4], [145.7, 33.5], [147.8, 32.6]] },
-      { layer: 'head', color: 'eye', alpha: 0.95, w: 0.62, pts: [[152.2, 32.6], [154.3, 33.5], [156.3, 32.4]] },
-      { layer: 'head', color: 'skinShade', alpha: 0.7, w: 0.4, pts: [[150.2, 34.3], [150.6, 36.2], [149.6, 36.9]] },
-      { layer: 'head', color: 'lip', alpha: 0.9, w: 0.5, pts: [[148.2, 39.4], [150, 40.1], [151.8, 39.4]] },
-      // hair: sheen on the cap and the bun
-      { layer: 'head', color: 'hairHi', alpha: 0.55, w: 0.6, pts: [[141, 27], [143.5, 21], [150, 18.8]] },
-      { layer: 'head', color: 'hairHi', alpha: 0.5, w: 0.55, pts: [[145, 11], [148.5, 7.6], [153, 7.4]] },
       // hair locks framing the face (sway)
       { layer: 'head', live: true, color: 'hairMid', alpha: 1, w: 2.2, pts: [[138.2, 27], [135.6, 38], [136.4, 47], [138.4, 56]] },
       { layer: 'head', live: true, color: 'hairMid', alpha: 1, w: 2.2, pts: [[161.8, 27], [164.4, 38], [163.6, 47], [161.6, 56]] },
-      { layer: 'head', live: true, color: 'hairHi', alpha: 0.45, w: 0.5, pts: [[137.8, 30], [136, 39], [136.8, 48]] },
-      { layer: 'head', live: true, color: 'hairHi', alpha: 0.45, w: 0.5, pts: [[162.2, 30], [164, 39], [163.2, 48]] },
     ],
+    // Dot features: the dots of a part that fall within `w` of the polyline take that colour (eyes, brows, mouth,
+    // the hand seal) — the pixelated dot face the user chose (A2 hybrid look), no drawn lines on skin.
+    dotFeatures: [
+      { part: 'hands', color: 'skinShade', w: 0.7, pts: [[147.2, 88.2], [150, 86.8], [152.8, 88.2]] },
+      { part: 'hands', color: 'skinShade', w: 0.6, pts: [[150, 89.6], [150, 93.2]] },
+    ],
+    // Face slot (the first swappable part; A3-2 adds more): features as dot runs, optional palette override.
+    faces: {
+      dotted: { label: 'Dotted',
+        // grid rows sit at y = row × 1.5155 (brows row 20, eyes 22, nose 24, mouth 27); even rows have a dot on x = 150
+        features: [
+          { part: 'face', color: 'brow', w: 0.6, pts: [[143, 30.31], [146.5, 30.31]] },
+          { part: 'face', color: 'brow', w: 0.6, pts: [[153.5, 30.31], [157, 30.31]] },
+          { part: 'face', color: 'eyeInk', w: 0.6, pts: [[144.75, 33.34], [146.5, 33.34]] },
+          { part: 'face', color: 'eyeInk', w: 0.6, pts: [[153.5, 33.34], [155.25, 33.34]] },
+          { part: 'face', color: 'skinShade', w: 0.6, pts: [[150, 36.37]] },
+          { part: 'face', color: 'lip', w: 0.6, pts: [[149.125, 40.92], [150.875, 40.92]] },
+        ] },
+    },
     // (b)'s glyph parts, placed on their motion layer: the sword across the knees, the sash knot
     glyphs: [
-      { layer: 'lap', text: '◂══════════════════════╡▐═○', x: 150, y: 114, size: 8, rot: -0.035, color: 'steel', glow: 3,
-        map: { '╡': 'hilt', '▐': 'hilt', '○': 'tassel' } },
       { layer: 'body', text: '◈', x: 165, y: 86.3, size: 6, color: 'gold', glow: 4 },
     ],
     // Effects

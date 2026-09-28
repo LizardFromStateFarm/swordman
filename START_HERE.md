@@ -153,8 +153,12 @@ Agent: **Dev docs: `docs/commands.html`** — one-page HTML reference (for human
     straight-rising motes behind the figure, no dark fold lines, face as its own detailed layer, banner LOD. Frame 0.6 ms.
     layout.js: phone canvas now spans the full HUD width (was capped at 280). New smoke scenarios/ink-art.js.
   - Tests: npm test · npm run checks (373) · smoke ink-art / mobile / layout-modes / character pass, zero console errors.
-  - **Engine accepted by the user** ("looks good"); art-piece feedback being fixed: face too solid/cartoony, sword hilt
-    looks broken. Reviewed from scripts/smoke/out/ink-still-*.png + ink-{mode}-{idle,bt}.png; logged in ui-review.md.
+  - **Engine accepted by the user** ("looks good") and committed (447701d). Art-piece feedback then fixed (uncommitted,
+    with the user): face = ink portrait (jaw, side light, shadows, faint grain, thin features, no smile/blush); sword =
+    solid vector parts (blade, guard, wrapped grip, pommel, tassel strands); strokes can paint `after` a part; `still()`
+    crops; smoke writes ink-still-face.png / ink-still-hilt.png close-ups. User then asked for face options; 4 smooth styles were **rejected** ("like clip art"). **User rule: only objects
+    (sword, hairpin) are solid; everything else is ink dots** → face/hands/neck/collar/locks/halo back to pixelated dots
+    (dotFeatures for eyes/brows/mouth, grid centred on x=150), face slot kept with one style (dotted). **Accepted** ("much better"), committed. Reviewed from scripts/smoke/out/ink-still-*.png + ink-{mode}-{idle,bt}.png; logged in ui-review.md.
   Next: A3-2 (part slots, authoring template) → A4 re-art every stage.
 
 Date: 2026-09-27 (user present) — part 30
