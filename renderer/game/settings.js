@@ -23,6 +23,7 @@ class SettingsUI {
     const root = document.documentElement
 
     if (changed('animSpeed'))     this.renderer.setSpeed(set.animSpeed)
+    if (changed('artStyle'))      this.renderer.setArtStyle?.(set.artStyle)
     if (changed('reducedMotion')) {
       this.renderer.setReducedMotion(set.reducedMotion)
       root.dataset.motion = set.reducedMotion ? 'reduced' : 'full'   // CSS pulses (e.g. the Family wish card) honor it too

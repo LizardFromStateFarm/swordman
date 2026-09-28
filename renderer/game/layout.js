@@ -62,8 +62,9 @@ class LayoutUI {
     const wrap = document.getElementById('sprite-wrap')
     if (this._narrow && this._narrow.matches) {
       const hud = document.getElementById('hud')
-      const w = Math.max(180, Math.min(Math.round(hud ? hud.clientWidth : window.innerWidth), 280))
-      const h = Math.round(w * 0.5)
+      // Full HUD width (both engines centre the figure; the ink scene's background fills the sides); height capped.
+      const w = Math.max(180, Math.round(hud ? hud.clientWidth : window.innerWidth))
+      const h = Math.round(Math.min(w, 280) * 0.5)
       this.renderer.setSize(w, h, 1)
       if (wrap) wrap.style.height = h + 'px'
     } else if (this.mode === 'desktop' && window.innerHeight <= 520) {

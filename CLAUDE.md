@@ -141,6 +141,7 @@ docs/
     settings.md         ← ⚙ Settings panel, per-slot presentation prefs (Phase 20C)
     banter.md           ← Personalities + banter engine, bubble, log (Phase 29)
     banter-writing-guide.md ← Voice/tokens/triggers brief for writing banter lines
+    art-engine.md       ← Hybrid ink art engine (A3-1): InkRenderer + SpriteRenderer switch, INK_ART format, Sprite art setting
     icons.md            ← UI icon set (1.8d): Icon() helper, icon list, emoji/chrome-CJK replacement status
     ui-layout.md        ← Window layout + layout modes (6E), tab pattern, CSS vars, UX Audit (1.8a)
     ui-review.md        ← Visual Review Gate score history (every UI change + asset, 0–10; UI passes ≥ 7.5, assets ≥ 8.0)
@@ -184,7 +185,9 @@ renderer/
     platform-storage.js ← window.electron fallback (Capacitor/browser) — see docs/systems/ios-port.md
     persons.js          ← Persons — shared root/personality/name generators + Person record schema (Phase 30/31, M2 task 2.2)
     game-state.js       ← ALL state mutations — _newGame(), _recalc(), tick()
-    ascii-renderer.js   ← Canvas renderer — sprites + particles + aura rings
+    ascii-renderer.js   ← Canvas renderer — sprites + particles + aura rings (classic grid ASCII)
+    ink-renderer.js     ← InkRenderer — hybrid ink art engine (A3-1): cached ink-dot layers + brush strokes + clean effects
+    sprite-renderer.js  ← SpriteRenderer — picks Classic ASCII or Ink per the Sprite art setting + available INK_ART
     scene-renderer.js   ← SPEC (Phase 38): large-area scene layer (sect base / island) on the hybrid engine
   game/
     cultivation.js      ← Random event scheduler (fires every 30–120s)
@@ -235,6 +238,7 @@ assets/
     arena.js            ← SPEC (Phase 35): arena ladder tiers, stakes, duelist pools
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
+    ink-cultivator.js   ← INK_ART — hybrid ink art data (vector parts, strokes, glyph parts, effects); Qi Condensation so far
   scenes/
     sect-base-scene.js   ← SPEC (Phase 38A): sect-compound building parts + layout (data only)
     island-scene.js      ← SPEC (Phase 38B): island landmass + building tiles (data only)

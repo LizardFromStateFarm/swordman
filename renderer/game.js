@@ -154,7 +154,8 @@
 
   // ── Game bootstrap ────────────────────────────────────────────────────────
 
-  const renderer  = new ASCIIRenderer(document.getElementById('sprite-canvas'))
+  const renderer  = new SpriteRenderer(document.getElementById('sprite-canvas'))   // A3-1: Classic ASCII or Ink art (Settings: Sprite art)
+  window.spriteRenderer = renderer   // smoke tests (scripts/smoke/scenarios/ink-art.js) freeze + capture it
   const cultSys   = new CultivationSystem(gameState)
   const expSys    = new ExpeditionSystem(gameState)
   const craftSys  = new CraftingSystem(gameState)

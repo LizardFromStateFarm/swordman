@@ -35,6 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ✅ 1.8d-1 + 1.8d-2 (2026-09-27): 78 icons, 0 chrome CJK (lint in npm test); gates 7.2 / 7.2 accepted by the user |
 | **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate **7.6 PASS** (1.8b-6 cycle 2) |
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
+| Hybrid ink art engine (A3) | ◐ A3-1 ✅ 2026-09-27 (Qi Condensation, Settings → Sprite art = Ink; accepted by the user); A3-2 part slots next |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -143,8 +144,18 @@ Date: 2026-09-27 (user present) — part 31
 Agent: **Dev docs: `docs/commands.html`** — one-page HTML reference (for human devs) of every npm command: dev run,
   test/checks, QA sim bot + flags, CDP smoke, desktop builds, release, Android (`release:android` + env vars + signing/Java/Play
   setup), iOS. Linked from docs/index.md + CLAUDE.md tree. Keep it in sync when package.json scripts change. No code touched.
-  - Committed all pending part-30/31 work. **User deferred 1.9 QA & Balance** ("UI is in a good spot"; full QA/balancing
-    once more systems exist). Next per the PLAN order: **A3 hybrid art engine**.
+  - Committed all pending part-30/31 work (1f522cd). **User deferred 1.9 QA & Balance** ("UI is in a good spot"; full
+    QA/balancing once more systems exist).
+  - **A3-1 hybrid ink art engine** (user approved the A3-1 / A3-2 split). As-built: docs/systems/art-engine.md. New
+    renderer/engine/ink-renderer.js (InkRenderer) + sprite-renderer.js (SpriteRenderer: Classic/Ink switch, ASCII fallback)
+    + assets/sprites/ink-cultivator.js (Qi Condensation cultivator as vector parts/strokes/glyph parts/effects) + Settings →
+    Motion → **Sprite art** (default Classic). Follows the user's A2 notes: no spiral stream, tilted thin orbit rings,
+    straight-rising motes behind the figure, no dark fold lines, face as its own detailed layer, banner LOD. Frame 0.6 ms.
+    layout.js: phone canvas now spans the full HUD width (was capped at 280). New smoke scenarios/ink-art.js.
+  - Tests: npm test · npm run checks (373) · smoke ink-art / mobile / layout-modes / character pass, zero console errors.
+  - **Engine accepted by the user** ("looks good"); art-piece feedback being fixed: face too solid/cartoony, sword hilt
+    looks broken. Reviewed from scripts/smoke/out/ink-still-*.png + ink-{mode}-{idle,bt}.png; logged in ui-review.md.
+  Next: A3-2 (part slots, authoring template) → A4 re-art every stage.
 
 Date: 2026-09-27 (user present) — part 30
 Agent: **1.8b-6 emoji lint on + re-review of every reworked screen** (user approved; user asked to combine groups per reviewer).
