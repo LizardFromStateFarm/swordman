@@ -35,14 +35,14 @@ const tickYears = (gs, n) => { for (let i = 0; i < n; i++) { gs.get().world.year
     assert(gs.meetTarget().ok && gs.canMeet().reason === 'pending', 'meeting drawn, waits for an answer')
     const before = f.court.interest, res = gs.resolveCourtBeat(0)
     assert(res.ok && f.court.meetings === 1 && f.court.interest === Math.max(0, Math.min(100, before + res.delta)), `meeting answered (interest ${before} → ${f.court.interest})`)
-    assert(gs.canMeet().reason === 'cooldown', 'next meeting waits a year')
-    tickYears(gs, 1); gs.meetTarget(); gs.resolveCourtBeat(1)
+    assert(gs.canMeet().reason === 'cooldown', 'next meeting waits out its timer')
+    gs.get().stats.timePlayed += 1000; gs.meetTarget(); gs.resolveCourtBeat(1)   // real-time timer, not game years
     const pc = gs.proposeChance()
     assert(gs.canPropose().ok && Math.abs(pc.parts.reduce((a, p) => a + p.value, 0) - pc.raw) < 1e-9 && pc.total >= 0.05 && pc.total <= 0.95, `propose chance ${(pc.total * 100).toFixed(1)}% = sum of its parts`)
     // Refusal → spurned, cooldown
     rng(sim, 0.999); const no = gs.propose(); unrng(sim)
     assert(no.ok && !no.accepted && !gs.get().family.court && gs.get().family.spurned.length === 1, 'refused: courtship ends, suitor remembered')
-    assert(gs.canSeekMatch().reason === 'cooldown', `seek cools down (ready yr ${gs.canSeekMatch().readyYear})`)
+    assert(gs.canSeekMatch().reason === 'cooldown', `seek cools down (${gs.canSeekMatch().secsLeft}s left)`)
     // A spurned suitor comes back on the road
     // (natural RNG: a constant Math.random hangs resolveExpedition's beast-trait loop — family.md gotcha)
     let back = null
@@ -92,7 +92,7 @@ const tickYears = (gs, n) => { for (let i = 0; i < n; i++) { gs.get().world.year
     assert(gs.tryForChild().ok && f.expecting.length === 1, 'try for a child: expecting')
     assert(gs.tryChildPreview().reason === 'expecting', 'cannot try again while expecting')
     tickYears(gs, 1); assert(f.children.length === 1 && f.expecting.length === 0, 'born the next year')
-    f.childTryYear = 0; f.affection = 10
+    f.childTryAt = 0; f.affection = 10
     assert(gs.tryForChild().reason === 'cold' && f.expecting.length === 0, 'a Cold spouse refuses')
     f.affection = 10; f.childWish = null; f.nextChildYear = s.world.year - 1; tickYears(gs, 1)
     assert(!f.childWish, 'a Cold spouse does not wish for a child') }

@@ -137,6 +137,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 1.8b-2 ✅ | **Character view + breakdowns** (built 2026-09-26; Visual Review Gate 7.3 after 3 cycles, **accepted by the user** after their own look, with one change: less plain CJK text; as-built ui-layout.md → "Breakdowns + Character view"; catch-up shown as a HUD chip + Character banner instead of a nav badge, since it is a state, not a to-do): Stats → Character rebuilt; click-to-open breakdowns for BT chance / Qi/s / Qi cap / Integrity / Health; ancestral catch-up badge; bloodline shown from Spirit Severing; realm names instead of "Stage 12+" | 33 | 1.8b-1 | Every HUD number explains itself; gate ≥ 8.0 |
 | 1.8b-3a ✅ | **Family view + family agency, part 1** (built 2026-09-27; Visual Review Gate 7.0 → 7.2 → 7.5, **accepted by the user**; user approved the split + "Ask me" default; as-built family.md → "1.8b-3a", ui-layout.md → "Family view"): courtship you choose (seek a match → 3 candidates → meeting cards read their temper → propose with shown odds; a refusal is remembered and may return on the road); spouse actions (time · gift · dual cultivation with a shown deviation risk · try for a child · separate); "Ask me" is the new default plan: a partner's wish is a Yes/Not-now choice, Few/Many are an explicit delegation you can override ("Not this time"); raising any child (time · teach, which pulls their morality toward yours · resources); affection shows its trend + last cause + a breakdown; all children listed | 33 | 1.8b-1 | Visual Review Gate pending |
 | 1.8b-3b ✅ | (built 2026-09-27; Visual Review Gate 7.3, accepted by the user; as-built family.md → "1.8b-3b") **Family agency, part 2**: affairs on your terms (end / hide / confess before discovery; a lover's child as a choice), a say in duels + Tournament of Heirs fights (a tactic per round read against stage + personality) | 33 | 1.8b-3a | No player family decision is simulated; gate ≥ 8.0 |
+| 1.8b-3c ✅ | (2026-09-28) **Family cooldowns in real time**: spouse/child actions 5 min, courtship seek 5 min, meetings 2 min, try-for-child 10 min (open time, live countdown); pregnancy + min ages stay on the game clock (family.md → "Real-time cooldowns") | 33 | 1.8b-3a | Clan cooldowns still show years |
 | 1.8b-4 ✅ | (built 2026-09-27, Visual Review Gate 7.5 after 5 cycles, accepted by the user, user-requested with a themed scrollbar + the Overlay "Best Realm Reached" spacing bug; as-built ui-layout.md → "Clan + Hall views"; Hall is now Kin → Hall, not a pop-over) **Clan view + Hall**: lines/branches, head, relations (`clan.relations`), actions with requirements (lockedAction everywhere), Hall in the nav, Family Manual picker | 33 | 1.8b-1 | Clan state + actions all visible; gate ≥ 8.0 |
 | 1.8b-5 ✅ | (built 2026-09-27; Visual Review Gate 6.7 → 7.0 → 7.0 after 3 cycles, **accepted by the user**; as-built ui-layout.md → "Sect views". Diverged: "Buildings" sub-tab is labelled **Halls**; the joined-sect views are Overview · Missions · War; inline-style cleanup done only in the rebuilt Sect screens + the few Tech/Explore/Craft spots touched) **Sect sub-views + card grids**: own sect Overview · Buildings · Disciples · War; joined sect overview + war; Tech/Explore/Craft cards in Expanded/Desktop; inline styles → classes in each rebuilt screen | 33 | 1.8b-1 | Founder Sect ≤ 3 screens of scroll; gate ≥ 8.0 |
 | 1.8d | **Custom icon set + symbol purge** (user 2026-09-27): build `assets/icons/ui-icons.svg` (monochrome `currentColor` icons in the ink/gold palette) + `renderer/game/icons.js` (`Icon()` helper); replace every emoji (💰 💎 🪨 ⚔ ☯) and every chrome CJK glyph (titlebar `歸 窗 閒 動 設 頂`, HUD `坐 氣 承 基 血 歲 破 詳 仙 劫 封 根 性`, per-action marks in `attention.js`/`breakdowns.js`/`family-view.js`/`clan-view.js`/`banner-menus.js`, and decorative CN subtitles like `布局 飞升劫 立嗣 奪 媒人 待辦`) with an icon. **Keep the six nav group marks (修 歷 家 宗 囊 錄).** Plain SVG — ships during 1.8b, no art-engine dependency | 33 | 1.8b-1 | 0 emoji and 0 chrome CJK outside the six nav marks + in-world flavour; icons pass the gate zoomed | 
@@ -1908,6 +1909,27 @@ as-is.
   `resolveDuel('fight')`/`challengeHead()`/`resolveHeadChallenge()` route into the battle page unchanged.
 - Outcomes write existing hooks: `s.health` (23A), karma, `_noteEnemy`, tame-instead-of-kill, arena stakes.
 - Track a **bestiary** (`fought / killed / habitKnown` per enemy) so repeat fights read.
+
+**Beast encounters can be fought (user request 2026-09-28):** a wild beast sighted in Roam → Beasts (and its details
+page) gets a **Fight** action beside Tame, so an unwanted encounter is cleared by battle instead of only being
+tamed or left sitting there. Today the only exits are Tame (talisman) or ignoring it.
+- **Entry:** `startBeastFight(encounterId, {lethal})` from the card and the details page. Your choice, never a timer:
+  *Slay* (lethal: encounter removed, loot roll from the beast's tier, karma cost/gain by its nature, Might-scaled
+  danger) or *Drive off* (non-lethal: it leaves, no loot, no karma). Locked with a reason if the fight gate is busy.
+- **Reads:** beast tier/Might (`beastProfile()`), realm gap vs yours (`_powerChance`/`_exchangeChance`), your
+  health (23A), traits (a Fleet or Thick-Hide trait changes its habits). Legendary tier (Golden Dragon x2.3) is a
+  real risk: losing wounds you badly or can kill (the Health & Death rules), so odds are shown before you commit.
+- **Outcomes:** win, *slay* → loot + bestiary `killed++` + its mate/kin may be sighted later; win, *drive off* → it
+  may return stronger or grateful (a later tame gets easier); loss → wounded, it stays (or a companion is hurt if one
+  was fielded). **Tame-instead-of-kill:** win, then spend a Talisman at the end of the fight for a bonus tame chance.
+- **Drama/feedback:** slaying a rare beast gives a story-making log line and a rare drop; repeat fights read from the
+  bestiary (learned habits shown as in the fight card). A tamed companion can be sent to fight in your place
+  (party, Phase 37).
+- **UX:** Fight button + odds tooltip on the encounter card and the details page; a "why this odds" breakdown card
+  (BreakdownUI); result toast and log line naming the cause.
+- **Depth pass items:** memory (bestiary, a beast's grudge), choices (slay / drive off / tame), hooks (health/death,
+  loot, karma, beasts/taming, sect war beasts), drama (a legendary can kill you; killing a mother leaves a cub
+  encounter), agency (no auto-fight; every fight is started by the player).
 
 **Art (needs A4):** beast combat poses (idle/attack/hurt/down) and a humanoid fighter set via A3's part slots;
 effect passes for lunge/press, block/parry, feint fake-out, stagger, wound flash, victory/defeat. New sprites and

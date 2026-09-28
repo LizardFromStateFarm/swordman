@@ -41,6 +41,34 @@ Heaven Defying Pill guarantees success → integrity block never reached.
 - `game.js renderExplore()` → beast encounters section + active beasts section rendered at bottom of Explore tab.
 - `game.js updateHUD()` → updates integrity fill bar + color.
 
+## Roster, tiers, variants, Might (2026-09-28)
+10 types in `BEAST_TYPES` (assets/data/beasts.js), each with a `tier` (`BEAST_TIERS`: common · uncommon · rare · epic ·
+legendary) and one rare colour `variants[0]`:
+| Tier | Beasts (realm gate) | Might |
+|---|---|---|
+| Common | Spirit Fox (0), Blood Python (3) | ×1.0 |
+| Uncommon | Thunder Eagle (6), Spectral Bear (10) | ×1.2 |
+| Rare | White Tiger (13), Qilin (14) | ×1.45 |
+| Epic | Void Hound (15), Black Tortoise (16) | ×1.7 |
+| Legendary | Azure Dragon (19), Golden Dragon (20, `might: 2.3`, rarest) | ×2.0 |
+- **Sighting** (resolveExpedition): type weighted by `encounterChance`; each of 3 trait rolls draws from the type's
+  `favoredTraits` with the tier's `favored` chance; `BEAST_VARIANT_CHANCE` (12%) → `enc.variant`. A legendary sighting logs
+  its own line and leads the attention strip ("A legendary … watches you"). Emits `beast_sighted` { name, tier, variant }.
+- **Might** = tier (or type override) × `BEAST_VARIANT_MIGHT` (1.15) for a variant. It multiplies Soul Bond / Qi Devour, half
+  of it applies to Heavenly Instinct's BT bonus and to beast-expedition loot. `baseExpPower` is display-only (unused).
+- `gameState.beastProfile(rec)` → { type, tier, variant, might, name, art, lore } for any encounter or companion; the UI
+  (cards, details page, attention) reads it. Records without `variant` (old saves) are the plain beast; no migration needed.
+- Checks: scripts/sim/checks/beasts.js.
+
+## Beast details (A4-2, 2026-09-28)
+Click a beast's portrait (a VIEW tag + zoom cursor) or name in Roam → Beasts → `BeastDetail` (renderer/game/beast-detail.js,
+`#beast-overlay` in index.html): a large animated ink portrait (one InkRenderer, width capped by 45% of window height),
+name, `lore` (BEAST_TYPES; falls back to `desc`), stat tiles (companion Level/XP · Realm gate · Rarity = tier (+ rare colour) · Might · Growth `xpPerExp` · Now =
+expedition), traits with their
+effect text, and for a wild beast Tame + talisman count + the lock reason. Re-renders on state notify while open (game.js
+renderAll); closes on ✕ / Esc / backdrop, or by itself when the record is gone (tamed → reopens as the companion).
+Smoke: scenarios/ink-beasts.js (`out/beast-detail-{enc,beast}-{expanded,overlay,phone}.png`).
+
 ## Invariants
 
 1. `realmIntegrity` stays in [0, 100].

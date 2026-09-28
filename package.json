@@ -6,8 +6,8 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --inspect",
-    "dist": "npx electron-packager . \"Cultivator Idle\" --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\\.git",
-    "dist:mac": "npx electron-packager . \"Cultivator Idle\" --platform=darwin --arch=x64,arm64 --out=dist --overwrite --ignore=\\.git",
+    "dist": "npx electron-packager . \"Cultivator Idle\" --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"(\\.git|3d[\\\\/])\"",
+    "dist:mac": "npx electron-packager . \"Cultivator Idle\" --platform=darwin --arch=x64,arm64 --out=dist --overwrite --ignore=\"(\\.git|3d[\\\\/])\"",
     "build:web": "node scripts/build-ios-web.js",
     "cap:sync": "npm run build:web && npx cap sync ios",
     "ios:open": "npm run cap:sync && npx cap open ios",

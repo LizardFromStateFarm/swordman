@@ -1,0 +1,15 @@
+{
+  "name": "ascendant-3d",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Separate 3D cultivation game project (planning + tooling). Isolated from the Cultivator Idle app: reads its art read-only, never writes to it.",
+  "scripts": {
+    "test": "node tools/cli.js test",
+    "test:editor": "node tools/cli.js edit rigs/cultivator_meditating.js --smoke",
+    "rig:auto": "node tools/cli.js auto",
+    "rig:check": "node tools/cli.js check",
+    "rig:slots": "node tools/cli.js slots",
+    "rig:edit": "node tools/cli.js edit",
+    "rig:render": "node tools/cli.js render"
+  }
+}

@@ -201,6 +201,7 @@
     markCraftWatched() { _craftTabViewedAt = Date.now() },
   }
   const bannerMenus = new BannerMenus(gameState, quickActions, { fmt, fmtTime, escHtml, effectText, personStageLabel })
+  BeastDetail.init({ gameState, flash: (m, t) => flashMessage(m, t), confirm: showConfirm })   // A4-2: beast details page
   layoutUI.onModeChange = mode => { if (mode !== 'banner') bannerMenus.close() }
   // Any popup open? Banter holds new lines while one is, and hides a bubble already showing (1.8b-1).
   const isPopupOpen = () => !!document.querySelector('body > [id$="-overlay"]:not(.hidden)')
@@ -407,11 +408,13 @@
     // A banter bubble never sits on top of a popup (1.8c bug: it covered the death + ascension cards)
     if (isPopupOpen()) document.getElementById('banter-bubble').classList.add('hidden')
     if (!document.getElementById('mode-overlay').classList.contains('hidden') && !fromTick) renderModePanel(s)
+    if (BeastDetail.isOpen() && !fromTick) BeastDetail.render(s)   // A4-2: beast details page follows the state
 
     const activeTab = nav.view
     if (fromTick) {
       // On every tick: only update the live expedition timer without re-rendering
       if (activeTab === 'explore') updateExpeditionTimerInPlace(s)
+      updateBeastTimersInPlace()   // Roam > Beasts list + the beast details page count down live
       if (activeTab.startsWith('sect')) updateSectTimersInPlace(s)
       if (activeTab === 'pack')    updatePackDeltaInPlace(s)   // Phase 21: per-frame currency delta fade
     } else {
@@ -433,6 +436,14 @@
     if (!s) return
     VIEW_RENDER[view]?.(s)
     if (view.startsWith('sect')) nav.setContext(s.ownSect?.founded ? s.ownSect.name : s.sect?.id ? SECTS.find(x => x.id === s.sect.id)?.name : 'no sect yet')
+  }
+
+  // Beast expedition countdowns: each timer span carries its endsAt; refresh the text every tick, no re-render.
+  function updateBeastTimersInPlace() {
+    document.querySelectorAll('[data-beast-left]').forEach(n => {
+      const left = Math.max(0, Math.ceil((+n.dataset.beastLeft - Date.now()) / 1000))
+      n.textContent = fmtTime(left)
+    })
   }
 
   function updateExpeditionTimerInPlace(s) {
@@ -749,7 +760,7 @@
     }
 
     const ROWS = [
-      ['autoExplore', 'Auto-Explore', 'Sends you back to your last location when an expedition returns. Pause a location in Explore.'],
+      ['autoExplore', 'Auto-Explore', 'Sends you back out when an expedition returns. Choose where below.'],
       ['autoSectMissions', 'Auto-Missions', 'Re-takes a finished sect mission while a slot is free.'],
       ['autoCraft', 'Auto-Craft', 'Crafts every recipe you mark Auto in Pack → Craft, whenever materials allow.'],
       ['autoBreakthrough', 'Auto-Breakthrough', 'Attempts a breakthrough once Qi reaches the threshold.'],
@@ -783,6 +794,30 @@
         row.appendChild(hint)
       }
       box.appendChild(row)
+
+      if (key === 'autoExplore' && unlocked && s.automation.autoExplore) {
+        const pick = document.createElement('div')
+        pick.className = 'auto-loc-pick'
+        pick.innerHTML = '<div class="auto-loc-h">Idle on</div>'
+        const chips = document.createElement('div')
+        chips.className = 'auto-loc-chips'
+        const cur = s.automation.autoExploreLocationId
+        const opts = [[null, 'Last one I sent', 'Relaunches whichever location you sent yourself most recently']]
+          .concat(LOCATIONS.filter(l => s.stageIndex >= l.minStage).map(l => [l.id, l.name, `Always relaunch ${l.name} (${l.duration >= 60 ? Math.floor(l.duration / 60) + 'm' : l.duration + 's'} away)`]))
+        for (const [id, name, tip] of opts) {
+          const b = document.createElement('button')
+          b.className = 'pack-chip' + (cur === id ? ' active' : '')
+          b.textContent = name
+          b.title = tip
+          b.addEventListener('click', () => {
+            const res = gameState.setAutoExploreLocation(id)
+            if (!res.ok) flashMessage('Cannot choose that location', 'negative')
+          })
+          chips.appendChild(b)
+        }
+        pick.appendChild(chips)
+        box.appendChild(pick)
+      }
 
       if (key === 'autoBreakthrough' && unlocked && s.automation.autoBreakthrough) {
         const tr = document.createElement('div')
@@ -1027,14 +1062,14 @@
         ? `${Math.floor(loc.duration/60)}m`
         : `${loc.duration}s`
 
-      const showAutoToggle = unlocked && s.playMode === 'idle' && s.automation.autoExplore && gameState.automationUnlocked('autoExplore')
-      const paused = !!s.automation.autoExplorePaused[loc.id]
+      const autoTarget = unlocked && s.automation.autoExplore && gameState.automationUnlocked('autoExplore')
+        && loc.id === (s.automation.autoExploreLocationId || s.automation.lastExploreLocationId)
       const lock = !unlocked ? `Opens at ${stageShortName(loc.minStage)}`
         : here ? '' : s.expedition.active ? 'One expedition at a time' : ''
       const tileName = here ? 'Underway' : 'Set out'
       const tileSub  = here ? 'your party is on the road' : `${durText} away · Tier ${loc.enemyTier} foes`
       row.innerHTML = `
-        <div class="sv-card-h"><span class="sv-card-n" title="${escHtml(loc.nameCN)}">${escHtml(loc.name)}</span>${showAutoToggle ? `<button class="pack-chip loc-auto${paused ? '' : ' active'}" data-autoloc="${loc.id}" title="Auto-Explore relaunch for this location">${paused ? `${Icon('pause')} Paused` : `${Icon('play')} Auto`}</button>` : ''}<span class="sv-card-t">${durText}</span></div>
+        <div class="sv-card-h"><span class="sv-card-n" title="${escHtml(loc.nameCN)}">${escHtml(loc.name)}</span>${autoTarget ? `<span class="pack-chip loc-auto active" title="Auto-Explore idles here. Change it from the Idle button, top right.">${Icon('play')} Auto</span>` : ''}<span class="sv-card-t">${durText}</span></div>
         <div class="sv-card-d">${escHtml(loc.desc || '')}</div>
         <div class="sv-gains" title="Chance each item comes back from one run, and how many">${gameState.dropPreview(loc.id).map(d =>
           `<span class="sv-gain">${d.min === d.max ? d.min : `${d.min}–${d.max}`} ${escHtml(d.name)} <b class="ld-pct">${Math.round(d.chance * 100)}%</b></span>`).join('')}</div>
@@ -1044,13 +1079,6 @@
       `
       locGrid.appendChild(row)
     }
-
-    el.querySelectorAll('[data-autoloc]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const locId = btn.dataset.autoloc
-        gameState.setAutoExplorePaused(locId, !s.automation.autoExplorePaused[locId])
-      })
-    })
 
     // Wire Send buttons
     el.querySelectorAll('.loc-btn[data-locid]').forEach(btn => {
@@ -1090,6 +1118,9 @@
   }
 
   // ── 歷 Roam → Beasts (1.8b-1: split out of Explore) ─────────────────────────
+  // A beast's rarity tier as a small coloured chip (+ "Rare colour" for a variant): Roam → Beasts cards
+  const tierChip = prof => `<span class="tier-chip tier-${prof.tier.id}">${escHtml(prof.tier.name)}</span>${prof.variant ? '<span class="tier-chip tier-variant">Rare colour</span>' : ''}`
+
   function renderBeasts(s) {
     const el = document.getElementById('tab-beasts')
     el.innerHTML = ''
@@ -1113,14 +1144,15 @@
           && s.stageIndex >= (beastType?.minStage || 0)
           && (s.inventory['beast_taming_talisman'] || 0) > 0
 
+        const prof = gameState.beastProfile(enc)
         const row = document.createElement('div')
-        row.className = 'beast-encounter-row'
+        row.className = 'beast-encounter-row tier-row-' + prof.tier.id + (prof.variant ? ' is-variant' : '')
         const traitNames = enc.traits.map(id => BEAST_TRAITS[id]?.name || id).join(', ')
-        const spriteHtml = BeastPortraits.html('enc:' + enc.id, beastType?.spriteState || enc.typeId)   // A4-2: ink portrait (or classic ASCII)
+        const spriteHtml = BeastPortraits.html('enc:' + enc.id, prof.art)   // A4-2: ink portrait (or classic ASCII)
         row.innerHTML = `
           <div class="beast-sprite-small">${spriteHtml}</div>
           <div class="beast-encounter-info">
-            <div class="beast-enc-name">${escHtml(beastType?.name || enc.typeId)}</div>
+            <div class="beast-enc-head"><button class="beast-enc-name bdx-open" data-bdx="enc:${escHtml(enc.id)}">${escHtml(prof.name)}</button>${tierChip(prof)}</div>
             <div class="beast-enc-desc">${escHtml(beastType?.desc || '')}</div>
             <div class="beast-enc-traits">${escHtml(traitNames)}</div>
             <button class="beast-tame-btn${canTame ? '' : ''}" data-encid="${escHtml(enc.id)}" ${canTame ? '' : 'disabled'}>
@@ -1162,25 +1194,26 @@
           return `<span class="beast-trait-tag" title="${escHtml(tr?.desc || '')}">${escHtml(tr?.name || id)}</span>`
         }).join('')
 
+        const prof = gameState.beastProfile(beast)
         const row = document.createElement('div')
-        row.className = 'beast-row'
+        row.className = 'beast-row tier-row-' + prof.tier.id + (prof.variant ? ' is-variant' : '')
         row.dataset.beastid = beast.id
 
         let statusHtml = ''
         if (isOnExp) {
           const loc = LOCATIONS.find(l => l.id === beast.expedition.locationId)
           statusHtml = beast.expedition.war
-            ? `<span style="color:var(--red);font-size:10px">At war with the sect · ${fmtTime(Math.ceil(msLeft/1000))}</span>`
-            : `<span style="color:var(--jade);font-size:10px">On expedition: ${escHtml(loc?.name || '?')} · ${fmtTime(Math.ceil(msLeft/1000))}</span>`
+            ? `<span style="color:var(--red);font-size:10px">At war with the sect · <span data-beast-left="${beast.expedition.endsAt}">${fmtTime(Math.ceil(msLeft/1000))}</span></span>`
+            : `<span style="color:var(--jade);font-size:10px">On expedition: ${escHtml(loc?.name || '?')} · <span data-beast-left="${beast.expedition.endsAt}">${fmtTime(Math.ceil(msLeft/1000))}</span></span>`
         }
 
         row.innerHTML = `
-          <div class="beast-row-top">${BeastPortraits.html('beast:' + beast.id, beastType?.spriteState || beast.typeId)}<div class="beast-row-main">
+          <div class="beast-row-top">${BeastPortraits.html('beast:' + beast.id, prof.art)}<div class="beast-row-main">
           <div class="beast-row-header">
             <div>
-              <span class="beast-name">${escHtml(beast.name)}</span>
+              <button class="beast-name bdx-open" data-bdx="beast:${escHtml(beast.id)}">${escHtml(beast.name)}</button>
               <span class="beast-level">Lv.${beast.level}</span>
-              ${beastType && beastType.name !== beast.name ? `<span class="beast-kind">${escHtml(beastType.name)}</span>` : ''}
+              ${beastType && beastType.name !== beast.name ? `<span class="beast-kind">${escHtml(prof.variant ? prof.variant.name : beastType.name)}</span>` : ''}${tierChip(prof)}
             </div>
             <button class="beast-dismiss-btn" data-dismissid="${escHtml(beast.id)}">Release</button>
           </div>
@@ -1244,6 +1277,9 @@
       el.appendChild(empty)
     }
     BeastPortraits.mount(el, gameState.getSettings())   // A4-2: fill the portrait placeholders (pooled ink canvases)
+    // A4-2: a portrait or a beast's name opens its details page (big portrait, lore, traits, Tame)
+    el.querySelectorAll('.beast-portrait[data-bp-key]').forEach(p => { p.classList.add('bdx-open'); p.title = 'View details'; p.onclick = () => BeastDetail.openKey(p.dataset.bpKey) })
+    el.querySelectorAll('button[data-bdx]').forEach(b => { b.onclick = () => BeastDetail.openKey(b.dataset.bdx) })
   }
 
   // ── Craft tab ─────────────────────────────────────────────────────────────
@@ -1286,10 +1322,10 @@
     // Sub-tabs
     const subTabBar = document.createElement('div')
     subTabBar.className = 'craft-subtabs'
-    for (const [key, label] of [['pills','Pills'],['elixirs','Elixirs'],['weapons','Weapons'],['artifacts','Artifacts'],['talismans','Talismans']]) {
+    for (const [key, label, icon] of [['pills','Pills','pill'],['elixirs','Elixirs','furnace'],['weapons','Weapons','sword'],['artifacts','Artifacts','pendant'],['talismans','Talismans','scroll']]) {
       const btn = document.createElement('button')
       btn.className = 'craft-subtab' + (key === _craftSubTab ? ' active' : '')
-      btn.textContent = label
+      btn.innerHTML = `${Icon(icon)}<span>${label}</span>`
       btn.addEventListener('click', () => {
         _craftSubTab = key
         renderCraft(gameState.get())

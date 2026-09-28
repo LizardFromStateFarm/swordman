@@ -35,7 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ✅ 1.8d-1 + 1.8d-2 (2026-09-27): 78 icons, 0 chrome CJK (lint in npm test); gates 7.2 / 7.2 accepted by the user |
 | **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate **7.6 PASS** (1.8b-6 cycle 2) |
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
-| Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); **A4-2 beasts** built 2026-09-28, awaiting the user's look; A4-3 backgrounds next |
+| Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); **A4-2 beasts** redone (dots only, angular) 2026-09-28, reviewer 7.5, awaiting the user; then 10 beasts × 2 variants; A4-3 backgrounds next |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -124,6 +124,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   leaves ~200px so each view opens on a cut-off card; buildings
   have no levels, so a founder with all six raised has nothing to do in Halls but the Sect Hall; Explore/Craft grid
   cards keep the old flat row style; standing-order war-chest note is still a paragraph (could be a 詳 card).
+- **Beast details page (7.9):** the portrait VIEW tag is small/low-contrast; a companion's page has no Send on
+  Expedition / Release buttons (close the page to act).
 - **Family view leftovers (1.8b-3a):** no hint of what each temper *likes* beyond the blurb and the meeting-choice
   approach hints (a "likes/dislikes" line per personality would need data); lovers are still a plain list (3b);
   Overlay tab pane is small, so the married view is ~3 screens.
@@ -140,6 +142,60 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-28 (user present) — part 38
+Agent: **Auto-Explore location picker + companion page actions.** (1) Per-card Auto chips removed: the Mode panel
+  (Idle button, top right) Auto-Explore row has an "Idle on" chip picker (Last one I sent / each unlocked location);
+  game-state automation.autoExploreLocationId + setAutoExploreLocation() (old per-location pause is legacy, unused); the
+  target Explore card shows an inert Auto tag. (2) Companion details page: Send on Expedition buttons + Release (game
+  confirm dialog). (3) Craft chips content-sized in Expanded/Desktop (no orphan Talismans chip). New smoke
+  scenarios/auto-explore-pick.js. npm test + checks (390) pass. No reviewer agent (user rule); screenshots for the user.
+  Uncommitted (with parts 34-37).
+
+Date: 2026-09-28 (user present) — part 37
+Agent: **Bug report batch.** (1) Beast expedition timers (Roam > Beasts list + details page) now count down live via
+  data-beast-left spans updated each tick (game.js updateBeastTimersInPlace). (2) Craft categories are wrapping icon+label
+  chips (styles.css .craft-subtab); reviewer 7.5 PASS, recorded in ui-review.md. (3) "go-between" -> "matchmaker" everywhere.
+  New smoke scenarios: craft.js, beast-timer.js. Uncommitted. Open polish: Talismans chip orphans full-width in Expanded.
+
+Date: 2026-09-28 (user present) — part 36
+Agent: **Family cooldowns -> real time** (user: "make year waits timed cooldowns"). Spouse/child actions 5 min, courtship
+  seek 5 min, meetings 2 min, try-for-child 10 min (open time). Pregnancy + min age stay in game years. Live "Ready in
+  m:ss" on locked buttons (family-view.js). game-state _cdNow/_cdLeft, cdSecsVer migration; family-agency checks
+  updated (390 ok). Not done: clan-view lock text still shows years (challenge/branch-war cooldowns); app not launched
+  and no visual review gate run (label-only change) — uncommitted.
+
+Date: 2026-09-28 (user present) — part 35
+Agent: **Beast roster of 10 + tiers + variants** (user: "added all the new beasts … the two dragons should be the strongest").
+  - 7 new beasts baked from example_art/ (Blood Python, Spectral Bear, White Tiger, Qilin, Black Tortoise, Azure + Golden
+    Dragon); bake uses PNG alpha; engine contain-fits any aspect, `raster.hue/tint` variants, map-space pivots.
+  - beasts.js: BEAST_TIERS (Might ×1 → ×2, Golden Dragon ×2.3), 10 types with lore + a rare colour variant each (12%).
+    game-state: beastProfile(), favored-trait rolls, variants, legendary sighting line, Might on traits + loot.
+    UI: tier / rare-colour chips, gold legendary cards + details page, attention leads with a legendary.
+  - checks/beasts.js (17), smoke ink-beasts (legendary + variant), sheet of all 20. Reviewer: UI 7.8 PASS; art cycle 2
+    PASS (Qilin 7.9, rest 8.1–8.5, variants 8.2). Uncommitted.
+  Next: user verdict; commit; companion page actions (UX debt).
+
+Date: 2026-09-28 (user present) — part 34
+Agent: **A4-2 beasts redo** (user: first ink beasts "do not look good"; wants 10+ beasts × 2 variants, dots only, denser, ethereal + cool not rounded).
+  Plan approved: style check on the 3 existing beasts FIRST, then 7 more beasts + variants (look + small stat edge); cultivator untouched.
+  - Rules made standard: .agents/rules/assets.md → Ink art (dots only / no wash, ethereal-not-cute, reviewer agent before the user) +
+    art-engine.md. Engine: `underpaint: false`, part `lift`, `dissolve`, art `edgeGlow`, forked brighter bolts, DPR-change canvas
+    resize (fixed phone portraits cropped to a corner). New scripts/art/ink-shapes.js (limb / taper → polygon) + smoke
+    scenarios/ink-beasts-sheet.js. Fox/eagle/hound redrawn (angular profiles, pitch 1.1).
+  - Reviewer agent: cycle 1 6.6 FAIL → cycle 2 7.5 (no blockers). User: side profiles look goofy → **front-facing, seated,
+    symmetric** (engine `mirror: true` / `mirrorLayer`, ink-shapes.js `sym`, bolts `avoid`). Front-facing review 7.5, polish
+    applied. User: still awkward/childish → **bake pipeline** (art-engine.md → "Raster beasts: the bake pipeline"):
+    scripts/art/ink-bake.js (Electron nativeImage; source picture → editable dot map PNG, 1 px = 1 dot, auto background
+    removal) + engine `raster` (auto exposure, tone, seam overlap, edge glow, motion regions) + dotted lightning. Fox/eagle/hound
+    baked from the user's own art in example_art/. Reviewer: fox 8.4, eagle 8.2 pass; hound 7.3 → tone lift → 7.8, + eye glints.
+    **Awaiting the user's verdict.** Uncommitted.
+  - **Beast details page** (user request): click a beast's portrait or name → renderer/game/beast-detail.js modal (large
+    portrait, `lore` in beasts.js, realm/rarity/growth/level/status, trait effects, Tame + lock reason). Reviewer 7.9 PASS.
+  - Moving parts clipping (user): raster layers now occlude what is behind their silhouette (engine `C.fig` + masks);
+    fox tail region widened so the lower curl no longer tears. Verified at 3x sway.
+  Next: user verdict → roster of 10 (moon rabbit, jade carp, azure crane, black tortoise, flood serpent, white tiger, flame qilin)
+  × 2 variants: data (beasts.js variants + save migration), art, card variant/rarity UI.
+
 Date: 2026-09-28 (user present) — part 33
 Agent: **A4-1 accepted** ("that is perfect it looks great") → **A4-2 beasts in ink** (user: "continue into beasts").
   As-built: art-engine.md → "Beasts".

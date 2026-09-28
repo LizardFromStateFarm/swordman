@@ -1,0 +1,12 @@
+[
+  { "id": "spirit_fox",    "src": "example_art/fox.png" },
+  { "id": "blood_python",  "src": "example_art/bloodpython.png" },
+  { "id": "thunder_eagle", "src": "example_art/electric egal.png" },
+  { "id": "spectral_bear", "src": "example_art/spectralbear.png" },
+  { "id": "white_tiger",   "src": "example_art/whitetiger.png" },
+  { "id": "qilin",         "src": "example_art/qilin.png" },
+  { "id": "void_hound",    "src": "example_art/void wolf.png" },
+  { "id": "black_tortoise","src": "example_art/black tortise.png" },
+  { "id": "azure_dragon",  "src": "example_art/azurdragon.png" },
+  { "id": "golden_dragon", "src": "example_art/golddragon.png" }
+]

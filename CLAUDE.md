@@ -171,12 +171,16 @@ scripts/
   release-android.js    ← `npm run release:android` → build .aab + push to Google Play (see android-port.md)
   gen-tray-icon.js      ← One-off generator for assets/icons/tray-icon.png (Phase 9A, not run at boot)
   art-bakeoff/          ← A2 art-direction prototype page (3 renderers, same cultivator) — not part of the game
+  art/ink-shapes.js     ← Ink art authoring helper: limb centreline / tapering Bezier / `sym` half → part `d` polygon (paste into assets/sprites/ink-*.js)
+  art/ink-bake.js       ← Bake a source picture → editable dot map PNG (1 px = 1 dot, background removed): `npx electron scripts/art/ink-bake.js [id]`
+  art/ink-bake.json     ← Bake specs per beast (src, crop, width, background-removal knobs, erase/keep polygons)
   check-no-emoji.js     ← Emoji inventory (file:line); --strict in npm test since 1.8b-6 (sprites exempt until A1; --sprites to include) — no-emoji rule
   check-no-chrome-cjk.js ← Chrome-CJK lint for renderer/ (allow: nav marks, `cjk-ok` flavour lines); --strict runs in npm test (1.8d-2)
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt
     checks/             ← Scenario checks (`npm run checks`) — force exact situations, print ok/FAIL; run-all.js + one file per system
   smoke/                ← Real-app smoke tests over CDP: cdp.js driver + scenarios/*.js (screenshots → smoke/out/, gitignored)
+example_art/            ← The user's own source art for the bake pipeline (reference + bake input; not loaded by the game)
 renderer/
   index.html            ← All HTML — charselect + app, 7 tabs
   styles.css            ← All CSS — CSS vars at top, add new components here
@@ -204,6 +208,7 @@ renderer/
     attention.js        ← collectAttention() (DOM-free) + AttentionUI — the "needs you" strip/cards (1.8b-1)
     breakdowns.js       ← buildBreakdown() (DOM-free) + BreakdownUI — "why" popovers for any [data-bd] number, stageShortName() (1.8b-2)
     beast-portrait.js   ← BeastPortraits — pooled animated ink beast portraits for Roam → Beasts (ASCII fallback on Classic) (A4-2)
+    beast-detail.js     ← BeastDetail — beast details page: click a portrait/name → large portrait, lore, stats, traits, Tame (A4-2)
     family-view.js      ← FamilyView — Kin → Family: spouse/courtship card, child wishes, children + raising actions, heir (1.8b-3a)
     clan-view.js        ← ClanView + HallView — Kin → Clan (lines, head, relations, clan actions) and Kin → Hall (Merit, firsts, legacies, Family Manual picker) (1.8b-4)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
@@ -241,7 +246,8 @@ assets/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
     ink-cultivator.js   ← INK_ART — hybrid ink art base figure (body parts, strokes, effects, default slots); Qi Condensation so far
     ink-parts.js        ← INK_PARTS — ink part slots: face / hair / robe / weapon / aura options (A3-2; Phase 10 cosmetics hook)
-    ink-beasts.js       ← INK_BEASTS — ink art for the spirit beasts (fox / eagle / hound), same format as INK_ART (A4-2)
+    ink-beasts.js       ← INK_BEASTS — spirit beasts (fox / eagle / hound): `raster` dot maps + motion regions + effects (A4-2)
+    beasts/             ← Baked dot maps (<id>.png, 1 px = 1 dot) from scripts/art/ink-bake.js — hand-editable in a pixel editor
   scenes/
     sect-base-scene.js   ← SPEC (Phase 38A): sect-compound building parts + layout (data only)
     island-scene.js      ← SPEC (Phase 38B): island landmass + building tiles (data only)

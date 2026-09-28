@@ -1,0 +1,4 @@
+# 3d project — generated/local only. The app's own .gitignore is unaffected.
+node_modules/
+out/
+.artcache/

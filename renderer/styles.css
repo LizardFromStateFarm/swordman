@@ -1315,30 +1315,38 @@ body[data-layout="banner"] #bt-why { width: 24px; font-size: 12px; }
 
 .equip-unequip-btn:hover { border-color: var(--red); color: var(--red); }
 
+/* Craft categories: separate wrapping chips (icon + label) so no label ever touches the next one. */
 .craft-subtabs {
   display: flex;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
 }
 
 .craft-subtab {
-  flex: 1;
-  background: none;
-  border: none;
-  border-right: 1px solid var(--border);
+  flex: 1 1 30%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid color-mix(in srgb, var(--dim) 45%, var(--border));
+  border-radius: 12px;
   color: var(--dim-hi);
   font-family: var(--font);
-  font-size: 10.5px;
-  padding: 5px 0;
+  font-size: 11px;
+  padding: 4px 10px;
+  min-height: 26px;
   cursor: pointer;
-  transition: color .1s, background .1s;
+  transition: color .12s, background .12s, border-color .12s;
 }
 
-.craft-subtab:last-child { border-right: none; }
-.craft-subtab.active { color: var(--gold); background: rgba(237,208,80,0.06); }
-.craft-subtab:hover:not(.active) { color: var(--text); }
+.craft-subtab .icon, .craft-subtab svg { width: 14px; height: 14px; flex: none; }
+.craft-subtab.active { color: var(--gold); border-color: rgba(237,208,80,0.55); background: rgba(237,208,80,0.10); }
+.craft-subtab:hover:not(.active) { color: var(--text); border-color: var(--dim); }
+body[data-layout="expanded"] .craft-subtab,
+body[data-layout="desktop"] .craft-subtab { font-size: 12px; padding: 5px 12px; min-height: 30px; flex: 1 1 auto; }   /* content-sized, so a last chip never sits alone at full width */
+/* UI review: 7.5 (2026-09-28) */
 
 .recipe-row {
   border: 1px solid var(--border);
@@ -3878,9 +3886,6 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 
   /* Pack chips + Craft categories at phone size (1.8b-6 review): chips match the sub-tab text; categories size to
      their labels and scroll sideways instead of pinching "Talismans" against the edge. */
   body[data-layout="desktop"] .pack-chip, body[data-layout="desktop"] .pack-sort-btn { font-size: 12px; padding: 4px 10px; }
-  body[data-layout="desktop"] .craft-subtabs { overflow-x: auto; scrollbar-width: none; }
-  body[data-layout="desktop"] .craft-subtabs::-webkit-scrollbar { display: none; }
-  body[data-layout="desktop"] .craft-subtab { flex: 1 0 auto; padding: 6px 10px; }
 
   /* Overlays: fit the viewport, clear the safe areas, scroll inside */
   body > [id$="-overlay"] > div, #layout-box, #settings-box { max-height: 88dvh; }
@@ -3911,3 +3916,109 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 
 .sv-prev-row b { font-weight: normal; color: var(--gold); }
 .sv-prev-d { color: var(--dim-hi); font-size: 11px; }
 body[data-layout="overlay"] .sv-preview-sec { display: none; }
+
+/* UI review: 7.9 (2026-09-28) */
+/* ══════════════════════════════════════════════════════════════════════════
+   BEAST DETAILS (A4-2) — click a beast's portrait or name in Roam → Beasts (renderer/game/beast-detail.js):
+   a large animated ink portrait, lore, realm / rarity / growth, what each trait does, and Tame for a wild one.
+══════════════════════════════════════════════════════════════════════════ */
+#beast-overlay {
+  position: fixed; inset: 0; background: rgba(8,4,14,0.9);
+  display: flex; align-items: center; justify-content: center; z-index: 200;
+}
+#beast-box {
+  background: var(--bg2); border: 1px solid var(--purple); border-radius: 5px;
+  width: min(560px, calc(100vw - 24px)); max-height: 94%; display: flex; flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 28px rgba(144,112,200,0.14);
+}
+#beast-head { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+#beast-title { font-size: 10px; color: var(--purple); letter-spacing: 2px; text-transform: uppercase; }
+#beast-body { overflow-y: auto; padding: 10px 12px 14px; }
+.bdx-art {
+  width: 100%; border-radius: 4px; overflow: hidden; background: #0B0716;
+  border: 1px solid rgba(144,112,200,.35); box-shadow: inset 0 0 18px rgba(0,0,0,.7); margin-bottom: 10px;
+}
+.bdx-art { display: flex; justify-content: center; background: #110B1E; }
+.bdx-stat.wide { grid-column: 1 / -1; }
+.bdx-art .bdx-canvas { display: block; }
+.bdx-art.ascii { display: grid; place-items: center; padding: 14px 0; font-family: var(--font); font-size: 14px; line-height: 1.2; color: var(--text); }
+.bdx-name { font-size: 16px; color: var(--gold); letter-spacing: 1px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.bdx-name .tier-chip { margin-left: 0; }
+.bdx-tag { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--purple); border: 1px solid rgba(144,112,200,.5); border-radius: 3px; padding: 1px 5px; }
+.bdx-sub { font-size: 11px; color: var(--jade); letter-spacing: 0; }
+.bdx-lore { font-size: 11px; line-height: 1.55; color: var(--dim-hi); font-style: italic; margin: 6px 0 10px; }
+.bdx-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: 5px; margin-bottom: 10px; }
+.bdx-stat { display: flex; flex-direction: column; gap: 1px; padding: 5px 8px; background: rgba(24,10,4,0.55); border: 1px solid var(--border); border-radius: 3px; }
+.bdx-k { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
+.bdx-v { font-size: 11px; color: var(--text); }
+.bdx-v.locked { color: var(--red); }
+.bdx-v.jade { color: var(--jade); }
+.bdx-v.tier-common { color: var(--dim-hi); }
+.bdx-v.tier-uncommon { color: var(--jade); }
+.bdx-v.tier-rare { color: #6AB0F0; }
+.bdx-v.tier-epic { color: #B888F8; }
+.bdx-v.tier-legendary { color: var(--gold); text-shadow: 0 0 6px rgba(237,208,80,.45); }
+.bdx-sec { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); border-bottom: 1px solid var(--border); padding-bottom: 2px; margin: 4px 0 6px; }
+.bdx-traits { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.bdx-trait { display: flex; gap: 8px; align-items: baseline; font-size: 11px; }
+.bdx-trait-n { color: var(--purple); min-width: 118px; flex-shrink: 0; }
+.bdx-trait-d { color: var(--text); }
+.bdx-actions { display: flex; align-items: center; gap: 10px; }
+.bdx-tame {
+  padding: 6px 14px; background: rgba(144,112,200,.18); border: 1px solid var(--purple); border-radius: 3px;
+  color: var(--text); font-family: var(--font); font-size: 12px; cursor: pointer; min-height: 32px;
+}
+.bdx-tame:hover:not(:disabled) { background: rgba(144,112,200,.32); }
+.bdx-tame:disabled { opacity: .45; cursor: not-allowed; }
+.bdx-have { font-size: 10px; color: var(--dim); }
+.bdx-sec-sm { font-size: 10px; color: var(--dim-hi); margin: 10px 0 4px; }
+.bdx-locs { display: flex; flex-wrap: wrap; gap: 5px; }
+.bdx-loc {
+  padding: 5px 10px; background: rgba(0,80,40,.18); border: 1px solid var(--jade); border-radius: 3px;
+  color: var(--jade); font-family: var(--font); font-size: 11px; cursor: pointer; min-height: 28px;
+}
+.bdx-loc:hover:not(:disabled) { background: rgba(0,80,40,.35); }
+.bdx-loc:disabled { opacity: .4; cursor: not-allowed; border-color: var(--border); color: var(--dim); }
+.bdx-release {
+  margin-left: auto; padding: 6px 12px; background: transparent; border: 1px solid var(--border); border-radius: 3px;
+  color: var(--dim-hi); font-family: var(--font); font-size: 11px; cursor: pointer; min-height: 32px;
+}
+.bdx-release:hover { border-color: var(--red); color: var(--red); }
+/* Mode panel: which location Auto-Explore idles on */
+.auto-loc-pick { margin: -2px 0 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; }
+.auto-loc-h { font-size: 10px; color: var(--dim-hi); margin-bottom: 5px; }
+.auto-loc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.bdx-why { font-size: 10px; color: var(--dim-hi); margin-top: 5px; }
+/* the portraits and names on the cards open the page */
+.beast-portrait.bdx-open { cursor: zoom-in; position: relative; transition: border-color .12s, box-shadow .12s; }
+.beast-portrait.bdx-open:hover { border-color: var(--purple); box-shadow: 0 0 10px rgba(144,112,200,.35); }
+.beast-portrait.bdx-open::after {
+  content: 'View'; position: absolute; right: 3px; bottom: 3px; font-size: 8px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text); background: rgba(8,4,14,.7); border: 1px solid rgba(144,112,200,.45); border-radius: 2px; padding: 0 3px;
+  opacity: .75; pointer-events: none;
+}
+.beast-portrait.bdx-open:hover::after { opacity: 1; }
+button.bdx-open { background: none; border: none; padding: 0; font-family: var(--font); cursor: pointer; text-align: left; }
+button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 400px) { .bdx-trait { flex-direction: column; gap: 0; } .bdx-trait-n { min-width: 0; } }
+
+/* Beast rarity tiers (A4-2 roster of 10): chips on the Roam → Beasts cards, gold legendary cards, details page accent */
+.beast-enc-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-bottom: 2px; }
+.beast-enc-head .beast-enc-name { margin-bottom: 0; }
+.tier-chip {
+  display: inline-block; font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; line-height: 1.5;
+  padding: 0 4px; border: 1px solid currentColor; border-radius: 2px; margin-left: 5px; vertical-align: 2px; opacity: .9;
+}
+.beast-enc-head .tier-chip { margin-left: 0; }
+.tier-chip.tier-common    { color: var(--dim-hi); }
+.tier-chip.tier-uncommon  { color: var(--jade); }
+.tier-chip.tier-rare      { color: #6AB0F0; }
+.tier-chip.tier-epic      { color: #B888F8; }
+.tier-chip.tier-legendary { color: var(--gold); box-shadow: 0 0 6px rgba(237,208,80,.35); }
+.tier-chip.tier-variant   { color: #F09A7A; }
+.tier-row-legendary { border-color: var(--gold) !important; box-shadow: 0 0 14px rgba(237,208,80,.18), inset 0 0 18px rgba(237,208,80,.06); }
+.tier-row-legendary .beast-portrait { border-color: rgba(237,208,80,.6); }
+.tier-row-epic { border-color: rgba(184,136,248,.6) !important; }
+#beast-box[data-tier="legendary"] { border-color: var(--gold); box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 32px rgba(237,208,80,0.22); }
+#beast-box[data-tier="legendary"] #beast-title { color: var(--gold); }
+.tier-row-legendary .beast-enc-name, .tier-row-legendary .beast-name { color: var(--gold); }

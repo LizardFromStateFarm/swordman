@@ -10,11 +10,12 @@ const BeastPortraits = {
   W: 108, H: 78,          // CSS px; the portrait's view is 4:3-ish, the renderer fits it
 
   mount(root, settings = {}) {
-    const ink = settings.artStyle === 'ink' && typeof INK_BEASTS !== 'undefined'
+    const ink = settings.artStyle === 'ink'
     const used = new Set()
     for (const el of root.querySelectorAll('.beast-portrait[data-bp-key]')) {
       const key = el.dataset.bpKey, type = el.dataset.bpType
-      if (!ink || !InkRenderer.has(type, INK_BEASTS)) { el.innerHTML = this.asciiHTML(type); el.classList.add('ascii'); continue }
+      const hasInk = typeof INK_BEASTS !== 'undefined' && InkRenderer.has(type, INK_BEASTS)
+      if (!hasInk || (!ink && this.asciiHTML(type))) { el.innerHTML = this.asciiHTML(type); el.classList.add('ascii'); continue }   // Classic, when it has an ASCII sprite
       let P = this.pool.get(key)
       if (!P || P.type !== type) {
         if (P) P.ink.stop()

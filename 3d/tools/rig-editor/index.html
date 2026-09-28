@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- 3D project rig editor — the human correction UI. Opened by tools/host.js (own Electron, never the app's).
+     Shows the art (the app's real InkRenderer) with draggable dots: gold = bones, teal = attachment pivots. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>3D Rig Editor</title>
+<link rel="stylesheet" href="editor.css">
+</head>
+<body>
+<header id="bar">
+  <span id="rig-name">—</span>
+  <span class="grp" id="slots"></span>
+  <span class="grp"><label for="moment">moment</label>
+    <select id="moment"><option value="idle">idle</option><option value="bt">breakthrough</option><option value="fail">failure</option></select>
+  </span>
+  <span class="grp">
+    <label class="chk"><input type="checkbox" id="show-bones" checked> bones</label>
+    <label class="chk"><input type="checkbox" id="show-pivots" checked> pivots</label>
+    <label class="chk"><input type="checkbox" id="show-geo"> boxes</label>
+  </span>
+  <span class="grp right">
+    <button id="undo" title="Ctrl+Z">undo</button>
+    <button id="redo" title="Ctrl+Y">redo</button>
+    <button id="check">check</button>
+    <button id="save" title="Ctrl+S">save</button>
+    <span id="dirty"></span>
+  </span>
+</header>
+
+<main>
+  <div id="stage-wrap">
+    <canvas id="stage"></canvas>
+    <div id="hint">Drag a gold dot (bone) to move it · drag a teal dot (attachment pivot) to fit it ·
+      click to select · Ctrl+Z undo · Ctrl+S save.<br>
+      The art is the rest pose — this tool aligns the rig to it; art deformation arrives with the engine poser.</div>
+  </div>
+  <aside id="panel">
+    <h2>Inspector</h2>
+    <div id="inspector" class="muted">Click a dot or a line to select. Nothing selected.</div>
+    <h2>Lint</h2>
+    <div id="lint" class="muted">Press check (or save) to validate.</div>
+  </aside>
+</main>
+
+<script src="editor.js"></script>
+</body>
+</html>

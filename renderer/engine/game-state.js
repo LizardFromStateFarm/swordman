@@ -279,7 +279,7 @@ class GameState {
 
   _blankAutomation() {
     return {
-      autoExplore: false, autoExplorePaused: {}, lastExploreLocationId: null,
+      autoExplore: false, autoExplorePaused: {}, autoExploreLocationId: null, lastExploreLocationId: null,
       autoSectMissions: false,
       autoCraft: false, autoCraftRecipes: {},
       autoBreakthrough: false, breakthroughThreshold: AUTO_BREAKTHROUGH_THRESHOLD_DEFAULT,
@@ -297,7 +297,8 @@ class GameState {
     if (!s.automation || typeof s.automation !== 'object') s.automation = this._blankAutomation()
     const a = s.automation
     if (typeof a.autoExplore !== 'boolean') a.autoExplore = false
-    if (!a.autoExplorePaused || typeof a.autoExplorePaused !== 'object') a.autoExplorePaused = {}
+    if (!a.autoExplorePaused || typeof a.autoExplorePaused !== 'object') a.autoExplorePaused = {}   // legacy (unused since the Mode-panel picker)
+    if (typeof a.autoExploreLocationId !== 'string') a.autoExploreLocationId = null                 // null = the last location you sent
     if (a.lastExploreLocationId === undefined) a.lastExploreLocationId = null
     if (typeof a.autoSectMissions !== 'boolean') a.autoSectMissions = false
     if (typeof a.autoCraft !== 'boolean') a.autoCraft = false
@@ -648,8 +649,8 @@ class GameState {
              // 1.8b-3a (family.md): player agency — a partner's wish for a child, children on the way, spouse
              // action cooldowns, why affection last moved + a yearly trail, courtship, suitors who refused you.
              // planVer 1 = the planning value is the player's own (old saves' 'many' default becomes 'ask').
-             planVer: 1, childWish: null, expecting: [], spouseCd: {}, childTryYear: null,
-             lastAff: null, affTrail: [], court: null, seekCooldownYear: null, spurned: [],
+             planVer: 1, childWish: null, expecting: [], spouseCd: {}, childTryAt: null,
+             lastAff: null, affTrail: [], court: null, seekCooldownAt: null, spurned: [],
              // 1.8b-3b: a fight you are in (spouse duel / head challenge), exchange by exchange
              fight: null }
   }
@@ -713,6 +714,8 @@ class GameState {
     if (!Array.isArray(f.affTrail))  f.affTrail = []
     if (!Array.isArray(f.spurned))   f.spurned = []
     if (!f.spouseCd || typeof f.spouseCd !== 'object') f.spouseCd = {}
+    // 2026-09-28: cooldowns moved from game years to real seconds; old year stamps are dropped (they start clear)
+    if (!f.cdSecsVer) { f.cdSecsVer = 1; f.spouseCd = {}; f.childTryAt = null; f.seekCooldownAt = null; delete f.childTryYear; delete f.seekCooldownYear; for (const c of f.children) c.cd = {}; if (f.court) f.court.nextMeetAt = null }
     if (f.childWish && !this._partnerById(f.childWish.partnerId, true)) f.childWish = null
     if (f.court && (typeof f.court !== 'object' || !Array.isArray(f.court.candidates))) f.court = null
     if (f.court && f.spouse) f.court = null
@@ -795,7 +798,7 @@ class GameState {
     child.bond     = CHILD_BOND_START
     child.morality = this._rollMorality(child.personality, (s.karma - 50) * MORALITY_KARMA_WEIGHT)
     child.xp       = 0
-    child.cd       = {}                                // 1.8b-3a: raising-action cooldowns (game years)
+    child.cd       = {}                                // 1.8b-3a: raising-action cooldowns (ready-at stamps, real seconds)
     child.raised   = { time: 0, teach: 0, gift: 0 }
     f.children.push(child)
     this.addEvent({ text: `Year ${yr}: a child is born — ${Persons.fullName(child)} (${child.root.name}).`, type: 'special' })
@@ -1260,11 +1263,12 @@ class GameState {
     let beastPassiveQps = 0
     let beastBtBonus   = 0
     for (const beast of (s.beasts || [])) {
+      const might = this.beastProfile(beast).might          // tier × variant: what the beast's traits are worth
       for (const traitId of (beast.traits || [])) {
         const lvlMult = 1 + (beast.level - 1) * 0.10
-        if (traitId === 'soul_bond')         beastQpsMult    *= (1 + 0.05 * beast.level)
-        if (traitId === 'qi_devour')         beastPassiveQps += 0.5 * lvlMult
-        if (traitId === 'heavenly_instinct') beastBtBonus    += 0.10 * lvlMult
+        if (traitId === 'soul_bond')         beastQpsMult    *= (1 + 0.05 * beast.level * might)
+        if (traitId === 'qi_devour')         beastPassiveQps += 0.5 * lvlMult * might
+        if (traitId === 'heavenly_instinct') beastBtBonus    += 0.10 * lvlMult * (1 + (might - 1) * 0.5)   // BT: half the edge
       }
     }
     qMul('Soul-bonded beasts', beastQpsMult)
@@ -1858,7 +1862,7 @@ class GameState {
 
   // ── 1.8b-3a (family.md): family agency — the player's own choices ────────
   // Every action has a *Preview() the UI shows before the click (costs, odds, why it's locked) and the action
-  // itself returns {ok, …} | {ok:false, reason}. Cooldowns are game years (f.spouseCd / child.cd).
+  // itself returns {ok, …} | {ok:false, reason}. Cooldowns are real seconds of open time (`_cdNow()` = stats.timePlayed; f.spouseCd / child.cd hold ready-at stamps).
 
   _yr() { return Math.floor(this._s.world.year) }
   _qiSlice(frac) { const cap = this._s.derived.qiCap; return isFinite(cap) ? frac * cap : 0 }
@@ -1867,17 +1871,21 @@ class GameState {
   // Courtship ────────────────────────────────────────────────────────────────
   courtCost() { return this.familyCost({ cost: { stones: COURT_SEEK_COST } }) }
 
+  // Real-time cooldowns (2026-09-28): stamps are stats.timePlayed seconds, so they only run while the game is open.
+  _cdNow() { return this._s.stats.timePlayed || 0 }
+  _cdLeft(at) { return at != null && at > this._cdNow() ? Math.ceil(at - this._cdNow()) : 0 }
+
   canSeekMatch() {
     const s = this._s, f = s.family
     if (f.spouse) return { ok: false, reason: 'married' }
     if (f.court) return { ok: false, reason: 'courting' }
     if (Math.max(s.maxStageThisLife || 0, s.stageIndex) < PROPOSAL_MIN_STAGE) return { ok: false, reason: 'stage', minStage: PROPOSAL_MIN_STAGE }
-    if (f.seekCooldownYear != null && s.world.year < f.seekCooldownYear) return { ok: false, reason: 'cooldown', readyYear: Math.ceil(f.seekCooldownYear) }
+    if (this._cdLeft(f.seekCooldownAt)) return { ok: false, reason: 'cooldown', secsLeft: this._cdLeft(f.seekCooldownAt) }
     if (s.spiritStones < this.courtCost()) return { ok: false, reason: 'stones', cost: this.courtCost() }
     return { ok: true, cost: this.courtCost() }
   }
 
-  // Pays the go-between and shows COURT_CANDIDATES strangers near your stage. Nothing else happens until you pick.
+  // Pays the matchmaker and shows COURT_CANDIDATES strangers near your stage. Nothing else happens until you pick.
   seekMatch() {
     const chk = this.canSeekMatch()
     if (!chk.ok) return chk
@@ -1885,8 +1893,8 @@ class GameState {
     s.spiritStones -= chk.cost
     const candidates = []
     for (let i = 0; i < COURT_CANDIDATES; i++) candidates.push(this._rollStranger('suitor'))
-    f.court = { candidates, target: null, interest: 0, meetings: 0, nextMeetYear: null, beat: null, lastBeatId: null }
-    this.addEvent({ text: `A go-between brings word of ${COURT_CANDIDATES} cultivators who might be courted.`, type: 'special' })
+    f.court = { candidates, target: null, interest: 0, meetings: 0, nextMeetAt: null, beat: null, lastBeatId: null }
+    this.addEvent({ text: `A matchmaker brings word of ${COURT_CANDIDATES} cultivators who might be courted.`, type: 'special' })
     this._recalc(); this._notify()
     return { ok: true, candidates }
   }
@@ -1898,7 +1906,7 @@ class GameState {
     if (!p) return { ok: false, reason: 'unknown' }
     c.target = p; c.candidates = []
     c.interest = COURT_INTEREST_START + (p.personality === s.personality?.id ? COURT_SAME_PERSONALITY : 0)
-    c.nextMeetYear = s.world.year
+    c.nextMeetAt = this._cdNow()
     this.addEvent({ text: `You begin to court ${Persons.fullName(p)}.`, type: 'special' })
     this._notify()
     return { ok: true }
@@ -1908,7 +1916,7 @@ class GameState {
     const s = this._s, c = s.family.court
     if (!c?.target) return { ok: false, reason: 'no_target' }
     if (c.beat) return { ok: false, reason: 'pending' }
-    if (s.world.year < c.nextMeetYear) return { ok: false, reason: 'cooldown', readyYear: Math.ceil(c.nextMeetYear) }
+    if (this._cdLeft(c.nextMeetAt)) return { ok: false, reason: 'cooldown', secsLeft: this._cdLeft(c.nextMeetAt) }
     return { ok: true }
   }
 
@@ -1949,7 +1957,7 @@ class GameState {
     c.seen = [...(c.seen || []), c.beat.id]
     c.lastResult = { title: def.title, text: this.courtText(ch.result), delta }   // shown on the card (1.8b-3a)
     c.beat = null
-    c.nextMeetYear = s.world.year + COURT_BEAT_GAP_YEARS
+    c.nextMeetAt = this._cdNow() + COURT_BEAT_GAP_SECS
     this.addEvent({ text: this.courtText(`${def.title}: ${ch.result}${delta ? ` (interest ${delta > 0 ? '+' : ''}${delta})` : ''}`), type: delta < 0 ? 'negative' : 'positive' })
     this._recalc(); this._notify()
     return { ok: true, interest: c.interest, delta }
@@ -1991,7 +1999,7 @@ class GameState {
     f.spurned.push({ person: { ...t, role: 'spurned' }, interest: Math.round(c.interest), year: this._yr() })
     if (f.spurned.length > SPURNED_MAX) f.spurned.shift()
     f.court = null
-    f.seekCooldownYear = s.world.year + COURT_SEEK_COOLDOWN_YEARS
+    f.seekCooldownAt = this._cdNow() + COURT_SEEK_COOLDOWN_SECS
     this.addEvent({ text: `${Persons.fullName(t)} hears your proposal out, and gently declines. The road stretches on.`, type: 'negative' })
     this._recalc(); this._notify()
     return { ok: true, accepted: false, chance: chk.chance }
@@ -2002,7 +2010,7 @@ class GameState {
     if (!c) return { ok: false, reason: 'no_court' }
     if (c.target) {
       this.addEvent({ text: `You stop calling on ${Persons.fullName(c.target)}.`, type: 'neutral' })
-      f.seekCooldownYear = s.world.year + COURT_SEEK_COOLDOWN_YEARS
+      f.seekCooldownAt = this._cdNow() + COURT_SEEK_COOLDOWN_SECS
     }
     f.court = null
     this._notify()
@@ -2017,7 +2025,7 @@ class GameState {
     if (!def) return { ok: false, reason: 'invalid' }
     const out = { ok: true, kind }
     const ready = f.spouseCd[kind]
-    if (ready != null && s.world.year < ready) Object.assign(out, { ok: false, reason: 'cooldown', readyYear: Math.ceil(ready) })
+    if (this._cdLeft(ready)) Object.assign(out, { ok: false, reason: 'cooldown', secsLeft: this._cdLeft(ready) })
     if (def.qiFrac) out.qi = this._qiSlice(def.qiFrac)
     if (def.stones) out.stones = this.familyCost({ cost: { stones: def.stones } })
     if (def.aff) out.aff = this._keyed(def.aff, sp.personality)
@@ -2036,7 +2044,7 @@ class GameState {
     const p = this.spouseActionPreview(kind)
     if (!p.ok) return p
     const s = this._s, f = s.family, sp = f.spouse, yr = this._yr()
-    f.spouseCd[kind] = s.world.year + SPOUSE_ACTIONS[kind].cdYears
+    f.spouseCd[kind] = this._cdNow() + SPOUSE_ACTIONS[kind].cdSecs
     if (p.qi) s.qi = Math.max(0, s.qi - p.qi)
     if (p.stones) s.spiritStones -= p.stones
     let res = { ok: true, kind }
@@ -2071,7 +2079,7 @@ class GameState {
     const s = this._s, f = s.family
     if (!f.spouse) return { ok: false, reason: 'no_spouse' }
     if (f.expecting.some(e => e.partnerId === f.spouse.id)) return { ok: false, reason: 'expecting' }
-    if (f.childTryYear != null && s.world.year < f.childTryYear) return { ok: false, reason: 'cooldown', readyYear: Math.ceil(f.childTryYear) }
+    if (this._cdLeft(f.childTryAt)) return { ok: false, reason: 'cooldown', secsLeft: this._cdLeft(f.childTryAt) }
     if (f.affection < AFFECTION_CRISIS) return { ok: false, reason: 'cold' }
     return { ok: true }
   }
@@ -2092,7 +2100,7 @@ class GameState {
   _conceive(partner) {
     const s = this._s, f = s.family
     f.expecting.push({ partnerId: partner.id, dueYear: s.world.year + PREGNANCY_YEARS })
-    f.childTryYear = s.world.year + CHILD_TRY_GAP_YEARS
+    f.childTryAt = this._cdNow() + CHILD_TRY_GAP_SECS
     // The partner's own timer restarts from now (whatever the plan).
     const interval = this._childInterval()
     if (interval) {
@@ -2160,7 +2168,7 @@ class GameState {
     if (kind === 'gift' && def.spoil?.[c.personality]) out.morality = def.spoil[c.personality]
     const ready = c.cd?.[kind]
     if (age < minAge) return { ...out, ok: false, reason: 'young', minAge }
-    if (ready != null && s.world.year < ready) return { ...out, ok: false, reason: 'cooldown', readyYear: Math.ceil(ready) }
+    if (this._cdLeft(ready)) return { ...out, ok: false, reason: 'cooldown', secsLeft: this._cdLeft(ready) }
     if (out.qi && s.qi < out.qi) return { ...out, ok: false, reason: 'qi' }
     if (out.stones && s.spiritStones < out.stones) return { ...out, ok: false, reason: 'stones' }
     return out
@@ -2171,7 +2179,7 @@ class GameState {
     if (!p.ok) return p
     const s = this._s, c = s.family.children.find(x => x.id === childId), def = CHILD_ACTIONS[kind]
     c.cd = c.cd || {}; c.raised = c.raised || { time: 0, teach: 0, gift: 0 }
-    c.cd[kind] = s.world.year + def.cdYears
+    c.cd[kind] = this._cdNow() + def.cdSecs
     c.raised[kind] = (c.raised[kind] || 0) + 1
     if (p.qi) s.qi = Math.max(0, s.qi - p.qi)
     if (p.stones) s.spiritStones -= p.stones
@@ -3783,23 +3791,35 @@ class GameState {
         let beastType = eligible[eligible.length - 1]
         for (const bt of eligible) { rw -= bt.encounterChance; if (rw <= 0) { beastType = bt; break } }
 
+        // traits: each roll draws from the type's favored traits with the tier's chance, else from the whole pool
         const traitKeys = Object.keys(typeof BEAST_TRAITS !== 'undefined' ? BEAST_TRAITS : {})
+        const tier = (typeof BEAST_TIERS !== 'undefined' && BEAST_TIERS[beastType.tier]) || { favored: 0 }
+        const fav = (beastType.favoredTraits || []).filter(t => traitKeys.includes(t))
         const traits = []
-        while (traits.length < 3 && traitKeys.length >= 3) {
-          const t = traitKeys[Math.floor(Math.random() * traitKeys.length)]
+        for (let guard = 0; traits.length < 3 && traitKeys.length >= 3 && guard < 50; guard++) {
+          const favLeft = fav.filter(t => !traits.includes(t))
+          const pool = favLeft.length && Math.random() < tier.favored ? favLeft : traitKeys
+          const t = pool[Math.floor(Math.random() * pool.length)]
           if (!traits.includes(t)) traits.push(t)
         }
+        const V = (beastType.variants || [])[0]
+        const variant = V && Math.random() < (typeof BEAST_VARIANT_CHANCE !== 'undefined' ? BEAST_VARIANT_CHANCE : 0) ? V.id : null
         s.beastEncounters = s.beastEncounters || []
         s.beastEncounters.push({
           id: `${Date.now()}_${Math.floor(Math.random() * 9999)}`,
           typeId: beastType.id,
+          ...(variant ? { variant } : {}),
           traits,
           seenAt: Date.now(),
         })
+        const seenName = variant ? V.name : beastType.name
         this.addEvent({
-          text: `A wild ${beastType.name} was spotted during the expedition! Find it in Roam → Beasts to tame it.`,
+          text: beastType.tier === 'legendary'
+            ? `The sky darkens. A ${seenName} watches you from the clouds, a legendary beast few cultivators ever see. It waits in Roam → Beasts, for now.`
+            : `A wild ${seenName}${variant ? ' (a rare colour)' : ''} was spotted during the expedition! Find it in Roam → Beasts to tame it.`,
           type: 'special',
         })
+        this._emit('beast_sighted', { name: seenName, tier: beastType.tier, variant: !!variant })
       }
     }
 
@@ -3839,8 +3859,8 @@ class GameState {
     const s = this._s
     if (s.playMode !== 'idle' || !s.automation.autoExplore) return
     if (!this.automationUnlocked('autoExplore')) return
-    const locId = s.automation.lastExploreLocationId
-    if (!locId || s.automation.autoExplorePaused[locId]) return
+    const locId = s.automation.autoExploreLocationId || s.automation.lastExploreLocationId
+    if (!locId) return
     const loc = LOCATIONS.find(l => l.id === locId)
     if (!loc || s.stageIndex < loc.minStage) return
     // Never auto-walk a wounded cultivator into a zone that outclasses them (live or offline).
@@ -3967,6 +3987,19 @@ class GameState {
 
   // ── Phase 3: Spiritual Beasts ─────────────────────────────────────────────
 
+  // What a beast (encounter or companion record) is: its type, tier, variant, display name, art key and Might
+  // (the multiplier on what its traits do: tier × type override × variant). DOM-free; the UI reads it too.
+  beastProfile(rec) {
+    const type = (typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES : []).find(b => b.id === rec?.typeId) || null
+    const tiers = typeof BEAST_TIERS !== 'undefined' ? BEAST_TIERS : {}
+    const tier = tiers[type?.tier] || tiers.common || { id: 'common', name: 'Common', might: 1 }
+    const variant = rec?.variant ? (type?.variants || []).find(v => v.id === rec.variant) || null : null
+    const might = (type?.might ?? tier.might) * (variant ? (typeof BEAST_VARIANT_MIGHT !== 'undefined' ? BEAST_VARIANT_MIGHT : 1) : 1)
+    return { type, tier, variant, might: Math.round(might * 100) / 100,
+      name: variant ? variant.name : (type?.name || rec?.typeId || 'Beast'),
+      art: variant?.art || type?.spriteState || rec?.typeId, lore: variant?.lore || type?.lore || type?.desc || '' }
+  }
+
   tameEncounteredBeast(encounterId) {
     const s = this._s
     const enc = (s.beastEncounters || []).find(e => e.id === encounterId)
@@ -3986,7 +4019,8 @@ class GameState {
     const beast = {
       id:         enc.id,
       typeId:     enc.typeId,
-      name:       beastType.name,
+      ...(enc.variant ? { variant: enc.variant } : {}),
+      name:       this.beastProfile(enc).name,
       level:      1,
       xp:         0,
       traits:     enc.traits,
@@ -3997,7 +4031,7 @@ class GameState {
 
     this._claimFirst('first_beast')
     this._recalc(); this._notify()
-    this._emit('beast_tamed', { name: beastType.name })
+    this._emit('beast_tamed', { name: beast.name })
     return { ok: true, beast }
   }
 
@@ -4028,7 +4062,7 @@ class GameState {
     if (!loc) { beast.expedition = null; this._notify(); return }
 
     const hasNose   = beast.traits.includes('spirit_nose')
-    const lootMult  = hasNose ? 1.25 : 1
+    const lootMult  = (hasNose ? 1.25 : 1) * (1 + (this.beastProfile(beast).might - 1) * 0.5)   // mightier beasts bring more home
     const drops     = this._rollDrops(loc, lootMult)
     const parts     = []
 
@@ -4891,12 +4925,17 @@ class GameState {
     return { ok: true }
   }
 
-  setAutoExplorePaused(locationId, paused) {
+  // Which location Auto-Explore idles on. null = whichever you last sent yourself.
+  setAutoExploreLocation(locationId) {
     const s = this._s
     if (!s) return { ok: false, reason: 'no_state' }
-    if (paused) s.automation.autoExplorePaused[locationId] = true
-    else delete s.automation.autoExplorePaused[locationId]
-    this._notify()
+    if (locationId != null) {
+      const loc = LOCATIONS.find(l => l.id === locationId)
+      if (!loc) return { ok: false, reason: 'unknown_location' }
+      if (s.stageIndex < loc.minStage) return { ok: false, reason: 'stage' }
+    }
+    s.automation.autoExploreLocationId = locationId ?? null
+    this._save(); this._notify()
     return { ok: true }
   }
 

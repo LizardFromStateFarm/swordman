@@ -57,12 +57,16 @@ function collectAttention(s, gs) {
   if (road.length) add('ready', 'road', 'explore', road.length === 1 ? `${road[0].person?.given || 'A stranger'}, met on the road` : `${road.length} strangers on the road`, 'Seduce or leave them. They wait until you choose.', 'explore')
   const wild = s.beastEncounters || []
   if (wild.length) {
-    const t = typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES.find(b => b.id === wild[0].typeId) : null
-    add('ready', 'beasts', 'beast', wild.length === 1 ? `A wild ${t?.name || 'beast'} lingers` : `${wild.length} wild beasts linger`, (s.inventory?.beast_taming_talisman || 0) > 0 ? 'You carry a Taming Talisman.' : 'Taming needs a Beast Taming Talisman.', 'beasts')
+    // a legendary sighting leads the card (and names itself) even among other wild beasts
+    const prof = e => (gs?.beastProfile ? gs.beastProfile(e) : { name: 'beast', tier: { id: 'common' } })
+    const legend = wild.find(e => prof(e).tier.id === 'legendary')
+    const talis = (s.inventory?.beast_taming_talisman || 0) > 0 ? 'You carry a Taming Talisman.' : 'Taming needs a Beast Taming Talisman.'
+    if (legend) add('ready', 'beasts', 'beast', `A legendary ${prof(legend).name} watches you`, `Few cultivators ever see one. ${talis}`, 'beasts')
+    else add('ready', 'beasts', 'beast', wild.length === 1 ? `A wild ${prof(wild[0]).name} lingers` : `${wild.length} wild beasts linger`, talis, 'beasts')
   }
   // 1.8b-3a courtship: candidates to choose from, a meeting waiting on your answer, or one you can arrange
   const court = f.court
-  if (court && !court.target && (court.candidates || []).length) add('ready', 'court', 'bond', 'The go-between waits', `${court.candidates.length} candidates. Choose whom to court.`, 'family')
+  if (court && !court.target && (court.candidates || []).length) add('ready', 'court', 'bond', 'The matchmaker waits', `${court.candidates.length} candidates. Choose whom to court.`, 'family')
   else if (court?.beat) add('ready', 'court', 'bond', `${court.target.given} is waiting`, 'A meeting is underway. Answer them.', 'family')
   else if (court?.target && gs.canMeet?.().ok) add('ready', 'court', 'bond', `You could call on ${court.target.given}`, gs.canPropose?.().ok ? 'Or ask for their hand.' : 'Arrange another meeting.', 'family')
   // 1.8b-4 clan: a challenge you can now make; Merit enough for a legacy

@@ -35,10 +35,7 @@ bands that fray at the tip), `_pillar`, halo `rays`, `_formation`, `_groundShado
 **Accepted by the user** after cycle 2 (2026-09-27: "that is perfect it looks great").
 
 ## Beasts (A4-2, 2026-09-28)
-`INK_BEASTS` (assets/sprites/ink-beasts.js), keyed by `BEAST_TYPES[].spriteState`: Spirit Fox (seated, two plumed tails
-curling up at the sides, spirit-blue eyes, foxfire motes), Thunder Eagle (wings raised on a crag and beating, white head,
-gold beak/talons, lightning `bolts`), Void Hound (wolf head, smoke hackles, glowing void cracks, stepping out of a rift =
-`formation` with `core: true`). Each `extends: '_base'` in its own table and sets `glow` (its Qi colour).
+`INK_BEASTS` (assets/sprites/ink-beasts.js), keyed by `BEAST_TYPES[].spriteState`: Spirit Fox (seated facing you, four flame tails fanned behind, burning into foxfire), Thunder Eagle (perched on a crag facing you, wings raised in a V of feather blades, white crested head, cyan eyes, gold beak/talons, lightning `bolts`), Void Hound (a wolf seated facing you before a rift = `formation` with `core: true`, collar of jagged hackles, fangs, smoke tail). Redrawn 2026-09-28: dots only, angular, front-facing (side profiles rejected). Each `extends: '_base'` in its own table and sets `glow` (its Qi colour).
 Engine support added: per-instance art table (`new InkRenderer(cv, { table: INK_BEASTS, skipHidden: true })`,
 `InkRenderer.has/resolve(state, table)`), extra motion layers (`layerOrder` + `motion[layer] = { pivot, amp, speed,
 phase, scaleY }`: tails sway, wings beat), `body.headY`, `motes.color / y0 / rise`, `bolts`, the rift core, LOD judged
@@ -47,6 +44,44 @@ UI: `BeastPortraits` (renderer/game/beast-portrait.js) fills `.beast-portrait` p
 and companion cards) with pooled canvases (one per encounter/beast id; a re-render moves the canvas, no cache rebuild;
 unused ones are stopped and dropped). Sprite art = Classic → the ASCII sprite with all its frames cycling (fixes the 1.8c
 "beasts show frame 0 only" bug). Portrait frame ~0.2 ms. The beast names no longer carry CJK subtitles.
+
+## Raster beasts: the bake pipeline (2026-09-28)
+Hand-typed polygon beasts read as "awkward and childish" (user); beasts are now made from **the user's own art**.
+1. **Source image** → `example_art/<name>.png` (or anywhere). The user's own work (they generate it; commercial use OK).
+   Best: the beast alone on black or a plain backdrop, head large in frame, any pose, ~1536 px wide.
+2. **Bake** → `npx electron scripts/art/ink-bake.js [id]` with a spec in `scripts/art/ink-bake.json`:
+   `{ id, src, crop: [x0 y0 x1 y1] (source px, aim for ~1.37:1), width: 200 (dots across), detail: 0.028, lift: 0.12,
+   minL, close, minArea, erase: [[poly]], keep: [[poly]] }` (polygons in map px). Background removal = texture detail
+   (fur/feathers are textured, a painted glow backdrop is smooth) + brightness above the local backdrop, then close
+   gaps, fill holes, drop specks. Writes **the dot map** `assets/sprites/beasts/<id>.png` (1 px = 1 dot, alpha 0 = no
+   dot; rows are stretched 1/0.866 for the hex grid) and a cut-out preview `scripts/art/out/<id>.mask.png`.
+3. **Edit (optional)** the dot map in any pixel editor (Paint.NET, Aseprite, Photoshop): erase stray dots (alpha 0),
+   recolour, brighten eyes. Re-baking overwrites hand edits, so either fix the bake with `erase` / `keep` polygons or
+   stop re-baking that beast once you edit by hand.
+4. **Wire** in `INK_BEASTS` (assets/sprites/ink-beasts.js): `raster: { map: 'sprites/beasts/<id>.png', box: [x0 y0 x1 y1]
+   (scene), regions: [{ layer, mask: [[mx, my], ...] }], minL, gain, sat, gamma }` + `layerOrder` / `motion` for the
+   region layers (tails sway, wings beat), `edgeGlow`, `motes`, `bolts`, `formation`. Paths are relative to assets/
+   (`InkRenderer.assetUrl` finds `../assets/` on desktop, `assets/` in the mobile web root).
+5. **Look + review** → `node scripts/smoke/cdp.js scripts/smoke/scenarios/ink-beasts-sheet.js` (sheet) and
+   `scenarios/ink-beasts.js` (in-app, every layout), reviewer agent, then the user.
+
+**Roster (2026-09-28):** 10 beasts in scripts/art/ink-bake.json, all from the user's transparent PNGs in example_art/
+(cut out by alpha; the detector is the fallback for opaque sources). Maps are contain-fitted into the box (tall dragons
+and the qilin keep the same dot size). Variants are INK_BEASTS entries `<id>__<variant>` that `extends` the beast and
+set `raster.hue` (YIQ rotation; the wheel turns BACKWARDS: purple → red ≈ -90, gold → red ≈ +40) and/or `raster.tint` +
+`tintAmt`, plus glow colours. Motion pivots and glints take `map: [mx, my]` (dot-map px). A layer may not be named
+`head` (that name is the cultivator's head transform); use `neck`. Beasts with no Classic ASCII sprite keep their ink
+portrait under Sprite art = Classic.
+
+Engine (`_rasterGrid` / `_paintRaster`): each opaque map pixel → a dot at its hex position; brightness = ½ luma + ½
+max channel (saturated blues/violets count as bright); per-beast **auto exposure** (92nd percentile → 0.92, × `gain`);
+dot radius `P·(0.14 + 0.4·L^gamma)` and alpha grow with brightness, dim dots thin out at random (ink, not a photo);
+silhouette dots take `edgeGlow`; `tone` (< 1) lifts a dark beast's shadows; art `glints: [{x, y, r, color}]` = pulsing eye/gem lights (scene units); region dots bordering the still body are drawn in **both** layers so a sway never opens
+a seam; **occlusion**: with more than one layer, the figure composes on its own canvas (`C.fig`) and each
+layer first erases (destination-out) what lies behind its solid silhouette mask (`_paintRasterMask`, discs of 0.62 dot
+pitch), so a swaying tail / beating wing never shows through the body's dot gaps. Region masks must take in a WHOLE
+moving part (the fox's lower tail curl included), or the part tears where it is split; breakthrough rim = gold on the silhouette. The dot grid is cached per map + box; the image loads async
+(`InkRenderer.image`) and the cache rebuilds on load.
 
 ## Planned (PLAN.md Phase 39, user 2026-09-27)
 - A5: the player picks face / hair / robe at every creation and rebirth (live ink preview); robe + effect changeable
@@ -125,7 +160,18 @@ No game state. One presentation setting: `settings.artStyle` — `'classic'` | `
 - `reducedMotion` freezes time (no breathing, orbits or motes) instead of hiding everything.
 - The ASCII engine assumes a 1× backing store; SpriteRenderer calls `setSize` on the engine it switches to, which
   resets the canvas width for it.
+- **Raster art (2026-09-28, prototype):** `raster: { src, crop, box, mask?, regions?: [{layer, mask}], minL, gain, sat, gamma }`
+  samples a source picture onto the hex dot grid (`_rasterGrid` caches per src/crop/box/pitch; `InkRenderer.image()` loads
+  async and rebuilds the cache on load). Brightness → dot size via `gamma` (mid-tones open gaps), dim dots thin out, silhouette
+  edge takes `edgeGlow`; `regions` put e.g. the tails on a swaying layer. Demo: `scenarios/ink-raster-demo.js` (example_art/fox.png).
+  Source images: transparent background, head large in frame, the user's own art.
+- **Symmetry:** a part / stroke / dot feature with `mirror: true` gets a reflected copy across the scene centre
+  (`inkMirrorAll` in `_effective`; id + '_m', layer = `mirrorLayer` if set). Bolts take `avoid: [x0, x1]` (never across the face).
+  Parts: `dissolve: [x0 y0 x1 y1]` thins into loose dots; art `edgeGlow` lights the silhouette.
+- **Dots only, no wash** (user 2026-09-28, standard for new art): art sets `underpaint: false` so no colour wash is drawn
+  under the dots (the A3 cultivator still has it, grandfathered). Parts may set `lift` (tone offset, -1..1). Rules:
+  .agents/rules/assets.md → Ink art.
 - Dot sampling uses `isPointInPath` on a hex-staggered grid (pitch 1.75): ~20 ms per cache build at Overlay size.
-- Visual review: per the user's rule (2026-09-27) the user reviews art themselves — capture with
+- Visual review (user 2026-09-28): one fresh reviewer agent first (fix its blockers), then the user decides — capture with
   `node scripts/smoke/cdp.js scripts/smoke/scenarios/ink-art.js` → `scripts/smoke/out/ink-*.png`
   (`ink-still-*.png` = 4× engine renders, `ink-still-face/hilt.png` = 12× close-ups; the rest are in-app captures per layout mode + phone).

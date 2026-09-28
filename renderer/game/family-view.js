@@ -22,6 +22,24 @@ class FamilyView {
     this.el = document.getElementById('tab-family')
     this.openChild = null   // id of the child card whose actions are unfolded
     this.el.addEventListener('click', e => this._click(e))
+    // Live cooldown countdowns (real seconds): tick the labels once a second, re-render when one reaches zero.
+    this._cdTimer = setInterval(() => this._tickCooldowns(), 1000)
+  }
+
+  // "4:59" / "45s" — remaining real time on a cooldown
+  _clock(secs) { secs = Math.max(0, Math.ceil(secs)); return secs >= 60 ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : `${secs}s` }
+
+  _tickCooldowns() {
+    const nodes = this.el.querySelectorAll('.fa-cd[data-at]')
+    if (!nodes.length) return
+    const now = this.gs._cdNow()
+    let done = false
+    nodes.forEach(n => {
+      const left = Math.ceil(+n.dataset.at - now)
+      if (left <= 0) done = true
+      else n.textContent = `Ready in ${this._clock(left)}`
+    })
+    if (done && this.el.offsetParent !== null) this.render(this.gs.get())
   }
 
   render(s) {
@@ -46,10 +64,11 @@ class FamilyView {
 
   // One action button: glyph, name, what it does (or why it's locked). data-fa = action, data-id = target.
   _act(fa, glyph, name, p, effect, extra = '', cls = '') {
-    const why = !p.ok ? this._lockText(p) : ''
+    const cd = !p.ok && p.reason === 'cooldown' && p.secsLeft != null
+    const why = !p.ok && !cd ? this._lockText(p) : ''
     return `<button class="fa-btn${cls ? ' ' + cls : ''}${p.ok ? '' : ' locked'}" data-fa="${fa}"${extra} ${p.ok ? '' : 'disabled'}>
       <span class="fa-g">${Icon.g(glyph)}</span><span class="fa-t"><span class="fa-n">${name}</span>
-      <span class="fa-e">${why ? `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i>${this.h.esc(why)}</span>` : effect}</span></span></button>`
+      <span class="fa-e">${cd ? `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i><span class="fa-cd" data-at="${this.gs._cdNow() + p.secsLeft}">Ready in ${this._clock(p.secsLeft)}</span></span>` : why ? `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i>${this.h.esc(why)}</span>` : effect}</span></span></button>`
   }
 
   _lockText(p) {
@@ -157,7 +176,7 @@ class FamilyView {
     if (!c.target) {
       return `<section class="fam-card court">
         <div class="fc-head"><span class="fc-glyph" data-icon="bond"></span><div class="fc-id"><div class="fc-name">Whom will you court?</div>
-          <div class="fc-sub">The go-between waits for your answer. Read them well: each temper wants something different.</div></div></div>
+          <div class="fc-sub">The matchmaker waits for your answer. Read them well: each temper wants something different.</div></div></div>
         <div class="cand-grid">${c.candidates.map(p => {
           const pers = this._persona(p.personality)
           return `<div class="cand">
@@ -167,7 +186,7 @@ class FamilyView {
             ${pers ? `<div class="cand-blurb">${h.esc(pers.blurb)}</div>` : ''}
             <button class="fa-pill gold" data-fa="court-pick" data-id="${h.esc(p.id)}">Court</button></div>`
         }).join('')}</div>
-        <div class="fc-foot"><button class="fa-quiet" data-fa="court-withdraw">Send the go-between away</button></div></section>`
+        <div class="fc-foot"><button class="fa-quiet" data-fa="court-withdraw">Send the matchmaker away</button></div></section>`
     }
     const t = c.target, pers = this._persona(t.personality)
     const pc = gs.proposeChance(), cp = gs.canPropose(), cm = gs.canMeet()
@@ -213,7 +232,7 @@ class FamilyView {
       : this._act('court-seek', 'bond', 'Seek a match', sk, '', '', 'wide')
     return `<section class="fam-card alone">
       <div class="fc-head"><span class="fc-glyph dim" data-icon="person"></span><div class="fc-id"><div class="fc-name">You walk the path alone</div>
-        <div class="fc-sub">Pay a go-between to find someone worth courting, wait for a matchmaker's offer, or leave it to the road (Roam → Explore).</div></div></div>
+        <div class="fc-sub">Pay a matchmaker to find someone worth courting, wait for their offer, or leave it to the road (Roam → Explore).</div></div></div>
       ${f.proposal ? `<button class="fa-btn wide urgent" id="_matchmaker"><span class="fa-g" data-icon="bond"></span><span class="fa-t"><span class="fa-n">A matchmaker awaits</span><span class="fa-e">${f.proposal.suitors.length} offer${f.proposal.suitors.length === 1 ? '' : 's'} of marriage</span></span></button>` : ''}
       ${seekBtn}
       ${spurned ? `<div class="fc-hint">${spurned === 1 ? 'One suitor has' : `${spurned} suitors have`} refused you. The road is long; you may meet again.</div>` : ''}

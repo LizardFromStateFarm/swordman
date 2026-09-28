@@ -457,10 +457,10 @@ const TOURNAMENT_SPOUSE_AFFECTION_PER_DEATH = -15   // per child of your current
 // Courtship: you pick who. Stone costs scale like event costs (familyCost).
 const COURT_CANDIDATES          = 3
 const COURT_SEEK_COST           = 30        // stones, × (1 + stage × FAMILY_STONE_SCALE)
-const COURT_SEEK_COOLDOWN_YEARS = 6         // after a refusal or a withdrawn courtship
+const COURT_SEEK_COOLDOWN_SECS  = 300       // real seconds (open time), after a refusal or a withdrawn courtship
 const COURT_INTEREST_START      = 40
 const COURT_SAME_PERSONALITY    = 10
-const COURT_BEAT_GAP_YEARS      = 1         // one meeting per game year (~2 open minutes)
+const COURT_BEAT_GAP_SECS       = 120       // real seconds between meetings
 const COURT_BEATS_TO_PROPOSE    = 2
 const COURT_STAGE_WEIGHT        = 0.03      // proposal chance per stage you stand above them
 const COURT_KARMA_WEIGHT        = 0.004     // per karma point above 50
@@ -559,11 +559,11 @@ const COURT_WAYS = {
   calm:     { glyph: 'idle', hint: 'calm · quiet ones settle beside you' },
 }
 
-// Spouse actions — each its own cooldown in game years. aff keyed by the SPOUSE's personality.
+// Spouse actions — each its own cooldown in real seconds (open time). aff keyed by the SPOUSE's personality.
 const SPOUSE_ACTIONS = {
-  time: { cdYears: 3, qiFrac: 0.03, aff: { default: 4, lazy: 7, poet: 7, niceguy: 6, grumpy: 5, stoic: 2, demonking: 2, hotblood: 3 } },
-  gift: { cdYears: 5, stones: 40, aff: { default: 6, miser: 12, glutton: 10, arrogant: 9, gremlin: 8, stoic: 2, niceguy: 4 } },
-  dual: { cdYears: 8 },
+  time: { cdSecs: 300, qiFrac: 0.03, aff: { default: 4, lazy: 7, poet: 7, niceguy: 6, grumpy: 5, stoic: 2, demonking: 2, hotblood: 3 } },
+  gift: { cdSecs: 300, stones: 40, aff: { default: 6, miser: 12, glutton: 10, arrogant: 9, gremlin: 8, stoic: 2, niceguy: 4 } },
+  dual: { cdSecs: 300 },
 }
 const DUAL_QI_BASE          = 0.12    // share of the Qi cap gained
 const DUAL_QI_PER_STAGE     = 0.02    // per stage your spouse stands above you
@@ -572,7 +572,7 @@ const DUAL_AFFECTION        = 3
 const DUAL_SAFE_AFFECTION   = 60      // deviation risk = clamp((this − affection)/100, DUAL_RISK_RANGE)
 const DUAL_RISK_RANGE       = [0.03, 0.6]
 const DUAL_DEVIATION        = { health: -15, integrity: -8, aff: -6 }
-const CHILD_TRY_GAP_YEARS   = 3
+const CHILD_TRY_GAP_SECS    = 600     // real seconds (open time)
 const PREGNANCY_YEARS       = 1
 const SEPARATE_CHILD_BOND   = -10     // every child shared with a spouse you leave
 const AFF_TRAIL_MAX         = 12      // yearly affection samples kept for the trend arrow
@@ -580,14 +580,14 @@ const AFF_TREND_YEARS       = 10      // trend = now vs this many years ago
 // Declining a partner's wish for a child ("Not now"), keyed by the partner's personality.
 const CHILD_WISH_DECLINE_AFF = { default: -4, niceguy: -2, stoic: -1, lazy: -1, poet: -8, hotblood: -6, demonking: -6 }
 
-// Raising a child — per-child cooldowns. bond keyed by the CHILD's personality.
+// Raising a child — per-child cooldowns (real seconds, open time). bond keyed by the CHILD's personality.
 const TEACH_MIN_AGE         = 12
 const GIFT_MIN_AGE          = 6
 const TEACH_MORALITY_PULL   = 0.15    // the child's morality moves this share of the way toward yours
 const CHILD_ACTIONS = {
-  time:  { cdYears: 3, qiFrac: 0.02, bond: { default: 6, lazy: 8, niceguy: 8, poet: 8, grumpy: 5, stoic: 3, psycho: 2, demonking: 3 } },
-  teach: { cdYears: 6, qiFrac: 0.06, xp: 0.35, bond: { default: 3, hotblood: 6, stoic: 5, paranoid: 4, arrogant: -2, lazy: -3 } },
-  gift:  { cdYears: 5, stones: 50, xp: 0.2, bond: { default: 4, miser: 9, glutton: 8, arrogant: 6, stoic: 1 },
+  time:  { cdSecs: 300, qiFrac: 0.02, bond: { default: 6, lazy: 8, niceguy: 8, poet: 8, grumpy: 5, stoic: 3, psycho: 2, demonking: 3 } },
+  teach: { cdSecs: 300, qiFrac: 0.06, xp: 0.35, bond: { default: 3, hotblood: 6, stoic: 5, paranoid: 4, arrogant: -2, lazy: -3 } },
+  gift:  { cdSecs: 300, stones: 50, xp: 0.2, bond: { default: 4, miser: 9, glutton: 8, arrogant: 6, stoic: 1 },
            spoil: { arrogant: -4, psycho: -4, demonking: -3, miser: -2 } },
 }
 

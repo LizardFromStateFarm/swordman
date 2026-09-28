@@ -14,7 +14,7 @@ playMode: 'idle' | 'active'     — per slot, persists across sessions and reinc
                                    settings must never do that).
 automation: {
   autoExplore:        bool            — relaunches the last manually-chosen expedition location on return
-  autoExplorePaused:  { [locId]: true } — per-location opt-out (Explore tab toggle)
+  autoExploreLocationId: string|null — which location Auto-Explore idles on (null = the last one you sent); set in the Mode panel (autoExplorePaused is legacy, unused)
   lastExploreLocationId: string|null  — set by every startExpedition() call, manual or automated
   autoSectMissions:   bool            — re-queues the same mission type when a slot frees up
   autoCraft:          bool            — master switch; per-recipe toggle below gates which recipes repeat
@@ -32,7 +32,7 @@ setPlayMode(mode) → { ok, reason? }                       reason: invalid
 setAutomation(key, value) → { ok, reason? }                keys: autoExplore/autoSectMissions/autoCraft/
                                                             autoBreakthrough (bool) or breakthroughThreshold
                                                             (number). reason: unknown/invalid/locked
-setAutoExplorePaused(locationId, paused) → { ok }
+setAutoExploreLocation(locationId|null) → { ok }
 setAutoCraftRecipe(recipeId, enabled) → { ok }
 automationUnlocked(key) → bool                             checked against AUTOMATION_UNLOCKS + live state
 pushExpedition() → { ok, reason? }                          reason: not_active/no_expedition/already/too_early/stones

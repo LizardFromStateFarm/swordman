@@ -31,7 +31,7 @@ class InkRenderer {
     if (V && V.extends) {
       const B = InkRenderer.resolve(V.extends, table)
       out = { ...B, ...V }
-      for (const k of ['palette', 'background', 'slots', 'halo', 'qiPearl', 'body']) {
+      for (const k of ['palette', 'background', 'slots', 'halo', 'qiPearl', 'body', 'raster']) {
         if (V[k] && B[k]) out[k] = { ...B[k], ...V[k] }
       }
       delete out.extends
@@ -104,8 +104,9 @@ class InkRenderer {
   // replace halo/rings/motes, face frames kept for the expression swaps.
   _effective() {
     const B = this.base, sel = { ...(B.slots || {}), ...this.slotSel }
-    const A = { ...B, palette: { ...B.palette }, parts: B.parts.slice(), strokes: B.strokes.slice(),
-      dotFeatures: (B.dotFeatures || []).slice(), frames: {}, slots: sel }
+    const cx = (B.scene?.[0] || 300) / 2
+    const A = { ...B, palette: { ...B.palette }, parts: inkMirrorAll(B.parts, cx), strokes: inkMirrorAll(B.strokes, cx),
+      dotFeatures: inkMirrorAll(B.dotFeatures || [], cx), frames: {}, slots: sel }
     if (typeof INK_PARTS === 'undefined') return A
     for (const kind of InkRenderer.SLOT_KINDS) {
       const O = (INK_PARTS[kind] || {})[sel[kind]]
@@ -209,6 +210,10 @@ class InkRenderer {
   _cacheFor() {
     const dpr = this._dpr()
     if (!this.cache || this.cache.w !== this.w || this.cache.h !== this.h || this.cache.dpr !== dpr) {
+      // the backing store follows a DPR change (another monitor, phone): else the new cache is drawn cropped
+      const bw = Math.round(this.w * dpr), bh = Math.round(this.h * dpr)
+      if (this.cv.width !== bw) this.cv.width = bw
+      if (this.cv.height !== bh) this.cv.height = bh
       this.cache = this._buildCache(this.w, this.h, dpr)
     }
     return this.cache
@@ -221,7 +226,7 @@ class InkRenderer {
 
   // ── Frame ────────────────────────────────────────────────────────────────
 
-  _drawTo(ctx, C) {
+  _drawTo(ctx, C) {   // (ctx is reassigned while the figure layers compose on C.fig)
     const A = this.art, P = A.palette, t = this.t, bt = this.bt
     const calm = this.reducedMotion
     const breath = calm ? 0 : Math.sin(t * 1.3)
@@ -279,16 +284,24 @@ class InkRenderer {
     const bodyTf = () => ctx.setTransform(1, 0, 0, k, shake, (C.oy + ay * C.S) * (1 - k) + fyD)
     const headTf = () => ctx.setTransform(1, 0, 0, 1, shake, headDy * C.S + fyD)
     const headImg = fail > 0.08 ? C.frames.strain : bt > 0.5 ? C.frames.bt : C.layers.head   // expression frames
-    for (const L of this._layerOrder()) {
+    // occlude (raster beasts): the figure is composed on its own canvas, and each layer first erases what lies behind
+    // its solid silhouette, so a swaying tail or beating wing never shows through the body's dot gaps (user 2026-09-28)
+    const fig = C.occ ? C.fig.getContext('2d') : ctx
+    if (C.occ) { fig.setTransform(1, 0, 0, 1, 0, 0); fig.clearRect(0, 0, C.cw, C.ch) }
+    const out = ctx; ctx = fig
+    this._layerOrder().forEach((L, li) => {
       ctx.save()
       if (L === 'body') bodyTf()
       else if (L === 'head') headTf()
-      else if (A.motion?.[L]) this._swingTf(ctx, C, A.motion[L], t, shake, fyD)   // tails sway, wings beat (A4-2)
+      else if (A.motion?.[L]) this._swingTf(ctx, C, this._mapPivot(A.motion[L]), t, shake, fyD)   // tails sway, wings beat (A4-2)
       else ctx.setTransform(1, 0, 0, 1, shake, fyD)
+      if (C.occ && li > 0 && C.mask[L]) { ctx.globalCompositeOperation = 'destination-out'; ctx.drawImage(C.mask[L], 0, 0); ctx.globalCompositeOperation = 'source-over' }
       ctx.drawImage(L === 'head' ? headImg : C.layers[L], 0, 0)
       if (bt > 0.01) { ctx.globalAlpha = bt; ctx.drawImage(C.rim[L], 0, 0); ctx.globalAlpha = 1 }
       ctx.restore()
-    }
+    })
+    ctx = out
+    if (C.occ) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(C.fig, 0, 0) }
     ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
     ctx.translate(0, fy)
 
@@ -312,6 +325,13 @@ class InkRenderer {
       inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r, inkMix(pc, '#FFFFFF', 0.45), 0.95 * lit)
     }
 
+    // glints (raster beasts): a living eye, a pulsing gem; [{ x, y, r, color }] in scene units, drawn as glowing dots
+    for (const G0 of A.glints || []) {
+      const q = this._mapPivot({ map: G0.map, pivot: [G0.x, G0.y] }), G = { ...G0, x: q.pivot[0], y: q.pivot[1] }
+      const pl = calm ? 0.7 : 0.7 + 0.3 * Math.sin(t * 2.1 + G.x)
+      inkSoftDot(ctx, G.x, G.y + headDy, G.r * 3.5, P[G.color] || G.color, 0.6 * pl + 0.3 * bt)
+      inkSoftDot(ctx, G.x, G.y + headDy, G.r, inkMix(P[G.color] || G.color, '#FFFFFF', 0.5), 0.95)
+    }
     if (A.lotus) this._lotus(ctx, C, glowCol, t, bt, 'front')
     this._rings(ctx, C, glowCol, t, bt, 'front')
     if (A.dragons) this._dragons(ctx, C, t, bt, 'front')
@@ -664,23 +684,37 @@ class InkRenderer {
   }
 
   // Lightning (Thunder Eagle): short jagged bolts flicker around the beast, each alive for a fraction of a second.
-  // B = { n, area: [x0, y0, x1, y1], color, every (s) }
+  // B = { n, area: [x0, y0, x1, y1], avoid?: [x0, x1] (a band the bolts never start in: the head), color, every (s) }
   _bolts(ctx, C, t) {
     const B = this.art.bolts, col = this.art.palette[B.color] || '#E8F4FF'
     for (let i = 0; i < B.n; i++) {
       const cycle = t / B.every + inkRnd(i * 3.7), k = Math.floor(cycle), f = cycle - k
-      if (f > 0.14) continue                                              // most of the time: dark
-      const seed = k * 17 + i * 5, a = 1 - f / 0.14
+      if (f > 0.2) continue                                               // most of the time: dark
+      const seed = k * 17 + i * 5, a = 0.55 + 0.45 * (1 - f / 0.2)      // bright for its whole short life
       let x = B.area[0] + inkRnd(seed) * (B.area[2] - B.area[0]), y = B.area[1] + inkRnd(seed + 1) * (B.area[3] - B.area[1]) * 0.5
+      if (B.avoid && x > B.avoid[0] && x < B.avoid[1]) x = x < (B.avoid[0] + B.avoid[1]) / 2 ? B.avoid[0] - 8 : B.avoid[1] + 8   // not across the face
       const pts = [[x, y]]
       for (let j = 0; j < 5; j++) { x += (inkRnd(seed + j * 2 + 3) - 0.5) * 9; y += 3 + inkRnd(seed + j * 2 + 4) * 5; pts.push([x, y]) }
-      ctx.save(); ctx.lineJoin = 'round'
-      ctx.shadowColor = col; ctx.shadowBlur = 5 * C.S
-      ctx.strokeStyle = inkRgba(col, 0.35 * a); ctx.lineWidth = 2.2
-      ctx.beginPath(); pts.forEach(([px, py], j) => j ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.stroke()
-      ctx.shadowBlur = 0
-      ctx.strokeStyle = inkRgba('#FFFFFF', 0.95 * a); ctx.lineWidth = Math.max(0.5, C.minW)
-      ctx.stroke(); ctx.restore()
+      const fork = [pts[2]]                                               // a branch splitting off partway down
+      let fx = pts[2][0], fy = pts[2][1], dir = inkRnd(seed + 20) < 0.5 ? -1 : 1
+      for (let j = 0; j < 3; j++) { fx += dir * (3 + inkRnd(seed + j + 21) * 4); fy += 2 + inkRnd(seed + j + 25) * 4; fork.push([fx, fy]) }
+      const core = new Path2D(), halo = new Path2D(), step = 0.9
+      let n = 0
+      for (const run of [pts, fork]) for (let j = 1; j < run.length; j++) {
+        const [ax, ay] = run[j - 1], [bx, by] = run[j], len = Math.hypot(bx - ax, by - ay)
+        for (let u = 0; u < len; u += step) {
+          const x = ax + (bx - ax) * u / len, y = ay + (by - ay) * u / len, jx = (inkRnd(seed + n) - 0.5) * 0.5; n++
+          core.moveTo(x + jx + 0.42, y); core.arc(x + jx, y, 0.42, 0, Math.PI * 2)
+          if (inkRnd(seed + n * 3) < 0.18) { const sx = x + (inkRnd(seed + n * 5) - 0.5) * 4, sy = y + (inkRnd(seed + n * 7) - 0.5) * 4
+            halo.moveTo(sx + 0.3, sy); halo.arc(sx, sy, 0.3, 0, Math.PI * 2) }
+        }
+      }
+      ctx.save()
+      ctx.shadowColor = col; ctx.shadowBlur = 6 * C.S
+      ctx.fillStyle = inkRgba(col, 0.8 * a); ctx.fill(halo); ctx.fill(core)
+      ctx.shadowBlur = 2 * C.S; ctx.shadowColor = '#FFFFFF'
+      ctx.fillStyle = inkRgba('#FFFFFF', a); ctx.fill(core)
+      ctx.restore()
     }
   }
 
@@ -794,6 +828,15 @@ class InkRenderer {
       C.layers[L] = mk(); this._paintLayer(C.layers[L].getContext('2d'), C, parts, grid, L, false)
       C.rim[L] = mk();    this._paintLayer(C.rim[L].getContext('2d'), C, parts, grid, L, true)
     }
+    C.occ = !!(A.raster && this._layerOrder().length > 1)
+    if (C.occ) {                                              // silhouette masks per layer (see _drawTo)
+      C.fig = mk(); C.mask = {}
+      for (const L of this._layerOrder()) {
+        const m = mk(), g = m.getContext('2d'); g.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
+        for (const R of [].concat(A.raster)) this._paintRasterMask(g, R, L)
+        C.mask[L] = m
+      }
+    }
     // expression frames: the head layer again with the frame's dot features (falls back to the plain head)
     for (const fr of ['bt', 'strain']) {
       if (!this.art.frames[fr]) { C.frames[fr] = C.layers.head; continue }
@@ -834,17 +877,133 @@ class InkRenderer {
       else if (p.mat !== 'skin') this._paintSmoothRim(ctx, C, p)
       if (!rim) for (const s of A.strokes) if (s.after === p.id && !s.live) this._stroke(ctx, C, s, PAL)
     }
+    for (const R of [].concat(A.raster || [])) this._paintRaster(ctx, C, R, layer, rim)
     if (rim) return
     if (C.lod) for (const f of this._feats) if (parts.find(q => q.id === f.part)?.layer === layer) inkBrush(ctx, f.pts.length > 1 ? f.pts : [f.pts[0], f.pts[0]], f.w, PAL[f.color], 1, C.minW)
     for (const s of A.strokes) if (s.layer === layer && !s.live && !s.after) this._stroke(ctx, C, s, PAL)
     for (const g of A.glyphs) if (g.layer === layer) inkGlyphRun(ctx, g, PAL, C.lod, C.S)
   }
 
+  // ── Raster art: a baked DOT MAP drawn as ink dots (dots only, user 2026-09-28) ──
+  // R = { map: 'sprites/beasts/<id>.png' (relative to assets/), box: [x0 y0 x1 y1] (scene; the map's width spans it),
+  //       layer?: 'body', regions?: [{ layer, mask: [[mx, my], ...] }] (map px; dots inside go to that layer, e.g. a tail
+  //       that sways), minL?: 0.1 (darker = no dot), gain?: 1, sat?: 1.3, gamma?: 1.4 (dot-size curve),
+  //       tone?: e.g. 0.7 (< 1 lifts a dark beast's shadows: a black wolf's face and ruff) }
+  // One map pixel = one dot on the hex grid (odd rows half a dot right, rows 0.866 of a dot apart). Maps come from
+  // scripts/art/ink-bake.js and can be hand-edited in any pixel editor (alpha 0 = no dot). Brightness sets each dot's
+  // size and alpha, so the picture reads as ink dots with gaps; the silhouette takes the art's `edgeGlow`.
+  static image(src, onload) {
+    const M = InkRenderer._imgs || (InkRenderer._imgs = new Map())
+    let e = M.get(src)
+    if (!e) { e = { img: new Image(), ok: false, wait: [] }; M.set(src, e)
+      e.img.onload = () => { e.ok = true; e.wait.splice(0).forEach(f => f()) }
+      e.img.onerror = () => console.warn('ink dot map failed to load', src)
+      e.img.src = src }
+    if (!e.ok && onload) e.wait.push(onload)
+    return e.ok ? e.img : null
+  }
+  // assets/ sits beside renderer/ on desktop ("../assets/") but inside the web root on mobile ("assets/"): take the
+  // prefix the page actually used to load the sprite data.
+  static assetUrl(rel) {
+    if (InkRenderer._assetBase == null) {
+      const s = [...document.scripts].map(x => x.getAttribute('src') || '').find(x => x.includes('assets/sprites/'))
+      InkRenderer._assetBase = s ? s.slice(0, s.indexOf('assets/') + 7) : '../assets/'
+    }
+    return InkRenderer._assetBase + rel
+  }
+
+  _rasterGrid(R) {
+    const img = InkRenderer.image(InkRenderer.assetUrl(R.map), () => { this.cache = null })
+    if (!img) return null
+    const key = R.map + '|' + R.box
+    if (R._g?.key === key) return R._g
+    // contain-fit: any map aspect (a tall dragon, a wide eagle) is centred in the box at the largest dot size that fits
+    const W = img.naturalWidth, H = img.naturalHeight, [bx0, by0, bx1, by1] = R.box
+    const P = Math.min((bx1 - bx0) / W, (by1 - by0) / (H * 0.866)), RY = P * 0.866
+    const x0 = bx0 + ((bx1 - bx0) - W * P) / 2, y0 = by0 + ((by1 - by0) - H * RY) / 2
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H
+    const g = cv.getContext('2d'); g.drawImage(img, 0, 0)
+    const px = g.getImageData(0, 0, W, H).data
+    const inPoly = (x, y, Q) => { let c = false; for (let i = 0, j = Q.length - 1; i < Q.length; j = i++) {
+      const [xa, ya] = Q[i], [xb, yb] = Q[j]; if ((ya > y) !== (yb > y) && x < (xb - xa) * (y - ya) / (yb - ya) + xa) c = !c } return c }
+    const solid = (c, r) => c >= 0 && r >= 0 && c < W && r < H && px[(r * W + c) * 4 + 3] >= 128
+    const dots = []
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+      const k = (r * W + c) * 4
+      if (px[k + 3] < 128) continue
+      const rgb = R.tone ? [0, 1, 2].map(j => 255 * (px[k + j] / 255) ** R.tone) : [px[k], px[k + 1], px[k + 2]]
+      const L = (0.5 * (0.3 * rgb[0] + 0.59 * rgb[1] + 0.11 * rgb[2]) + 0.5 * Math.max(...rgb)) / 255   // luma + value: saturated blues/violets count as bright
+      if (L < (R.minL ?? 0.1)) continue
+      const o = r & 1
+      const edge = [[c - 1, r], [c + 1, r], [c - 1 + o, r - 1], [c + o, r - 1], [c - 1 + o, r + 1], [c + o, r + 1]].some(([cc, rr]) => !solid(cc, rr))
+      const layer = (R.regions || []).find(q => inPoly(c + 0.5, r + 0.5, q.mask))?.layer || R.layer || 'body'
+      dots.push({ x: x0 + (c + 0.5 + o * 0.5) * P, y: y0 + (r + 0.5) * RY, c, r, rgb, L, layer, edge })
+    }
+    // auto exposure: a dark beast (a void wolf) and a bright one (a white fox) both land their highlights near white
+    const Ls = dots.map(d => d.L).sort((a, b) => a - b), p92 = Ls[Math.floor(Ls.length * 0.92)] || 1
+    const expo = Math.max(0.8, Math.min(2.6, 0.92 / p92))
+    // seams: a region's dots next to the still body are drawn in BOTH layers, so a swaying tail never opens a gap
+    const at = new Map(dots.map(d => [d.c + ',' + d.r, d]))
+    const base = R.layer || 'body'
+    for (const d of dots) {
+      if (d.layer === base) continue
+      for (let dr = -2; dr <= 2 && !d.both; dr++) for (let dc = -2; dc <= 2; dc++) { const q = at.get((d.c + dc) + ',' + (d.r + dr)); if (q && q.layer === base) { d.both = true; break } }
+    }
+    R._g = { key, dots, P, expo, base, x0, y0, RY }
+    return R._g
+  }
+
+  // Motion / glint positions may be given in DOT-MAP px (`map: [mx, my]`): placed through the raster's contain-fit.
+  _mapPivot(M) {
+    if (!M.map) return M
+    const G = [].concat(this.art.raster || [])[0]?._g
+    if (!G) return { ...M, pivot: M.pivot || [150, 75] }
+    return { ...M, pivot: [G.x0 + (M.map[0] + 0.5) * G.P, G.y0 + (M.map[1] + 0.5) * G.RY] }
+  }
+
+  // A layer's solid silhouette: every one of its dots as a disc wide enough to close the gaps to its neighbours.
+  _paintRasterMask(ctx, R, layer) {
+    const G = this._rasterGrid(R)
+    if (!G) return
+    const path = new Path2D(), r = G.P * 0.62
+    for (const d of G.dots) if (d.layer === layer || (d.both && layer === G.base)) { path.moveTo(d.x + r, d.y); path.arc(d.x, d.y, r, 0, Math.PI * 2) }
+    ctx.fillStyle = '#000'; ctx.fill(path)
+  }
+
+  _paintRaster(ctx, C, R, layer, rim) {
+    const G = this._rasterGrid(R)
+    if (!G) return
+    const PAL = this.art.palette, P = G.P, gain = (R.gain ?? 1) * G.expo, sat = R.sat ?? 1.3, gam = R.gamma ?? 1.4
+    const eg = this.art.edgeGlow && PAL[this.art.edgeGlow]
+    const buckets = new Map(), q = v => Math.max(0, Math.min(255, Math.round(v / 12) * 12))
+    const add = (key, x, y, r) => { let b = buckets.get(key); if (!b) { b = new Path2D(); buckets.set(key, b) } b.moveTo(x + r, y); b.arc(x, y, r, 0, Math.PI * 2) }
+    for (const d of G.dots) {
+      if (d.layer !== layer && !(d.both && layer === G.base)) continue
+      if (rim) { if (d.edge) add(`${PAL.gold}|0.95`, d.x, d.y, P * 0.36); continue }
+      const L = Math.min(1, d.L * gain), Lc = L ** gam                 // size curve: mid-tones shrink and open gaps, highlights swell
+      if (L < 0.32 && inkRnd(d.c * 131 + d.r * 17) < (0.32 - L) * 2.2) continue      // dim patches thin out into the dark
+      const rgb = R.hue || R.tint ? inkRecolor(d.rgb, R) : d.rgb
+      const m = (rgb[0] + rgb[1] + rgb[2]) / 3
+      let col = '#' + rgb.map(v => q((m + (v - m) * sat) * gain).toString(16).padStart(2, '0')).join('')
+      let a = (0.45 + 0.55 * L).toFixed(2)
+      if (eg && d.edge) { col = inkMix(col, eg, 0.55); a = '0.999' }
+      add(`${col}|${a}`, d.x, d.y, P * (0.14 + 0.4 * Lc))
+    }
+    for (const [key, path] of buckets) {
+      const [col, a] = key.split('|')
+      ctx.globalAlpha = +a; ctx.fillStyle = col
+      if (rim) { ctx.shadowColor = PAL.gold; ctx.shadowBlur = 3 * C.S }
+      else if (a === '0.999') { ctx.shadowColor = col; ctx.shadowBlur = 2.5 * C.S }
+      ctx.fill(path); ctx.shadowBlur = 0
+    }
+    ctx.globalAlpha = 1
+  }
+
   // Tone 0..1 at a point of a part: light from the upper left, soft folds (tonal bands, never dark lines).
   _tone(p, x, y) {
     const b = p.box, Lg = this.art.light
     const vy = (y - b[1]) / Math.max(1, b[3] - b[1])
-    let L = 0.95 - 0.55 * vy + 0.3 * ((Lg.x - x) / Lg.spread)
+    let L = 0.95 - 0.55 * vy + 0.3 * ((Lg.x - x) / Lg.spread) + (p.lift || 0)   // lift: a part that catches more light
     const f = p.fold
     if (f) {
       const ca = Math.cos(f.ang), sa = Math.sin(f.ang)
@@ -858,7 +1017,7 @@ class InkRenderer {
     const PAL = this.art.palette
     const gold = PAL.gold
     const feats = (this._feats || this.art.dotFeatures).filter(ft => ft.part === p.id)
-    if (!rim) this._underpaint(ctx, p)                         // a wash under the dots, so cloth reads as mass, not an LED field
+    if (!rim && this.art.underpaint !== false) this._underpaint(ctx, p)   // a wash under the dots, so cloth reads as mass (beasts: off, dots only)
     const buckets = new Map()                                  // colour|alpha|radius → Path2D (one fill per bucket)
     const add = (key, x, y, r) => {
       let b = buckets.get(key); if (!b) { b = new Path2D(); buckets.set(key, b) }
@@ -877,7 +1036,14 @@ class InkRenderer {
         const litEdge = out(at(c - 1, r)) || out(up[0]) || out(up[1])
         const edge = litEdge || out(at(c + 1, r)) || out(dn[0]) || out(dn[1])
         const seed = c * 131 + r * 17 + p.i * 7
-        if (rim) {                                             // breakthrough: gold rim on every silhouette edge
+        // dissolve [x0 y0 x1 y1]: the part thins out into loose Qi dots from (x0,y0) toward (x1,y1) (spirit tails, smoke)
+        let dz = 0
+        if (p.dissolve) {
+          const [x0, y0, x1, y1] = p.dissolve, vx = x1 - x0, vy = y1 - y0
+          dz = Math.max(0, Math.min(1, ((x - x0) * vx + (y - y0) * vy) / (vx * vx + vy * vy)))
+          if (inkRnd(seed + 3) < dz * dz * 1.15) continue
+        }
+        if (rim) {                                           // breakthrough: gold rim on every silhouette edge
           if (!(at(c - 1, r) < 0 || at(c + 1, r) < 0 || up[0] < 0 || up[1] < 0 || dn[0] < 0 || dn[1] < 0)) continue   // outer silhouette only
           add(`${gold}|0.95|${(P * 0.36).toFixed(2)}`, x, y, P * 0.36)
           continue
@@ -909,6 +1075,11 @@ class InkRenderer {
           const q = Math.round(L * 8) / 8
           col = inkMix(PAL.robeDeep, PAL.cuff, q); a = '0.9'; rad = P * 0.4
         }
+        const eg = this.art.edgeGlow && PAL[this.art.edgeGlow]
+        if (eg && p.mat !== 'cuff' && (dz > 0.35 || at(c - 1, r) < 0 || at(c + 1, r) < 0 || up[0] < 0 || up[1] < 0 || dn[0] < 0 || dn[1] < 0)) {
+          col = inkMix(col, eg, 0.3 + 0.6 * dz); a = '0.999'                 // spirit light on the silhouette and dissolving ends
+        }
+        if (dz) rad *= 1 - 0.45 * dz
         add(`${col}|${a}|${rad.toFixed(2)}`, x, y, rad)
       }
     }
@@ -1033,6 +1204,23 @@ class InkRenderer {
 // ── helpers (module scope) ───────────────────────────────────────────────────
 
 // Deterministic pseudo-random in [0,1) from a number seed.
+// Variant recolour (raster `hue`: degrees, `tint`: '#rrggbb', `tintAmt`: 0..1): hue rotation in YIQ space (keeps
+// brightness, so whites stay white and the shading survives), then a mix toward the tint, stronger on bright dots.
+function inkRecolor(rgb, R) {
+  let [r, g, b] = rgb
+  if (R.hue) {
+    const a = R.hue * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a)
+    const y = 0.299 * r + 0.587 * g + 0.114 * b, i = 0.596 * r - 0.274 * g - 0.322 * b, q = 0.211 * r - 0.523 * g + 0.312 * b
+    const i2 = i * c - q * sn, q2 = i * sn + q * c
+    r = y + 0.956 * i2 + 0.621 * q2; g = y - 0.272 * i2 - 0.647 * q2; b = y - 1.106 * i2 + 1.703 * q2
+  }
+  if (R.tint) {
+    const [tr, tg, tb] = inkHexRgb(R.tint), L = (0.3 * r + 0.59 * g + 0.11 * b) / 255, k = (R.tintAmt ?? 0.4) * (0.4 + 0.6 * L)
+    r += (tr * (0.5 + L) - r) * k; g += (tg * (0.5 + L) - g) * k; b += (tb * (0.5 + L) - b) * k
+  }
+  return [r, g, b].map(v => Math.max(0, Math.min(255, v)))
+}
+
 function inkRnd(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x) }
 
 function inkHexRgb(hex) {
@@ -1079,6 +1267,32 @@ function inkPath(d) {
     else if (c === 'Z') p.closePath()
   }
   return p
+}
+
+// Symmetric art (front-facing beasts): an entry with `mirror: true` is followed by its reflection across x = cx
+// (id + '_m', on `mirrorLayer` if given: the right wing beats on its own layer). Reflects `d`, `pts` and `dissolve`.
+function inkMirrorAll(list, cx) {
+  const out = []
+  for (const e of list) {
+    out.push(e)
+    if (!e.mirror) continue
+    const m = { ...e, mirror: false, id: e.id && e.id + '_m', layer: e.mirrorLayer || e.layer }
+    if (e.d) m.d = inkMirrorD(e.d, cx)
+    if (e.pts) m.pts = e.pts.map(([x, y]) => [2 * cx - x, y])
+    if (e.dissolve) m.dissolve = [2 * cx - e.dissolve[0], e.dissolve[1], 2 * cx - e.dissolve[2], e.dissolve[3]]
+    if (e.after) m.after = e.after + '_m'
+    out.push(m)
+  }
+  return out
+}
+function inkMirrorD(d, cx) {
+  const out = [], n = { M: 2, L: 2, Q: 4, C: 6, E: 4, Z: 0 }
+  for (let i = 0; i < d.length;) {
+    const c = d[i++]; out.push(c)
+    for (let k = 0; k < n[c]; k++) out.push(k % 2 === 0 && !(c === 'E' && k === 2) ? 2 * cx - d[i + k] : d[i + k])
+    i += n[c]
+  }
+  return out
 }
 
 // Conservative bounding box (control points included).

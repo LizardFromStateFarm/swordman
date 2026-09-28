@@ -101,22 +101,22 @@ them. NPCs still act (a matchmaker's offer, a spouse's wish for a child, a spous
 
 **Courtship (you choose who).** Unmarried, from `PROPOSAL_MIN_STAGE`: **Seek a match** (stones, `COURT_SEEK_COST`
 scaled like event costs) shows `COURT_CANDIDATES` strangers. Pick one → `f.court.target`, `interest` starts at
-`COURT_INTEREST_START` (+`COURT_SAME_PERSONALITY`). Each **meeting** (one per `COURT_BEAT_GAP_YEARS`) draws a
+`COURT_INTEREST_START` (+`COURT_SAME_PERSONALITY`). Each **meeting** (one per `COURT_BEAT_GAP_SECS (real seconds)`) draws a
 `COURT_BEATS` card, 3 choices, interest delta keyed by the *target's* personality. After `COURT_BEATS_TO_PROPOSE`
 meetings you may **Propose**: chance = interest/100 + `COURT_STAGE_WEIGHT` × (your stage − theirs) + (karma − 50) ×
 `COURT_KARMA_WEIGHT`, clamped to `COURT_PROPOSE_RANGE` (breakdown `data-bd="propose"`). Yes → wed, affection starts
 at `AFFECTION_START + (interest − 50) × COURT_AFFECTION_CARRY`. No → they join `f.spurned` (≤ `SPURNED_MAX`), and
-**Seek** cools down `COURT_SEEK_COOLDOWN_YEARS`. **Withdraw** any time (same cooldown). A spurned suitor can later
+**Seek** cools down `COURT_SEEK_COOLDOWN_SECS (real seconds)`. **Withdraw** any time (same cooldown). A spurned suitor can later
 turn up as a road encounter (`SPURNED_ENCOUNTER_CHANCE` of encounters, "an old flame"). Matchmaker proposals stay.
 
-**Spouse actions** (`SPOUSE_ACTIONS`, each on its own cooldown in `f.spouseCd`):
+**Spouse actions** (`SPOUSE_ACTIONS`, each on its own real-time cooldown `cdSecs` = 5 min in `f.spouseCd`):
 - 伴 **Spend time** — costs a slice of Qi (`qiFrac`), affection by personality.
 - 禮 **Bring a gift** — stones (scaled), affection by personality (misers and gluttons love it).
 - 合 **Dual cultivation** — gain Qi = `DUAL_QI_BASE + DUAL_QI_PER_STAGE × (spouse stage − yours)` (clamped
   `DUAL_QI_RANGE`) of the cap, +affection. Risk of a **qi deviation** = clamp((`DUAL_SAFE_AFFECTION` − affection)/100,
   `DUAL_RISK_RANGE`) → `DUAL_DEVIATION` (Health, Integrity, affection). Both numbers shown on the button.
 - 嗣 **Try for a child** — if affection < `AFFECTION_CRISIS` the spouse refuses (says so in the log); else a child is
-  expected in `PREGNANCY_YEARS`. Cooldown `CHILD_TRY_GAP_YEARS`.
+  expected in `PREGNANCY_YEARS`. Cooldown `CHILD_TRY_GAP_SECS (10 real min)`.
 - **Separate** — divorce by choice (confirm). Children shared with that spouse lose `SEPARATE_CHILD_BOND` bond.
 Every affection change records its cause (`f.lastAff = {delta, why, year}`); `f.affTrail` samples affection each
 game year (last `AFF_TRAIL_MAX`) for the trend arrow. Breakdown `data-bd="affection"`.
@@ -145,9 +145,9 @@ Neglect drift, child events and runaways stay as in 2.6b; these actions are how 
   qi · stones · young · gone · expecting · cold · stage · courting · meetings · pending · married.
 - Internals: `_wed(person, affection)` (shared with `acceptSuitor`), `_birth(partnerId)` (every birth; lover-child
   discovery moved here), `_raiseChildWish`, `_conceive`, `_partnerById`, `_changeAffection(delta, why)`.
-- New state: `planVer, childWish, expecting[], spouseCd{}, childTryYear, lastAff, affTrail[], court, seekCooldownYear,
+- New state: `planVer, childWish, expecting[], spouseCd{}, childTryAt, lastAff, affTrail[], court, seekCooldownAt,
   spurned[]` on `s.family`; `cd{}` + `raised{}` on each child. `court = {candidates[], target, interest, meetings,
-  nextMeetYear, beat, lastBeatId, seen[]}`. Emits `child_wish`.
+  nextMeetAt, beat, lastBeatId, seen[]}`. Emits `child_wish`.
 - Seek unlocks at `max(maxStageThisLife, stageIndex) ≥ PROPOSAL_MIN_STAGE` (dev presets leave maxStageThisLife at 0).
 - Sim (60h × 3 profiles × 2 seeds, bot: casual keeps "Ask me" and says yes 75%, active delegates 'some', afk 'many'):
   0 errors, 0 invariant violations; casual median children per life 11 (was ~49 under the old 'many' default).
@@ -188,3 +188,10 @@ NPC head challenges wait; `familyPendingKey()` puts a fight first; the family ov
 Checks: `scripts/sim/checks/family-fights.js` (21). Smoke: `scripts/smoke/scenarios/fights.js` (fight-*.png).
 Sim (60h × 3 profiles × 2 seeds): 0 errors / violations; bot plays exchanges (active reads habits, yields hopeless
 lethal fights), answers ultimatums, covers tracks (active), spares ~20% of tournament losers (casual).
+
+**Real-time cooldowns (2026-09-28).** Family locks are now real seconds of *open* time, not game years: courtship
+Seek/Withdraw (`COURT_SEEK_COOLDOWN_SECS` 300), meetings (`COURT_BEAT_GAP_SECS` 120), spouse actions and child
+raising (`cdSecs` 300 each), Try for a child (`CHILD_TRY_GAP_SECS` 600). Stamps (`f.spouseCd[kind]`, `c.cd[kind]`,
+`f.childTryAt`, `f.seekCooldownAt`, `court.nextMeetAt`) are `stats.timePlayed` ready-at values (`_cdNow()`/`_cdLeft()`);
+previews return `secsLeft`, and the view shows a live "Ready in 4:59" countdown. Pregnancy (`PREGNANCY_YEARS`), min
+ages, Cover-your-tracks and clan cooldowns stay on the game clock. Old saves: `cdSecsVer` migration clears cooldowns.

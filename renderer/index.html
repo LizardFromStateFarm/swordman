@@ -229,6 +229,17 @@
   </div>
 </div>
 
+<!-- Beast details (A4-2): click a beast in Roam → Beasts — renderer/game/beast-detail.js -->
+<div id="beast-overlay" class="hidden">
+  <div id="beast-box">
+    <div id="beast-head">
+      <span id="beast-title">Beast</span>
+      <button class="tb-btn" id="beast-close" title="Close" aria-label="Close" data-icon="close"></button>
+    </div>
+    <div id="beast-body"></div>
+  </div>
+</div>
+
 <!-- Settings overlay (Phase 20C) — rows rendered from SETTINGS_DEFS by renderer/game/settings.js -->
 <div id="settings-overlay" class="hidden">
   <div id="settings-box">
@@ -374,6 +385,7 @@
 <script src="game/nav.js"></script>
 <script src="game/breakdowns.js"></script>
 <script src="game/beast-portrait.js"></script>
+<script src="game/beast-detail.js"></script>
 <script src="game/family-view.js"></script>
 <script src="game/clan-view.js"></script>
 <script src="game/sect-view.js"></script>

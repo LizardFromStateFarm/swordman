@@ -124,16 +124,36 @@ Required output:
 ## Ink art (hybrid engine) — authoring template (A3-2, 2026-09-27)
 
 New art is authored for the hybrid ink engine (`renderer/engine/ink-renderer.js`, doc: `docs/systems/art-engine.md`),
-not as grid ASCII. **Review:** the user reviews art directly (screenshots from `scripts/smoke/scenarios/ink-art.js`),
-no reviewer agents for now.
+not as grid ASCII. **Review (user 2026-09-28):** run every new art piece past **at least one fresh reviewer agent**
+(Reviewer brief from `.agents/rules/ui-review.md` + the rules below, asset gate ≥ 8.0) and fix its blockers **before**
+showing it to the user; then the user gives the final verdict.
 
 **Binding rules (user):**
 1. Only OBJECTS may be solid fills (mats `metal steel grip jade`: weapons, hairpins, crowns, instruments). Everything
-   else (skin, face, hands, hair, robe, trim, halo) is ink dots. Solid faces/halos were rejected as "clip art".
+   else (skin, face, hands, hair, robe, trim, halo, fur, feathers, scales) is ink dots. Solid faces/halos were rejected
+   as "clip art".
+   **Dots only, no fill behind them (user 2026-09-28, standard for all new assets):** never stamp dots over a solid
+   silhouette or colour wash (`underpaint: false` on the art; the engine's wash is a legacy of the A3 cultivator only).
+   A solid shape under the dots reads as a flat cutout. Build every body part from dots alone and let dot **density,
+   size and brightness** carry the shading and form; gaps between dots are part of the look. Only true objects stay
+   solid (a sword, a hairpin, an eagle's talon, a horn tip). Use a fine pitch (≤ 1.0) so there is detail to shade with.
 2. Faces are pixelated dot faces: features are `features` (dot runs), one dot tall (`w: 0.6`) on an exact grid row,
    symmetric about x = 150. Grid: a column on x = 150, rows at y = row × 1.5155 (odd rows offset ±0.875).
 3. Effects stay sleek and clean: thin tilted orbit rings, straight-rising motes behind the figure, no spiral streams,
    no dark fold lines or spots on the figure. No emoji anywhere.
+4. **Ethereal and cool, never cute (user 2026-09-28).** Rounded, bulbous bodies read as childish. Spirit beasts and
+   other creatures use lean, angular silhouettes with sharp points (ears, claws, feather blades, flame-like tails),
+   dynamic poses, and spirit effects: edges and tails that dissolve into Qi motes, glowing eyes and edge light in the
+   beast's Qi colour. Ask: does this look like a mythical spirit you'd want to tame, or a plush toy?
+5. **Beasts face the viewer (user 2026-09-28).** Seated or perched, symmetric, like the cultivator portrait. Side
+   profiles were rejected: the legs and mouths read as goofy. Author one half and set `mirror: true` (and `mirrorLayer`
+   for a wing/tail that moves on its own layer); whole symmetric outlines come from `ink-shapes.js` `sym`
+   (give the left half, from the top of the centre line down to the bottom of it).
+
+**Beasts and other creatures: the bake pipeline (user 2026-09-28).** Don't hand-type polygon creatures; they read as
+childish. Get a source image of the user's own art, bake it to a dot map (`npx electron scripts/art/ink-bake.js <id>`,
+spec in `scripts/art/ink-bake.json`), wire it as `raster` in `INK_BEASTS` with motion `regions`. Full steps:
+`docs/systems/art-engine.md` → "Raster beasts: the bake pipeline". Only use source images the user made or has rights to.
 
 **A new base figure** (`INK_ART[spriteState]`, `assets/sprites/ink-*.js`): 300×150 scene, figure centred on x = 150;
 `parts` back → front (`{ id, layer: lap|body|head, mat, d, fold? }`, `d` = flat `M L Q C E Z` command array);
@@ -158,6 +178,12 @@ alpha}`, `float {y bob shadow}`, `view` (zoom-out box for headroom), `dragons [{
 (Qi dragons, tier 1 baby → 4 golden), `swords {cx cy r n spread len}`, `lotus {x y w h n}`, `ribbons [{pts color w wave}]`,
 `pillar {x y w alpha color}`, `halo.rays` / `rayLen`. A variant may replace `parts` / `strokes` / `dotFeatures` wholesale (the Mortal). `out/ink-realms-sheet.png` shows every realm, idle + breakthrough.
 
+**Shapes:** jointed limbs (hip → knee → hock → paw) and S-curved tapering tails/feathers: generate the polygon with
+`node scripts/art/ink-shapes.js '{"hindNear":{"limb":[[176,80,11],[168,98,6],[179,108,4],[175,120,3.4]]},"tail":{"taper":[[182,78],[200,66],[194,40],[226,18]],"w":13}}'`
+and paste the printed `d`. `{"face":{"sym":[[150,36],[134,42],...,[150,79]]}}` mirrors a left half (top of the centre line
+down to the bottom of it) into the whole outline. Ethereal effects on a part: `dissolve: [x0, y0, x1, y1]` (thins into loose Qi dots toward x1,y1),
+`lift` (tone offset); on the art: `edgeGlow: <palette key>` (silhouette lit in the Qi colour).
+
 **Check it:** `node scripts/smoke/cdp.js scripts/smoke/scenarios/ink-art.js` → `out/ink-slots-sheet.png` (every option),
-`ink-still-*.png` (4×/12× stills incl. fail / demote / face-bt / face-strain), in-app captures per layout mode. Hand the
-screenshots to the user.
+`ink-still-*.png` (4×/12× stills incl. fail / demote / face-bt / face-strain), in-app captures per layout mode. Beasts: `scenarios/ink-beasts-sheet.js` (fast sheet only) and `scenarios/ink-beasts.js`
+(in-app). Reviewer agent first, then hand the screenshots to the user.
