@@ -70,6 +70,13 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
     await click(`[data-tab="${g[1]}"]`); await sleep(250); await shot(`grid-desktop-${g[1]}`)
   }
   await pick('overlay')
+  // 1.8b-6: the grids in Overlay too (Explore = mission-style cards), and "Set out" really sends an expedition
+  for (const g of ['techniques', 'explore', 'craft']) { await click(`[data-tab="${g}"]`); await sleep(250); await shot(`grid-overlay-${g}`) }
+  await click('[data-tab="explore"]'); await sleep(150)
+  await click('.loc-card .loc-btn[data-locid]:not([disabled])'); await sleep(250)
+  assert(await ev('gameState.get().expedition.active'), 'Explore card "Set out" starts an expedition')
+  assert(await ev('!!document.querySelector(".loc-card.active .loc-btn[disabled]")'), 'the running location card shows Underway')
+  await shot('grid-overlay-explore-underway')
 
   // ── Joined sect ──
   await load('member_elder')

@@ -106,7 +106,20 @@ class SectView {
           <div class="fc-sub">No sect claims you. A sect lends its blessing, sets you missions for contribution, and calls you to its wars. You may leave at any time, at a small cost in karma.</div></div></div></section>
         ${this._sec('Sects that would take you', cards + (hidden ? `<div class="fk-note">${hidden} more sect${hidden === 1 ? '' : 's'} will not look at you until you are stronger.</div>` : ''), SECTS.length - hidden)}
       </div>
-      <div class="fam-col">${this._foundCard(s)}</div></div>`
+      <div class="fam-col">${this._foundCard(s)}${this._founderPreview(s)}</div></div>`
+  }
+
+  // What founding gives, in plain words — fills the roomy right column so the goal is visible early (1.8b-6 review).
+  _founderPreview(s) {
+    if (s.stageIndex < SECT_FOUNDING.minStage - 3) return ''
+    const last = SECT_HALL_LEVELS[SECT_HALL_LEVELS.length - 1]
+    const rows = [
+      ['hall', `${SECT_BUILDINGS.length} halls to raise`, 'each one a lasting blessing on your cultivation'],
+      ['disciple', `Up to ${last.cap} disciples`, 'they grow with time and feed you Qi, stones and herbs'],
+      ['flag', 'Your own wars', 'rivals come for your mountain: prepare, call allies, or yield'],
+    ]
+    return this._sec('What a founder holds', `<div class="sv-preview">${rows.map(([g, n, d]) =>
+      `<div class="sv-prev-row"><span class="fa-g">${Icon.g(g)}</span><span><b>${n}</b><br><span class="sv-prev-d">${d}</span></span></div>`).join('')}</div>`, '', 'sv-preview-sec')
   }
 
   _foundCard(s) {

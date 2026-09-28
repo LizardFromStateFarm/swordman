@@ -40,13 +40,21 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
     assert(!(await open()), `${kind}: Esc closes it`)
   }
   // HUD entry points
-  for (const sel of ['#qi-rate', '#qi-numbers', '#integrity-block', '#health-block', '#bt-why']) {
+  for (const sel of ['#qi-rate', '#qi-numbers', '#integrity-block', '#health-block', '#bt-why', '#stones-block']) {
     await click(sel); await sleep(150)
     assert(await open(), `HUD ${sel} opens a breakdown`)
     await click('#breakdown-overlay'); await sleep(100)   // outside the card
     assert(!(await open()), `HUD ${sel}: outside click closes it`)
   }
   await click('#bt-why'); await sleep(350); await shot('char-overlay-hud-bt'); await click('#breakdown-overlay')
+  // User 2026-09-27: stones card, no raw Integrity/Health numbers on the HUD, the ? is a segment of the Breakthrough card
+  await sleep(100); await click('#stones-block'); await sleep(350)
+  assert(/Spirit Stones/.test(await ev('document.querySelector("#breakdown-overlay .bd-tt")?.textContent || ""')), 'Stones readout opens the Spirit Stones card')
+  await shot('char-overlay-hud-stones'); await click('#breakdown-overlay'); await sleep(100)
+  assert(await ev('getComputedStyle(document.getElementById("integrity-numbers")).display === "none" && getComputedStyle(document.getElementById("health-numbers")).display === "none"'), 'HUD hides the Integrity/Health numbers')
+  assert(await ev('(() => { const a = document.getElementById("btn-breakthrough").getBoundingClientRect(), b = document.getElementById("bt-why").getBoundingClientRect(); return Math.abs(a.top - b.top) < 1 && Math.abs(a.bottom - b.bottom) < 1 && Math.abs(a.right - b.left) < 2 })()'), 'the ? sits flush inside the Breakthrough card (same height, no gap)')
+  assert(await ev('(() => { const n = document.querySelector("#btn-breakthrough .act-name"); return n.scrollWidth <= n.clientWidth })()'), 'the Breakthrough label is not truncated beside the ?')
+  await shot('char-overlay-hud-actions', { x: 0, y: 150, width: 300, height: 220 })
 
   await pick('expanded')
   await click('[data-tab="stats"]'); await sleep(200); await shot('char-expanded')
@@ -66,6 +74,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await click('[data-tab="stats"]'); await sleep(200)
   assert(await ev('!!document.querySelector("#tab-stats [data-bd=bloodline]")'), 'Spirit Severing+: bloodline tile shown')
   await shot('char-overlay-late')
+  assert(await ev('[...document.querySelectorAll("#btn-breakthrough .act-name, #btn-breakthrough .act-sub")].every(n => n.scrollWidth <= n.clientWidth + 0.5)'), `late HUD: "${await ev('document.querySelector("#btn-breakthrough .act-name").textContent')}" label + sub-line not cut off`)
   await ev(`(() => { const s = gameState.get(); s.stageIndex = CULTIVATION_STAGES.length - 2; gameState._recalc(); gameState._notify() })()`)
   await click('#tab-stats [data-bd="bt"]'); await sleep(200)
   assert(/Ascension/.test(await ev('document.querySelector(".bd-pop .bd-title").textContent')), 'last mortal stage: BT card is the Ascension Trial')

@@ -31,9 +31,9 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | ⚙ Settings panel (numbers, text size, color-blind, background opacity, animation) | ✅ Phase 20C (M1 1.1) |
 | Personalities (14) + banter: speech bubble, Banter log, frequency + swearing settings | ✅ Phase 29 (M1 1.2) |
 | Window & layout modes (Overlay 300×700 · Expanded · Desktop · Banner strip) | ✅ Phase 6E (M1 1.7) |
-| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted); 1.8b-5 Sect ✅ (7.0, accepted) |
+| **UI/UX overhaul — in progress** (1.8b split into 1.8b-1…6) | ◐ Phase 33 — 1.8b-1 nav + attention + Mode panel ✅ (accepted at 7.3–7.5); 1.8b-2 Character + breakdowns ✅ (7.3, accepted); 1.8b-3a Family ✅ (7.5, accepted); 1.8b-4 Clan + Hall ✅ (7.5, accepted); 1.8b-5 Sect ✅ (7.0, accepted); **1.8b-6 re-review ✅ — all six groups pass the 7.5 bar (7.6–7.8)**; next 1.9 QA & Balance |
 | **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ✅ 1.8d-1 + 1.8d-2 (2026-09-27): 78 icons, 0 chrome CJK (lint in npm test); gates 7.2 / 7.2 accepted by the user |
-| **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate cycle 1 **5.5** (capped by emoji → re-review after 1.8d) |
+| **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate **7.6 PASS** (1.8b-6 cycle 2) |
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
@@ -86,12 +86,24 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   (reviewers split on 1- vs 2-line top item); badges ~14px w/ dark ring; the rail's 道 gap could hold an attention
   summary; "自 off" chip → pill-styled "自動 Off"; +N border neutral/gold; Mode cards unbalanced at 640px; attention
   cards are flat (no depth). Revisit with the 1.8b-6 re-review.
+- **HUD fixes polish** (7.8 pass): the Stones popover has no caret back to its readout; the disabled Breakthrough
+  sub-line sits near the readability floor.
+- **HUD fixes polish** (7.8 pass): the Stones popover has no caret back to its readout; the disabled Breakthrough
+  sub-line sits near the readability floor.
+- **1.8b-6 re-review polish** (all [polish], 2026-09-27; ui-review.md): Overlay Sect sub-tab row cramped + an
+  unlabeled trailing icon; Family card heading ellipsizes at 640px (should wrap); HUD "Integrity100" value butts the
+  label; BT tile "Fails: … −8 Karma" strands a word; Ascension button's ? crowds "Attempt to transcend" in Overlay;
+  phone portrait HUD still ~60% of the screen (hide stage desc + shrink canvas like landscape does); landscape rail's
+  Idle label below the fold; phone Breakthrough ? straddles the card border; tournament Fight! dimmed with no "pair two
+  heirs first" hint; Expanded courtship Yes/Not-now buttons cramped; Overlay Yield icon reads like "P"; legacy cards
+  have no visible buy button; clan head sharing the player's name needs a relation marker; claimed Clan Firsts look
+  locked (dimmed); Explore drop chips not top-aligned when lore is short.
 - **Inline styles in game.js** (~57 `style="…"`): blocked by CSP, re-applied by a shim since 1.8b-1. Convert to classes
   as each screen is rebuilt (1.8b-2..5).
 - **Mobile/narrow layout (1.8e):** now built (viewport meta + a "mobile" CSS layer + narrow canvas sizing) and
   smoke-verified (`scenarios/mobile.js`, 19 checks). Still open: the on-phone **content window is short** (~236px of
   an 844px screen — candidate: make `#app` the scroller with a sticky bottom tab bar); the **character select** got no
-  touch pass; the Visual Review Gate is **5.5 (cycle 1)** and can't pass until the emoji are gone (**1.8d**). Not
+  touch pass; the Visual Review Gate passed at **7.6** (1.8b-6). Not
   verified on a real iPhone/Android device (no Mac; no device here).
 - ~~Main interaction area is the smallest part of the window~~ — 1.7: Overlay tab body 105 → 305px, Expanded/Desktop
   656–696px. Still open: 7 tabs at 9px in Overlay, banner has no attention strip yet — 1.8b
@@ -127,6 +139,51 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-27 (user present) — part 31
+Agent: **Dev docs: `docs/commands.html`** — one-page HTML reference (for human devs) of every npm command: dev run,
+  test/checks, QA sim bot + flags, CDP smoke, desktop builds, release, Android (`release:android` + env vars + signing/Java/Play
+  setup), iOS. Linked from docs/index.md + CLAUDE.md tree. Keep it in sync when package.json scripts change. No code touched.
+  - Committed all pending part-30/31 work. **User deferred 1.9 QA & Balance** ("UI is in a good spot"; full QA/balancing
+    once more systems exist). Next per the PLAN order: **A3 hybrid art engine**.
+
+Date: 2026-09-27 (user present) — part 30
+Agent: **1.8b-6 emoji lint on + re-review of every reworked screen** (user approved; user asked to combine groups per reviewer).
+  - `npm test` now runs `check-no-emoji.js --strict`; the sprite file is exempt until art track A1 (`--sprites` includes it;
+    strict mode prints only failing lines). Reviewer brief in .agents/rules/ui-review.md updated (1.8d done: icons are the
+    marks; emoji outside the sprite = blocker) + a "combined re-reviews" rule (≤3 groups per reviewer, scored separately).
+  - Review: 2 combined reviewers × 2 cycles. PASS all six: nav 7.6 · Character 7.8 · Family+fights 7.7 · Clan+Hall 7.8 ·
+    mobile 7.4 → 7.6 · Sect+grids 7.4 → 7.7. No blockers, no criterion < 6.
+  - Fixes: **fmt() rounding bug** (999,960 → "1000.0K"; now "1.00M") in game.js + fmtQi in game-state.js/events.js;
+    Explore locations = mission-style .sv-card (drop chips, Set out/Underway/lock tile); Technique/Recipe cards share the
+    card surface + chip effect; no-sect "What a founder holds"; landscape phone (no rail scrollbar, no 道, slim titlebar,
+    70% canvas via layout.js); Pack value alignment + bigger chips; Craft category row 10.5px + scrolls on phones;
+    dashed disabled Craft; BT card "Now <1%".
+  - Tests: npm test (190 + both lints) · npm run checks (373) · smoke nav-attention/character/family/fights/clan/sect/mobile/
+    icons/layout-modes/banner-menus all pass, zero console errors. sect.js smoke now also shoots grid-overlay-* and asserts
+    Set out → Underway.
+  - Not committed (the user's own pending rule edits are in the same tree).
+  - **Then, same session — user-requested HUD/nav fixes** (assessment approved): nav badges are a small gold dot unless
+    a decision waits (red count; no green circles) — sub-tab + attention "ready" tier gold too (nav.js + styles.css);
+    the Breakthrough "?" is a segment of a split control `#bt-split` (was a floating circle); the HUD Spirit Stones
+    readout opens a new `stones` breakdown card (breakdowns.js: sources, what they buy, next technique cost, founding
+    cost, disciples' stones/min); Integrity/Health numbers hidden on the HUD (values in their cards). Gate: 7.6 → 7.6 →
+    **7.8 PASS** (two blockers fixed: label ran into the divider; "Ascension T…" truncated → labels wrap). character.js
+    smoke asserts the stones card, hidden numbers, flush ? segment, untruncated labels (both states).
+    **Then (user, emphatic): every tab badge is the plain gold dot — no numbers anywhere, war calls included**; sub-tab
+    marks gold too. nav-attention.js smoke forces 2 items on Roam + a war decision on Sect and asserts no badge has a
+    number, a circle, or green.
+  - **User rule (2026-09-27): no more bot reviewer agents for now — the user reviews UI themselves** (screenshot every
+    affected mode, then hand it to the user). The user said the HUD fixes "look great".
+  - **Then, same session — user-requested HUD/nav fixes** (assessment approved): nav badges are a small gold dot unless
+    a decision waits (red count; no green circles) — sub-tab + attention "ready" tier gold too (nav.js + styles.css);
+    the Breakthrough "?" is a segment of a split control `#bt-split` (was a floating circle); the HUD Spirit Stones
+    readout opens a new `stones` breakdown card (breakdowns.js: sources, what they buy, next technique cost, founding
+    cost, disciples' stones/min); Integrity/Health numbers hidden on the HUD (values in their cards). Gate: 7.6 → 7.6 →
+    **7.8 PASS** (two blockers fixed: label ran into the divider; "Ascension T…" truncated → labels wrap). character.js
+    smoke asserts the stones card, hidden numbers, flush ? segment, untruncated labels (both states).
+  Next: **1.9 QA & Balance: layout modes + UI overhaul** (smoke every mode, UX walkthrough, dist + build:web); polish list
+    from this review is in UX Debt.
+
 Date: 2026-09-27 (user present) — part 29
 Agent: **1.8d-2 icon set part 2 + chrome-CJK purge + lint** (user approved). As-built: docs/systems/icons.md.
   - Icon set 36 → 78 (people/clan/sect/war icons) + redraws. Icon.g(x) for glyph slots; a MutationObserver auto-fills

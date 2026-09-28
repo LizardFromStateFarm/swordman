@@ -5,6 +5,8 @@ Never load all docs at session start — that defeats the purpose.
 
 ## Available docs
 
+**Command reference for humans:** [commands.html](commands.html) — every npm dev / test / sim-bot / smoke / build / Android release command on one page (open in a browser).
+
 | Doc | What it covers | Load when you touch… |
 |-----|---------------|----------------------|
 | [core-loop.md](systems/core-loop.md) | Qi accumulation, stages, roots, breakthroughs, techniques, meditation | game-state.js · stages.js · techniques.js |

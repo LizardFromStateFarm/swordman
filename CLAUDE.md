@@ -127,6 +127,7 @@ PLAN.md                 ← Phase roadmap with implementation detail
 GAMEDESIGN.md           ← Mechanics, pacing, lore style
 docs/
   index.md              ← System doc index + new-doc template
+  commands.html         ← Human quick reference: npm dev/test/sim-bot/smoke/build/Android commands (keep in sync with package.json scripts)
   systems/
     core-loop.md        ← Qi, stages, roots, breakthroughs, techniques
     expedition.md       ← Expedition timer, inventory, drops (Phase 2)
@@ -169,7 +170,7 @@ scripts/
   release-android.js    ← `npm run release:android` → build .aab + push to Google Play (see android-port.md)
   gen-tray-icon.js      ← One-off generator for assets/icons/tray-icon.png (Phase 9A, not run at boot)
   art-bakeoff/          ← A2 art-direction prototype page (3 renderers, same cultivator) — not part of the game
-  check-no-emoji.js     ← Emoji inventory (file:line); --strict exits 1 (A1 adds it to npm test) — no-emoji rule
+  check-no-emoji.js     ← Emoji inventory (file:line); --strict in npm test since 1.8b-6 (sprites exempt until A1; --sprites to include) — no-emoji rule
   check-no-chrome-cjk.js ← Chrome-CJK lint for renderer/ (allow: nav marks, `cjk-ok` flavour lines); --strict runs in npm test (1.8d-2)
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt

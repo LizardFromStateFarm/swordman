@@ -95,8 +95,11 @@ const RANDOM_EVENTS = [
 ]
 
 function fmtQi(n) {
-  if (n >= 1e9) return (n/1e9).toFixed(1)+'B'
-  if (n >= 1e6) return (n/1e6).toFixed(1)+'M'
-  if (n >= 1e3) return (n/1e3).toFixed(1)+'K'
-  return Math.floor(n).toString()
+  // Round first, then pick the unit: 999,960 reads "1.0M", not "1000.0K" (1.8b-6 review).
+  if (n < 1e3) return Math.floor(n).toString()
+  const units = [[1e3, 'K'], [1e6, 'M'], [1e9, 'B'], [1e12, 'T']]
+  for (let i = 0; i < units.length; i++) {
+    const [div, suf] = units[i]
+    if (i === units.length - 1 || +(n / div).toFixed(1) < 1000) return (n / div).toFixed(1) + suf
+  }
 }

@@ -1,0 +1,206 @@
+<!doctype html>
+<!-- Human quick reference for every npm / dev / sim-bot / Android command. Source of truth: package.json "scripts",
+     docs/systems/qa-sim.md, docs/systems/android-port.md. Update this page when a script is added or changed. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cultivator Idle Commands</title>
+<style>
+  :root {
+    --bg: #faf7f0; --panel: #ffffff; --ink: #2a2620; --muted: #6f675a; --line: #e4ddcd;
+    --gold: #9a6b12; --jade: #2f7a5f; --purple: #6a4a9c; --red: #a3402f; --code-bg: #f3eee2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14120f; --panel: #1d1a16; --ink: #ece4d3; --muted: #a39a88; --line: #332e26;
+      --gold: #e0b35a; --jade: #6cc4a0; --purple: #b79ae6; --red: #e38470; --code-bg: #26221c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14120f; --panel: #1d1a16; --ink: #ece4d3; --muted: #a39a88; --line: #332e26;
+    --gold: #e0b35a; --jade: #6cc4a0; --purple: #b79ae6; --red: #e38470; --code-bg: #26221c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-family: Georgia, serif; color: var(--gold); margin: 0 0 4px; font-size: 28px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+  nav a { color: var(--ink); text-decoration: none; border: 1px solid var(--line); background: var(--panel);
+          padding: 4px 12px; border-radius: 999px; font-size: 13px; }
+  nav a:hover { border-color: var(--gold); }
+  section { margin-bottom: 36px; }
+  h2 { font-family: Georgia, serif; font-size: 20px; margin: 0 0 4px; border-bottom: 1px solid var(--line);
+       padding-bottom: 6px; }
+  h2 .tag { font: 600 11px system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase;
+            vertical-align: middle; margin-left: 8px; padding: 2px 8px; border-radius: 999px; border: 1px solid; }
+  .t-dev { color: var(--jade); } .t-build { color: var(--gold); } .t-bot { color: var(--purple); } .t-and { color: var(--red); }
+  .intro { color: var(--muted); margin: 8px 0 14px; }
+  .cmd { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .cmd-head { display: flex; align-items: center; gap: 8px; }
+  code, pre { font-family: ui-monospace, Consolas, "Cascadia Mono", monospace; font-size: 13.5px; }
+  .cmd-head code { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--gold); font-weight: 600; }
+  .cmd p { margin: 6px 0 0; }
+  .cmd p code, li code, td code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  button.copy { flex: none; font: 12px system-ui, sans-serif; color: var(--muted); background: transparent;
+                border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+  button.copy:hover { color: var(--ink); border-color: var(--gold); }
+  pre { background: var(--code-bg); border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .table-wrap { overflow-x: auto; }
+  .note { border-left: 3px solid var(--gold); padding: 8px 12px; background: var(--panel); border-radius: 0 8px 8px 0;
+          margin: 10px 0; font-size: 14px; }
+  ol, ul { padding-left: 22px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Cultivator Idle: Command Reference</h1>
+  <p class="sub">Every npm command for running, testing, simulating, and shipping the game. Run all of them from the repo root.</p>
+
+  <nav>
+    <a href="#setup">Setup</a><a href="#dev">Dev</a><a href="#test">Tests</a><a href="#bot">Sim bot</a>
+    <a href="#smoke">Smoke tests</a><a href="#build">Builds</a><a href="#android">Android</a><a href="#ios">iOS</a>
+  </nav>
+
+  <section id="setup">
+    <h2>First-time setup</h2>
+    <div class="cmd"><div class="cmd-head"><code>npm install</code><button class="copy">Copy</button></div>
+      <p>Installs Electron, Capacitor and everything else. If <code>NODE_ENV=production</code> is set on your machine,
+      npm skips dev dependencies. Use <code>npm install --include=dev</code> instead.</p></div>
+    <p class="intro">You need Node 22 or newer. The smoke tests use Node's built-in WebSocket and fetch.</p>
+  </section>
+
+  <section id="dev">
+    <h2>Run the game <span class="tag t-dev">dev</span></h2>
+    <div class="cmd"><div class="cmd-head"><code>npm start</code><button class="copy">Copy</button></div>
+      <p>Launches the Electron app from source. Because it runs unpackaged, the character-select screen shows purple
+      <b>dev preset</b> slots: late-game test characters you can jump straight into (see <code>docs/systems/dev-presets.md</code>).</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run dev</code><button class="copy">Copy</button></div>
+      <p>Same as <code>npm start</code>, plus <code>--inspect</code> so you can attach a Node debugger to the main process.</p></div>
+    <p class="intro">Save files live in <code>%APPDATA%\Cultivator Idle\</code> on Windows.</p>
+  </section>
+
+  <section id="test">
+    <h2>Tests and checks <span class="tag t-dev">dev</span></h2>
+    <p class="intro">Run both of these before calling any change done. Together they take about 10 seconds.</p>
+    <div class="cmd"><div class="cmd-head"><code>npm test</code><button class="copy">Copy</button></div>
+      <p>Syntax-checks every first-party JS file, then runs the lints that fail on UI chrome written in CJK characters
+      and on emoji anywhere in the game.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run checks</code><button class="copy">Copy</button></div>
+      <p>Runs every scenario check in <code>scripts/sim/checks/</code>. Each one sets up an exact game situation
+      (a marriage crisis, a tournament, a succession) and prints <code>ok</code> or <code>FAIL</code>. New files
+      in that folder are picked up automatically. To run just one check: <code>node scripts/sim/checks/family-marriage.js</code></p></div>
+  </section>
+
+  <section id="bot">
+    <h2>QA sim bot <span class="tag t-bot">bot</span></h2>
+    <p class="intro">Bots play the real game logic headless at full speed and write a pacing, fun and health report.
+    Open <code>scripts/sim/out/report.md</code> when it finishes (full detail is in <code>report.json</code>).</p>
+    <div class="cmd"><div class="cmd-head"><code>npm run sim:quick</code><button class="copy">Copy</button></div>
+      <p>Quick smoke run: the active and afk bots, 24 in-game hours, 1 seed. Takes about a second.
+      Writes its report to <code>scripts/sim/out/quick/</code>.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run sim</code><button class="copy">Copy</button></div>
+      <p>Full suite: the active, casual and afk bots, each at 50, 100 and 200 hours, over 3 seeds.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run sim -- --profiles=casual --hours=100 --seeds=5</code><button class="copy">Copy</button></div>
+      <p>Custom run. Put the flags after <code>--</code>.</p></div>
+    <div class="table-wrap"><table>
+      <tr><th>Flag</th><th>What it does</th></tr>
+      <tr><td><code>--profiles=a,b</code></td><td>Which bots to run: <code>active</code>, <code>casual</code>, <code>afk</code></td></tr>
+      <tr><td><code>--hours=50,100</code></td><td>In-game hours to simulate. Each value is a separate fresh run.</td></tr>
+      <tr><td><code>--seeds=N</code> / <code>--seed=N</code></td><td>How many runs per combination / the first seed (default 1). The same seed always gives the same result.</td></tr>
+      <tr><td><code>--path=founder|member</code></td><td>Whether the bot founds its own sect or stays a sect member forever</td></tr>
+      <tr><td><code>--set="EXPR"</code></td><td>Overrides a balance value without editing the file. You can repeat it. Example: <code>--set="SECT_FOUNDING.minStage=15"</code></td></tr>
+      <tr><td><code>--dt=1</code></td><td>Seconds per game tick (the real game caps it at 2)</td></tr>
+      <tr><td><code>--out=DIR</code> / <code>--quiet</code></td><td>Where to write the report / hide the progress line</td></tr>
+    </table></div>
+    <p class="intro">Exit codes: 0 means healthy, 1 means errors or broken invariants were found, 2 means the harness itself crashed.
+    For a balance change, run the sim before and after it, and try values with <code>--set</code> before editing any data file.</p>
+  </section>
+
+  <section id="smoke">
+    <h2>Real-app smoke tests <span class="tag t-bot">bot</span></h2>
+    <div class="cmd"><div class="cmd-head"><code>node scripts/smoke/cdp.js scripts/smoke/scenarios/layout-modes.js</code><button class="copy">Copy</button></div>
+      <p>Launches the real Electron app with a throwaway profile, so your saves are never touched. It then drives the app
+      through a scenario, fails on any console error, and saves screenshots to <code>scripts/smoke/out/</code>.
+      Swap in any file from <code>scripts/smoke/scenarios/</code>, for example <code>character</code>, <code>family</code>,
+      <code>sect</code>, <code>mobile</code>, <code>nav-attention</code> or <code>ux-audit</code>.</p></div>
+  </section>
+
+  <section id="build">
+    <h2>Desktop builds <span class="tag t-build">build</span></h2>
+    <div class="cmd"><div class="cmd-head"><code>npm run dist</code><button class="copy">Copy</button></div>
+      <p>Builds the Windows x64 portable app into <code>dist/Cultivator Idle-win32-x64/</code>.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run dist:mac</code><button class="copy">Copy</button></div>
+      <p>Builds the macOS app for x64 and arm64.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run build:web</code><button class="copy">Copy</button></div>
+      <p>Assembles <code>www/</code> from <code>renderer/</code> and <code>assets/</code>. This folder is the web bundle
+      that both mobile shells load. Run it after any change to <code>platform-storage.js</code> or the <code>main.js</code> IPC.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run release</code><button class="copy">Copy</button></div>
+      <p>The all-in-one ship script: <code>npm test</code>, then <code>dist</code>, then an iOS sync, then
+      <b>git commit + push</b>, then a Codemagic TestFlight build (only if <code>CODEMAGIC_API_TOKEN</code> and
+      <code>CODEMAGIC_APP_ID</code> are set). If any step fails, the script stops before committing.</p></div>
+  </section>
+
+  <section id="android">
+    <h2>Android <span class="tag t-and">android</span></h2>
+    <div class="cmd"><div class="cmd-head"><code>npm run release:android</code><button class="copy">Copy</button></div>
+      <p><b>The main Android command.</b> It runs <code>npm test</code>, then <code>build:web</code> and <code>cap sync android</code>,
+      bumps the <code>versionCode</code>, builds a signed <code>.aab</code> with Gradle, and uploads it to Google Play.
+      With no Android SDK installed it skips the Gradle build, and without a service-account key it skips the upload,
+      printing a clear message either way. It never commits or pushes.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run cap:sync:android</code><button class="copy">Copy</button></div>
+      <p>Rebuilds <code>www/</code> and copies it into the Android project.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run android:open</code><button class="copy">Copy</button></div>
+      <p>Syncs, then opens the project in Android Studio (use this for emulator or device runs).</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run android:bundle</code><button class="copy">Copy</button></div>
+      <p>Only the Gradle build. Output: <code>android/app/build/outputs/bundle/release/app-release.aab</code>.
+      This script is Windows-only; on macOS or Linux, run <code>cd android &amp;&amp; ./gradlew bundleRelease</code>.</p></div>
+
+    <p class="intro">Environment variables for <code>release:android</code>:</p>
+    <div class="table-wrap"><table>
+      <tr><th>Variable</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td><code>PLAY_SERVICE_ACCOUNT_JSON</code></td><td>unset</td><td>Path to the Play service-account key. If unset, the upload is skipped.</td></tr>
+      <tr><td><code>PLAY_TRACK</code></td><td><code>internal</code></td><td><code>internal</code>, <code>alpha</code> (closed) or <code>beta</code> (open)</td></tr>
+      <tr><td><code>PLAY_RELEASE_STATUS</code></td><td><code>completed</code></td><td><code>completed</code> releases right away; <code>draft</code> uploads without releasing</td></tr>
+      <tr><td><code>PLAY_VERSION_CODE</code></td><td>previous + 1</td><td>Overrides the automatic versionCode bump</td></tr>
+      <tr><td><code>PLAY_PACKAGE</code></td><td><code>com.cultivator.idle</code></td><td>The application id</td></tr>
+    </table></div>
+    <pre>$env:PLAY_SERVICE_ACCOUNT_JSON = "C:\keys\google-play-service-account.json"
+npm run release:android</pre>
+    <div class="note"><b>Before your first Android release:</b>
+      <ul>
+        <li><b>Signing:</b> copy <code>android/keystore.properties.example</code> to <code>android/keystore.properties</code>
+            and point it at your upload keystore. Without it the <code>.aab</code> builds unsigned and Play rejects it.
+            Never commit keystores or keys; they're already in <code>.gitignore</code>.</li>
+        <li><b>Java:</b> Gradle needs JDK 17–24. The script finds one automatically. Don't point it at Android Studio's
+            bundled JBR (Java 25), which fails with <code>Unsupported class file major version 69</code>.</li>
+        <li><b>Play Console:</b> create the app, enable Play App Signing, fill in App content, add testers to the internal
+            track, and create a service account with "Release to testing tracks". The <b>first upload has to be manual</b>.</li>
+      </ul>
+      Full details are in <code>docs/systems/android-port.md</code>.</div>
+  </section>
+
+  <section id="ios">
+    <h2>iOS <span class="tag t-build">build</span></h2>
+    <div class="cmd"><div class="cmd-head"><code>npm run cap:sync</code><button class="copy">Copy</button></div>
+      <p>Rebuilds <code>www/</code> and syncs it into <code>ios/</code>.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run ios:open</code><button class="copy">Copy</button></div>
+      <p>Syncs, then opens the project in Xcode. This needs a Mac; on Windows, iOS builds run on Codemagic through <code>npm run release</code>.</p></div>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('button.copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var text = b.previousElementSibling.textContent
+      var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy' }, 1200) }
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {})
+    })
+  })
+</script>
+</body>
+</html>

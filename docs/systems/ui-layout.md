@@ -67,7 +67,7 @@ button in `#tabs` holding 1+ views shown as sub-tabs:
   withdrawn (you leave/found a sect) the nav falls back to the group's first offered view; a group button never
   lands on a withdrawn "last" view. A group with one offered view shows the context line instead of sub-tabs.
 - **Sub-tab marks (1.8b-5):** `nav.update` sets `data-att` on each sub-tab to the most urgent attention tier aimed at
-  that view (CSS dot: red decision · jade chance · gold nudge), so a many-view group says which view wants you.
+  that view (CSS dot: gold for a decision or a chance, soft gold for a nudge; no red/green marks — user 2026-09-27), so a many-view group says which view wants you.
 - **Sub-tab row width (1.8b-5):** `#subtabs` is a size container; `@container` rules tighten the pills below 380px /
   300px and fold the automation chip to "自 ●". Expanded's right column is only ~275px, so Expanded keeps Overlay-like
   row padding. Sub-tabs never wrap (they ellipsize as a last resort); smoke sect.js asserts all sect tabs fit.
@@ -86,12 +86,12 @@ button in `#tabs` holding 1+ views shown as sub-tabs:
 items `{ id, tier, glyph, title, why, view, open?, left? }`:
 - **urgent** (a decision; red): proposal 媒, duel 決, head challenge 挑, step-down 讓, marriage event 婚, child event 子,
   upbringing 幼, tournament 奪, member war call 戰 (until answered), own-sect war 戰 (with countdown)
-- **ready** (an opportunity; jade): road strangers 逢, wild beasts 獸, clan head with adults but no heir 嗣
+- **ready** (an opportunity; gold since 2026-09-27, was jade): road strangers 逢, wild beasts 獸, clan head with adults but no heir 嗣
 - **idle** (a nudge; dim; hidden while the matching automation runs): no expedition 歷, open mission slot 任,
   an affordable technique 功
 Clicking an item opens its popup (`open`: proposal / family / tournament) or navigates to `view`; on the banner a
-nav target first peeks the full window. Group badges: red count = has urgent, jade count = ready only, gold dot =
-nudges only. Rendering: Overlay one line + "+N" (unfolds a floating list with reasons, folds on outside click);
+nav target first peeks the full window. Group badges: **always a small gold dot, never a number** — bright = something waits (decisions included), soft =
+nudges only (user rule 2026-09-27: no count circles of any colour). The attention strip says what it is. Rendering: Overlay one line + "+N" (unfolds a floating list with reasons, folds on outside click);
 Expanded/Desktop a card column under the actions with every reason; Banner one chip after the quick menus, "+N"
 peeks the full window.
 
@@ -117,8 +117,11 @@ for War (1.8b-4 extends it across the Clan view).
 - The numbers come from GameState (core-loop.md → Breakdowns), never recomputed in the UI.
 - It is an `*-overlay`, so in banner mode the window peeks open for it and drops back when it closes.
 - **HUD entry points:** `#qi-rate` (qps) and `#qi-numbers` (cap) have dotted underlines; `#integrity-block` /
-  `#health-block` whole blocks; the 詳 badge `#bt-why` on the Breakthrough button (the button itself still
-  attempts). `#catchup-chip` (承 catch-up) sits left of the Qi rate while ancestral catch-up is active.
+  `#health-block` whole blocks (the HUD shows their bars only — the raw values were removed 2026-09-27 and live in the
+  cards); `#stones-block` → the **Spirit Stones** card (`stones`: where they come from, what they buy, next technique's
+  cost, founding cost, disciples' stones/min); `#bt-why` is the "?" **segment of a split Breakthrough control**
+  (`#bt-split`: hairline divider, same surface/height; the ready glow wraps both halves; the button itself still
+  attempts) — it replaced a floating circle badge (user 2026-09-27). `#catchup-chip` (承 catch-up) sits left of the Qi rate while ancestral catch-up is active.
 - **Character view** (`renderStats`): identity card (full name, stage, root/personality/age/year/generation tags),
   catch-up banner, tiles for Cultivation (Qi/s, Qi cap + time to ready, Breakthrough + failure cost) and Foundation
   (Integrity, Health, Karma, Bloodline sealed 封 until Spirit Severing via `bloodlineVisible()`), then Belongings &
@@ -213,7 +216,15 @@ for War (1.8b-4 extends it across the Clan view).
 - **Card grids:** Techniques, Explore locations and Craft recipes are wrapped in `.card-grid` — a column in Overlay /
   Banner, an auto-fill grid (≥ 250px cards) in Expanded/Desktop. Their plain CJK subtitles moved into tooltips; the
   Technique cost glyph is 石 (was an emoji).
-- Smoke: `scripts/smoke/scenarios/sect.js`. Checks: `scripts/sim/checks/sect-view.js`.
+  **1.8b-6:** an Explore location is now a mission-style `.sv-card.loc-card` in every mode (title + duration, the
+  location's `desc`, drop chips "2–5 Spirit Herb **50%**", the Auto/Paused chip in the header, and a `.fa-btn.loc-btn`
+  tile: "Set out · Nm away · Tier N foes" / "Underway" / lock reason "Opens at X" or "One expedition at a time").
+  In Expanded/Desktop the Technique + Recipe rows share the same ink-violet card surface, a gold title, and a chip for
+  the technique's effect; a disabled Craft button is a dashed outline.
+- **No sect, roomy layouts:** a "What a founder holds" section (halls, disciple seats, own wars) under the founding card
+  (hidden in Overlay).
+- Smoke: `scripts/smoke/scenarios/sect.js` (also shoots the grids in Overlay and asserts Set out → Underway). Checks:
+  `scripts/sim/checks/sect-view.js`.
 
 ## Render Function Pattern
 All `render<X>(s)` functions:

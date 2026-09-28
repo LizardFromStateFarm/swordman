@@ -56,7 +56,8 @@ class LayoutUI {
     document.body.dataset.narrow = this._narrow.matches ? '1' : '0'
   }
 
-  // Sprite canvas sizing: the fixed per-mode size, except on a narrow screen where it fits the HUD width.
+  // Sprite canvas sizing: the fixed per-mode size, except on a narrow screen where it fits the HUD width, and on a
+  // short one (landscape phone) where it shrinks to 70%.
   _sizeCanvas() {
     const wrap = document.getElementById('sprite-wrap')
     if (this._narrow && this._narrow.matches) {
@@ -65,6 +66,11 @@ class LayoutUI {
       const h = Math.round(w * 0.5)
       this.renderer.setSize(w, h, 1)
       if (wrap) wrap.style.height = h + 'px'
+    } else if (this.mode === 'desktop' && window.innerHeight <= 520) {
+      // Short screen (landscape phone): a 160px canvas pushes Meditate/Breakthrough off the bottom — shrink it.
+      const [w, h] = LAYOUT_CANVAS.desktop, k = 0.7
+      this.renderer.setSize(Math.round(w * k), Math.round(h * k), k)
+      if (wrap) wrap.style.height = Math.round(h * k) + 'px'
     } else {
       const [w, h, k] = LAYOUT_CANVAS[this.mode] || LAYOUT_CANVAS.overlay
       this.renderer.setSize(w, h, k)

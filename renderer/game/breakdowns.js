@@ -146,7 +146,7 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
     ]
     const notes = []
     if (s.playMode === 'active') notes.push(`Active Mode: strike within ${ACTIVE_BT_FOCUS_WINDOW_SECONDS}s of the bar filling for +${BD_PCT(ACTIVE_BT_FOCUS_BONUS)} on that attempt.`)
-    if (!d.canBreakthrough) { const left = Math.max(0, d.qiCap * 0.9 - s.qi); notes.push(`Opens once Qi reaches 90% of the cap. Now ${Math.floor(s.qi / d.qiCap * 100)}%${d.qiPerSecondBoosted > 0 ? `, about ${fmtTime(Math.ceil(left / d.qiPerSecondBoosted))} to go` : ''}.`) }
+    if (!d.canBreakthrough) { const left = Math.max(0, d.qiCap * 0.9 - s.qi); notes.push(`Opens once Qi reaches 90% of the cap. Now ${s.qi > 0 && s.qi / d.qiCap < 0.01 ? "<1" : Math.floor(s.qi / d.qiCap * 100)}%${d.qiPerSecondBoosted > 0 ? `, about ${fmtTime(Math.ceil(left / d.qiPerSecondBoosted))} to go` : ''}.`) }
     return { glyph: 'breakthrough', title: 'Breakthrough chance', total: BD_PCT(d.breakthroughChanceDisplay), rows,
       sections: [{ title: 'If it fails', rows: fail }], notes }
   }
@@ -175,6 +175,28 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
     if (s.stageIndex === lastMortal) rows.push({ label: 'At 100 for the Ascension Trial', val: `+${BD_PCT(ASCENSION_PREP_HEALTH)}`, tone: h.value >= 100 ? 'up' : 'dim' })
     return { glyph: 'health', state: true, title: 'Health', total: `${Math.round(h.value)} / 100`, rows,
       sections: [{ title: 'What wounds you', rows: risks }], notes: ['Some chance events also wound or heal you.'] }
+  }
+
+  // Spirit Stones (user 2026-09-27): what the purse is for — where stones come from and what they buy, in your numbers
+  if (kind === 'stones') {
+    const next = TECHNIQUES.filter(t => !s.techniques.includes(t.id) && s.stageIndex >= t.minStage).sort((a, b) => a.cost - b.cost)[0]
+    const earn = [
+      { label: 'Expeditions (Roam) bring stones back', val: '', tone: 'up' },
+      { label: s.sect?.id ? 'Sect missions pay in stones' : 'Sect missions, once you join a sect', val: '', tone: s.sect?.id ? 'up' : 'dim' },
+    ]
+    const own = gs.ownSectInfo()   // null unless you founded a sect
+    if (own) earn.push({ label: 'Your disciples, every minute', val: `+${own.totals.stonesMin.toFixed(1)} /min`, tone: 'up' })
+    earn.push({ label: 'Chance events and clan stipends', val: '', tone: 'dim' })
+    const spend = [
+      next ? { label: `Learn ${next.name}`, val: fmt(next.cost), tone: s.spiritStones >= next.cost ? 'up' : 'down' }
+           : { label: 'Techniques (Path) · all within reach learned', val: '', tone: 'dim' },
+      { label: 'Courtship, gifts and family matters (Kin)', val: '', tone: '' },
+      { label: own ? 'Halls, disciples and your war chest (Sect)' : s.sect?.id ? 'Contribution to your sect, and its war chest' : 'Founding your own sect', val: own || s.sect?.id ? '' : fmt(SECT_FOUNDING.stones), tone: '' },
+      { label: 'Calling allies and reinforcements in a war', val: '', tone: '' },
+    ]
+    return { glyph: 'stone', state: true, title: 'Spirit Stones', total: fmt(Math.floor(s.spiritStones)), rows: [],
+      sections: [{ title: 'Where they come from', rows: earn }, { title: 'What they buy', rows: spend }],
+      notes: ['Condensed Qi in crystal form: the coin of the cultivation world.'] }
   }
 
   if (kind === 'karma') {

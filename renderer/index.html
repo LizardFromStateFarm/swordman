@@ -90,8 +90,8 @@
         <div id="health-track"><div id="health-fill"></div></div>
       </div>
 
-      <!-- Spirit Stones (user 2026-09-27): the purse, always in view -->
-      <div id="stones-block" title="Spirit Stones: spent on techniques, crafting, gifts, courtship and the war chest">
+      <!-- Spirit Stones (user 2026-09-27): the purse, always in view; tap → what stones are for (breakdowns.js 'stones') -->
+      <div id="stones-block" class="bd-link" data-bd="stones" title="Spirit Stones: where they come from and what they buy">
         <div id="stones-labels">
           <span class="lbl"><span class="lbl-ic" data-icon="stone"></span><span class="lbl-long">Stones</span></span>
           <span id="stones-numbers">0</span>
@@ -119,12 +119,15 @@
         <span class="act-name">Meditate</span>
         <span class="act-sub">3× Qi · 30s</span>
       </button>
-      <button id="btn-breakthrough" class="act-btn" disabled>
-        <span class="act-icon" data-icon="breakthrough"></span>
-        <span class="act-name">Breakthrough</span>
-        <span class="act-sub">Advance realm</span>
-      </button>
-      <button id="bt-why" class="bd-link" data-bd="bt" title="Breakthrough odds, and what a failure costs" aria-label="Breakthrough odds" data-icon="why"></button>
+      <!-- Breakthrough + its "why" as one split control: a thin divider and a plain ? segment (user 2026-09-27) -->
+      <div id="bt-split">
+        <button id="btn-breakthrough" class="act-btn" disabled>
+          <span class="act-icon" data-icon="breakthrough"></span>
+          <span class="act-name">Breakthrough</span>
+          <span class="act-sub">Advance realm</span>
+        </button>
+        <button id="bt-why" class="bd-link" data-bd="bt" title="Breakthrough odds, and what a failure costs" aria-label="Breakthrough odds">?</button>
+      </div>
     </div>
 
     <!-- Attention strip (1.8b-1): what's waiting on you, rendered by renderer/game/attention.js (AttentionUI). A

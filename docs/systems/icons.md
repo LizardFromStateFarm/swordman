@@ -61,7 +61,7 @@ secondary stroke is the family's "detail line" idiom.
 - **1.8d-1 (2026-09-27):** the set (36 icons) + `Icon()`. Converted: titlebar, HUD, action buttons, layout picker +
   tip, overlay titles (CN subtitles 布局 修行之道 設置 飞升劫 立嗣 奪 媒人 dropped), banner readouts + quick
   buttons, rail/auto chips, attention header + expedition/missions/technique nudges, lock marks (封) in Techniques/Explore/automation/banner rows, Pack currency/equip/Auto chips, charselect title. Emoji left in UI
-  code: none (`check-no-emoji.js`: only the sprite files, which the art track A4 replaces).
+  code: none (`check-no-emoji.js --strict` runs in `npm test` since 1.8b-6; only the sprite files remain, exempt until the art track A1).
 - **1.8d-2 (2026-09-27):** +42 icons (78 total) and redraws (lineage, token, scroll, integrity, stone pebble, line taiji).
   Every chrome mark in attention, breakdowns, Family, Clan/Hall, Sect, Character, fight card, tournament and Mode cards is
   an icon; CN subtitles beside English dropped (breakdown `cn`, banner menu headings/rows, Mode cards, Banter log, duel

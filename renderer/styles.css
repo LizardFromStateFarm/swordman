@@ -79,8 +79,6 @@ body {
 #meditate-badge { display: inline-flex; align-items: center; gap: 4px; }
 #catchup-chip { display: inline-flex; align-items: center; gap: 3px; }
 .act-icon .ic { font-size: 17px; }
-#bt-why { display: inline-flex; align-items: center; justify-content: center; }
-#bt-why .ic { font-size: 15px; }
 .tbm-glyph { display: inline-flex; justify-content: center; }
 #layout-title, #mode-title, #settings-title { display: inline-flex; align-items: center; gap: 6px; }
 #layout-title { display: flex; justify-content: center; }
@@ -94,9 +92,6 @@ body {
 body[data-narrow="1"] #btn-more { display: flex; }
 body[data-narrow="1"] #btn-back, body[data-narrow="1"] #btn-layout:not(.peek) { display: none; }
 #layout-tip .ic { font-size: 13px; vertical-align: -0.2em; color: var(--gold); }
-/* Phone width: the why button sits inside the Breakthrough card, centred, instead of on its corner */
-body[data-narrow="1"] #bt-why { top: 50%; right: 10px; transform: translateY(-50%); width: 28px; height: 28px; }
-body[data-narrow="1"] #btn-breakthrough { padding-right: 46px; }
 
 /* One scrollbar for the whole app (1.8b-4, user: "I hate the look of the default windows scroll bar"): a thin
    gold-ink thread on a faint groove, brighter under the pointer. Chromium/Electron only; iOS draws its own overlay
@@ -643,6 +638,34 @@ body[data-narrow="1"] #btn-breakthrough { padding-right: 46px; }
 }
 
 .act-icon { font-size: 15px; grid-row: 1 / 3; }
+
+/* UI review: 7.8 (2026-09-27, HUD fixes cycle 3) */
+#actions .act-btn { align-content: center; }   /* a taller neighbour (two-line Ascension Trial) keeps Meditate centred */
+/* Breakthrough split control (user 2026-09-27): the button and its "?" are one card — the ? is a slim right segment
+   behind a hairline divider, same surface and height, so it reads as part of the button, not a floating badge.
+   Disabled: fade the button's content, not its box, so both halves keep the same surface. */
+#bt-split { display: flex; min-width: 0; border-radius: 4px; }
+#bt-split > #btn-breakthrough { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none;
+  grid-template-columns: auto minmax(0, 1fr); column-gap: 5px; padding-left: 5px; padding-right: 4px; }
+/* The fixed-width HUD column (Overlay/Expanded/Desktop): 11px names so "Breakthrough" fits whole beside the ? segment;
+   Meditate matches. Phones (desktop + data-narrow; note Overlay is data-narrow too) and the banner have room and keep 12px. */
+body[data-layout="overlay"] #actions .act-name, body[data-layout="expanded"] #actions .act-name,
+body[data-layout="desktop"]:not([data-narrow="1"]) #actions .act-name { font-size: 11px; }
+/* Wrap at spaces rather than ellipsize: "Ascension Trial" / "Attempt to transcend" take two lines in Overlay (1.8b-6 HUD review) */
+#bt-split .act-name, #bt-split .act-sub { min-width: 0; overflow-wrap: normal; white-space: normal; line-height: 1.2; }
+#bt-why { flex: none; width: 24px; padding: 0; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font); font-size: 14px; font-weight: bold; color: color-mix(in srgb, var(--gold) 75%, var(--dim));
+  background: rgba(24, 10, 4, 0.7); border: 1px solid var(--border); border-left: 1px solid color-mix(in srgb, var(--dim) 30%, transparent);
+  border-radius: 0 4px 4px 0; cursor: pointer; transition: color .12s, background .12s, border-color .12s; }
+#bt-why:hover, #bt-why:focus-visible { color: var(--gold); background: rgba(50, 22, 5, 0.8); outline: none; }
+#btn-breakthrough:disabled { opacity: 1; }
+#btn-breakthrough:disabled > * { opacity: .38; }
+#bt-split:has(#btn-breakthrough.ready) #bt-why { border-color: var(--gold); border-left-color: color-mix(in srgb, var(--gold) 35%, transparent); }
+#bt-split:has(#btn-breakthrough.bt-focus) #bt-why { border-color: var(--ember); }
+body[data-layout="banner"] #bt-why { width: 24px; font-size: 12px; }
+#bt-split > #btn-breakthrough.ready, #bt-split > #btn-breakthrough.bt-focus { animation: none; }
+#bt-split:has(#btn-breakthrough.ready)    { animation: glowPulse 1.6s infinite; }
+#bt-split:has(#btn-breakthrough.bt-focus) { animation: focusPulse 0.6s infinite; }
 .act-name { font-weight: bold; font-size: 12px; }
 .act-sub  { font-size: 10px; color: var(--dim); }
 
@@ -689,12 +712,12 @@ body[data-narrow="1"] #btn-breakthrough { padding-right: 46px; }
   background: linear-gradient(to right, transparent, var(--gold), transparent);
 }
 
-/* Badges: a count for things waiting (red = a decision, jade = an opportunity), a dot for quiet nudges */
+/* Badges: always a small gold dot, never a number (user rule 2026-09-27) — bright = something waits, soft = a nudge. */
 .tab-badge { position: absolute; top: 1px; right: 2px; font-size: 9px; line-height: 13px; min-width: 13px;
   height: 13px; padding: 0 3px; border-radius: 7px; text-align: center; font-weight: bold; display: none; }
 .tab-badge.urgent { display: block; background: var(--red); color: #fff; box-shadow: 0 0 6px rgba(200,48,48,0.7); animation: badgePulse 2.4s infinite; }
-.tab-badge.ready  { display: block; background: var(--jade); color: #06140C; }
 .tab-badge.dot    { display: block; min-width: 5px; width: 5px; height: 5px; padding: 0; top: 6px; right: 6px; background: var(--gold); opacity: .75; }
+.tab-badge.dot.ready { width: 7px; height: 7px; min-width: 7px; opacity: 1; box-shadow: 0 0 0 1.5px var(--bg2), 0 0 6px color-mix(in srgb, var(--gold) 70%, transparent); }
 @keyframes badgePulse { 0%,100% { box-shadow: 0 0 3px rgba(200,48,48,0.5) } 50% { box-shadow: 0 0 9px rgba(200,48,48,0.9) } }
 
 #view { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
@@ -1305,9 +1328,9 @@ body[data-narrow="1"] #btn-breakthrough { padding-right: 46px; }
   background: none;
   border: none;
   border-right: 1px solid var(--border);
-  color: var(--dim);
+  color: var(--dim-hi);
   font-family: var(--font);
-  font-size: 9px;
+  font-size: 10.5px;
   padding: 5px 0;
   cursor: pointer;
   transition: color .1s, background .1s;
@@ -1375,7 +1398,8 @@ body[data-narrow="1"] #btn-breakthrough { padding-right: 46px; }
   background: rgba(0,80,40,.3);
 }
 
-.recipe-craft-btn:disabled { opacity: .4; cursor: not-allowed; }
+/* Disabled = a dashed outline that still marks where the action is (was opacity .4, invisible on a phone — 1.8b-6) */
+.recipe-craft-btn:disabled { opacity: .75; border-style: dashed; border-color: rgba(138,122,96,.55); cursor: not-allowed; }
 
 .recipe-equip-btn {
   background: rgba(24,10,4,.8);
@@ -1801,6 +1825,7 @@ body[data-narrow="1"] #btn-breakthrough { padding-right: 46px; }
 .pack-currency-row.stones { font-size: 14px; font-weight: bold; color: var(--gold); }
 .pack-currency-label { color: var(--dim); font-size: 10px; }
 .pack-currency-val   { font-family: var(--font); }
+#pack-delta-host { position: absolute; right: 0; top: 0; }   /* out of the flex flow, so values right-align (1.8b-6) */
 .pack-delta {
   position: absolute;
   right: 0;
@@ -1824,7 +1849,7 @@ body[data-narrow="1"] #btn-breakthrough { padding-right: 46px; }
   border: 1px solid var(--border);
   color: var(--dim);
   font-family: var(--font);
-  font-size: 9px;
+  font-size: 10.5px;
   padding: 3px 7px;
   border-radius: 3px;
   cursor: pointer;
@@ -1845,7 +1870,7 @@ body[data-narrow="1"] #btn-breakthrough { padding-right: 46px; }
   border: 1px solid var(--border);
   color: var(--dim);
   font-family: var(--font);
-  font-size: 9px;
+  font-size: 10.5px;
   padding: 2px 6px;
   border-radius: 3px;
   cursor: pointer;
@@ -2398,7 +2423,7 @@ body[data-layout="banner"][data-edge="bottom"] #_toast { top: auto !important; b
 
 /* ══════════════════════════════════════════════════════════════════════════
    ATTENTION STRIP (1.8b-1) — renderer/game/attention.js. What's waiting on you: one line in Overlay (unfolds),
-   a card column in Expanded/Desktop, a summary in the banner. Tiers: urgent (red) · ready (jade) · idle (dim).
+   a card column in Expanded/Desktop, a summary in the banner. Tiers: urgent (red) · ready (gold — user 2026-09-27: no green attention marks) · idle (dim).
    UI review: 7.3 (2026-09-26, 7 cycles, best 7.5; accepted by the user)
 ══════════════════════════════════════════════════════════════════════════ */
 
@@ -2433,8 +2458,8 @@ body[data-layout="banner"][data-edge="bottom"] #_toast { top: auto !important; b
 .att-item:hover { background: rgba(50,22,5,0.7); border-color: var(--gold); }
 .att-urgent { border-left-color: var(--red); }
 .att-urgent .att-glyph { color: var(--red-text); text-shadow: 0 0 6px rgba(200,48,48,0.6); }
-.att-ready  { border-left-color: var(--jade); }
-.att-ready .att-glyph  { color: var(--jade); }
+.att-ready  { border-left-color: var(--gold); }
+.att-ready .att-glyph  { color: var(--gold); }
 .att-idle   { border-left-color: color-mix(in srgb, var(--gold) 70%, transparent); background: rgba(24,10,4,0.3); }
 .att-idle .att-glyph, .att-idle .att-title { color: var(--nudge); }
 .att-idle .att-why { color: var(--dim-hi); }
@@ -2448,7 +2473,7 @@ body[data-layout="banner"][data-edge="bottom"] #_toast { top: auto !important; b
 .att-more { display: flex; align-items: center; justify-content: center; }
 .att-dot { width: 5px; height: 5px; border-radius: 50%; }
 .att-dot.urgent { background: var(--red); box-shadow: 0 0 4px var(--red); }
-.att-dot.ready  { background: var(--jade); }
+.att-dot.ready  { background: var(--gold); }
 .att-dot.idle   { background: var(--gold); opacity: .7; }
 .att-go { color: var(--dim); font-size: 13px; flex-shrink: 0; }
 .att-item:hover .att-go { color: var(--gold); }
@@ -2472,10 +2497,10 @@ body[data-layout="banner"][data-edge="bottom"] #_toast { top: auto !important; b
 }
 .att-more:hover { color: var(--gold); border-color: var(--gold); }
 .att-more.urgent { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 60%, transparent); }
-.att-more.ready  { color: var(--jade); border-color: color-mix(in srgb, var(--jade) 55%, transparent); }
+.att-more.ready  { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
 .att-k { white-space: nowrap; }
 .att-k.urgent { color: var(--red-text); }
-.att-k.ready  { color: var(--jade); }
+.att-k.ready  { color: var(--gold); }
 .att-k.idle   { color: var(--gold); opacity: .8; }
 .att-k + .att-k::before { content: "\00B7  "; color: var(--dim); }
 .att-calm { flex: 1; display: flex; align-items: center; gap: 7px; min-height: 22px; padding: 0 6px;
@@ -2665,16 +2690,13 @@ body[data-layout="overlay"] #btn-layout:not(.peek) { display: none; }
 #integrity-block, #health-block { border-radius: 3px; padding: 1px 2px; margin: -1px -2px; transition: background .12s; }
 #integrity-block:hover, #health-block:hover { background: color-mix(in srgb, var(--gold) 6%, transparent); }
 #integrity-labels .lbl, #health-labels .lbl { text-decoration: underline dotted color-mix(in srgb, currentColor 65%, transparent); text-underline-offset: 3px; }
+/* User 2026-09-27: the bars say enough on the HUD; the exact Integrity / Health values live in their tap cards.
+   The Spirit Stones readout is tappable too (dotted underline on the value, like Qi). */
+#integrity-numbers, #health-numbers { display: none; }
+#stones-block { border-radius: 3px; padding: 1px 3px; margin: -1px -3px; transition: background .12s; }
+#stones-block:hover { background: color-mix(in srgb, var(--gold) 6%, transparent); }
+#stones-numbers { text-decoration: underline dotted color-mix(in srgb, currentColor 65%, transparent); text-underline-offset: 3px; }
 #actions { position: relative; }
-#bt-why {
-  position: absolute; top: -7px; right: 4px; width: 24px; height: 24px; padding: 0; border-radius: 50%;
-  font-family: var(--font); font-size: 12px; line-height: 22px; text-align: center; color: var(--gold);
-  background: var(--panel); border: 1px solid color-mix(in srgb, var(--gold) 60%, transparent); z-index: 2;
-  box-shadow: 0 0 6px rgba(0,0,0,0.6), 0 0 6px color-mix(in srgb, var(--gold) 18%, transparent); cursor: pointer;
-}
-#bt-why::before { content: ''; position: absolute; inset: -9px; border-radius: 50%; }   /* ~42px hit area */
-#bt-why:hover { border-color: var(--gold); box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 40%, transparent); }
-body[data-layout="banner"] #bt-why { top: -6px; right: -8px; }
 
 /* The popover */
 #breakdown-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(4,2,8,0.28); }
@@ -2777,7 +2799,6 @@ body[data-layout="overlay"] .ch-catchup { display: none; }
 .bd-tt { overflow: hidden; text-overflow: ellipsis; }
 .bd-run { color: var(--dim-hi); font-size: 10.5px; }
 #qi-rate, #qi-numbers { padding: 4px 2px; margin: -4px -2px; }   /* bigger tap target, same visual position */
-#bt-why { top: -6px; right: -5px; box-shadow: 0 0 0 2px var(--bg2), 0 0 8px color-mix(in srgb, var(--gold) 22%, transparent); }
 .ch-tile { transition: border-color .12s, box-shadow .12s, transform .12s; }
 .ch-tile::before { content: ''; position: absolute; left: -1px; top: -1px; width: 9px; height: 9px; pointer-events: none;
   border-left: 1px solid color-mix(in srgb, var(--gold) 55%, transparent); border-top: 1px solid color-mix(in srgb, var(--gold) 55%, transparent); border-top-left-radius: 4px; }
@@ -2787,9 +2808,6 @@ body[data-layout="overlay"] .ch-catchup { display: none; }
   background: linear-gradient(180deg, rgba(34,18,40,0.45), rgba(14,7,20,0.45)); margin-bottom: 4px; }
 .ch-list .stat-row:last-child { border-bottom: none; }
 /* 1.8b-2 review cycle 3 fixes */
-#bt-why { top: 3px; right: 3px; width: 20px; height: 20px; font-size: 11px; line-height: 18px; box-shadow: none; }
-body[data-layout="banner"] #bt-why { top: 3px; right: 3px; }
-#btn-breakthrough { padding-right: 26px; }
 .bd-x { width: 30px; height: 30px; font-size: 13px; }
 .ch-tile .t-s { font-size: 11px; color: color-mix(in srgb, var(--text) 70%, var(--dim)); }
 .ch-tile[data-bd]::after { color: color-mix(in srgb, var(--gold) 50%, transparent); }
@@ -3552,12 +3570,12 @@ body:not([data-layout="overlay"]) #family-box.fight .fc-first { display: none; }
 .sv-stake b { flex: none; width: 62px; font-weight: normal; }
 .sv-stake b.up { color: var(--jade); } .sv-stake b.down { color: var(--red-text); }
 
-/* Sub-tabs carry the attention list's mark (NavUI.update): red = a decision, jade = a chance, gold = a nudge */
+/* Sub-tabs carry the attention list's mark (NavUI.update): red = a decision, bright gold = a chance, soft gold = a nudge */
 .subtab { position: relative; }
 .subtab[data-att="urgent"]::after, .subtab[data-att="ready"]::after, .subtab[data-att="idle"]::after {
   content: ''; position: absolute; top: 2px; right: 3px; width: 5px; height: 5px; border-radius: 50%; }
-.subtab[data-att="urgent"]::after { background: var(--red); box-shadow: 0 0 5px var(--red); }
-.subtab[data-att="ready"]::after  { background: var(--jade); }
+.subtab[data-att="urgent"]::after { background: var(--gold); box-shadow: 0 0 4px color-mix(in srgb, var(--gold) 60%, transparent); }   /* gold too: user 2026-09-27 */
+.subtab[data-att="ready"]::after  { background: var(--gold); box-shadow: 0 0 4px color-mix(in srgb, var(--gold) 60%, transparent); }
 .subtab[data-att="idle"]::after   { background: var(--gold); opacity: .7; }
 
 /* Overlay (300px): the sect sub-tab row holds four labels, so pills tighten; single-column cards */
@@ -3579,6 +3597,32 @@ body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .tech
 .recipe-owned { font-size: 10px; color: var(--jade); }
 body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .recipe-row { display: flex; flex-direction: column; }
 body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .recipe-row .recipe-btns { margin-top: auto; }
+
+/* UI review: 7.7 (2026-09-27, 1.8b-6) — Explore locations are mission cards (.sv-card.loc-card: drop chips + a "Set out"
+   tile), and in the roomy layouts Technique + Recipe rows share the same ink-violet card surface, a gold title and
+   chip-style effects, so the three grids read like the sect views instead of flat developer boxes. */
+.card-grid > .loc-card { margin-bottom: 6px; }
+.loc-card .sv-card-h { align-items: center; }
+.loc-card .loc-auto { font-size: 10px; padding: 1px 6px; }
+.loc-card .ld-pct { font-weight: normal; color: var(--gold); margin-left: 2px; }
+.loc-card .fa-btn.wide { margin-top: 6px; }
+.loc-card.active .fa-g { color: var(--jade); }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .loc-card { margin-bottom: 0; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .tech-row,
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .recipe-row {
+  padding: 8px 9px; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--purple) 26%, var(--border));
+  background: linear-gradient(180deg, rgba(34,18,40,0.5), rgba(14,7,20,0.5)); }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .tech-row.owned {
+  border-color: color-mix(in srgb, var(--jade) 30%, var(--border));
+  background: linear-gradient(180deg, rgba(14,34,26,0.45), rgba(8,14,12,0.5)); }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .tech-row:hover:not(.locked):not(.owned) { border-color: var(--gold); }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid .tech-name,
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid .recipe-name { color: var(--gold); font-size: 12.5px; letter-spacing: .3px; }
+.card-grid .tech-bonus {
+  display: inline-block; margin-top: 4px; font-size: 10.5px; padding: 0 6px; line-height: 17px; border-radius: 9px;
+  color: var(--jade); border: 1px solid color-mix(in srgb, var(--jade) 35%, transparent); background: rgba(0,0,0,0.25); white-space: nowrap; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid .recipe-ing { border-radius: 9px; padding: 0 6px; line-height: 17px; }
 
 /* Overlay: the roster is one line per disciple (yields in the row's tooltip), candidates are compact rows */
 body[data-layout="overlay"] .sv-disc { gap: 3px; padding: 5px 0; }
@@ -3697,7 +3741,7 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:first-child .fam-sec { order:
 body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 4; }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   MOBILE / narrow + touch (Phase 6E mobile pass, 2026-09-27)
+   MOBILE / narrow + touch (Phase 6E mobile pass, 2026-09-27) — UI review: 7.6 (2026-09-27, 1.8b-6 cycle 2)
    Phones and both native shells (iOS/Android) report body[data-layout="desktop"] via the platform-storage
    shim, so the phone layout is a refinement of desktop — NOT a fifth mode. Two queries, two jobs:
      · (max-width: 599px)              → how a narrow screen arranges (bottom tab bar, full-bleed, safe areas)
@@ -3805,6 +3849,13 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 
   body[data-layout="desktop"] #stage-desc, body[data-layout="desktop"] .recipe-ing,
   body[data-layout="desktop"] .cs-char-persona { font-size: 11.5px; }
 
+  /* Pack chips + Craft categories at phone size (1.8b-6 review): chips match the sub-tab text; categories size to
+     their labels and scroll sideways instead of pinching "Talismans" against the edge. */
+  body[data-layout="desktop"] .pack-chip, body[data-layout="desktop"] .pack-sort-btn { font-size: 12px; padding: 4px 10px; }
+  body[data-layout="desktop"] .craft-subtabs { overflow-x: auto; scrollbar-width: none; }
+  body[data-layout="desktop"] .craft-subtabs::-webkit-scrollbar { display: none; }
+  body[data-layout="desktop"] .craft-subtab { flex: 1 0 auto; padding: 6px 10px; }
+
   /* Overlays: fit the viewport, clear the safe areas, scroll inside */
   body > [id$="-overlay"] > div, #layout-box, #settings-box { max-height: 88dvh; }
   #death-box, #ascension-box, #family-box, #confirm-box, #rename-box, #settings-box, #layout-box {
@@ -3817,5 +3868,20 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 
 @media (max-height: 520px) {
   body[data-layout] .tab { min-height: 52px; }
   body[data-layout] .tab-glyph { font-size: 16px; }
-  body[data-layout] #tabs { -webkit-overflow-scrolling: touch; }
+  body[data-layout] #tabs { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  body[data-layout] #tabs::-webkit-scrollbar { display: none; }
+  /* Landscape phone (1.8b-6 review): drop the 道 ornament so the six groups + Mode foot fit, slim the titlebar and
+     the stage block so Meditate/Breakthrough stay on screen (layout.js also shrinks the canvas to 70%). */
+  body[data-layout="desktop"] #rail-ink { display: none; }
+  body[data-layout="desktop"] #titlebar { padding-top: calc(2px + env(safe-area-inset-top)); padding-bottom: 2px; }
+  body[data-layout="desktop"] #titlebar .tb-btn { min-height: 32px !important; min-width: 36px !important; }
+  body[data-layout="desktop"] #stage-desc { display: none; }
 }
+
+/* No-sect founder preview (1.8b-6 review): fills the roomy right column under the founding card */
+.sv-preview { display: flex; flex-direction: column; gap: 8px; }
+.sv-prev-row { display: flex; gap: 9px; align-items: flex-start; font-size: 11.5px; color: var(--text); line-height: 1.35; }
+.sv-prev-row .fa-g { flex: none; width: 22px; color: var(--gold); font-size: 16px; }
+.sv-prev-row b { font-weight: normal; color: var(--gold); }
+.sv-prev-d { color: var(--dim-hi); font-size: 11px; }
+body[data-layout="overlay"] .sv-preview-sec { display: none; }

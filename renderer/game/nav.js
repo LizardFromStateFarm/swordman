@@ -136,8 +136,10 @@ class NavUI {
       this._badgeSig = sig
       this.tabs.querySelectorAll('.tab').forEach(b => {
         const g = b.dataset.group, badge = b.querySelector('.tab-badge')
-        badge.textContent = count[g] ? String(count[g]) : ''
-        badge.className = 'tab-badge' + (count[g] ? (urgent.has(g) ? ' urgent' : ' ready') : dot[g] ? ' dot' : '')
+        // User rule 2026-09-27: every tab badge is the small gold dot — never a number, never a coloured count circle,
+        // not even for a decision (bright = something waits, soft = only nudges). The attention strip says what it is.
+        badge.textContent = ''
+        badge.className = 'tab-badge' + (count[g] ? ' dot ready' : dot[g] ? ' dot' : '')
         b.setAttribute('aria-label', `${b.title}${count[g] ? `, ${count[g]} waiting` : ''}`)
       })
     }

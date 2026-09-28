@@ -1016,8 +1016,11 @@
       }
 
       const unlocked = s.stageIndex >= loc.minStage
+      const here = s.expedition.active && s.expedition.locationId === loc.id
+      // 1.8b-6: a location is a mission-style card (sect-view.js .sv-card): header, lore line, drop chips, a
+      // "Set out" tile — the same pattern as sect missions, since it is the same "send out" action.
       const row = document.createElement('div')
-      row.className = 'loc-row' + (unlocked ? '' : ' locked')
+      row.className = 'sv-card loc-card' + (unlocked ? '' : ' locked') + (here ? ' active' : '')
 
       const durText = loc.duration >= 60
         ? `${Math.floor(loc.duration/60)}m`
@@ -1025,19 +1028,18 @@
 
       const showAutoToggle = unlocked && s.playMode === 'idle' && s.automation.autoExplore && gameState.automationUnlocked('autoExplore')
       const paused = !!s.automation.autoExplorePaused[loc.id]
+      const lock = !unlocked ? `Opens at ${stageShortName(loc.minStage)}`
+        : here ? '' : s.expedition.active ? 'One expedition at a time' : ''
+      const tileName = here ? 'Underway' : 'Set out'
+      const tileSub  = here ? 'your party is on the road' : `${durText} away · Tier ${loc.enemyTier} foes`
       row.innerHTML = `
-        <div class="loc-info">
-          <div class="loc-name" title="${escHtml(loc.nameCN)}">${escHtml(loc.name)}</div>
-          <div class="loc-meta">${durText} · Tier ${loc.enemyTier}${unlocked ? '' : ` · ${Icon('lock')} ${stageShortName(loc.minStage)}`}</div>
-          <div class="loc-drops" title="Chance each item comes back from one run, and how many">${gameState.dropPreview(loc.id).map(d =>
-            `<span class="ld"><span class="ld-n">${escHtml(d.name)}</span> <span class="ld-q">${d.min === d.max ? d.min : `${d.min}–${d.max}`}</span> <span class="ld-p">${Math.round(d.chance * 100)}%</span></span>`).join('')}</div>
-        </div>
-        ${showAutoToggle ? `<button class="pack-chip${paused ? '' : ' active'}" data-autoloc="${loc.id}" title="Auto-Explore relaunch for this location">${paused ? `${Icon('pause')} Paused` : `${Icon('play')} Auto`}</button>` : ''}
-        <button class="loc-btn${unlocked && !s.expedition.active ? ' available' : ''}"
-                ${(!unlocked || s.expedition.active) ? 'disabled' : ''}
-                data-locid="${loc.id}">
-          ${s.expedition.active && s.expedition.locationId === loc.id ? 'Active' : unlocked ? 'Send' : 'Sealed'}
-        </button>
+        <div class="sv-card-h"><span class="sv-card-n" title="${escHtml(loc.nameCN)}">${escHtml(loc.name)}</span>${showAutoToggle ? `<button class="pack-chip loc-auto${paused ? '' : ' active'}" data-autoloc="${loc.id}" title="Auto-Explore relaunch for this location">${paused ? `${Icon('pause')} Paused` : `${Icon('play')} Auto`}</button>` : ''}<span class="sv-card-t">${durText}</span></div>
+        <div class="sv-card-d">${escHtml(loc.desc || '')}</div>
+        <div class="sv-gains" title="Chance each item comes back from one run, and how many">${gameState.dropPreview(loc.id).map(d =>
+          `<span class="sv-gain">${d.min === d.max ? d.min : `${d.min}–${d.max}`} ${escHtml(d.name)} <b class="ld-pct">${Math.round(d.chance * 100)}%</b></span>`).join('')}</div>
+        <button class="fa-btn wide sv-go loc-btn${lock ? ' locked' : ''}${here ? ' info' : ''}" data-locid="${loc.id}" ${lock || here ? 'disabled' : ''}>
+          <span class="fa-g">${Icon.g('explore')}</span><span class="fa-t"><span class="fa-n">${tileName}</span>
+          <span class="fa-e">${lock ? `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i>${escHtml(lock)}</span>` : tileSub}</span></span></button>
       `
       locGrid.appendChild(row)
     }
@@ -2251,11 +2253,13 @@
     if (mode === 'raw')        return Math.floor(n).toLocaleString('en-US')
     if (mode === 'scientific') return n >= 1e4 ? n.toExponential(2).replace('e+', 'e') : Math.floor(n).toString()
     if (n >= 1e15) return '∞'
-    if (n >= 1e12) return (n/1e12).toFixed(2)+'T'
-    if (n >= 1e9)  return (n/1e9 ).toFixed(2)+'B'
-    if (n >= 1e6)  return (n/1e6 ).toFixed(2)+'M'
-    if (n >= 1e3)  return (n/1e3 ).toFixed(1)+'K'
-    return Math.floor(n).toString()
+    // Round first, then pick the unit: 999,960 must read "1.00M", not "1000.0K" (1.8b-6 review).
+    if (n < 1e3) return Math.floor(n).toString()
+    const units = [[1e3, 1, 'K'], [1e6, 2, 'M'], [1e9, 2, 'B'], [1e12, 2, 'T']]
+    for (let i = 0; i < units.length; i++) {
+      const [div, dp, suf] = units[i]
+      if (i === units.length - 1 || +(n / div).toFixed(dp) < 1000) return (n / div).toFixed(dp) + suf
+    }
   }
 
   function fmtTime(sec) {

@@ -41,7 +41,7 @@ invents its own standard and they contradict each other. Paste this block into t
 
 > **Cultivator Idle** is a single-player wuxia/xianxia **idle** game (Electron desktop + iOS/Android). The look is
 > **dark ink and parchment-gold** — an ethereal xianxia-novel translation, not a SaaS dashboard. These are deliberate
-> and are **not** defects: monospace (Courier New) everywhere; CJK/box-drawing glyphs as marks and icons; a narrow
+> and are **not** defects: monospace (Courier New) everywhere; monochrome line-art SVG icons (the custom set, `Icon()`) as marks; a narrow
 > ~300px Overlay mode by design; the six nav group marks (修 歷 家 宗 囊 錄); glyph art on a canvas. **Readability
 > beats density** — a calm, legible screen beats a busy one. Judge consistency against the rest of the game and
 > against `GAMEDESIGN.md`, `docs/systems/ui-layout.md` (incl. "UX direction") and `docs/systems/ui-review.md`
@@ -49,7 +49,8 @@ invents its own standard and they contradict each other. Paste this block into t
 
 **Do NOT raise (settled or out of scope — raising them is not a finding):**
 - the monospace font, the ~300px Overlay width, or the CJK nav group marks;
-- **emoji** — already scheduled as task **1.8d**; note it once and move on, do not re-score a screen for it;
+- the **canvas sprite** (its ⚡ ☯ emoji and the art itself belong to the Phase 34 art track, A1–A4) — UI emoji are
+  gone since 1.8d and a lint keeps them out, so any emoji **outside the sprite** is a real `[blocker]`;
 - anything already listed as a known leftover in `docs/systems/ui-review.md` or `START_HERE.md` → "UX Debt"
   (say "still open" at most);
 - a preference a previous cycle already settled (the history is handed to you).
@@ -62,7 +63,9 @@ does **not** stop the pass. Give at most **3** issues (blockers first, then "…
 
 **One reviewer per cycle, run sequentially.** A cycle is: review → apply the blockers → re-screenshot → a **new**
 reviewer. Maximum **3 cycles**, then the user decides. Never spawn several reviewers for one change at once (the only
-multi-reviewer run was the 1.8c baseline — one reviewer *per group*).
+multi-reviewer run was the 1.8c baseline — one reviewer *per group*). **Combined re-reviews** (user 2026-09-27, 1.8b-6):
+one reviewer may cover up to ~3 screen groups (~30–35 screenshots) in a cycle, scoring **each group separately** (own
+criteria, average, issues, PASS/FAIL); a group that passes drops out of later cycles.
 
 1. **Get real pixels.** Screenshot the change in the real app with a smoke scenario (`scripts/smoke/cdp.js` +
    `shot()`), in **every layout mode it appears in** (Overlay, Expanded, Desktop, Banner, and the narrow phone width
@@ -102,7 +105,7 @@ Criteria:
 4. Interaction & ergonomics — obvious what's clickable, adequate target sizes, few clicks, clear feedback
 5. Consistency — uses the design tokens and existing component patterns; no one-off styles
 6. Layout fit — no clipping, overflow, awkward empty space or cramming, in every mode shown
-Emoji: note it ONCE as `[blocker] (task 1.8d — do not re-score)` and move on; do not let it drag the whole review.
+Emoji: any emoji outside the canvas sprite is a `[blocker]` (the sprite is out of scope: art track A1).
 
 Required output:
   Per criterion: N/10 + one sentence why
