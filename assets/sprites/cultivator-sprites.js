@@ -257,3 +257,8 @@ const CULTIVATOR_SPRITES = {
   },
 
 }
+
+// Spirit Severing + Ascension have their own ink art (A4-1: `severing`, `ascended`); the classic grid sprite reuses
+// the Transcending frames for both.
+CULTIVATOR_SPRITES.severing = CULTIVATOR_SPRITES.transcending
+CULTIVATOR_SPRITES.ascended = CULTIVATOR_SPRITES.transcending

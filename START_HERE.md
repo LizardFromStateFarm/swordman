@@ -155,7 +155,14 @@ Agent: **A4-1 ink cultivator for every realm** (A4 split: A4-1 cultivator realms
     out/ink-realms-sheet.png + ink-realm-{mortal,foundation,core,nascent,immortal}.png. npm test · npm run checks (373) ·
     smoke ink-art passes, zero console errors.
   - Review: emailed the realm sheet to the user (no bot reviewers, per the user rule). Logged as pending in ui-review.md.
-  Next: user's verdict on A4-1 (esp. the Nascent Soul: small at Overlay size; transcending zooms the view out) → A4-2 beasts.
+  - **Cycle 2 (user back, same day):** "not much difference between the realms, I want the bigger realms wildly
+    different". Mortal = shirtless peasant in hemp trousers (own parts + `rag` hair); halo removed from Qi
+    Condensation, first appears at Foundation; the infant soul was "ugly" → removed. Replaced by **Qi dragons that rank
+    up**: Core 1 baby → Nascent Soul 2 young (+ lotus, jade ribbons, double halo) → Spirit Severing 2 grown with antlers/
+    claws/pearls (+ flying-sword fan, sun-disk halo, crimson sky) → Ascension 3 golden (+ celestial robe, heaven's
+    pillar, gold sky). New sprite states `severing` + `ascended` (stages.js; classic sprite aliases them). New robe
+    options sovereign / celestial. Ascension frame 3.9 ms (budget 6). Smoke: 7 realm captures + realms sheet.
+  Next: user's verdict on cycle 2 → A4-2 beasts. Idea logged in PLAN: dragons grow per layer inside a realm.
 
 Date: 2026-09-27 (user present) — part 31
 Agent: **Dev docs: `docs/commands.html`** — one-page HTML reference (for human devs) of every npm command: dev run,

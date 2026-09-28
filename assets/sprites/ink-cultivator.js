@@ -102,7 +102,7 @@ const INK_ART = {
     ],
     // Effects
     qiPearl: { x: 150, y: 84.6, r: 1.5 },                       // the mote held in the hand seal
-    halo: { x: 150, y: 32, r: 25 },                            // behind the head (rides with it)
+    halo: null,                                                // no halo yet: it first appears at Foundation (user 2026-09-27)
     rings: [                                                   // tilted orbits: the signature effect
       { cx: 150, cy: 76, rx: 80, ry: 15, tilt: -0.16, speed: 0.32, motes: 5, alpha: 0.9 },
       { cx: 150, cy: 70, rx: 70, ry: 22, tilt: 0.3, speed: -0.24, motes: 4, alpha: 0.75 },
@@ -119,58 +119,147 @@ const INK_ART = {
   },
 }
 
-// ── Realm variants (A4-1): each sprite state `extends` the Qi Condensation figure and overrides only what its realm
-// changes (renderer/engine/ink-renderer.js `InkRenderer.resolve`). The robe / hair / weapon / aura slots stay the
-// player's (A5); a variant only sets the default look for that realm. Stage colour (stages.js) tints every effect.
-//   idle            Mortal            no Qi yet: plain hemp, empty hands, no halo, rings or pearl; a few faint motes
-//   meditating      Qi Condensation   the base figure above
-//   meditating_deep Foundation        a formation array turns on the ground under the lap; brighter halo
-//   levitating      Core Formation    the body lifts off the ground (shadow on the mist); the pearl is a golden core
-//   transcending    Nascent Soul →    a double halo, a fourth ring, and the Nascent Soul itself: a smaller dotted
-//                   Immortal          self seated above the crown (the view zooms out to make room)
+// ── Realm variants (A4-1): each sprite state `extends` another and overrides only what its realm changes
+// (renderer/engine/ink-renderer.js `InkRenderer.resolve`). User direction (2026-09-27): the realms must look WILDLY
+// different, and the high realms must be something players look forward to. Each realm adds a tier of spectacle:
+//   idle            Mortal            a shirtless peasant in hemp trousers: no robe, no Qi, no effects at all
+//   meditating      Qi Condensation   the robe, rings and the Qi pearl (the base figure above), no halo yet
+//   meditating_deep Foundation        the halo appears; a formation array turns on the ground
+//   levitating      Core Formation    floats; the golden core; a jade crown; one baby Qi dragon circles
+//   transcending    Nascent Soul      two young Qi dragons, a double halo, a lotus of light, celestial ribbons
+//   severing        Spirit Severing   two grown dragons chasing pearls, a fan of flying swords, a sun-disk halo
+//   ascended        Ascension         three golden dragons, eleven swords, a celestial robe, heaven's pillar, a gold sky
+// The robe / hair / weapon / aura slots stay the player's choice (A5); a variant only sets that realm's default look.
+// Dragons are Qi spirits, not beasts: { cx cy rx ry tilt (orbit) speed phase arc (length) size wave bob tier color? }
+
 INK_ART.idle = {
   extends: 'meditating', id: 'cultivator_mortal',
   aura: false,                                            // no Qi to shape: the aura slot has nothing to show yet
-  slots: { robe: 'hemp', weapon: 'none' },
+  slots: { robe: 'hemp', hair: 'rag', weapon: 'none' },
+  palette: { skin: '#E0B890', skinShade: '#94694A' },     // sun-browned from field work
   halo: null, qiPearl: null, rings: [], glyphs: [],
-  body: { breathe: 0.045 },                               // a mortal's breath is deeper and plainer
-  motes: { count: 5, btCount: 26, x0: 96, x1: 204, speed: 0.05 },
-  background: { glow: { x: 150, y: 70, r: 80 } },
+  body: { breathe: 0.045 },
+  motes: { count: 4, btCount: 26, x0: 100, x1: 200, speed: 0.05 },
+  background: { glow: { x: 150, y: 70, r: 70 } },
+  // bare chest and arms, hemp trousers, a rope belt (the lap is the trousers: `robe` takes the hemp palette)
+  parts: [
+    INK_ART.meditating.parts[0],
+    { id: 'waist', layer: 'body', mat: 'robe', d: ['M', 131, 85, 'L', 169, 85, 'L', 175, 97, 'L', 125, 97, 'Z'] },
+    { id: 'torso', layer: 'body', mat: 'skin',
+      d: ['M', 145, 46, 'Q', 133, 47, 127.5, 52.5, 'Q', 129, 61, 131.5, 70, 'Q', 133.5, 79, 133, 88, 'L', 167, 88,
+          'Q', 166.5, 79, 168.5, 70, 'Q', 171, 61, 172.5, 52.5, 'Q', 167, 47, 155, 46, 'Z'] },
+    { id: 'belt', layer: 'body', mat: 'sash', d: ['M', 131.4, 85.2, 'L', 168.6, 85.2, 'L', 169.2, 88.4, 'L', 130.8, 88.4, 'Z'] },
+    { id: 'armL', layer: 'body', mat: 'skin',
+      d: ['M', 128, 51, 'Q', 120, 54, 117.5, 66, 'Q', 115.5, 77, 118, 86, 'Q', 121, 90, 125, 89, 'Q', 127, 77, 131, 63, 'Z'] },
+    { id: 'armR', layer: 'body', mat: 'skin',
+      d: ['M', 172, 51, 'Q', 180, 54, 182.5, 66, 'Q', 184.5, 77, 182, 86, 'Q', 179, 90, 175, 89, 'Q', 173, 77, 169, 63, 'Z'] },
+    { id: 'foreL', layer: 'body', mat: 'skin',
+      d: ['M', 117.5, 83, 'Q', 121, 91.5, 135, 91.5, 'L', 146, 90, 'L', 146, 94.5, 'Q', 132, 97, 121, 93.5, 'Q', 116.5, 90, 117.5, 83, 'Z'] },
+    { id: 'foreR', layer: 'body', mat: 'skin',
+      d: ['M', 182.5, 83, 'Q', 179, 91.5, 165, 91.5, 'L', 154, 90, 'L', 154, 94.5, 'Q', 168, 97, 179, 93.5, 'Q', 183.5, 90, 182.5, 83, 'Z'] },
+    { id: 'neck', layer: 'body', mat: 'skin', d: ['M', 146, 40, 'L', 154, 40, 'L', 154.6, 48, 'L', 145.4, 48, 'Z'] },
+    { id: 'hands', layer: 'body', mat: 'skin', d: ['E', 150, 91.5, 7.5, 4.3] },
+    INK_ART.meditating.parts.find(p => p.id === 'face'),
+  ],
+  // only the trouser folds (the robe's sleeve / sash strokes have no cloth to sit on)
+  strokes: INK_ART.meditating.strokes.filter(s => s.after === 'lap'),
+  // anatomy in dots: collarbones, chest, sternum, the line of the belly; knuckles on the resting hands
+  dotFeatures: [
+    { part: 'torso', color: 'skinShade', w: 0.6, pts: [[139.75, 53.04], [146, 53.04]] },
+    { part: 'torso', color: 'skinShade', w: 0.6, pts: [[154, 53.04], [160.25, 53.04]] },
+    { part: 'torso', color: 'skinShade', w: 0.6, pts: [[135.6, 65.17], [140.8, 66.69], [147.4, 65.17]] },
+    { part: 'torso', color: 'skinShade', w: 0.6, pts: [[152.6, 65.17], [159.2, 66.69], [164.4, 65.17]] },
+    { part: 'torso', color: 'skinShade', w: 0.6, pts: [[150, 57.58], [150, 62.13]] },
+    { part: 'torso', color: 'skinShade', w: 0.6, pts: [[150, 71.22], [150, 80.32]] },
+    { part: 'hands', color: 'skinShade', w: 0.6, pts: [[145.6, 90.95], [154.4, 90.95]] },
+  ],
 }
 
 INK_ART.meditating_deep = {
   extends: 'meditating', id: 'cultivator_foundation',
+  halo: { x: 150, y: 32, r: 25 },                         // the halo: Foundation is where it first appears
   formation: { cx: 150, cy: 124, rx: 86, ry: 12.5, speed: 0.07, alpha: 0.9 },
-  halo: { r: 26 },
   motes: { count: 16, btCount: 34, x0: 60, x1: 240, speed: 0.12 },
   background: { glow: { x: 150, y: 56, r: 140 } },
 }
 
 INK_ART.levitating = {
-  extends: 'meditating', id: 'cultivator_core',
-  float: { y: -9, bob: 1.6, shadow: { x: 150, y: 133, rx: 50, ry: 5.5 } },
-  view: [-12, -12, 324, 162],                             // zoomed out a little: headroom for the lifted halo
+  extends: 'meditating_deep', id: 'cultivator_core',
+  formation: null,
+  slots: { robe: 'azure', hair: 'crown' },
+  float: { y: -8, bob: 1.6, shadow: { x: 150, y: 133, rx: 50, ry: 5.5 } },
+  view: [-14, -14, 328, 164],                             // zoomed out a little: headroom for the lifted halo
   figureBox: [84, -10, 220, 128],
-  halo: { r: 23 },
-  qiPearl: { r: 2.3, color: 'gold', glow: 1.6 },          // the golden core, formed
+  halo: { r: 24 },
+  qiPearl: { r: 2.5, color: 'gold', glow: 1.8 },          // the golden core, formed
+  dragons: [
+    { cx: 150, cy: 70, rx: 86, ry: 30, tilt: -0.22, speed: 0.42, phase: 0.6, arc: 1.4, size: 3.2, wave: 1.5, bob: 6, tier: 1 },
+  ],
   motes: { count: 18, btCount: 36, x0: 56, x1: 244, speed: 0.13 },
   background: { glow: { x: 150, y: 52, r: 145 } },
 }
 
 INK_ART.transcending = {
   extends: 'levitating', id: 'cultivator_nascent',
-  float: { y: -2, bob: 1.2, shadow: { x: 150, y: 132, rx: 54, ry: 4.5 } },
-  view: [-52, -52, 404, 202],                             // room above the crown for the soul
-  halo: { r: 20, outer: 1.1 },
-  // the Nascent Soul: a small self (scale) with an infant's big head (headScale, about neckY) seated on a cloud of
-  // light (cloud = glow radius) above the crown; its seat is at y + dy, re-sampled on the figure's own dot pitch
-  avatar: { scale: 0.38, headScale: 1.75, neckY: 46, x: 150, y: 125, dy: -118, alpha: 0.95, cloud: 22 },
+  slots: { robe: 'crimson', hair: 'crown' },
+  palette: { ribbon: '#8FE0C4' },                         // jade ribbons against the gold dragons
+  float: { y: -9, bob: 1.8, shadow: { x: 150, y: 133, rx: 58, ry: 5.5 } },
+  view: [-26, -26, 352, 176],
+  figureBox: [60, -14, 240, 132],
+  halo: { r: 23, outer: 1.18 },
+  lotus: { x: 150, y: 124, w: 130, h: 26, n: 9 },
+  ribbons: [
+    { color: 'ribbon', w: 2.5, wave: 3.5, pts: [[134, 52], [122, 43], [106, 40], [92, 47], [85, 62], [78, 79], [65, 92], [48, 99]] },
+    { color: 'ribbon', w: 2.5, wave: 3.5, pts: [[166, 52], [178, 43], [194, 40], [208, 47], [215, 62], [222, 79], [235, 92], [252, 99]] },
+  ],
   rings: [
-    { cx: 150, cy: 76, rx: 80, ry: 15, tilt: -0.16, speed: 0.32, motes: 5, alpha: 0.9 },
-    { cx: 150, cy: 70, rx: 70, ry: 22, tilt: 0.3, speed: -0.24, motes: 4, alpha: 0.75 },
-    { cx: 150, cy: 82, rx: 96, ry: 9, tilt: 0.06, speed: 0.18, motes: 3, alpha: 0.6 },
-    { cx: 150, cy: 60, rx: 112, ry: 12, tilt: -0.08, speed: -0.12, motes: 4, alpha: 0.5 },
+    { cx: 150, cy: 76, rx: 84, ry: 15, tilt: -0.16, speed: 0.32, motes: 5, alpha: 0.8 },
+    { cx: 150, cy: 82, rx: 100, ry: 9, tilt: 0.06, speed: 0.18, motes: 3, alpha: 0.55 },
+  ],
+  dragons: [
+    { cx: 150, cy: 66, rx: 100, ry: 34, tilt: -0.2, speed: 0.36, phase: 0.4, arc: 1.7, size: 4.2, wave: 2, bob: 7, tier: 2 },
+    { cx: 150, cy: 74, rx: 92, ry: 26, tilt: 0.24, speed: 0.36, phase: 3.5, arc: 1.7, size: 4.2, wave: 2, bob: 7, tier: 2 },
   ],
   motes: { count: 22, btCount: 42, x0: 40, x1: 260, speed: 0.15 },
   background: { glow: { x: 150, y: 50, r: 160 } },
+}
+
+INK_ART.severing = {
+  extends: 'transcending', id: 'cultivator_severing',
+  slots: { robe: 'sovereign', hair: 'crown' },
+  palette: {
+    sky0: '#10050B', sky1: '#23091A', moon: '#F0B0A0', mountFar: '#2E1224', mountNear: '#3C1830', mist: '#A8707E',
+    bleed: '#080308', ribbon: '#E8C070', swordGlow: '#FF9A7A',
+  },
+  view: [-34, -34, 368, 184],
+  figureBox: [50, -24, 250, 132],
+  halo: { r: 23, outer: 1.18, rays: 24, rayLen: 9 },     // the sun-disk
+  swords: { cx: 150, cy: 82, r: 74, n: 9, spread: 2.5, len: 24 },
+  dragons: [
+    { cx: 150, cy: 64, rx: 118, ry: 38, tilt: -0.18, speed: 0.3, phase: 0.2, arc: 2.0, size: 5.2, wave: 2.4, bob: 8, tier: 3 },
+    { cx: 150, cy: 74, rx: 108, ry: 30, tilt: 0.22, speed: 0.3, phase: 3.3, arc: 2.0, size: 5.2, wave: 2.4, bob: 8, tier: 3, color: 'gold' },
+  ],
+  motes: { count: 28, btCount: 50, x0: 20, x1: 280, speed: 0.17 },
+  background: { glow: { x: 150, y: 48, r: 175 } },
+}
+
+INK_ART.ascended = {
+  extends: 'severing', id: 'cultivator_ascended',
+  slots: { robe: 'celestial', hair: 'crown' },
+  palette: {
+    sky0: '#1C1020', sky1: '#4A2C1E', moon: '#FFE8A8', mountFar: '#46302E', mountNear: '#5A3C2C', mist: '#F0D090',
+    bleed: '#1A0E0C', ribbon: '#FFF2C8', swordGlow: '#FFE08A', dragonPale: '#FFF6DA',
+  },
+  view: [-40, -40, 380, 190],
+  figureBox: [40, -30, 260, 132],
+  pillar: { x: 150, y: 130, w: 52, alpha: 0.14, color: 'gold' },
+  halo: { r: 23, outer: 1.2, rays: 32, rayLen: 13 },
+  swords: { cx: 150, cy: 82, r: 80, n: 11, spread: 2.8, len: 26 },
+  dragons: [
+    { cx: 150, cy: 62, rx: 126, ry: 40, tilt: -0.16, speed: 0.28, phase: 0.2, arc: 2.1, size: 5.6, wave: 2.6, bob: 9, tier: 4, color: 'gold' },
+    { cx: 150, cy: 72, rx: 116, ry: 32, tilt: 0.2, speed: 0.28, phase: 2.3, arc: 2.1, size: 5.6, wave: 2.6, bob: 9, tier: 4, color: 'gold' },
+    { cx: 150, cy: 56, rx: 104, ry: 46, tilt: 0.05, speed: -0.24, phase: 4.4, arc: 1.9, size: 5.0, wave: 2.4, bob: 7, tier: 4, color: 'dragonPale' },
+  ],
+  motes: { count: 34, btCount: 60, x0: 10, x1: 290, speed: 0.2 },
+  background: { glow: { x: 150, y: 46, r: 190 }, moon: { x: 250, y: 20, r: 12 } },
 }

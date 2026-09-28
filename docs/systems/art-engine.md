@@ -9,22 +9,28 @@ breakthrough) in the real game behind **Settings → Motion → Sprite art = Ink
 state its ink art (realm variants). A3-2 (done 2026-09-27): part slots, expression frames, the failure/demotion
 moment, authoring template in `.agents/rules/assets.md` → "Ink art".
 
-## Realm variants (A4-1, 2026-09-27)
-Every sprite state now has ink art, so Sprite art = Ink covers all 23 stages. Each variant `extends: 'meditating'` (or
-another variant) and overrides only what changes; `InkRenderer.resolve(state)` merges it once (palette / background /
-slots / halo / qiPearl / body key by key, everything else replaces) and caches the result.
+## Realm variants (A4-1, 2026-09-27; revised the same day on user feedback)
+User direction: the realms must look **wildly different**, and the high realms must be something players look forward
+to. The Mortal has no robe (a shirtless peasant); the halo first appears at Foundation; an infant-soul figure was
+tried for Nascent Soul and **rejected as ugly**. It was replaced by Qi dragons (spirits of Qi, not beasts) that rank up with the realm.
+Seven sprite states now (stages.js: Spirit Severing = `severing`, Ascension = `ascended`; the classic sprite aliases
+both to `transcending` in cultivator-sprites.js). Each variant `extends` the previous realm; `InkRenderer.resolve(state)`
+merges it once (palette / background / slots / halo / qiPearl / body key by key, everything else replaces).
 
-| State | Stages | What the realm adds |
+| State | Realm | What the realm adds |
 |---|---|---|
-| `idle` | Mortal | plain hemp robe (`robe: 'hemp'`), empty hands, `aura: false`, no halo / rings / pearl / knot glyph, 5 faint motes |
-| `meditating` | Qi Condensation | the base figure |
-| `meditating_deep` | Foundation | `formation`: a ground array of two counter-turning dotted rings with travelling gaps + rune ticks; halo r 26 |
-| `levitating` | Core Formation | `float` (lifted 9, bobbing) + a ground shadow; `qiPearl.color: 'gold'` (the golden core); `view` zoomed out for headroom |
-| `transcending` | Nascent Soul → Immortal | double halo (`halo.outer`), a 4th ring, and `avatar`: the infant soul (big head via `headScale`) seated on a cloud of light above the crown, re-sampled on the figure's own dot pitch; `view` zoomed out more (figure ~25% smaller) |
+| `idle` | Mortal | own `parts`: bare torso + arms (skin dots, anatomy dotFeatures), hemp trousers, rope belt; hair `rag`; no Qi effects (`aura: false`) |
+| `meditating` | Qi Condensation | robe, rings, Qi pearl, **no halo** |
+| `meditating_deep` | Foundation | the halo appears; `formation` array on the ground |
+| `levitating` | Core Formation | `float` + ground shadow, golden core pearl, azure robe + jade crown, 1 baby dragon (tier 1) |
+| `transcending` | Nascent Soul | 2 young dragons (tier 2: mane, fins), double halo, `lotus` of light, jade `ribbons`, crimson robe |
+| `severing` | Spirit Severing | 2 grown dragons (tier 3: antlers, claws, chased pearls), `swords` fan ×9, sun-disk halo (`halo.rays`), sovereign-black robe, crimson sky |
+| `ascended` | Ascension | 3 golden dragons (tier 4), ×11 swords, celestial white-gold robe, heaven's `pillar`, gold dawn sky |
 
-Engine support: `view` (fit box instead of the scene; LOD still frames `figureBox`), `float`, `_groundShadow`,
-`_formation`, `_avatar` / `_paintAvatar` (cached per size), `halo: null`, `qiPearl: null`, `halo.outer`. The whole
-figure (lap included) now shudders on failure. Heaviest realm still draws in ~0.65 ms.
+Engine painters: `_dragons` (spine sampled along a tilted orbit, undulating; batched body/scale fills; back/front half
+split by orbit side), `_swordFan` (solid objects), `_lotus` (back + front petal rows), `_ribbons` (grid-snapped dot
+bands that fray at the tip), `_pillar`, halo `rays`, `_formation`, `_groundShadow`, `view` zoom. Heaviest realm
+(Ascension) ~3.9 ms per frame at Overlay size (budget 6 ms).
 
 ## Planned (PLAN.md Phase 39, user 2026-09-27)
 - A5: the player picks face / hair / robe at every creation and rebirth (live ink preview); robe + effect changeable

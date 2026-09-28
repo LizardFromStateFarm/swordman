@@ -125,19 +125,19 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   assert(missing.length === 0, `every stage (${nStages}) renders in ink${missing.length ? ' — missing: ' + missing.join(', ') : ''}`)
   // one in-app capture per realm art (Overlay), at the frozen moment
   const firstOf = st => ev(`CULTIVATION_STAGES.findIndex(s => s.spriteState === '${st}')`)
-  for (const [name, idx] of [['mortal', 0], ['foundation', await firstOf('meditating_deep')], ['core', await firstOf('levitating')], ['nascent', await firstOf('transcending')], ['immortal', nStages - 1]]) {
+  for (const [name, idx] of [['mortal', 0], ['foundation', await firstOf('meditating_deep')], ['core', await firstOf('levitating')], ['nascent', await firstOf('transcending')], ['severing', await firstOf('severing')], ['ascension', nStages - 1]]) {
     await ev(`(() => { const gs = gameState, s = gs.get(); s.stageIndex = ${idx}; gs._recalc(); gs._notify() })()`); await sleep(250)
     await ev(`spriteRenderer.ink.freeze(${T}, 0)`); await sleep(120); await shot(`ink-realm-${name}`, await canvasClip(3))
   }
   const fr = await ev('(() => { const i = spriteRenderer.ink; i._buildCache(i.w, i.h, i._dpr()); return i.perf(90) })()')
-  assert(fr < 6, `the heaviest realm (Nascent Soul + 4 rings) draws in < 6 ms (${fr.toFixed(2)} ms)`)
+  assert(fr < 6, `the heaviest realm (Ascension: 3 dragons, 11 swords, lotus, ribbons) draws in < 6 ms (${fr.toFixed(2)} ms)`)
 
   // Realm sheet: every realm variant rendered straight from the engine at 3×, idle row + breakthrough row
-  // the first stage of each sprite state, plus the last stage (Immortal)
-  const realms = await ev('(() => { const out = [], seen = new Set(); CULTIVATION_STAGES.forEach((s, i) => { if (!seen.has(s.spriteState)) { seen.add(s.spriteState); out.push([s.spriteState, i]) } }); const L = CULTIVATION_STAGES.length - 1; out.push([CULTIVATION_STAGES[L].spriteState, L]); return out })()')
+  // the first stage of each sprite state (one per realm)
+  const realms = await ev('(() => { const out = [], seen = new Set(); CULTIVATION_STAGES.forEach((s, i) => { if (!seen.has(s.spriteState)) { seen.add(s.spriteState); out.push([s.spriteState, i]) } }); return out })()')
   const realmSheet = await ev(`(() => {
     const realms = ${JSON.stringify(realms)}, W = 900, H = 450
-    const cv = document.createElement('canvas'); cv.width = W * 3; cv.height = (H + 40) * 4
+    const cv = document.createElement('canvas'); cv.width = W * 3; cv.height = (H + 40) * 2 * Math.ceil(realms.length / 3)
     const g = cv.getContext('2d'); g.fillStyle = '#0A0612'; g.fillRect(0, 0, cv.width, cv.height)
     g.font = '24px Georgia, serif'; g.fillStyle = '#E8D9B0'; g.textAlign = 'center'
     realms.forEach(([state, idx], n) => {

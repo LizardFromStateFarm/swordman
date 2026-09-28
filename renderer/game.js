@@ -1681,7 +1681,7 @@
     document.getElementById('ascension-overlay').classList.add('hidden')
     const res = gameState.attemptAscension()
     if (res.success) {
-      renderer.setState('transcending')
+      renderer.setState('ascended')
       flashMessage('You have Ascended! Welcome to the Immortal Realms.', 'special')
     }
     // Phase 31 (M2 task 2.7d): a successful Ascension now ALSO ends the life (fixes the post-Ascension dead

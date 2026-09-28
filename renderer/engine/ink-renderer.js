@@ -252,6 +252,7 @@ class InkRenderer {
       ctx.restore()
     }
 
+    if (A.pillar) this._pillar(ctx, C, t, bt)                                 // Ascension: heaven's light falls on you
     if (!calm) this._risingMotes(ctx, C, glowCol, t, bt)
 
     // Realm ground effects (A4-1): the Foundation array under the lap; the shadow left on the mist by a floating body
@@ -261,9 +262,12 @@ class InkRenderer {
     if (F) this._groundShadow(ctx, F, fy, glowCol)
 
     ctx.save(); ctx.translate(0, fy)                                          // everything below rides with the body
+    if (A.swords) this._swordFan(ctx, C, t, bt)                               // Spirit Severing on: flying swords fanned behind
+    if (A.dragons) this._dragons(ctx, C, t, bt, 'back')
     this._rings(ctx, C, glowCol, t, bt, 'back')
-    if (A.avatar && C.avatar) this._avatar(ctx, C, t, fy)
+    if (A.ribbons) this._ribbons(ctx, C, t)                                   // celestial ribbons float behind the arms
     if (A.halo) this._halo(ctx, C, glowCol, t, bt, headDy)
+    if (A.lotus) this._lotus(ctx, C, glowCol, t, bt, 'back')
     ctx.restore()
 
     // Figure layers: lap (still) → body (breathes) → head (rides the shoulders)
@@ -303,7 +307,9 @@ class InkRenderer {
       inkSoftDot(ctx, pr.x, pr.y + pdy, pr.r, inkMix(pc, '#FFFFFF', 0.45), 0.95 * lit)
     }
 
+    if (A.lotus) this._lotus(ctx, C, glowCol, t, bt, 'front')
     this._rings(ctx, C, glowCol, t, bt, 'front')
+    if (A.dragons) this._dragons(ctx, C, t, bt, 'front')
     if (bt > 0.01) this._ripples(ctx, C, t, bt, headDy)
     if (fail > 0.01) {                                          // the scene dims as the Qi drains away
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -324,6 +330,18 @@ class InkRenderer {
     // the ring itself: grid-snapped dots (user: the halo reads better as dots), in head-local grid coordinates
     // `outer` (a ratio) adds a second, fainter ring outside the first (Nascent Soul and beyond)
     for (const [rad, a] of h.outer ? [[r, 1], [r * h.outer, 0.45]] : [[r, 1]]) this._haloRing(ctx, h, rad, y, col, a, bt)
+    // a sun-disk (Spirit Severing on): dotted rays turning slowly outside the ring, long and short alternating
+    if (h.rays && !this.demote) {
+      const spin = this.reducedMotion ? 0 : t * 0.05, R0 = r * (h.outer || 1) + 2.5, path = new Path2D()
+      for (let i = 0; i < h.rays; i++) {
+        const ang = spin + i / h.rays * Math.PI * 2, len = i % 2 ? h.rayLen * 0.5 : h.rayLen
+        for (let d = 0; d <= len; d += 1.6) {
+          const rr = 0.55 * (1 - d / (len + 2)) + 0.15, x = h.x + Math.cos(ang) * (R0 + d), yy = y + Math.sin(ang) * (R0 + d)
+          path.moveTo(x + rr, yy); path.arc(x, yy, rr, 0, Math.PI * 2)
+        }
+      }
+      ctx.fillStyle = inkRgba(inkMix(col, '#FFFFFF', 0.3), (0.55 + 0.35 * bt) * (1 - this.fail)); ctx.fill(path)
+    }
   }
 
   _haloRing(ctx, h, r, y, col, alpha, bt) {
@@ -394,67 +412,230 @@ class InkRenderer {
     ctx.restore()
   }
 
-  // Nascent Soul and beyond: the soul itself — a small self seated on a cloud of light above the crown (the Daoist
-  // image of the infant soul leaving through the crown). Baked in the cache on the SAME dot pitch as the figure (the
-  // shape is re-sampled at its small size, not scaled down), so it stays crisp ink dots; it drifts and breathes gently.
-  _avatar(ctx, C, t, fy) {
-    const V = this.art.avatar, calm = this.reducedMotion
-    const rise = calm ? 0 : 0.9 * Math.sin(t * 0.5)                              // drifts a little on its own
-    const by = V.y + V.dy + fy + rise                                            // the soul's seat
-    const a = V.alpha * (calm ? 1 : 0.85 + 0.15 * Math.sin(t * 0.9)) * (1 - 0.8 * this.fail) * (1 + 0.4 * this.bt)
-    // the cloud it sits on: a soft, flattened glow
-    ctx.save(); ctx.translate(V.x, by); ctx.scale(1, 0.28)
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, V.cloud)
-    g.addColorStop(0, inkRgba(this.stageColor, 0.35 * a)); g.addColorStop(1, inkRgba(this.stageColor, 0))
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, V.cloud, 0, Math.PI * 2); ctx.fill()
-    ctx.restore()
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, (fy + rise) * C.S)
-    ctx.globalAlpha = Math.min(1, a); ctx.drawImage(C.avatar, 0, 0)
-    ctx.restore()
-  }
+  // ── Realm spectacle (A4-1, user 2026-09-27: "the bigger realms should be wildly different") ──
 
-  _paintAvatar(ctx, C, parts, grid) {
-    const { P, RY, gx0 } = grid, V = this.art.avatar, s = V.scale, probe = this._probe
-    const col = inkMix(this.stageColor, '#FFFFFF', 0.35)
-    const body = parts.filter(p => !InkRenderer.SOLID.has(p.mat))                 // objects stay with the body
-    const toFig = (x, y) => [V.x + (x - V.x) / s, V.y + (y - V.y - V.dy) / s]  // soul space → figure space
-    // an infant's proportions: the head parts are sampled larger (headScale) about the neck, so the head reads
-    const hs = s * (V.headScale || 1), ny = V.y + V.dy + (V.neckY - V.y) * s
-    const toHead = (x, y) => [V.x + (x - V.x) / hs, V.neckY + (y - ny) / hs]
-    const y0 = ny - V.neckY * hs - 2, y1 = V.y + V.dy + 2, x0 = V.x - 70 * s, x1 = V.x + 70 * s
-    const r0 = Math.floor(y0 / RY), r1 = Math.ceil(y1 / RY), c0 = Math.floor((x0 - gx0) / P) - 1, c1 = Math.ceil((x1 - gx0) / P) + 1
-    const W = c1 - c0 + 1, H = r1 - r0 + 1, own = new Int16Array(W * H).fill(-1)
-    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
-      const x = gx0 + c * P + (r & 1 ? P / 2 : 0), F = toFig(x, r * RY), Hd = toHead(x, r * RY)
-      for (let i = body.length - 1; i >= 0; i--) {
-        const q = body[i], bb = q.box, [fx, fy] = q.layer === 'head' ? Hd : F
-        if (fx < bb[0] || fx > bb[2] || fy < bb[1] || fy > bb[3]) continue
-        if (probe.isPointInPath(q.path, fx, fy)) { own[(r - r0) * W + (c - c0)] = i; break }
+  // Qi dragons: spirits of condensed Qi (not beasts) that coil around the cultivator on tilted orbits and weave
+  // behind and in front of the figure. Rank grows with the realm: a baby (Core) → young pair (Nascent Soul) → grown
+  // pair with horns, mane and claws chasing pearls (Spirit Severing) → three golden sovereigns (Ascension).
+  // D = { cx cy rx ry tilt  speed phase  arc (body length, radians)  size (head width)  wave  bob  color  tier 1..4 }
+  _dragons(ctx, C, t, bt, half) {
+    const P = this.art.palette, calm = this.reducedMotion, back = half === 'back'
+    for (const D of this.art.dragons) {
+      const col = inkMix(P[D.color] || this.stageColor, P.gold, bt * 0.6)
+      const hi = inkMix(col, '#FFFFFF', 0.55), deep = inkMix(col, '#05030A', 0.45)
+      const dir = Math.sign(D.speed) || 1
+      const head = (calm ? 0 : t * D.speed) + D.phase - this.fail * 0.4 * D.speed
+      const ct = Math.cos(D.tilt), st = Math.sin(D.tilt)
+      const K = C.lod ? 22 : Math.round(40 + D.arc * 34)
+      const orbit = a => {
+        const x = Math.cos(a) * D.rx, y = Math.sin(a) * D.ry + D.bob * Math.sin(a * 2 + t * 0.7)
+        return [D.cx + x * ct - y * st, D.cy + x * st + y * ct]
+      }
+      // spine: head first; the body undulates sideways, the head stays steadier
+      const pts = []
+      for (let i = 0; i <= K; i++) {
+        const u = i / K, a = head - dir * u * D.arc
+        pts.push({ u, a, p: orbit(a), far: Math.sin(a) < 0 })
+      }
+      for (let i = 0; i <= K; i++) {
+        const q = pts[i], n0 = pts[Math.max(0, i - 1)].p, n1 = pts[Math.min(K, i + 1)].p
+        let tx = n0[0] - n1[0], ty = n0[1] - n1[1]; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L
+        q.tx = tx; q.ty = ty; q.nx = -ty; q.ny = tx                              // tangent (towards the head) + normal
+        const wv = calm ? 0 : D.wave * Math.sin(t * 2.4 - q.u * 9) * (0.25 + 0.75 * q.u)
+        q.x = q.p[0] + q.nx * wv; q.y = q.p[1] + q.ny * wv
+        // body width: a neck behind the head, full at the shoulders, tapering to a fine tail
+        q.w = D.size * (q.u < 0.07 ? 0.7 + q.u * 3 : Math.pow(1 - (q.u - 0.07) / 0.93, 0.75)) * (0.35 + 0.65 * Math.min(1, q.u * 8 + 0.4))
+      }
+      const alpha = (D.alpha || 1) * (1 - 0.6 * this.fail)
+      const sideOk = q => q.far === back
+      // 1 · the Qi glow around the body (one soft stroke along the spine)
+      if (!C.lod) {
+        ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+        ctx.strokeStyle = inkRgba(col, 0.12 * alpha * (1 + bt)); ctx.lineWidth = D.size * 2.6
+        ctx.shadowColor = col; ctx.shadowBlur = D.size * 1.5 * C.S
+        ctx.beginPath(); let on = false
+        for (let i = 0; i <= K; i += 2) { const q = pts[i]; if (!sideOk(q)) { on = false; continue } on ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); on = true }
+        ctx.stroke(); ctx.restore()
+      }
+      // 2 · the body: overlapping dots, dark underside + bright back (batched: one fill per tone)
+      const under = new Path2D(), top = new Path2D(), scales = new Path2D()
+      for (let i = K; i >= 1; i--) {
+        const q = pts[i]; if (!sideOk(q)) continue
+        const r = Math.max(0.25, q.w / 2)
+        let x = q.x - q.nx * r * 0.25, y = q.y - q.ny * r * 0.25; under.moveTo(x + r, y); under.arc(x, y, r, 0, Math.PI * 2)
+        x = q.x + q.nx * r * 0.2; y = q.y + q.ny * r * 0.2; top.moveTo(x + r * 0.78, y); top.arc(x, y, r * 0.78, 0, Math.PI * 2)
+        if (i % 2 === 0 && i > 1 && i < K - 1 && !C.lod) { const sr = Math.max(0.35, r * 0.3); x = q.x + q.nx * r * 0.45; y = q.y + q.ny * r * 0.45; scales.moveTo(x + sr, y); scales.arc(x, y, sr, 0, Math.PI * 2) }
+      }
+      ctx.fillStyle = inkRgba(deep, 0.75 * alpha); ctx.fill(under)
+      ctx.fillStyle = inkRgba(col, 0.9 * alpha); ctx.fill(top)
+      ctx.fillStyle = inkRgba(hi, 0.95 * alpha); ctx.fill(scales)
+      // 3 · the mane / dorsal fins (tier ≥ 2); claws (tier ≥ 3)
+      if (!C.lod && D.tier >= 2) for (let i = K - 2; i >= 2; i--) {
+        const q = pts[i]; if (!sideOk(q)) continue
+        const r = q.w / 2
+        if (D.tier >= 2 && i % 4 === 0 && q.u > 0.06 && q.u < 0.9) {
+          const len = (D.tier >= 3 ? 1.1 : 0.7) * q.w + 0.6, bx = q.x + q.nx * r, by = q.y + q.ny * r
+          inkBrush(ctx, [[bx + q.tx * len * 0.3, by + q.ty * len * 0.3], [bx + q.nx * len - q.tx * len * 0.5, by + q.ny * len - q.ty * len * 0.5]],
+            Math.max(0.5, q.w * 0.3), hi, 0.8 * alpha, C.minW)
+        }
+        if (D.tier >= 3 && (i === Math.round(K * 0.22) || i === Math.round(K * 0.5))) {       // two pairs of claws, reaching down
+          for (const sd of [-1, 1]) {
+            const bx = q.x - q.nx * r * 0.8, by = q.y - q.ny * r * 0.8, len = q.w * 1.3 + 1
+            const ex = bx - q.nx * len + q.tx * sd * len * 0.6, ey = by - q.ny * len + q.ty * sd * len * 0.6
+            inkBrush(ctx, [[bx, by], [(bx + ex) / 2 - q.tx * 0.6, (by + ey) / 2 - q.ty * 0.6], [ex, ey]], Math.max(0.45, q.w * 0.3), col, 0.9 * alpha, C.minW)
+            for (const f of [-0.6, 0, 0.6]) inkBrush(ctx, [[ex, ey], [ex - q.nx * 1.1 + q.tx * f, ey - q.ny * 1.1 + q.ty * f]], 0.35, hi, 0.9 * alpha, C.minW)
+          }
+        }
+      }
+      // 4 · tail flame: a few soft wisps trailing off the tip
+      const tail = pts[K]
+      if (sideOk(tail) && !C.lod) for (let j = 0; j < 4; j++) {
+        const f = (t * 1.6 + j * 0.25) % 1
+        inkSoftDot(ctx, tail.x - tail.tx * f * 5 + tail.nx * Math.sin(t * 5 + j) * 1.2, tail.y - tail.ty * f * 5 + tail.ny * Math.sin(t * 5 + j) * 1.2,
+          1.4 * (1 - f) + 0.4, hi, 0.55 * (1 - f) * alpha)
+      }
+      // 5 · the head: an elongated skull + snout, horns swept back, long whiskers, a glowing eye; grown dragons chase a pearl
+      const h0 = pts[0]
+      if (!sideOk(h0)) continue
+      const hw = D.size * 0.62, hl = D.size * 1.5
+      const hx = h0.x + h0.tx * hl * 0.35, hy = h0.y + h0.ty * hl * 0.35
+      ctx.save(); ctx.translate(hx, hy); ctx.rotate(Math.atan2(h0.ty, h0.tx))
+      inkSoftDot(ctx, 0, 0, hl * 1.4, col, 0.22 * alpha * (1 + bt))
+      ctx.fillStyle = inkRgba(deep, 0.85 * alpha)
+      ctx.beginPath(); ctx.moveTo(-hl * 0.5, -hw); ctx.quadraticCurveTo(hl * 0.35, -hw * 1.05, hl * 0.95, -hw * 0.35)
+      ctx.lineTo(hl * 1.05, hw * 0.05); ctx.quadraticCurveTo(hl * 0.4, hw * 0.95, -hl * 0.5, hw * 0.85); ctx.closePath(); ctx.fill()
+      ctx.fillStyle = inkRgba(col, 0.95 * alpha)
+      ctx.beginPath(); ctx.moveTo(-hl * 0.42, -hw * 0.8); ctx.quadraticCurveTo(hl * 0.35, -hw * 0.9, hl * 0.9, -hw * 0.3)
+      ctx.lineTo(hl * 0.95, 0); ctx.quadraticCurveTo(hl * 0.3, hw * 0.35, -hl * 0.42, hw * 0.45); ctx.closePath(); ctx.fill()
+      if (!C.lod) {
+        const hornL = D.tier >= 3 ? hl * 1.25 : D.tier >= 2 ? hl * 0.85 : hl * 0.45
+        for (const sd of [-1, 1]) {                                             // horns (antler-like when grown)
+          const bx = -hl * 0.15, by = sd * hw * 0.55
+          inkBrush(ctx, [[bx, by], [bx - hornL * 0.55, by + sd * hornL * 0.35], [bx - hornL, by + sd * hornL * 0.3]], Math.max(0.5, hw * 0.45), hi, 0.95 * alpha, C.minW)
+          if (D.tier >= 3) inkBrush(ctx, [[bx - hornL * 0.5, by + sd * hornL * 0.33], [bx - hornL * 0.55, by + sd * hornL * 0.7]], Math.max(0.4, hw * 0.3), hi, 0.9 * alpha, C.minW)
+        }
+        const wl = D.size * (D.tier >= 2 ? 4.2 : 2.4), wave = calm ? 0 : Math.sin(t * 3)
+        for (const sd of [-1, 1]) {                                             // whiskers stream back from the snout
+          inkBrush(ctx, [[hl * 0.85, sd * hw * 0.25], [hl * 0.3, sd * hw * 1.4 + wave * 0.6], [-wl * 0.4, sd * hw * 1.8 - wave], [-wl, sd * hw * 1.3 + wave * 1.4]],
+            0.55, hi, 0.75 * alpha, C.minW)
+        }
+        if (D.tier >= 2) {                                                     // the mane behind the skull
+          for (let j = 0; j < 3; j++) inkBrush(ctx, [[-hl * 0.3, (j - 1) * hw * 0.5], [-hl * (0.9 + j * 0.15), (j - 1) * hw * 1.1 + (calm ? 0 : Math.sin(t * 4 + j) * 0.5)]],
+            Math.max(0.5, hw * 0.5), col, 0.7 * alpha, C.minW)
+        }
+        inkSoftDot(ctx, hl * 0.35, -hw * 0.35, Math.max(0.6, hw * 0.45) + 0.8, '#FFFFFF', 0.5 * alpha)   // the eye
+        inkSoftDot(ctx, hl * 0.35, -hw * 0.35, Math.max(0.3, hw * 0.22), '#FFFFFF', alpha)
+      }
+      ctx.restore()
+      if (D.tier >= 3 && !C.lod) {                                             // the pearl it chases, just ahead of the jaws
+        const px = hx + h0.tx * hl * 1.9, py = hy + h0.ty * hl * 1.9, pulse = calm ? 0.5 : 0.5 + 0.5 * Math.sin(t * 3 + D.phase)
+        inkSoftDot(ctx, px, py, D.size * 1.6, hi, (0.25 + 0.2 * pulse) * alpha)
+        inkSoftDot(ctx, px, py, D.size * 0.45, '#FFFFFF', 0.95 * alpha)
       }
     }
-    const at = (c, r) => (c < 0 || r < 0 || c >= W || r >= H) ? -1 : own[r * W + c]
-    // tones by material so the tiny figure still reads: a bright face, deep hair, a robe of light
-    const tone = { skin: [inkMix(col, '#FFFFFF', 0.6), 0.95], hair: [inkMix(this.stageColor, '#140C22', 0.45), 0.9] }
-    const paths = new Map(), edgePath = new Path2D()
-    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
-      const id = own[r * W + c]
-      if (id < 0) continue
-      const x = gx0 + (c + c0) * P + ((r + r0) & 1 ? P / 2 : 0), y = (r + r0) * RY
-      const edge = at(c - 1, r) < 0 || at(c + 1, r) < 0 || at(c, r - 1) < 0 || at(c, r + 1) < 0
-      const mat = body[id].mat, key = edge && mat !== 'skin' && mat !== 'hair' ? 'edge' : tone[mat] ? mat : 'robe'
-      const path = key === 'edge' ? edgePath : (paths.get(key) || paths.set(key, new Path2D()).get(key))
-      const rad = P * (key === 'robe' ? 0.3 : 0.4)
-      path.moveTo(x + rad, y); path.arc(x, y, rad, 0, Math.PI * 2)
+  }
+
+  // Flying swords (Spirit Severing on): a fan of swords standing in the air behind the cultivator, tips outward,
+  // each hovering on its own breath. Objects, so solid (user rule). S = { cx cy r n spread len }
+  _swordFan(ctx, C, t, bt) {
+    const S = this.art.swords, P = this.art.palette, calm = this.reducedMotion
+    for (let i = 0; i < S.n; i++) {
+      const th = -S.spread / 2 + S.spread * i / (S.n - 1)
+      const hover = calm ? 0 : Math.sin(t * 1.3 + i * 0.9) * 1.4 - this.fail * 6 * inkRnd(i)
+      const r = S.r + hover, x = S.cx + Math.sin(th) * r, y = S.cy - Math.cos(th) * r
+      ctx.save(); ctx.translate(x, y); ctx.rotate(th)
+      const L = S.len, a = 0.92 * (1 - 0.5 * this.fail)
+      // its trail of Qi towards the centre
+      const g = ctx.createLinearGradient(0, L * 0.3, 0, L * 1.2)
+      g.addColorStop(0, inkRgba(P.swordGlow || P.gold, 0.28 * a)); g.addColorStop(1, inkRgba(P.swordGlow || P.gold, 0))
+      ctx.fillStyle = g; ctx.fillRect(-1.2, L * 0.3, 2.4, L * 0.9)
+      ctx.shadowColor = P.swordGlow || P.gold; ctx.shadowBlur = (3 + 3 * bt) * C.S
+      const bl = ctx.createLinearGradient(-1, 0, 1, 0)
+      bl.addColorStop(0, P.steel); bl.addColorStop(1, P.steelShade)
+      ctx.fillStyle = bl; ctx.globalAlpha = a
+      ctx.beginPath(); ctx.moveTo(0, -L * 0.62); ctx.lineTo(1.05, -L * 0.5); ctx.lineTo(1.05, L * 0.2); ctx.lineTo(-1.05, L * 0.2); ctx.lineTo(-1.05, -L * 0.5); ctx.closePath(); ctx.fill()
+      ctx.shadowBlur = 0
+      ctx.fillStyle = P.trim; ctx.fillRect(-2.6, L * 0.2, 5.2, 1.1)              // guard
+      ctx.fillStyle = P.grip; ctx.fillRect(-0.7, L * 0.2 + 1.1, 1.4, L * 0.2)      // grip
+      ctx.fillStyle = P.trim; ctx.beginPath(); ctx.arc(0, L * 0.42 + 1.3, 0.9, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = P.rim; ctx.globalAlpha = 0.6 * a; ctx.fillRect(-0.2, -L * 0.5, 0.4, L * 0.66)   // edge light
+      ctx.globalAlpha = 1
+      ctx.restore()
     }
-    ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
-    ctx.shadowColor = this.stageColor; ctx.shadowBlur = 2.5 * C.S
-    ctx.fillStyle = col; ctx.globalAlpha = 0.95; ctx.fill(edgePath)
-    ctx.shadowBlur = 0
-    for (const [key, path] of paths) {
-      const [c2, a2] = tone[key] || [col, 0.5]
-      ctx.fillStyle = c2; ctx.globalAlpha = a2; ctx.fill(path)
+  }
+
+  // A lotus of light under the seat (Nascent Soul on): a back row of tall petals behind the lap and a front row of
+  // short ones in front of it. Petals are translucent Qi: a soft fill, a lit rim and a bright tip. L = { x y w h n }
+  _lotus(ctx, C, col, t, bt, half) {
+    const L = this.art.lotus, calm = this.reducedMotion, breathe = calm ? 0 : Math.sin(t * 0.9) * 0.04
+    const rows = half === 'back' ? [[L.n, 1, -1]] : [[L.n - 2, 0.62, 1]]
+    const c2 = inkMix(col, '#FFFFFF', 0.4)
+    for (const [n, sc, row] of rows) {
+      for (let i = 0; i < n; i++) {
+        const f = n === 1 ? 0 : i / (n - 1) * 2 - 1                            // −1 … 1 across the row
+        const bx = L.x + f * L.w * 0.42 * sc, by = L.y + (row > 0 ? 3 : 0) - Math.abs(f) * 2
+        const ang = f * (row > 0 ? 0.9 : 1.05), len = L.h * sc * (1.05 - 0.35 * Math.abs(f)) * (1 + breathe), wd = L.h * 0.34 * sc
+        ctx.save(); ctx.translate(bx, by); ctx.rotate(ang)
+        const g = ctx.createLinearGradient(0, 0, 0, -len)
+        g.addColorStop(0, inkRgba(col, 0.08)); g.addColorStop(0.7, inkRgba(col, 0.26 * (1 + bt))); g.addColorStop(1, inkRgba(c2, 0.45 * (1 + bt)))
+        ctx.fillStyle = g
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(wd, -len * 0.45, 0, -len); ctx.quadraticCurveTo(-wd, -len * 0.45, 0, 0); ctx.fill()
+        ctx.lineWidth = Math.max(0.45, C.minW); ctx.strokeStyle = inkRgba(c2, 0.7 * (1 - 0.6 * this.fail)); ctx.stroke()
+        ctx.restore()
+        const tx = bx + Math.sin(ang) * len, ty = by - Math.cos(ang) * len
+        inkSoftDot(ctx, tx, ty, 2.2, c2, 0.35); inkSoftDot(ctx, tx, ty, 0.6, '#FFFFFF', 0.9)
+      }
     }
-    ctx.globalAlpha = 1
+  }
+
+  // Celestial ribbons (披帛-style sashes of the immortals) floating out from the shoulders and down past the knees,
+  // drawn as grid-snapped dots (cloth is ink dots). R = [{ pts, color, w, wave }]
+  _ribbons(ctx, C, t) {
+    const PAL = this.art.palette, calm = this.reducedMotion, P = this.art.dot.pitch, RY = P * 0.866, gx0 = this._gx0()
+    for (const [n, R] of this.art.ribbons.entries()) {
+      // the ribbon's centre line, waving harder towards the free end
+      const pts = R.pts.map(([x, y], i) => {
+        const u = i / (R.pts.length - 1), w = calm ? 0 : Math.sin(t * 1.1 - i * 0.9 + n * 2) * R.wave * u
+        return [x + w * 0.6, y + w]
+      })
+      const col = PAL[R.color], hi = inkMix(col, '#FFFFFF', 0.55), seen = new Set(), body = new Path2D(), edge = new Path2D()
+      let total = 0; const segs = []
+      for (let i = 0; i < pts.length - 1; i++) { const L = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); segs.push(L); total += L }
+      let run = 0
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], L = segs[i], nx = -(y1 - y0) / L, ny = (x1 - x0) / L
+        for (let d = 0; d <= L; d += 0.5) {
+          const u = (run + d) / total, half = R.w * (0.55 + 0.6 * Math.sin(Math.PI * Math.min(1, u * 1.3))) * (1 - 0.7 * u)
+          const cx = x0 + (x1 - x0) * d / L, cy = y0 + (y1 - y0) * d / L
+          for (let o = -half; o <= half; o += P * 0.5) {
+            const x = cx + nx * o, y = cy + ny * o, row = Math.round(y / RY), off = gx0 + (row & 1 ? P / 2 : 0), c = Math.round((x - off) / P)
+            const key = row * 10000 + c
+            if (seen.has(key)) continue
+            seen.add(key)
+            if (u > 0.55 && inkRnd(key) < (u - 0.55) * 1.6) continue                 // the free end frays into the air
+            const gx = c * P + off, gy = row * RY, path = o < -half + P * 0.6 ? edge : body, rr = P * 0.4
+            path.moveTo(gx + rr, gy); path.arc(gx, gy, rr, 0, Math.PI * 2)
+          }
+        }
+        run += L
+      }
+      ctx.fillStyle = col; ctx.globalAlpha = 0.85; ctx.fill(body)
+      ctx.fillStyle = hi; ctx.globalAlpha = 0.95; ctx.fill(edge)
+      ctx.globalAlpha = 1
+    }
+  }
+
+  // Ascension: a pillar of heaven's light falling on the cultivator from above the frame.
+  _pillar(ctx, C, t, bt) {
+    const Pl = this.art.pillar, col = this.art.palette[Pl.color] || this.art.palette.gold
+    const k = 0.85 + (this.reducedMotion ? 0 : 0.15 * Math.sin(t * 0.7))
+    const top = -C.oy / C.S
+    const g = ctx.createLinearGradient(Pl.x - Pl.w, 0, Pl.x + Pl.w, 0)
+    g.addColorStop(0, inkRgba(col, 0)); g.addColorStop(0.5, inkRgba(col, Pl.alpha * k * (1 + bt))); g.addColorStop(1, inkRgba(col, 0))
+    ctx.fillStyle = g; ctx.fillRect(Pl.x - Pl.w, top, Pl.w * 2, Pl.y - top)
+    const g2 = ctx.createLinearGradient(Pl.x - Pl.w * 0.3, 0, Pl.x + Pl.w * 0.3, 0)
+    g2.addColorStop(0, inkRgba(col, 0)); g2.addColorStop(0.5, inkRgba('#FFFFFF', Pl.alpha * 0.8 * k)); g2.addColorStop(1, inkRgba(col, 0))
+    ctx.fillStyle = g2; ctx.fillRect(Pl.x - Pl.w * 0.3, top, Pl.w * 0.6, Pl.y - top)
   }
 
   // x of dot column 0, chosen so a column sits exactly on the figure's centre line (x = scene width / 2).
@@ -570,7 +751,6 @@ class InkRenderer {
       if (!this.art.frames[fr]) { C.frames[fr] = C.layers.head; continue }
       C.frames[fr] = mk(); this._paintLayer(C.frames[fr].getContext('2d'), C, parts, grid, 'head', false, fr)
     }
-    if (A.avatar && grid) { C.avatar = mk(); this._paintAvatar(C.avatar.getContext('2d'), C, parts, grid) }
     return C
   }
 

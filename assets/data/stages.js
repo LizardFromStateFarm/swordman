@@ -68,13 +68,13 @@ const CULTIVATION_STAGES = [
 
   // ── SPIRIT SEVERING ──────────────────────────────────────────────────────
   { id:'ss_early', realm:'Spirit Severing', realmCN:'化神期', layer:'Early Stage', layerCN:'初期',
-    baseQps:6e5, qiCap:1.169e11, breakthroughChance:0.25, color:'#CC2936', spriteState:'transcending',
+    baseQps:6e5, qiCap:1.169e11, breakthroughChance:0.25, color:'#CC2936', spriteState:'severing',
     desc:'The Dao heart is severed from mortal attachments.' },
   { id:'ss_mid', realm:'Spirit Severing', realmCN:'化神期', layer:'Middle Stage', layerCN:'中期',
-    baseQps:2e6, qiCap:7.65e11, breakthroughChance:0.22, color:'#CC2936', spriteState:'transcending',
+    baseQps:2e6, qiCap:7.65e11, breakthroughChance:0.22, color:'#CC2936', spriteState:'severing',
     desc:'Laws of heaven and earth bend to your will.' },
   { id:'ss_late', realm:'Spirit Severing', realmCN:'化神期', layer:'Late Stage', layerCN:'后期',
-    baseQps:6e6, qiCap:5.29e12, breakthroughChance:0.20, color:'#CC2936', spriteState:'transcending',
+    baseQps:6e6, qiCap:5.29e12, breakthroughChance:0.20, color:'#CC2936', spriteState:'severing',
     desc:'The spirit merges with the void between realms.' },
 
   // ── ASCENSION ────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ const CULTIVATION_STAGES = [
     id: 'ascension', realm: 'Ascension', realmCN: '飞升',
     layer: 'Immortal', layerCN: '仙人',
     baseQps: 2e7, qiCap: Infinity, breakthroughChance: 0,
-    color: '#F0E68C', spriteState: 'transcending',
+    color: '#F0E68C', spriteState: 'ascended',
     desc: 'You have transcended mortality. The immortal realm awaits.',
   },
 ]

@@ -154,8 +154,9 @@ myOption: { label: 'Shown name',
 'meditating', … }` overrides only what the realm changes (palette / background / slots / halo / qiPearl / body merge key
 by key; the rest replaces). Realm effects: `aura: false` (ignore the aura slot), `halo: null` / `qiPearl: null`,
 `halo.outer` (second ring, ratio), `qiPearl.color` (palette key, e.g. the golden core), `formation {cx cy rx ry speed
-alpha}`, `float {y bob shadow}`, `view` (zoom-out box for headroom), `avatar {scale headScale neckY x y dy alpha cloud}`
-(the Nascent Soul above the crown). `out/ink-realms-sheet.png` shows every realm, idle + breakthrough.
+alpha}`, `float {y bob shadow}`, `view` (zoom-out box for headroom), `dragons [{cx cy rx ry tilt speed phase arc size wave bob tier color}]`
+(Qi dragons, tier 1 baby → 4 golden), `swords {cx cy r n spread len}`, `lotus {x y w h n}`, `ribbons [{pts color w wave}]`,
+`pillar {x y w alpha color}`, `halo.rays` / `rayLen`. A variant may replace `parts` / `strokes` / `dotFeatures` wholesale (the Mortal). `out/ink-realms-sheet.png` shows every realm, idle + breakthrough.
 
 **Check it:** `node scripts/smoke/cdp.js scripts/smoke/scenarios/ink-art.js` → `out/ink-slots-sheet.png` (every option),
 `ink-still-*.png` (4×/12× stills incl. fail / demote / face-bt / face-strain), in-app captures per layout mode. Hand the

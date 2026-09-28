@@ -89,6 +89,22 @@ const INK_PARTS = {
         { layer: 'head', live: true, color: 'hairMid', alpha: 1, w: 2.2, pts: [[138.2, 27], [135.6, 38], [136.4, 47], [138.4, 56]] },
         { layer: 'head', live: true, color: 'hairMid', alpha: 1, w: 2.2, pts: [[161.8, 27], [164.4, 38], [163.6, 47], [161.6, 56]] },
       ] },
+    // the Mortal's hair (A4-1): a small topknot tied with a strip of cloth, no pin, a stray lock falling forward
+    rag: { label: 'Rag-tied topknot',
+      parts: [
+        { id: 'hairBack', before: 'face', layer: 'head', mat: 'hair', d: ['E', 150, 30, 12.6, 13.6] },
+        { id: 'cap', layer: 'head', mat: 'hair',
+          d: ['M', 138.6, 32, 'Q', 137.6, 18.5, 150, 18, 'Q', 162.4, 18.5, 161.4, 32, 'Q', 158.5, 24.5, 154, 26.5,
+              'Q', 150, 23, 145, 27, 'Q', 141, 25, 138.6, 32, 'Z'] },
+        { id: 'bun', layer: 'head', mat: 'hair', d: ['E', 150, 14, 4.6, 4] },
+        { id: 'tie', layer: 'head', mat: 'sash', d: ['M', 145.4, 16.2, 'L', 154.6, 16.2, 'L', 154.6, 18.2, 'L', 145.4, 18.2, 'Z'] },
+      ],
+      strokes: [
+        { layer: 'head', live: true, color: 'sash', alpha: 1, w: 1.2, pts: [[154.6, 17.2], [158, 19], [160, 23]] },
+        { layer: 'head', live: true, color: 'hairMid', alpha: 1, w: 1.2, pts: [[146, 22], [143.6, 27], [143, 31]] },
+        { layer: 'head', live: true, color: 'hairMid', alpha: 1, w: 2.2, pts: [[138.4, 28], [136.4, 36], [137.6, 43]] },
+        { layer: 'head', live: true, color: 'hairMid', alpha: 1, w: 2.2, pts: [[161.6, 28], [163.6, 36], [162.4, 43]] },
+      ] },
     loose: { label: 'Long and loose',
       parts: [
         // the fall of hair behind the shoulders rides with the body
@@ -134,6 +150,14 @@ const INK_PARTS = {
     crimson: { label: 'Crimson', palette: {
       robe: '#DA8E86', robeShade: '#8C3C3C', robeDeep: '#4A1C24', rim: '#FFE4DA', cuff: '#5A2228',
       sash: '#3A3048', sashShade: '#1C1624', trim: '#E4C070' } },
+    // Spirit Severing default (A4-1): night-black silk, heavy gold trim, a blood-red sash
+    sovereign: { label: 'Sovereign black', palette: {
+      robe: '#5A5068', robeShade: '#2A2234', robeDeep: '#120E18', rim: '#E8C878', cuff: '#1A1420',
+      sash: '#C0303A', sashShade: '#5E1218', trim: '#F0C860', trimShade: '#9A7020' } },
+    // Ascension default (A4-1): white-gold celestial silk
+    celestial: { label: 'Celestial white-gold', palette: {
+      robe: '#FBF3DC', robeShade: '#C8A870', robeDeep: '#7A5A30', rim: '#FFFFF4', cuff: '#8A6A3A',
+      sash: '#E8B840', sashShade: '#8A6418', trim: '#FFE08A', trimShade: '#B08830' } },
     ink: { label: 'Ink-black', palette: {
       robe: '#6E6A7C', robeShade: '#34303F', robeDeep: '#1A1822', rim: '#C4BED6', cuff: '#1E1C26',
       sash: '#9A3030', sashShade: '#4E1818' } },
