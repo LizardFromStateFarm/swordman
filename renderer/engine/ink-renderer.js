@@ -16,18 +16,20 @@ class InkRenderer {
   static SOLID = new Set(['metal', 'steel', 'grip', 'jade'])
   static SLOT_KINDS = ['robe', 'hair', 'weapon', 'face', 'aura']   // merge order (later palette wins)
 
-  static has(state) { return typeof INK_ART !== 'undefined' && !!INK_ART[state] }
+  // Art tables: INK_ART (the cultivator) by default; a renderer may draw another table (INK_BEASTS, A4-2).
+  static has(state, table = typeof INK_ART !== 'undefined' ? INK_ART : null) { return !!(table && table[state]) }
 
   // A realm variant (A4-1) names its base with `extends` and overrides only what changes: palette / background /
   // slots / halo / qiPearl / body merge key by key, every other key replaces. `aura: false` = the aura slot's effects
   // are ignored (the Mortal has no Qi to shape). Resolved once per state and kept.
-  static resolve(state) {
-    const R = InkRenderer._resolved || (InkRenderer._resolved = new Map())
+  static resolve(state, table = INK_ART) {
+    const all = InkRenderer._resolved || (InkRenderer._resolved = new Map())
+    const R = all.get(table) || all.set(table, new Map()).get(table)
     if (R.has(state)) return R.get(state)
-    const V = INK_ART[state]
+    const V = table[state]
     let out = V
     if (V && V.extends) {
-      const B = InkRenderer.resolve(V.extends)
+      const B = InkRenderer.resolve(V.extends, table)
       out = { ...B, ...V }
       for (const k of ['palette', 'background', 'slots', 'halo', 'qiPearl', 'body']) {
         if (V[k] && B[k]) out[k] = { ...B[k], ...V[k] }
@@ -38,7 +40,9 @@ class InkRenderer {
     return out
   }
 
-  constructor(canvas) {
+  constructor(canvas, opts = {}) {
+    this.table = opts.table || null   // null = INK_ART (looked up late: the data file may load after this one)
+    this.skipHidden = !!opts.skipHidden   // portraits: don't draw while the canvas is not on screen
     this.cv  = canvas
     this.ctx = canvas.getContext('2d')
     this.base = null            // INK_ART entry for the current sprite state
@@ -61,8 +65,8 @@ class InkRenderer {
 
   setState(name) {
     if (name === 'breakthrough') { this.btTarget = 1; this.btStart = this.t }
-    else if (InkRenderer.has(name)) {
-      const art = InkRenderer.resolve(name)
+    else if (InkRenderer.has(name, this.table || INK_ART)) {
+      const art = InkRenderer.resolve(name, this.table || INK_ART)
       if (art !== this.base) { this.base = art; this.art = this._effective(); this.cache = null }
       if (this.fail < 0.05) this.btTarget = 0
     }
@@ -195,7 +199,7 @@ class InkRenderer {
           if (this.fail > 0) this.fail = Math.max(0, this.fail - step / 1.8)
           this.bt += (this.btTarget - this.bt) * k
         }
-        this._draw()
+        if (!this.skipHidden || this.cv.offsetParent) this._draw()
       }
       this.rafId = requestAnimationFrame(tick)
     }
@@ -222,7 +226,7 @@ class InkRenderer {
     const calm = this.reducedMotion
     const breath = calm ? 0 : Math.sin(t * 1.3)
     const k = 1 + A.body.breathe * breath                     // body vertical scale
-    const headDy = -(k - 1) * (A.body.anchorY - 45)           // the head rides on the shoulders
+    const headDy = -(k - 1) * (A.body.anchorY - (A.body.headY ?? 45))           // the head rides on the shoulders
     const qi = this.stageColor
     const fail = this.fail
     const glowCol = inkMix(bt > 0.01 ? inkMix(qi, P.gold, bt) : qi, P.failRed || '#C8453A', fail * 0.85)
@@ -272,18 +276,19 @@ class InkRenderer {
 
     // Figure layers: lap (still) → body (breathes) → head (rides the shoulders)
     const ay = A.body.anchorY, fyD = fy * C.S
-    const layer = img => { ctx.save(); ctx.setTransform(1, 0, 0, 1, shake, fyD); ctx.drawImage(img, 0, 0); ctx.restore() }
     const bodyTf = () => ctx.setTransform(1, 0, 0, k, shake, (C.oy + ay * C.S) * (1 - k) + fyD)
     const headTf = () => ctx.setTransform(1, 0, 0, 1, shake, headDy * C.S + fyD)
     const headImg = fail > 0.08 ? C.frames.strain : bt > 0.5 ? C.frames.bt : C.layers.head   // expression frames
-    layer(C.layers.lap)
-    if (bt > 0.01) { ctx.globalAlpha = bt; layer(C.rim.lap); ctx.globalAlpha = 1 }
-    ctx.save(); bodyTf(); ctx.drawImage(C.layers.body, 0, 0)
-    if (bt > 0.01) { ctx.globalAlpha = bt; ctx.drawImage(C.rim.body, 0, 0); ctx.globalAlpha = 1 }
-    ctx.restore()
-    ctx.save(); headTf(); ctx.drawImage(headImg, 0, 0)
-    if (bt > 0.01) { ctx.globalAlpha = bt; ctx.drawImage(C.rim.head, 0, 0); ctx.globalAlpha = 1 }
-    ctx.restore()
+    for (const L of this._layerOrder()) {
+      ctx.save()
+      if (L === 'body') bodyTf()
+      else if (L === 'head') headTf()
+      else if (A.motion?.[L]) this._swingTf(ctx, C, A.motion[L], t, shake, fyD)   // tails sway, wings beat (A4-2)
+      else ctx.setTransform(1, 0, 0, 1, shake, fyD)
+      ctx.drawImage(L === 'head' ? headImg : C.layers[L], 0, 0)
+      if (bt > 0.01) { ctx.globalAlpha = bt; ctx.drawImage(C.rim[L], 0, 0); ctx.globalAlpha = 1 }
+      ctx.restore()
+    }
     ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
     ctx.translate(0, fy)
 
@@ -310,6 +315,7 @@ class InkRenderer {
     if (A.lotus) this._lotus(ctx, C, glowCol, t, bt, 'front')
     this._rings(ctx, C, glowCol, t, bt, 'front')
     if (A.dragons) this._dragons(ctx, C, t, bt, 'front')
+    if (A.bolts && !this.reducedMotion) this._bolts(ctx, C, t)
     if (bt > 0.01) this._ripples(ctx, C, t, bt, headDy)
     if (fail > 0.01) {                                          // the scene dims as the Qi drains away
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -375,6 +381,11 @@ class InkRenderer {
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, Fm.rx)
     g.addColorStop(0, inkRgba(col, 0.14 * a)); g.addColorStop(0.7, inkRgba(col, 0.05 * a)); g.addColorStop(1, inkRgba(col, 0))
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, Fm.rx, 0, Math.PI * 2); ctx.fill()
+    if (Fm.core) {                                                       // a rift: darkness swallowing the middle
+      const d = ctx.createRadialGradient(0, 0, 0, 0, 0, Fm.rx * 0.72)
+      d.addColorStop(0, inkRgba('#020104', 0.95)); d.addColorStop(0.75, inkRgba('#05020A', 0.8)); d.addColorStop(1, inkRgba('#05020A', 0))
+      ctx.fillStyle = d; ctx.beginPath(); ctx.arc(0, 0, Fm.rx * 0.72, 0, Math.PI * 2); ctx.fill()
+    }
     ctx.restore()
     const lod = C.lod, pt = (r, ang) => [Fm.cx + Math.cos(ang) * r, Fm.cy + Math.sin(ang) * r * Fm.ry / Fm.rx]
     const dotRing = (r, n, rot, gap, rad, al) => {
@@ -638,6 +649,41 @@ class InkRenderer {
     ctx.fillStyle = g2; ctx.fillRect(Pl.x - Pl.w * 0.3, top, Pl.w * 0.6, Pl.y - top)
   }
 
+  // Motion layers back → front. The cultivator uses lap / body / head; beasts add their own (tail, wings) with
+  // `motion[layer] = { pivot: [x, y], amp (radians), speed, phase, scaleY? }` (A4-2).
+  _layerOrder() { return this.art.layerOrder || ['lap', 'body', 'head'] }
+
+  // A swinging layer: rotated about its pivot (a tail at its root, a wing at the shoulder); scaleY squashes a beating wing.
+  _swingTf(ctx, C, M, t, shake, fyD) {
+    const calm = this.reducedMotion, w = calm ? 0 : Math.sin(t * M.speed + (M.phase || 0))
+    const px = C.ox + M.pivot[0] * C.S, py = C.oy + M.pivot[1] * C.S
+    ctx.setTransform(1, 0, 0, 1, px + shake, py + fyD)
+    ctx.rotate(M.amp * w)
+    if (M.scaleY) ctx.scale(1, 1 + M.scaleY * w)
+    ctx.translate(-px, -py)
+  }
+
+  // Lightning (Thunder Eagle): short jagged bolts flicker around the beast, each alive for a fraction of a second.
+  // B = { n, area: [x0, y0, x1, y1], color, every (s) }
+  _bolts(ctx, C, t) {
+    const B = this.art.bolts, col = this.art.palette[B.color] || '#E8F4FF'
+    for (let i = 0; i < B.n; i++) {
+      const cycle = t / B.every + inkRnd(i * 3.7), k = Math.floor(cycle), f = cycle - k
+      if (f > 0.14) continue                                              // most of the time: dark
+      const seed = k * 17 + i * 5, a = 1 - f / 0.14
+      let x = B.area[0] + inkRnd(seed) * (B.area[2] - B.area[0]), y = B.area[1] + inkRnd(seed + 1) * (B.area[3] - B.area[1]) * 0.5
+      const pts = [[x, y]]
+      for (let j = 0; j < 5; j++) { x += (inkRnd(seed + j * 2 + 3) - 0.5) * 9; y += 3 + inkRnd(seed + j * 2 + 4) * 5; pts.push([x, y]) }
+      ctx.save(); ctx.lineJoin = 'round'
+      ctx.shadowColor = col; ctx.shadowBlur = 5 * C.S
+      ctx.strokeStyle = inkRgba(col, 0.35 * a); ctx.lineWidth = 2.2
+      ctx.beginPath(); pts.forEach(([px, py], j) => j ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); ctx.stroke()
+      ctx.shadowBlur = 0
+      ctx.strokeStyle = inkRgba('#FFFFFF', 0.95 * a); ctx.lineWidth = Math.max(0.5, C.minW)
+      ctx.stroke(); ctx.restore()
+    }
+  }
+
   // x of dot column 0, chosen so a column sits exactly on the figure's centre line (x = scene width / 2).
   _gx0() { const P = this.art.dot.pitch; return (this.art.scene[0] / 2) % P - P }
 
@@ -702,9 +748,10 @@ class InkRenderer {
     for (let i = 0; i < n; i++) {
       const life = (t * (M.speed + 0.3 * bt) + inkRnd(i)) % 1
       const x = M.x0 + inkRnd(i + 50) * (M.x1 - M.x0)
-      const y = 140 - life * 132
+      const y = (M.y0 ?? 140) - life * (M.rise ?? 132)
       const a = Math.sin(life * Math.PI) * (0.55 + 0.35 * bt)
-      const c = bt > 0.3 && i % 2 ? this.art.palette.gold : col
+      const base = M.color ? this.art.palette[M.color] : col
+      const c = bt > 0.3 && i % 2 ? this.art.palette.gold : base
       inkSoftDot(ctx, x, y, 1.9, c, 0.16 * a)
       inkSoftDot(ctx, x, y, 0.45 + 0.35 * inkRnd(i + 7), inkMix(c, '#FFFFFF', 0.35), a)
     }
@@ -728,8 +775,9 @@ class InkRenderer {
     const A = this.art
     const [SW, SH] = A.scene
     const cw = Math.round(w * dpr), ch = Math.round(h * dpr)
-    const lod = Math.min(w / SW, h / SH) < 0.5                 // banner-sized: fine dots would turn to noise
-    const box = lod ? A.figureBox : (A.view || [0, 0, SW, SH])   // `view` zooms out for headroom (floating realms)
+    const full = A.view || [0, 0, SW, SH]                      // `view` zooms out for headroom (floating realms) or in (portraits)
+    const lod = Math.min(w / (full[2] - full[0]), h / (full[3] - full[1])) < 0.5   // banner-sized: fine dots would turn to noise
+    const box = lod ? A.figureBox : full
     const bw = box[2] - box[0], bh = box[3] - box[1]
     const S = Math.min(cw / bw, ch / bh)                       // device px per logical unit
     const ox = (cw - bw * S) / 2 - box[0] * S, oy = (ch - bh * S) / 2 - box[1] * S
@@ -742,7 +790,7 @@ class InkRenderer {
     C.bg = mk(); this._paintBackground(C.bg.getContext('2d'), C)
     if (!lod) { C.mist = document.createElement('canvas'); C.mist.width = Math.round(600 * S); C.mist.height = Math.round(150 * S); this._paintMist(C.mist.getContext('2d'), S) }
     C.layers = {}; C.rim = {}; C.frames = {}
-    for (const L of ['lap', 'body', 'head']) {
+    for (const L of this._layerOrder()) {
       C.layers[L] = mk(); this._paintLayer(C.layers[L].getContext('2d'), C, parts, grid, L, false)
       C.rim[L] = mk();    this._paintLayer(C.rim[L].getContext('2d'), C, parts, grid, L, true)
     }

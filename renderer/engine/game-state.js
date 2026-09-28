@@ -3797,7 +3797,7 @@ class GameState {
           seenAt: Date.now(),
         })
         this.addEvent({
-          text: `A wild ${beastType.name} (${beastType.nameCN}) was spotted during the expedition! Check Explore to tame it.`,
+          text: `A wild ${beastType.name} was spotted during the expedition! Find it in Roam → Beasts to tame it.`,
           type: 'special',
         })
       }

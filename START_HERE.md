@@ -35,7 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ✅ 1.8d-1 + 1.8d-2 (2026-09-27): 78 icons, 0 chrome CJK (lint in npm test); gates 7.2 / 7.2 accepted by the user |
 | **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate **7.6 PASS** (1.8b-6 cycle 2) |
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
-| Hybrid ink art engine (A3) + re-art (A4) | ◐ A3-1 + A3-2 ✅ (accepted); **A4-1 every realm in ink** built 2026-09-27, awaiting the user's look; A4-2 beasts next |
+| Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); **A4-2 beasts** built 2026-09-28, awaiting the user's look; A4-3 backgrounds next |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -140,6 +140,21 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-28 (user present) — part 33
+Agent: **A4-1 accepted** ("that is perfect it looks great") → **A4-2 beasts in ink** (user: "continue into beasts").
+  As-built: art-engine.md → "Beasts".
+  - New assets/sprites/ink-beasts.js (INK_BEASTS: Spirit Fox with two curling plume tails + foxfire, Thunder Eagle with
+    beating wings + lightning, Void Hound with smoke hackles + void cracks stepping out of a rift).
+  - ink-renderer.js: per-instance art table (`{ table, skipHidden }`), `has/resolve(state, table)`, motion layers
+    (`layerOrder` + `motion` pivot/amp/speed: tails, wings), `body.headY`, coloured motes, `bolts`, rift core, LOD vs view.
+  - New renderer/game/beast-portrait.js (BeastPortraits: pooled animated portraits, ASCII fallback cycling all frames on
+    Classic, fixing the 1.8c "beasts show frame 0 only" bug). game.js renderBeasts: portraits on encounter + companion
+    cards, beast desc on encounters, no CJK subtitles; renderBeastSpriteHTML removed. Encounter log text now points to
+    Roam → Beasts and drops the CJK name.
+  - New smoke scenarios/ink-beasts.js (pooling, perf 0.2 ms, Overlay/Expanded/phone, 8× sheet, Classic fallback).
+    npm test · npm run checks (373) · smoke ink-beasts / ink-art / nav-attention pass, zero console errors.
+  Next: user's look at the beast sheet → A4-3 realm backgrounds/ambience + death moment → A4-4 Ink default + sprite lint.
+
 Date: 2026-09-27 (user AFK; said "continue work", review by email) — part 32
 Agent: **A4-1 ink cultivator for every realm** (A4 split: A4-1 cultivator realms → A4-2 beasts → A4-3 realm
   backgrounds + death moment → A4-4 Ink default + sprite emoji lint). The assessment was shown in the terminal and not

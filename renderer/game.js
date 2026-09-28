@@ -1116,11 +1116,12 @@
         const row = document.createElement('div')
         row.className = 'beast-encounter-row'
         const traitNames = enc.traits.map(id => BEAST_TRAITS[id]?.name || id).join(', ')
-        const spriteHtml = renderBeastSpriteHTML(enc.typeId)
+        const spriteHtml = BeastPortraits.html('enc:' + enc.id, beastType?.spriteState || enc.typeId)   // A4-2: ink portrait (or classic ASCII)
         row.innerHTML = `
           <div class="beast-sprite-small">${spriteHtml}</div>
           <div class="beast-encounter-info">
-            <div class="beast-enc-name">${escHtml(beastType?.name || enc.typeId)} <span style="color:var(--dim);font-size:9px">${escHtml(beastType?.nameCN || '')}</span></div>
+            <div class="beast-enc-name">${escHtml(beastType?.name || enc.typeId)}</div>
+            <div class="beast-enc-desc">${escHtml(beastType?.desc || '')}</div>
             <div class="beast-enc-traits">${escHtml(traitNames)}</div>
             <button class="beast-tame-btn${canTame ? '' : ''}" data-encid="${escHtml(enc.id)}" ${canTame ? '' : 'disabled'}>
               ${canTame ? 'Tame (1× Talisman)' : (s.beasts?.length >= (s.derived.maxBeasts || 3) ? `Full (${s.derived.maxBeasts || 3}/${s.derived.maxBeasts || 3})` : (s.inventory['beast_taming_talisman'] || 0) < 1 ? 'No Talisman' : 'Stage too low')}
@@ -1174,16 +1175,18 @@
         }
 
         row.innerHTML = `
+          <div class="beast-row-top">${BeastPortraits.html('beast:' + beast.id, beastType?.spriteState || beast.typeId)}<div class="beast-row-main">
           <div class="beast-row-header">
             <div>
               <span class="beast-name">${escHtml(beast.name)}</span>
               <span class="beast-level">Lv.${beast.level}</span>
-              <span style="font-size:9px;color:var(--dim)">${escHtml(beastType?.nameCN || '')}</span>
+              ${beastType && beastType.name !== beast.name ? `<span class="beast-kind">${escHtml(beastType.name)}</span>` : ''}
             </div>
             <button class="beast-dismiss-btn" data-dismissid="${escHtml(beast.id)}">Release</button>
           </div>
           <div class="beast-xp-bar-wrap"><div class="beast-xp-bar" style="width:${xpPct}%"></div></div>
           <div class="beast-traits" style="margin-top:3px">${traitTags}</div>
+          </div></div>
           ${statusHtml ? `<div style="margin:3px 0">${statusHtml}</div>` : ''}
           <div class="beast-btns">
             <button class="beast-exp-btn" data-sendid="${escHtml(beast.id)}" ${isOnExp ? 'disabled' : ''}>
@@ -1240,6 +1243,7 @@
       empty.textContent = 'No beasts yet. Wild ones are sighted on expeditions; tame them with a Beast Taming Talisman.'
       el.appendChild(empty)
     }
+    BeastPortraits.mount(el, gameState.getSettings())   // A4-2: fill the portrait placeholders (pooled ink canvases)
   }
 
   // ── Craft tab ─────────────────────────────────────────────────────────────
@@ -2287,20 +2291,6 @@
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-  }
-
-  function renderBeastSpriteHTML(spriteState) {
-    const sp = typeof BEAST_SPRITES !== 'undefined' && BEAST_SPRITES[spriteState]
-    if (!sp?.frames?.[0]) return ''
-    const frame = sp.frames[0]
-    const lines = frame.map(row => {
-      const chars = [...row].map(ch => {
-        const color = sp.colors?.[ch] || sp.defaultColor || '#9070C8'
-        return `<span style="color:${color}">${escHtml(ch)}</span>`
-      }).join('')
-      return `<div>${chars}</div>`
-    }).join('')
-    return `<div style="font-family:var(--font);font-size:9px;line-height:1.2">${lines}</div>`
   }
 
 })()

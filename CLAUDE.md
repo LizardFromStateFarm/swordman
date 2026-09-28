@@ -203,6 +203,7 @@ renderer/
     nav.js              ← NavUI + NAV_GROUPS — six nav groups → sub-tab views, badges, automation chip (1.8b-1)
     attention.js        ← collectAttention() (DOM-free) + AttentionUI — the "needs you" strip/cards (1.8b-1)
     breakdowns.js       ← buildBreakdown() (DOM-free) + BreakdownUI — "why" popovers for any [data-bd] number, stageShortName() (1.8b-2)
+    beast-portrait.js   ← BeastPortraits — pooled animated ink beast portraits for Roam → Beasts (ASCII fallback on Classic) (A4-2)
     family-view.js      ← FamilyView — Kin → Family: spouse/courtship card, child wishes, children + raising actions, heir (1.8b-3a)
     clan-view.js        ← ClanView + HallView — Kin → Clan (lines, head, relations, clan actions) and Kin → Hall (Merit, firsts, legacies, Family Manual picker) (1.8b-4)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
@@ -240,6 +241,7 @@ assets/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
     ink-cultivator.js   ← INK_ART — hybrid ink art base figure (body parts, strokes, effects, default slots); Qi Condensation so far
     ink-parts.js        ← INK_PARTS — ink part slots: face / hair / robe / weapon / aura options (A3-2; Phase 10 cosmetics hook)
+    ink-beasts.js       ← INK_BEASTS — ink art for the spirit beasts (fox / eagle / hound), same format as INK_ART (A4-2)
   scenes/
     sect-base-scene.js   ← SPEC (Phase 38A): sect-compound building parts + layout (data only)
     island-scene.js      ← SPEC (Phase 38B): island landmass + building tiles (data only)

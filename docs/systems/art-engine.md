@@ -32,6 +32,22 @@ split by orbit side), `_swordFan` (solid objects), `_lotus` (back + front petal 
 bands that fray at the tip), `_pillar`, halo `rays`, `_formation`, `_groundShadow`, `view` zoom. Heaviest realm
 (Ascension) ~3.9 ms per frame at Overlay size (budget 6 ms).
 
+**Accepted by the user** after cycle 2 (2026-09-27: "that is perfect it looks great").
+
+## Beasts (A4-2, 2026-09-28)
+`INK_BEASTS` (assets/sprites/ink-beasts.js), keyed by `BEAST_TYPES[].spriteState`: Spirit Fox (seated, two plumed tails
+curling up at the sides, spirit-blue eyes, foxfire motes), Thunder Eagle (wings raised on a crag and beating, white head,
+gold beak/talons, lightning `bolts`), Void Hound (wolf head, smoke hackles, glowing void cracks, stepping out of a rift =
+`formation` with `core: true`). Each `extends: '_base'` in its own table and sets `glow` (its Qi colour).
+Engine support added: per-instance art table (`new InkRenderer(cv, { table: INK_BEASTS, skipHidden: true })`,
+`InkRenderer.has/resolve(state, table)`), extra motion layers (`layerOrder` + `motion[layer] = { pivot, amp, speed,
+phase, scaleY }`: tails sway, wings beat), `body.headY`, `motes.color / y0 / rise`, `bolts`, the rift core, LOD judged
+against the framed `view`, `skipHidden` (no drawing while the canvas is off screen).
+UI: `BeastPortraits` (renderer/game/beast-portrait.js) fills `.beast-portrait` placeholders in Roam → Beasts (encounter
+and companion cards) with pooled canvases (one per encounter/beast id; a re-render moves the canvas, no cache rebuild;
+unused ones are stopped and dropped). Sprite art = Classic → the ASCII sprite with all its frames cycling (fixes the 1.8c
+"beasts show frame 0 only" bug). Portrait frame ~0.2 ms. The beast names no longer carry CJK subtitles.
+
 ## Planned (PLAN.md Phase 39, user 2026-09-27)
 - A5: the player picks face / hair / robe at every creation and rebirth (live ink preview); robe + effect changeable
   in a Wardrobe. A8: effects unlocked by realm, Arts and cultivation path. A9: robes unlocked by family/clan head, sect
