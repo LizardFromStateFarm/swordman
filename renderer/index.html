@@ -243,6 +243,21 @@
   </div>
 </div>
 
+<!-- Battle page (Phase 35 / A6-1, docs/systems/combat.md) — renderer/game/combat.js + engine/battle-scene.js -->
+<div id="combat-overlay" class="hidden">
+  <div id="combat-box" role="dialog" aria-modal="true" aria-labelledby="combat-title">
+    <div id="combat-head">
+      <span id="combat-title">Battle</span>
+      <button id="combat-close">Leave</button>
+    </div>
+    <div id="combat-stage">
+      <canvas id="combat-canvas" aria-label="The battle"></canvas>
+      <div id="combat-plates"></div>
+    </div>
+    <div id="combat-panel"></div>
+  </div>
+</div>
+
 <!-- Settings overlay (Phase 20C) — rows rendered from SETTINGS_DEFS by renderer/game/settings.js -->
 <div id="settings-overlay" class="hidden">
   <div id="settings-box">
@@ -388,6 +403,7 @@
 <script src="engine/ink-renderer.js"></script>
 <script src="engine/sprite-renderer.js"></script>
 <script src="engine/ascension-cinematic.js"></script>
+<script src="engine/battle-scene.js"></script>
 <script src="game/cultivation.js"></script>
 <script src="game/expedition.js"></script>
 <script src="game/crafting.js"></script>
@@ -410,6 +426,7 @@
 <script src="game/sect-view.js"></script>
 <script src="game/soul-view.js"></script>
 <script src="game/immortal-view.js"></script>
+<script src="game/combat.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

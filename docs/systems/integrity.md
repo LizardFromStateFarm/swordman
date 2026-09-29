@@ -69,6 +69,13 @@ effect text, and for a wild beast Tame + talisman count + the lock reason. Re-re
 renderAll); closes on ✕ / Esc / backdrop, or by itself when the record is gone (tamed → reopens as the companion).
 Smoke: scenarios/ink-beasts.js (`out/beast-detail-{enc,beast}-{expanded,overlay,phone}.png`).
 
+## Beast battles (Phase 35 / A6-1, 2026-09-28) — see combat.md
+A wild encounter can also be **fought**: a Fight button (with win odds) on the Roam → Beasts card and the details page
+opens the battle page. Winning lets you finish it (loot + karma by its nature, maybe a cub encounter), spare it, or
+**bind** it (tame with a talisman; joins at Lv.2). Encounters can carry `mood`: `grateful` (a spared beast came back —
+taming is free), `vengeful` (stronger), `cub`. `s.bestiary[typeId]` records your history with each kind (details page
+"Bestiary" row). `tameEncounteredBeast` refuses (`fighting`) the beast you are currently fighting.
+
 ## Invariants
 
 1. `realmIntegrity` stays in [0, 100].

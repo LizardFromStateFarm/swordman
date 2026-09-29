@@ -29,7 +29,11 @@ function collectAttention(s, gs) {
     add('urgent', 'child-event', 'child', `${c?.given || 'Your child'} needs a parent`, 'A choice about raising them waits on you.', 'family', 'family')
   } else if (s.upbringing?.event) add('urgent', 'upbringing', 'child', 'A matter from your youth', 'How you answer shapes your bond with the clan head.', 'family', 'family')
   // 1.8b-3b: a fight you're in (never resolves without you), and a lover's ultimatum
-  if (f.fight) {
+  if (f.fight?.kind === 'beast') {                               // Phase 35: a beast battle (the battle page reopens it)
+    const bn = gs.beastProfile ? gs.beastProfile(f.fight.beast).name : 'beast'
+    add('urgent', 'fight', 'beast', f.fight.over ? `The ${bn} is down` : `Your battle with the ${bn}`,
+      f.fight.over ? 'Finish it, spare it, or bind it. It waits on you.' : `${f.fight.you}–${f.fight.them}, first to ${f.fight.to || 4}. Choose your next move.`, 'beasts', 'combat')
+  } else if (f.fight) {
     const opp = f.fight.kind === 'duel' ? f.spouse : gs.person?.(f.fight.oppId)
     add('urgent', 'fight', 'duel', `Your fight with ${opp?.given || 'your rival'}`, `${f.fight.you}–${f.fight.them}, first to ${typeof FIGHT_TO !== 'undefined' ? FIGHT_TO : 2}. Choose your next move.`, f.fight.kind === 'duel' ? 'family' : 'clan', 'family')
   }

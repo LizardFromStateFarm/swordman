@@ -4231,3 +4231,177 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
   .fin-stats { grid-template-columns: 1fr; gap: 1px; }
   .fin-k { padding-top: 6px; }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   UI review: 7.75 (2026-09-28, cycle 2; effects asset 8.0)
+   Battle page (Phase 35 / A6-1, docs/systems/combat.md) — renderer/game/combat.js + renderer/engine/battle-scene.js.
+   The ink field on top, the name plates over it, the controls below. Laid out by the box's own width (container
+   queries), so Overlay (300px), phones and Expanded/Desktop all use the same markup.
+   ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+#combat-overlay { position: fixed; inset: 0; z-index: 200; background: #06040B; display: flex; align-items: stretch; justify-content: center; }
+#combat-box {
+  container-type: inline-size; position: relative;
+  width: min(980px, 100%); height: 100%; max-height: none !important; display: flex; flex-direction: column; min-height: 0;   /* (the mobile layer caps overlay boxes at 88dvh) */
+  background: radial-gradient(ellipse 80% 40% at 50% 100%, rgba(144,112,200,0.08), transparent 70%);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+#combat-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) 12px 6px 14px; border-bottom: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border)); }
+#combat-title { font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--gold) 35%, transparent); }
+#combat-close { flex: none; font-family: var(--font); font-size: 11px; color: var(--dim-hi); background: none; border: 1px solid var(--border);
+  border-radius: 3px; padding: 4px 10px; min-height: 28px; cursor: pointer; }
+#combat-close:hover { color: var(--text); border-color: color-mix(in srgb, var(--gold) 40%, var(--border)); }
+
+#combat-stage { position: relative; flex: 1 1 52%; min-height: 170px; }
+#combat-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#combat-plates { position: absolute; left: 10px; right: 10px; top: 8px; display: flex; justify-content: space-between; gap: 10px; pointer-events: none; }
+.cb-plate { min-width: 0; max-width: 46%; padding: 6px 9px 7px; border-radius: 4px; background: rgba(8,4,14,0.62);
+  border: 1px solid color-mix(in srgb, var(--purple) 28%, var(--border)); }
+.cb-plate.foe { text-align: right; }
+.cb-pn { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.cb-plate.you .cb-pn { color: color-mix(in srgb, var(--jade) 45%, var(--text)); }
+.cb-pips { display: flex; gap: 4px; }
+.cb-plate.foe .cb-pips { justify-content: flex-end; }
+.cb-pips i { width: 14px; height: 6px; border-radius: 1px; border: 1px solid color-mix(in srgb, var(--dim) 60%, transparent); transition: background .3s, box-shadow .3s; }
+.cb-pips i.on.you { background: var(--jade); border-color: var(--jade); box-shadow: 0 0 6px color-mix(in srgb, var(--jade) 50%, transparent); }
+.cb-pips i.on.foe { background: color-mix(in srgb, var(--purple) 70%, var(--text)); border-color: var(--purple); box-shadow: 0 0 6px color-mix(in srgb, var(--purple) 55%, transparent); }
+.cb-hp { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 11px; color: color-mix(in srgb, var(--jade) 60%, var(--text)); }
+.cb-hpbar { width: 64px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.cb-hpbar b { display: block; height: 100%; background: var(--jade); transition: width .4s; }
+.cb-hp.low { color: var(--red-text); } .cb-hp.low .cb-hpbar b { background: var(--red); }
+.cb-hpv { font-variant-numeric: tabular-nums; min-width: 2ch; }
+.cb-tier { margin-top: 4px; } .cb-tier .tier-chip { margin-left: 4px; }
+.cb-plate.gone .cb-pips, .cb-plate.gone .cb-tier .tier-chip { opacity: .45; }
+.cb-fate { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-hi); border: 1px solid var(--border); border-radius: 2px; padding: 0 4px; vertical-align: 1px; }
+
+#combat-panel { flex: 0 1 auto; max-height: 58%; overflow-y: auto; padding: 10px 14px 14px; zoom: var(--cz, 1);
+  border-top: 1px solid color-mix(in srgb, var(--purple) 22%, var(--border)); background: rgba(10,6,16,0.92); }
+.cb-line { font-size: 12px; color: var(--dim-hi); padding: 6px 0; }
+.cb-intro { font-size: 12px; line-height: 1.5; color: color-mix(in srgb, var(--text) 85%, var(--dim)); margin-bottom: 6px; }
+.cb-read { font-size: 11px; line-height: 1.5; color: color-mix(in srgb, var(--text) 72%, var(--dim)); margin-bottom: 4px; }
+.cb-read.sm { margin: 0; flex: 1; min-width: 0; }
+.cb-k { color: var(--gold); margin-right: 3px; }
+.cb-habits { display: block; font-size: 10.5px; color: var(--dim-hi); }
+.cb-rec { font-size: 10.5px; color: var(--dim-hi); margin-bottom: 4px; }
+.cb-mood { font-size: 11px; padding: 4px 8px; margin-bottom: 6px; border-left: 2px solid var(--dim); color: var(--dim-hi); background: rgba(8,4,14,0.4); }
+.cb-mood.good { border-color: var(--jade); color: color-mix(in srgb, var(--jade) 70%, var(--text)); }
+.cb-mood.bad { border-color: var(--red); color: var(--red-text); }
+
+/* Stance cards + end choices: one card per option, the odds big on the right */
+.cb-stances, .cb-ends { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0 6px; }
+.cb-ends.three { grid-template-columns: repeat(3, 1fr); }
+.cb-stance, .cb-end { display: flex; flex-direction: column; align-items: stretch; gap: 3px; text-align: left; font-family: var(--font);
+  padding: 9px 11px 10px; border-radius: 4px; cursor: pointer; color: var(--text); min-height: 44px;
+  background: linear-gradient(180deg, rgba(40,22,52,0.55), rgba(16,8,22,0.85)); border: 1px solid color-mix(in srgb, var(--purple) 40%, var(--border));
+  transition: border-color .15s, background .15s, transform .1s; }
+.cb-stance:hover:not(:disabled), .cb-end:hover:not(:disabled) { border-color: color-mix(in srgb, var(--gold) 60%, transparent); background: linear-gradient(180deg, rgba(60,34,64,0.6), rgba(22,10,26,0.9)); }
+.cb-stance:active:not(:disabled), .cb-end:active:not(:disabled) { transform: translateY(1px); }
+.cb-stance:disabled, .cb-end:disabled { opacity: .5; cursor: not-allowed; }
+.cb-stance.slay, .cb-end.finish { border-color: color-mix(in srgb, var(--red) 45%, var(--border)); }
+.cb-stance.deadly { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 40%, transparent), 0 0 14px color-mix(in srgb, var(--red) 18%, transparent); }
+.cb-end.bind { border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); }
+.cb-end.spare, .cb-end.flee { border-color: color-mix(in srgb, var(--jade) 45%, var(--border)); }
+.cb-st-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.cb-st-n { font-size: 13px; color: var(--gold); letter-spacing: .5px; }
+.cb-st-p { font-size: 20px; color: var(--gold); font-variant-numeric: tabular-nums; line-height: 1; text-align: right; }
+.cb-st-p small { display: block; font-size: 9.5px; color: var(--dim-hi); letter-spacing: .5px; margin-top: 2px; }
+.cb-st-sub { font-size: 11px; line-height: 1.4; color: color-mix(in srgb, var(--text) 80%, var(--dim)); margin-bottom: 2px; }
+.cb-st-l { font-size: 10.5px; line-height: 1.4; color: var(--dim-hi); }
+.cb-st-l.warn { color: var(--red-text); }
+
+/* The fight: three tactics in a row with this exchange's odds, Retreat beside the habits line */
+.cb-last { font-size: 12px; line-height: 1.45; padding: 6px 9px; margin-bottom: 8px; border-left: 2px solid color-mix(in srgb, var(--gold) 45%, transparent); background: rgba(8,4,14,0.4); }
+.cb-last.up { border-left-color: var(--jade); color: color-mix(in srgb, var(--jade) 65%, var(--text)); }
+.cb-last.down { border-left-color: var(--red); color: color-mix(in srgb, var(--red-text) 80%, var(--text)); }
+.cb-tacs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cb-tac { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px 9px; font-family: var(--font); color: var(--text);
+  border-radius: 4px; cursor: pointer; min-height: 44px; text-align: center;
+  background: linear-gradient(180deg, rgba(44,24,10,0.7), rgba(20,10,4,0.9)); border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--border));
+  transition: border-color .15s, background .15s, transform .1s; }
+.cb-tac:hover { border-color: color-mix(in srgb, var(--gold) 70%, transparent); background: linear-gradient(180deg, rgba(64,36,12,0.75), rgba(26,12,4,0.92)); }
+.cb-tac:active { transform: translateY(1px); }
+.cb-tac.picked { border-color: color-mix(in srgb, var(--gold) 65%, transparent); box-shadow: inset 0 0 12px color-mix(in srgb, var(--gold) 10%, transparent); }
+.cb-g { font-size: 20px; color: var(--gold); text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 40%, transparent); line-height: 1; }
+.cb-t { display: flex; flex-direction: column; align-items: center; }
+.cb-n { font-size: 13px; }
+.cb-n kbd { font-family: var(--font); font-size: 9px; color: var(--dim); border: 1px solid var(--border); border-radius: 2px; padding: 0 3px; margin-left: 5px; vertical-align: 1px; }
+.cb-b { font-size: 10.5px; color: var(--dim-hi); }
+.cb-pct { font-size: 17px; color: var(--gold); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.cb-pct small { display: block; font-size: 9.5px; color: var(--dim-hi); }
+.cb-row2 { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.cb-retreat { flex: none; display: inline-flex; flex-direction: column; align-items: center; font-family: var(--font); font-size: 12px; color: var(--dim-hi);
+  background: rgba(8,4,14,0.5); border: 1px dashed color-mix(in srgb, var(--dim) 70%, transparent); border-radius: 4px; padding: 5px 12px; min-height: 40px; cursor: pointer; }
+.cb-retreat [data-icon] { display: none; }
+.cb-retreat small { font-size: 10px; color: var(--red-text); opacity: .85; }
+.cb-retreat:hover { color: var(--text); border-color: var(--dim-hi); }
+.cb-log { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; padding-top: 6px; border-top: 1px dotted color-mix(in srgb, var(--dim) 50%, transparent); }
+.cb-log li { font-size: 10.5px; color: var(--dim-hi); display: inline-flex; align-items: center; gap: 5px; }
+.cb-log li em { font-style: normal; } .cb-log li.up em { color: var(--jade); } .cb-log li.down em { color: var(--red-text); }
+.cb-lr { font-size: 9px; color: var(--dim); border: 1px solid var(--border); border-radius: 50%; width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; }
+
+.cb-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.cb-why { font-family: var(--font); font-size: 11px; color: var(--dim-hi); background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+  text-decoration: underline dotted; text-underline-offset: 3px; padding: 4px 0; min-height: 28px; }
+.cb-why:hover { color: var(--gold); }
+.cb-note { font-size: 10.5px; color: var(--dim); }
+.cb-lock { font-size: 11px; color: var(--red-text); display: inline-flex; align-items: center; gap: 5px; }
+.cb-chip { font-size: 10px; letter-spacing: .5px; padding: 2px 7px; border-radius: 2px; border: 1px solid color-mix(in srgb, var(--jade) 50%, transparent); color: color-mix(in srgb, var(--jade) 70%, var(--text)); }
+.cb-chip.lethal { border-color: color-mix(in srgb, var(--red) 55%, transparent); color: var(--red-text); }
+
+/* Result card */
+.cb-res { padding: 10px 12px; border-radius: 4px; background: rgba(8,4,14,0.5); border: 1px solid var(--border); animation: cbIn .4s ease-out; }
+.cb-res.gold { border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); }
+.cb-res.jade { border-color: color-mix(in srgb, var(--jade) 45%, var(--border)); }
+.cb-res.red { border-color: color-mix(in srgb, var(--red) 50%, var(--border)); }
+.cb-res-h { font-size: 14px; color: var(--gold); margin-bottom: 4px; letter-spacing: .5px; }
+.cb-res.red .cb-res-h { color: var(--red-text); } .cb-res.jade .cb-res-h { color: color-mix(in srgb, var(--jade) 70%, var(--text)); }
+.cb-res-t { font-size: 11.5px; line-height: 1.5; color: color-mix(in srgb, var(--text) 82%, var(--dim)); }
+.cb-loots { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.cb-loot { font-size: 11px; padding: 2px 8px; border-radius: 10px; color: var(--gold); border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); background: rgba(237,208,80,0.06); }
+.cb-res-k { font-size: 10.5px; color: var(--dim-hi); margin-top: 6px; }
+.cb-leave { font-family: var(--font); font-size: 12px; color: var(--text); padding: 7px 18px; min-height: 36px; border-radius: 3px; cursor: pointer; margin-left: auto;
+  background: rgba(24,10,4,.8); border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--border)); }
+.cb-leave:hover { border-color: var(--gold); color: var(--gold); }
+@keyframes cbIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+:root[data-motion="reduced"] .cb-res { animation: none; }
+
+/* Narrow boxes (Overlay 300px, phones): stack the stance/end cards, compact tactics, smaller plates */
+@container (max-width: 520px) {
+  /* a tall phone: the field keeps a figure-sized height and the controls get the rest (no empty sky above them) */
+  #combat-stage { flex: 0 0 auto; height: min(46vh, 330px); }
+  #combat-panel { flex: 1 1 auto; max-height: none; }
+  .cb-stances, .cb-ends, .cb-ends.three { grid-template-columns: 1fr; }
+  .cb-stance, .cb-end { padding: 8px 10px; }
+  .cb-st-p { font-size: 17px; }
+  .cb-tacs { gap: 5px; }
+  .cb-tac { padding: 8px 3px 7px; }
+  .cb-n kbd { display: none; }
+  .cb-pct small { display: none; }
+  .cb-row2 { flex-wrap: wrap; }
+}
+@container (max-width: 360px) {
+  #combat-panel { padding: 8px 9px 10px; }
+  .cb-plate { padding: 4px 6px 5px; }
+  .cb-pn { font-size: 11px; }
+  .cb-pips i { width: 10px; }
+  .cb-hpbar { width: 40px; }
+  .cb-b { font-size: 9.5px; }
+}
+@media (max-height: 560px) { #combat-stage { min-height: 120px; flex-basis: 40%; } #combat-panel { max-height: 64%; } }
+
+/* Roam → Beasts: Fight beside Tame on an encounter card, a mood tag for a beast that came back */
+.beast-enc-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.beast-fight-btn { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font); font-size: 10px; padding: 3px 9px; border-radius: 3px; cursor: pointer;
+  color: var(--gold); background: rgba(44,24,10,.6); border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--border)); transition: background .1s, color .1s; }
+.beast-fight-btn small { font-size: 9.5px; color: var(--dim-hi); margin-left: 2px; }
+.beast-fight-btn:hover:not(:disabled) { background: rgba(80,48,14,.6); color: var(--text); }
+.beast-fight-btn:disabled { opacity: .4; cursor: not-allowed; }
+.beast-lock-why { font-size: 9.5px; color: var(--dim); margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+.beast-mood { font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase; padding: 0 4px; border: 1px solid currentColor; border-radius: 2px; color: var(--dim-hi); }
+.beast-mood.good { color: var(--jade); } .beast-mood.bad { color: var(--red-text); }
+.bdx-fight { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; min-height: 32px; border-radius: 3px; cursor: pointer; font-family: var(--font); font-size: 12px;
+  color: var(--gold); background: rgba(44,24,10,.6); border: 1px solid color-mix(in srgb, var(--gold) 50%, var(--border)); }
+.bdx-fight:hover:not(:disabled) { background: rgba(80,48,14,.6); }
+.bdx-fight:disabled { opacity: .45; cursor: not-allowed; }
+.bdx-actions { flex-wrap: wrap; }

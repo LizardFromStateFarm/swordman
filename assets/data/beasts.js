@@ -1,6 +1,7 @@
 // Beast traits, rarity tiers, beast types and their rare colour variants (Phase 3 Spiritual Beasts; roster of 10 + tiers +
 // variants 2026-09-28). Used by: game-state.js (encounter / tame / expedition logic, beastProfile, trait Might in _recalc),
 // renderer/game/beasts.js, game.js (Roam → Beasts), renderer/game/beast-detail.js (details page), attention.js.
+// Phase 35 battles (BEAST_FIGHT_STYLE, BEAST_NATURE, BATTLE_TO, BEAST_*): game-state.js fight engine, combat.js, breakdowns.js.
 // Art: each type's `spriteState` (and each variant's `art`) is an INK_BEASTS key (assets/sprites/ink-beasts.js).
 
 const BEAST_TRAITS = {
@@ -119,3 +120,59 @@ const BEAST_TYPES = [
       lore: 'The sun at the end of the world is red. So is this dragon. Scholars disagree about whether that is a coincidence.' }],
   },
 ]
+
+// ── Phase 35 (A6-1, docs/systems/combat.md): beast battles ────────────────────
+// How each beast fights (weights for press / guard / feint, and the habit the player learns after one fight).
+// Traits shift it: swift +BEAST_TRAIT_FEINT feint, iron_skin +BEAST_TRAIT_GUARD guard.
+const BEAST_FIGHT_STYLE = {
+  default:        { press: 34, guard: 33, feint: 33, hint: 'fights without a clear habit' },
+  spirit_fox:     { press: 25, guard: 20, feint: 55, hint: 'darts in and doubles back, all tricks' },
+  blood_python:   { press: 30, guard: 50, feint: 20, hint: 'coils and waits, then strikes the opening' },
+  thunder_eagle:  { press: 60, guard: 10, feint: 30, hint: 'dives again and again from above' },
+  spectral_bear:  { press: 35, guard: 55, feint: 10, hint: 'stands its ground like a wall of cold fire' },
+  white_tiger:    { press: 55, guard: 25, feint: 20, hint: 'charges straight in, proud of its strength' },
+  qilin:          { press: 10, guard: 60, feint: 30, hint: 'turns your blows aside and will not strike to kill' },
+  void_hound:     { press: 35, guard: 15, feint: 50, hint: 'steps through space and bites from the side' },
+  black_tortoise: { press: 15, guard: 65, feint: 20, hint: 'the shell guards and the serpent answers' },
+  azure_dragon:   { press: 40, guard: 25, feint: 35, hint: 'fights like weather, changing without warning' },
+  golden_dragon:  { press: 50, guard: 35, feint: 15, hint: 'never tricks you; it has no need to' },
+}
+// What killing (or sparing) it means: benign = a guardian or omen, wild = an animal, fell = a man-eater.
+const BEAST_NATURE = {
+  spirit_fox: 'wild', blood_python: 'fell', thunder_eagle: 'wild', spectral_bear: 'benign', white_tiger: 'wild',
+  qilin: 'benign', void_hound: 'fell', black_tortoise: 'benign', azure_dragon: 'wild', golden_dragon: 'wild',
+}
+const BEAST_NATURE_TEXT = { benign: 'a guardian beast', wild: 'a wild beast', fell: 'a man-eater' }
+const BEAST_KARMA = {                           // karma for the end choice, by nature
+  finish: { benign: -6, wild: -1, fell: 3 },
+  spare:  { benign: 2,  wild: 1,  fell: -1 },
+  cub: -8,                                      // finishing a cub, whatever its kind
+}
+
+const BATTLE_TO                = 4       // exchanges to win a battle (family fights keep FIGHT_TO)
+const BEAST_FIGHT_BASE_POWER   = 30      // its power = minStage × 100 + this + (might − 1) × MIGHT_POWER + trait/mood terms
+const BEAST_FIGHT_MIGHT_POWER  = 150
+const BEAST_TRAIT_POWER        = { iron_skin: 25 }
+const BEAST_TRAIT_FEINT        = 15      // swift beasts feint more
+const BEAST_TRAIT_GUARD        = 15      // iron-skinned beasts guard more
+const BEAST_MOOD_POWER         = { vengeful: 60, cub: -80, grateful: 0 }
+const BEAST_WOUND              = 5       // Health per exchange lost, × its Might (Slay stance)
+const BEAST_LOSS_WOUND         = 8       // extra Health on losing the battle, × Might (Slay stance)
+const BEAST_DRIVE_WOUND_MULT   = 0.5     // Drive-off stance: wounds halved, never below 1 Health
+const BEAST_FIGHT_MIN_HEALTH   = 15      // too wounded to start a battle below this
+const BEAST_WOUNDED_BELOW      = 50      // below this Health you fight weaker: −WOUNDED_POWER per missing point
+const BEAST_WOUNDED_POWER      = 2
+const BEAST_CUB_CHANCE         = 0.3     // finishing a beast may leave a cub encounter behind
+const BEAST_RETURN_CHANCE      = 0.6     // a spared / fled beast returns on its type's next sighting
+const BEAST_GRATEFUL_BASE      = 0.5     // …grateful with this + karma/200 (clamped 0.2–0.85), else vengeful
+const BEAST_BOUND_LEVEL        = 2       // a beast bound after a won battle joins at this level
+
+// Loot for finishing a beast, by tier: [itemId, min, max, chance]. A rare colour variant carries ×1.5.
+const BEAST_SLAY_LOOT = {
+  common:    [['spirit_stone', 3, 6, 1], ['beast_core', 1, 2, 1]],
+  uncommon:  [['spirit_stone', 5, 10, 1], ['beast_core', 2, 3, 1], ['demon_essence', 1, 1, 0.4]],
+  rare:      [['spirit_stone', 8, 15, 1], ['beast_core', 2, 4, 1], ['demon_essence', 1, 2, 1], ['artifact_fragment', 1, 1, 0.4]],
+  epic:      [['spirit_stone', 12, 24, 1], ['beast_core', 3, 5, 1], ['demon_essence', 2, 3, 1], ['celestial_herb', 1, 1, 0.5]],
+  legendary: [['spirit_stone', 25, 50, 1], ['beast_core', 4, 6, 1], ['demon_essence', 3, 4, 1], ['heavenly_ore', 1, 2, 1], ['celestial_herb', 1, 2, 0.6]],
+}
+const BEAST_VARIANT_LOOT = 1.5

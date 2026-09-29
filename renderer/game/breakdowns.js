@@ -95,6 +95,29 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
       notes: ['Other branches pick a side when war is declared, which can tip it either way. Stronger children and your own breakthroughs raise your line.'] }
   }
 
+  // Phase 35 (combat.md): a beast battle's odds — kind 'beastfight:<encId>:<stance>'. Both powers term by term, the gap,
+  // what each blow and a loss cost in this stance, and how the exchange odds move with your reads.
+  if (kind.startsWith('beastfight:')) {
+    const [, encId, stance] = kind.split(':')
+    const pv = gs.beastFightPreview?.(encId)
+    if (!pv) return null
+    const st = pv.stance[stance] || pv.stance.slay
+    const num = v => (v > 0 ? '+' : '') + Math.round(v)
+    const rows = [{ label: `Against the ${pv.name}`, val: '', tone: 'dim' }, ...pv.you.parts.map((p, i) => ({ label: p.label, val: i ? num(p.value) : String(Math.round(p.value)), op: i ? '+' : 'base', tone: i ? (p.value < 0 ? 'down' : 'up') : '' }))]
+    rows.push({ label: 'Your power', val: String(Math.round(pv.you.total)), tone: '' })
+    const its = pv.it.parts.map((p, i) => ({ label: p.label, val: i ? num(p.value) : String(Math.round(p.value)), op: i ? '+' : 'base', tone: i ? (p.value < 0 ? 'up' : 'down') : '' }))
+    its.push({ label: 'Its power', val: String(Math.round(pv.it.total)), tone: '' })
+    const gap = pv.you.total - pv.it.total
+    const stakes = [{ label: 'Each blow you take', val: `−${st.wound} Health`, tone: 'down' },
+      { label: stance === 'slay' ? 'Losing the battle' : 'Losing (never below 1)', val: `−${st.lossWound} more`, tone: 'down' }]
+    if (st.canDie) stakes.push({ label: `A full loss (−${st.worst}) would kill you`, val: '', tone: 'warn' })
+    return { glyph: 'sword', title: 'Battle odds', total: st.chance < 0.01 ? '<1%' : `${Math.round(st.chance * 100)}%`, totalLabel: 'Your odds to win',
+      rows, sections: [{ title: 'The beast', rows: its }, { title: gap >= 0 ? `You lead by ${Math.round(gap)}` : `It leads by ${Math.round(-gap)}`, rows: [] },
+        { title: stance === 'slay' ? 'Slay: what it can cost' : 'Drive off: what it can cost', rows: stakes }],
+      notes: [`Odds follow the gap between the two powers: ${TOURNAMENT_SPREAD} points either way is about 73%. First to ${pv.to} exchanges wins.`,
+        `Each exchange, the move that beats its move adds ${Math.round(FIGHT_EDGE * 100)}% (Press beats Feint, Feint beats Guard, Guard beats Press). Read its habits to beat these odds.`] }
+  }
+
   // 1.8b-5: sect war odds — the real roll (gs.sectWarOdds): your strength multiplier against a rival of ×0.6–1.4
   if (kind === 'sectwar') {
     const o = gs.sectWarOdds()

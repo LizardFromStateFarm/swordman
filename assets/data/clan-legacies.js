@@ -104,6 +104,10 @@ const EPITAPHS = {
     '{name}, slain by the one they married.',
     '{name}, who lost a duel no outsider ever heard of.',
   ],
+  beast_hunt: [
+    '{name}, who went into the hills to kill a beast at {age}, and did not come down.',
+    '{name}, remembered by the clan as the one who hunted something stronger.',
+  ],
   challenge_lost: [
     '{name}, who reached for the head seat and was cut down reaching.',
     '{name}, buried the day they challenged for the clan.',

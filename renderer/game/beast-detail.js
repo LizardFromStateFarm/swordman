@@ -1,6 +1,7 @@
 // BeastDetail: the beast details page (A4-2 follow-up) — click a beast's portrait or name in Roam → Beasts (a wild
 // encounter or a tamed companion) to open a panel with a large animated ink portrait, lore, realm gate, rarity,
-// growth, what each trait does, and (for an encounter) the Tame action with its lock reason. Re-renders on state
+// growth, what each trait does, and (for an encounter) the Tame action with its lock reason, plus Fight (Phase 35: opens
+// the battle page via deps.fight) with its odds, the Mood row for a returning beast and the Bestiary row. Re-renders on state
 // changes while open (game.js calls render); the large portrait is one InkRenderer kept for the panel's lifetime.
 // Uses BEAST_TYPES / BEAST_TRAITS (assets/data/beasts.js), INK_BEASTS, BeastPortraits.asciiHTML (Classic art),
 // stageShortName (breakdowns.js). DOM: #beast-overlay in index.html. See docs/systems/integrity.md → "Beast details".
@@ -53,12 +54,22 @@ const BeastDetail = {
       + stat('Growth', `+${T.xpPerExp || 10} XP / expedition`)
     let head, action = ''
     if (kind === 'enc') {
-      head = `<div class="bdx-name">${esc(prof.name)}<span class="bdx-tag">Wild</span>${chips}</div>`
-      const why = (s.beasts || []).length >= cap ? `Your companions are full (${cap}/${cap}). Release one first.`
+      head = `<div class="bdx-name">${esc(prof.name)}${rec.mood === 'cub' ? ' cub' : ''}<span class="bdx-tag">Wild</span>${chips}</div>`
+      const free = rec.mood === 'grateful', fighting = s.family?.fight?.beast?.encId === id
+      const why = fighting ? 'You are fighting it. Finish the battle first.'
+        : (s.beasts || []).length >= cap ? `Your companions are full (${cap}/${cap}). Release one first.`
         : s.stageIndex < (T.minStage || 0) ? `It will not heed anyone below ${esc(realm)}.`
-        : talismans < 1 ? 'You need a Beast Taming Talisman (craft one, or find one on an expedition).' : ''
-      action = `<div class="bdx-actions"><button class="bdx-tame" ${why ? 'disabled' : ''}>Tame · 1 Talisman</button>`
-        + `<span class="bdx-have">You carry ${talismans}</span></div>${why ? `<div class="bdx-why">${why}</div>` : ''}`
+        : !free && talismans < 1 ? 'You need a Beast Taming Talisman (craft one, or find one on an expedition).' : ''
+      // Phase 35: Fight opens the battle page's prepare step (odds for Slay / Drive off before anything happens)
+      const pv = this.deps.gameState.beastFightPreview(id)
+      const fightWhy = fighting ? '' : pv?.locked === 'busy' ? 'Another fight is underway.' : pv?.locked === 'wounded' ? 'You are too wounded to fight.' : ''
+      const odds = pv ? (pv.chance < 0.01 ? '<1%' : Math.round(pv.chance * 100) + '%') : '?'
+      action = `<div class="bdx-actions"><button class="bdx-tame" ${why ? 'disabled' : ''}>${free ? 'Tame · it comes freely' : 'Tame · 1 Talisman'}</button>`
+        + `<button class="bdx-fight" ${fightWhy ? 'disabled' : ''}><span data-icon="sword"></span>${fighting ? 'Return to battle' : `Fight · ${odds} to win`}</button>`
+        + `<span class="bdx-have">You carry ${talismans}</span></div>${why ? `<div class="bdx-why">${why}</div>` : ''}${fightWhy ? `<div class="bdx-why">${fightWhy}</div>` : ''}`
+      const b = this.deps.gameState.bestiaryEntry(rec.typeId)
+      if (rec.mood) stats += stat('Mood', { grateful: 'It remembers your mercy', vengeful: 'It came back for you', cub: 'Its mother is dead' }[rec.mood], rec.mood === 'grateful' ? 'jade' : '')
+      stats += stat('Bestiary', b.fought ? `fought ${b.fought} · won ${b.won} · slain ${b.slain}${b.spared ? ` · spared ${b.spared}` : ''}` : 'never fought one')
     } else {
       head = `<div class="bdx-name">${esc(rec.name)}<span class="bdx-sub">Lv.${rec.level} ${esc(prof.variant ? prof.variant.name : T.name)}</span>${chips}</div>`
       const xp = Math.min(100, rec.xp || 0)
@@ -90,6 +101,7 @@ const BeastDetail = {
       if (res.ok) { this.deps.flash(`Tamed: ${res.beast.name}!`, 'special'); this.open('beast', res.beast.id) }
       else this.deps.flash({ not_found: 'Already gone', stage: 'Realm too low', max_beasts: 'Beast capacity full', no_talisman: 'Need a Beast Taming Talisman' }[res.reason] || 'Cannot tame', 'negative')
     })
+    body.querySelector('.bdx-fight')?.addEventListener('click', () => this.deps.fight?.(id))
     body.querySelectorAll('.bdx-loc').forEach(b => b.addEventListener('click', () => {
       const res = this.deps.gameState.sendBeastExpedition(id, b.dataset.loc)
       if (res.ok) this.deps.flash(`${rec.name} sent to ${res.loc.name}.`, 'positive')

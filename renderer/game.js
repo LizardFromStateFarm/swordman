@@ -119,6 +119,12 @@
     zoom: () => (gameState.getSettings().fontSize || 13) / 13,
   })
   window.immortalView = immortalView   // smoke tests (scripts/smoke/scenarios/immortal.js) freeze + capture it
+  // Phase 35 (A6-1): the battle page — beast battles from Roam → Beasts (renderer/game/combat.js, docs/systems/combat.md)
+  const combatView = new CombatView(gameState, {
+    esc: escHtml, flash: (m, t) => flashMessage(m, t), settings: () => gameState.getSettings(),
+    zoom: () => (gameState.getSettings().fontSize || 13) / 13,
+  })
+  window.combatView = combatView       // smoke tests (scripts/smoke/scenarios/combat.js)
   function renderCsSoul() {
     const b = document.getElementById('cs-soul'), i = gameState.soulInfo()
     b.classList.toggle('hidden', !i.earned)
@@ -240,7 +246,7 @@
     markCraftWatched() { _craftTabViewedAt = Date.now() },
   }
   const bannerMenus = new BannerMenus(gameState, quickActions, { fmt, fmtTime, escHtml, effectText, personStageLabel })
-  BeastDetail.init({ gameState, flash: (m, t) => flashMessage(m, t), confirm: showConfirm })   // A4-2: beast details page
+  BeastDetail.init({ gameState, flash: (m, t) => flashMessage(m, t), confirm: showConfirm, fight: id => { BeastDetail.close(); combatView.open(id) } })   // A4-2: beast details page
   layoutUI.onModeChange = mode => { if (mode !== 'banner') bannerMenus.close() }
   // Any popup open? Banter holds new lines while one is, and hides a bubble already showing (1.8b-1).
   const isPopupOpen = () => !!document.querySelector('body > [id$="-overlay"]:not(.hidden)')
@@ -462,6 +468,7 @@
     if (isPopupOpen()) document.getElementById('banter-bubble').classList.add('hidden')
     if (!document.getElementById('mode-overlay').classList.contains('hidden') && !fromTick) renderModePanel(s)
     if (BeastDetail.isOpen() && !fromTick) BeastDetail.render(s)   // A4-2: beast details page follows the state
+    combatView.refresh()                                          // Phase 35: the battle page's Health + vigor plates
 
     const activeTab = nav.view
     if (fromTick) {
@@ -1193,9 +1200,17 @@
 
       for (const enc of encounters) {
         const beastType = BEAST_TYPES.find(b => b.id === enc.typeId)
+        const free      = enc.mood === 'grateful'                  // Phase 35: a spared beast came back
+        const fighting  = s.family?.fight?.beast?.encId === enc.id
         const canTame   = (s.beasts || []).length < (s.derived.maxBeasts || 3)
           && s.stageIndex >= (beastType?.minStage || 0)
-          && (s.inventory['beast_taming_talisman'] || 0) > 0
+          && (free || (s.inventory['beast_taming_talisman'] || 0) > 0) && !fighting
+        // Phase 35: Fight — opens the battle page's prepare step (odds before you commit); a lock says why not
+        const fightLock = fighting ? null : s.family?.fight ? 'Another fight is underway' : (s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH ? 'Too wounded to fight' : null
+        const pv = gameState.beastFightPreview(enc.id)
+        const moodTag = enc.mood === 'grateful' ? '<span class="beast-mood good">Remembers your mercy</span>'
+          : enc.mood === 'vengeful' ? '<span class="beast-mood bad">Came back for you</span>'
+          : enc.mood === 'cub' ? '<span class="beast-mood">A cub</span>' : ''
 
         const prof = gameState.beastProfile(enc)
         const row = document.createElement('div')
@@ -1205,24 +1220,31 @@
         row.innerHTML = `
           <div class="beast-sprite-small">${spriteHtml}</div>
           <div class="beast-encounter-info">
-            <div class="beast-enc-head"><button class="beast-enc-name bdx-open" data-bdx="enc:${escHtml(enc.id)}">${escHtml(prof.name)}</button>${tierChip(prof)}</div>
+            <div class="beast-enc-head"><button class="beast-enc-name bdx-open" data-bdx="enc:${escHtml(enc.id)}">${escHtml(prof.name)}${enc.mood === 'cub' ? ' cub' : ''}</button>${tierChip(prof)}${moodTag}</div>
             <div class="beast-enc-desc">${escHtml(beastType?.desc || '')}</div>
             <div class="beast-enc-traits">${escHtml(traitNames)}</div>
-            <button class="beast-tame-btn${canTame ? '' : ''}" data-encid="${escHtml(enc.id)}" ${canTame ? '' : 'disabled'}>
-              ${canTame ? 'Tame (1× Talisman)' : (s.beasts?.length >= (s.derived.maxBeasts || 3) ? `Full (${s.derived.maxBeasts || 3}/${s.derived.maxBeasts || 3})` : (s.inventory['beast_taming_talisman'] || 0) < 1 ? 'No Talisman' : 'Stage too low')}
-            </button>
+            <div class="beast-enc-acts">
+              <button class="beast-tame-btn${canTame ? '' : ''}" data-encid="${escHtml(enc.id)}" ${canTame ? '' : 'disabled'}>
+                ${fighting ? 'In battle' : canTame ? (free ? 'Tame (it comes freely)' : 'Tame (1× Talisman)') : (s.beasts?.length >= (s.derived.maxBeasts || 3) ? `Full (${s.derived.maxBeasts || 3}/${s.derived.maxBeasts || 3})` : (s.inventory['beast_taming_talisman'] || 0) < 1 ? 'No Talisman' : 'Stage too low')}
+              </button>
+              <button class="beast-fight-btn" data-fight="${escHtml(enc.id)}" ${fightLock ? `disabled title="${escHtml(fightLock)}"` : `title="Win odds ${pv ? Math.round(pv.chance * 100) : '?'}%. You choose to slay it or drive it off before anything happens."`}>
+                <span data-icon="sword"></span>${fighting ? 'Return to battle' : 'Fight'}${!fighting && pv ? `<small>${pv.chance < 0.01 ? '<1' : Math.round(pv.chance * 100)}%</small>` : ''}
+              </button>
+            </div>
+            ${fightLock ? `<div class="beast-lock-why"><span data-icon="lock"></span>${escHtml(fightLock)}</div>` : ''}
           </div>
         `
         el.appendChild(row)
       }
 
+      el.querySelectorAll('.beast-fight-btn[data-fight]').forEach(btn => btn.addEventListener('click', () => combatView.open(btn.dataset.fight)))
       el.querySelectorAll('.beast-tame-btn[data-encid]').forEach(btn => {
         btn.addEventListener('click', () => {
           const res = gameState.tameEncounteredBeast(btn.dataset.encid)
           if (res.ok) {
             flashMessage(`Tamed: ${res.beast.name}!`, 'special')
           } else {
-            const msgs = { not_found:'Already gone', stage:'Realm too low', max_beasts:'Beast capacity full', no_talisman:'Need a Beast Taming Talisman' }
+            const msgs = { not_found:'Already gone', stage:'Realm too low', max_beasts:'Beast capacity full', no_talisman:'Need a Beast Taming Talisman', fighting:'You are fighting it' }
             flashMessage(msgs[res.reason] || 'Cannot tame', 'negative')
           }
         })
@@ -1791,6 +1813,7 @@
     passed_mantle:      'You laid down the path',
     spouse_duel:        'Slain by your spouse in a duel to the death',
     challenge_lost:     'Slain challenging the head for their seat',
+    beast_hunt:         'Killed by the beast you went to slay',
     challenged:         'Slain defending the head seat',
     stepdown_tournament: 'Fallen in the succession tournament',
     branch_war:          'Fallen leading your branch to war',
@@ -1946,6 +1969,7 @@
   function familyPendingKey(s) {
     const f = s.family
     if (!f) return null
+    if (f.fight?.kind === 'beast') return null   // Phase 35: the battle page owns a beast battle; family matters wait for it
     if (f.fight) return `fight:${f.fight.kind}:${f.fight.oppId}:${f.fight.round}`   // 1.8b-3b: a fight underway comes first
     if (f.spouse && f.duel)  return `duel:${f.duel.year}`
     if (f.headChallenge) return `hc:${f.headChallenge.challengerId}:${f.headChallenge.year}`   // 2.6e
@@ -2294,6 +2318,7 @@
     if (item.open === 'proposal') openProposalOverlay(s)
     else if (item.open === 'family') openFamilyOverlay(s)
     else if (item.open === 'tournament') openTournamentOverlay()
+    else if (item.open === 'combat') combatView.resume()   // Phase 35: a beast battle underway
     else if (item.open === 'soul') { if (layoutUI.mode === 'banner') layoutUI.peek(false); soulView.open() }   // Phase 40
     if (!item.open || layoutUI.mode !== 'banner') nav.go(item.view)
   })

@@ -151,7 +151,7 @@ docs/
     clan-succession.md  ← SPEC (M2 2.6a–f): world/life split, heirs as NPCs, rebirth as descendant, tournaments, branch wars
     backpack.md         ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
     automation.md       ← Active/Idle Mode + staged automation unlocks, Active Mode bonuses (Phase 22)
-    combat.md           ← SPEC (Phase 35): battle page, fight card generalized to beasts/duelists/arena/bosses
+    combat.md           ← Phase 35 battles: A6-1 built (beast battles from Roam → Beasts, battle page, bestiary); A6-2 arena / A6-3 duels + duelist art spec
     auction.md          ← SPEC (Phase 36): themed crates, beast/person quality rolls, person `gender`
     scene-art.md        ← SPEC (Phase 38): large-area sect-base + island scenes (view-only, grow as you build)
     soul-points.md      ← Phase 40 (v1 finish): cross-save Soul Points + Soul Resonance + Soul screen (40a) · Immortal Ascension cinematic + finish screen (40b)
@@ -192,6 +192,7 @@ renderer/
     game-state.js       ← ALL state mutations — _newGame(), _recalc(), tick()
     ascii-renderer.js   ← Canvas renderer — sprites + particles + aura rings (classic grid ASCII)
     ink-renderer.js     ← InkRenderer — hybrid ink art engine (A3-1): cached ink-dot layers + brush strokes + clean effects; `bare` = figure only (40b)
+    battle-scene.js     ← BattleScene — the battle page canvas: two bare ink figures on a dotted field + lunge/crescent/claw/ward/afterimage/stagger/dissolve/bind effects (Phase 35 / A6-1)
     ascension-cinematic.js ← AscensionCinematic — the ~9 s full-window Immortal Ascension (storm, bolts, rise, heavenly gate, flash) (Phase 40b)
     sprite-renderer.js  ← SpriteRenderer — picks Classic ASCII or Ink per the Sprite art setting + available INK_ART
     scene-renderer.js   ← SPEC (Phase 38): large-area scene layer (sect base / island) on the hybrid engine
@@ -217,7 +218,7 @@ renderer/
     immortal-view.js    ← ImmortalView — plays the cinematic, then the finish screen ("your race to immortality") / later-Immortal card (Phase 40b)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
     icons.js            ← Icon(name) → inline SVG from assets/icons/ui-icons.js; Icon.g() for glyph slots; [data-icon] auto-filled (1.8d)
-    combat.js           ← SPEC (Phase 35): the battle page UI (animated exchanges) over the fight card
+    combat.js           ← CombatView — the battle page: prepare (stance odds) → fight (Press/Guard/Feint, Retreat) → end choice (finish/spare/bind) → result (Phase 35 / A6-1)
     base-view.js        ← SPEC (Phase 38A): Sect Base view — the large sect-compound scene
 assets/
   icons/

@@ -136,6 +136,7 @@ class GameState {
       _intRegenAcc:     0,
       beasts:           [],
       beastEncounters:  [],
+      bestiary:         {},   // Phase 35 (combat.md): per beast type — fought/won/lost/slain/spared/bound, habitsKnown, returning
       // Phase 4
       sect:             { id: null, rank: 0, contribution: 0, activeMissions: [] },
       // Phase 5A
@@ -199,6 +200,13 @@ class GameState {
     if (s._intRegenAcc    === undefined) s._intRegenAcc    = 0
     if (!s.beasts)                       s.beasts           = []
     if (!s.beastEncounters)              s.beastEncounters  = []
+  }
+
+  // Phase 35 (docs/systems/combat.md): the bestiary. A beast battle in f.fight whose snapshot names an unknown type is
+  // dropped by _ensurePhase16Fields' fight guard.
+  _ensurePhase35Fields() {
+    const s = this._s
+    if (!s.bestiary || typeof s.bestiary !== 'object') s.bestiary = {}
   }
 
   _ensurePhase4Fields() {
@@ -734,7 +742,9 @@ class GameState {
     if (f.childWish && !this._partnerById(f.childWish.partnerId, true)) f.childWish = null
     if (f.court && (typeof f.court !== 'object' || !Array.isArray(f.court.candidates))) f.court = null
     if (f.court && f.spouse) f.court = null
-    if (f.fight && (typeof f.fight !== 'object' || !f.fight.kind || (f.fight.kind === 'duel' ? !f.spouse : !this.person(f.fight.oppId)))) f.fight = null
+    if (f.fight && (typeof f.fight !== 'object' || !f.fight.kind || (f.fight.kind === 'duel' ? !f.spouse
+      : f.fight.kind === 'beast' ? !(typeof BEAST_TYPES !== 'undefined' && BEAST_TYPES.some(b => b.id === f.fight.beast?.typeId))
+      : !this.person(f.fight.oppId)))) f.fight = null
     for (const c of f.children) {
       if (!c.cd || typeof c.cd !== 'object') c.cd = {}
       if (!c.raised || typeof c.raised !== 'object') c.raised = { time: 0, teach: 0, gift: 0 }
@@ -1223,6 +1233,7 @@ class GameState {
     this._ensurePhase30Fields()
     this._ensurePhase16Fields()
     this._ensurePhase34Fields()   // Phase 31 (2.7a) — needs s.world.clans (33), reads maxStageThisLife/techniques
+    this._ensurePhase35Fields()
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -2407,18 +2418,20 @@ class GameState {
   // ── 1.8b-3b (family.md): your own fights, exchange by exchange ─────────────
   // kind: 'duel' (your spouse) · 'challenge' (you called out the head) · 'defend' (you hold the seat).
   // matchChance = the old one-roll odds; the exchange odds are derived so that neutral play keeps them.
-  _startFight(kind, opp, lethal, matchChance) {
+  // extra (Phase 35 beast battles): { to, beast, stance, power, over } — `to` = exchanges to win (default FIGHT_TO).
+  _startFight(kind, opp, lethal, matchChance, extra = null) {
     const s = this._s, f = s.family
-    f.fight = { kind, oppId: opp.id, lethal: !!lethal, p: this._exchangeChance(matchChance), you: 0, them: 0, round: 1,
-                log: [], year: Math.floor(s.world.year) }
+    const to = extra?.to || FIGHT_TO
+    f.fight = { kind, oppId: opp.id, lethal: !!lethal, p: this._exchangeChance(matchChance, to), to, you: 0, them: 0, round: 1,
+                log: [], year: Math.floor(s.world.year), ...(extra || {}) }
     this._emit('fight_start', { kind, lethal: !!lethal })
     this._notify()
   }
 
-  // Solves P(first to FIGHT_TO) = matchChance for the single-exchange chance p (bisection; monotone in p).
-  _exchangeChance(P) {
+  // Solves P(first to `to`) = matchChance for the single-exchange chance p (bisection; monotone in p).
+  _exchangeChance(P, to = FIGHT_TO) {
     const race = p => { let sum = 0, c = 1
-      for (let k = 0; k < FIGHT_TO; k++) { sum += c * Math.pow(p, FIGHT_TO) * Math.pow(1 - p, k); c = c * (FIGHT_TO + k) / (k + 1) }
+      for (let k = 0; k < to; k++) { sum += c * Math.pow(p, to) * Math.pow(1 - p, k); c = c * (to + k) / (k + 1) }
       return sum }
     let lo = 0, hi = 1
     for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (race(mid) < P) lo = mid; else hi = mid }
@@ -2432,10 +2445,11 @@ class GameState {
   _fightOpp() {
     const f = this._s.family, fi = f.fight
     if (!fi) return null
+    if (fi.kind === 'beast') return this._beastOpp(fi.beast, fi.oppId)
     return fi.kind === 'duel' ? f.spouse : this.person(fi.oppId)
   }
 
-  _fightStyle(opp) { return FIGHT_STYLE[opp?.personality] || FIGHT_STYLE.default }
+  _fightStyle(opp) { return opp?.beast ? this._beastStyle(opp.typeId, opp.traits) : FIGHT_STYLE[opp?.personality] || FIGHT_STYLE.default }
   _tacticEdge(mine, theirs) { return FIGHT_TACTICS[mine].beats === theirs ? FIGHT_EDGE : FIGHT_TACTICS[theirs].beats === mine ? -FIGHT_EDGE : 0 }
   _clampExchange(q) { return Math.max(FIGHT_EXCHANGE_RANGE[0], Math.min(FIGHT_EXCHANGE_RANGE[1], q)) }
 
@@ -2454,13 +2468,20 @@ class GameState {
     const f = this._s.family, fi = f.fight
     if (!fi) return null
     const opp = this._fightOpp(), style = this._fightStyle(opp)
-    const w = { press: style.press, guard: style.guard, feint: style.feint }, W = w.press + w.guard + w.feint
+    // Phase 35: a beast's habits are unknown until you have fought one of its kind; the odds shown are then against
+    // even habits (all the player can know), and the true habits stay hidden.
+    const beast = fi.kind === 'beast', known = !beast || !!this._s.bestiary?.[fi.beast.typeId]?.habitsKnown
+    const w = known ? { press: style.press, guard: style.guard, feint: style.feint } : { press: 1, guard: 1, feint: 1 }
+    const W = w.press + w.guard + w.feint
     const tactics = {}
     for (const t of Object.keys(FIGHT_TACTICS))
       tactics[t] = Object.keys(w).reduce((acc, o) => acc + (w[o] / W) * this._clampExchange(fi.p + this._tacticEdge(t, o)), 0)
-    return { kind: fi.kind, opp, lethal: fi.lethal, you: fi.you, them: fi.them, to: FIGHT_TO, round: fi.round, base: fi.p,
-             tactics, habits: { press: w.press / W, guard: w.guard / W, feint: w.feint / W }, hint: style.hint,
-             yieldAccept: this._yieldAccept(opp), log: [...fi.log] }
+    const out = { kind: fi.kind, opp, lethal: fi.lethal, you: fi.you, them: fi.them, to: fi.to || FIGHT_TO, round: fi.round, base: fi.p,
+             tactics, habits: known ? { press: w.press / W, guard: w.guard / W, feint: w.feint / W } : null, hint: known ? style.hint : null,
+             habitsKnown: known, yieldAccept: beast ? 1 : this._yieldAccept(opp), log: [...fi.log] }
+    if (beast) Object.assign(out, { beast: { ...fi.beast }, stance: fi.stance, over: fi.over || null, health: this._s.health ?? 100,
+      wound: this._beastWound(fi.beast, fi.stance), lossWound: this._beastLossWound(fi.beast, fi.stance), power: fi.power })
+    return out
   }
 
   fightExchange(tactic) {
@@ -2468,6 +2489,10 @@ class GameState {
     if (!fi) return { ok: false, reason: 'no_fight' }
     const opp = this._fightOpp()
     if (!opp) { f.fight = null; this._notify(); return { ok: false, reason: 'no_opponent' } }
+    if (fi.kind === 'beast') {                                   // Phase 35: a won battle waits for beastFightFinish()
+      if (fi.over) return { ok: false, reason: 'decide' }
+      if (tactic === 'retreat' || tactic === 'yield') return this._beastRetreat(fi, opp)
+    }
     if (tactic === 'yield') {
       if (Math.random() < this._yieldAccept(opp)) {
         f.fight = null
@@ -2484,10 +2509,18 @@ class GameState {
     const theirs = (r -= style.press) < 0 ? 'press' : (r -= style.guard) < 0 ? 'guard' : 'feint'
     const q = this._clampExchange(fi.p + this._tacticEdge(tactic, theirs))
     const won = Math.random() < q
+    let dmg = 0
     if (won) fi.you++
+    else if (fi.kind === 'beast') {                              // Phase 35: real wounds; the Slay stance can kill you
+      fi.them++
+      dmg = this._beastWound(fi.beast, fi.stance)
+      s.health = (s.health ?? 100) - dmg
+      if (fi.stance !== 'slay') s.health = Math.max(1, s.health)
+    }
     else { fi.them++; s.health = Math.max(1, (s.health ?? 100) - FIGHT_WOUND) }
-    fi.log.push({ round: fi.round, you: tactic, them: theirs, won })
+    fi.log.push({ round: fi.round, you: tactic, them: theirs, won, ...(dmg ? { dmg } : {}) })
     fi.round++
+    if (fi.kind === 'beast') return this._beastAfterExchange(fi, opp, { you: tactic, them: theirs, won, dmg })
     if (fi.you >= FIGHT_TO || fi.them >= FIGHT_TO) {
       f.fight = null
       const outcome = this._finishFight(fi, opp, fi.you >= FIGHT_TO, false)
@@ -2509,6 +2542,251 @@ class GameState {
     const res = won ? { winner: me, loser: opp, died, yielded: npcYield } : { winner: opp, loser: me, died, yielded }
     const clan = this._playerClan()
     return fi.kind === 'challenge' ? this._challengeOutcome(clan, opp, fi.lethal, res) : this._defendOutcome(clan, opp, fi.lethal, res)
+  }
+
+  // ── Phase 35 (docs/systems/combat.md): beast battles ────────────────────────
+  // A wild beast from Roam → Beasts, fought on the battle page (renderer/game/combat.js) exchange by exchange. The fight
+  // lives in the shared f.fight slot (kind 'beast'), so it also holds the one-fight-at-a-time gate.
+
+  bestiaryEntry(typeId) {
+    const b = this._s.bestiary?.[typeId]
+    return { fought: 0, won: 0, lost: 0, slain: 0, spared: 0, bound: 0, habitsKnown: false, returning: null, ...(b || {}) }
+  }
+  _bestiary(typeId) {
+    const s = this._s
+    if (!s.bestiary) s.bestiary = {}
+    return (s.bestiary[typeId] = this.bestiaryEntry(typeId))
+  }
+
+  // What the fight engine sees as the opponent (a beast is not a world person).
+  _beastOpp(rec, id) {
+    const prof = this.beastProfile(rec)
+    return { id, beast: true, typeId: rec?.typeId, traits: rec?.traits || [], mood: rec?.mood || null, given: prof.name, name: prof.name, prof, morality: 0 }
+  }
+
+  _beastStyle(typeId, traits = []) {
+    const B = (typeof BEAST_FIGHT_STYLE !== 'undefined' && (BEAST_FIGHT_STYLE[typeId] || BEAST_FIGHT_STYLE.default)) || FIGHT_STYLE.default
+    const st = { ...B }
+    if (traits.includes('swift')) st.feint += BEAST_TRAIT_FEINT
+    if (traits.includes('iron_skin')) st.guard += BEAST_TRAIT_GUARD
+    return st
+  }
+
+  // Its power: realm gate × 100 + base + Might + traits + mood. Parts are what the breakdown card lists.
+  _beastPower(rec) {
+    const prof = this.beastProfile(rec), T = prof.type || { minStage: 0 }
+    const parts = [{ label: `Its realm (${typeof stageShortName === 'function' ? stageShortName(T.minStage || 0) : 'stage ' + (T.minStage || 0)})`, value: (T.minStage || 0) * 100 + BEAST_FIGHT_BASE_POWER }]
+    const mp = Math.round((prof.might - 1) * BEAST_FIGHT_MIGHT_POWER)
+    if (mp) parts.push({ label: `${prof.tier.name}${prof.variant ? ', rare colour' : ''} (Might ×${prof.might.toFixed(2)})`, value: mp })
+    for (const t of rec?.traits || []) if (BEAST_TRAIT_POWER[t]) parts.push({ label: (BEAST_TRAITS[t]?.name || t), value: BEAST_TRAIT_POWER[t] })
+    const mood = rec?.mood && BEAST_MOOD_POWER[rec.mood]
+    if (mood) parts.push({ label: rec.mood === 'cub' ? 'Only a cub' : 'It remembers you', value: mood })
+    return { parts, total: parts.reduce((a, p) => a + p.value, 0) }
+  }
+
+  // Your side: the same luck-free power as a duel (_expectedPower), minus wounds.
+  _selfFightPower() {
+    const s = this._s, hp = s.health ?? 100
+    const parts = [{ label: `Your realm (${typeof stageShortName === 'function' ? stageShortName(s.stageIndex) : 'stage ' + s.stageIndex})`, value: s.stageIndex * 100 },
+      { label: 'Your spirit root', value: Math.round((s.root?.mult || 1) * 10) }]
+    const temper = TOURNAMENT_PERSONALITY_POWER[s.personality?.id] || 0
+    if (temper) parts.push({ label: `Your temper (${s.personality?.name || s.personality?.id})`, value: temper })
+    if (hp < BEAST_WOUNDED_BELOW) parts.push({ label: `Wounded (Health ${Math.ceil(hp)})`, value: -Math.round((BEAST_WOUNDED_BELOW - hp) * BEAST_WOUNDED_POWER) })
+    return { parts, total: parts.reduce((a, p) => a + p.value, 0) }
+  }
+
+  _beastWound(rec, stance) {
+    const w = BEAST_WOUND * this.beastProfile(rec).might * (stance === 'slay' ? 1 : BEAST_DRIVE_WOUND_MULT)
+    return Math.max(1, Math.round(w))
+  }
+  _beastLossWound(rec, stance) {
+    const w = BEAST_LOSS_WOUND * this.beastProfile(rec).might * (stance === 'slay' ? 1 : BEAST_DRIVE_WOUND_MULT)
+    return Math.max(1, Math.round(w))
+  }
+
+  _beastFightLock(enc) {
+    const s = this._s
+    if (!enc) return 'gone'
+    if (s.interlude || s.family?.fight) return 'busy'
+    if ((s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH) return 'wounded'
+    return null
+  }
+
+  // Everything the prepare panel shows before you commit: both stances' odds + wounds + worst case, known habits.
+  beastFightPreview(encId) {
+    const s = this._s
+    const enc = (s.beastEncounters || []).find(e => e.id === encId)
+    if (!enc) return null
+    const prof = this.beastProfile(enc), me = this._selfFightPower(), it = this._beastPower(enc)
+    const chance = 1 / (1 + Math.exp(-(me.total - it.total) / TOURNAMENT_SPREAD))
+    const hp = s.health ?? 100, rec = this.bestiaryEntry(enc.typeId)
+    const stance = {}
+    for (const st of ['slay', 'drive']) {
+      const wound = this._beastWound(enc, st), lossWound = this._beastLossWound(enc, st)
+      const worst = BATTLE_TO * wound + lossWound
+      stance[st] = { chance, wound, lossWound, worst, canDie: st === 'slay' && hp - worst <= 0 }
+    }
+    const style = this._beastStyle(enc.typeId, enc.traits || []), W = style.press + style.guard + style.feint
+    const nature = (typeof BEAST_NATURE !== 'undefined' && BEAST_NATURE[enc.typeId]) || 'wild'
+    return { encId, name: prof.name, prof, nature, mood: enc.mood || null, you: me, it, chance, stance, health: hp, to: BATTLE_TO,
+      habitsKnown: rec.habitsKnown, record: rec,
+      habits: rec.habitsKnown ? { press: style.press / W, guard: style.guard / W, feint: style.feint / W } : null,
+      hint: rec.habitsKnown ? style.hint : null, locked: this._beastFightLock(enc) }
+  }
+
+  // Your choice: 'slay' (it fights for its life; full wounds; a loss can kill you) or 'drive' (half wounds, never below 1).
+  startBeastFight(encId, stance) {
+    if (stance !== 'slay' && stance !== 'drive') return { ok: false, reason: 'bad_stance' }
+    const pv = this.beastFightPreview(encId)
+    if (!pv) return { ok: false, reason: 'not_found' }
+    if (pv.locked) return { ok: false, reason: pv.locked }
+    const enc = this._s.beastEncounters.find(e => e.id === encId)
+    this._startFight('beast', { id: 'beast:' + enc.id }, stance === 'slay', pv.chance, {
+      to: BATTLE_TO, stance, power: pv.it.total, over: null,
+      beast: { encId: enc.id, typeId: enc.typeId, ...(enc.variant ? { variant: enc.variant } : {}), traits: [...(enc.traits || [])], ...(enc.mood ? { mood: enc.mood } : {}) } })
+    return { ok: true, fight: true, chance: pv.chance }
+  }
+
+  _beastAfterExchange(fi, opp, exchange) {
+    const s = this._s, f = s.family, to = fi.to || BATTLE_TO
+    if ((s.health ?? 100) <= 0) return { ok: true, done: true, exchange, outcome: this._beastFightDeath(fi, opp) }
+    if (fi.them >= to) {
+      f.fight = null
+      return { ok: true, done: true, exchange, outcome: this._beastFightLost(fi, opp) }
+    }
+    if (fi.you >= to) {
+      fi.over = 'won'
+      this.addEvent({ text: `The ${opp.name} goes down and does not rise. It is yours to decide what happens now.`, type: 'positive' })
+      this._notify()
+      return { ok: true, done: false, over: 'won', exchange }
+    }
+    this._notify()
+    return { ok: true, done: false, exchange }
+  }
+
+  _beastFightDeath(fi, opp) {
+    const s = this._s, b = this._bestiary(fi.beast.typeId)
+    s.family.fight = null
+    b.fought++; b.lost++; b.habitsKnown = true
+    this.addEvent({ text: `Year ${Math.floor(s.world.year)}: the ${opp.name} was stronger. You went to kill it, and it killed you.`, type: 'negative' })
+    this._die('beast_hunt')
+    return 'died'
+  }
+
+  _beastFightLost(fi, opp) {
+    const s = this._s, b = this._bestiary(fi.beast.typeId)
+    b.fought++; b.lost++; b.habitsKnown = true
+    const extra = this._beastLossWound(fi.beast, fi.stance)
+    s.health = (s.health ?? 100) - extra
+    if (fi.stance !== 'slay') s.health = Math.max(1, s.health)
+    if (s.health <= 0) return this._beastFightDeath(fi, opp)
+    this.addEvent({ text: `The ${opp.name} throws you down (−${extra} Health). You crawl away; it still prowls Roam → Beasts.`, type: 'negative' })
+    this._recalc(); this._notify()
+    return 'lost'
+  }
+
+  _beastRetreat(fi, opp) {
+    const s = this._s, b = this._bestiary(fi.beast.typeId)
+    const dmg = this._beastWound(fi.beast, fi.stance)
+    s.health = (s.health ?? 100) - dmg
+    if (fi.stance !== 'slay') s.health = Math.max(1, s.health)
+    if (s.health <= 0) return { ok: true, done: true, retreated: true, outcome: this._beastFightDeath(fi, opp) }
+    s.family.fight = null
+    b.fought++
+    if (fi.round > 1) b.habitsKnown = true                       // you traded blows: you saw how it fights
+    this.addEvent({ text: `You break away from the ${opp.name}. Its parting blow costs you ${dmg} Health; it still prowls Roam → Beasts.`, type: 'negative' })
+    this._recalc(); this._notify()
+    return { ok: true, done: true, retreated: true, outcome: 'retreated', dmg }
+  }
+
+  // Which end choices a won battle offers, and why one is locked.
+  beastFightChoices() {
+    const s = this._s, fi = s.family?.fight
+    if (!fi || fi.kind !== 'beast' || fi.over !== 'won') return null
+    const full = (s.beasts || []).length >= (s.derived?.maxBeasts || 3)
+    const free = fi.beast.mood === 'grateful'
+    const tal = s.inventory['beast_taming_talisman'] || 0
+    const bindLock = full ? 'max_beasts' : !free && tal < 1 ? 'no_talisman' : null
+    const nature = BEAST_NATURE[fi.beast.typeId] || 'wild'
+    const cub = fi.beast.mood === 'cub'
+    const finishKarma = cub ? BEAST_KARMA.cub : BEAST_KARMA.finish[nature]
+    const ids = fi.stance === 'slay' ? ['finish', 'spare', 'bind'] : ['flee', 'bind']
+    return { ids, nature, cub, bindLock, bindFree: free, talismans: tal, finishKarma, spareKarma: BEAST_KARMA.spare[nature],
+      loot: this._beastLootPreview(fi.beast) }
+  }
+
+  _beastLootPreview(rec) {
+    const prof = this.beastProfile(rec), mult = prof.variant ? BEAST_VARIANT_LOOT : 1
+    return (BEAST_SLAY_LOOT[prof.tier.id] || BEAST_SLAY_LOOT.common).map(([id, lo, hi, ch]) =>
+      ({ id, name: ITEMS[id]?.name || id, lo: Math.round(lo * mult), hi: Math.round(hi * mult), chance: ch }))
+  }
+
+  // The end choice of a won battle: 'finish' | 'spare' (Slay stance) · 'flee' (Drive) · 'bind' (either, with a talisman).
+  beastFightFinish(choice) {
+    const s = this._s, f = s.family, fi = f?.fight
+    const ch = this.beastFightChoices()
+    if (!ch) return { ok: false, reason: 'no_battle' }
+    if (!ch.ids.includes(choice)) return { ok: false, reason: 'bad_choice' }
+    if (choice === 'bind' && ch.bindLock) return { ok: false, reason: ch.bindLock }
+    const rec = fi.beast, prof = this.beastProfile(rec), name = prof.name, b = this._bestiary(rec.typeId)
+    f.fight = null
+    s.beastEncounters = (s.beastEncounters || []).filter(e => e.id !== rec.encId)
+    b.fought++; b.won++; b.habitsKnown = true
+    const karma0 = s.karma
+    const res = { ok: true, outcome: choice, karma: 0 }
+    if (choice === 'finish') {
+      b.slain++
+      s.karma = Math.max(0, Math.min(100, s.karma + ch.finishKarma))
+      const loot = {}
+      for (const d of this._beastLootPreview(rec)) {
+        if (Math.random() >= d.chance) continue
+        const n = d.lo + Math.floor(Math.random() * (d.hi - d.lo + 1))
+        if (n <= 0) continue
+        loot[d.id] = n
+        if (ITEMS[d.id]?.type === 'currency') s.spiritStones += n
+        else s.inventory[d.id] = (s.inventory[d.id] || 0) + n
+      }
+      res.loot = loot
+      const lootTxt = Object.entries(loot).map(([id, n]) => `${n} ${ITEMS[id]?.name || id}`).join(', ')
+      this.addEvent({ text: ch.cub ? `You finish the ${name} cub. ${lootTxt ? 'You take ' + lootTxt + '.' : ''} It was very small.`
+        : ch.nature === 'benign' ? `You slay the ${name}, ${BEAST_NATURE_TEXT.benign}. You take ${lootTxt || 'nothing'}, and the valley goes quiet.`
+        : `You slay the ${name} and take ${lootTxt || 'nothing'}.`, type: ch.nature === 'benign' || ch.cub ? 'negative' : 'positive' })
+      // A mother leaves a cub behind (a weaker sighting of the same kind)
+      if (!ch.cub && Math.random() < BEAST_CUB_CHANCE && (s.beastEncounters || []).length < 3) {
+        s.beastEncounters.push({ id: `${Date.now()}_${Math.floor(Math.random() * 9999)}`, typeId: rec.typeId,
+          ...(rec.variant ? { variant: rec.variant } : {}), traits: [...rec.traits], mood: 'cub', seenAt: Date.now() })
+        this.addEvent({ text: `Something small cries in the ${name}'s den. A cub waits in Roam → Beasts.`, type: 'special' })
+        res.cub = true
+      }
+      this._emit('beast_slain', { name, tier: prof.tier.id })
+    } else if (choice === 'spare' || choice === 'flee') {
+      b.spared++
+      s.karma = Math.max(0, Math.min(100, s.karma + ch.spareKarma))
+      if (!ch.cub && Math.random() < BEAST_RETURN_CHANCE) {
+        const g = Math.max(0.2, Math.min(0.85, BEAST_GRATEFUL_BASE + (s.karma - 50) / 100))
+        b.returning = Math.random() < g ? 'grateful' : 'vengeful'
+        res.returning = b.returning
+      }
+      this.addEvent({ text: choice === 'spare' ? `You lower your blade. The ${name} limps into the trees and looks back once.`
+        : `The ${name} breaks off and flees. It will remember this place, and you.`, type: 'neutral' })
+    } else {                                                     // bind: tame it now, broken to your will
+      if (!ch.bindFree) {
+        s.inventory['beast_taming_talisman']--
+        if (s.inventory['beast_taming_talisman'] <= 0) delete s.inventory['beast_taming_talisman']
+      }
+      b.bound++
+      const beast = { id: rec.encId, typeId: rec.typeId, ...(rec.variant ? { variant: rec.variant } : {}), name,
+        level: BEAST_BOUND_LEVEL, xp: 0, traits: [...rec.traits], expedition: null }
+      s.beasts = s.beasts || []
+      s.beasts.push(beast)
+      res.beast = beast
+      this._claimFirst('first_beast')
+      this.addEvent({ text: `Beaten and bound, the ${name} bows its head. It joins you at Lv.${BEAST_BOUND_LEVEL}.`, type: 'special' })
+      this._emit('beast_tamed', { name })
+    }
+    res.karma = Math.round((s.karma - karma0) * 10) / 10
+    this._recalc(); this._notify()
+    return res
   }
 
   // ── Phase 23A/B/C: Health, Bloodline Quality, Ascension Trial ──────────────
@@ -3941,19 +4219,25 @@ class GameState {
         }
         const V = (beastType.variants || [])[0]
         const variant = V && Math.random() < (typeof BEAST_VARIANT_CHANCE !== 'undefined' ? BEAST_VARIANT_CHANCE : 0) ? V.id : null
+        // Phase 35: a beast you spared (or drove off) comes back on its kind's next sighting, grateful or vengeful
+        const back = s.bestiary?.[beastType.id]?.returning || null
+        if (back) s.bestiary[beastType.id].returning = null
         s.beastEncounters = s.beastEncounters || []
         s.beastEncounters.push({
           id: `${Date.now()}_${Math.floor(Math.random() * 9999)}`,
           typeId: beastType.id,
           ...(variant ? { variant } : {}),
           traits,
+          ...(back ? { mood: back } : {}),
           seenAt: Date.now(),
         })
         const seenName = variant ? V.name : beastType.name
         this.addEvent({
-          text: beastType.tier === 'legendary'
+          text: back === 'grateful' ? `The ${beastType.name} you spared has found you again. It follows at a distance and asks for nothing. (Roam → Beasts: it would come without a talisman.)`
+            : back === 'vengeful' ? `The ${beastType.name} you let go has come back bigger, and it has not forgotten you. It waits in Roam → Beasts.`
+            : beastType.tier === 'legendary'
             ? `The sky darkens. A ${seenName} watches you from the clouds, a legendary beast few cultivators ever see. It waits in Roam → Beasts, for now.`
-            : `A wild ${seenName}${variant ? ' (a rare colour)' : ''} was spotted during the expedition! Find it in Roam → Beasts to tame it.`,
+            : `A wild ${seenName}${variant ? ' (a rare colour)' : ''} was spotted during the expedition! Tame it or fight it in Roam → Beasts.`,
           type: 'special',
         })
         this._emit('beast_sighted', { name: seenName, tier: beastType.tier, variant: !!variant })
@@ -4145,11 +4429,15 @@ class GameState {
     const beastType = (typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES : []).find(b => b.id === enc.typeId)
     if (!beastType) return { ok: false, reason: 'unknown_type' }
     if (s.stageIndex < beastType.minStage) return { ok: false, reason: 'stage' }
+    if (s.family?.fight?.beast?.encId === encounterId) return { ok: false, reason: 'fighting' }   // Phase 35
     if ((s.beasts || []).length >= (s.derived?.maxBeasts || 3)) return { ok: false, reason: 'max_beasts' }
-    if ((s.inventory['beast_taming_talisman'] || 0) < 1) return { ok: false, reason: 'no_talisman' }
+    const free = enc.mood === 'grateful'                          // Phase 35: a spared beast that came back
+    if (!free && (s.inventory['beast_taming_talisman'] || 0) < 1) return { ok: false, reason: 'no_talisman' }
 
-    s.inventory['beast_taming_talisman']--
-    if (s.inventory['beast_taming_talisman'] <= 0) delete s.inventory['beast_taming_talisman']
+    if (!free) {
+      s.inventory['beast_taming_talisman']--
+      if (s.inventory['beast_taming_talisman'] <= 0) delete s.inventory['beast_taming_talisman']
+    }
 
     s.beastEncounters = s.beastEncounters.filter(e => e.id !== encounterId)
 

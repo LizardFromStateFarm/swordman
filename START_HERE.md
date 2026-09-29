@@ -37,6 +37,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
 | Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); A4-2 beasts ✅ (10 + variants); **A4-3 realm scenery + death moment ✅** (accepted by the user 2026-09-28); **A4-4 Ink default + sprite emoji lint ✅** (2026-09-28, 8.0) |
 | **Soul Points + Immortal cinematic + "you finished v1" screen** | ✅ Phase 40 (v1 finish) — 40a Soul Points core (UI 7.7) + **40b Immortal Ascension cinematic + finish screen** (2026-09-28; screen 7.75, cinematic accepted by the user) |
+| **Combat & Battles** (battle page, beast battles, bestiary) | ◐ Phase 35 — **A6-1 ✅** (2026-09-28): Fight a wild beast from Roam → Beasts on a full-window ink battle page (UI 7.75, effects 8.0). Next A6-2 arena + bestiary view + banter, A6-3 duels/tournaments + duelist art |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -135,6 +136,13 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   slots); no soul metrics in the sim report yet (2.8); the Soul screen is only reachable from Hall/charselect/attention,
   not the Qi/s breakdown popover (could link "Soul Resonance" to it).
 - **Beast details page (7.9):** the portrait VIEW tag is small/low-contrast.
+- **Battle page (A6-1, UI 7.75 / effects 8.0):** phone fight/end/result leave the lower ~40% empty (grow the field when
+  the panel is short, or dock the actions low for thumbs); Desktop wound number floats against the name plate; Overlay
+  prepare/end panels need a short scroll for the last option; the winner's own move reads weaker than the loser's
+  reaction (beast feint afterimages faint, the guard ward arc dim); the dissolve's wipe edge shows coarse square grains;
+  the hit flash tints the whole figure (an outline flash would be subtler); the seated cultivator looks small beside big
+  beasts on phones (duelist art is A6-3). Classic Sprite art still gets the ink battle field. The sim bot never fights
+  (A6-2/QA), and battles have no banter lines yet.
 - **A4-4 polish (8.0):** Classic crown rows space unevenly (ϟ is narrower than a cell); the realm tagline under the canvas
   truncates in Overlay/Expanded (allow 2 lines or drop it in Overlay); Banner crops the ink figure to head + torso at the far left.
 - **A4-3 scenery polish:** Foundation's waterfall has no source notch / landing, its mid-slopes are murky and the mountains
@@ -155,6 +163,24 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-28 (user present) — part 46
+Agent: **A6-1 beast battles + the battle page** (Phase 35; A6 split into A6-1/2/3, assessment approved; on Opus). User handles commits.
+  - Spec first: docs/systems/combat.md (depth + UX pass, state/API, odds, as-built). Data: beasts.js BEAST_FIGHT_STYLE (habits),
+    BEAST_NATURE (benign/wild/fell), BATTLE_TO = 4, BEAST_* wounds/karma/cub/return/bound constants, BEAST_SLAY_LOOT per tier.
+  - Engine (game-state.js): f.fight generalized (kind 'beast', `to`, stance, beast snapshot, over); beastFightPreview /
+    startBeastFight / beastFightChoices / beastFightFinish (finish = loot + karma + maybe a cub · spare/flee = may return
+    grateful (tames free) or vengeful (stronger), weighted by karma · bind = Lv.2 for a talisman) / bestiaryEntry; retreat;
+    Slay can kill you (cause beast_hunt + epitaphs); s.bestiary + _ensurePhase35Fields; family overlay ignores beast fights.
+  - UI: renderer/game/combat.js (CombatView: prepare → fight → end → result, Step back + attention item resume, keys 1/2/3),
+    renderer/engine/battle-scene.js (BattleScene: two bare ink figures on a dotted field; crescent/claws/ward/afterimage/
+    stagger/wound number/dust dissolve/bind ring), Fight + odds on Roam → Beasts cards and the details page (Mood + Bestiary
+    rows), breakdown kind 'beastfight:<encId>:<stance>'.
+  - Tests: checks/combat.js (35; 456 total) · smoke scenarios/combat.js (all four modes, zero console errors, frame 3 ms) ·
+    npm test clean. Review: cycle 1 UI 7.5 + blocker (stale plates) / effects 7.6 → cycle 2 **UI 7.75 PASS, effects 8.0 PASS**.
+  - Docs: combat.md, integrity.md, qa-sim.md, index.md, ui-review.md, CLAUDE.md tree, PLAN (A6 ◐, A6-1 ✅). Uncommitted.
+  Next: **A6-2** (Beast Hunt / Arena entry, bestiary view, battle banter, sim bot hunts) → A6-3 (duels/tournaments on the
+  battle page + duelist art + bosses) → A7 sect base scene → 2.8 QA.
+
 Date: 2026-09-28 (user present) — part 45
 Agent: **40b Immortal Ascension cinematic + finish screen** (assessment approved; on Opus). User handles commits.
   - User copy rule: the finish screen never mentions a version — "Congratulations · You Have Become Immortal · You have
