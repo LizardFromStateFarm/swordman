@@ -1,7 +1,12 @@
-# Codemagic CI — builds ios/ and publishes to TestFlight.
+# Codemagic CI — builds ios/ on a free macOS M2 runner and publishes to TestFlight.
 #
-# NOT ACTIVE YET. Needs, once the Apple Developer account is approved:
-#   1. A Codemagic account (free tier covers this) with this repo connected.
+# This is the only part of the release that can't run on Windows (`npm run release` step 4b triggers it).
+# The free tier is $0/month with 500 macOS M2 build minutes refilled monthly, 1 parallel build and
+# unlimited apps — roughly 40+ iOS builds a month for this project. docs/systems/release.md.
+#
+# One-time setup (a human has to do these once — after that `npm run release` ships iOS builds with no
+# changes to this file):
+#   1. A Codemagic account (free tier) with this GitHub repo connected.
 #   2. In Codemagic → Team settings → Integrations → App Store Connect: add an integration
 #      named "cultivator_idle_asc" (or change the name below to match) using an App Store
 #      Connect API key (App Store Connect → Users and Access → Keys). That key needs the
@@ -11,7 +16,7 @@
 #   4. An API token from Codemagic (Team settings → Integrations → Codemagic API) and this
 #      workflow's App ID (shown in the app's Codemagic URL once the repo is added) set as
 #      CODEMAGIC_API_TOKEN / CODEMAGIC_APP_ID wherever `npm run release` runs — see
-#      docs/systems/ios-port.md.
+#      docs/systems/release.md → "Credentials".
 #
 # This workflow has NO automatic triggers on purpose (no `triggering:` section) — it only starts
 # via the Codemagic API, which is exactly what scripts/release.js calls after the Windows build +
@@ -39,6 +44,22 @@ workflows:
         script: npm run build:web
       - name: Sync Capacitor iOS project
         script: npx cap sync ios
+      - name: Stamp the iOS version
+        script: |
+          # The Xcode project ships with MARKETING_VERSION/CURRENT_PROJECT_VERSION hard-coded, so the
+          # version is stamped here rather than kept in two places by hand. RELEASE_VERSION comes from
+          # scripts/release.js (it is the version actually being released, which may not be committed
+          # to package.json yet); package.json is the fallback for a manually triggered build.
+          # Runs AFTER `cap sync ios` in case the sync rewrites the project file.
+          APP_VERSION="${RELEASE_VERSION:-$(node -p "require('./package.json').version")}"
+          # TestFlight needs a build number that never goes backwards, so use a UTC timestamp
+          # (deterministic, monotonic, and independent of shallow-clone git history).
+          BUILD_NUMBER="$(date -u +%Y%m%d%H%M%S)"
+          PBX="$XCODE_PROJECT/project.pbxproj"
+          sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = ${APP_VERSION};/g" "$PBX"
+          sed -i '' -E "s/CURRENT_PROJECT_VERSION = [^;]+;/CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};/g" "$PBX"
+          grep -q "MARKETING_VERSION = ${APP_VERSION};" "$PBX" || { echo "::error::Version stamp failed"; exit 1; }
+          echo "Stamped iOS marketing version ${APP_VERSION} · build ${BUILD_NUMBER}"
       - name: Set up code signing (automatic via App Store Connect integration)
         script: xcode-project use-profiles
       - name: Build .ipa

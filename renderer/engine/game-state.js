@@ -10,6 +10,7 @@ class GameState {
     this._saveT   = 0
     this._slot    = 0
     this.SAVE_INT = 30
+    this._soul    = this._blankSoul()   // Phase 40: cross-save Soul record (NOT in _s) — loadSoul() fills it
   }
 
   get()         { return this._s    }
@@ -20,6 +21,7 @@ class GameState {
   async initSlot(slotIndex) {
     this._slot = slotIndex
     this._saveT = 0
+    await this.loadSoul()   // Phase 40: another slot (or the charselect) may have changed it
 
     let saved = null
     try { saved = await window.electron.loadSlot(slotIndex) } catch {}
@@ -88,7 +90,7 @@ class GameState {
     this._recalc()
     this._notify()
     const awayH = saved?.lastSave ? (Date.now() - saved.lastSave) / 3600000 : 0   // before _save() bumps lastSave
-    if (this._personaRolled) { this._personaRolled = false; this._save() }   // persist a migration-rolled personality now
+    if (this._personaRolled || this._saveAfterLoad) { this._personaRolled = this._saveAfterLoad = false; this._save() }   // persist load-time migrations now
     if (awayH >= BANTER_WELCOME_HOURS) this._emit('welcome_back', { hours: Math.floor(awayH) })
   }
 
@@ -164,6 +166,7 @@ class GameState {
       upbringing:        null,
       // Phase 20C
       settings:          this.defaultSettings(),
+      inkDefaultMigrated: true,   // A4-4: new lives start on the Ink default; only old saves migrate
       // Phase 29
       personality:       { id: this._rollPersonality() },
       banter:            this._blankBanter(),
@@ -334,6 +337,18 @@ class GameState {
     }
     for (const k of Object.keys(s.settings)) {
       if (!SETTINGS_DEFS.some(d => d.id === k)) delete s.settings[k]
+    }
+    // A4-4: Ink became the default Sprite art. Saves from before it sit on the old Classic default (indistinguishable
+    // from a deliberate pick), so they move to Ink once, with a log line naming how to switch back.
+    if (s.inkDefaultMigrated === undefined) {
+      if (s.settings.artStyle === 'classic') {
+        s.settings.artStyle = 'ink'
+        s.events = s.events || []
+        s.events.unshift({ text: 'The world is repainted in ink. (Prefer the old ASCII? Settings → Sprite art → Classic.)',
+          type: 'special', ts: Date.now() })
+      }
+      s.inkDefaultMigrated = true
+      this._saveAfterLoad = true   // persist the migration now (load() saves right after _recalc)
     }
   }
 
@@ -1322,6 +1337,8 @@ class GameState {
       qMul('Refined Meridians', 1 + this._legacyValue(legacyClan, 'refined_meridians'))
       qMul('Ancestor Blessing', 1 + (legacyClan.blessingStacks || 0) * ANCESTOR_BLESSING_QPS)
     }
+    // Phase 40: Soul Resonance — cross-save, every slot and every life (docs/systems/soul-points.md)
+    qMul(`Soul Resonance (rank ${this._soul.resonance})`, this.soulQiMult())
 
     // Family (docs/systems/family.md): a Devoted spouse steadies your breakthroughs; a betrayed one
     // sabotages the next attempt (cleared by attemptBreakthrough()).
@@ -2577,16 +2594,133 @@ class GameState {
         clan.blessingStacks = Math.min(ANCESTOR_BLESSING_QPS_MAX, clan.blessingStacks + 1)
       }
       const newStage = this._stage()
+      const soul = this._grantImmortalSoul()   // Phase 40: before _die() so the name/clan are the Immortal's
       // Phase 31 (M2 task 2.7d): a successful Ascension ENDS the life — an Ascended Ancestor, not a character
       // left idling at an unreachable stub stage. Routes through the same interlude/rebirth flow as any other
       // death (fixes the post-Ascension dead zone: bloodline.md/life-loop.md's long-flagged gap).
-      this._die('ascended')
-      return { success: true, chance, ascended: true, newStage }
+      this._die('ascended', soul)
+      this._save()   // Phase 40 invariant 3: the outcome (and its grant) is on disk before anything can re-roll it
+      return { success: true, chance, ascended: true, newStage, soul }
     }
 
-    this._die('ascension_failed')
-    return { success: false, reason: 'died', chance }
+    const soul = this._grantSoul('fail', SOUL_FAIL_BASE + SOUL_FAIL_PER_PCT * Math.round(chance * 100), { chance })
+    this._die('ascension_failed', soul)
+    this._save()
+    return { success: false, reason: 'died', chance, soul }
   }
+
+  // ── Phase 40: Soul Points + Soul Resonance (docs/systems/soul-points.md) ────
+  // One record per INSTALL, shared by every slot: soul.json via window.electron.loadSoul/saveSoul, never inside _s.
+
+  _blankSoul() {
+    return { v: 1, points: 0, earned: 0, resonance: 0, failedAscensions: 0, immortals: 0, v1Finished: null, log: [], seen: false }
+  }
+
+  // Missing/corrupt → blank; every field clamped so a hand-edited file can't break the invariants.
+  _normSoul(raw) {
+    const b = this._blankSoul()
+    if (!raw || typeof raw !== 'object') return b
+    const num = v => (Number.isFinite(+v) ? Math.max(0, +v) : 0)
+    b.points           = num(raw.points)
+    b.earned           = Math.max(num(raw.earned), b.points)
+    b.resonance        = Math.min(SOUL_RESONANCE_MAX, Math.floor(num(raw.resonance)))
+    b.failedAscensions = Math.floor(num(raw.failedAscensions))
+    b.immortals        = Math.floor(num(raw.immortals))
+    b.v1Finished       = raw.v1Finished && typeof raw.v1Finished === 'object' ? raw.v1Finished : null
+    b.log              = Array.isArray(raw.log) ? raw.log.slice(0, SOUL_LOG_MAX) : []
+    b.seen             = !!raw.seen
+    return b
+  }
+
+  // Boot (charselect) and every initSlot(). A shell with no soul storage keeps the in-memory record.
+  async loadSoul() {
+    let raw = null
+    try { raw = await window.electron.loadSoul?.() } catch {}
+    if (raw) this._soul = this._normSoul(raw)
+    if (this._s) this._recalc()
+    return this.getSoul()
+  }
+
+  _saveSoul() {
+    if (this._s?.devSave) return   // invariant 5: a dev preset life never writes the real soul file
+    try { window.electron.saveSoul?.(this._soul)?.catch?.(() => {}) } catch {}
+  }
+
+  getSoul() { return JSON.parse(JSON.stringify(this._soul)) }
+
+  soulQiMult() { return 1 + SOUL_RESONANCE_QPS * this._soul.resonance }
+
+  soulRankCost(rank = this._soul.resonance) { return Math.round(SOUL_RANK_BASE * Math.pow(SOUL_RANK_GROWTH, rank)) }
+
+  // Soul screen summary: what the next rank costs and gives, or why it can't be bought.
+  soulInfo() {
+    const so = this._soul, max = so.resonance >= SOUL_RESONANCE_MAX
+    const cost = max ? null : this.soulRankCost()
+    return {
+      ...this.getSoul(), max, cost, mult: this.soulQiMult(), perRank: SOUL_RESONANCE_QPS, maxRank: SOUL_RESONANCE_MAX,
+      need: max ? 0 : Math.max(0, cost - so.points), canSpend: !max && so.points >= cost,
+    }
+  }
+
+  // One rank per call: the player clicks every rank (agency rule — nothing auto-spends).
+  spendSoul() {
+    const so = this._soul
+    if (so.resonance >= SOUL_RESONANCE_MAX) return { ok: false, reason: 'max' }
+    const cost = this.soulRankCost()
+    if (so.points < cost) return { ok: false, reason: 'points', need: cost - so.points }
+    so.points -= cost
+    so.resonance++
+    this._soulLog('spend', cost, null, { rank: so.resonance })
+    this._saveSoul()
+    if (this._s) { this._recalc(); this._notify() }
+    return { ok: true, rank: so.resonance, cost }
+  }
+
+  markSoulSeen() {
+    if (this._soul.seen) return
+    this._soul.seen = true
+    this._saveSoul()
+    if (this._s) this._notify()
+  }
+
+  _soulWho() {
+    const s = this._s, clan = this._playerClan()
+    return clan?.name ? `${s.name} of the ${clan.name} clan` : `${s.name} the orphan`
+  }
+
+  _soulLog(kind, pts, who, extra = {}) {
+    this._soul.log.unshift({ at: Date.now(), kind, pts, who, ...extra })
+    if (this._soul.log.length > SOUL_LOG_MAX) this._soul.log.length = SOUL_LOG_MAX
+  }
+
+  // Called from attemptAscension() only. Returns what the death card shows: { kind, pts, first, chance? }.
+  _grantSoul(kind, pts, meta = {}) {
+    const so = this._soul
+    const first = so.earned === 0
+    pts = Math.max(0, Math.round(pts))
+    so.points += pts
+    so.earned += pts
+    if (kind === 'fail') so.failedAscensions++
+    else so.immortals++
+    if (first) so.seen = false   // the discovery dot: Hall sub-tab + charselect Soul button until the screen is opened
+    this._soulLog(kind, pts, this._soulWho(), meta.chance != null ? { chance: meta.chance } : {})
+    this._saveSoul()
+    return { kind, pts, first, ...meta }
+  }
+
+  // The first Immortality on this install is the v1 finish (+SOUL_V1_GRANT, once: v1Finished is set in the same step
+  // as the grant); every later one pays SOUL_IMMORTAL_GRANT. 40b shows the v1 screen from lastReincarnation.soul.kind.
+  // meta = what the finish screen / Immortal card shows (40b): who rose, their clan, generation, open hours this life,
+  // and how many Trials had failed (any slot) before this one.
+  _grantImmortalSoul() {
+    const so = this._soul, s = this._s
+    const meta = { who: this._soulWho(), name: s.name, clan: this._playerClan()?.name || null, generation: s.generation || 1,
+      hours: +((s.stats?.timePlayed || 0) / 3600).toFixed(1), failedBefore: so.failedAscensions }
+    if (so.v1Finished) return this._grantSoul('immortal', SOUL_IMMORTAL_GRANT, meta)
+    so.v1Finished = { at: Date.now(), slot: this._slot, ...meta }
+    return this._grantSoul('v1', SOUL_V1_GRANT, meta)
+  }
+
 
   // Public so cultivation.js (random events) can check for health-related death after mutating s.health.
   checkDeath(cause = 'event') {
@@ -2599,7 +2733,7 @@ class GameState {
   // (if the clan must pick), the heir's reign + chronicle, then clan-or-orphan → _beginLife(). Every life still
   // reincarnates as a "new soul" for Bloodline carry (BLOODLINE_CARRY_NEW_SOUL); the heir term is added when the
   // new head is known (_beginLife), because it's whoever actually takes the seat.
-  _die(cause) {
+  _die(cause, soul = null) {   // soul (Phase 40): the Trial's Soul Points grant, on the summary before anyone is notified
     const s = this._s
     if (s.interlude) return   // already between lives
     const maxStage  = Math.max(s.maxStageThisLife || 0, s.stageIndex)
@@ -2620,9 +2754,11 @@ class GameState {
     const warOrders   = s.warOrders   // standing orders belong to the player, not the life (Phase 32)
     const playMode    = s.playMode    // Active/Idle mode + automation belong to the player, not the life (Phase 22)
     const automation  = s.automation
+    const devSave     = s.devSave
 
     const summary = {
       cause, maxStageReached: maxStage, stageAtDeath: s.stageIndex, generation: priorGen,   // A4-3: the death moment draws this realm
+      soul,   // Phase 40: { kind, pts, first, chance? | who, clan, hours… } — the death card line / the finish screen
       parentBloodlineQuality: parentBQ, newBloodlineQuality: Math.min(BLOODLINE_CAP, baseBQ), ts: Date.now(),
       // Phase 30 (M2 task 2.3): life-length metrics (sim + future UI). Additive only — existing
       // consumers (death overlay, sim dedupe) only ever read the keys above.
@@ -2663,6 +2799,7 @@ class GameState {
     if (warOrders) this._s.warOrders = warOrders
     if (playMode) this._s.playMode = playMode
     if (automation) this._s.automation = automation
+    if (devSave) this._s.devSave = true
     this._beginInterlude(cause, deadId)
     this._recalc(); this._notify()
   }
@@ -5004,6 +5141,7 @@ class GameState {
     const now = Date.now()
     const s = this._newGame()
     s.name         = `[DEV] ${p.name}`
+    s.devSave      = true   // Phase 40: soul grants from a dev life stay in memory, never the real soul file
     s.stageIndex   = p.stageIndex
     s.spiritStones = p.stones
     s.karma        = p.karma

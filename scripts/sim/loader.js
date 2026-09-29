@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..', '..')
 // Load order mirrors renderer/index.html (sprites, platform-storage, ascii-renderer, game.js skipped:
 // they're UI/Node-bridge only and the logic never references them).
 const DATA_FILES = ['stages', 'techniques', 'events', 'items', 'locations', 'enemies', 'recipes',
-                    'beasts', 'sects', 'sect-buildings', 'sect-war', 'bloodline', 'lifespan', 'family', 'succession', 'clan-legacies', 'automation', 'settings', 'personalities', 'banter-lines', 'names']
+                    'beasts', 'sects', 'sect-buildings', 'sect-war', 'bloodline', 'lifespan', 'family', 'succession', 'clan-legacies', 'automation', 'settings', 'personalities', 'banter-lines', 'names', 'soul']
   .map(f => `assets/data/${f}.js`)
 const LOGIC_FILES = ['renderer/engine/persons.js', 'renderer/engine/game-state.js',
   ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war', 'banter', 'notifications'].map(f => `renderer/game/${f}.js`)]
@@ -38,6 +38,9 @@ function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } 
       loadSlot: async (slot) => (saves[slot] ? JSON.parse(saves[slot]) : null),
       listSlots: async () => Object.keys(saves).map(Number),
       deleteSlot: async (slot) => { delete saves[slot]; return true },
+      // Phase 40: in-memory soul record (invariant 5: the sim never writes the real soul.json)
+      loadSoul: async () => (saves.soul ? JSON.parse(saves.soul) : null),
+      saveSoul: async (data) => { saves.soul = JSON.stringify(data); return true },
     },
   }
 

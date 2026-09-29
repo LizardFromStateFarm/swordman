@@ -23,11 +23,11 @@ const SETTINGS_DEFS = [
     hint: 'Hides particles and aura rings' },
   { id: 'canvasBrightness', label: 'Sprite glow', group: 'Motion', type: 'choice', default: 1,
     options: [{ value: 0.7, label: '70%' }, { value: 1, label: '100%' }, { value: 1.3, label: '130%' }] },
-  // A3-1 (Phase 34): the new hybrid ink art. Preview while A4 re-arts every stage: Ink covers Qi Condensation only,
-  // other stages keep the classic sprite (renderer/engine/sprite-renderer.js).
-  { id: 'artStyle', label: 'Sprite art', group: 'Motion', type: 'choice', default: 'classic',
-    options: [{ value: 'classic', label: 'Classic' }, { value: 'ink', label: 'Ink' }],
-    hint: 'Ink is the new art, in preview (Qi Condensation so far)' },
+  // A3-1 (Phase 34): the hybrid ink art (renderer/engine/sprite-renderer.js). Default since A4-4 (every realm, beast
+  // and scene has ink art); old saves on the untouched Classic default move once (game-state _ensureA44Fields).
+  { id: 'artStyle', label: 'Sprite art', group: 'Motion', type: 'choice', default: 'ink',
+    options: [{ value: 'ink', label: 'Ink' }, { value: 'classic', label: 'Classic' }],
+    hint: 'Ink is the painted art; Classic is the original ASCII' },
   // Phase 9A: close-button behavior (main.js reads this indirectly — the renderer branches on it).
   // Own group (not 'Window') so it doesn't reopen that section non-contiguously in the panel — see
   // renderer/game/settings.js render(): a group header prints whenever def.group differs from the

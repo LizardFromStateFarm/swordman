@@ -38,7 +38,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   await ev('(() => { const gs = gameState, s = gs.get(); s.stageIndex = 3; s.sectWar.nextWarAt = Date.now() + 3600e3; gs._recalc(); gs._notify() })()')
   await sleep(300)
 
-  assert(!(await ev('spriteRenderer.isInk()')), 'default Sprite art = Classic (ASCII renderer active)')
+  assert(await ev('spriteRenderer.isInk()'), 'default Sprite art = Ink since A4-4 (ink engine active)')
   await ev('gameState.setSetting("artStyle", "ink")'); await sleep(400)
   assert(await ev('spriteRenderer.isInk()'), 'Sprite art = Ink switches Qi Condensation to the ink engine')
   assert(await ev('document.getElementById("sprite-canvas").width === Math.round(parseFloat(getComputedStyle(document.getElementById("sprite-canvas")).width) * Math.min(3, Math.max(1, devicePixelRatio)))'),

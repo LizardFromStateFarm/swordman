@@ -77,6 +77,10 @@ function collectAttention(s, gs) {
     const lvl = clan.legacies?.[id] || 0
     return lvl < d.levels.length && !(d.requires && !clan.firsts?.[d.requires]) && clan.merit >= d.levels[lvl].cost
   })) add('idle', 'merit', 'lineage', 'Ancestral Merit to spend', `${Math.floor(clan.merit)} Merit. A legacy for every heir after you.`, 'hall')
+  // Phase 40: fresh Soul Points (the discovery dot until the Soul screen is opened) or a rank you can buy
+  const soul = gs.soulInfo?.()
+  if (soul?.earned && (!soul.seen || soul.canSpend))
+    add('idle', 'soul', 'soul', soul.seen ? 'A Soul Resonance rank is ready' : 'Your soul remembers', `${Math.floor(soul.points)} Soul Points, shared by every save slot. Spend them on faster Qi.`, 'hall', 'soul')
   if (gs.isClanHead?.() && !f.heirId && !f.tournament && (gs.eligibleHeirs?.() || []).length)
     add('ready', 'heir', 'heir', 'No heir is named', 'If your path ends today, the clan chooses without you.', 'family')
 

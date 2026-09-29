@@ -17,6 +17,7 @@
   // ── Character Select ───────────────────────────────────────────────────────
 
   let slots = await window.electron.loadAllSlots()
+  await gameState.loadSoul()   // Phase 40: the cross-save Soul record (charselect shows its button + total)
   // Dev builds (npm start) can create late-game test characters — see assets/data/dev-presets.js
   let isDev = false
   try { isDev = !!(await window.electron.isDev?.()) } catch {}
@@ -93,7 +94,44 @@
     container.querySelectorAll('.cs-btn-del').forEach(btn => {
       btn.addEventListener('click', () => confirmDelete(parseInt(btn.dataset.slot)))
     })
+    renderCsSoul()
   }
+
+  // ── Soul screen (Phase 40a, docs/systems/soul-points.md) ──────────────────────
+  // Cross-save, so its door is on the charselect (once any points exist) as well as Kin → Hall.
+  const soulView = new SoulView(gameState, {
+    esc: escHtml, fmt,
+    // The toast lives in the game view; at the charselect the screen's own pip animation is the feedback
+    flash: (m, t) => { if (!document.getElementById('app').classList.contains('hidden')) flashMessage(m, t) },
+    onChange: () => { renderCsSoul(); const s = gameState.get(); if (s && hallView) renderHall(s) },
+    // 40b: the Soul screen's "Your ascension" row replays the first Immortal's cinematic + finish screen (changes nothing)
+    relive: () => {
+      const v = gameState.getSoul().v1Finished
+      if (!v) return
+      soulView.close()
+      immortalView.play({ kind: 'v1', pts: SOUL_V1_GRANT, ...v }, { relive: true, color: CULTIVATION_STAGES[CULTIVATION_STAGES.length - 1].color })
+    },
+  })
+  // Phase 40b: a successful Ascension Trial — the cinematic, then the finish screen / later-Immortal card
+  const immortalView = new ImmortalView({
+    esc: escHtml, fmt, openSoul: () => soulView.open(),
+    reducedMotion: () => !!gameState.getSettings().reducedMotion,
+    zoom: () => (gameState.getSettings().fontSize || 13) / 13,
+  })
+  window.immortalView = immortalView   // smoke tests (scripts/smoke/scenarios/immortal.js) freeze + capture it
+  function renderCsSoul() {
+    const b = document.getElementById('cs-soul'), i = gameState.soulInfo()
+    b.classList.toggle('hidden', !i.earned)
+    if (!i.earned) return
+    const pct = Math.round(i.perRank * i.resonance * 100)
+    b.classList.toggle('fresh', !i.seen)
+    b.classList.toggle('ready', i.canSpend)
+    b.innerHTML = `<span class="css-g">${Icon('soul')}</span><span class="css-t"><span class="css-n">The Soul Remembers</span>
+      <span class="css-e">${fmt(i.points)} Soul Points${pct ? ` · +${pct}% Qi, every slot` : ''}${i.canSpend ? ' · a rank is ready' : ''}</span></span>
+      <span class="css-dot"></span>`
+    b.title = 'Soul Points and Soul Resonance: shared by every save slot'
+  }
+  document.getElementById('cs-soul').addEventListener('click', () => soulView.open())
 
   // Generic confirm overlay (Phase 21: also used by the Pack tab's Discard button — see showConfirm below).
   let _pendingConfirm = null
@@ -143,6 +181,7 @@
     gameState.forceSave()
     tickRunning = false
     slots = await window.electron.loadAllSlots()
+    soulView.close()
     document.getElementById('app').classList.add('hidden')
     document.getElementById('charselect').classList.remove('hidden')
     layoutUI.leaveGame()
@@ -238,9 +277,16 @@
         // Ascended), then the death card opens. Classic art has no moment (hold 0).
         const lr = s.lastReincarnation, dying = CULTIVATION_STAGES[lr.stageAtDeath ?? lr.maxStageReached]
         const hold = renderer.playDeath(lr.cause === 'ascended' ? 'ascend' : 'fall', dying?.spriteState, dying?.color)   // the one who died, not the heir
-        _deathHoldUntil = Date.now() + hold
-        if (hold) setTimeout(() => showDeathOverlay(gameState.get()?.lastReincarnation), hold)
-        else showDeathOverlay(s.lastReincarnation)
+        if (lr.cause === 'ascended' && lr.soul) {
+          // Phase 40b: the Immortal Ascension plays full-window; the interlude card waits until the player continues
+          _deathHoldUntil = Infinity
+          immortalView.play(lr.soul, { color: CULTIVATION_STAGES[CULTIVATION_STAGES.length - 1].color,
+            onContinue: () => { _deathHoldUntil = 0; showDeathOverlay(gameState.get()?.lastReincarnation) } })
+        } else {
+          _deathHoldUntil = Date.now() + hold
+          if (hold) setTimeout(() => showDeathOverlay(gameState.get()?.lastReincarnation), hold)
+          else showDeathOverlay(s.lastReincarnation)
+        }
       } else if (s.interlude && Date.now() >= _deathHoldUntil && document.getElementById('death-overlay').classList.contains('hidden')) {
         showDeathOverlay(s.lastReincarnation)   // 2.6d: never leave an interlude without its card
       }
@@ -635,7 +681,7 @@
   // ── 家 Kin → Clan + Hall (1.8b-4: renderer/game/clan-view.js) ──
   let clanView = null, hallView = null
   const kinHelpers = () => ({ esc: escHtml, fmt, stageLabel: personStageLabel, bondLabel, confirm: showConfirm, flash: flashMessage,
-    wire: wireKinButtons, go: view => openHallOverlay(view), epitaphFor, fillEpitaph })
+    wire: wireKinButtons, go: view => openHallOverlay(view), epitaphFor, fillEpitaph, openSoul: () => soulView.open() })
   function renderClan(s) { (clanView ||= new ClanView(gameState, kinHelpers())).render(s) }
   function renderHall(s) { (hallView ||= new HallView(gameState, kinHelpers())).render(s) }
   // The Hall was a pop-over until 1.8b-4; it is now Kin → Hall. Kept as the one entry point (banner peeks open).
@@ -1716,6 +1762,8 @@
     const chance = gameState.ascensionChance()
     document.getElementById('asc-bloodline').textContent = `${Math.round(s.bloodlineQuality || 0)} / 100`
     document.getElementById('asc-chance').textContent = `${Math.round(chance * 100)}%`
+    // Phase 40: the consolation is known before the choice (same formula as attemptAscension)
+    document.getElementById('asc-soul').textContent = `+${Math.round(SOUL_FAIL_BASE + SOUL_FAIL_PER_PCT * Math.round(chance * 100))} Soul Points`
     document.getElementById('ascension-overlay').classList.remove('hidden')
     banterSys.say('ascension_trial')
   }
@@ -1726,14 +1774,10 @@
 
   document.getElementById('ascend-now').addEventListener('click', () => {
     document.getElementById('ascension-overlay').classList.add('hidden')
-    const res = gameState.attemptAscension()
-    if (res.success) {
-      renderer.setState('ascended')
-      flashMessage('You have Ascended! Welcome to the Immortal Realms.', 'special')
-    }
-    // Phase 31 (M2 task 2.7d): a successful Ascension now ALSO ends the life (fixes the post-Ascension dead
-    // zone) — the death/interlude overlay opens right behind this flash via the lastReincarnation watcher,
-    // same as every other cause of death (see bootGame).
+    gameState.attemptAscension()
+    // Phase 31 (M2 task 2.7d): a successful Ascension ALSO ends the life (fixes the post-Ascension dead zone). The
+    // lastReincarnation watcher in bootGame plays what follows: the Immortal Ascension cinematic + finish screen
+    // (Phase 40b), then the interlude card; a failed Trial gets the death moment.
   })
 
   // ── Death / reincarnation overlay (Phase 23A/D) ─────────────────────────────
@@ -1771,6 +1815,14 @@
       `Reached ${reachedStage.realm} · ${reachedStage.layer}<br>` +
       `Generation ${summary.generation} → ${summary.generation + 1}<br>` +
       `Bloodline Quality: ${Math.round(summary.parentBloodlineQuality)} → ${Math.round(summary.newBloodlineQuality)}${summary.heirTerm ? ` (heir +${summary.heirTerm.toFixed(1)})` : ''}`
+    // Phase 40: what the soul kept from this Trial, and why
+    const so = summary.soul, el = document.getElementById('death-soul')
+    el.classList.toggle('hidden', !so)
+    if (so) {
+      const why = so.kind === 'fail' ? `fell at ${Math.round((so.chance || 0) * 100)}% odds` : so.kind === 'v1' ? 'the first to become Immortal' : 'became Immortal'
+      el.innerHTML = `<span class="ds-g">${Icon('soul')}</span><span class="ds-t"><b>Your soul remembers: +${so.pts} Soul Points</b>
+        <span class="ds-s">${why} · shared by every save slot</span></span>`
+    }
   }
 
   function renderInterlude() {
@@ -1825,12 +1877,20 @@
     }))
   }
 
+  let _soulToldTs = null   // Phase 40: the soul toast + banter fire once per death
   document.getElementById('death-ok').addEventListener('click', () => {
     document.getElementById('death-overlay').classList.add('hidden')
     renderer.clearDeath()                                   // A4-3: the new life's figure takes the stage
     const s = gameState.get()
     if (s) updateSprite(s)
     if (s?.birth) flashMessage(`${s.name} awakens. A new life begins.`, 'special')
+    // Phase 40: the first Soul Points ever get a pointer to where they're spent; every grant gets a line
+    const so = s?.lastReincarnation?.soul
+    if (so && s.lastReincarnation.ts !== _soulToldTs) {
+      _soulToldTs = s.lastReincarnation.ts
+      if (so.first) setTimeout(() => flashMessage('Your soul remembers. Spend Soul Points in Kin → Hall.', 'special'), 3000)
+      if (so.kind === 'fail') banterSys.say('soul_remembers')   // the lines are about the fall
+    }
   })
 
   // ── Ancestral Hall (Phase 31, M2 task 2.7f, clan-succession.md §2.7) ────────
@@ -2234,6 +2294,7 @@
     if (item.open === 'proposal') openProposalOverlay(s)
     else if (item.open === 'family') openFamilyOverlay(s)
     else if (item.open === 'tournament') openTournamentOverlay()
+    else if (item.open === 'soul') { if (layoutUI.mode === 'banner') layoutUI.peek(false); soulView.open() }   // Phase 40
     if (!item.open || layoutUI.mode !== 'banner') nav.go(item.view)
   })
   attentionUI.onBannerMore = () => layoutUI.peek(false)

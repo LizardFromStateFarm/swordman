@@ -30,7 +30,7 @@ _Covers: assets/data/settings.js · renderer/game/settings.js · game-state.js (
 | colorblind | choice | off / deuteranopia / protanopia | off | `<html data-cb>` → CSS overrides `--red`/`--jade` |
 | fontSize | choice | 11 / 13 / 15 | 13 | `#tab-body` `zoom` = value/13 (scales panel text only) |
 | canvasBrightness | choice | 0.7 / 1 / 1.3 | 1 | `#sprite-canvas` `filter: brightness()` |
-| artStyle | choice | classic / ink | classic | `SpriteRenderer.setArtStyle()` — Ink art for stages that have `INK_ART` (A3-1, art-engine.md) |
+| artStyle | choice | ink / classic | ink (A4-4; was classic) | `SpriteRenderer.setArtStyle()` — Ink art for stages that have `INK_ART` (A3-1, art-engine.md). Old saves on Classic move to Ink once (`s.inkDefaultMigrated`, logged) |
 | bgOpacity | range | 0.2–1.0, step 0.05 | 1 | `--bg-opacity` CSS var multiplies window background alphas |
 | closeButton | choice | quit / tray | quit | `#btn-quit` (game.js) + native closes via `setCloseToTray` (main.js): real quit vs hide to tray. Renamed from `closeAction` (default tray) in 1.8b-1 so old saves get the new default; the old key is dropped by the unknown-key cleanup (notifications.md) |
 | notifyBreakthrough / notifyExpedition / notifyWar / notifyBeastTamed / notifyDeath | choice | false/true | false (all) | `NotificationSystem` per-type gate (Phase 9B, notifications.md) — opt-in, all off by default |

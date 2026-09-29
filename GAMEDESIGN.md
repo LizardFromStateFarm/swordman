@@ -27,6 +27,8 @@ This is a single-player game made for the love of the game, not a monetized live
 3. **Meta progression across generations.** Each life earns the clan something permanent: mostly **unlocks and
    options** (heirlooms, family manuals, clan legacies, new origins), with only modest flat multipliers.
    Later generations replay the early realms faster, so the early game never becomes a grind.
+   *Exception (user 2026-09-28, Phase 40):* **Soul Points** are a cross-save (every slot) Qi/s multiplier earned
+   from failed Ascension Trials and Immortality: modest and capped (+100% max). See docs/systems/soul-points.md.
 4. **Never punish the player for being away.** There are no daily logins, no real-calendar events or seasons, no
    time-of-day bonuses, no windows you miss while the game is closed, no streaks and no FOMO. Anything that
    needs a decision while you're away uses a **standing order** you set in advance. Notifications are opt-in

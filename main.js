@@ -17,6 +17,7 @@ const trayIconPath = () => path.join(__dirname, 'assets', 'icons', 'tray-icon.pn
 const userData    = () => app.getPath('userData')
 const slotPath    = (i) => () => path.join(userData(), `slot_${i}.json`)
 const CONFIG_PATH = ()  => path.join(userData(), 'window.json')
+const SOUL_PATH   = ()  => path.join(userData(), 'soul.json')   // Phase 40: cross-save Soul record (every slot shares it)
 
 function readJSON(pathFn) {
   try { return JSON.parse(fs.readFileSync(pathFn(), 'utf8')) } catch { return null }
@@ -228,6 +229,10 @@ ipcMain.handle('load-slot', (_e, i) => readJSON(slotPath(i)))
 ipcMain.handle('save-slot', (_e, i, data) => {
   writeJSON(slotPath(i), data)
 })
+
+// Phase 40 (docs/systems/soul-points.md): one soul record per install, never touched by slot delete
+ipcMain.handle('load-soul', () => readJSON(SOUL_PATH))
+ipcMain.handle('save-soul', (_e, data) => { writeJSON(SOUL_PATH, data) })
 
 ipcMain.handle('delete-slot', (_e, i) => {
   deleteFile(slotPath(i))

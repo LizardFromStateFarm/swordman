@@ -35,8 +35,22 @@ When an older design section below conflicts with these, the pillars win. The se
   Cite phase numbers in code and docs, never task numbers.
 - **The design sections after the roadmap are grouped by milestone in the same order.** Built phases are in the
   M0 archive.
-- **New ideas** get a new phase number (next free: **39**) and are then *placed* into a milestone. A slot is never
+- **New ideas** get a new phase number (next free: **41**) and are then *placed* into a milestone. A slot is never
   renumbered.
+
+## Releases: v1 and v2 (user 2026-09-28)
+
+The game ships in two releases. **v1 = every feature before Immortality; v2 = the Immortal era.**
+
+- **v1: the mortal game, complete.** Milestones M1–M6 and M8, the art track except the appearance tasks, and
+  **Phase 40** (Soul Points + the Immortal Ascension cinematic + the "you finished v1" screen). v1 ends when a
+  character first survives the Ascension Trial: the heavens open, the v1 screen congratulates the player and grants
+  cross-save Soul Points, and play continues with the clan (Ascended Ancestor flow).
+- **v2: the Immortal era.** Milestone M7 (Immortal realms 23D, Immortal Paths 24, Doctrine 25, Immortal Island 26 +
+  its scene 38B, Secret Arts 23E, Immortal Ranking) and the **appearance / portrait tasks A5, A8, A9, A10** (Phase
+  39C–F, pushed back by the user 2026-09-28: "we can add that maybe once we work on post immortal update").
+- Rule of thumb for new ideas: does it need a playable Immortal? Then v2. Otherwise v1.
+- Every milestone heading and Phase Index row below carries its release.
 
 **Definition of done (every task, from CLAUDE.md):**
 - the system doc is written *before* code (Rule 6)
@@ -50,7 +64,7 @@ When an older design section below conflicts with these, the pillars win. The se
 
 ## Phase Index
 
-| Phase | Name | Status | Milestone |
+| Phase | Name | Status | Milestone (release) |
 |---|---|---|---|
 | 1 | Core idle loop (Qi, stages, techniques, events, slots, renderer) | ✅ | M0 |
 | 2 | Explore / Combat / Resources / Crafting | ✅ | M0 |
@@ -81,11 +95,11 @@ When an older design section below conflicts with these, the pillars win. The se
 | 27 | Deep Sect Management | ⬜ | M5 |
 | 16 (full) | Courtship & family with living-world persons | ⬜ | M6 |
 | 18A, 18D–E | Lineage tree view, Family Technique, Ancestral Visions | ⬜ | M6 |
-| 23D | Immortal Realms | ⬜ | M7 |
-| 24 | Immortal Paths (Tyrant / Devourer / Deity / Executioner) | ⬜ | M7 |
-| 26 | Immortal Island + ascension petitions | ⬜ | M7 |
-| 25 | Doctrine | ⬜ | M7 |
-| 23E | Secret Arts | ⬜ | M7 |
+| 23D | Immortal Realms | ⬜ | M7 (v2) |
+| 24 | Immortal Paths (Tyrant / Devourer / Deity / Executioner) | ⬜ | M7 (v2) |
+| 26 | Immortal Island + ascension petitions | ⬜ | M7 (v2) |
+| 25 | Doctrine | ⬜ | M7 (v2) |
+| 23E | Secret Arts | ⬜ | M7 (v2) |
 | 19 | World Epochs & Spiritual Tides (game time, change between generations) | ⬜ | M8 |
 | 17 | Secret Realm Dungeons | ⬜ | M8 |
 | 6A–D | Animation & visual overhaul | ↪ folded into Phase 34 (art engine) — particles, event animations, realm ambience are built as compositor effect passes | M1 (art track) |
@@ -93,8 +107,9 @@ When an older design section below conflicts with these, the pillars win. The se
 | 35 | **Combat & Battles (战斗)**: an interactive battle page — turn-based exchanges with animated art, reusing the fight card (user 2026-09-27) | ⬜ | M1 (art track; built after A4) |
 | 36 | **Auction House & Crates (拍卖行)**: buy themed crates, open for a random-quality beast or a person (user 2026-09-27) | ⬜ | M4 |
 | 37 | **Party & Party Combat (结伴 · 群战)**: a party of up to 6; fights become 6 vs N (user 2026-09-27) | ⬜ | M4 (after 35/36) |
-| 38 | **Sect Base & Immortal Island scenes (宗门场景 · 仙岛图)**: large-area art that grows/upgrades as you build (user 2026-09-27) | ⬜ | 38A M1 (art track, after A4); 38B M7 |
-| 39 | **Cultivation Path & Appearance (修途 · 仪容)**: Basic method until Core, then Virtuous / Neutral / Demonic (changes arts + look, anchors the alignment meter, one costly Dao Reversal per life); appearance chosen at every creation/rebirth; effects unlocked by realm, arts and path; robes unlocked by positions + in-world rankings; NPC portraits (user 2026-09-27) | ⬜ | 39A–B M3 (tasks 3.2b–c); 39C–F art track (A5, A8–A10) |
+| 38 | **Sect Base & Immortal Island scenes (宗门场景 · 仙岛图)**: large-area art that grows/upgrades as you build (user 2026-09-27) | ⬜ | 38A M1 (art track, after A4; v1); 38B M7 (v2) |
+| 39 | **Cultivation Path & Appearance (修途 · 仪容)**: Basic method until Core, then Virtuous / Neutral / Demonic (changes arts + look, anchors the alignment meter, one costly Dao Reversal per life); appearance chosen at every creation/rebirth; effects unlocked by realm, arts and path; robes unlocked by positions + in-world rankings; NPC portraits (user 2026-09-27) | ⬜ | 39A–B M3 (tasks 3.2b–c; v1); 39C–F art track A5, A8–A10 (**v2**, user 2026-09-28) |
+| 40 | **Soul Points & the v1 finish (魂)**: cross-save Soul Points from failed Ascension Trials + a big grant on first Immortality; spent on Soul Resonance (+Qi/s); a full-window Immortal Ascension cinematic; the "you have finished v1" screen (user 2026-09-28; spec docs/systems/soul-points.md) | ✅ | v1 finish (tasks 40a–b) |
 | 10 | Cosmetics (titles, pet, cave) | ⬜ | M8 |
 | 11B–C | Heaven's Will, Scripture Lore | ⬜ | M8 |
 | 20A–B | Permadeath, Challenge modes | ⬜ | M8 |
@@ -118,7 +133,7 @@ When an older design section below conflicts with these, the pillars win. The se
   M6, not rebuilt. This is the lesson from the Phase 27 reorder: don't build persons twice.
 - **M8** is flavor that gets richer the more systems exist.
 
-### M1 — Quality of life & charm (no dependencies)
+### M1 — Quality of life & charm (no dependencies) — v1
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
@@ -157,14 +172,10 @@ When an older design section below conflicts with these, the pillars win. The se
 | A3-1 ✅ | **Hybrid engine core** (built 2026-09-27; as-built docs/systems/art-engine.md; **accepted by the user**: "looks good"): `renderer/engine/ink-renderer.js` (cached ink-dot layers with light model + soft folds + dot thinning + rim light, tapered brush strokes, glyph parts, per-layer motion: lap still / body breathes / head rides the shoulders / hair locks sway, halo, 3 tilted orbit rings with motes, straight-rising motes, ink-wash background with blurred ridge bleed + drifting mist, breakthrough = outer-silhouette gold rim + gold rings + ripples + soft light column, banner LOD with smooth fills) + `sprite-renderer.js` (Classic/Ink switch, falls back to ASCII for states without ink art) + `assets/sprites/ink-cultivator.js` (Qi Condensation cultivator) + Settings → Sprite art (default Classic). Frame 0.6 ms, cache build ~20 ms. Diverged: dots are drawn as vector circles, not braille font glyphs (same look, platform-independent, tonal dot size); phone canvas now spans the full HUD width | 34 | A2 | User accepts the look |
 | A3-2 ✅ | (built 2026-09-27; as-built art-engine.md → Slots; diverged: slot options are colour/shape data in `assets/sprites/ink-parts.js`, no blink — the meditating figure has closed eyes, so frames are expression swaps for breakthrough (eyes lit) and failure (strain); also fixed the 1.8c "breakthrough sprite never displays" bug with a moment hold in SpriteRenderer) **Engine part 2**: part slots (face/hair/robe/weapon/aura swappable, the Phase 10 hook), per-part frame swaps/blink, art-format + authoring template in `.agents/rules/assets.md`, remaining 6A–D effect passes (failure/death moments) | 34 | A3-1 | Parts swap live; authoring doc written |
 | A4 | **Re-art everything** in the new engine: all cultivator stage sprites, beasts, realm backgrounds/ambience, BT/failure/death moments, UI ornaments. Every piece passes the gate (≥ 8.0) | 34 | A3 | Every art piece ≥ 8.0 in `docs/systems/ui-review.md` |
-| A4-1 ✅ | (built 2026-09-27, revised on user feedback: realms must be wildly different; as-built art-engine.md → "Realm variants"; **accepted by the user** after cycle 2: "perfect") **Cultivator in every realm**: 7 ink sprite states (new `severing` + `ascended`): shirtless Mortal peasant → QC robe (no halo) → Foundation halo + formation → Core floating + golden core + baby Qi dragon → Nascent Soul 2 young dragons + lotus + ribbons → Spirit Severing grown dragons + flying-sword fan + sun halo → Ascension 3 golden dragons + celestial robe + heaven's pillar. A4-2 beasts ✅ (10 baked beasts + variants, 2026-09-28). **A4-3 realm backgrounds/ambience + death moment ✅ built 2026-09-28** (a journey upward, every background moving: dusk paddies → moonlit grasslands → the foot of a snow mountain → snow peaks + cranes → in the clouds → above the turning earth → among the stars; the figure dissolves into ash, or rises as gold light on Ascension; art-engine.md → "Realm scenery + death moment"; awaiting the user). Next: A4-4 Ink default + sprite emoji lint. Idea: dragons could also grow per layer (early/mid/late) inside a realm | 34 | A3-2 | User accepts the realm sheet |
+| A4-1 ✅ | (built 2026-09-27, revised on user feedback: realms must be wildly different; as-built art-engine.md → "Realm variants"; **accepted by the user** after cycle 2: "perfect") **Cultivator in every realm**: 7 ink sprite states (new `severing` + `ascended`): shirtless Mortal peasant → QC robe (no halo) → Foundation halo + formation → Core floating + golden core + baby Qi dragon → Nascent Soul 2 young dragons + lotus + ribbons → Spirit Severing grown dragons + flying-sword fan + sun halo → Ascension 3 golden dragons + celestial robe + heaven's pillar. A4-2 beasts ✅ (10 baked beasts + variants, 2026-09-28). **A4-3 realm backgrounds/ambience + death moment ✅ built 2026-09-28** (a journey upward, every background moving: dusk paddies → moonlit grasslands → the foot of a snow mountain → snow peaks + cranes → in the clouds → above the turning earth → among the stars; the figure dissolves into ash, or rises as gold light on Ascension; art-engine.md → "Realm scenery + death moment"; **accepted by the user** 2026-09-28). **A4-4 Ink default + sprite emoji lint ✅ 2026-09-28** (Ink is the Sprite art default, old Classic-default saves move once with a log line; Classic sprites ⚡ → ϟ, ☯ → ◎; `npm test` lints assets/sprites/ too; reviewer 8.0). Next: A5. Idea: dragons could also grow per layer (early/mid/late) inside a realm | 34 | A3-2 | User accepts the realm sheet |
 | A4-2 ◐ | (built 2026-09-28; as-built art-engine.md → "Beasts"; **awaiting the user's look**) **Beasts in ink**: `INK_BEASTS` (Spirit Fox, Thunder Eagle, Void Hound) as animated portraits on the Roam → Beasts encounter + companion cards (`BeastPortraits`, pooled canvases); engine gains art tables, swinging tail/wing layers, lightning, rift; Classic keeps the ASCII sprite with all frames (fixes the 1.8c frame-0 bug). Later ideas: portraits grow with beast level (the fox's tail count), combat poses in A6 | 34 | A4-1 | User accepts the beast sheet |
 | A6 | **Combat page (Phase 35)** (user 2026-09-27): a full-window battle scene on the hybrid engine — your cultivator on one side, a beast/duelist on the other, animated attack/parry/guard/feint exchanges. Reuses the fight card's rules & odds (`FIGHT_TACTICS`/`FIGHT_STYLE`/`_powerChance`/`_exchangeChance`), generalizes `f.fight` to non-family opponents, and adds combat art + animation passes. Reached from a Beast Hunt / Arena entry; duels, tournaments and bosses route in. **Expeditions keep auto-resolving** | 35, 34 | A4 | A battle plays out animated in every layout mode; outcome hooks (health/karma/beasts) verified; gate ≥ 8.0 |
 | A7 | **Sect base scene (Phase 38A)** (user 2026-09-27): a large, **view-only** landscape diorama of your sect compound that grows with `buildings` / `hallLevel` / disciples / fame, on the hybrid engine's new **scene layer** (background + placed building parts + ambient effects; scaffold from the bakeoff's `drawC`). Build/upgrade still happens in the existing rows | 38A, 34 | A4 | Scene reflects live sect state in every layout mode; each building part + the whole scene pass the gate ≥ 8.0 |
-| A5 | **Appearance at creation and rebirth** (Phase 39C, user 2026-09-27): an "Appearance" step when you create a character AND at every reincarnation / rebirth as a descendant: pick **face, hair, robe** (from unlocked robes) with a live ink preview; new characters start from a random roll, heirs from a blend of their parents' looks, always overridable (player choice, never rolled for you). Face + hair are fixed for that life; robe + effect can be changed any time in the new **Wardrobe** (Path → Character) | 34, 39 | A4, 2.6 | Choose at creation + every rebirth; saves store the look per life; wardrobe works in every layout mode |
-| A8 | **Effect unlocks** (Phase 39D): effects (aura, halo style, mote style) are unlocked by **cultivation level** (each realm opens one), **Arts** (Techniques now; Secret Arts from 7.11 each grant a matching effect) and **cultivation path** (39A: Virtuous / Neutral / Demonic sets). The player picks the active effect from the unlocked set in the Wardrobe; unlocks persist across lives in the clan's Ancestral Wardrobe | 34, 39, 23E | A5 | Every unlock source grants its effect; locked effects show how to earn them |
-| A9 | **Robe unlocks by standing** (Phase 39E): new robes for becoming **family head, clan head, sect leader** (founder or risen), sect ranks (Inner Disciple, Elder), path robes, and **Heavenly Rankings** placings (in-world boards, 4.8): Top 10 and #1 of each board. Unlock toast + Wardrobe dot; kept across lives | 39, 28J | A5 (rankings part after 4.8) | Each standing grants its robe once; the Wardrobe shows how every locked robe is earned |
-| A10 | **Inspect a person** (Phase 39F): click any named person (spouse, child, clan, sect, rival, ranking row) → a card with their **ink portrait**. NPCs roll a random face/hair/robe at creation (heirs from their parents) and always show the **highest effect** their realm/arts/path unlock (derived, not stored) | 39, 28 | A5 (family/clan/sect persons now; everyone once M4 lands) | Portrait renders in every layout mode; cached per person; < 5 ms per card |
 
 > **Priority change (2026-09-26, user):** 1.7–1.9 jump ahead of M2 task 2.8. The game now has many systems the
 > player can't read or interact with well, and the main interaction happens in the smallest part of the window.
@@ -172,7 +183,7 @@ When an older design section below conflicts with these, the pillars win. The se
 > tuning are batched into QA & Balance tasks like 1.9 and 2.8. **Order: 1.8a (audit) ✅ → 1.7 (layout modes) ✅ → 1.7b
 > (banner quick actions) ✅ → 1.8c (visual review + art audit) ✅ → A2 art bake-off ✅ (hybrid) → 1.8b (UI
 > overhaul + family agency + 1.8d custom icon set + UI emoji/symbol purge/lint, A1 folded in) → 1.9 → A3 hybrid art
-> engine → A4 re-art (+ sprite lint) → A5 appearance at creation/rebirth → A8 effect unlocks → A9 robe unlocks (standing part) → A10 inspect portraits → A6 combat page (Phase 35) → A7 sect base scene (Phase 38A) → 2.8.** Phase 39's path choice (3.2b–c) lands in M3 with the alignment meter (user 2026-09-27). The
+> engine → A4 re-art (+ sprite lint) ✅ → **40a Soul Points → 40b Immortal cinematic + v1 screen** → A6 combat page (Phase 35) → A7 sect base scene (Phase 38A) → 2.8.** (2026-09-28, user: A5/A8/A9/A10 appearance + portraits moved to v2, after M7.) Phase 39's path choice (3.2b–c) lands in M3 with the alignment meter (user 2026-09-27). The
 > **auction house (Phase 36)** and **party combat (Phase 37)** come after M4's living-world persons, and the
 > **Immortal Island scene (Phase 38B)** lands in M7 after Phase 26 — the new systems are built phase-by-phase
 > rather than as one bundle (user 2026-09-27). A2/A1 go before 1.8b so the overhaul is
@@ -181,7 +192,17 @@ When an older design section below conflicts with these, the pillars win. The se
 > The old optional task "Immortal ladder filled by Qi (23D-lite)" was cut. The M2 Ascended-Ancestor ending
 > (task 2.7) fixes the dead zone in a way that fits the pillars.
 
-### M2 — The Life Loop (lifespan, heirs, meta progression)
+### v1 finish — Phase 40: Soul Points, the Immortal Ascension & the v1 screen (user 2026-09-28)
+
+Spec: `docs/systems/soul-points.md` (depth + UX pass included). User decisions: points only from failed Ascension
+Trials + Immortality; they buy Qi gathering only (Soul Resonance); after the v1 screen play continues.
+
+| # | Task | Phase | Needs | Done when |
+|---|---|---|---|---|
+| 40a ✅ | **Soul Points core** (built 2026-09-28; UI gate 7.7 PASS; as-built in soul-points.md — the v1 +500 / later +150 Immortal grants landed here too, only their screen is 40b): `assets/data/soul.js`; the cross-save soul record (`soul.json` IPC in main.js/preload.js **and** platform-storage.js, Rule 7); earn on a failed Trial (20 + 0.5 per % of the shown odds); **Soul Resonance** +5% Qi/s per rank (max 20, cost 25 × 1.35^rank) as a breakdown term; the Soul screen (charselect button + Kin → Hall card), death-card line, first-time toast + dot; `checks/soul.js`; the sim bot spends ranks | 40 | 2.7 | Points survive slot delete + reload; exactly one grant per Trial; Qi/s breakdown names the term; visual gate ≥ 7.5 in every layout mode |
+| 40b ✅ | **Immortal Ascension cinematic + finish screen** (built 2026-09-28; the screen says "You have finished your race to immortality", never a version (user); finish screen UI gate 7.75 PASS; cinematic 7.7 → 7.8 by agents, then accepted by the user; as-built in soul-points.md): a ~9 s full-window ink scene on a successful Trial (tribulation clouds, three bolts, the figure rises, dragons spiral the pillar, the heavenly gate opens, white-gold flash; skippable; Reduced motion = 2 s fade), then the first-ever Immortality's **"Congratulations, you have finished v1"** screen (+500 Soul Points, stats, "The Immortal Realms open in v2", Spend / Continue) or a short card for later Immortals (+150). Smoke `scenarios/immortal.js` | 40, 34 | 40a, A4 | Cinematic ≥ 8.0 (asset gate), screen ≥ 7.5 (UI gate); plays in every layout mode; frame ≤ 6 ms; v1 grant fires once per install |
+
+### M2 — The Life Loop (lifespan, heirs, meta progression) — v1
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
@@ -200,7 +221,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 2.7 ✅ | **Ancestral Hall + Clan Legacies** (plan reconciled 2026-09-26 with the 2.6 world/clan model — see clan-succession.md §2.7; sub-tasks 2.7a–f all built): family tree view (reads world.pastLives/persons), Ancestral Merit earned per life onto the real Clan object, unlocks (heirlooms, family manual, clan legacies — sect_continuity cut, already free via 2.6d), **ancestral catch-up**, **Ascended Ancestor** ending (attemptAscension() routes through `_die`/the interlude instead of leaving the character idle at the stub stage — confirmed fixed: active's life count over 200h went ~10 → 163). Cuts Phase 8's Dao Seeds | 31, 8, 18B | 2.6 | Gen 2+ reaches the family best faster; the sim's post-Ascension dead zone is gone; bot spends Merit |
 | 2.8 | **QA & Balance (M2)**: tuning pass: generations to first Ascension ~3–5, meta progression feels meaningful, Merit sinks | 30, 31 | 2.7 | `npm run sim` 500h+ horizon: first Ascension ≈ 40–80h casual |
 
-### M3 — Character foundation (the rolls every generation and NPCs reuse)
+### M3 — Character foundation (the rolls every generation and NPCs reuse) — v1
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
@@ -212,7 +233,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 3.4 | Dao Paths | 7A | 3.2 | Path chosen at Foundation Building |
 | 3.5 | Heavenly Tribulation (+ wire it as a 23A health-damage source) | 7C | — | Tribulation animation passes Asset Pipeline; bot faces it |
 
-### M4 — The Living World (foundation for M5–M7)
+### M4 — The Living World (foundation for M5–M7) — v1
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
@@ -231,7 +252,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 4.12 | **Auction House & Crates** (Phase 36; user 2026-09-27): buy themed crates with Spirit Stones, open for a random weighted result — a Beast Crate yields a random-quality tamed beast, a Slave Crate yields a person who can join your sect or party (a woman can be courted/married into the family). Adds `gender` to the person record | 36 | 4.2, 2.5 | Crates buy + open in sim; beast/person quality distribution verified; `gender` migration safe |
 | 4.13 | **Party System & Party Combat** (Phase 37; user 2026-09-27): a party of up to 6 (you + 5); fights become 6 vs N. Recruit sect members, slaves, family and people met on explorations/missions | 37 | 4.12, A6 (35), M6 family | Party roster ≤ 6, only living members; party fight resolves in every layout mode; bot fields a party in sim |
 
-### M5 — Deep Sect Management
+### M5 — Deep Sect Management — v1
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
@@ -241,7 +262,7 @@ When an older design section below conflicts with these, the pillars win. The se
 | 5.4 | Disciple lifecycle: loyalty, ranks, defection, sect policies, tournaments (cohort encounters). **Clan sect succession**: your heir inherits the sect | 27D, 31 | 5.3 | Defections/succession appear in Chronicle |
 | 5.5 | Sect-war upgrade: wars against real NPC sects with named champions (replaces rival name pools). Standing orders still apply | 5B/5C + 28D + 32 | 5.4 | Old war invariants still hold |
 
-### M6 — Family depth (upgrades M2's lite family to living-world persons)
+### M6 — Family depth (upgrades M2's lite family to living-world persons) — v1
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
@@ -250,7 +271,10 @@ When an older design section below conflicts with these, the pillars win. The se
 | 6.3 | Family Technique + Ancestral Visions | 18D–E | 2.7 | — |
 | 6.4 | Cross-slot **Hall of the Fallen** (tombstones of lines that ended) | 18A, 20A | 2.7 | IPC on both platforms (Rule 7) |
 
-### M7 — The Immortal Era (where long play belongs)
+### M7 — The Immortal Era (where long play belongs) — **v2**
+
+> **v2** (user 2026-09-28). v1 ends at the first Immortality (Phase 40's v1 screen). Everything in this milestone,
+> plus the appearance/portrait art tasks below, is the post-Immortal update.
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
@@ -268,7 +292,16 @@ When an older design section below conflicts with these, the pillars win. The se
 | 7.12 | Immortal Ranking (仙榜) | 28J | 7.1 | — |
 | 7.13 | **Immortal Island scene (Phase 38B)** (user 2026-09-27): a large top-down island map — tiers reshape the landmass (6×6 → 18×18), each building renders its tile with level 1–5 variants; same scene layer as 38A | 38B, 26, 34 | 7.7 | Scene reflects the plot grid + building levels; gate ≥ 8.0 |
 
-### M8 — World flavor & polish
+#### v2 art track: appearance, effects, robes, portraits (Phase 39C–F; moved from the art track 2026-09-28)
+
+| # | Task | Phase | Needs | Done when |
+|---|---|---|---|---|
+| A5 | **Appearance at creation and rebirth** (Phase 39C, user 2026-09-27): an "Appearance" step when you create a character AND at every reincarnation / rebirth as a descendant: pick **face, hair, robe** (from unlocked robes) with a live ink preview; new characters start from a random roll, heirs from a blend of their parents' looks, always overridable (player choice, never rolled for you). Face + hair are fixed for that life; robe + effect can be changed any time in the new **Wardrobe** (Path → Character) | 34, 39 | A4, 2.6 | Choose at creation + every rebirth; saves store the look per life; wardrobe works in every layout mode |
+| A8 | **Effect unlocks** (Phase 39D): effects (aura, halo style, mote style) are unlocked by **cultivation level** (each realm opens one), **Arts** (Techniques now; Secret Arts from 7.11 each grant a matching effect) and **cultivation path** (39A: Virtuous / Neutral / Demonic sets). The player picks the active effect from the unlocked set in the Wardrobe; unlocks persist across lives in the clan's Ancestral Wardrobe | 34, 39, 23E | A5 | Every unlock source grants its effect; locked effects show how to earn them |
+| A9 | **Robe unlocks by standing** (Phase 39E): new robes for becoming **family head, clan head, sect leader** (founder or risen), sect ranks (Inner Disciple, Elder), path robes, and **Heavenly Rankings** placings (in-world boards, 4.8): Top 10 and #1 of each board. Unlock toast + Wardrobe dot; kept across lives | 39, 28J | A5 (rankings part after 4.8) | Each standing grants its robe once; the Wardrobe shows how every locked robe is earned |
+| A10 | **Inspect a person** (Phase 39F): click any named person (spouse, child, clan, sect, rival, ranking row) → a card with their **ink portrait**. NPCs roll a random face/hair/robe at creation (heirs from their parents) and always show the **highest effect** their realm/arts/path unlock (derived, not stored) | 39, 28 | A5 (family/clan/sect persons now; everyone once M4 lands) | Portrait renders in every layout mode; cached per person; < 5 ms per card |
+
+### M8 — World flavor & polish — v1
 
 | # | Task | Phase | Needs |
 |---|---|---|---|
@@ -2097,6 +2130,8 @@ Split into **38A (sect base, after A4)** and **38B (island, after Phase 26)**.
   may disown you; your sect may expel or welcome you; a rival gloats; a Chronicle line records it.
 - Once per life. **Every reincarnation chooses a path fresh at Core.**
 
+> **39C–F are v2** (user 2026-09-28): appearance, effect/robe unlocks and portraits wait for the post-Immortal update.
+
 ### 39C — Appearance at creation and rebirth (task A5)
 - An **Appearance** step at character creation and at every reincarnation / rebirth as a descendant: face, hair and
   robe from the unlocked sets, live ink preview. Defaults: random for a new character; for an heir, a blend of the
@@ -2455,7 +2490,7 @@ Disciples slowly cultivate on their own between sessions.
 
 ---
 
-# M7 — The Immortal Era
+# M7 — The Immortal Era (v2)
 
 > Roadmap tasks 7.1–7.12. Phase 23 (A–C built, D–E planned) opens this milestone.
 
@@ -2895,6 +2930,22 @@ It unlocks at the first Immortal stage and is the long-term "tech tree" of the I
 | Scholar's Path (问道) | Neutral | +Enlightenment; Library output + |
 
 - New files: `assets/data/doctrine.js`, `renderer/game/doctrine.js`, `docs/systems/doctrine.md`.
+
+---
+
+# v1 finish — Phase 40
+
+## Phase 40 — Soul Points & the v1 finish (魂) *(user request 2026-09-28)*
+
+Full spec (state, API, numbers, depth pass, UX pass, cinematic beats): **`docs/systems/soul-points.md`**. Summary:
+- **Soul Points** are per install (every save slot shares them), earned only when an Ascension Trial fails
+  (20 + 0.5 per % of the odds shown, so a well-prepared failure pays more) and on Immortality (+500 the first time
+  ever = the v1 finish; +150 after that).
+- They buy **Soul Resonance**: +5% Qi/s per rank, max 20 ranks, rising cost. Explicit per-rank clicks, never auto-spent.
+  A recorded exception to pillar 3 (a multiplier, kept modest and capped); Ancestral Merit stays the per-clan unlock meta.
+- A successful Trial plays the **Immortal Ascension cinematic** (full window, ink engine, skippable), then the first
+  time the **"Congratulations, you have become Immortal. You have finished v1 of Cultivator Idle."** screen. Play then
+  continues through the Ascended Ancestor flow (31F) until v2 makes Immortals playable.
 
 ---
 

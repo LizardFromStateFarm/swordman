@@ -141,9 +141,21 @@
       <p>Assembles <code>www/</code> from <code>renderer/</code> and <code>assets/</code>. This folder is the web bundle
       that both mobile shells load. Run it after any change to <code>platform-storage.js</code> or the <code>main.js</code> IPC.</p></div>
     <div class="cmd"><div class="cmd-head"><code>npm run release</code><button class="copy">Copy</button></div>
-      <p>The all-in-one ship script: <code>npm test</code>, then <code>dist</code>, then an iOS sync, then
-      <b>git commit + push</b>, then a Codemagic TestFlight build (only if <code>CODEMAGIC_API_TOKEN</code> and
-      <code>CODEMAGIC_APP_ID</code> are set). If any step fails, the script stops before committing.</p></div>
+      <p><b>The all-in-one ship script.</b> Runs <code>npm test</code> + <code>npm run checks</code>, builds the
+      Windows portable app, builds + uploads the Android <code>.aab</code>, syncs the iOS web bundle, triggers the
+      Codemagic TestFlight build, and creates a GitHub Release with the Windows zip attached. It knows what it can
+      build locally and what it can't — a step with no credentials prints <code>SKIPPED</code> and the rest still runs.
+      <b>It never commits or pushes your code.</b></p>
+      <p>Partial runs: <code>npm run release -- --only=win</code> (steps: <code>checks,win,android,ios,github</code>),
+      <code>--skip-checks</code>, <code>--version=0.2.0</code>, <code>--notes="what changed"</code>.</p></div>
+    <div class="table-wrap"><table>
+      <tr><th>Variable</th><th>Unlocks</th></tr>
+      <tr><td><code>GITHUB_TOKEN</code></td><td>The GitHub Release + Windows zip upload (PAT with the <code>repo</code> scope)</td></tr>
+      <tr><td><code>PLAY_SERVICE_ACCOUNT_JSON</code></td><td>The Google Play internal-track upload</td></tr>
+      <tr><td><code>CODEMAGIC_API_TOKEN</code> + <code>CODEMAGIC_APP_ID</code></td><td>The iOS TestFlight build on Codemagic's free macOS runners</td></tr>
+    </table></div>
+    <pre>$env:GITHUB_TOKEN="ghp_REPLACE"; $env:PLAY_SERVICE_ACCOUNT_JSON="$PWD\google-play-service-account.json"; npm run release</pre>
+    <div class="note">Full reference — steps, flags, versioning, credentials, gotchas: <code>docs/systems/release.md</code>.</div>
   </section>
 
   <section id="android">

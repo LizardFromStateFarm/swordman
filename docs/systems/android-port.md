@@ -10,6 +10,9 @@ Goal: one local command (`npm run release:android`) that builds a signed **App B
 Google Play **internal testing track**, so friends install the beta from a Play opt-in link and get auto-updates.
 It mirrors `scripts/release.js` (iOS → TestFlight) rather than inventing a new pattern; see `ios-port.md`.
 
+**Ship everything at once with `npm run release`** — it runs this same Android script as its step 3, alongside the
+Windows build, the iOS TestFlight trigger and the GitHub Release. `docs/systems/release.md` is the reference.
+
 ## State
 
 No game state changes. This is a platform/build layer only. The Android shell uses the same
@@ -24,7 +27,7 @@ No game state changes. This is a platform/build layer only. The Android shell us
   macOS/Linux). Produces `android/app/build/outputs/bundle/release/app-release.aab`.
 - `npm run release:android` — `scripts/release-android.js`: `npm test` → `build:web` + `cap sync android` → Gradle
   bundle (skipped cleanly with no Android SDK) → upload to Play (skipped cleanly with no service-account key).
-  **It does not commit, push, or trigger CI** — unlike `release.js` — so it's safe to run alongside other work.
+  **It does not commit or push** — so it's safe to run alongside other work.
 
 ### Environment variables
 

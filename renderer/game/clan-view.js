@@ -203,12 +203,12 @@ class HallView extends KinViewBase {
     if (!clan) {
       this.el.innerHTML = `<div class="fam-view kin-view"><div class="fam-col"><section class="fam-card alone">
         <div class="fc-head"><span class="fc-glyph dim" data-icon="lineage"></span><div class="fc-id"><div class="fc-name">No hall stands for you</div>
-        <div class="fc-sub">An orphan has no ancestors to honor, and no clan to leave anything to.</div></div></div></section></div></div>`
+        <div class="fc-sub">An orphan has no ancestors to honor, and no clan to leave anything to.</div></div></div></section>${this._soul()}</div></div>`
       return
     }
     const own = clan === this._clan(s)
     this.el.innerHTML = `<div class="fam-view kin-view">
-      <div class="fam-col">${this._records(s, clan)}${own ? this._thisLife(s) + this._firsts(clan) : ''}${this._tree(s, clan)}${this._chronicle(clan)}</div>
+      <div class="fam-col">${this._records(s, clan)}${this._soul()}${own ? this._thisLife(s) + this._firsts(clan) : ''}${this._tree(s, clan)}${this._chronicle(clan)}</div>
       <div class="fam-col">${own ? this._legacies(clan) : ''}</div></div>`
     this._paint()
   }
@@ -224,6 +224,17 @@ class HallView extends KinViewBase {
         <div class="ht minor"><span class="ht-k">Furthest realm</span><span class="ht-v">${h.esc(stageShortName(clan.bestStageIndex))}</span></div>
         ${clan.ascendedAncestors ? `<div class="ht wide"><span class="ht-k">Ascended Ancestors</span><span class="ht-v jade">${clan.ascendedAncestors} · +${Math.round(Math.min(ANCESTOR_BLESSING_QPS_MAX, clan.ascendedAncestors) * ANCESTOR_BLESSING_QPS * 100)}% Qi for every heir</span></div>` : ''}
       </div></section>`
+  }
+
+  // Phase 40: the cross-save Soul (soul-points.md). Its door in the Hall; the screen itself is SoulView (an overlay).
+  _soul() {
+    const i = this.gs.soulInfo(), h = this.h
+    const pct = Math.round(i.perRank * i.resonance * 100)
+    const eff = i.earned
+      ? `<span class="cost">${h.fmt(i.points)} Soul Points</span> · <span class="nw">Resonance +${pct}% Qi</span>${i.canSpend ? ' · <span class="soul-rdy">a rank is ready</span>' : ''}`
+      : 'Shared by every save slot. Fall at the Ascension Trial and the soul keeps an ember.'
+    return `<button class="fa-btn wide soul-door${i.earned && !i.seen ? ' fresh' : ''}" data-ca="soul">
+      <span class="fa-g">${Icon.g('soul')}</span><span class="fa-t"><span class="fa-n">The Soul Remembers</span><span class="fa-e">${eff}</span></span></button>`
   }
 
   // What this life adds to the ledger when it ends (the real formula, via meritPreview()).
@@ -321,6 +332,7 @@ class HallView extends KinViewBase {
 
   _click(e) {
     const buy = e.target.closest('[data-buy]'), man = e.target.closest('[data-manual]')
+    if (e.target.closest('[data-ca="soul"]')) return this.h.openSoul()
     if (buy && !buy.disabled) {
       const r = this.gs.buyLegacy(buy.dataset.buy)
       if (r.ok) this.h.flash(`${CLAN_LEGACIES[buy.dataset.buy].name} rises to level ${r.level}.`, 'special')

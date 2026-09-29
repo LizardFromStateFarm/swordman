@@ -95,6 +95,8 @@ const UI_ICONS = {
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   ring: '<circle cx="12" cy="12" r="5"/>',
   heir: '<path d="M12 3c.8 5 2 6.4 7 7.5-5 1.1-6.2 2.5-7 7.5-.8-5-2-6.4-7-7.5 5-1.1 6.2-2.5 7-7.5z"/><path d="M18.5 17.5v3M17 19h3" opacity=".6"/>',
+  // Phase 40: Soul Points — an orb with an ember core, wisps rising off it
+  soul: '<circle cx="12" cy="15.5" r="5.5"/><circle class="f" cx="12" cy="15.5" r="1.7"/><path d="M12 10c-.2-2.6 1.8-3.4 1.4-6.5M8.6 11.3c-1-1.7-.3-3.3-1-5.2M15.6 11.4c1.1-1.3 2.6-1.8 2.6-3.9" opacity=".7"/>',
 
   // ── Ornament ─────────────────────────────────────────────────────────────────────────────────
   taiji:    '<circle cx="12" cy="12" r="9"/><path d="M12 3a4.5 4.5 0 0 1 0 9 4.5 4.5 0 0 0 0 9"/><circle cx="12" cy="7.5" r="1.2"/><circle class="f" cx="12" cy="16.5" r="1.3"/>',

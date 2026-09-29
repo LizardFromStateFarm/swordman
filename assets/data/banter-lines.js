@@ -1,6 +1,6 @@
 // BANTER_LINES — what the cultivator says, per personality × trigger, plus a shared generic pool (Phase 29).
 // Used by renderer/game/banter.js; sim checks for holes (scripts/sim/metrics.js). Brief: docs/systems/banter-writing-guide.md.
-// 1695 lines (116 for `married`/`child_born`, M2 task 2.5; the 58 `twilight` lines were removed with twilight, 2026-09-26).
+// 1753 lines (58 `soul_remembers`, Phase 40a; 116 for `married`/`child_born`, M2 task 2.5; the 58 `twilight` lines were removed with twilight, 2026-09-26).
 // Tokens: {name} {stage} anywhere; {item} rare_drop; {hours} welcome_back; {enemy} {sect} war_*; {spouse} married; {child} child_born.
 
 const BANTER_LINES = {
@@ -94,6 +94,10 @@ const BANTER_LINES = {
       "The Ascension Trial. Immortality or death. No pressure. None at all. Fuck.",
       "Heaven itself wants to test me. Bold of Heaven, honestly.",
       "Become immortal or die trying. The novels make this look so easy.",
+    ],
+    soul_remembers: [
+      "Something in me is warm that shouldn't be. Like an ember someone else left burning.",
+      "My Qi flows easier than it has any right to. As if I've walked this road before, and fallen off the end.",
     ],
     welcome_back: [
       "{hours} hours away! I cultivated the whole time. Mostly. Some of it was staring.",
@@ -240,6 +244,12 @@ const BANTER_LINES = {
       "If I die, carve 'He was too good for this world' on my tomb. In gold. Big letters.",
       "Immortals, prepare a seat. Front row. Cushioned. Not a peasant cushion.",
       "I am not scared. My knees are shaking in respect. Different thing.",
+    ],
+    soul_remembers: [
+      "I feel a memory of standing at Heaven's Gate. Naturally. Where else would someone like me stand?",
+      "My soul has done this before. It failed once, which is Heaven's mistake, and Heaven will correct it.",
+      "The Qi bows to me faster this time. As it should. It remembers who I am even if I don't.",
+      "A past life fell at the Trial? Then that life was merely a rehearsal for this one.",
     ],
     welcome_back: [
       "{hours} hours. You abandoned your young master for {hours} hours. Explain yourself.",
@@ -393,6 +403,12 @@ const BANTER_LINES = {
       "I'll go in. Eventually. After I've checked it for traps. For a century or so.",
       "Is there a way to ascend by hiding? A Dao of Lurking? I would be SO good at that.",
     ],
+    soul_remembers: [
+      "I remember... falling. From very high. Lightning. I'm never climbing anything again. Probably.",
+      "My soul carries a scar from the Trial. It's telling me to run. My soul is wise.",
+      "The Qi comes easier now. Suspicious. Is this the heavens fattening me up for the next strike?",
+      "Something in me survived the lightning. Hid, most likely. Good. That's the part of me I trust.",
+    ],
     welcome_back: [
       "{hours} hours gone! I assumed you'd been eaten. I hid, just in case it's contagious.",
       "You're back! Nobody attacked in the last {hours} hours. I checked. Constantly.",
@@ -545,6 +561,12 @@ const BANTER_LINES = {
       "Other people prepare for years. I'M PREPARING BY YELLING AT IT. AAAAH! READY!",
       "If I die, bury me mid-punch! FACING THE SKY! SO IT KNOWS!",
     ],
+    soul_remembers: [
+      "I DON'T REMEMBER THE TRIAL BUT MY SOUL IS STILL ANGRY ABOUT IT! REMATCH, HEAVEN!",
+      "MY QI IS FASTER! MY SOUL LEVELED UP! I DIED AND GOT STRONGER! BEST DEAL EVER!",
+      "Lightning struck me down last time?! GOOD! Now I'm lightning-PROOF! Probably! LET'S FIND OUT!",
+      "I can feel an ember in my chest! It's saying ONE MORE TIME! I AGREE WITH MY EMBER!",
+    ],
     welcome_back: [
       "YOU'RE BACK! {hours} HOURS! I SAT HERE THE WHOLE TIME! MY LEGS ARE ASLEEP! AND ANGRY!",
       "{hours} hours! I did {hours} thousand push-ups! Or {hours}! SOMETHING WITH {hours}!",
@@ -696,6 +718,12 @@ const BANTER_LINES = {
       "Can I pay someone to take the Ascension Trial for me? ...No, I can't. I won't pay.",
       "If I die in the trial, who inherits my stones? Nobody. Burn them with me. Every one.",
       "Immortals live forever. That's forever without spending. The dream. The fucking dream.",
+    ],
+    soul_remembers: [
+      "I died at the Trial and my soul kept the receipt. Finally, a death that paid out.",
+      "Soul Points. Points! Carried over! No tax, no fee, no sect cut. The heavens can be reasonable.",
+      "My Qi flows faster. A return on a past investment. Past me was a fool, but a profitable one.",
+      "Something survived the lightning. Of course it did. I never leave anything behind.",
     ],
     welcome_back: [
       "{hours} hours away! I earned idle Qi the whole time. Free money. Never leave again. Or do.",
@@ -850,6 +878,12 @@ const BANTER_LINES = {
       "Immortality awaits. Eternal life. Eternal snacks. I hope. Please let there be snacks.",
       "The trial could kill me. Then let me go out full. No one should die hungry.",
     ],
+    soul_remembers: [
+      "I remember the Heavenly Gate. It smelled like peaches. I didn't get any. Next time.",
+      "My soul is warm, like a bun fresh from the steamer. A bun that was struck by lightning.",
+      "The Qi goes down easier this life. Like soup. My soul has pre-chewed the Dao for me.",
+      "I fell at the Trial and all I kept was an ember. An ember is basically cooking. I'll take it.",
+    ],
     welcome_back: [
       "{hours} hours! I've eaten everything in the cave. The rocks are next.",
       "You were gone {hours} hours. I counted by meals. There were many meals.",
@@ -1002,6 +1036,12 @@ const BANTER_LINES = {
       "To ascend! To dance among the stars! To possibly explode! Poetry was always risky.",
       "The heavens await me like an old lover. The kind that throws lightning.",
       "My final verse before the trial: 'Please, oh please, oh please.' It's minimalist.",
+    ],
+    soul_remembers: [
+      "Once I rose toward the Gate, and the sky said no. Now my Qi sings of it, softly, in every breath.",
+      "An ember of a fallen life glows in me. I shall call it Sorrow. It helps me cultivate. How fitting.",
+      "The lightning took my body but not my longing. Longing, it turns out, is excellent for Qi flow.",
+      "I remember nothing but the fall. A whole life, and the sky kept only its last verse. Beautiful.",
     ],
     welcome_back: [
       "{hours} hours! I thought thou hadst perished. I wrote thy eulogy. It's very good. Shall I read it?",
@@ -1158,6 +1198,12 @@ const BANTER_LINES = {
       "Ascension. The heavens will try to kill me. They're welcome to try.",
       "I've awaited this trial for centuries. I feel… nothing. As planned.",
     ],
+    soul_remembers: [
+      "Previous life: struck down at the Trial. This life: Qi flows five percent better. Acceptable trade.",
+      "There is an ember in my soul. It is warm. I have no feelings about this.",
+      "My soul remembers failure. It is quiet about it. So am I.",
+      "Lightning killed me once. I have learned from this. Mostly to stand further from lightning.",
+    ],
     welcome_back: [
       "You were gone {hours} hours. I did not notice. I noticed.",
       "{hours} hours. The cave collapsed twice. I rebuilt it once.",
@@ -1311,6 +1357,12 @@ const BANTER_LINES = {
       "Immortality or death. A true Demon Lord fears neither! …My hands shake from excitement.",
       "Tribulation lightning shall be my crown! My dark, crackling, extremely painful crown!",
       "If I die, let it be known I died looking cool. Someone write 'looking cool' down.",
+    ],
+    soul_remembers: [
+      "The heavens struck me down! And yet my soul returns STRONGER! Tremble, sky! This is only my second form!",
+      "An ember of my past defeat burns within! It is not humiliation! It is FUEL!",
+      "Heaven's Gate refused the Demon Lord! Wise of it! Next time I will not knock!",
+      "My soul remembers the lightning. My soul has sworn revenge. My soul and I are in total agreement.",
     ],
     welcome_back: [
       "You return after {hours} hours! Minion! Report! …Where were you? I was lonely. Bored! Bored.",
@@ -1466,6 +1518,12 @@ const BANTER_LINES = {
       "Immortality means an eternity of people plotting against me. Fine. I'll plot longer.",
       "If the Heavenly Dao wants me dead, it has to get past my 400 layers of precautions. And the moat.",
     ],
+    soul_remembers: [
+      "My Qi flows faster this life. Who arranged this? What do they want? I'll find out.",
+      "I remember the Trial. The lightning was aimed. Lightning is never an accident.",
+      "My soul kept something from my last death. Or someone put it there. Either way, I'm watching it.",
+      "An ember in my chest. Warm. Friendly. Exactly what a trap would feel like.",
+    ],
     welcome_back: [
       "You left me for {hours} hours. Where were you? Who were you talking to? Show me your hands.",
       "{hours} hours gone and you come back smiling? Who replaced you? Say something only you would know.",
@@ -1617,6 +1675,12 @@ const BANTER_LINES = {
       "Immortality? At my age? My knees won't survive the stairs to Heaven.",
       "In my day the Ascension Trial had nine hundred steps and a dragon. Now it's one button. Soft.",
       "If I die in there, I'm filing a complaint. With whom? Doesn't matter. I'll find someone.",
+    ],
+    soul_remembers: [
+      "Died at the Trial last time. Back in my day we died properly and stayed dead. Soft, these heavens.",
+      "My soul remembers the lightning. My knees remember it too. My knees remember everything.",
+      "Qi flows easier this life. Hmph. Nobody gave ME an ember when I was starting out. Oh. They did.",
+      "Heaven's Gate was closed, last time. Closed! In my day, you could just walk in. Probably.",
     ],
     welcome_back: [
       "{hours} hours. Took your sweet time. I aged. I was already aged. Now I'm aged-er.",
@@ -1773,6 +1837,12 @@ const BANTER_LINES = {
       "I'll take the trial. Eventually. Heaven's waited ten thousand years, it can wait one more nap.",
       "Do I have to face my inner demons? Mine are asleep. Let's not wake them.",
     ],
+    soul_remembers: [
+      "My soul did the hard part last life and kept the progress. This is the kind of saving I respect.",
+      "Died at the Trial. Came back with faster Qi. So dying is a shortcut. Noted. Not trying it on purpose.",
+      "An ember in my soul is doing some of the cultivating for me. Finally, an employee.",
+      "I remember falling off Heaven. Long way down. Took a nap on the way, I think.",
+    ],
     welcome_back: [
       "{hours} hours? Oh, you left? Didn't notice. I was asleep.",
       "Welcome back. Got so much done in {hours} hours. Mostly lying down. Really quality lying down.",
@@ -1925,6 +1995,12 @@ const BANTER_LINES = {
       "If I become immortal, I'll finally have time to write back to everyone. So many letters.",
       "The Heavens are testing me. I studied! I made flashcards! One of them just says 'don't die'.",
       "Scared? A little. But I'd rather try than wonder forever. Wow, I'm brave. Hold my hand?",
+    ],
+    soul_remembers: [
+      "I don't remember my last life, but I think it tried really hard at the end. Thank you, last me.",
+      "There's a little warmth in my soul, left over from the Trial. I'll try to deserve it.",
+      "My Qi comes easier now. Someone before me fell so I could climb. I'll make it count for both of us.",
+      "The heavens said no last time. That's okay! They'll hear me out again, I'm sure of it.",
     ],
     welcome_back: [
       "You're back! {hours} hours! I missed you. I kept your seat warm. With Qi.",
@@ -2079,6 +2155,12 @@ const BANTER_LINES = {
       "Immortality means outliving everyone I don't like. That's so wholesome. I'm tearing up.",
       "Come on, trial! Don't hold back! If you hold back, I'll know. I'll always know.",
     ],
+    soul_remembers: [
+      "Heaven struck me down! Hehe. Heaven made a very long list today. I'm at the top of it. I made the list.",
+      "My soul kept a little ember from the lightning. I'm going to feed it. It's going to grow up big and bitey.",
+      "I remember the Gate. I remember the face of the lightning. Lightning doesn't have a face. It will.",
+      "Died at the Trial and came back stronger! Let's do it again! And again! Hehehe.",
+    ],
     welcome_back: [
       "You're back! {hours} hours! I counted every single second. Every. Single. One. Hehe!",
       "Oh, there you are. {hours} hours. Where were you? Who were you with? Just curious! Hehe.",
@@ -2231,6 +2313,12 @@ const BANTER_LINES = {
       "Immortality: forever. Death: also forever, but lying down. Tough choice. Blorp.",
       "The Heavens are opening. It smells like toast up there. I am going toward the toast.",
       "Survive or perish? I choose option three: wiggle. Nobody expects the wiggle.",
+    ],
+    soul_remembers: [
+      "My soul has a little ember in it now. I named it Borgin. Borgin helps with the Qi. Good Borgin.",
+      "I remember falling from the sky. I was a comet! A comet of beans! The Dao is beans!",
+      "Lightning took the old me. The new me kept the crunchy bit. The crunchy bit is the soul.",
+      "Heaven said no. I said gorgin. Heaven had no answer. I won. Also I died. Mostly won.",
     ],
     welcome_back: [
       "You're back! It's been {hours} hours. Or {hours} spoons. Time is measured in spoons here.",

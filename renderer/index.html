@@ -26,6 +26,9 @@
 
   <div id="cs-slots"></div>
 
+  <!-- Phase 40: the cross-save Soul screen entry (shown once any Soul Points exist; soul-view.js) -->
+  <button id="cs-soul" class="hidden"></button>
+
 </div>
 
 <!-- ══════════════════════════════════════════════════════
@@ -258,11 +261,24 @@
     <div id="ascension-desc">Attempt to transcend mortality and enter the Immortal Realms. Failure means death.</div>
     <div class="ascension-row"><span>Bloodline Quality</span><span id="asc-bloodline">0 / 100</span></div>
     <div class="ascension-row"><span>Survival Chance</span><span id="asc-chance">0%</span></div>
+    <div class="ascension-row asc-soul"><span>Should you fall</span><span id="asc-soul"></span></div>
     <div id="ascension-btns">
       <button id="ascend-now">Ascend Now</button>
       <button id="ascend-wait">Keep Cultivating</button>
     </div>
   </div>
+</div>
+
+<!-- Soul screen (Phase 40a, docs/systems/soul-points.md) — rendered by renderer/game/soul-view.js -->
+<div id="soul-overlay" class="hidden">
+  <div id="soul-box" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="soul-title"></div>
+</div>
+
+<!-- Immortal Ascension cinematic + finish screen (Phase 40b) — renderer/game/immortal-view.js -->
+<div id="immortal-overlay" class="hidden">
+  <canvas id="immortal-canvas" aria-label="The Immortal Ascension"></canvas>
+  <button id="immortal-skip" class="hidden">Skip</button>
+  <div id="finish-box" class="hidden" role="dialog" aria-modal="true" aria-labelledby="finish-title"></div>
 </div>
 
 <!-- Death / reincarnation overlay (Phase 23A/D) -->
@@ -272,6 +288,7 @@
     <div id="death-title">This Life Ends</div>
     <div id="death-cause"></div>
     <div id="death-stats"></div>
+    <div id="death-soul" class="hidden"></div>
     <div id="interlude-head"></div>
     <div id="interlude-body"></div>
     <div id="interlude-choices"></div>
@@ -356,6 +373,7 @@
 <script src="../assets/data/personalities.js"></script>
 <script src="../assets/data/banter-lines.js"></script>
 <script src="../assets/data/names.js"></script>
+<script src="../assets/data/soul.js"></script>
 <script src="../assets/data/dev-presets.js"></script>
 <script src="../assets/icons/ui-icons.js"></script>
 <script src="../assets/sprites/cultivator-sprites.js"></script>
@@ -369,6 +387,7 @@
 <script src="engine/ascii-renderer.js"></script>
 <script src="engine/ink-renderer.js"></script>
 <script src="engine/sprite-renderer.js"></script>
+<script src="engine/ascension-cinematic.js"></script>
 <script src="game/cultivation.js"></script>
 <script src="game/expedition.js"></script>
 <script src="game/crafting.js"></script>
@@ -389,6 +408,8 @@
 <script src="game/family-view.js"></script>
 <script src="game/clan-view.js"></script>
 <script src="game/sect-view.js"></script>
+<script src="game/soul-view.js"></script>
+<script src="game/immortal-view.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

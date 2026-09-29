@@ -49,6 +49,7 @@ class InkRenderer {
     this.art = null             // base + the chosen slot options merged in (what every painter reads)
     this.slotSel = {}           // player/dev choices per slot kind; unset kinds use base.slots
     this.fail = 0; this.demote = false   // failed-breakthrough moment, eases 1 → 0
+    this.bare = !!opts.bare     // 40b: no scenery (the Immortal Ascension cinematic draws its own sky around the figure)
     this.death = 0; this.deathKind = 'fall'   // death moment (A4-3): 0 = alive, rises to 1 as the figure dissolves; held until clearDeath()
     this.t = 0
     this.bt = 0; this.btTarget = 0; this.btStart = 0     // breakthrough intensity eases between 0 and 1
@@ -252,18 +253,18 @@ class InkRenderer {
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.globalAlpha = 1
-    ctx.drawImage(C.bg, 0, 0)
+    if (this.bare) ctx.clearRect(0, 0, C.cw, C.ch); else ctx.drawImage(C.bg, 0, 0)   // bare: figure + effects only (40b cinematic)
     ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)              // logical scene units from here on
 
     // Mist drifting between the ridges (pre-rendered band, wraps around)
-    if (!C.lod && (A.background.mistA ?? 1) > 0) {
+    if (!C.lod && !this.bare && (A.background.mistA ?? 1) > 0) {
       const drift = (t * 3) % 600, vx0 = -C.ox / C.S, vx1 = (C.cw - C.ox) / C.S   // tile over the whole visible span (wide phone canvases)
       ctx.globalAlpha = Math.min(1, 0.9 * (A.background.mistA ?? 1))
       for (let x = Math.floor((vx0 + drift) / 600) * 600 - drift; x < vx1; x += 600) ctx.drawImage(C.mist, x, 0, 600, 150)
       ctx.globalAlpha = 1
     }
     // Realm ambience (A4-3): fireflies, stars, falling water, birds, drifting clouds, the turning earth, sparkling stars…
-    if (!C.lod && A.background.ambience) this._ambience(ctx, C, t)
+    if (!C.lod && !this.bare && A.background.ambience) this._ambience(ctx, C, t)
 
     // Death moment (A4-3): everything in front of the scenery is composed on its own canvas, then dissolved (_deathCompose)
     const dying = this.death > 0, scene = ctx
@@ -285,14 +286,14 @@ class InkRenderer {
       ctx.restore()
     }
 
-    if (A.pillar) this._pillar(ctx, C, t, bt)                                 // Ascension: heaven's light falls on you
+    if (A.pillar && !this.bare) this._pillar(ctx, C, t, bt)   // bare (40b cinematic) draws its own full-height pillar                                 // Ascension: heaven's light falls on you
     if (!calm) this._risingMotes(ctx, C, glowCol, t, bt)
 
     // Realm ground effects (A4-1): the Foundation array under the lap; the shadow left on the mist by a floating body
     const F = A.float
     const fy = F ? F.y + (calm ? 0 : Math.sin(t * 0.8) * F.bob) : 0           // logical units, negative = lifted
     if (A.formation) this._formation(ctx, C, glowCol, t, bt)
-    if (F && F.shadow) this._groundShadow(ctx, F, fy, glowCol)                // (no shadow when there is no ground below)
+    if (F && F.shadow && !this.bare) this._groundShadow(ctx, F, fy, glowCol)                // (no shadow when there is no ground below)
 
     ctx.save(); ctx.translate(0, fy)                                          // everything below rides with the body
     if (A.swords) this._swordFan(ctx, C, t, bt)                               // Spirit Severing on: flying swords fanned behind

@@ -35,7 +35,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ✅ 1.8d-1 + 1.8d-2 (2026-09-27): 78 icons, 0 chrome CJK (lint in npm test); gates 7.2 / 7.2 accepted by the user |
 | **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate **7.6 PASS** (1.8b-6 cycle 2) |
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
-| Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); A4-2 beasts ✅ (10 + variants); **A4-3 realm scenery + death moment** built 2026-09-28, reviewer 8.2, awaiting the user; A4-4 next |
+| Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); A4-2 beasts ✅ (10 + variants); **A4-3 realm scenery + death moment ✅** (accepted by the user 2026-09-28); **A4-4 Ink default + sprite emoji lint ✅** (2026-09-28, 8.0) |
+| **Soul Points + Immortal cinematic + "you finished v1" screen** | ✅ Phase 40 (v1 finish) — 40a Soul Points core (UI 7.7) + **40b Immortal Ascension cinematic + finish screen** (2026-09-28; screen 7.75, cinematic accepted by the user) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -60,11 +61,14 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Deep Sect Management (offices, Recruiter, manual recruiting) | ⬜ Phase 27 (planned) |
 | Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ⬜ Phase 28 (planned) |
 
+> **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
+> era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
+
 > **Testing is lightweight per task** (user rule 2026-09-26): `npm test` + `npm run checks` + look at it in the app.
 > Sim/dist/build:web/smoke/new checks are batched into each feature's **QA & Balance** task (CLAUDE.md).
 > **UI/UX is first-class:** every player-facing task does the UX Pass (CLAUDE.md) and logs gaps under "UX Debt" below.
 
-> **Tools:** `npm test` (syntax) · `npm run checks` (152 scenario checks, ~6s) · `npm run sim` (bot playtest) ·
+> **Tools:** `npm test` (syntax) · `npm run checks` (421 scenario checks, ~6s) · `npm run sim` (bot playtest) ·
 > `node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` (real-app smoke over CDP, throwaway profile). Any
 > useful check script you write goes in `scripts/sim/checks/` and gets documented — never left in a temp folder
 > (CLAUDE.md → "Test scripts are project assets").
@@ -124,7 +128,15 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   leaves ~200px so each view opens on a cut-off card; buildings
   have no levels, so a founder with all six raised has nothing to do in Halls but the Sect Hall; Explore/Craft grid
   cards keep the old flat row style; standing-order war-chest note is still a paragraph (could be a 詳 card).
+- **Immortal Ascension (40b):** a save closed mid-cinematic resumes straight at the interlude card (the finish screen can be
+  replayed from Soul screen → Relive it); the Skip button stays visible in frozen smoke stills (real play hides it at the end);
+  Desktop frame 5.7 ms at the busiest phase (user: keep as is).
+- **Soul screen (40a, 7.7):** the charselect Soul button floats far below slot 3 in tall windows (could sit under the
+  slots); no soul metrics in the sim report yet (2.8); the Soul screen is only reachable from Hall/charselect/attention,
+  not the Qi/s breakdown popover (could link "Soul Resonance" to it).
 - **Beast details page (7.9):** the portrait VIEW tag is small/low-contrast.
+- **A4-4 polish (8.0):** Classic crown rows space unevenly (ϟ is narrower than a cell); the realm tagline under the canvas
+  truncates in Overlay/Expanded (allow 2 lines or drop it in Overlay); Banner crops the ink figure to head + torso at the far left.
 - **A4-3 scenery polish:** Foundation's waterfall has no source notch / landing, its mid-slopes are murky and the mountains
   sit close in value to the sky; in-app death ash reads as a glittering cone (more downward drift on the lower motes).
 - **Family view leftovers (1.8b-3a):** no hint of what each temper *likes* beyond the blurb and the meeting-choice
@@ -143,6 +155,66 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-28 (user present) — part 45
+Agent: **40b Immortal Ascension cinematic + finish screen** (assessment approved; on Opus). User handles commits.
+  - User copy rule: the finish screen never mentions a version — "Congratulations · You Have Become Immortal · You have
+    finished your race to immortality." (no v2 teaser). "v1" stays only in internal names.
+  - renderer/engine/ascension-cinematic.js (AscensionCinematic): ~9 s full-window ink scene — storm of dotted billows, three
+    escalating strikes (forks, afterimage, impact ring), rise up heaven's pillar with three dotted dragons, cloud sea, a
+    three-bay pailou gate, white-gold flash, vignetted afterglow. Figure = INK_ART.ascended via InkRenderer { bare: true }
+    (new: no scenery/pillar/shadow). Skip after 1.5 s; Reduced motion = 2 s fade; frame 4.0 / 5.7 ms.
+  - renderer/game/immortal-view.js (ImmortalView): cinematic → finish screen (first Immortal, +500) or short card (+150);
+    Spend opens the Soul screen on top; Continue ("Your line goes on" / "Be reborn") → the interlude card. Soul screen
+    "Your ascension · Relive it" replays it. game.js watcher routes cause 'ascended' here; old "Welcome to the Immortal
+    Realms" toast removed. game-state: _die(cause, soul) puts the grant on the summary before notify; immortal grant meta
+    (who, clan, generation, hours, failedBefore) stored in v1Finished.
+  - Smoke scenarios/immortal.js (19 ok, zero console errors); soul.js + death-moment.js still pass; npm test + checks (421) pass.
+  - Reviews: finish screen **7.75 PASS**; cinematic 7.7 → 7.8 (agents), cycle 3 **accepted by the user** ("I like the animation, keep it").
+  - Docs: soul-points.md (copy rule + as-built 40b), art-engine.md (bare mode + cinematic), qa-sim, ui-review, index, CLAUDE.md tree, PLAN (40 ✅).
+  Next: **A6 combat page** (Phase 35) → A7 sect base scene (Phase 38A) → 2.8 QA & Balance.
+
+Date: 2026-09-28 (user present) — part 44
+Agent: **40a Soul Points core** (assessment approved; on Opus). User handles commits.
+  - assets/data/soul.js (grants, rank cost/bonus/cap). game-state: cross-save `this._soul` (not in `_s`), loadSoul() at
+    charselect boot + every initSlot(), soulInfo/spendSoul (one rank per click)/markSoulSeen, _grantSoul + _grantImmortalSoul
+    from attemptAscension() (fail: 20 + ½/% of the odds; first Immortal ever +500 with v1Finished, later +150), slot saved at
+    once after the Trial; "Soul Resonance (rank N)" Qi/s term in _recalc; dev-preset lives (s.devSave) never write the file.
+  - soul.json IPC: main.js load-soul/save-soul + preload.js + platform-storage.js (localStorage ci_soul), Rule 7.
+  - UI: renderer/game/soul-view.js (Soul screen overlay), charselect Soul button (#cs-soul), Kin → Hall Soul door (also on the
+    orphan Hall), attention item (opens the screen), death-card soul line, Trial card "Should you fall +N" row, new `soul`
+    icon + `--soul` violet accent; soul_remembers banter trigger (58 lines) said when the next life begins.
+  - Sim: loader stubs the soul file in memory, Bot.soul() buys ranks. checks/soul.js (26 ok; 421 total), smoke
+    scenarios/soul.js (16 ok, zero console errors). npm test + sim:quick clean. Reviewer agent **7.7 PASS**; polish fixed.
+  - Docs: soul-points.md as-built, qa-sim, icons, banter, ui-review, index, CLAUDE.md tree, PLAN (40a ✅).
+  Next: **40b** Immortal Ascension cinematic + v1 finish screen (the v1 grant already fires; key the screen on
+  lastReincarnation.soul.kind === 'v1') → A6 combat page → A7 sect base → 2.8 QA.
+
+Date: 2026-09-28 (user present) — part 43
+Agent: **Plan re-cut into v1 / v2 + Phase 40 spec** (user approved A4-3; assessment approved; on Opus). No code.
+  - PLAN.md → new "Releases" section: **v1 = everything pre-Immortal** (M1–M6, M8, art track A6/A7, Phase 40); **v2 = M7**
+    (23D, 24, 25, 26 + 38B, 23E, Immortal Ranking) **+ appearance/portraits A5, A8, A9, A10** (moved to a v2 art table
+    under M7; user: "push back the character creation stuff"). Milestone headings + Phase Index rows carry their release.
+    Next free phase: 41. A4-3 marked accepted.
+  - **Phase 40 spec** docs/systems/soul-points.md (depth + UX pass): cross-save Soul Points (soul.json, not in slots) from
+    failed Ascension Trials only (20 + 0.5 per % of shown odds) + Immortality (+500 first ever = v1 finish, +150 later);
+    Soul Resonance +5% Qi/s per rank (max 20, cost 25×1.35^rank); Soul screen (charselect + Kin → Hall); ~9 s Immortal
+    Ascension cinematic (tribulation → rise → heavenly gate → flash); v1 screen "Congratulations… you have finished v1",
+    then play continues (Ascended Ancestor flow). User picked: failed-Trial only, Qi only, keep playing.
+    GAMEDESIGN pillar 3 notes the exception (a capped multiplier).
+  Next: **40a Soul Points core** → 40b cinematic + v1 screen → A6 combat page → A7 sect base → 2.8 QA.
+
+Date: 2026-09-28 (user present) — part 42
+Agent: **A4-4 Ink default + sprite emoji lint** (assessment approved; on Opus).
+  - ⚙ Sprite art defaults to **Ink** (settings.js; option order Ink, Classic). Old saves: a save without
+    `inkDefaultMigrated` sitting on Classic moves to Ink once + logs "…Settings → Sprite art → Classic", saved at once
+    (game-state `_ensurePhase20CFields`, `_saveAfterLoad`); new lives start with the flag set, so a later Classic pick sticks.
+  - Classic sprites emoji-free: ⚡ → ϟ, ☯ → ◎ (cultivator-sprites.js + beast-sprites.js). check-no-emoji.js has no exemptions
+    now (★ added to ALLOW: Chromium's ICU flags it, text-only). ui-review.md brief updated (sprite emoji no longer out of scope).
+  - checks/settings.js +5 (395 ok); new smoke scenarios/ink-default.js (8 ok, zero console errors); ink-art.js default
+    assertion now expects Ink (passes). Reviewer agent **8.0 PASS** (ui-review.md); polish → UX Debt.
+  - **A4-3 is still awaiting the user's verdict** (the realm scenery sheet). Uncommitted.
+  Next: user verdict on A4-3 → A5 appearance at creation/rebirth.
+
 Date: 2026-09-28 (user present) — part 41
 Agent: **A4-3 cycle 3 (user):** "still dont like foundation and qi condensation … mortal looks like a desert, qi condensation a
   grass lands then foundation at the bottom of a mountan". QC = moonlit grasslands (rolling hills, a lone tree, grass +

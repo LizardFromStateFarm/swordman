@@ -154,6 +154,7 @@ docs/
     combat.md           ← SPEC (Phase 35): battle page, fight card generalized to beasts/duelists/arena/bosses
     auction.md          ← SPEC (Phase 36): themed crates, beast/person quality rolls, person `gender`
     scene-art.md        ← SPEC (Phase 38): large-area sect-base + island scenes (view-only, grow as you build)
+    soul-points.md      ← Phase 40 (v1 finish): cross-save Soul Points + Soul Resonance + Soul screen (40a) · Immortal Ascension cinematic + finish screen (40b)
     android-port.md     ← Capacitor Android shell + `npm run release:android` → Google Play internal testing
 .agents/rules/
   general.md            ← Always-on rules (code style, Electron security)
@@ -161,7 +162,7 @@ docs/
   game-design.md        ← Design rules (pacing, flavor text, event structure)
   ui-review.md          ← Visual Review Gate: 0–10 scale, Reviewer brief (art direction + settled list), reviewer prompt, [blocker]/[polish] labels, gate (UI ≥ 7.5; assets ≥ 8.0)
 
-main.js                 ← Electron window, IPC, slot save/load, system tray + notifications (Phase 9A-B), layout-mode geometry (6E)
+main.js                 ← Electron window, IPC, slot save/load, cross-save soul.json (Phase 40), system tray + notifications (Phase 9A-B), layout-mode geometry (6E)
 preload.js              ← contextBridge — only way renderer talks to Node
 capacitor.config.json     ← Capacitor (iOS + Android) config — webDir "www"
 ios/                    ← Capacitor iOS Xcode project — committed (minus generated public/); see ios-port.md
@@ -174,7 +175,7 @@ scripts/
   art/ink-shapes.js     ← Ink art authoring helper: limb centreline / tapering Bezier / `sym` half → part `d` polygon (paste into assets/sprites/ink-*.js)
   art/ink-bake.js       ← Bake a source picture → editable dot map PNG (1 px = 1 dot, background removed): `npx electron scripts/art/ink-bake.js [id]`
   art/ink-bake.json     ← Bake specs per beast (src, crop, width, background-removal knobs, erase/keep polygons)
-  check-no-emoji.js     ← Emoji inventory (file:line); --strict in npm test since 1.8b-6 (sprites exempt until A1; --sprites to include) — no-emoji rule
+  check-no-emoji.js     ← Emoji inventory (file:line); --strict in npm test (sprites included since A4-4) — no-emoji rule
   check-no-chrome-cjk.js ← Chrome-CJK lint for renderer/ (allow: nav marks, `cjk-ok` flavour lines); --strict runs in npm test (1.8d-2)
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt
@@ -190,7 +191,8 @@ renderer/
     persons.js          ← Persons — shared root/personality/name generators + Person record schema (Phase 30/31, M2 task 2.2)
     game-state.js       ← ALL state mutations — _newGame(), _recalc(), tick()
     ascii-renderer.js   ← Canvas renderer — sprites + particles + aura rings (classic grid ASCII)
-    ink-renderer.js     ← InkRenderer — hybrid ink art engine (A3-1): cached ink-dot layers + brush strokes + clean effects
+    ink-renderer.js     ← InkRenderer — hybrid ink art engine (A3-1): cached ink-dot layers + brush strokes + clean effects; `bare` = figure only (40b)
+    ascension-cinematic.js ← AscensionCinematic — the ~9 s full-window Immortal Ascension (storm, bolts, rise, heavenly gate, flash) (Phase 40b)
     sprite-renderer.js  ← SpriteRenderer — picks Classic ASCII or Ink per the Sprite art setting + available INK_ART
     scene-renderer.js   ← SPEC (Phase 38): large-area scene layer (sect base / island) on the hybrid engine
   game/
@@ -211,6 +213,8 @@ renderer/
     beast-detail.js     ← BeastDetail — beast details page: click a portrait/name → large portrait, lore, stats, traits, Tame (A4-2)
     family-view.js      ← FamilyView — Kin → Family: spouse/courtship card, child wishes, children + raising actions, heir (1.8b-3a)
     clan-view.js        ← ClanView + HallView — Kin → Clan (lines, head, relations, clan actions) and Kin → Hall (Merit, firsts, legacies, Family Manual picker) (1.8b-4)
+    soul-view.js        ← SoulView — the cross-save Soul screen overlay (charselect button, Kin → Hall door, attention item, Relive) (Phase 40a)
+    immortal-view.js    ← ImmortalView — plays the cinematic, then the finish screen ("your race to immortality") / later-Immortal card (Phase 40b)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
     icons.js            ← Icon(name) → inline SVG from assets/icons/ui-icons.js; Icon.g() for glyph slots; [data-icon] auto-filled (1.8d)
     combat.js           ← SPEC (Phase 35): the battle page UI (animated exchanges) over the fight card
@@ -237,8 +241,9 @@ assets/
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)
-    banter-lines.js     ← BANTER_LINES — 1,695 lines, personality × trigger + generic pool (Phase 29)
+    banter-lines.js     ← BANTER_LINES — 1,753 lines, personality × trigger + generic pool (Phase 29)
     names.js            ← SURNAMES (60) + GIVEN_NAMES (205) — pinyin, gender-neutral (Phase 30/31, M2 task 2.2)
+    soul.js             ← SOUL_* — Soul Points grants + Soul Resonance rank cost/bonus/cap (Phase 40a)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
     crates.js           ← SPEC (Phase 36): CRATES — themed crate costs + weighted contents (item/beast/person)
     arena.js            ← SPEC (Phase 35): arena ladder tiers, stakes, duelist pools

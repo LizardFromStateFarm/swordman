@@ -39,7 +39,7 @@ class Bot {
     for (let i = 0; i < 40; i++) {
       this.interlude()   // an action this check-in may have ended the life — never act on an unborn one
       const before = this.s.spiritStones
-      const acted = this.family() || this.legacies() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
+      const acted = this.family() || this.legacies() || this.soul() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
         this.elixirs() || this.memberWar() || this.beasts() || this.sect() || this.ownSect() || this.war() ||
         this.pushExpedition() || this.expedition()
       if (!acted) break
@@ -132,6 +132,11 @@ class Bot {
       if (cands[0] && this.do('set_family_manual', this.gs.setFamilyManual(cands[0].id), false)) return true
     }
     return false
+  }
+
+  // Phase 40 (soul-points.md): buy every Soul Resonance rank it can afford (one per call, like the player's click).
+  soul() {
+    return this.do('spend_soul', this.gs.spendSoul(), false)
   }
 
   // 1.8b-3a (family.md): the player's own family actions. 'active' courts, tends its spouse (time/gift below

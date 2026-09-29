@@ -5,7 +5,7 @@ scripts/smoke/scenarios/ink-art.js · death-moment.js · Phase: 34 (roadmap A3-1
 
 The HYBRID direction the user picked in A2 (ui-review.md → "A2 art bake-off"): (c)'s ink figure/scene/halo + (b)'s
 glyph parts and thin rotating mote rings. A3-1 = the engine core + ONE cultivator (Qi Condensation, idle +
-breakthrough) in the real game behind **Settings → Motion → Sprite art = Ink** (default Classic). A4-1 (below) gave every other sprite
+breakthrough) in the real game behind **Settings → Motion → Sprite art = Ink** (the default since A4-4; old saves on the old Classic default move once, `inkDefaultMigrated`). A4-1 (below) gave every other sprite
 state its ink art (realm variants). A3-2 (done 2026-09-27): part slots, expression frames, the failure/demotion
 moment, authoring template in `.agents/rules/assets.md` → "Ink art".
 
@@ -127,6 +127,15 @@ writes `out/ink-motion-sheet.png` (each moving realm at three moments).
   moment; `scenarios/death-moment.js` = the real flow (card waits, opens, closing it clears; Classic opens at once).
   Ascension frame ~3.9 ms (budget 6).
 
+## Immortal Ascension cinematic (Phase 40b, 2026-09-28)
+`renderer/engine/ascension-cinematic.js` → `AscensionCinematic`: a ~9 s full-window scene for a successful Ascension Trial
+(storm gathers → three bolts → the figure rises up a pillar of light, dragons circling → the clouds part into a dotted
+heavenly gate → it enters → white-gold flash → afterglow). It reuses the engine for the figure only: `new InkRenderer(canvas,
+{ bare: true })`. **`bare`** skips the cached background, the mist, the realm ambience, the ground shadow and the
+art's own `pillar` (which would be clipped by the figure canvas), so the figure + its effects (halo, rays, swords, dragons,
+motes, rim light) composite cleanly over another scene. Everything else (clouds, gate, sea, bolts, flash) is drawn by the
+cinematic in the same ink-dot language. Full details, timings and tests: docs/systems/soul-points.md → "As-built (40b)".
+
 ## Planned (PLAN.md Phase 39, user 2026-09-27)
 - A5: the player picks face / hair / robe at every creation and rebirth (live ink preview); robe + effect changeable
   in a Wardrobe. A8: effects unlocked by realm, Arts and cultivation path. A9: robes unlocked by family/clan head, sect
@@ -134,7 +143,7 @@ writes `out/ink-motion-sheet.png` (each moving realm at three moments).
   unlocked effect). 3.2b: a `path` accent layer (Virtuous / Neutral / Demonic) over the robe, changing halo + motes.
 
 ## State
-No game state. One presentation setting: `settings.artStyle` — `'classic'` | `'ink'` (per slot, SETTINGS_DEFS).
+No game state. One presentation setting: `settings.artStyle` — `'ink'` (default since A4-4) | `'classic'` (per slot, SETTINGS_DEFS). A4-4 migration: a save without `inkDefaultMigrated` that sits on `'classic'` moves to `'ink'` once and logs "…Settings → Sprite art → Classic" (game-state `_ensurePhase20CFields`; new lives start with the flag set). The Classic sprites (`cultivator-sprites.js`, `beast-sprites.js`) are emoji-free since A4-4 (⚡ → ϟ, ☯ → ◎) and `npm test`'s emoji lint covers `assets/sprites/`.
 
 ## API
 - `SpriteRenderer(canvas)` (what game.js creates; `window.spriteRenderer` for smoke tests): same calls as the old

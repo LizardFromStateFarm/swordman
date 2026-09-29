@@ -34,6 +34,14 @@ if (!window.electron) {
       try { localStorage.removeItem(KEY(i)) } catch {}
     },
 
+    // Phase 40: the cross-save Soul record (docs/systems/soul-points.md), its own key so a slot delete never touches it.
+    loadSoul: async () => {
+      try { const raw = localStorage.getItem('ci_soul'); return raw ? JSON.parse(raw) : null } catch { return null }
+    },
+    saveSoul: async (data) => {
+      try { localStorage.setItem('ci_soul', JSON.stringify(data)) } catch {}
+    },
+
     // Dev tools (charselect late-game presets) are Electron-dev only — never on iOS / plain browser.
     isDev: async () => false,
 

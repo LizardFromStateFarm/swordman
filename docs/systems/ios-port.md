@@ -61,47 +61,41 @@ None — `platform-storage.js` just JSON-stringifies whatever `game-state.js` al
   the iOS build is a normal full-screen app you open, not a persistent screen companion.
   `toggleAlwaysOnTop`/`quit` are no-ops there.
 
-## The release pipeline (`npm run release` / `scripts/release.js`)
+## The release pipeline (`npm run release`)
 
-One command, meant to be what an agent runs instead of manually chaining build steps:
+`scripts/release.js` is the one command that builds + publishes every platform; **`docs/systems/release.md`
+is its reference** (steps, flags, versioning, credentials, gotchas) — this doc only covers the iOS side.
 
-1. `npm test` (`scripts/check-syntax.js`) — `node --check`s every first-party `.js` file. There's
-   no unit-test framework in this project; this is the "does everything parse" gate.
-2. `npm run dist` — Windows portable build. Proves the PC build isn't broken.
-3. `npm run cap:sync` — rebuilds `www/` and syncs it into `ios/`. Proves the iOS web bundle still
-   assembles cleanly. (Can't compile the actual `.ipa` here — no Xcode/macOS on this box.)
-4. If (and only if) 1-3 all passed and something actually changed: `git add -A`, commit, `git push`.
-   If the push fails (e.g. run from a sandbox with no network), the script says so clearly and
-   leaves the commit local rather than failing silently.
-5. If a new commit was actually pushed: trigger the iOS CI build on Codemagic via its REST API —
-   **only if `CODEMAGIC_API_TOKEN` and `CODEMAGIC_APP_ID` are set in the environment.** Until then
-   this step is a clearly-labeled no-op; everything else in the pipeline still runs.
+For iOS it does two things:
 
-Run it with `npm run release`. Override the commit message with `RELEASE_MESSAGE="..." npm run release`.
+1. `npm run cap:sync` — rebuilds `www/` and syncs it into `ios/`. Proves the iOS web bundle still
+   assembles cleanly. (This box can't compile the actual `.ipa` — no Xcode/macOS here.)
+2. Triggers the Codemagic `ios-workflow` via Codemagic's REST API — **only if `CODEMAGIC_API_TOKEN`
+   and `CODEMAGIC_APP_ID` are set.** Without them the step is a clearly-labeled no-op; every other
+   step still runs.
 
-## CI / TestFlight (`codemagic.yaml`) — template, not active yet
+It does **not** commit or push (it used to; removed 2026-09-29).
 
-`codemagic.yaml` defines an `ios-workflow` that builds `ios/` on a macOS runner and publishes
-straight to TestFlight. It has **no automatic triggers on purpose** (no `triggering:` section) —
-it only starts via the Codemagic API call `scripts/release.js` makes, so CI minutes aren't spent on
-every push, only ones that passed the local Windows build + syntax check.
+## CI / TestFlight (`codemagic.yaml`) — free macOS runners
 
-**Still needed before this does anything** (blocked on the Apple Developer account, currently
-pending approval):
-1. Apple Developer Program enrollment to finish processing.
-2. In App Store Connect: register the app under bundle ID `com.cultivator.idle`, create a
-   TestFlight record, and create an API key (Users and Access → Keys) with the "App Manager" role.
-3. A Codemagic account (free tier is enough) with this GitHub repo connected.
-4. In Codemagic → Team settings → Integrations → App Store Connect: add an integration named
-   `cultivator_idle_asc` using that API key (or edit the name in `codemagic.yaml` to match
-   whatever you name it).
-5. A Codemagic API token (Team settings → Integrations → Codemagic API) and this app's Codemagic
-   App ID (visible in the app's Codemagic URL once the repo is added). Set these as environment
-   variables wherever `npm run release` runs: `CODEMAGIC_API_TOKEN`, `CODEMAGIC_APP_ID`.
+`codemagic.yaml` defines an `ios-workflow` that builds `ios/` on a **free** Codemagic macOS M2 runner and
+publishes straight to TestFlight. Free tier: $0/month, **500 macOS M2 build minutes refilled monthly**,
+1 parallel build, unlimited apps — comfortable for this project (~40 iOS builds/month). GitHub Actions
+would *not* be cheaper here: this repo is private, and private-repo macOS minutes bill at 10×, so its free
+allowance works out to ~200 effective macOS minutes.
 
-Once those five things exist, `npm run release` starts actually shipping iOS builds to your phone
-via TestFlight with no further code changes — the script and the workflow are already wired to
-each other, just waiting on credentials/accounts that only a human can create.
+It has **no automatic triggers on purpose** (no `triggering:` section) — it only starts via the API call
+`scripts/release.js` makes, so macOS minutes are spent only on builds actually worth shipping.
+
+The workflow also stamps the iOS version: `MARKETING_VERSION` from the released version (`RELEASE_VERSION`
+from the release script, else `package.json`) and `CURRENT_PROJECT_VERSION` from a UTC timestamp — the
+Xcode project hard-codes both, and TestFlight requires a build number that never goes backwards.
+
+**One-time setup (a human, once):** the header comment in `codemagic.yaml` is the checklist — Apple
+Developer Program membership, the App ID + TestFlight record for `com.cultivator.idle`, a Codemagic account
+with this repo connected, the `cultivator_idle_asc` App Store Connect integration, and the API token + app
+ID exported as environment variables (`docs/systems/release.md` → "Credentials"). After that,
+`npm run release` ships iOS builds with no further code changes.
 
 ## Gotchas / Not Done Yet
 

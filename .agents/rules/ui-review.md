@@ -49,8 +49,8 @@ invents its own standard and they contradict each other. Paste this block into t
 
 **Do NOT raise (settled or out of scope — raising them is not a finding):**
 - the monospace font, the ~300px Overlay width, or the CJK nav group marks;
-- the **canvas sprite** (its ⚡ ☯ emoji and the art itself belong to the Phase 34 art track, A1–A4) — UI emoji are
-  gone since 1.8d and a lint keeps them out, so any emoji **outside the sprite** is a real `[blocker]`;
+- the **canvas sprite art** in a UI review (art is scored separately by the asset gate, `.agents/rules/assets.md`) — emoji are gone
+  everywhere, sprites included (UI since 1.8d, sprites since A4-4; `npm test` lints both), so any emoji is a real `[blocker]`;
 - anything already listed as a known leftover in `docs/systems/ui-review.md` or `START_HERE.md` → "UX Debt"
   (say "still open" at most);
 - a preference a previous cycle already settled (the history is handed to you).
@@ -105,7 +105,7 @@ Criteria:
 4. Interaction & ergonomics — obvious what's clickable, adequate target sizes, few clicks, clear feedback
 5. Consistency — uses the design tokens and existing component patterns; no one-off styles
 6. Layout fit — no clipping, overflow, awkward empty space or cramming, in every mode shown
-Emoji: any emoji outside the canvas sprite is a `[blocker]` (the sprite is out of scope: art track A1).
+Emoji: any emoji anywhere (UI or canvas sprite) is a `[blocker]` (sprites lint-clean since A4-4).
 
 Required output:
   Per criterion: N/10 + one sentence why

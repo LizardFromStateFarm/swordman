@@ -33,14 +33,14 @@ Writers: see `banter-writing-guide.md` (voice, tokens, triggers, the 14 personal
 - Idle picks `morning`/`night` instead of `idle` once per window per day when the local hour matches.
 - Contextual events queue **one** pending line; a newer event replaces an older one. The line pool is looked up as
   personality[trigger] → fallback to BANTER_LINES.generic[trigger]. It picks a line not in `recent`, then fills tokens.
-- `say(trigger, ctx)` is public (game.js uses it for `ascension_trial` when the overlay opens).
+- `say(trigger, ctx)` is public (game.js uses it for `ascension_trial` when the overlay opens, and `soul_remembers` when the next life begins after a Trial granted Soul Points).
 - `BanterSystem.mask(text)` is the profanity mask, applied at *display* time so the log follows the setting.
 - A rare drop is any expedition drop whose drop-table weight is ≤ `BANTER_RARE_WEIGHT_FRAC` of the table total.
 
 ## Data Shape
 - `PERSONALITIES = [{ id, name, nameCN, blurb }]`, 14 entries.
 - `BANTER_LINES = { generic: {trigger: [..]}, <personalityId>: {trigger: [..]} }`, with
-  `BANTER_TRIGGERS = [..17 ids..]` (`married`/`child_born` added in M2 2.5; `twilight` was added in 2.3 and removed with
+  `BANTER_TRIGGERS = [..18 ids..]` (`soul_remembers` added in Phase 40a, said by game.js when the death card after an Ascension Trial closes; `married`/`child_born` added in M2 2.5; `twilight` was added in 2.3 and removed with
   old age on 2026-09-26) and `BANTER_MIN_LINES = { idle: 25, other: 4, genericIdle: 20, genericOther: 2 }`.
 
 ## Wiring
