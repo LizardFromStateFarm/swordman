@@ -66,7 +66,10 @@ function collectAttention(s, gs) {
     // a legendary sighting leads the card (and names itself) even among other wild beasts
     const prof = e => (gs?.beastProfile ? gs.beastProfile(e) : { name: 'beast', tier: { id: 'common' } })
     const legend = wild.find(e => prof(e).tier.id === 'legendary')
-    const talis = (s.inventory?.beast_taming_talisman || 0) > 0 ? 'You carry a Taming Talisman.' : 'Taming needs a Beast Taming Talisman.'
+    const tal = (typeof TALISMAN_GRADES !== 'undefined')
+      ? TALISMAN_GRADE_ORDER.reduce((a, g) => a + (s.inventory?.[TALISMAN_GRADES[g].itemId] || 0), 0)
+      : (s.inventory?.beast_taming_talisman || 0)
+    const talis = tal > 0 ? `You carry ${tal} taming talisman${tal === 1 ? '' : 's'}.` : 'Taming needs a taming talisman.'
     if (legend) add('ready', 'beasts', 'beast', `A legendary ${prof(legend).name} watches you`, `Few cultivators ever see one. ${talis}`, 'beasts')
     else add('ready', 'beasts', 'beast', wild.length === 1 ? `A wild ${prof(wild[0]).name} lingers` : `${wild.length} wild beasts linger`, talis, 'beasts')
   }
@@ -87,6 +90,19 @@ function collectAttention(s, gs) {
       const fresh = ARENA_RINGS.filter(r => (s.stageIndex || 0) >= r.minStage && !(A.seenRings || []).includes(r.id)).pop()
       if (fresh) add('idle', 'arena-ring', 'sword', `The ${fresh.name} opens to you`, `A new ring in Roam → Arena. A win there pays ${fresh.prize}+.`, 'arena')
     }
+  }
+  // Phase 42 arts: a breakthrough offer (it waits), a manual you can study while the desk is free, an empty slot you can fill
+  const ar = s.arts
+  if (ar && typeof ARTS !== 'undefined') {
+    if (ar.offers?.length) add('ready', 'arts-offer', 'breakthrough', 'A breakthrough insight', `${ar.offers.length > 1 ? `${ar.offers.length} choices wait` : `Three arts from ${ar.offers[0].realm}`}: keep one in Path → Arts.`, 'arts')
+    const held = Object.keys(s.inventory || {}).filter(k => k.startsWith('manual_') && s.inventory[k] > 0 && ARTS[k.slice(7)])
+    const studyable = !ar.study && held.filter(k => { const a = ARTS[k.slice(7)], kn = ar.known[a.id]; return (s.stageIndex || 0) >= a.minStage && !(kn && kn.mastery >= ART_MASTERY_MAX) })
+    if (studyable?.length) add('ready', 'arts-study', 'scroll', studyable.length === 1 ? `${ARTS[studyable[0].slice(7)].name}: a manual to study` : `${studyable.length} martial art manuals to study`, 'Study one in Path → Arts or from your pack.', 'arts')
+    const kind = k => Object.keys(ar.known).filter(id => ARTS[id]?.kind === k)
+    const freeMove = ar.loadout.moves.includes(null) && kind('move').some(id => !ar.loadout.moves.includes(id))
+    const slots = gs?.passiveSlots ? gs.passiveSlots() : 1
+    const freePas = ar.loadout.passives.slice(0, slots).includes(null) && kind('passive').some(id => !ar.loadout.passives.includes(id))
+    if (freeMove || freePas) add('idle', 'arts-slot', 'sword', freeMove ? 'An empty move slot' : 'An empty passive slot', 'You know an art that could fill it. Path → Arts.', 'arts')
   }
   // 1.8b-3a courtship: candidates to choose from, a meeting waiting on your answer, or one you can arrange
   const court = f.court

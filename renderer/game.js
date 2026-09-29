@@ -475,6 +475,7 @@
       // On every tick: only update the live expedition timer without re-rendering
       if (activeTab === 'explore') updateExpeditionTimerInPlace(s)
       updateBeastTimersInPlace()   // Roam > Beasts list + the beast details page count down live
+      if (activeTab === 'arts') ArtsView.tickInPlace(document.getElementById('tab-arts'), fmtTime)   // Phase 42: the study countdown
       if (activeTab === 'hunt') HuntView.tickInPlace(document.getElementById('tab-hunt'), fmtTime)   // A6-2: the search countdown
       if (activeTab === 'arena' && ArenaView.tickInPlace(document.getElementById('tab-arena'), fmtTime)) renderView('arena', gameState.get())   // A6-3b: a ring's rest
       if (activeTab.startsWith('sect')) updateSectTimersInPlace(s)
@@ -495,6 +496,7 @@
     beasts: s => renderBeasts(s), hunt: s => HuntView.render(s, document.getElementById('tab-hunt'), gameState, huntHelpers),
     bestiary: s => BestiaryView.render(s, document.getElementById('tab-bestiary'), gameState, huntHelpers),
     arena: s => ArenaView.render(s, document.getElementById('tab-arena'), gameState, arenaHelpers),   // A6-3b
+    arts: s => ArtsView.render(s, document.getElementById('tab-arts'), gameState, { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmtTime }),   // Phase 42
     family: s => renderFamily(s), clan: s => renderClan(s), hall: s => renderHall(s), sect: s => renderSect(s),
     'sect-missions': s => renderSect(s, 'sect-missions'), 'sect-halls': s => renderSect(s, 'sect-halls'),
     'sect-disciples': s => renderSect(s, 'sect-disciples'), 'sect-war': s => renderSect(s, 'sect-war'),
@@ -1268,14 +1270,18 @@
   // A beast's rarity tier as a small coloured chip (+ "Rare colour" for a variant): Roam → Beasts cards
   const tierChip = prof => `<span class="tier-chip tier-${prof.tier.id}">${escHtml(prof.tier.name)}</span>${prof.variant ? '<span class="tier-chip tier-variant">Rare colour</span>' : ''}`
 
+  // Phase 41: which talisman grade the player picked per encounter (best held by default). Render-layer only.
+  const _tameGrade = {}
+
   function renderBeasts(s) {
     const el = document.getElementById('tab-beasts')
     el.innerHTML = ''
     const cap = s.derived.maxBeasts || 3
-    const talismans = s.inventory['beast_taming_talisman'] || 0
+    const counts = gameState.talismanCounts()
+    const held = TALISMAN_GRADE_ORDER.filter(g => counts[g] > 0)
     const head = document.createElement('div')
     head.className = 'view-lede'
-    head.innerHTML = `Companions ${(s.beasts || []).length} / ${cap} · Taming Talismans <b>${talismans}</b>${talismans ? '' : ' <span class="lede-hint">(craft them, or find them on expeditions)</span>'}`
+    head.innerHTML = `Companions ${(s.beasts || []).length} / ${cap} · Taming Talismans ${held.length ? held.map(g => `${escHtml(TALISMAN_GRADES[g].name)} <b>${counts[g]}</b>`).join(' · ') : '<b>none</b>'}${held.length ? '' : ' <span class="lede-hint">(craft them, or find them on expeditions)</span>'}`
     el.appendChild(head)
     // ── Beast Encounters ──────────────────────────────────────────────────────
     const encounters = s.beastEncounters || []
@@ -1289,9 +1295,19 @@
         const beastType = BEAST_TYPES.find(b => b.id === enc.typeId)
         const free      = enc.mood === 'grateful'                  // Phase 35: a spared beast came back
         const fighting  = s.family?.fight?.beast?.encId === enc.id
-        const canTame   = (s.beasts || []).length < (s.derived.maxBeasts || 3)
-          && s.stageIndex >= (beastType?.minStage || 0)
-          && (free || (s.inventory['beast_taming_talisman'] || 0) > 0) && !fighting
+        const ti        = gameState.tameInfo(enc.id)               // Phase 41: grades, chance, locks
+        const canTame   = ti ? ti.canTame : false
+        const held      = ti ? ti.grades.filter(g => g.count > 0) : []
+        let sel = ti && ti.best ? ti.best : null
+        if (sel && _tameGrade[enc.id] && held.some(g => g.id === _tameGrade[enc.id])) sel = _tameGrade[enc.id]
+        const selGr = sel ? ti.grades.find(g => g.id === sel) : null
+        const tameLabel = fighting ? 'In battle'
+          : canTame ? (free ? 'Tame (it comes freely)' : `Tame · ${escHtml(selGr.name)} (${Math.round(selGr.chance * 100)}%)`)
+          : ti?.why === 'max_beasts' ? `Full (${s.derived.maxBeasts || 3}/${s.derived.maxBeasts || 3})`
+          : ti?.why === 'no_talisman' ? 'No Talisman' : ti?.why === 'stage' ? 'Stage too low' : 'Cannot tame'
+        const gradeRow = held.length > 1
+          ? `<div class="tame-grades">${held.map(g => `<button class="pack-chip${sel === g.id ? ' active' : ''}" data-tamegrade="${g.id}" data-encid="${escHtml(enc.id)}">${escHtml(g.name)}<small> ${g.count}</small></button>`).join('')}</div>`
+          : ''
         // Phase 35: Fight — opens the battle page's prepare step (odds before you commit); a lock says why not
         const fightLock = fighting ? null : s.family?.fight ? 'Another fight is underway' : (s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH ? 'Too wounded to fight' : null
         const pv = gameState.beastFightPreview(enc.id)
@@ -1310,10 +1326,9 @@
             <div class="beast-enc-head"><button class="beast-enc-name bdx-open" data-bdx="enc:${escHtml(enc.id)}">${escHtml(prof.name)}${enc.mood === 'cub' ? ' cub' : ''}</button>${tierChip(prof)}${moodTag}</div>
             <div class="beast-enc-desc">${escHtml(beastType?.desc || '')}</div>
             <div class="beast-enc-traits">${escHtml(traitNames)}</div>
+            ${gradeRow}
             <div class="beast-enc-acts">
-              <button class="beast-tame-btn${canTame ? '' : ''}" data-encid="${escHtml(enc.id)}" ${canTame ? '' : 'disabled'}>
-                ${fighting ? 'In battle' : canTame ? (free ? 'Tame (it comes freely)' : 'Tame (1× Talisman)') : (s.beasts?.length >= (s.derived.maxBeasts || 3) ? `Full (${s.derived.maxBeasts || 3}/${s.derived.maxBeasts || 3})` : (s.inventory['beast_taming_talisman'] || 0) < 1 ? 'No Talisman' : 'Stage too low')}
-              </button>
+              <button class="beast-tame-btn" data-encid="${escHtml(enc.id)}" ${canTame ? '' : 'disabled'}>${tameLabel}</button>
               <button class="beast-fight-btn" data-fight="${escHtml(enc.id)}" ${fightLock ? `disabled title="${escHtml(fightLock)}"` : `title="Win odds ${pv ? Math.round(pv.chance * 100) : '?'}%. You choose to slay it or drive it off before anything happens."`}>
                 <span data-icon="sword"></span>${fighting ? 'Return to battle' : 'Fight'}${!fighting && pv ? `<small>${pv.chance < 0.01 ? '<1' : Math.round(pv.chance * 100)}%</small>` : ''}
               </button>
@@ -1325,13 +1340,22 @@
       }
 
       el.querySelectorAll('.beast-fight-btn[data-fight]').forEach(btn => btn.addEventListener('click', () => combatView.open(btn.dataset.fight)))
+      el.querySelectorAll('.tame-grades [data-tamegrade]').forEach(btn => btn.addEventListener('click', () => {
+        _tameGrade[btn.dataset.encid] = btn.dataset.tamegrade
+        renderBeasts(s)
+      }))
       el.querySelectorAll('.beast-tame-btn[data-encid]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const res = gameState.tameEncounteredBeast(btn.dataset.encid)
+          const encId = btn.dataset.encid
+          const res = gameState.tameEncounteredBeast(encId, _tameGrade[encId])
           if (res.ok) {
+            delete _tameGrade[encId]
             flashMessage(`Tamed: ${res.beast.name}!`, 'special')
+          } else if (res.reason === 'tame_failed') {
+            if (res.outcome === 'fight') { flashMessage('It will not be charmed — it turns on you!', 'negative'); combatView.open(encId) }
+            else flashMessage('The charm fails, and it bolts into the wild.', 'negative')
           } else {
-            const msgs = { not_found:'Already gone', stage:'Realm too low', max_beasts:'Beast capacity full', no_talisman:'Need a Beast Taming Talisman', fighting:'You are fighting it' }
+            const msgs = { not_found:'Already gone', stage:'Realm too low', max_beasts:'Beast capacity full', no_talisman:'Need a taming talisman', fighting:'You are fighting it' }
             flashMessage(msgs[res.reason] || 'Cannot tame', 'negative')
           }
         })
@@ -1651,7 +1675,7 @@
 
   const PACK_FILTERS = [
     ['all', 'All'], ['mat', 'Mats'], ['pill', 'Pills'],
-    ['equip', 'Equip'], ['rare', 'Rare'], ['key', 'Keys'],
+    ['equip', 'Equip'], ['rare', 'Rare'], ['key', 'Keys'], ['manual', 'Arts'],   // Phase 42: martial art manuals
   ]
 
   // Real inventory rows + a synthetic row for equipped gear that has no unequipped copy in stock
@@ -1767,8 +1791,10 @@
 
       const main = document.createElement('div')
       main.className = 'pack-item-main'
+      const each = gameState.itemValue(id)
       main.innerHTML = `
         <span class="pack-item-name">${escHtml(item.name)}${equipped ? '<span class="pack-item-badge">◆</span>' : ''}</span>
+        ${each ? `<span class="pack-item-val" title="Sells for ${fmt(each)} Spirit Stone${each === 1 ? '' : 's'} each">${Icon('stone')}${fmt(each)}<small>ea</small></span>` : ''}
         <span class="pack-item-qty">×${fmt(qty)}</span>
       `
       main.addEventListener('click', () => {
@@ -1791,13 +1817,32 @@
         if (isElixir && invQty > 0) {
           btnsHTML += `<button class="pack-btn-use" data-useelixir="${id}">Use</button>`
         }
+        if (item.type === 'manual' && invQty > 0) {   // Phase 42: study it (or say why not), or look at it in Path → Arts
+          const lock = gameState.artStudyLock(item.art), art = ARTS[item.art], known = s.arts.known[item.art]
+          btnsHTML += lock === 'stage' ? `<span class="pack-item-hint">Too profound: opens at ${escHtml(stageShortName(art.minStage))}.</span>`
+            : lock === 'busy' ? `<span class="pack-item-hint">You are studying another manual.</span>`
+            : lock === 'maxed' ? `<span class="pack-item-hint">Mastered: sell the spare.</span>`
+            : `<button class="pack-btn-use" data-studyart="${item.art}">${known ? 'Study to deepen' : 'Study'} · ${fmtTime(gameState.artStudySeconds(item.art))}</button>`
+          btnsHTML += `<button class="pack-btn-equip" data-gotoarts>See it in Arts</button>`
+        }
         if (isEquip && !equipped && invQty > 0) {
           btnsHTML += `<button class="pack-btn-equip" data-equip="${id}">Equip</button>`
         }
         if (invQty > 0) {
           btnsHTML += `<button class="pack-btn-discard" data-discard="${id}">Discard ×1</button>`
         } else if (equipped) {
-          btnsHTML += `<span class="pack-item-hint">Unequip in the Craft tab to discard.</span>`
+          btnsHTML += `<span class="pack-item-hint">Equipped. Unequip it in the Craft tab to discard${each ? ` or sell it (${fmt(each)} stones)` : ''}.</span>`
+        }
+
+        // Selling (task 1.11): ×1 · ×10 · all but 1 · all, each button naming the stones it pays
+        let sellHTML = ''
+        if (each && invQty > 0) {
+          const opts = [[1, 'Sell 1']]
+          if (invQty > 10) opts.push([10, 'Sell 10'])
+          if (invQty > 2) opts.push([invQty - 1, 'All but 1'])
+          if (invQty > 1) opts.push([invQty, 'Sell all'])
+          sellHTML = `<div class="pack-sell"><span class="pack-sell-l">${Icon('stone')}Sell · ${fmt(each)} each</span>${opts.map(([n, lab]) =>
+            `<button class="pack-btn-sell" data-sell="${id}" data-n="${n}">${lab}<b>+${fmt(each * n)}</b></button>`).join('')}</div>`
         }
 
         const detail = document.createElement('div')
@@ -1805,6 +1850,7 @@
         detail.innerHTML = `
           <div class="pack-item-desc">${escHtml(item.desc)}</div>
           <div class="pack-item-btns">${btnsHTML}</div>
+          ${sellHTML}
         `
         div.appendChild(detail)
       }
@@ -1846,6 +1892,27 @@
           if (res.ok) flashMessage(`Discarded: ${name}`, 'neutral')
           else flashMessage('Cannot discard', 'negative')
         }, 'Discard')
+      })
+    })
+    el.querySelectorAll('[data-studyart]').forEach(btn => btn.addEventListener('click', () => {
+      const r = gameState.studyArt(btn.dataset.studyart)
+      if (r.ok) flashMessage(`You begin studying ${ARTS[btn.dataset.studyart].name}.`, 'positive')
+      else flashMessage({ stage: 'Too profound for your realm', busy: 'You are studying another manual' }[r.reason] || 'Cannot study', 'negative')
+    }))
+    el.querySelectorAll('[data-gotoarts]').forEach(btn => btn.addEventListener('click', () => nav.go('arts')))
+    el.querySelectorAll('[data-sell]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const iid = btn.dataset.sell, n = Number(btn.dataset.n), it = ITEMS[iid], have = gameState.get().inventory[iid] || 0
+        const total = gameState.itemValue(iid) * n
+        const go = () => {
+          const res = craftSys.sell(iid, n)
+          if (res.ok) flashMessage(`Sold ${n}× ${it?.name}: +${fmt(res.stones)} Spirit Stones`, 'positive')
+          else flashMessage({ equipped: 'Unequip it first', unsellable: 'That cannot be sold', not_owned: 'You do not have that many' }[res.reason] || 'Cannot sell', 'negative')
+        }
+        // Ask first when it is precious (rare / gear / talismans / costly), or when it empties the stack
+        const precious = ['rare', 'equip', 'key'].includes(it?.category) || gameState.itemValue(iid) >= 20
+        if (precious || (n === have && n > 1)) showConfirm(`Sell ${n}× ${it?.name}?`, `For ${fmt(total)} Spirit Stones. Sold items are gone for good.`, go, 'Sell')
+        else go()
       })
     })
   }

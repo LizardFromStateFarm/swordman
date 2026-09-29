@@ -71,7 +71,8 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
       await ev('combatView.scene.freeze(0)'); await shot('combat-why-desktop')
       await ev('document.querySelector("[data-bd-close]")?.click()')
     } else {
-      await click('#combat-panel .cb-end.bind'); await sleep(300)
+      await rng(0.1)                              // Phase 41: force the bind roll to succeed (crude 40%)
+      await click('#combat-panel .cb-end.bind'); await unrng(); await sleep(300)
       assert(await ev('combatView.step === "result" && gameState.get().beasts.some(b => b.id === "smoke_enc" && b.level === 2)'), `${mode}: bind: the beast joins at Lv.2`)
       await ev('combatView.scene.freeze(0.5, { type: "bind" }, { foe: "down" })'); await shot(`combat-bind-${mode}`)
       await ev('gameState.get().beasts = gameState.get().beasts.filter(b => b.id !== "smoke_enc")')
@@ -79,6 +80,23 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     await ev('combatView.step = "result"; combatView.close()')
     if (mode === 'phone') { await clearEmulation(); await ev('window.dispatchEvent(new Event("resize"))'); await sleep(400) }
   }
+
+  // Phase 41: the tame grade picker on the encounter card + both failure outcomes
+  await pick('expanded'); await fresh('spirit_fox')
+  await ev('(() => { const s = gameState.get(); s.inventory = { beast_taming_talisman: 1, beast_taming_talisman_fine: 2 }; gameState._recalc(); gameState._notify() })()')
+  await openBeasts()
+  assert(await ev('document.querySelectorAll("#tab-beasts .tame-grades [data-tamegrade]").length === 2'), 'holding two grades shows a chip per grade')
+  assert(await ev('/Tame · Fine \\(55%\\)/.test(document.querySelector("#tab-beasts .beast-tame-btn").textContent)'), 'the Tame button names the best grade and its chance')
+  await click('#tab-beasts .tame-grades [data-tamegrade="crude"]'); await sleep(200)
+  assert(await ev('/Tame · Crude \\(40%\\)/.test(document.querySelector("#tab-beasts .beast-tame-btn").textContent)'), 'picking another chip changes the shown chance')
+  await rng(0.999); await click('#tab-beasts .beast-tame-btn'); await unrng(); await sleep(300)
+  assert(await ev('gameState.get().beastEncounters.length === 0'), 'a failed tame can lose the beast (it escapes)')
+  await fresh('blood_python')   // fell: the failure turns on you
+  await ev('gameState.get().inventory.beast_taming_talisman = 1; gameState._recalc(); gameState._notify()')
+  await openBeasts()
+  await rng(0.6); await click('#tab-beasts .beast-tame-btn'); await unrng(); await sleep(400)
+  assert(await ev('combatView.isOpen() && combatView.step === "fight" && gameState.get().family.fight?.beast?.encId === "smoke_enc"'), 'a failed tame can turn it hostile → the battle page opens')
+  await ev('combatView.step = "result"; combatView.close()')
 
   // Step back mid-fight: the battle waits; the attention strip brings it back
   await pick('expanded'); await fresh('spirit_fox'); await openBeasts()

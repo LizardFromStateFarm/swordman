@@ -1,8 +1,13 @@
 # Combat & Battles — Reference
 _Covers: game-state.js (fight engine: `f.fight`, beast battles, bestiary) · assets/data/beasts.js (BEAST_FIGHT_*, per-type
-`fight` + `nature`) · renderer/game/combat.js (CombatView battle page) · renderer/engine/battle-scene.js (BattleScene canvas)
-· game.js / beast-detail.js (Fight entry) · breakdowns.js (`beastfight` card) · attention.js · Phase: 35 (roadmap A6) ·
-Updated: 2026-09-28_
+`fight` + `nature`) · assets/data/talismans.js (tame talisman grades + tame-attempt rules) · renderer/game/combat.js
+(CombatView battle page) · renderer/engine/battle-scene.js (BattleScene canvas)
+· game.js / beast-detail.js (Fight entry) · breakdowns.js (`beastfight` card) · attention.js · Phase: 35, 41 (roadmap A6) ·
+Updated: 2026-09-29_
+
+> **Being replaced (user 2026-09-29):** the Press/Guard/Feint exchange loop below gives way to **move combat on
+> collectible arts** (Phase 42, docs/systems/arts.md: 4 equipped move arts, combat Qi with no cooldowns, a parry QTE,
+> Five Elements, statuses). Stances, Retreat/Yield, end choices, the bestiary, feuds and the Arena carry over.
 
 Phase 35 is **not a new combat model**. It takes the fight card from 1.8b-3b (Press > Feint > Guard > Press, exchange
 odds derived from a one-roll match chance, opponent habits) and extends it to non-family opponents on a full-window
@@ -32,7 +37,8 @@ player's move (CLAUDE.md agency rule). There is no auto-fight.
    **Drive off** (half wounds, you can't drop below 1 Health, no loot). Each exchange: Press / Guard / Feint, or
    **Retreat** (always works, but it gets a parting blow and stays). After a win in the Slay stance: **Finish it** (loot
    and karma by its nature, and it may leave a cub), **Spare it** (it flees and may return grateful or vengeful), or
-   **Bind it** (tame it with a talisman; it joins at Lv.2). After a Drive-off win: **Let it flee** or **Bind it**.
+   **Bind it** (tame it with a talisman; it joins at Lv.2 — and, since Phase 41, the bind rolls the talisman's grade,
+   so it can slip free). After a Drive-off win: **Let it flee** or **Bind it**.
 3. **Hooks.** Health & Death (23A: real Health is spent on every lost exchange; a Slay loss can kill you, cause
    `beast_hunt`) · beasts and taming (tiers, Might, variants, traits change habits and power; binding goes through the
    tame path and the companion cap) · karma (by the beast's `nature`) · loot (beast cores, demon essence, rare
@@ -104,8 +110,17 @@ Migration: `_ensurePhase35Fields()` adds `s.bestiary = {}`.
 - `fightExchange(tactic)` (shared): `'retreat'` for beasts (the same slot as `'yield'`). Beast exchanges cost
   `_beastWound()` Health. In the Slay stance Health can hit 0 → `_die('beast_hunt')`. In the Drive stance it never
   drops below 1.
-- `beastFightFinish(choice)`: `'finish' | 'spare' | 'bind' | 'flee'` after a won battle → `{ ok, outcome, loot?, beast?,
-  karma }`.
+- `beastFightFinish(choice, gradeId?)`: `'finish' | 'spare' | 'bind' | 'flee'` after a won battle → `{ ok, outcome, loot?,
+  beast?, grade?, bindFailed?, karma }`. `'bind'` rolls the chosen grade's `tameChance` (Phase 41): success joins it at
+  Lv.2, a failure sets `outcome = 'bind_failed'` and the beast escapes (the talisman is still spent; no re-fight).
+- `tameEncounteredBeast(encId, gradeId?)` → `{ ok, beast, grade, chance }` or
+  `{ ok:false, reason:'tame_failed', outcome:'fight'|'flee', grade, chance }` (Phase 41). Consumes one talisman of the
+  chosen grade (the best held when `gradeId` is omitted or unheld) and rolls its chance; a failure starts a real fight
+  (`startBeastFight(encId, 'slay')`) or removes the encounter (escape). Too wounded to fight fairly → it flees instead.
+  A `grateful` beast is free and never rolls (also `no_talisman` / `stage` / `max_beasts` / `fighting`).
+- `tameInfo(encId)` → `{ encId, name, prof, nature, mood, free, canTame, why, fightChance,
+  grades: [{ id, name, chance, count }], best, chance }` — what the UI shows before you commit.
+- `talismanCounts()` → `{ crude, fine, superior, pristine }` counts read from the pack.
 - `bestiaryEntry(typeId)` → the record (or zeros).
 
 ## Odds
@@ -127,6 +142,48 @@ random tactic each exchange) wins at the shown odds (Monte Carlo in the check).
 tortoise. Fell: blood python, void hound. The rest are wild.
 `BEAST_FIGHT_*` constants: `BATTLE_TO`, base/might power, wound per exchange (× might), loss wound, min Health, trait and
 mood power, karma per nature (`BEAST_KARMA`), cub chance, return chance, bound level, and `BEAST_SLAY_LOOT` per tier.
+
+## Tame talisman grades & tame attempts (Phase 41)
+
+Taming used to be certain: one talisman always worked. Phase 41 makes it a roll with **four graded talismans** (data:
+`assets/data/talismans.js`, items in `items.js`, recipes in `recipes.js` under `talismans`).
+
+| Grade | Item | Tame chance | Start recipe cost |
+|---|---|---|---|
+| Crude | `beast_taming_talisman` (the old single item — old saves keep working) | 40% | 5 beast core + 2 ancient script |
+| Fine | `beast_taming_talisman_fine` | 55% | 8 beast core + 3 ancient script |
+| Superior | `beast_taming_talisman_superior` | 70% | 12 beast core + 5 ancient script + 1 void crystal |
+| Pristine | `beast_taming_talisman_pristine` | 90% | 20 beast core + 8 ancient script + 3 void crystal |
+
+`TALISMAN_GRADES` maps a grade → `{ name, tameChance, itemId }`; `TALISMAN_GRADE_ORDER` is the ladder. Each item carries
+`effect = { type: 'tame_beast', grade }` and sits in the `key` Pack category. **No grade is guaranteed.** Costs are the
+first pass and are balance-tuned in QA.
+
+**The attempt.** `tameEncounteredBeast(encId, gradeId?)` consumes one talisman of the chosen grade (the best you hold if
+you name none, or name one you do not carry) and rolls `Math.random() < grade.tameChance`:
+- **Success** → it joins at Lv.1 (the old path: bestiary seen, `first_beast` first, `beast_tamed` emit).
+- **Failure** → rolled into a **fight** or a **clean escape**, weighted by the beast's nature + mood:
+  `fightChance = clamp(0.5 × natureMult + moodMod, 0.2, 0.9)` with `TAME_NATURE_FIGHT_MULT = { benign: 0.5, wild: 1.0,
+  fell: 1.6 }` and `TAME_MOOD_FIGHT_MOD = { vengeful: +0.2, cub: −0.2 }`. A man-eater rounds on you; a guardian bolts.
+  - **Fight** → `startBeastFight(encId, 'slay')` starts a real battle (the sighting stays; the battle page resumes it).
+    If you are below `BEAST_FIGHT_MIN_HEALTH` (or a fight is already underway) it cannot fairly start, so it **flees**
+    instead — a wounded player is never forced into a lethal fight.
+  - **Escape** → the sighting is removed; `tame_failed` is emitted with `outcome: 'flee'`.
+- A **grateful** beast (a spared beast that came back) is free and never rolls.
+
+**The bind (after a won battle).** `beastFightFinish('bind', gradeId?)` also rolls the grade's chance now: success joins
+at `BEAST_BOUND_LEVEL` (2); a failure means the beaten beast slips free and is gone (`outcome: 'bind_failed'`) — the
+talisman is spent and there is no second fight. `beastFightChoices()` exposes `talismanGrades`, `bindGrade` and
+`bindChance` for the end card.
+
+**UI.** Roam → Beasts, the details page and the battle end card all show the grades you hold (a `pack-chip` row when you
+hold more than one, best held pre-selected) and the resulting chance on the button (`Tame · Fine (55%)`). A failed tame
+that turns hostile opens the battle page (`combatView.open(encId)` resumes the live fight); an escape just toasts.
+`talismanCounts()` / `tameInfo()` are the read helpers behind this.
+
+**Sim + checks.** The bot keeps two talismans (best grade it can afford) so a failed tame can still be bound, and tames
+with the best grade it holds. `checks/talismans.js` pins the grade table, item/recipe wiring, the roll, both failure
+outcomes, the wounded→flee fallback, the nature weighting, the grateful free tame, and the bind roll.
 
 ## As built (A6-1, 2026-09-28)
 

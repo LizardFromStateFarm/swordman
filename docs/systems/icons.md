@@ -67,6 +67,10 @@ secondary stroke is the family's "detail line" idiom.
   Every chrome mark in attention, breakdowns, Family, Clan/Hall, Sect, Character, fight card, tournament and Mode cards is
   an icon; CN subtitles beside English dropped (breakdown `cn`, banner menu headings/rows, Mode cards, Banter log, duel
   title, "Automation 自動"); CSS `content:` glyphs (詳 封 得) replaced by a dot / lock icon / check icon.
+- **Phase 42 / 1.12 (2026-09-29):** +6 Five Elements marks — `el_metal` (ingot diamond), `el_wood` (two-leaf sprout),
+  `el_water` (drop + wave), `el_fire` (double flame), `el_earth` (mountain on a ground line), `el_neutral` (concentric
+  rings). Distinct by **shape** (colour-blind safe); tinted in the UI by `--el-*` tokens (styles.css :root). Used by
+  Path → Arts and later the battle page (1.13). Asset gate: see ui-review.md.
 
 ## Lint
 `scripts/check-no-chrome-cjk.js --strict` runs in `npm test`: CJK in renderer/ code (comments skipped) fails, except the

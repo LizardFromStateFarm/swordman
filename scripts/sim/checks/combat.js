@@ -129,7 +129,8 @@ function fight(sim, gs, how) {
     s.inventory.beast_taming_talisman = 0
     assert(gs.beastFightChoices().bindLock === 'no_talisman' && gs.beastFightFinish('bind').reason === 'no_talisman' && s.family.fight, 'bind needs a talisman (and the choice stays open)')
     s.inventory.beast_taming_talisman = 2
-    const f = gs.beastFightFinish('bind')
+    rng(sim, 0.1)                                   // Phase 41: force the bind roll to succeed (crude 40%)
+    const f = gs.beastFightFinish('bind'); unrng(sim)
     assert(f.ok && f.beast.level === 2 && s.inventory.beast_taming_talisman === 1 && s.beasts.some(b => b.id === 'e1'), 'bind: it joins at Lv.2 for one talisman') }
 
   // ── Save migration ──
@@ -165,7 +166,8 @@ function fight(sim, gs, how) {
     assert(found && found.hunted === 'thunder_crags' && ['thunder_eagle', 'spectral_bear', 'blood_python'].includes(found.typeId) && gs.bestiaryEntry(found.typeId).seen,
       `the hunt finds a beast of its ground (${found?.typeId}), seen in the bestiary`)
     assert(gs.startHunt('misty_foothills').reason === 'busy', 'a found beast holds the hunt until it is dealt with')
-    s.inventory.beast_taming_talisman = 1; gs.tameEncounteredBeast(found.id)
+    s.inventory.beast_taming_talisman = 1
+    rng(sim, 0.1); gs.tameEncounteredBeast(found.id); unrng(sim)   // Phase 41: force the tame roll to succeed
     assert(gs.startHunt('misty_foothills').ok, 'once the found beast is tamed, you can hunt again')
     gs.cancelHunt(); assert(s.hunt === null, 'call off a hunt')
     s.beastEncounters = [1, 2, 3].map(i => ({ id: 'x' + i, typeId: 'spirit_fox', traits: [], seenAt: 0 }))

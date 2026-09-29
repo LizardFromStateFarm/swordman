@@ -51,6 +51,7 @@ class CombatView {
     this.oppId = null                  // person mode: who you fight
     this.kind = null                   // person mode: duel / challenge / defend / stepdown
     this.result = null                 // the last end-of-battle summary shown on the result card
+    this.bindGrade = null              // Phase 41: the talisman grade chosen for the end-of-battle bind
     this.lockUntil = 0
     this.box.addEventListener('click', e => this._click(e))
     document.getElementById('combat-close').addEventListener('click', () => this.close())
@@ -72,7 +73,7 @@ class CombatView {
     if (fi) return this.resume()
     this.mode = 'beast'
     this.encId = encId
-    this.result = null; this.snap = null
+    this.result = null; this.snap = null; this.bindGrade = null
     this._show()
     this._setupScene(this.gs.get().beastEncounters.find(e => e.id === encId))
     this.step = 'prepare'
@@ -83,7 +84,7 @@ class CombatView {
   resume() {
     const fi = this.gs.get().family?.fight
     if (!fi) return
-    this.result = null
+    this.result = null; this.bindGrade = null
     if (fi.kind === 'beast') {
       this.mode = 'beast'
       this.encId = fi.beast.encId
@@ -373,14 +374,24 @@ class CombatView {
     const k = v => v > 0 ? `+${v} karma` : v < 0 ? `${v} karma` : 'no karma'
     const opt = (id, title, sub, extra = '', lock = null) => `
       <button class="cb-end ${id}" data-end="${id}" ${lock ? 'disabled' : ''}><span class="cb-st-n">${title}</span><span class="cb-st-sub">${sub}</span>${extra}${lock ? `<span class="cb-st-l warn">${lock}</span>` : ''}</button>`
-    const bindLock = ch.bindLock === 'max_beasts' ? 'Your companions are full. Release one first.' : ch.bindLock === 'no_talisman' ? 'You need a Beast Taming Talisman.' : null
-    const bind = opt('bind', 'Bind it', ch.bindFree ? 'It bows its head to you. No talisman needed.' : `Tame it with a talisman (you carry ${ch.talismans}).`,
-      `<span class="cb-st-l">Joins you at Lv.${typeof BEAST_BOUND_LEVEL !== 'undefined' ? BEAST_BOUND_LEVEL : 2}</span>`, bindLock)
+    const bindLock = ch.bindLock === 'max_beasts' ? 'Your companions are full. Release one first.' : ch.bindLock === 'no_talisman' ? 'You need a taming talisman.' : null
+    // Phase 41: choose a talisman grade for the bind (best held by default); the chance is shown, and a failure loses it.
+    const held = (ch.talismanGrades || []).filter(g => g.count > 0)
+    let sel = ch.bindGrade
+    if (sel && this.bindGrade && held.some(g => g.id === this.bindGrade)) sel = this.bindGrade
+    const selGr = sel && ch.talismanGrades ? ch.talismanGrades.find(g => g.id === sel) : null
+    const gradeRow = held.length > 1
+      ? `<div class="tame-grades cb-tame-grades">${held.map(g => `<button class="pack-chip${sel === g.id ? ' active' : ''}" data-bindgrade="${g.id}">${esc(g.name)}<small> ${g.count}</small></button>`).join('')}</div>`
+      : ''
+    const bindSub = ch.bindFree ? 'It bows its head to you. No talisman needed.'
+      : selGr ? `${esc(selGr.name)} charm — ${Math.round(selGr.chance * 100)}%. If it fails, it is gone.`
+      : 'You carry no taming talismans.'
+    const bind = `<button class="cb-end bind" data-end="bind"${sel ? ` data-grade="${sel}"` : ''} ${bindLock ? 'disabled' : ''}><span class="cb-st-n">Bind it</span><span class="cb-st-sub">${bindSub}</span><span class="cb-st-l">Joins you at Lv.${typeof BEAST_BOUND_LEVEL !== 'undefined' ? BEAST_BOUND_LEVEL : 2}</span>${bindLock ? `<span class="cb-st-l warn">${bindLock}</span>` : ''}</button>`
     const opts = ch.ids.includes('finish')
       ? opt('finish', 'Finish it', ch.cub ? 'It is only a cub.' : 'Take what its body holds.', `<span class="cb-st-l">${esc(loot)}</span><span class="cb-st-l${ch.finishKarma < 0 ? ' warn' : ''}">${k(ch.finishKarma)}</span>`)
         + opt('spare', 'Spare it', 'Let it limp away. It may come back one day.', `<span class="cb-st-l">${k(ch.spareKarma)}</span>`) + bind
       : opt('flee', 'Let it flee', 'It runs, and may come back one day.', `<span class="cb-st-l">${k(ch.spareKarma)}</span>`) + bind
-    return `<div class="cb-last up">The ${esc(name)} is down. What happens now is yours to decide.</div><div class="cb-ends${ch.ids.length === 3 ? ' three' : ''}">${opts}</div>`
+    return `<div class="cb-last up">The ${esc(name)} is down. What happens now is yours to decide.</div>${gradeRow}<div class="cb-ends${ch.ids.length === 3 ? ' three' : ''}">${opts}</div>`
   }
 
   // ── Step 3: the end choice (a person, A6-3a) — the reaction each choice leaves is read from their temper ──
@@ -452,11 +463,19 @@ class CombatView {
       if (r.done) (this.mode === 'person' ? this._endedPerson(r, name) : this._ended(r, name))
       return this.render()
     }
+    if (t.dataset.bindgrade) { this.bindGrade = t.dataset.bindgrade; return this.render() }   // Phase 41: pick the bind grade
     if (t.dataset.end && this.mode === 'person') return this._finishPerson(t.dataset.end)
     if (t.dataset.end) {
       const name = this._name()
-      const r = this.gs.beastFightFinish(t.dataset.end)
-      if (!r.ok) { this.h.flash({ max_beasts: 'Your companions are full.', no_talisman: 'You need a Beast Taming Talisman.' }[r.reason] || 'Not now.', 'negative'); return this.render() }
+      const r = this.gs.beastFightFinish(t.dataset.end, t.dataset.grade)
+      if (!r.ok) { this.h.flash({ max_beasts: 'Your companions are full.', no_talisman: 'You need a taming talisman.' }[r.reason] || 'Not now.', 'negative'); return this.render() }
+      if (r.outcome === 'bind_failed') {                          // Phase 41: the charm failed; it is gone
+        this.scene.play({ type: 'spare' })
+        if (this.snap) this.snap.foeGone = 'fled'
+        this.result = { name, karma: r.karma, loot: null, tone: 'jade', head: `The ${name} slips free`, text: 'Your charm fails at the last moment. It is up and gone into the hills.' }
+        this.step = 'result'
+        return this.render()
+      }
       this.scene.play({ type: r.outcome })
       if (this.snap) { this.snap.you = this.snap.to; this.snap.foeGone = { finish: 'slain', spare: 'spared', flee: 'fled', bind: 'bound' }[r.outcome] }
       this.result = {

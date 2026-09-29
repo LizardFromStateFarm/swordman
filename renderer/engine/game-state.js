@@ -1,6 +1,17 @@
 // Central game state — single source of truth.
 // All mutation happens through methods; subscribers are notified after each change.
 
+// Phase 42 (arts.md): every art (except the basics everyone knows) comes as a martial art manual — an ITEMS entry
+// generated from ARTS so the two never drift. Pack category 'manual' (chip "Arts"); priced by grade in itemValue().
+if (typeof ARTS_LIST !== 'undefined' && typeof ITEMS !== 'undefined') {
+  for (const a of ARTS_LIST) {
+    if (ART_BASICS.includes(a.id)) continue
+    ITEMS['manual_' + a.id] = { id: 'manual_' + a.id, name: `${a.name} Manual`, nameCN: a.nameCN, art: a.id,
+      desc: `A martial art manual (${ART_RARITY[a.rarity].name} grade, ${ART_ELEMENTS[a.element].name} ${a.kind === 'move' ? 'move' : 'passive'}). Study it to learn ${a.name}.`,
+      type: 'manual', stackable: true, category: 'manual' }
+  }
+}
+
 class GameState {
   constructor() {
     this._s       = null
@@ -139,6 +150,7 @@ class GameState {
       bestiary:         {},   // Phase 35 (combat.md): per beast type — seen, fought/won/lost/slain/spared/bound, habitsKnown, returning
       bestiarySeenVer:  1,
       arena:            this._blankArena(),   // A6-3b (combat.md): rings, duelists, the run, renown, titles, call-outs
+      arts:             null, // Phase 42 (arts.md): known arts, loadout, study, breakthrough offers — filled by _ensurePhase42Fields (needs root elements)
       hunt:             null, // A6-2: { groundId, startedAt, endsAt, found: encId | null } while tracking on a hunting ground
       // Phase 4
       sect:             { id: null, rank: 0, contribution: 0, activeMissions: [] },
@@ -1269,6 +1281,7 @@ class GameState {
     this._ensurePhase16Fields()
     this._ensurePhase34Fields()   // Phase 31 (2.7a) — needs s.world.clans (33), reads maxStageThisLife/techniques
     this._ensurePhase35Fields()
+    this._ensurePhase42Fields()
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -1518,6 +1531,7 @@ class GameState {
     s.world.year += years
     if (Math.floor(s.world.year) !== prevYear) { this._tickFamily(); this._tickArena() }   // Phase 16-lite (M2 task 2.5) · A6-3b
     if (s.hunt && !s.hunt.found && Date.now() >= s.hunt.endsAt) this._resolveHunt()   // Phase 35 (A6-2)
+    if (s.arts?.study && Date.now() >= s.arts.study.endsAt) this._finishStudy()      // Phase 42 (arts.md): study runs on real time, closed or open
 
     const gain = s.derived.qiPerSecondBoosted * dt
     s.qi = Math.min(s.qi + gain, s.derived.qiCap)
@@ -1631,6 +1645,8 @@ class GameState {
     // catch-up immediately, not only once this life ends.
     const newRealm = CULTIVATION_STAGES[s.stageIndex].realm
     if (newRealm !== prevRealm && REALM_FIRST_ID[newRealm]) this._claimFirst(REALM_FIRST_ID[newRealm])
+    if (newRealm !== prevRealm) this._offerArts(newRealm)          // Phase 42: breakthrough insight — pick 1 of 3
+    if (ART_STAGE_GRANTS[s.stageIndex]) this._learnArt(ART_STAGE_GRANTS[s.stageIndex], 'grant')
     const clan = this._playerClan()
     if (clan) clan.bestStageIndex = Math.max(clan.bestStageIndex, s.stageIndex)
     this._recalc(); this._notify()
@@ -2833,6 +2849,10 @@ class GameState {
       if (blood) A.record.blood++
       let title = null
       if (champion && !A.titles.includes(R.id)) { A.titles.push(R.id); A.record.champions++; title = R.title }
+      // Phase 42: the champion's signature art goes with the title; any win may turn up a manual
+      const sigArt = title && ARTS_LIST.find(a => a.sig === 'arena:' + R.id)
+      if (sigArt) this._grantManual(sigArt.id, `from the ${R.name}'s champion`)
+      else if (Math.random() < ART_ARENA_BOUT_DROP) { const artId = this._rollArt(ART_ARENA_RING_WEIGHTS[R.id]); if (artId) this._grantManual(artId, `as a prize in the ${R.name}`) }
       if (res.died) { opp.alive = false; opp.diedYear = yr; opp.cause = 'arena_blood'; A.record.kills++; s.karma = Math.max(0, s.karma + ARENA_KILL_KARMA) }
       A.best = Math.max(A.best, run?.streak || 0)
       if (s.ownSect?.founded) A.sectFame += R.fame
@@ -3066,14 +3086,18 @@ class GameState {
     if (!fi || fi.kind !== 'beast' || fi.over !== 'won') return null
     const full = (s.beasts || []).length >= (s.derived?.maxBeasts || 3)
     const free = fi.beast.mood === 'grateful'
-    const tal = s.inventory['beast_taming_talisman'] || 0
-    const bindLock = full ? 'max_beasts' : !free && tal < 1 ? 'no_talisman' : null
+    const counts = this.talismanCounts()
+    const tal = TALISMAN_GRADE_ORDER.reduce((a, g) => a + counts[g], 0)
+    const best = this._bestTalismanGrade()
+    const bindLock = full ? 'max_beasts' : !free && !best ? 'no_talisman' : null
+    const talismanGrades = TALISMAN_GRADE_ORDER.map(g => ({ id: g, name: TALISMAN_GRADES[g].name, chance: TALISMAN_GRADES[g].tameChance, count: counts[g] }))
     const nature = BEAST_NATURE[fi.beast.typeId] || 'wild'
     const cub = fi.beast.mood === 'cub'
     const finishKarma = cub ? BEAST_KARMA.cub : BEAST_KARMA.finish[nature]
     const ids = fi.stance === 'slay' ? ['finish', 'spare', 'bind'] : ['flee', 'bind']
-    return { ids, nature, cub, bindLock, bindFree: free, talismans: tal, finishKarma, spareKarma: BEAST_KARMA.spare[nature],
-      loot: this._beastLootPreview(fi.beast) }
+    return { ids, nature, cub, bindLock, bindFree: free, talismans: tal, talismanGrades, bindGrade: best,
+      bindChance: free ? 1 : (best ? TALISMAN_GRADES[best].tameChance : null),
+      finishKarma, spareKarma: BEAST_KARMA.spare[nature], loot: this._beastLootPreview(fi.beast) }
   }
 
   _beastLootPreview(rec) {
@@ -3083,7 +3107,7 @@ class GameState {
   }
 
   // The end choice of a won battle: 'finish' | 'spare' (Slay stance) · 'flee' (Drive) · 'bind' (either, with a talisman).
-  beastFightFinish(choice) {
+  beastFightFinish(choice, gradeId) {
     const s = this._s, f = s.family, fi = f?.fight
     const ch = this.beastFightChoices()
     if (!ch) return { ok: false, reason: 'no_battle' }
@@ -3120,6 +3144,13 @@ class GameState {
         res.cub = true
       }
       this._emit('beast_slain', { beast: name, tier: prof.tier.id })
+      // Phase 42: its signature art, or a manual of its element (mercy keeps its secrets: only Finish drops arts)
+      const sig = ARTS_LIST.find(a => a.sig === 'beast:' + rec.typeId)
+      if (sig && !ch.cub && Math.random() < (ART_BEAST_SIG_CHANCE[prof.tier.id] || 0.05)) { this._grantManual(sig.id, `on the ${name}`); res.art = sig.id }
+      else if (Math.random() < ART_BEAST_ELEMENT_DROP) {
+        const artId = this._rollArt(ART_DROP_WEIGHTS_BY_TIER[Math.min(6, 1 + Math.floor(s.stageIndex / 4))], BEAST_ELEMENT[rec.typeId])
+        if (artId) { this._grantManual(artId, `on the ${name}`); res.art = artId }
+      }
     } else if (choice === 'spare' || choice === 'flee') {
       b.spared++
       s.karma = Math.max(0, Math.min(100, s.karma + ch.spareKarma))
@@ -3134,20 +3165,34 @@ class GameState {
         : `The ${name} breaks off and flees. It will remember this place, and you.`, type: 'neutral' })
       this._emit('beast_spared', { beast: name })
     } else {                                                     // bind: tame it now, broken to your will
+      let grade = null, chance = 1
       if (!ch.bindFree) {
-        s.inventory['beast_taming_talisman']--
-        if (s.inventory['beast_taming_talisman'] <= 0) delete s.inventory['beast_taming_talisman']
+        const counts = this.talismanCounts()
+        grade = (gradeId && TALISMAN_GRADES[gradeId] && counts[gradeId] > 0) ? gradeId : this._bestTalismanGrade()
+        if (!grade) { this._recalc(); this._notify(); return { ok: false, reason: 'no_talisman' } }
+        chance = TALISMAN_GRADES[grade].tameChance
+        const itemId = TALISMAN_GRADES[grade].itemId
+        s.inventory[itemId]--
+        if (s.inventory[itemId] <= 0) delete s.inventory[itemId]
       }
-      b.bound++
-      const beast = { id: rec.encId, typeId: rec.typeId, ...(rec.variant ? { variant: rec.variant } : {}), name,
-        level: BEAST_BOUND_LEVEL, xp: 0, traits: [...rec.traits], expedition: null }
-      s.beasts = s.beasts || []
-      s.beasts.push(beast)
-      res.beast = beast
-      this._claimFirst('first_beast')
-      this.addEvent({ text: `Beaten and bound, the ${name} bows its head. It joins you at Lv.${BEAST_BOUND_LEVEL}.`, type: 'special' })
-      this._emit('beast_spared', { beast: name, bound: true })
-      this._emit('beast_tamed', { name })
+      res.grade = grade
+      if (Math.random() < chance) {
+        b.bound++
+        const beast = { id: rec.encId, typeId: rec.typeId, ...(rec.variant ? { variant: rec.variant } : {}), name,
+          level: BEAST_BOUND_LEVEL, xp: 0, traits: [...rec.traits], expedition: null }
+        s.beasts = s.beasts || []
+        s.beasts.push(beast)
+        res.beast = beast
+        this._claimFirst('first_beast')
+        this.addEvent({ text: `Beaten and bound, the ${name} bows its head. It joins you at Lv.${BEAST_BOUND_LEVEL}.`, type: 'special' })
+        this._emit('beast_spared', { beast: name, bound: true })
+        this._emit('beast_tamed', { name })
+      } else {
+        res.bindFailed = true
+        res.outcome = 'bind_failed'
+        this.addEvent({ text: `You reach for the ${name} — and it slips free, and is gone.`, type: 'neutral' })
+        this._emit('tame_failed', { beast: name, outcome: 'escaped' })
+      }
     }
     res.karma = Math.round((s.karma - karma0) * 10) / 10
     this._recalc(); this._notify()
@@ -4691,6 +4736,11 @@ class GameState {
     const tableW = loc.dropTable.reduce((sum, d) => sum + d.weight, 0)
     const rare   = loc.dropTable.find(d => drops[d.itemId] && ITEMS[d.itemId]?.type !== 'currency' && d.weight <= tableW * BANTER_RARE_WEIGHT_FRAC)
     this._emit('expedition_return', { rareItem: rare ? (ITEMS[rare.itemId]?.name || rare.itemId) : null })
+    // Phase 42: a martial art manual, now and then (more often in harder places)
+    if (Math.random() < ART_EXPEDITION_DROP + ART_EXPEDITION_DROP_TIER * ((loc.enemyTier || 1) - 1)) {
+      const artId = this._rollArt(ART_DROP_WEIGHTS_BY_TIER[Math.min(6, loc.enemyTier || 1)])
+      if (artId) this._grantManual(artId, `in ${loc.name}`)
+    }
 
     // Beast encounter roll (at most one per expedition, max 3 queued)
     const eligible = (typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES : [])
@@ -4869,6 +4919,208 @@ class GameState {
     return { ok: true }
   }
 
+  // ── Phase 42 (task 1.12, docs/systems/arts.md): combat arts — library, manuals, study, loadout, offers ─────────
+  // s.arts = { known: { [artId]: { mastery, xp, uses, how, at } }, loadout: { moves: [id|null ×4], passives: [id|null ×5] },
+  //            study: null | { artId, startedAt, endsAt }, offers: [{ id, realm, options: [artId ×3] }], found: { [artId]: true } }
+  _blankArts() {
+    const known = {}
+    for (const id of ART_BASICS) known[id] = { mastery: 1, xp: 0, uses: 0, how: 'basic', at: Date.now() }
+    const els = this.rootElements()
+    const starter = ARTS_LIST.find(a => a.starter && a.element === els[0])
+    if (starter) known[starter.id] = { mastery: 1, xp: 0, uses: 0, how: 'root', at: Date.now() }
+    const moves = Object.keys(known).filter(id => ARTS[id].kind === 'move')
+    return { known, loadout: { moves: [...moves, null, null, null, null].slice(0, ART_MOVE_SLOTS), passives: Array(ART_PASSIVE_SLOTS_MAX).fill(null) },
+      study: null, offers: [], found: Object.fromEntries(Object.keys(known).map(id => [id, true])) }
+  }
+
+  _ensurePhase42Fields() {
+    const s = this._s
+    if (!Array.isArray(s.root?.elements)) s.root.elements = Persons.rootElements(s.root, `${s.self?.id ?? ''}|${s.name}`)
+    if (!s.arts || typeof s.arts !== 'object') s.arts = this._blankArts()
+    const a = s.arts
+    if (!a.known || typeof a.known !== 'object') a.known = {}
+    for (const id of Object.keys(a.known)) if (!ARTS[id]) delete a.known[id]
+    for (const id of ART_BASICS) if (!a.known[id]) a.known[id] = { mastery: 1, xp: 0, uses: 0, how: 'basic', at: Date.now() }
+    if (!a.loadout) a.loadout = { moves: [], passives: [] }
+    const clean = (arr, n, kind) => Array.from({ length: n }, (_, i) => { const id = arr?.[i]; return id && a.known[id] && ARTS[id]?.kind === kind ? id : null })
+    a.loadout.moves = clean(a.loadout.moves, ART_MOVE_SLOTS, 'move')
+    a.loadout.passives = clean(a.loadout.passives, ART_PASSIVE_SLOTS_MAX, 'passive')
+    if (a.study && !(ARTS[a.study.artId] && a.study.endsAt > 0)) a.study = null
+    if (!Array.isArray(a.offers)) a.offers = []
+    a.offers = a.offers.filter(o => Array.isArray(o.options) && o.options.every(id => ARTS[id]))
+    if (!a.found || typeof a.found !== 'object') a.found = {}
+    for (const id of Object.keys(a.known)) a.found[id] = true
+  }
+
+  rootElements() { const r = this._s?.root; return Array.isArray(r?.elements) ? r.elements : Persons.rootElements(r || {}, '') }
+  passiveSlots(stage = this._s.stageIndex) { let n = 1; for (const x of ART_PASSIVE_SLOTS) if (stage >= x.stage) n = x.slots; return n }
+  artStudySeconds(artId) {
+    const base = ART_RARITY[ARTS[artId]?.rarity]?.studySeconds || 60
+    return Math.round(base * Math.max(ART_STUDY_MIN_FRAC, 1 / (1 + ART_STUDY_COMPREHENSION * (this._s.comprehension || 0))))
+  }
+  // An art's numbers at your mastery: power +8%/level, cost −1/level (never below 0).
+  artStats(artId) {
+    const art = ARTS[artId], k = this._s.arts.known[artId], lv = k?.mastery || 1
+    if (!art) return null
+    if (art.kind !== 'move') return { art, mastery: lv, known: !!k }
+    const m = art.move
+    return { art, mastery: lv, known: !!k, power: Math.round(m.power * (1 + ART_MASTERY_POWER * (lv - 1))), cost: Math.max(0, m.cost - ART_MASTERY_COST * (lv - 1)) }
+  }
+  // Why a manual can't be studied right now (null = it can).
+  artStudyLock(artId) {
+    const s = this._s, art = ARTS[artId], k = s.arts.known[artId]
+    if (!art) return 'unknown'
+    if (!(s.inventory['manual_' + artId] > 0)) return 'no_manual'
+    if (s.stageIndex < art.minStage) return 'stage'
+    if (k && k.mastery >= ART_MASTERY_MAX) return 'maxed'
+    if (s.arts.study) return 'busy'
+    return null
+  }
+  studyArt(artId) {
+    const s = this._s, lock = this.artStudyLock(artId)
+    if (lock) return { ok: false, reason: lock }
+    s.inventory['manual_' + artId]--
+    if (s.inventory['manual_' + artId] <= 0) delete s.inventory['manual_' + artId]
+    const secs = this.artStudySeconds(artId)
+    s.arts.study = { artId, startedAt: Date.now(), endsAt: Date.now() + secs * 1000 }
+    this.addEvent({ text: `You sit down with the ${ARTS[artId].name} manual. (${fmtTime(secs)})`, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, seconds: secs }
+  }
+  cancelStudy() {
+    const s = this._s, st = s.arts.study
+    if (!st) return { ok: false, reason: 'none' }
+    s.inventory['manual_' + st.artId] = (s.inventory['manual_' + st.artId] || 0) + 1   // the manual goes back in the pack
+    s.arts.study = null
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+  _finishStudy() {
+    const s = this._s, st = s.arts.study
+    if (!st) return
+    s.arts.study = null
+    this._learnArt(st.artId, 'study')
+  }
+  // Learn an art (or deepen it: a known art gains a mastery level). how: study | offer | grant | …
+  _learnArt(artId, how) {
+    const s = this._s, art = ARTS[artId]
+    if (!art) return
+    const k = s.arts.known[artId]
+    s.arts.found[artId] = true
+    if (k) {
+      if (k.mastery < ART_MASTERY_MAX) { k.mastery++; k.xp = Math.max(k.xp, ART_MASTERY_XP[k.mastery]) }
+      this.addEvent({ text: `${art.name} deepens: mastery ${k.mastery} of ${ART_MASTERY_MAX}.`, type: 'positive' })
+    } else {
+      s.arts.known[artId] = { mastery: 1, xp: 0, uses: 0, how, at: Date.now() }
+      this.addEvent({ text: how === 'grant' ? `Your cultivation opens a new art on its own: ${art.name}. Equip it in Path → Arts.`
+        : `You have learned ${art.name} (${ART_RARITY[art.rarity].name} grade ${art.kind === 'move' ? 'move' : 'passive art'}). Equip it in Path → Arts.`, type: 'special' })
+    }
+    this._emit('art_learned', { artId, how })
+    this._recalc(); this._notify()
+  }
+  // A manual into the pack, with a log line naming where it came from.
+  _grantManual(artId, where) {
+    const s = this._s, art = ARTS[artId]
+    if (!art) return
+    s.inventory['manual_' + artId] = (s.inventory['manual_' + artId] || 0) + 1
+    s.arts.found[artId] = true
+    const note = s.stageIndex < art.minStage ? ' It is too profound for you yet.' : s.arts.known[artId] ? ' You know it already: study it again to deepen it, or sell it.' : ' Study it from your pack.'
+    this.addEvent({ text: `You find a martial art manual ${where}: ${art.name} (${ART_RARITY[art.rarity].name} grade).${note}`, type: 'special' })
+    this._emit('art_manual', { artId })
+  }
+  // A random non-signature art by rarity weights (optionally one element). Prefers arts you don't know yet.
+  _rollArt(weights, element = null) {
+    const pool = ARTS_LIST.filter(a => !a.sig && !ART_BASICS.includes(a.id) && !Object.values(ART_STAGE_GRANTS).includes(a.id) && weights?.[a.rarity] && (!element || a.element === element))
+    if (!pool.length) return null
+    const fresh = pool.filter(a => !this._s.arts.known[a.id])
+    const use = fresh.length && Math.random() < 0.8 ? fresh : pool
+    let r = Math.random() * use.reduce((t, a) => t + weights[a.rarity], 0)
+    for (const a of use) { r -= weights[a.rarity]; if (r <= 0) return a.id }
+    return use[use.length - 1].id
+  }
+  // Breakthrough insight: 3 arts you don't know, one of your root's element when there is one. Waits for your pick.
+  _offerArts(realm) {
+    const s = this._s, w = ART_OFFER_WEIGHTS[realm]
+    if (!w) return
+    const pool = ARTS_LIST.filter(a => !a.sig && !s.arts.known[a.id] && !ART_BASICS.includes(a.id) && !Object.values(ART_STAGE_GRANTS).includes(a.id) && w[a.rarity] && a.minStage <= s.stageIndex)
+    const pick = list => { let r = Math.random() * list.reduce((t, a) => t + w[a.rarity], 0); for (const a of list) { r -= w[a.rarity]; if (r <= 0) return a } return list[list.length - 1] }
+    const out = [], els = this.rootElements()
+    const mine = pool.filter(a => els.includes(a.element))
+    if (mine.length) out.push(pick(mine))
+    while (out.length < ART_OFFER_COUNT) { const left = pool.filter(a => !out.includes(a)); if (!left.length) break; out.push(pick(left)) }
+    if (!out.length) return
+    for (const a of out) s.arts.found[a.id] = true
+    s.arts.offers.push({ id: `${Date.now()}_${Math.floor(Math.random() * 9999)}`, realm, options: out.map(a => a.id) })
+    this.addEvent({ text: `Breaking into ${realm}, you glimpse the shape of new arts. Choose one to keep in Path → Arts.`, type: 'special' })
+  }
+  chooseArtOffer(offerId, artId) {
+    const s = this._s, i = s.arts.offers.findIndex(o => o.id === offerId)
+    if (i < 0) return { ok: false, reason: 'no_offer' }
+    if (!s.arts.offers[i].options.includes(artId)) return { ok: false, reason: 'bad_choice' }
+    s.arts.offers.splice(i, 1)
+    this._learnArt(artId, 'offer')
+    return { ok: true }
+  }
+  // Put a known art in a slot (null clears it). An art already in another slot moves (slots never hold duplicates).
+  setArtSlot(kind, index, artId) {
+    const s = this._s, a = s.arts
+    if (s.family?.fight) return { ok: false, reason: 'fighting' }
+    const list = kind === 'move' ? a.loadout.moves : kind === 'passive' ? a.loadout.passives : null
+    if (!list || !(index >= 0 && index < list.length)) return { ok: false, reason: 'bad_slot' }
+    if (kind === 'passive' && index >= this.passiveSlots()) return { ok: false, reason: 'locked' }
+    if (artId != null) {
+      if (!a.known[artId]) return { ok: false, reason: 'unknown' }
+      if (ARTS[artId].kind !== kind) return { ok: false, reason: 'wrong_kind' }
+      const was = list.indexOf(artId)
+      if (was >= 0) list[was] = list[index]            // swap places
+    }
+    list[index] = artId ?? null
+    this._save(); this._notify()
+    return { ok: true }
+  }
+  // What Path → Arts shows. Passives beyond your realm's slots stay in the loadout but are inactive (shown locked).
+  artsInfo() {
+    const s = this._s, a = s.arts
+    return { known: a.known, loadout: a.loadout, passiveSlots: this.passiveSlots(), study: a.study, offers: a.offers,
+      found: Object.keys(a.found).length, total: ARTS_LIST.length, elements: this.rootElements(),
+      nextSlot: ART_PASSIVE_SLOTS.find(x => x.stage > s.stageIndex) || null }
+  }
+
+  // Task 1.11 (backpack.md → "Selling"): Spirit Stones one unit sells for. Materials: ITEM_SELL_VALUE; crafted items:
+  // SELL_CRAFTED_FRACTION of their recipe's ingredients (craft → sell never mints stones); otherwise a category default.
+  // 0 = cannot be sold (currency).
+  itemValue(itemId, _depth = 0) {
+    const item = ITEMS[itemId]
+    if (!item || item.type === 'currency') return 0
+    if (ITEM_SELL_VALUE[itemId] != null) return ITEM_SELL_VALUE[itemId]
+    if (item.type === 'manual') return ART_RARITY[ARTS[item.art]?.rarity]?.sellValue || 1   // Phase 42: by grade
+    const r = _depth < 4 && RECIPES.find(x => x.productId === itemId)
+    if (r) return Math.max(1, Math.floor(SELL_CRAFTED_FRACTION * r.ingredients.reduce((a, i) => a + i.qty * this.itemValue(i.itemId, _depth + 1), 0)))
+    return SELL_DEFAULT_VALUE[item.category] || 1
+  }
+
+  // Sell n unequipped copies for itemValue × n Spirit Stones. Equipped gear is not in `inventory`, so it can't be sold
+  // until unequipped (same rule as discardItem).
+  sellItem(itemId, n = 1) {
+    const s = this._s
+    const item = ITEMS[itemId]
+    if (!item) return { ok: false, reason: 'unknown' }
+    const each = this.itemValue(itemId)
+    if (!each) return { ok: false, reason: 'unsellable' }
+    if (!(Number.isInteger(n) && n > 0)) return { ok: false, reason: 'invalid_qty' }
+    const have = s.inventory[itemId] || 0
+    if (!have && (s.equipped?.weapon === itemId || s.equipped?.artifact === itemId)) return { ok: false, reason: 'equipped' }
+    if (have < n) return { ok: false, reason: 'not_owned' }
+    s.inventory[itemId] -= n
+    if (s.inventory[itemId] <= 0) delete s.inventory[itemId]
+    if (s.activePill === itemId && !s.inventory[itemId]) s.activePill = null
+    const stones = each * n
+    s.spiritStones += stones
+    this.addEvent({ text: `Sold ${n}× ${item.name} for ${stones} Spirit Stone${stones === 1 ? '' : 's'}.`, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, stones, each }
+  }
+
   // ── Phase 3: Spiritual Beasts ─────────────────────────────────────────────
 
   // One wild beast sighting (an expedition roll, or a hunt that found its quarry — A6-2): traits, rare colour, a returning
@@ -5006,7 +5258,52 @@ class GameState {
       art: variant?.art || type?.spriteState || rec?.typeId, lore: variant?.lore || type?.lore || type?.desc || '' }
   }
 
-  tameEncounteredBeast(encounterId) {
+  // How many talismans the player holds of each grade (Phase 41). DOM-free; the UI reads it too.
+  talismanCounts() {
+    const inv = this._s.inventory || {}, out = {}
+    for (const g of TALISMAN_GRADE_ORDER) out[g] = inv[TALISMAN_GRADES[g].itemId] || 0
+    return out
+  }
+
+  // The strongest grade the player holds at least one of (else null). The default a tame attempt uses.
+  _bestTalismanGrade() {
+    const c = this.talismanCounts()
+    for (let i = TALISMAN_GRADE_ORDER.length - 1; i >= 0; i--) if (c[TALISMAN_GRADE_ORDER[i]] > 0) return TALISMAN_GRADE_ORDER[i]
+    return null
+  }
+
+  // A failed direct tame turns into a fight or a clean escape: the chance of the fight, by the beast's nature + mood.
+  _tameFightChance(nature, mood) {
+    const base = typeof TAME_FIGHT_CHANCE_BASE !== 'undefined' ? TAME_FIGHT_CHANCE_BASE : 0.5
+    const mult = (typeof TAME_NATURE_FIGHT_MULT !== 'undefined' && TAME_NATURE_FIGHT_MULT[nature]) || 1
+    const mod = (typeof TAME_MOOD_FIGHT_MOD !== 'undefined' && TAME_MOOD_FIGHT_MOD[mood]) || 0
+    return Math.max(TAME_FIGHT_CHANCE_MIN, Math.min(TAME_FIGHT_CHANCE_MAX, base * mult + mod))
+  }
+
+  // Read helper for the UI + tests: what a tame attempt on this encounter would offer (grades, chance, locks).
+  tameInfo(encId) {
+    const s = this._s
+    const enc = (s.beastEncounters || []).find(e => e.id === encId)
+    if (!enc) return null
+    const beastType = (typeof BEAST_TYPES !== 'undefined' ? BEAST_TYPES : []).find(b => b.id === enc.typeId)
+    const prof = this.beastProfile(enc)
+    const nature = (typeof BEAST_NATURE !== 'undefined' && BEAST_NATURE[enc.typeId]) || 'wild'
+    const free = enc.mood === 'grateful'
+    const counts = this.talismanCounts()
+    const grades = TALISMAN_GRADE_ORDER.map(g => ({ id: g, name: TALISMAN_GRADES[g].name, chance: TALISMAN_GRADES[g].tameChance, count: counts[g] }))
+    const best = this._bestTalismanGrade()
+    let canTame = true, why = null
+    if (s.family?.fight?.beast?.encId === encId) { canTame = false; why = 'fighting' }
+    else if ((s.beasts || []).length >= (s.derived?.maxBeasts || 3)) { canTame = false; why = 'max_beasts' }
+    else if (beastType && s.stageIndex < (beastType.minStage || 0)) { canTame = false; why = 'stage' }
+    else if (!free && !best) { canTame = false; why = 'no_talisman' }
+    return { encId, name: prof.name, prof, nature, mood: enc.mood || null, free, canTame, why,
+      fightChance: this._tameFightChance(nature, enc.mood || null), grades, best, chance: free ? 1 : (best ? TALISMAN_GRADES[best].tameChance : null) }
+  }
+
+  // Phase 41: a graded talisman sets the chance; a failed direct attempt turns the beast hostile (a fight) or
+  // lets it escape. gradeId is optional — the best grade held is used when it is omitted or not held.
+  tameEncounteredBeast(encounterId, gradeId) {
     const s = this._s
     const enc = (s.beastEncounters || []).find(e => e.id === encounterId)
     if (!enc) return { ok: false, reason: 'not_found' }
@@ -5016,12 +5313,38 @@ class GameState {
     if (s.stageIndex < beastType.minStage) return { ok: false, reason: 'stage' }
     if (s.family?.fight?.beast?.encId === encounterId) return { ok: false, reason: 'fighting' }   // Phase 35
     if ((s.beasts || []).length >= (s.derived?.maxBeasts || 3)) return { ok: false, reason: 'max_beasts' }
-    const free = enc.mood === 'grateful'                          // Phase 35: a spared beast that came back
-    if (!free && (s.inventory['beast_taming_talisman'] || 0) < 1) return { ok: false, reason: 'no_talisman' }
 
+    const free = enc.mood === 'grateful'                          // Phase 35: a spared beast that came back
+    let grade = null
     if (!free) {
-      s.inventory['beast_taming_talisman']--
-      if (s.inventory['beast_taming_talisman'] <= 0) delete s.inventory['beast_taming_talisman']
+      const counts = this.talismanCounts()
+      grade = (gradeId && TALISMAN_GRADES[gradeId] && counts[gradeId] > 0) ? gradeId : this._bestTalismanGrade()
+      if (!grade) return { ok: false, reason: 'no_talisman' }
+      const itemId = TALISMAN_GRADES[grade].itemId
+      s.inventory[itemId]--
+      if (s.inventory[itemId] <= 0) delete s.inventory[itemId]
+    }
+
+    const chance = free ? 1 : TALISMAN_GRADES[grade].tameChance
+    const nature = (typeof BEAST_NATURE !== 'undefined' && BEAST_NATURE[enc.typeId]) || 'wild'
+    this._bestiary(enc.typeId).seen = true
+    const name = this.beastProfile(enc).name
+
+    if (!free && Math.random() >= chance) {
+      // The charm fails. A fell beast rounds on you; a gentle one bolts — never force a lethal fight on the wounded.
+      const turns = Math.random() < this._tameFightChance(nature, enc.mood || null)
+      if (turns && !this._beastFightLock(enc)) {
+        this.startBeastFight(encounterId, 'slay')
+        this.addEvent({ text: `The ${name} will not be charmed. It rounds on you.`, type: 'negative' })
+        this._recalc(); this._notify()
+        this._emit('tame_failed', { beast: name, outcome: 'fight' })
+        return { ok: false, reason: 'tame_failed', outcome: 'fight', grade, chance }
+      }
+      s.beastEncounters = s.beastEncounters.filter(e => e.id !== encounterId)
+      this.addEvent({ text: `The ${name} slips the charm and is gone into the wild.`, type: 'neutral' })
+      this._recalc(); this._notify()
+      this._emit('tame_failed', { beast: name, outcome: 'flee' })
+      return { ok: false, reason: 'tame_failed', outcome: 'flee', grade, chance }
     }
 
     s.beastEncounters = s.beastEncounters.filter(e => e.id !== encounterId)
@@ -5039,11 +5362,10 @@ class GameState {
     s.beasts = s.beasts || []
     s.beasts.push(beast)
 
-    this._bestiary(enc.typeId).seen = true
     this._claimFirst('first_beast')
     this._recalc(); this._notify()
     this._emit('beast_tamed', { name: beast.name })
-    return { ok: true, beast }
+    return { ok: true, beast, grade, chance }
   }
 
   sendBeastExpedition(beastId, locationId) {

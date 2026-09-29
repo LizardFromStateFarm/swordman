@@ -99,7 +99,7 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 24 | Immortal Paths (Tyrant / Devourer / Deity / Executioner) | ⬜ | M7 (v2) |
 | 26 | Immortal Island + ascension petitions | ⬜ | M7 (v2) |
 | 25 | Doctrine | ⬜ | M7 (v2) |
-| 23E | Secret Arts | ⬜ | M7 (v2) |
+| 23E | Secret Arts — **non-combat arts only** since 2026-09-29 (combat arts + the library/study infrastructure moved to Phase 42) | ⬜ | M7 (v2) |
 | 19 | World Epochs & Spiritual Tides (game time, change between generations) | ⬜ | M8 |
 | 17 | Secret Realm Dungeons | ⬜ | M8 |
 | 6A–D | Animation & visual overhaul | ↪ folded into Phase 34 (art engine) — particles, event animations, realm ambience are built as compositor effect passes | M1 (art track) |
@@ -110,6 +110,8 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 38 | **Sect Base & Immortal Island scenes (宗门场景 · 仙岛图)**: large-area art that grows/upgrades as you build (user 2026-09-27) | ⬜ | 38A M1 (art track, after A4; v1); 38B M7 (v2) |
 | 39 | **Cultivation Path & Appearance (修途 · 仪容)**: Basic method until Core, then Virtuous / Neutral / Demonic (changes arts + look, anchors the alignment meter, one costly Dao Reversal per life); appearance chosen at every creation/rebirth; effects unlocked by realm, arts and path; robes unlocked by positions + in-world rankings; NPC portraits (user 2026-09-27) | ⬜ | 39A–B M3 (tasks 3.2b–c; v1); 39C–F art track A5, A8–A10 (**v2**, user 2026-09-28) |
 | 40 | **Soul Points & the v1 finish (魂)**: cross-save Soul Points from failed Ascension Trials + a big grant on first Immortality; spent on Soul Resonance (+Qi/s); a full-window Immortal Ascension cinematic; the "you have finished v1" screen (user 2026-09-28; spec docs/systems/soul-points.md) | ✅ | v1 finish (tasks 40a–b) |
+| 41 | **Tame Talisman Grades & Tame Attempts (驯兽符)**: four graded Beast Taming Talismans with escalating tame chances (Crude 40% → Fine 55% → Superior 70% → Pristine 90%, none guaranteed); a failed direct tame turns the beast hostile (a battle) or lets it escape, weighted by its nature; the post-battle bind rolls too (user 2026-09-29; spec docs/systems/combat.md) | ✅ | M1 (combat follow-up) |
+| 42 | **Arts & Move Combat (功法)**: collectible arts as study-able martial art manuals (72 combat arts at launch, 5 rarity grades, Five Elements), 4 equipped move arts + passive slots by realm, arts from breakthroughs (pick 1 of 3) / expeditions / slain beasts / Arena champions / duelists / sect library / events / clan library; a Pokemon-like move combat engine (HP = Health, combat Qi with no cooldowns (spam until out of Qi), a parry quick-time event (0 damage + Qi back), element matchups, statuses, temper-driven opponent AI) **replacing Press/Guard/Feint** in every fight; plus **selling items** in Pack (user 2026-09-29; spec docs/systems/arts.md) | ⬜ | M1 (**next**, tasks 1.11–1.15) |
 | 10 | Cosmetics (titles, pet, cave) | ⬜ | M8 |
 | 11B–C | Heaven's Will, Scripture Lore | ⬜ | M8 |
 | 20A–B | Permadeath, Challenge modes | ⬜ | M8 |
@@ -161,6 +163,12 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 1.8b-6 ✅ | **Emoji lint on + re-review** (2026-09-27, done: `check-no-emoji.js --strict` in npm test with sprites exempt until A1 — **diverged**: sprites can't pass until the art track; all six screen groups re-reviewed with two combined reviewers per cycle and pass ≥ 7.5 — nav 7.6, Character 7.8, Family 7.7, Clan 7.8, mobile 7.6, Sect + grids 7.7; Explore rebuilt as mission cards; fmt() rounding fix): `check-no-emoji.js --strict` joins `npm test` for renderer/ + assets/data (plus the icon-set sweep from 1.8d); rerun visual-baseline + fresh reviews of every reworked screen (UI gate now **≥ 7.5**, no criterion < 6, no `[blocker]`) | 33 | 1.8b-2..5, 1.8d | 0 emoji outside sprites; every screen ≥ 7.5 |
 | 1.8e | **Mobile / responsive layout pass** (user 2026-09-27; Phase 6E): the viewport meta (`width=device-width, viewport-fit=cover` — without it a phone WebView uses a ~980px layout viewport and the app is a tiny box) plus a "mobile" CSS layer — full-bleed `#app`/`#charselect`, `100dvh`, safe-area insets, a **bottom tab bar**, ≥38px touch targets, `touch-action`/tap-highlight handling, a lifted text floor, screen-fitting overlays — and narrow-screen sprite-canvas sizing in `layout.js`. The phone layout refines `desktop` (the mode the iOS/Android shim reports), **not a 5th mode** | 6E | 1.7 | No horizontal overflow at 390×844; tabs at the bottom; overlays fit; UI gate ≥ 7.5 |
 | 1.9 ⏸ | **Deferred by the user (2026-09-27):** "UI is in a good spot"; full QA + balancing waits until more systems land (fold into a later QA & Balance task, e.g. 2.8). **QA & Balance: layout modes + UI overhaul** (CLAUDE.md → QA & Balance): smoke every mode, UX walkthrough, dist + build:web | — | 1.8b, 1.8e | Zero console errors in all modes; iOS bundle builds |
+| 1.10 ✅ | **Tame talisman grades + tame attempts** (Phase 41; built 2026-09-29; as-built combat.md → "Tame talisman grades & tame attempts"): four graded talismans (40 → 90%, the old single item = the crude grade); `tameEncounteredBeast(encId, gradeId?)` rolls the grade and consumes it; a failure starts a real battle (`startBeastFight` Slay) or loses the beast, weighted by nature (the wounded flee rather than be forced into a lethal fight); the post-battle bind rolls too (a failure = it escapes); grade pickers on Roam → Beasts, the details page and the battle end card; `checks/talismans.js`; the sim bot keeps two talismans and tames/binds with the best grade | 41 | A6 | Grade table + both failure outcomes pinned in checks; `npm run sim` healthy |
+| 1.11 ✅ | **Sell items** (42-0; user 2026-09-29; built 2026-09-29, as-built backpack.md → "Selling"; diverged: crafted items are priced at 60% of their ingredients instead of a hand-set value, and Pack also offers "Sell all"): `ITEMS[id].value` + category defaults, `sellItem(itemId, n)`, Pack → Sell ×1 / ×10 / all but 1 (confirm for rare + manuals, "Unequip first" for equipped), log line; checks/sell.js | 42 | — | Any non-currency, non-key, unequipped item sells; prices can't out-earn expeditions (sim) |
+| 1.12 ✅ | **Arts core** (42a; built 2026-09-29, as-built arts.md → "42a as built"; diverged: 79 arts (every beast + ring has a signature), root elements by hash not a random roll; spec docs/systems/arts.md): `assets/data/arts.js` (72 combat arts: 12 per element + 12 neutral, 5 rarity grades, writing brief), manuals as items (Pack chip **Arts**), study timer (Comprehension speeds it; one at a time; runs while away), mastery 1–5, `s.arts` library + loadout (4 moves, ART_PASSIVE_SLOTS by realm), **breakthrough pick-1-of-3**, drops (expedition `rareDrops`, slain beasts, Arena prizes + champion arts), `root.elements` + migration, **Path → Arts** screen (library + 2×2 loadout), attention + badges | 42 | 1.11 | Every source can hand out a manual; loadout rules pinned in checks/arts.js; UI gate ≥ 7.5, element/rarity icons ≥ 8.0 |
+| 1.13 | **Move combat engine — beasts** (42b): HP = Health, Might/Ward/Swift, combat Qi pool + refill (**no cooldowns**: spam until out of Qi; Palm Strike + Circulate always available), **parry QTE** (a telegraphed window on each enemy hit: 0 damage + 25 Qi; ⚙ Normal/Wide/Off; opponents parry by a roll; the estimate uses your own parry rate), Five Elements (×1.5 / ×0.67) + root affinity, statuses (Bleed/Burn/Entangle/Chill/Daze/Seal/Guard Broken), turn order + priority, `BEAST_MOVES` + habit-weighted AI, prepare-panel Monte Carlo estimate + "why" card, battle page 2×2 move grid, per-element move effects on BattleScene; Slay/Drive, Retreat, finish/spare/bind unchanged | 42, 35 | 1.12 | Beast fights run 4–8 turns; estimate within ±5% of a 2,000-run Monte Carlo; gate ≥ 7.5 |
+| 1.14 | **People on the new engine** (42c): duels, head challenges, step-down bouts, road slaughter, Arena on moves; `p.arts` movesets by root element + temper policy; scouting (moves hidden until seen); **rival counters** (a grudge-holder learns an art that overcomes your most-used element); raise → taught an art, finish → their manual; sect library (arts for Contribution); clan library in Kin → Hall (heirs study at half time); remove FIGHT_TACTICS/`_exchangeChance` | 42 | 1.13 | Every fight kind uses moves; old-engine saves migrate; duels/arena/succession checks rewritten and pass |
+| 1.15 | **QA & Balance: Arts & Move Combat** (42d): sim bot move policy + study/loadout/sell, multi-seed sim before/after, balance targets (arts.md), scenario checks, smoke every mode, UX walkthrough, `dist` + `build:web`, saved loadouts polish | 42 | 1.14 | Targets met; zero console errors; UX debt logged |
 
 #### Art track — Phase 34 (user 2026-09-26): plain grid ASCII will rarely clear the 8/10 gate
 
@@ -176,6 +184,11 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | A4-2 ◐ | (built 2026-09-28; as-built art-engine.md → "Beasts"; **awaiting the user's look**) **Beasts in ink**: `INK_BEASTS` (Spirit Fox, Thunder Eagle, Void Hound) as animated portraits on the Roam → Beasts encounter + companion cards (`BeastPortraits`, pooled canvases); engine gains art tables, swinging tail/wing layers, lightning, rift; Classic keeps the ASCII sprite with all frames (fixes the 1.8c frame-0 bug). Later ideas: portraits grow with beast level (the fox's tail count), combat poses in A6 | 34 | A4-1 | User accepts the beast sheet |
 | A6 ◐ | (split 2026-09-28, user-approved: **A6-1 ✅ built 2026-09-28** — beast battles from Roam → Beasts: Fight beside Tame, battle page (prepare → Press/Guard/Feint → finish/spare/bind), real wounds (Slay can kill), bestiary, grateful/vengeful returns, cubs; as-built combat.md. **A6-2 ✅ built 2026-09-28** — Roam → Hunt (hunting grounds, track a beast), Roam → Bestiary, battle banter (3 triggers), slayer reputation, the sim bot hunts + fights; **A6-3** split 2026-09-29 (user-approved): **A6-3a ✅ built 2026-09-29** — spouse duels, head challenges, defending the seat and your own step-down tournament bouts on the battle page vs ink duelists (temper/role → part slots, mirrored), finish/spare · raise/humble end choices, debts + grudges that change who challenges you, a cowed clan; **A6-3b ✅ built 2026-09-29** — the Arena (Roam → Arena: six rings, duelist rosters + champions + titles, push-your-luck purse × streak × renown, opt-in blood matches, grudge call-outs + debtor gifts, a 30-min rest between runs); **A6-3c** bosses (needs 23E/17)) **Combat page (Phase 35)** (user 2026-09-27): a full-window battle scene on the hybrid engine — your cultivator on one side, a beast/duelist on the other, animated attack/parry/guard/feint exchanges. Reuses the fight card's rules & odds (`FIGHT_TACTICS`/`FIGHT_STYLE`/`_powerChance`/`_exchangeChance`), generalizes `f.fight` to non-family opponents, and adds combat art + animation passes. Reached from a Beast Hunt / Arena entry; duels, tournaments and bosses route in. **Expeditions keep auto-resolving** | 35, 34 | A4 | A battle plays out animated in every layout mode; outcome hooks (health/karma/beasts) verified; gate ≥ 8.0 |
 | A7 | **Sect base scene (Phase 38A)** (user 2026-09-27): a large, **view-only** landscape diorama of your sect compound that grows with `buildings` / `hallLevel` / disciples / fame, on the hybrid engine's new **scene layer** (background + placed building parts + ambient effects; scaffold from the bakeoff's `drawC`). Build/upgrade still happens in the existing rows | 38A, 34 | A4 | Scene reflects live sect state in every layout mode; each building part + the whole scene pass the gate ≥ 8.0 |
+
+> **Priority change (2026-09-29, user): Arts & Move Combat (Phase 42, tasks 1.11–1.15) is next.** The user dislikes the
+> Press/Guard/Feint loop (a small ±18% lever). It's replaced by Pokemon-like move combat built on collectible, study-able
+> combat arts, pulled forward from 23E (whose non-combat arts stay in M7). Selling items comes first (1.11). A6-3c bosses
+> and A7 wait until after 1.15; bosses get designed on the move engine. Spec: docs/systems/arts.md.
 
 > **Priority change (2026-09-26, user):** 1.7–1.9 jump ahead of M2 task 2.8. The game now has many systems the
 > player can't read or interact with well, and the main interaction happens in the smallest part of the window.
@@ -423,7 +436,7 @@ Add a second bar: **Realm Integrity (0–100)**, starts at 100.
 Tameable creatures encountered during expeditions.
 
 - Encounter chance per expedition: scales with location tier
-- Taming requires: Beast Taming Talisman (crafted) + sufficient stageIndex
+- Taming requires: Beast Taming Talisman (crafted) + sufficient stageIndex. **→ Phase 41 (2026-09-29): four grades with escalating chances; a failed tame fights or flees.**
 - Max 3 active beasts
 - Each beast has 3 random traits from pool: Swift, Iron Skin, Spirit Nose, Heavenly Instinct, Qi Devour, Soul Bond
 - Beast XP gained per expedition → level up every 100 XP (max 10) → +10% per trait per level
@@ -1916,7 +1929,7 @@ Collecting all 12 grants a unique title and a permanent BT bonus.
 
 ---
 
-# Battles, Market & Party — Phases 35–37 (added 2026-09-27, user)
+# Battles, Market & Party — Phases 35–37, 41 (added 2026-09-27, user)
 
 > These three phases were requested together but are **built phase-by-phase, not as a bundle** (user 2026-09-27):
 > **35 (combat) lands right after the art engine A4**; **36 (auction) after M4's living-world persons**;
@@ -1971,7 +1984,8 @@ tamed or left sitting there. Today the only exits are Tame (talisman) or ignorin
   real risk: losing wounds you badly or can kill (the Health & Death rules), so odds are shown before you commit.
 - **Outcomes:** win, *slay* → loot + bestiary `killed++` + its mate/kin may be sighted later; win, *drive off* → it
   may return stronger or grateful (a later tame gets easier); loss → wounded, it stays (or a companion is hurt if one
-  was fielded). **Tame-instead-of-kill:** win, then spend a Talisman at the end of the fight for a bonus tame chance.
+  was fielded). **Tame-instead-of-kill:** win, then spend a Talisman at the end of the fight for a bonus tame chance
+  (Phase 41: the bind rolls the talisman's grade — a failure loses the beast).
 - **Drama/feedback:** slaying a rare beast gives a story-making log line and a rare drop; repeat fights read from the
   bestiary (learned habits shown as in the fight card). A tamed companion can be sent to fight in your place
   (party, Phase 37).
@@ -2003,6 +2017,40 @@ side-by-side scene; Banner shows a one-line result. Reuse `BreakdownUI` for "why
 `renderer/game/combat.js`, `docs/systems/combat.md` (**before code**, Rule 6). Sim: bot auto-plays exchanges and
 enters hunts/arena; metrics (fights/h, win rate, arena depth, deaths by fight cause); invariants (health bounds
 across a fight, clean state on finish).
+
+---
+
+## Phase 41 — Tame Talisman Grades & Tame Attempts (驯兽符) *(user request 2026-09-29)*
+
+> **Status (2026-09-29):** ✅ built. As-built: `docs/systems/combat.md` → "Tame talisman grades & tame attempts";
+> checks `scripts/sim/checks/talismans.js` (25). Taming was previously certain (one talisman always worked); this
+> makes it a roll with real failure, following the pillar-7 depth pass.
+
+Four **graded Beast Taming Talismans** (data `assets/data/talismans.js`; items `items.js`; recipes `recipes.js`
+sub-tab `talismans`), none guaranteed:
+
+| Grade | Item id | Tame chance |
+|---|---|---|
+| Crude | `beast_taming_talisman` (the original item — old saves keep working) | 40% |
+| Fine | `beast_taming_talisman_fine` | 55% |
+| Superior | `beast_taming_talisman_superior` | 70% |
+| Pristine | `beast_taming_talisman_pristine` | 90% |
+
+- **The attempt** — `tameEncounteredBeast(encId, gradeId?)`: consumes 1 talisman of the chosen grade (the best held
+  when none is named or the named one isn't carried) and rolls its chance. A **grateful** beast is still free (no roll).
+- **Failure outcome** — a failed direct tame either **fights** (`startBeastFight(encId, 'slay')` — the sighting stays
+  and the battle page resumes it) or **escapes** (the sighting is removed). Nature weights it:
+  `fightChance = clamp(0.5 × { benign 0.5, wild 1.0, fell 1.6 } + mood mod, 0.2, 0.9)` — a man-eater rounds on you,
+  a guardian bolts. Below `BEAST_FIGHT_MIN_HEALTH` (or mid-fight) it flees rather than force a lethal fight.
+- **The bind** — `beastFightFinish('bind', gradeId?)` rolls too: success joins at Lv.2, a failure means the beaten
+  beast slips free and is gone.
+- **UI** — a grade chip row (when >1 held) + the shown chance on Roam → Beasts, the details page and the battle end
+  card (`Tame · Fine (55%)`). `tameInfo()` / `talismanCounts()` are the read helpers.
+- **Depth pass** — memory (the bestiary still records it), choices (which grade to spend, fight vs walk away), hooks
+  (Health & Death via the forced fight, karma by nature, the companion cap), drama (a legendary can maul you when the
+  charm fails), feedback (the chance is shown before you commit; a failed bind reads its own result line).
+- **Sim** — the bot keeps two talismans so a failed tame can still be bound; `npm run sim:quick` healthy (bind path
+  exercised: 68 finish · 2 bind in a 24h active run).
 
 ---
 
@@ -2619,6 +2667,10 @@ alongside this.
   `PACING_TARGETS_MIN` in `scripts/sim/profiles.js` when built.
 
 ### 23E — Secret Arts (秘术)
+
+> **2026-09-29 (user):** combat arts, manuals-as-items, study, mastery, the library and the clan library move to
+> **Phase 42** (docs/systems/arts.md, next). 23E keeps only the **non-combat** arts below (`kind: 'utility'` in the same
+> `ARTS` table): content on the Phase 42 infrastructure, no new systems.
 
 A second kind of learnable power, separate from Techniques (which are bought with stones). You **find**
 Arts and **study** them.

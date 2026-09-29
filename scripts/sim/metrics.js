@@ -283,7 +283,7 @@ class Recorder {
     }
     if (!this._itemCategoriesChecked) {   // content check, once per run: every ITEMS entry has a valid category
       this._itemCategoriesChecked = true
-      const CATS = ['currency', 'mat', 'pill', 'equip', 'rare', 'key']
+      const CATS = ['currency', 'mat', 'pill', 'equip', 'rare', 'key', 'manual']
       for (const [id, it] of Object.entries(this.D.ITEMS)) {
         if (!CATS.includes(it.category)) this.violate('item_category_invalid', `${id}=${it.category}`)
       }

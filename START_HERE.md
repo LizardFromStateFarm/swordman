@@ -38,6 +38,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); A4-2 beasts ✅ (10 + variants); **A4-3 realm scenery + death moment ✅** (accepted by the user 2026-09-28); **A4-4 Ink default + sprite emoji lint ✅** (2026-09-28, 8.0) |
 | **Soul Points + Immortal cinematic + "you finished v1" screen** | ✅ Phase 40 (v1 finish) — 40a Soul Points core (UI 7.7) + **40b Immortal Ascension cinematic + finish screen** (2026-09-28; screen 7.75, cinematic accepted by the user) |
 | **Combat & Battles** (battle page, beast battles, bestiary) | ◐ Phase 35 — **A6-1 ✅** (2026-09-28): Fight a wild beast from Roam → Beasts on a full-window ink battle page (UI 7.75, effects 8.0). **A6-2 ✅** (2026-09-29): Roam → Hunt + Roam → Bestiary, battle banter, slayer reputation, sim bot hunts (UI 7.7). **A6-3a ✅** (2026-09-29): duels, head challenges, defending the seat + your step-down bouts on the battle page vs ink duelists, finish/spare · raise/humble, debts + grudges (UI 7.83, duelist 8.1). **A6-3b ✅** (2026-09-29): the Arena — Roam → Arena, six rings, purse × streak × renown, blood matches, titles, grudge call-outs (UI 7.75). Next A6-3c bosses (needs 23E/17) |
+| **Arts & Move Combat** (collectible combat arts, 4 moves + passives, parry QTE, no cooldowns; + Sell items) | ◐ Phase 42 — 1.11 Sell ✅ · 1.12 Arts core ✅ (79 arts, Path → Arts, study, loadout, offers, drops); next 1.13 move engine (docs/systems/arts.md) |
+| **Tame talisman grades & tame attempts** (驯兽符) | ✅ **Phase 41** (2026-09-29): four graded Beast Taming Talismans (Crude 40% → Fine 55% → Superior 70% → Pristine 90%, the old item = Crude), a real tame roll, a failed tame that fights or escapes (nature-weighted; the wounded flee), the bind roll; grade pickers on Roam → Beasts / details / battle end; checks/talismans.js (25) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -136,6 +138,11 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   slots); no soul metrics in the sim report yet (2.8); the Soul screen is only reachable from Hall/charselect/attention,
   not the Qi/s breakdown popover (could link "Soul Resonance" to it).
 - **Beast details page (7.9):** the portrait VIEW tag is small/low-contrast.
+- **Arts (1.12, UI 7.6 / icons 8.1):** el_fire vs el_water outlines are close at 12px; name colour = grade but borders =
+  element is unexplained (add a legend or keep one meaning per channel); the Overlay offer card fills the whole pane; the
+  Study toast covers the realm title (toast system); no first-visit hint yet; the sim bot doesn't study/equip (1.15).
+- **Selling (1.11, 7.8):** the Sell confirm uses Discard's red danger styling (the generic confirm needs a neutral
+  variant); phone wraps "Sell all" alone to a third row; sell prices are first-pass and the sim bot doesn't sell (1.15).
 - **Automation queueing (7.75):** Overlay Auto-Missions blurb wraps to 3 lines beside the switch; the currently-running
   Explore card can't be re-picked as "next" once another is queued (use the Mode panel picker); beast Auto-Expedition
   and mission picks don't chain offline (live-only); the sim bot doesn't exercise picks or beast auto yet (2.8 QA).
@@ -178,6 +185,65 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-29 (user present) — part 55
+Agent: **Task 1.12 Arts core ✅** (Phase 42a; assessment approved; study 1 min → 2 h). New assets/data/arts.js: **79 combat
+  arts** (56 moves, 23 passives, 5 grades, Five Elements; a signature art for every beast type + Arena ring; a starter per
+  element). Manuals are ITEMS generated from ARTS (Pack chip "Arts", Study / See it in Arts, sell by grade). s.arts
+  (known + mastery, loadout 4 moves + passives by realm 1→5, study timer that runs while closed, breakthrough offers,
+  found). Root elements via a hash (Persons.rootElements; no RNG drift). Sources: new realm → pick 1 of 3 (waits), Layer
+  4/7 grants, expeditions, beast Finish (signature or element manual), Arena first title (champion's art) + win drops.
+  New Path → Arts screen (renderer/game/arts-view.js) + attention items (offer / manual to study / empty slot) + six
+  element icons. Moves don't fight yet (1.13); the screen says so. checks/arts.js (44) · smoke scenarios/arts.js (4 modes,
+  early + late) · npm test · checks 663 ok · zero console errors. Review **UI 7.6 PASS · icons 8.1 PASS** (+ polish).
+  Docs: arts.md "42a as built", backpack, icons, qa-sim, ui-review, index, CLAUDE tree, PLAN 1.12 ✅. Another session
+  was editing game-state.js at the same time; my edits were small and applied cleanly. Uncommitted.
+  Next: **1.13 move combat engine (beasts)**.
+
+Date: 2026-09-29 (user present) — part 54
+Agent: **Task 1.11 Sell items ✅** (Phase 42-0; assessment approved). items.js ITEM_SELL_VALUE (raw mats ≈ the stones the
+  same run drops) + SELL_CRAFTED_FRACTION 0.6 (crafted items = 60% of their ingredients, so craft → sell never profits)
+  + category defaults; game-state itemValue() / sellItem() (discard pattern, log line, equipped-only refused);
+  craftSys.sell; Pack rows show the unit price ("◯ 3 ea"), the expanded row has a Sell strip (Sell 1 / 10 / All but 1 /
+  Sell all with payouts); confirm for rare / gear / talismans / ≥ 20 each / emptying a stack. New checks/sell.js (13),
+  smoke scenarios/sell.js (4 modes + confirm + equipped). npm test · checks 619 ok · smoke pass, zero console errors.
+  Review **7.8 PASS** (+ polish applied). Docs: backpack.md "Selling", qa-sim.md, ui-review.md, PLAN 1.11 ✅.
+  Uncommitted. Next: **1.12 Arts core** (docs/systems/arts.md).
+
+Date: 2026-09-29 (user present) — part 53
+Agent: **Planning only: Arts & Move Combat (Phase 42) is next** (user: dislikes Press/Guard/Feint; wants Pokemon-like
+  moves from collectible arts). Spec docs/systems/arts.md (Depth + UX pass): 72 combat arts (5 grades, Five Elements),
+  learned by studying manuals (items), breakthrough pick-1-of-3 + drops (expeditions, slain beasts, Arena champions,
+  duelists, sect library, events, clan library for heirs); Path → Arts screen with 4 move slots + passive slots by realm;
+  move engine = HP is Health, combat Qi pool with **no cooldowns** (spam until out of Qi; Palm Strike + Circulate always
+  there), a **parry QTE** (0 damage + 25 Qi; ⚙ Normal/Wide/Off; the estimate uses your own parry rate), statuses,
+  temper-driven AI, rival counters. Plus **Sell items** in Pack. User picks: Qi pool (then "no cooldowns"), Five
+  Elements, Sell button. Numbered Phase 42 because the talisman session took 41. PLAN: Phase Index row, roadmap tasks
+  **1.11 Sell → 1.12 Arts core → 1.13 move engine (beasts) → 1.14 people + Arena → 1.15 QA & Balance**, priority note
+  (A6-3c bosses + A7 wait), 23E is now non-combat arts only. combat.md header note, docs/index.md, CLAUDE.md tree.
+  No code. Next: **1.11 Sell items**, then 1.12.
+
+Date: 2026-09-29 (user present) — part 52
+Agent: **Phase 41 — Tame Talisman Grades & Tame Attempts** (user request; plan approved). Taming was previously certain
+  (one talisman always worked); it is now a roll with real failure.
+  - **Data:** new assets/data/talismans.js (TALISMAN_GRADES + TALISMAN_GRADE_ORDER + TAME_* failure tuning); items.js gains
+    Fine/Superior/Pristine talismans (the old `beast_taming_talisman` becomes the **Crude** grade, so old saves keep
+    working); recipes.js gains 3 escalating recipes (talismans sub-tab).
+  - **Engine (game-state.js):** `tameEncounteredBeast(encId, gradeId?)` consumes 1 talisman of the chosen grade (best held
+    by default) and rolls its chance (40/55/70/90%, none guaranteed). A **failed** direct tame either starts a real fight
+    (`startBeastFight(encId,'slay')`; the sighting stays) or loses the beast — weighted by nature
+    (`clamp(0.5 × {benign 0.5, wild 1.0, fell 1.6} + mood, 0.2, 0.9)`); the wounded flee rather than be forced into a
+    lethal fight. The **post-battle bind** (`beastFightFinish('bind', gradeId?)`) rolls too — a failure = it slips free and
+    is gone. New helpers: `tameInfo()`, `talismanCounts()`; `beastFightChoices()` exposes `talismanGrades`/`bindGrade`/
+    `bindChance`; new `tame_failed` emit. A `grateful` beast stays free.
+  - **UI:** a grade chip row (when >1 held) + the shown chance (`Tame · Fine (55%)`) on Roam → Beasts, the details page and
+    the battle end card; `game.js`, `beast-detail.js`, `combat.js`, `attention.js` copy, styles.css (.tame-grades).
+  - **Sim:** the bot crafts/keeps two talismans (best afford) so a failed tame can still be bound; tame/bind use the best
+    grade. **Tests:** npm test clean · checks **606 ok** (new checks/talismans.js 25; combat.js/beasts.js updated for the
+    roll) · sim:quick healthy (bind path exercised: 68 finish · 2 bind). **Not verified:** no in-app visual pass — the user
+    should smoke Roam → Beasts + a battle bind.
+  - **Docs:** combat.md → "Tame talisman grades & tame attempts", integrity.md, docs/index.md, PLAN (Phase 41 + roadmap
+    1.10 + Phase Index), CLAUDE.md tree. Uncommitted. First-pass recipe costs need QA balance (2.8).
+
 Date: 2026-09-29 (user present) — part 51
 Agent: **Automation queueing (user request, assessment approved, beast unlock Lv.5).** (1) Auto-Missions copies the
   Auto-Explore pattern: an On/Off row in Sect → Missions, Keep/Kept chips on each card and a "Keep running" picker in the

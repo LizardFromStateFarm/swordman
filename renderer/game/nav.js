@@ -6,7 +6,7 @@
 // view id = the panel id suffix (#tab-<view>). Add a view: a panel in index.html, an entry here, a render in game.js.
 const NAV_GROUPS = [
   { id: 'cultivate', glyph: '修', name: 'Path',  title: 'Cultivation: techniques and your character',
-    views: [['stats', 'Character'], ['techniques', 'Techniques']] },
+    views: [['stats', 'Character'], ['techniques', 'Techniques'], ['arts', 'Arts']] },   // Phase 42: Arts (arts-view.js)
   { id: 'adventure', glyph: '歷', name: 'Roam',  title: 'Adventure: expeditions, the road, spirit beasts',
     views: [['explore', 'Explore'], ['beasts', 'Beasts'], ['hunt', 'Hunt'], ['bestiary', 'Bestiary'], ['arena', 'Arena']] },   // A6-2: Hunt + Bestiary · A6-3b: Arena (Auto-Explore's switch: the Explore expedition panel)
   { id: 'kin',       glyph: '家', name: 'Kin',   title: 'Family, clan and the Ancestral Hall',

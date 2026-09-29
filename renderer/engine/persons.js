@@ -42,6 +42,20 @@ const Persons = {
     return this.rollRoot()
   },
 
+  // Phase 42 (arts.md): a root's elements, for root affinity + the starter art. No Math.random (sim seeds stay put):
+  // pure → the element in its name; heavenly → all five; dual → 2 and mixed → 3, picked by a hash of `seed`.
+  rootElements(root, seed = '') {
+    const ALL = ['metal', 'wood', 'water', 'fire', 'earth']
+    if (Array.isArray(root?.elements)) return root.elements
+    if (root?.type === 'heavenly') return [...ALL]
+    const named = ALL.find(e => new RegExp('\\b' + e + '\\b', 'i').test(root?.name || ''))
+    if (root?.type === 'pure' && named) return [named]
+    let h = 2166136261
+    for (const ch of `${seed}|${root?.type}|${root?.name}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
+    const order = [...ALL].sort((a, b) => ((Math.imul(h, a.charCodeAt(0) * 31 + a.length) >>> 0) % 997) - ((Math.imul(h, b.charCodeAt(0) * 31 + b.length) >>> 0) % 997))
+    return order.slice(0, root?.type === 'dual' ? 2 : root?.type === 'pure' ? 1 : 3)
+  },
+
   rollPersonality() {
     return PERSONALITIES[Math.floor(Math.random() * PERSONALITIES.length)].id
   },

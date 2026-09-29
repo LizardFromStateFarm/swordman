@@ -152,6 +152,7 @@ docs/
     backpack.md         ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
     automation.md       ← Active/Idle Mode + staged automation unlocks, Active Mode bonuses (Phase 22)
     combat.md           ← Phase 35 battles: A6-1 built (beast battles, battle page) · A6-2 built (Roam → Hunt, Bestiary view, battle banter, sim bot hunts) · A6-3a built (duels/challenges/step-down bouts on the battle page, ink duelists, end choices, feuds) · A6-3b built (the Arena: rings, purse, streak, renown, blood matches, call-outs) · A6-3c bosses spec
+    arts.md             ← Phase 42 (42-0 sell ✅ · 42a arts core ✅ · 42b–d next): collectible combat arts as study-able manuals, 4 move + realm passive slots, move combat (Qi pool, no cooldowns, parry QTE, Five Elements) replacing Press/Guard/Feint; selling items
     auction.md          ← SPEC (Phase 36): themed crates, beast/person quality rolls, person `gender`
     scene-art.md        ← SPEC (Phase 38): large-area sect-base + island scenes (view-only, grow as you build)
     soul-points.md      ← Phase 40 (v1 finish): cross-save Soul Points + Soul Resonance + Soul screen (40a) · Immortal Ascension cinematic + finish screen (40b)
@@ -218,6 +219,7 @@ renderer/
     immortal-view.js    ← ImmortalView — plays the cinematic, then the finish screen ("your race to immortality") / later-Immortal card (Phase 40b)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
     icons.js            ← Icon(name) → inline SVG from assets/icons/ui-icons.js; Icon.g() for glyph slots; [data-icon] auto-filled (1.8d)
+    arts-view.js        ← ArtsView — Path → Arts: breakthrough offer, study desk, 2×2 moves + passive slots, the library (Phase 42 / 42a)
     arena-view.js       ← ArenaView — Roam → Arena: rings, duelist rosters (odds, Fight / Blood), the run's purse + Walk away, grudge call-outs, the rest countdown (Phase 35 / A6-3b)
     hunt-view.js        ← HuntView + BestiaryView — Roam → Hunt (hunting grounds, track a beast, live countdown) and Roam → Bestiary (seen/unseen kinds, habits, record) (Phase 35 / A6-2)
     combat.js           ← CombatView — the battle page: prepare (stance odds) → fight (Press/Guard/Feint, Retreat/Yield) → end choice (finish/spare/bind · raise/humble) → result; beasts (A6-1) + people: duels, challenges, step-down bouts (A6-3a)
@@ -250,7 +252,9 @@ assets/
     soul.js             ← SOUL_* — Soul Points grants + Soul Resonance rank cost/bonus/cap (Phase 40a)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
     crates.js           ← SPEC (Phase 36): CRATES — themed crate costs + weighted contents (item/beast/person)
+    arts.js             ← ARTS / ARTS_LIST — 79 combat arts (moves + passives, 5 grades, Five Elements, beast + arena signatures) + study/slot/offer/drop tuning (Phase 42)
     arena.js            ← ARENA_RINGS + ARENA_* — the Arena's six rings (fees, prizes, titles, bands) + purse/streak/renown/rest/call-out tuning (A6-3b)
+    talismans.js        ← TALISMAN_GRADES + TAME_* — graded Beast Taming Talismans (tame chance, item id) + tame-attempt fight/flee tuning (Phase 41)
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
     ink-cultivator.js   ← INK_ART — hybrid ink art base figure (body parts, strokes, effects, default slots); Qi Condensation so far

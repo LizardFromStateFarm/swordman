@@ -10,6 +10,7 @@ const BeastDetail = {
   target: null,           // { kind: 'enc' | 'beast', id }
   ink: null, cv: null,    // the large portrait
   deps: null,             // { gameState, flash }
+  gradeSel: null,         // Phase 41: the talisman grade chosen on this page (best held by default)
 
   init(deps) {
     this.deps = deps
@@ -42,7 +43,8 @@ const BeastDetail = {
     const prof = this.deps.gameState.beastProfile(rec)
     const T = prof.type || { name: rec.typeId, desc: '', minStage: 0, xpPerExp: 10 }
     const esc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const cap = s.derived.maxBeasts || 3, talismans = s.inventory['beast_taming_talisman'] || 0
+    const cap = s.derived.maxBeasts || 3
+    const ti = kind === 'enc' ? this.deps.gameState.tameInfo(id) : null   // Phase 41: grades, chance, locks
 
     const realm = typeof stageShortName === 'function' ? stageShortName(T.minStage || 0) : 'Stage ' + (T.minStage || 0)
 
@@ -59,14 +61,23 @@ const BeastDetail = {
       const why = fighting ? 'You are fighting it. Finish the battle first.'
         : (s.beasts || []).length >= cap ? `Your companions are full (${cap}/${cap}). Release one first.`
         : s.stageIndex < (T.minStage || 0) ? `It will not heed anyone below ${esc(realm)}.`
-        : !free && talismans < 1 ? 'You need a Beast Taming Talisman (craft one, or find one on an expedition).' : ''
+        : !free && !(ti && ti.best) ? 'You need a taming talisman (craft one, or find one on an expedition).' : ''
+      // Phase 41: pick a grade (best held by default); the button shows its chance.
+      const held = ti ? ti.grades.filter(g => g.count > 0) : []
+      let sel = ti && ti.best ? ti.best : null
+      if (sel && this.gradeSel && held.some(g => g.id === this.gradeSel)) sel = this.gradeSel
+      const selGr = sel ? ti.grades.find(g => g.id === sel) : null
+      const gradeRow = held.length > 1
+        ? `<div class="tame-grades">${held.map(g => `<button class="pack-chip${sel === g.id ? ' active' : ''}" data-bdxgrade="${g.id}">${esc(g.name)}<small> ${g.count}</small></button>`).join('')}</div>`
+        : ''
+      const tameBtn = free ? 'Tame · it comes freely' : selGr ? `Tame · ${esc(selGr.name)} (${Math.round(selGr.chance * 100)}%)` : 'Tame'
       // Phase 35: Fight opens the battle page's prepare step (odds for Slay / Drive off before anything happens)
       const pv = this.deps.gameState.beastFightPreview(id)
       const fightWhy = fighting ? '' : pv?.locked === 'busy' ? 'Another fight is underway.' : pv?.locked === 'wounded' ? 'You are too wounded to fight.' : ''
       const odds = pv ? (pv.chance < 0.01 ? '<1%' : Math.round(pv.chance * 100) + '%') : '?'
-      action = `<div class="bdx-actions"><button class="bdx-tame" ${why ? 'disabled' : ''}>${free ? 'Tame · it comes freely' : 'Tame · 1 Talisman'}</button>`
+      action = `${gradeRow}<div class="bdx-actions"><button class="bdx-tame" ${why ? 'disabled' : ''}>${tameBtn}</button>`
         + `<button class="bdx-fight" ${fightWhy ? 'disabled' : ''}><span data-icon="sword"></span>${fighting ? 'Return to battle' : `Fight · ${odds} to win`}</button>`
-        + `<span class="bdx-have">You carry ${talismans}</span></div>${why ? `<div class="bdx-why">${why}</div>` : ''}${fightWhy ? `<div class="bdx-why">${fightWhy}</div>` : ''}`
+        + `<span class="bdx-have">You carry ${held.map(g => `${esc(g.name)} ×${g.count}`).join(', ') || 'no taming talismans'}</span></div>${why ? `<div class="bdx-why">${why}</div>` : ''}${fightWhy ? `<div class="bdx-why">${fightWhy}</div>` : ''}`
       const b = this.deps.gameState.bestiaryEntry(rec.typeId)
       if (rec.mood) stats += stat('Mood', { grateful: 'It remembers your mercy', vengeful: 'It came back for you', cub: 'Its mother is dead' }[rec.mood], rec.mood === 'grateful' ? 'jade' : '')
       stats += stat('Bestiary', b.fought ? `fought ${b.fought} · won ${b.won} · slain ${b.slain}${b.spared ? ` · spared ${b.spared}` : ''}` : 'never fought one')
@@ -113,10 +124,14 @@ const BeastDetail = {
       <div class="bdx-stats">${stats}</div>
       <div class="bdx-sec">Traits</div><div class="bdx-traits">${traits || '<div class="bdx-trait-d">None</div>'}</div>
       ${action}`
+    body.querySelectorAll('[data-bdxgrade]').forEach(b => b.addEventListener('click', () => { this.gradeSel = b.dataset.bdxgrade; this.render(s) }))
     body.querySelector('.bdx-tame')?.addEventListener('click', () => {
-      const res = this.deps.gameState.tameEncounteredBeast(id)
-      if (res.ok) { this.deps.flash(`Tamed: ${res.beast.name}!`, 'special'); this.open('beast', res.beast.id) }
-      else this.deps.flash({ not_found: 'Already gone', stage: 'Realm too low', max_beasts: 'Beast capacity full', no_talisman: 'Need a Beast Taming Talisman' }[res.reason] || 'Cannot tame', 'negative')
+      const res = this.deps.gameState.tameEncounteredBeast(id, this.gradeSel)
+      if (res.ok) { this.gradeSel = null; this.deps.flash(`Tamed: ${res.beast.name}!`, 'special'); this.open('beast', res.beast.id) }
+      else if (res.reason === 'tame_failed') {
+        if (res.outcome === 'fight') { this.deps.flash('It will not be charmed — it turns on you!', 'negative'); this.close(); this.deps.fight?.(id) }
+        else { this.deps.flash('The charm fails, and it bolts into the wild.', 'negative'); this.close() }
+      } else this.deps.flash({ not_found: 'Already gone', stage: 'Realm too low', max_beasts: 'Beast capacity full', no_talisman: 'Need a taming talisman' }[res.reason] || 'Cannot tame', 'negative')
     })
     body.querySelector('.bdx-fight')?.addEventListener('click', () => this.deps.fight?.(id))
     body.querySelectorAll('.bdx-loc').forEach(b => b.addEventListener('click', () => {

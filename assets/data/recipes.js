@@ -84,4 +84,16 @@ const RECIPES = [
     id: 'recipe_talisman_beast_taming', category: 'talismans', productId: 'beast_taming_talisman',
     ingredients: [{ itemId: 'beast_core', qty: 5 }, { itemId: 'ancient_script', qty: 2 }],
   },
+  {
+    id: 'recipe_talisman_beast_taming_fine', category: 'talismans', productId: 'beast_taming_talisman_fine',
+    ingredients: [{ itemId: 'beast_core', qty: 8 }, { itemId: 'ancient_script', qty: 3 }],
+  },
+  {
+    id: 'recipe_talisman_beast_taming_superior', category: 'talismans', productId: 'beast_taming_talisman_superior',
+    ingredients: [{ itemId: 'beast_core', qty: 12 }, { itemId: 'ancient_script', qty: 5 }, { itemId: 'void_crystal', qty: 1 }],
+  },
+  {
+    id: 'recipe_talisman_beast_taming_pristine', category: 'talismans', productId: 'beast_taming_talisman_pristine',
+    ingredients: [{ itemId: 'beast_core', qty: 20 }, { itemId: 'ancient_script', qty: 8 }, { itemId: 'void_crystal', qty: 3 }],
+  },
 ]

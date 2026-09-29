@@ -22,7 +22,11 @@ Heart Calming Pill adds `integrity_restore: 30` to its effect → applied on BT 
 Heaven Defying Pill guarantees success → integrity block never reached.
 
 ### Beasts
-- `tameEncounteredBeast(encounterId)` → `{ ok, beast? }` — consumes 1 Beast Taming Talisman
+- `tameEncounteredBeast(encounterId, gradeId?)` → `{ ok, beast, grade, chance }` or
+  `{ ok:false, reason:'tame_failed', outcome:'fight'|'flee' }` (Phase 41 — see combat.md → "Tame talisman grades"). It
+  consumes 1 talisman of the chosen grade and rolls its chance; a failure starts a fight or loses the beast. A grateful
+  beast is free.
+- `talismanCounts()` → `{ crude, fine, superior, pristine }`; `tameInfo(encId)` → the grades/chance/locks the UI shows.
 - `sendBeastExpedition(beastId, locationId)` → `{ ok, loc? }` — starts beast expedition (records `beast.lastExpLocId`)
 - Auto-Expedition per beast from Lv.5 (`autoExp`, `autoExpLocId`; `setBeastAuto` / `setBeastAutoLocation` /
   `beastAutoTarget`) — relaunches on return; see automation.md → "Queued targets"
@@ -78,7 +82,8 @@ opens the battle page. Winning lets you finish it (loot + karma by its nature, m
 taming is free), `vengeful` (stronger), `cub`. `s.bestiary[typeId]` records your history with each kind (details page
 "Bestiary" row). `tameEncounteredBeast` refuses (`fighting`) the beast you are currently fighting. A6-2: beasts can also be tracked on a
 hunting ground (Roam → Hunt, `startHunt`); every sighting goes through `_spawnBeastEncounter` and marks the kind seen for
-Roam → Bestiary.
+Roam → Bestiary. **Phase 41:** taming is a roll — four graded talismans (40–90%), and a failed direct tame turns the
+beast hostile or lets it escape (see combat.md → "Tame talisman grades & tame attempts").
 
 ## Invariants
 

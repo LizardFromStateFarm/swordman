@@ -6,6 +6,8 @@
 // Run: npm run checks (all) · node scripts/sim/checks/beasts.js (this file). Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
+const rng = (sim, v) => sim.ev(`globalThis.__r = globalThis.__r || Math.random; Math.random = () => ${v}`)
+const unrng = sim => sim.ev('Math.random = globalThis.__r')
 
 ;(async () => {
   const sim = await createSim({ seed: 7 }); await sim.boot(0); const gs = sim.gs, s = gs.get()
@@ -66,7 +68,9 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
   s.inventory.beast_taming_talisman = 5; s.beasts = []; gs._recalc()
   s.beastEncounters = [{ id: 'v1', typeId: 'qilin', variant: 'crimson', traits: ['soul_bond', 'swift', 'iron_skin'], seenAt: Date.now() },
                        { id: 'o1', typeId: 'thunder_eagle', traits: ['swift', 'iron_skin', 'spirit_nose'], seenAt: Date.now() }]
+  rng(sim, 0.1)   // Phase 41: force the tame rolls to succeed (crude 40%)
   const r1 = gs.tameEncounteredBeast('v1'), r2 = gs.tameEncounteredBeast('o1')
+  unrng(sim)
   assert(r1.ok && r1.beast.variant === 'crimson' && r1.beast.name === 'Crimson Qilin', 'taming a rare colour keeps it (Crimson Qilin)')
   assert(r2.ok && !r2.beast.variant && r2.beast.name === 'Thunder Eagle', 'an old-save encounter without a variant tames as the plain beast')
 

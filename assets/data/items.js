@@ -1,6 +1,6 @@
 // All item types: resources, pills, elixirs, weapons, artifacts.
 // Depended on by: locations.js (drop tables), recipes.js (ingredients/products),
-//                 game-state.js (inventory logic), expedition.js, crafting.js
+//                 game-state.js (inventory logic, sell prices), expedition.js, crafting.js, game.js (Pack Sell)
 //
 // `category` (Phase 21, Pack tab filter chips): 'currency'|'mat'|'pill'|'equip'|'rare'|'key'.
 // A second, independent enum from RECIPES[i].category — see docs/systems/backpack.md.
@@ -103,11 +103,30 @@ const ITEMS = {
   },
 
   // ── Talismans (consumed on use) ──────────────────────────────────────────────
+  // Phase 41: four grades, each with its own tame chance (TALISMAN_GRADES in talismans.js). None is guaranteed.
   beast_taming_talisman: {
-    id: 'beast_taming_talisman', name: 'Beast Taming Talisman', nameCN: '驯兽符',
-    desc: 'Used to tame a spiritual beast encountered on an expedition.',
+    id: 'beast_taming_talisman', name: 'Crude Beast Taming Talisman', nameCN: '粗制驯兽符',
+    desc: 'A rough charm. 40% to tame a wild beast. A failure may turn it on you, or lose it for good.',
     type: 'talisman', stackable: true, category: 'key',
-    effect: { type: 'tame_beast' },
+    effect: { type: 'tame_beast', grade: 'crude' },
+  },
+  beast_taming_talisman_fine: {
+    id: 'beast_taming_talisman_fine', name: 'Fine Beast Taming Talisman', nameCN: '精制驯兽符',
+    desc: 'Careful brushwork. 55% to tame a wild beast.',
+    type: 'talisman', stackable: true, category: 'key',
+    effect: { type: 'tame_beast', grade: 'fine' },
+  },
+  beast_taming_talisman_superior: {
+    id: 'beast_taming_talisman_superior', name: 'Superior Beast Taming Talisman', nameCN: '上品驯兽符',
+    desc: 'Sealed in cinnabar. 70% to tame a wild beast.',
+    type: 'talisman', stackable: true, category: 'key',
+    effect: { type: 'tame_beast', grade: 'superior' },
+  },
+  beast_taming_talisman_pristine: {
+    id: 'beast_taming_talisman_pristine', name: 'Pristine Beast Taming Talisman', nameCN: '极品驯兽符',
+    desc: 'Drawn on spirit silk. 90% to tame a wild beast.',
+    type: 'talisman', stackable: true, category: 'key',
+    effect: { type: 'tame_beast', grade: 'pristine' },
   },
 
   // ── Elixirs (root reroll — consumed immediately) ─────────────────────────────
@@ -188,3 +207,15 @@ const ITEMS = {
     effect: { type: 'hidden_locations' },
   },
 }
+
+// ── Selling (task 1.11, Phase 42-0; docs/systems/backpack.md → "Selling") ──────────────────────────────────────
+// Spirit Stones per unit for raw materials, roughly the stones the same run would drop. Crafted items have no entry:
+// they sell for SELL_CRAFTED_FRACTION of their recipe's ingredients (so craft → sell never mints stones). Items with
+// neither use SELL_DEFAULT_VALUE by category. Currency never sells. Used by game-state.js itemValue()/sellItem().
+const ITEM_SELL_VALUE = {
+  spirit_herb: 1, beast_core: 1, iron_ore: 2, poison_herb: 2, demon_essence: 3,
+  artifact_fragment: 4, ancient_script: 6, celestial_herb: 6, heavenly_ore: 8,
+  void_crystal: 12, chaos_essence: 15,
+}
+const SELL_CRAFTED_FRACTION = 0.6
+const SELL_DEFAULT_VALUE = { mat: 1, rare: 5, pill: 2, equip: 5, key: 2 }

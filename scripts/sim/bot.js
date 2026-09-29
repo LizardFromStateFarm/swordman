@@ -414,12 +414,30 @@ class Bot {
       const cap = p === 'pill_heart_calming' ? 2 : p === 'pill_heaven_defying' ? 1 : 3
       if (r && this.inv(p) < cap && this.canCraft(r)) return this.do('craft_pill', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
     }
-    // Taming talisman when a beast is waiting and there's room
-    if (s.beastEncounters.length && !this.inv('beast_taming_talisman') && s.beasts.length < s.derived.maxBeasts) {
-      const r = this.recipe('beast_taming_talisman')
-      if (this.canCraft(r)) return this.do('craft_talisman', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
+    // Taming talismans when a beast is waiting and there's room — keep two, so a failed tame can still be bound (Phase 41)
+    if (s.beastEncounters.length && this.talismanCount() < 2 && s.beasts.length < s.derived.maxBeasts) {
+      for (const g of ['pristine', 'superior', 'fine', 'crude']) {
+        const gr = this.D.TALISMAN_GRADES && this.D.TALISMAN_GRADES[g]
+        const r = gr && this.recipe(gr.itemId)
+        if (r && this.canCraft(r)) return this.do('craft_talisman', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
+      }
     }
     return false
+  }
+
+  // Phase 41: how many taming talismans it holds, any grade.
+  talismanCount() {
+    const G = this.D.TALISMAN_GRADES
+    if (!G) return this.inv('beast_taming_talisman')
+    return this.D.TALISMAN_GRADE_ORDER.reduce((a, g) => a + this.inv(G[g].itemId), 0)
+  }
+
+  // Phase 41: the item id of the strongest taming talisman it holds (or null) — the grade a tame/bind will use.
+  bestTalisman() {
+    const G = this.D.TALISMAN_GRADES, O = this.D.TALISMAN_GRADE_ORDER
+    if (!G || !O) return this.inv('beast_taming_talisman') ? 'beast_taming_talisman' : null
+    for (let i = O.length - 1; i >= 0; i--) if (this.inv(G[O[i]].itemId)) return G[O[i]].itemId
+    return null
   }
 
   elixirs() {
@@ -438,12 +456,13 @@ class Bot {
   wanted() {
     const s = this.s, { ITEMS, RECIPES } = this.D, want = new Map()   // itemId → 'want' | 'urgent'
     const add = (id, level) => { if (want.get(id) !== 'urgent') want.set(id, level) }
+    const talProducts = new Set(Object.values(this.D.TALISMAN_GRADES || {}).map(g => g.itemId))   // Phase 41
     for (const r of RECIPES) {
       const isUpgrade = (r.category === 'weapons' || r.category === 'artifacts') &&
         itemScore(ITEMS, r.productId) > itemScore(ITEMS, s.equipped[ITEMS[r.productId].type])
       const isPill = r.category === 'pills' && !this.ascended && this.inv(r.productId) < 3
       // A beast is waiting to be tamed → its talisman materials trump everything (encounters are rare).
-      const urgent = r.productId === 'beast_taming_talisman' && s.beastEncounters.length && s.beasts.length < s.derived.maxBeasts
+      const urgent = talProducts.has(r.productId) && s.beastEncounters.length && s.beasts.length < s.derived.maxBeasts
       if (isUpgrade || isPill || urgent)
         r.ingredients.forEach(i => { if (this.inv(i.itemId) < i.qty) add(i.itemId, urgent ? 'urgent' : 'want') })
     }
@@ -486,7 +505,8 @@ class Bot {
   beasts() {
     const s = this.s
     const enc = s.beastEncounters[0]
-    if (enc && (this.inv('beast_taming_talisman') || enc.mood === 'grateful') && s.beasts.length < s.derived.maxBeasts)
+    // Phase 41: tame with the best grade it holds (the attempt may fail — it then fights it, or loses it)
+    if (enc && (this.bestTalisman() || enc.mood === 'grateful') && s.beasts.length < s.derived.maxBeasts)
       return this.do('tame_beast', this.gs.tameEncounteredBeast(enc.id))
     // Phase 35 (A6-2): a waiting beast it can't tame is fought when the odds are good (Drive off if Slay could kill it)
     for (const e of s.beastEncounters) {
