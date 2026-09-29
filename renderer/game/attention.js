@@ -34,8 +34,10 @@ function collectAttention(s, gs) {
     add('urgent', 'fight', 'beast', f.fight.over ? `The ${bn} is down` : `Your battle with the ${bn}`,
       f.fight.over ? 'Finish it, spare it, or bind it. It waits on you.' : `${f.fight.you}–${f.fight.them}, first to ${f.fight.to || 4}. Choose your next move.`, 'beasts', 'combat')
   } else if (f.fight) {
-    const opp = f.fight.kind === 'duel' ? f.spouse : gs.person?.(f.fight.oppId)
-    add('urgent', 'fight', 'duel', `Your fight with ${opp?.given || 'your rival'}`, `${f.fight.you}–${f.fight.them}, first to ${typeof FIGHT_TO !== 'undefined' ? FIGHT_TO : 2}. Choose your next move.`, f.fight.kind === 'duel' ? 'family' : 'clan', 'family')
+    const opp = f.fight.kind === 'duel' ? f.spouse : f.fight.kind === 'arena' ? s.arena?.duelists?.[f.fight.oppId] : gs.person?.(f.fight.oppId)
+    add('urgent', 'fight', 'duel', f.fight.over ? `${opp?.given || 'Your rival'} is down` : `Your fight with ${opp?.given || 'your rival'}`,
+      f.fight.over ? (f.fight.lethal ? 'Finish them, or spare them. They wait on you.' : 'Help them up, or humble them. They wait on you.')
+        : `${f.fight.you}–${f.fight.them}, first to ${f.fight.to || (typeof FIGHT_TO !== 'undefined' ? FIGHT_TO : 2)}. Choose your next move.`, f.fight.kind === 'duel' ? 'family' : f.fight.kind === 'arena' ? 'arena' : 'clan', 'combat')
   }
   const ult = (f.lovers || []).find(l => l.ultimatum)
   if (ult) add('urgent', 'ultimatum', 'alert', `${ult.person.given} wants an answer`, f.spouse ? 'Leave your spouse, let them go, or one more season.' : 'Marry them, let them go, or one more season.', 'family')
@@ -58,8 +60,8 @@ function collectAttention(s, gs) {
 
   // ── Opportunities ──
   const road = f.encounters || []
-  if (road.length) add('ready', 'road', 'explore', road.length === 1 ? `${road[0].person?.given || 'A stranger'}, met on the road` : `${road.length} strangers on the road`, 'Seduce or leave them. They wait until you choose.', 'explore')
-  const wild = s.beastEncounters || []
+  if (road.length) add('ready', 'road', 'explore', road.length === 1 ? `${road[0].person?.given || 'A stranger'}, met on the road` : `${road.length} strangers on the road`, 'Seduce, slaughter, or leave them. They wait until you choose.', 'explore')
+  const wild = (s.beastEncounters || []).filter(e => e.id !== s.hunt?.found)   // A6-2: a hunt's find has its own item below
   if (wild.length) {
     // a legendary sighting leads the card (and names itself) even among other wild beasts
     const prof = e => (gs?.beastProfile ? gs.beastProfile(e) : { name: 'beast', tier: { id: 'common' } })
@@ -67,6 +69,24 @@ function collectAttention(s, gs) {
     const talis = (s.inventory?.beast_taming_talisman || 0) > 0 ? 'You carry a Taming Talisman.' : 'Taming needs a Beast Taming Talisman.'
     if (legend) add('ready', 'beasts', 'beast', `A legendary ${prof(legend).name} watches you`, `Few cultivators ever see one. ${talis}`, 'beasts')
     else add('ready', 'beasts', 'beast', wild.length === 1 ? `A wild ${prof(wild[0]).name} lingers` : `${wild.length} wild beasts linger`, talis, 'beasts')
+  }
+  // A6-2: a hunt that found its beast (it also shows under the wild-beasts item) — lead the player back to Roam → Hunt
+  if (s.hunt?.found && (s.beastEncounters || []).some(e => e.id === s.hunt.found)) {
+    const e = s.beastEncounters.find(x => x.id === s.hunt.found)
+    const bn = gs.beastProfile ? gs.beastProfile(e).name : 'beast'
+    add('ready', 'hunt', 'beast', `Your hunt found ${/^[aeiou]/i.test(bn) ? 'an' : 'a'} ${bn}`, 'Fight it, tame it, or let it be.', 'hunt')
+  }
+  // A6-3b the Arena: a grudge call-out (urgent), a run waiting between bouts, a ring that just opened to you
+  const A = s.arena
+  if (A && !f.fight) {
+    const cp = A.callout && A.duelists?.[A.callout.id]
+    const rn = id => (typeof ARENA_RINGS !== 'undefined' && ARENA_RINGS.find(r => r.id === id)?.name) || 'the Arena'
+    if (cp) add('urgent', 'arena-callout', 'sword', `${cp.given} calls you out`, `On the ${rn(A.callout.ringId)}${A.callout.blood ? ', to the death' : ''}. Answer them, or let it go.`, 'arena')
+    else if (A.run) add('ready', 'arena-run', 'stone', `Your purse: ${A.run.purse} stones`, `${A.run.streak} win${A.run.streak === 1 ? '' : 's'} on the ${rn(A.run.ringId)}. Fight on, or walk away with it.`, 'arena')
+    else if (typeof ARENA_RINGS !== 'undefined') {
+      const fresh = ARENA_RINGS.filter(r => (s.stageIndex || 0) >= r.minStage && !(A.seenRings || []).includes(r.id)).pop()
+      if (fresh) add('idle', 'arena-ring', 'sword', `The ${fresh.name} opens to you`, `A new ring in Roam → Arena. A win there pays ${fresh.prize}+.`, 'arena')
+    }
   }
   // 1.8b-3a courtship: candidates to choose from, a meeting waiting on your answer, or one you can arrange
   const court = f.court

@@ -140,6 +140,70 @@ function fight(sim, gs, how) {
     assert(!s.family.fight, 'a battle with an unknown beast is dropped on load')
     gs.startBeastFight('e1', 'slay'); const ff = JSON.parse(JSON.stringify(s.family.fight)); delete ff.to; s.family.fight = ff
     assert(gs.fightInfo().to === 2, 'a fight saved without `to` reads FIGHT_TO') }
+  { const { gs, s } = await setup(13, 5, 'spirit_fox')
+    s.beasts = [{ id: 'b1', typeId: 'thunder_eagle', name: 'x', level: 1, xp: 0, traits: [], expedition: null }]
+    s.bestiary = {}; delete s.bestiarySeenVer; delete s.hunt; gs._recalc()
+    assert(gs.bestiaryEntry('thunder_eagle').seen && gs.bestiaryEntry('spirit_fox').seen && !gs.bestiaryEntry('qilin').seen && s.hunt === null,
+      'A6-2 migration: companions + waiting beasts count as seen; no hunt') }
+
+  // ── A6-2: the Hunt ──
+  { const { sim, gs, s } = await setup(20, 3, 'spirit_fox')
+    s.beastEncounters = []; s.spiritStones = 3
+    const info = gs.huntInfo()
+    const foot = info.grounds.find(g => g.id === 'misty_foothills'), crags = info.grounds.find(g => g.id === 'thunder_crags')
+    assert(!foot.lock && crags.lock === 'stage', 'the foothills are open at stage 3; the crags wait for their realm gate')
+    const odds = foot.table.filter(r => r.open).reduce((a, r) => a + r.chance, 0)
+    assert(Math.abs(odds - 1) < 1e-9 && foot.table.every(r => r.open), `the ground's odds sum to 100% over the kinds you can meet`)
+    s.stageIndex = 6; gs._recalc()
+    assert(gs.startHunt('thunder_crags').reason === 'stones', 'a hunt you cannot pay for is refused')
+    s.spiritStones = 50
+    assert(gs.startHunt('thunder_crags').ok && s.spiritStones === 45 && s.hunt?.groundId === 'thunder_crags', 'starting a hunt pays its cost')
+    assert(gs.startHunt('misty_foothills').reason === 'busy', 'one hunt at a time')
+    sim.step(30); assert(!s.hunt.found, 'the search takes its time')
+    sim.step(100)
+    const found = s.beastEncounters.find(e => e.id === s.hunt?.found)
+    assert(found && found.hunted === 'thunder_crags' && ['thunder_eagle', 'spectral_bear', 'blood_python'].includes(found.typeId) && gs.bestiaryEntry(found.typeId).seen,
+      `the hunt finds a beast of its ground (${found?.typeId}), seen in the bestiary`)
+    assert(gs.startHunt('misty_foothills').reason === 'busy', 'a found beast holds the hunt until it is dealt with')
+    s.inventory.beast_taming_talisman = 1; gs.tameEncounteredBeast(found.id)
+    assert(gs.startHunt('misty_foothills').ok, 'once the found beast is tamed, you can hunt again')
+    gs.cancelHunt(); assert(s.hunt === null, 'call off a hunt')
+    s.beastEncounters = [1, 2, 3].map(i => ({ id: 'x' + i, typeId: 'spirit_fox', traits: [], seenAt: 0 }))
+    assert(gs.startHunt('misty_foothills').reason === 'crowded', 'three beasts waiting: no room to hunt') }
+  { // The hunt resolves after the game was closed (initSlot → tick picks it up)
+    const { sim, gs, s } = await setup(21, 3, 'spirit_fox')
+    s.beastEncounters = []; gs.startHunt('misty_foothills'); await gs.forceSave?.()
+    sim.clock.now += 3600e3; sim.step(1)
+    assert(s.hunt?.found && s.beastEncounters.length === 1, 'a search that ended while you were away has found its beast') }
+  { // Only kinds at or below your realm: a stage-19 hunter on the summit never meets a Golden Dragon (stage 20)
+    const { sim, gs, s } = await setup(22, 19, 'spirit_fox')
+    const seen = new Set()
+    for (let i = 0; i < 60; i++) { s.beastEncounters = []; s.hunt = null; s.spiritStones = 999; gs.startHunt('cloud_sea_summit'); sim.step(301); const e = s.beastEncounters[0]; if (e) seen.add(e.typeId) }
+    assert(!seen.has('golden_dragon') && seen.has('azure_dragon'), `summit at stage 19 yields ${[...seen].join(', ')}`) }
+
+  // ── A6-2: a slayer's reputation ──
+  { let gv = 0, gs0 = 0
+    for (let i = 0; i < 1; i++) {
+      for (const slayer of [false, true]) {
+        const { sim, gs, s } = await setup(500 + i, 5, 'spirit_fox'); s.karma = 50
+        if (slayer) s.bestiary = { blood_python: { seen: true, slain: 20 } }
+        gs.startBeastFight('e1', 'drive'); fight(sim, gs, 'win')
+        rng(sim, 0.4); gs.beastFightFinish('flee'); unrng(sim)
+        const back = gs.bestiaryEntry('spirit_fox').returning
+        if (back === 'grateful') { if (slayer) gv++; else gs0++ }
+      }
+    }
+    assert(gs0 === 1 && gv === 0, 'the same roll (0.4): at neutral karma a spared beast returns grateful (0.51); after 20 kills, vengeful (0.31)') }
+
+  // ── A6-2: battle banter pools ──
+  { const { sim } = await setup(30, 5, 'spirit_fox')
+    const D = sim.data, holes = []
+    for (const t of ['beast_slain', 'beast_spared', 'battle_lost']) {
+      if (!D.BANTER_TRIGGERS.includes(t)) holes.push('trigger ' + t)
+      if ((D.BANTER_LINES.generic[t] || []).length < 2) holes.push('generic ' + t)
+      for (const p of D.PERSONALITIES) if ((D.BANTER_LINES[p.id]?.[t] || []).length < 4) holes.push(p.id + ' ' + t)
+    }
+    assert(!holes.length, `battle banter: every personality has ≥4 lines per trigger${holes.length ? ' — missing ' + holes.join(', ') : ''}`) }
 })()
 
 function BEAST_TRAIT_POWER_IRON() { return 25 }

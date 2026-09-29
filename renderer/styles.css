@@ -2646,11 +2646,37 @@ body[data-layout="banner"] #attention.calm { flex: 0 1 220px; }
 .auto-name { font-size: 11px; color: var(--text); }
 .auto-what { font-size: 10px; color: var(--dim-hi); line-height: 1.35; }
 .auto-row.locked .auto-name { color: var(--dim); }
-.auto-row .set-seg { gap: 0; border: 1px solid var(--dim); border-radius: 14px; padding: 2px; background: rgba(8,4,14,0.6); }
-.auto-row .set-opt { min-height: 26px; min-width: 42px; font-size: 11px; color: var(--dim-hi); border: none; border-radius: 12px; background: none; }
-.auto-row .set-opt:hover:not(.active) { color: var(--text); background: rgba(237,208,80,0.06); }
-.auto-row .set-opt.active { color: var(--text); background: color-mix(in srgb, var(--dim) 45%, transparent); box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
-.auto-row .set-opt.active.is-on { color: #06140C; background: var(--jade); font-weight: bold; box-shadow: 0 0 8px color-mix(in srgb, var(--jade) 45%, transparent); }
+.auto-row .set-seg, .exp-auto .set-seg, .bdx-auto-seg { gap: 0; border: 1px solid var(--dim); border-radius: 14px; padding: 2px; background: rgba(8,4,14,0.6); }
+.auto-row .set-opt, .exp-auto .set-opt, .bdx-auto-seg .set-opt { min-height: 26px; min-width: 42px; font-size: 11px; color: var(--dim-hi); border: none; border-radius: 12px; background: none; }
+.auto-row .set-opt:hover:not(.active), .exp-auto .set-opt:hover:not(.active), .bdx-auto-seg .set-opt:hover:not(.active) { color: var(--text); background: rgba(237,208,80,0.06); }
+.auto-row .set-opt.active, .exp-auto .set-opt.active, .bdx-auto-seg .set-opt.active { color: var(--text); background: color-mix(in srgb, var(--dim) 45%, transparent); box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); }
+.auto-row .set-opt.active.is-on, .exp-auto .set-opt.active.is-on, .bdx-auto-seg .set-opt.active.is-on { color: #06140C; background: var(--jade); font-weight: bold; box-shadow: 0 0 8px color-mix(in srgb, var(--jade) 45%, transparent); }
+/* Auto-Explore's switch in the Explore expedition panel (moved from the Roam sub-tab strip, 2026-09-29) */
+.exp-auto { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; padding-top: 6px; border-top: 1px dashed color-mix(in srgb, var(--border) 70%, var(--dim)); color: var(--text); }
+.exp-auto-l { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; min-width: 0; }
+.exp-auto-l .ic { align-self: center; color: var(--jade); }
+.exp-auto-l b { font-weight: normal; font-size: 11.5px; }
+.exp-auto-l small { flex-basis: 100%; font-size: 10.5px; color: var(--dim-hi); line-height: 1.35; }
+.exp-auto.locked .exp-auto-l .ic, .exp-auto.locked .exp-auto-l b { color: var(--dim); }
+.exp-auto-where { font: inherit; color: var(--gold); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+body[data-layout="desktop"] .exp-auto { justify-content: flex-start; gap: 18px; }   /* keep the switch beside its label on wide rows */
+.exp-auto-l small b { font-size: inherit; color: var(--text); }
+.exp-auto-l small b.exp-auto-next { color: var(--gold); }   /* the queued next target */
+/* UI review: 7.75 (2026-09-29) — the same switch standing alone: Sect → Missions (Auto-Missions) and each companion's card (Auto-Expedition) */
+.exp-auto.sv-auto { margin: 0 0 8px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 4px; background: rgba(8,4,14,0.35); }
+.exp-auto.beast-auto { margin: 4px 0 5px; padding-top: 5px; }
+body[data-layout="desktop"] .exp-auto.beast-auto { justify-content: space-between; }   /* switch lines up with Release */
+.sv-keep { margin-left: auto; margin-right: 6px; cursor: pointer; font-size: 10px; }
+.sv-keep:not(.active) { color: var(--text); border-color: var(--dim); }
+.fa-btn.loc-queue:not(:disabled) { border-style: dashed; }   /* "Go next": queues the next Auto-Explore run */
+.fa-btn.loc-queue:disabled { border-color: color-mix(in srgb, var(--gold) 45%, transparent); background: color-mix(in srgb, var(--gold) 6%, transparent); }   /* "Next up": chosen, not unavailable */
+.fa-btn.loc-queue:disabled .fa-n { color: var(--gold); }
+.bdx-auto-h { display: flex; align-items: center; }
+.auto-loc-n { color: var(--dim); margin-left: 4px; }
+.bdx-auto-seg { display: inline-flex; vertical-align: middle; margin-left: 8px; }
+.bdx-auto-seg .set-opt { min-height: 24px; min-width: 40px; font-size: 11px; }
+.bdx-auto-note { font-size: 10.5px; color: var(--dim-hi); margin: 0 0 5px; }
+.bdx-auto-note b { color: var(--gold); font-weight: normal; }
 .auto-unlock { font-size: 10px; color: var(--dim); white-space: nowrap; margin-top: 1px; }
 
 /* ── Small shared pieces (1.8b-1) ──────────────────────────────────────── */
@@ -4274,6 +4300,15 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
 .cb-tier { margin-top: 4px; } .cb-tier .tier-chip { margin-left: 4px; }
 .cb-plate.gone .cb-pips, .cb-plate.gone .cb-tier .tier-chip { opacity: .45; }
 .cb-fate { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-hi); border: 1px solid var(--border); border-radius: 2px; padding: 0 4px; vertical-align: 1px; }
+/* A6-3a: a person's plate — realm + feud chip (they owe you / hold a grudge)
+   UI review: 7.8 (2026-09-29, cycle 2; duelist asset 8.1) */
+.cb-realm { font-size: 10.5px; color: var(--dim-hi); }
+.cb-tier .cb-fate { margin-right: 6px; }
+.cb-feud { display: inline-block; margin-left: 6px; font-size: 9.5px; letter-spacing: .5px; padding: 0 5px; border-radius: 2px; border: 1px solid currentColor; vertical-align: 1px; }
+.cb-feud.debt { color: color-mix(in srgb, var(--jade) 75%, var(--text)); }
+.cb-feud.grudge { color: var(--red-text); }
+.cb-plate.gone .cb-realm, .cb-plate.gone .cb-feud { opacity: .55; }
+.cb-st-l.good { color: color-mix(in srgb, var(--jade) 75%, var(--text)); }
 
 #combat-panel { flex: 0 1 auto; max-height: 58%; overflow-y: auto; padding: 10px 14px 14px; zoom: var(--cz, 1);
   border-top: 1px solid color-mix(in srgb, var(--purple) 22%, var(--border)); background: rgba(10,6,16,0.92); }
@@ -4333,7 +4368,7 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
 .cb-retreat { flex: none; display: inline-flex; flex-direction: column; align-items: center; font-family: var(--font); font-size: 12px; color: var(--dim-hi);
   background: rgba(8,4,14,0.5); border: 1px dashed color-mix(in srgb, var(--dim) 70%, transparent); border-radius: 4px; padding: 5px 12px; min-height: 40px; cursor: pointer; }
 .cb-retreat [data-icon] { display: none; }
-.cb-retreat small { font-size: 10px; color: var(--red-text); opacity: .85; }
+.cb-retreat small { font-size: 10.5px; color: var(--red-text); }
 .cb-retreat:hover { color: var(--text); border-color: var(--dim-hi); }
 .cb-log { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; padding-top: 6px; border-top: 1px dotted color-mix(in srgb, var(--dim) 50%, transparent); }
 .cb-log li { font-size: 10.5px; color: var(--dim-hi); display: inline-flex; align-items: center; gap: 5px; }
@@ -4378,7 +4413,10 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
   .cb-tac { padding: 8px 3px 7px; }
   .cb-n kbd { display: none; }
   .cb-pct small { display: none; }
-  .cb-row2 { flex-wrap: wrap; }
+  /* A6-3a review: the habits line gets the full width; Yield / Retreat takes its own row below it */
+  .cb-row2 { flex-direction: column; align-items: stretch; gap: 6px; }
+  .cb-row2 .cb-read.sm { flex: none; }
+  .cb-retreat { flex-direction: row; justify-content: center; gap: 8px; width: 100%; }
 }
 @container (max-width: 360px) {
   #combat-panel { padding: 8px 9px 10px; }
@@ -4405,3 +4443,150 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
 .bdx-fight:hover:not(:disabled) { background: rgba(80,48,14,.6); }
 .bdx-fight:disabled { opacity: .45; cursor: not-allowed; }
 .bdx-actions { flex-wrap: wrap; }
+
+/* ── Roam → Hunt + Roam → Bestiary (Phase 35 / A6-2, renderer/game/hunt-view.js) ──────────────────────────────────
+   Hunting grounds and bestiary entries are the Sect-view card surface (.sv-card look); two columns where there's room.
+   UI review: 7.7 (2026-09-29) */
+.hunt-grid, .bst-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]):not([data-narrow="1"]) .hunt-grid,
+body:not([data-layout="overlay"]):not([data-layout="banner"]):not([data-narrow="1"]) .bst-grid { grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }   /* Expanded's column is ~250px */
+.hunt-card, .bst-card, .hunt-now { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 9px 10px; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--purple) 26%, var(--border));
+  background: linear-gradient(180deg, rgba(34,18,40,0.5), rgba(14,7,20,0.5)); }
+.hunt-card.locked { opacity: .72; }
+.hunt-card.here { border-color: color-mix(in srgb, var(--jade) 50%, var(--border)); }
+.hunt-head, .bst-name { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.hunt-name { font-size: 12.5px; color: var(--gold); letter-spacing: .4px; }
+.hunt-head .tier-chip, .bst-name .tier-chip { margin-left: auto; }
+.hunt-desc { font-size: 10.5px; line-height: 1.45; color: var(--dim-hi); font-style: italic; }
+.hunt-kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+.hunt-kind { font-size: 10.5px; padding: 1px 7px; border-radius: 10px; border: 1px solid currentColor; display: inline-flex; gap: 5px; align-items: baseline; color: var(--dim-hi); }
+.hunt-kind small { font-size: 9.5px; opacity: .8; font-variant-numeric: tabular-nums; }
+.hunt-kind.unknown { border-style: dashed; color: var(--dim); }
+.hunt-kind.closed { opacity: .6; }
+.tier-txt-common { color: var(--dim-hi); } .tier-txt-uncommon { color: var(--jade); } .tier-txt-rare { color: #6AB0F0; }
+.tier-txt-epic { color: #B888F8; } .tier-txt-legendary { color: var(--gold); }
+.hunt-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.hunt-meta { font-size: 10.5px; color: var(--dim-hi); font-variant-numeric: tabular-nums; }
+.hunt-tag { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--jade); }
+.hunt-lock { font-size: 10.5px; color: var(--dim-hi); display: flex; gap: 5px; align-items: center; }
+.hunt-lock [data-icon] { color: var(--dim); }
+.hunt-btn { font-family: var(--font); font-size: 11px; padding: 5px 12px; min-height: 30px; border-radius: 3px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text); background: rgba(24,10,4,.8); border: 1px solid color-mix(in srgb, var(--purple) 50%, var(--border)); }
+.hunt-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.hunt-btn:disabled { opacity: .45; cursor: not-allowed; }
+.hunt-btn.gold { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, var(--border)); background: rgba(44,24,10,.7); }
+.hunt-btn.quiet { color: var(--dim-hi); border-style: dashed; }
+.hunt-now { flex-direction: row; align-items: center; gap: 10px; margin-bottom: 8px; border-color: color-mix(in srgb, var(--jade) 45%, var(--border));
+  background: linear-gradient(180deg, rgba(14,34,26,0.45), rgba(8,14,12,0.55)); }
+.hunt-now.found { border-color: color-mix(in srgb, var(--gold) 50%, var(--border)); background: linear-gradient(180deg, rgba(44,30,10,0.45), rgba(14,9,6,0.55)); }
+.hunt-now-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.hunt-k { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--jade); }
+.hunt-now.found .hunt-k { color: var(--gold); }
+.hunt-now-n { font-size: 12px; line-height: 1.45; }
+.hunt-bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.07); overflow: hidden; }
+.hunt-bar b { display: block; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--jade) 60%, transparent), var(--jade)); transition: width .9s linear; }
+.hunt-sub { font-size: 10.5px; color: var(--dim-hi); }
+.hunt-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.hunt-found-art { flex: none; }
+
+.bst-card { flex-direction: row; gap: 10px; align-items: flex-start; }
+.bst-card.unseen { opacity: .62; border-style: dashed; }
+.bst-art { flex: none; width: 108px; height: 78px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: rgba(4,2,8,0.45); overflow: hidden; }
+.bst-sil { font-size: 40px; color: color-mix(in srgb, var(--purple) 35%, transparent); }
+.bst-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.bst-name { font-size: 12.5px; color: var(--text); }
+.bst-card.unseen .bst-name { color: var(--dim-hi); }
+.bst-meta { font-size: 10.5px; color: var(--dim-hi); }
+.hunt-wait { font-size: 10.5px; color: var(--dim-hi); display: flex; gap: 5px; align-items: center; }
+.bst-lore { font-size: 10.5px; line-height: 1.45; color: color-mix(in srgb, var(--text) 75%, var(--dim)); font-style: italic; }
+.bst-habits { display: grid; gap: 2px; margin-top: 2px; }
+.bst-habits span { display: grid; grid-template-columns: 5ch 1fr 4ch; align-items: center; gap: 6px; font-size: 10px; color: var(--dim-hi); font-variant-numeric: tabular-nums; }
+.bst-habits b { display: block; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--gold) var(--w), rgba(255,255,255,0.07) var(--w)); }
+.bst-hint { font-size: 10.5px; color: color-mix(in srgb, var(--gold) 70%, var(--text)); }
+.bst-hint.dim { color: var(--dim); }
+.bst-rec { font-size: 10.5px; color: var(--dim-hi); }
+.bst-back { font-size: 10.5px; color: var(--purple); }
+.bst-card.nature-benign { border-left: 2px solid color-mix(in srgb, var(--jade) 45%, transparent); }
+.bst-card.nature-fell { border-left: 2px solid color-mix(in srgb, var(--red) 45%, transparent); }
+@media (max-width: 380px) { .bst-art { width: 84px; height: 62px; } }
+
+/* ── Roam → Arena (Phase 35 / A6-3b, renderer/game/arena-view.js) ────────────────────────────────────────────────────
+   Ring cards share the Hunt card surface; a roster row per duelist; the run panel shows the purse like a prize ledger.
+   UI review: 7.75 (2026-09-29, cycle 2) */
+.ar-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]):not([data-narrow="1"]) .ar-grid { grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
+.ar-card, .ar-run, .ar-callout, .ar-standing { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 9px 10px; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--purple) 26%, var(--border)); background: linear-gradient(180deg, rgba(34,18,40,0.5), rgba(14,7,20,0.5)); }
+.ar-card.locked { opacity: .72; }
+.ar-card.dim { opacity: .6; }
+.ar-card.here { border-color: color-mix(in srgb, var(--gold) 50%, var(--border)); }
+.ar-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.ar-name { font-size: 12.5px; color: var(--gold); letter-spacing: .4px; }
+.ar-title { margin-left: auto; font-size: 10px; letter-spacing: .8px; text-transform: uppercase; color: var(--gold); display: inline-flex; gap: 4px; align-items: center; }
+.ar-desc { font-size: 10.5px; line-height: 1.45; color: var(--dim-hi); font-style: italic; }
+.ar-meta { font-size: 10.5px; color: var(--dim-hi); font-variant-numeric: tabular-nums; }
+.ar-rows { display: flex; flex-direction: column; gap: 4px; margin-top: 3px; }
+.ar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who who" "odds go"; gap: 4px 8px; align-items: center;
+  padding: 6px 7px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--purple) 16%, var(--border)); background: rgba(8,4,14,0.35); }
+body[data-layout="desktop"]:not([data-narrow="1"]) .ar-row { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "who odds go"; }   /* (Expanded's column is too narrow for one line) */
+.ar-row.champ { border-color: color-mix(in srgb, var(--gold) 40%, var(--border)); background: linear-gradient(90deg, rgba(44,30,10,0.35), rgba(8,4,14,0.35)); }
+.ar-row.held .ar-who { opacity: .75; }
+.ar-who { grid-area: who; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ar-pn { font-size: 12px; color: var(--text); display: inline-flex; gap: 5px; align-items: center; }
+.ar-pn [data-icon] { color: var(--gold); }
+.ar-pm { font-size: 10.5px; color: var(--dim-hi); }
+.ar-pm.dim { color: var(--dim); }
+.ar-row .odds-in { grid-area: odds; justify-self: start; white-space: nowrap; }
+body[data-layout="desktop"]:not([data-narrow="1"]) .ar-row .odds-in { justify-self: end; }
+.ar-odds-lbl { display: none; }   /* narrow rows: "98% ?" beside the buttons; the ring meta says what the pill is */
+body[data-layout="desktop"]:not([data-narrow="1"]) .ar-odds-lbl { display: inline; }
+.ar-lock.ar-blood-lock { flex-basis: 100%; justify-content: flex-end; color: color-mix(in srgb, var(--red-text) 75%, var(--dim-hi)); font-size: 10px; }
+.ar-rest { color: var(--text); padding: 6px 9px; margin-bottom: 8px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--border)); background: rgba(44,30,10,0.25); }
+.ar-rest b { color: var(--gold); font-weight: normal; font-variant-numeric: tabular-nums; }
+.ar-go { grid-area: go; display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.ar-lock { font-size: 10.5px; color: var(--dim-hi); display: inline-flex; gap: 5px; align-items: center; }
+.ar-lock [data-icon] { color: var(--dim); }
+.ar-btn { font-family: var(--font); font-size: 11px; padding: 4px 11px; min-height: 30px; border-radius: 3px; cursor: pointer; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2;
+  color: var(--text); background: rgba(24,10,4,.8); border: 1px solid color-mix(in srgb, var(--purple) 50%, var(--border)); }
+.ar-btn small { font-size: 9.5px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.ar-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.ar-btn:disabled { opacity: .45; cursor: not-allowed; }
+.ar-btn.gold { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, var(--border)); background: rgba(44,24,10,.7); }
+.ar-btn.blood { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 55%, var(--border)); background: rgba(40,8,8,.55); }
+.ar-btn.blood small { color: var(--red-text); }
+.ar-btn.quiet { color: var(--dim-hi); border-style: dashed; }
+.ar-btn.quiet small { color: var(--red-text); }
+.ar-k { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--gold); }
+.ar-sub { font-size: 10.5px; line-height: 1.45; color: var(--dim-hi); }
+.ar-sub b.gold, .ar-mult .gold, .ar-sub .gold { color: var(--gold); font-weight: normal; }
+.ar-sub b.odds-low { color: var(--red-text); font-weight: normal; } .ar-sub b.odds-mid { color: var(--gold); font-weight: normal; } .ar-sub b.odds-good { color: var(--jade); font-weight: normal; }
+.ar-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.ar-run { margin-bottom: 8px; border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); background: linear-gradient(180deg, rgba(44,30,10,0.42), rgba(14,9,6,0.55)); }
+.ar-run-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ar-streak { font-size: 10.5px; color: var(--jade); }
+.ar-purse { display: flex; align-items: baseline; gap: 7px; }
+.ar-purse b { font-size: 22px; font-weight: normal; color: var(--gold); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px color-mix(in srgb, var(--gold) 30%, transparent); }
+.ar-purse small { font-size: 10.5px; color: var(--dim-hi); }
+.ar-purse [data-icon] { color: var(--gold); align-self: center; }
+.ar-mult { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11px; color: var(--text); font-variant-numeric: tabular-nums; }
+.ar-mult .dim { color: var(--dim-hi); font-size: 10.5px; }
+.ar-mult .cb-why { margin-left: auto; }
+.ar-callout { margin-bottom: 8px; border-color: color-mix(in srgb, var(--red) 50%, var(--border)); background: linear-gradient(180deg, rgba(48,10,10,0.45), rgba(14,6,8,0.55)); }
+.ar-callout .ar-k { color: var(--red-text); }
+.ar-callout-t { font-size: 12px; line-height: 1.45; }
+.ar-standing { flex-direction: row; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 8px; font-size: 10.5px; color: var(--dim-hi); padding: 7px 10px; }
+.ar-standing b { color: var(--text); font-weight: normal; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.ar-standing small { margin-left: 4px; color: var(--dim); }
+.ar-titles { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.ar-titles i { font-style: normal; color: var(--gold); border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); border-radius: 2px; padding: 0 5px; }
+/* the battle page's arena result: Fight on / Walk away */
+.cb-foot.ar-choice { justify-content: flex-end; }
+.cb-foot.ar-choice .cb-leave { margin-left: 0; }   /* the pair sits together at the right */
+.cb-leave small { display: block; font-size: 9.5px; color: var(--dim-hi); }
+.cb-leave.quiet { color: var(--gold); margin-left: 0; }   /* Fight on: a real choice beside Walk away, not a disabled-looking one */
+/* A6-2: Roam has sub-tabs Explore · Beasts · Hunt · Bestiary (+ A6-3b Arena = five) plus the Auto chip — size them tighter than Sect's */
+@container (max-width: 420px) { #subtabs .subtab[data-in="adventure"] { padding: 3px 6px; letter-spacing: 0; } }
+@container (max-width: 380px) { #subtabs .subtab[data-in="adventure"] { padding: 3px 5px; font-size: 11px; } }
+@container (max-width: 300px) { #subtabs .subtab[data-in="adventure"] { padding: 3px 4px; font-size: 10.5px; letter-spacing: 0; } }
+body[data-layout="overlay"] #subtabs .subtab[data-in="adventure"] { padding: 2px 6px; }

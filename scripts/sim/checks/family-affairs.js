@@ -1,4 +1,4 @@
-// Scenario checks — family.md commit B: lover encounters (seduce / leave / fade), lover children, affair discovery,
+// Scenario checks — family.md commit B: lover encounters (seduce / slaughter / leave / fade), lover children, affair discovery,
 // every spouse reaction branch (accept / sabotage / duel / suicide / murder-suicide), tolerant spouse, unmarried lovers.
 // Run: npm run checks (all) · node scripts/sim/checks/family-affairs.js (this file). Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
@@ -76,5 +76,24 @@ const unrng = sim => sim.ev('Math.random = globalThis.__r')
     gs.answerChildWish(true); gs.get().world.year += 1
     rng(sim, 0.0); gs._tickFamily(); unrng(sim)
     assert(gs.get().family.children.length === 1 && gs.get().family.tally.discovered === 0, 'unmarried: lover child, nobody to discover')
+  }
+  // A6-3a kind 'slaughter': fight a road encounter to the death (Roam → Explore → Slaughter)
+  { const { sim, gs } = await setup(80); const s = gs.get()
+    s.family.encounters.push({ person: gs._rollStranger('stranger'), place: 'X', text: 't', year: 1 })
+    s.health = 5
+    assert(gs.slaughterEncounter(0).reason === 'wounded' && gs.get().family.encounters.length === 1, 'no slaughter while too wounded')
+    s.health = 100
+    s.family.fight = { kind: 'challenge', oppId: 'x', lethal: false, p: .5, to: 3, you: 0, them: 0, round: 1, log: [], year: 1 }
+    assert(gs.slaughterEncounter(0).reason === 'busy' && gs.get().family.encounters.length === 1, 'no slaughter while a fight is underway')
+    s.family.fight = null
+    rng(sim, 0.0); const start = gs.slaughterEncounter(0); unrng(sim)
+    const fi = gs.get().family.fight
+    assert(start.ok && fi?.kind === 'slaughter' && fi.lethal && gs.get().family.encounters.length === 0, 'Slaughter starts a lethal road fight, consumes the encounter')
+    s.karma = 50
+    fi.you = fi.to - 1
+    rng(sim, 0.0); gs.fightExchange('press'); unrng(sim)
+    assert(gs.get().family.fight?.over === 'won', 'the road fight reaches the end step')
+    rng(sim, 0.0); const fin = gs.personFightFinish('finish'); unrng(sim)
+    assert(fin.ok && fin.outcome === 'won_lethal' && gs.get().karma === 45, `killing them costs karma (${fin.outcome}, karma ${gs.get().karma})`)
   }
 })()

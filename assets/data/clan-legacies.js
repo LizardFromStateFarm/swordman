@@ -108,6 +108,10 @@ const EPITAPHS = {
     '{name}, who went into the hills to kill a beast at {age}, and did not come down.',
     '{name}, remembered by the clan as the one who hunted something stronger.',
   ],
+  arena_blood: [   // A6-3b: a blood match in the Arena
+    '{name}, who bet their life on the sand at {age}, and lost it there.',
+    '{name}, whose name the arena crowds still chant, though not for the reason they wanted.',
+  ],
   challenge_lost: [
     '{name}, who reached for the head seat and was cut down reaching.',
     '{name}, buried the day they challenged for the clan.',

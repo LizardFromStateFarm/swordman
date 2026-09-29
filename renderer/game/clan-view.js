@@ -115,12 +115,17 @@ class ClanView extends KinViewBase {
     if (clan.headId !== s.self.id) {
       const cc = gs.canChallengeHead()
       const lock = cc.ok ? '' : cc.reason === 'cooldown' ? `Recovering · again in year ${Math.ceil(cc.readyYear)}`
-        : cc.reason === 'stage_gap' ? `Come within ${CHALLENGE_STAGE_GAP} stages of the head` : 'Not now'
+        : cc.reason === 'stage_gap' ? `Come within ${CHALLENGE_STAGE_GAP} stages of the head` : cc.reason === 'busy' ? 'Another fight is underway' : 'Not now'
       // Where you stand before you act: your bond weighs on whether the head makes it lethal
       const hb = s.birth?.headBond != null && s.birth.headId === clan.headId ? h.bondLabel(Math.round(s.birth.headBond)) : null
-      if (cc.ok || ['cooldown', 'stage_gap'].includes(cc.reason))
+      // A6-3a: the odds of the fight itself, inline (tap → the personfight "why" card), and any feud the head holds
+      const head = gs.person(clan.headId), ho = head && gs.personFightOdds(head, 'challenge')
+      const hoc = ho ? (ho.chance < 0.2 ? 'odds-low' : ho.chance < 0.55 ? 'odds-mid' : 'odds-good') : ''
+      const hodds = ho ? `<span class="odds-in ${hoc}" data-bd="personfight:${head.id}:challenge" title="Why these odds?"><b>${Math.round(ho.chance * 100)}%</b> to win <i data-icon="why"></i></span>` : ''
+      const hfeud = head?.feud ? ` · <span class="${head.feud === 'debt' ? 'up' : 'down'}">${FEUD_TEXT[head.feud]}</span>` : ''
+      if (cc.ok || ['cooldown', 'stage_gap', 'busy'].includes(cc.reason))
         tiles.push(this._tile('id="_challenge-head"', 'sword', 'Challenge the Head',
-          `${hb ? `<span class="tone-${hb.tone}">bond ${hb.word.toLowerCase()}</span> · ` : ''}the head decides if it is <span class="down">to the death</span>`, lock))
+          `${hodds}${hodds ? '<br>' : ''}${hb ? `<span class="tone-${hb.tone}">bond ${hb.word.toLowerCase()}</span> · ` : ''}the head decides if it is <span class="down">to the death</span>${hfeud}`, lock))
     }
     if (mine && mine !== clan.lines[0]) {
       const prev = gs.branchWarPreview()

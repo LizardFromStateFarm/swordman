@@ -37,7 +37,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
 | Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); A4-2 beasts ✅ (10 + variants); **A4-3 realm scenery + death moment ✅** (accepted by the user 2026-09-28); **A4-4 Ink default + sprite emoji lint ✅** (2026-09-28, 8.0) |
 | **Soul Points + Immortal cinematic + "you finished v1" screen** | ✅ Phase 40 (v1 finish) — 40a Soul Points core (UI 7.7) + **40b Immortal Ascension cinematic + finish screen** (2026-09-28; screen 7.75, cinematic accepted by the user) |
-| **Combat & Battles** (battle page, beast battles, bestiary) | ◐ Phase 35 — **A6-1 ✅** (2026-09-28): Fight a wild beast from Roam → Beasts on a full-window ink battle page (UI 7.75, effects 8.0). Next A6-2 arena + bestiary view + banter, A6-3 duels/tournaments + duelist art |
+| **Combat & Battles** (battle page, beast battles, bestiary) | ◐ Phase 35 — **A6-1 ✅** (2026-09-28): Fight a wild beast from Roam → Beasts on a full-window ink battle page (UI 7.75, effects 8.0). **A6-2 ✅** (2026-09-29): Roam → Hunt + Roam → Bestiary, battle banter, slayer reputation, sim bot hunts (UI 7.7). **A6-3a ✅** (2026-09-29): duels, head challenges, defending the seat + your step-down bouts on the battle page vs ink duelists, finish/spare · raise/humble, debts + grudges (UI 7.83, duelist 8.1). **A6-3b ✅** (2026-09-29): the Arena — Roam → Arena, six rings, purse × streak × renown, blood matches, titles, grudge call-outs (UI 7.75). Next A6-3c bosses (needs 23E/17) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -118,8 +118,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   bake-off (grid ASCII vs layered glyph compositor vs shape-to-glyph + ink-wash effects; user picks) → A3 engine with
   swappable parts → A4 re-art. **No-emoji rule** is in CLAUDE.md now.
 - **Family agency:** done (1.8b-3a + 3b, 2026-09-27). What the world still rolls on its own (by design): discovery,
-  a lover's ultimatum, a scorned lover's revenge, a spouse's reaction. **Still simulated:** your own bouts inside a
-  step-down mass tournament (the whole bracket resolves at once) — they should use the fight card too.
+  a lover's ultimatum, a scorned lover's revenge, a spouse's reaction. (Your own step-down tournament bouts are played
+  on the battle page since A6-3a.)
 - **Fights + affairs leftovers (1.8b-3b, 7.3 accepted):** tournament pool list repeats the versus tiles (collapse
   paired fighters); Overlay tournament panel unreviewed; pool-row metadata is small/dim.
 - **Clan + Hall leftovers (1.8b-4, 7.5 accepted):** Overlay nests boxes three deep (drop inner borders on small
@@ -136,6 +136,9 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   slots); no soul metrics in the sim report yet (2.8); the Soul screen is only reachable from Hall/charselect/attention,
   not the Qi/s breakdown popover (could link "Soul Resonance" to it).
 - **Beast details page (7.9):** the portrait VIEW tag is small/low-contrast.
+- **Automation queueing (7.75):** Overlay Auto-Missions blurb wraps to 3 lines beside the switch; the currently-running
+  Explore card can't be re-picked as "next" once another is queued (use the Mode panel picker); beast Auto-Expedition
+  and mission picks don't chain offline (live-only); the sim bot doesn't exercise picks or beast auto yet (2.8 QA).
 - **Battle page (A6-1, UI 7.75 / effects 8.0):** phone fight/end/result leave the lower ~40% empty (grow the field when
   the panel is short, or dock the actions low for thumbs); Desktop wound number floats against the name plate; Overlay
   prepare/end panels need a short scroll for the last option; the winner's own move reads weaker than the loser's
@@ -143,6 +146,18 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   the hit flash tints the whole figure (an outline flash would be subtler); the seated cultivator looks small beside big
   beasts on phones (duelist art is A6-3). Classic Sprite art still gets the ink battle field. The sim bot never fights
   (A6-2/QA), and battles have no banter lines yet.
+- **The Arena (A6-3b, 7.75):** Fight button borders vary purple/gold between rows (hover state reads as meaning); the Roam
+  sub-tab strip's Auto chip scrolls off the edge in Expanded (five sub-tabs now); the phone result screen's empty lower
+  half (battle page). **Balance untuned (2.8 QA):** arena purses are ~54% of an active min-maxer's stones and double its
+  income (sim:quick); the 30-min rest is the main brake.
+- **Duels on the battle page (A6-3a, UI 7.83 / duelist 8.1):** the rival's aura ribbon is the same gold as yours (tint it
+  toward their stage colour); "Why" is a small target in Overlay; an empty band sits under the two end cards in
+  Overlay/phone; the Tournament of Heirs (your children's bracket) keeps its own panel, and its pool list still repeats
+  the versus tiles; NPC-vs-NPC step-down bouts are rolled (the world's fights, by design). Duel balance untuned (2.8 QA).
+- **Hunt + Bestiary (A6-2, 7.7):** under ~400px the portrait sits beside the text, squeezing found-card/Bestiary text
+  into a narrow column (stack or shrink the portrait); in Overlay the found card's Fight it / See it in Beasts buttons
+  fall below the fold; locked grounds' "Unknown beast · realm" chips wrap into ragged two-line pills; an empty Bestiary
+  is ten identical paw placeholders (compact unseen cards or per-beast silhouettes). Battle balance untuned (2.8 QA).
 - **A4-4 polish (8.0):** Classic crown rows space unevenly (ϟ is narrower than a cell); the realm tagline under the canvas
   truncates in Overlay/Expanded (allow 2 lines or drop it in Overlay); Banner crops the ink figure to head + torso at the far left.
 - **A4-3 scenery polish:** Foundation's waterfall has no source notch / landing, its mid-slopes are murky and the mountains
@@ -163,6 +178,88 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-29 (user present) — part 51
+Agent: **Automation queueing (user request, assessment approved, beast unlock Lv.5).** (1) Auto-Missions copies the
+  Auto-Explore pattern: an On/Off row in Sect → Missions, Keep/Kept chips on each card and a "Keep running" picker in the
+  Mode panel (automation.autoSectMissionIds, ≤ 2; [] = the old "re-take whatever finished"). (2) Per-beast Auto-Expedition
+  from Lv.5 (BEAST_AUTO_EXPEDITION_LEVEL): an On/Off row on the beast card and a switch + "where next" picker on the details
+  page; relaunches on return; a one-time Lv.5 event line; a Mode panel roadmap row. (3) Queue while busy: Explore cards
+  become "Go next" while a run is out (Auto-Explore on), and mission and beast picks can change mid-run. Every target is
+  read when its slot frees, so the next run swaps in without cancelling the current one. game-state (setAutoSectMission,
+  _fillAutoSectMissions, setBeastAuto/Location, beastAutoTarget, _maybeAutoBeast, tick slot fill), automation.js data,
+  game.js, sect-view.js, beast-detail.js, styles.css. New checks/automation.js (26); smoke auto-explore-pick.js extended.
+  npm test clean · checks **581 ok** · smoke pass, zero console errors. Review **7.75 PASS** (+ its polish applied).
+  Docs: automation.md "Queued targets", integrity.md, qa-sim.md, ui-review.md, PLAN Phase 22. Uncommitted.
+  Not done: beast Auto-Expedition is live-only (no offline chaining, like missions); the sim bot doesn't use picks/beast auto.
+
+Date: 2026-09-29 (user present) — part 50
+Agent: **UI fix (user): the Auto-Explore chip was cut off the Roam sub-tab strip** (five tabs since the Arena). The Roam
+  group no longer has a strip chip; the Explore view's expedition panel has an Auto-Explore row (On/Off switch like the
+  Mode panel; the note says where it sends you + a "change where" link to the Mode panel's picker, or that it rests in
+  Active Mode, or when it unlocks). nav.js, game.js renderExplore, styles.css (.exp-auto). Smoke auto-explore-pick.js
+  extended (no chip, toggle both ways, fits in Overlay/Expanded/Desktop, the link); nav-attention / layout-modes /
+  mobile / sect smoke pass. Reviewer **7.83 PASS**. Docs: automation.md, ui-layout.md, ui-review.md. Uncommitted.
+
+Date: 2026-09-29 (user present) — part 49
+Agent: **Player Qi edge (user rule) + A6-3b the Arena** (assessment approved; defaults: blood matches opt-in, push-your-luck
+  purse; on Opus). User handles commits.
+  - **Qi edge** (user: "if an NPC is at the same root and stage as the user, the user's Qi gain is 10% higher"; NPC roots
+    may be better, you can upgrade yours): PLAYER_QI_EDGE = 1.1 (succession.js); `_npcStageRate` caps every NPC growth
+    path (world persons, spouse, children) at your bare pace at their stage + root ÷ 1.1. NPCs unchanged through Qi
+    Condensation, much slower from Foundation up. Sim 2×48h before/after: casual heirs' median stage 21 → 13, active
+    10 → 9, healthy. checks/qi-edge.js (9); children.js check updated. clan-succession.md → "NPC growth".
+  - **The Arena** (combat.md → "A6-3b"): assets/data/arena.js, game-state s.arena + arenaInfo / startArenaBout /
+    arenaWalkAway / answerArenaCallout / _arenaBoutEnd / _tickArena, renderer/game/arena-view.js (Roam → Arena), battle
+    page arena titles + purse + "Fight on / Walk away", breakdown `arena`, attention (call-out / run / new ring), sect
+    fame from wins, death cause arena_blood, banter `arena_win` (58 lines), sim bot arena() + report section.
+  - Balance: first pass was a one-faucet economy (97% of stones, 726k/24h) → prizes cut ~20× + a global 30-min rest per
+    run → 54%. Still generous (UX Debt → 2.8).
+  - Bugs caught by smoke: the family load guard dropped arena bouts on the next recalc (fixed + a regression check);
+    an edit of mine had commented out the family/clan/hall/sect view renders (nav-attention smoke caught it; fixed).
+  - Tests: npm test clean · npm run checks **550 ok** (arena.js 34, qi-edge.js 9) · smoke arena / duels / combat / hunt /
+    nav-attention / family / clan / sect / fights / succession all pass, zero console errors · sim:quick healthy.
+  - Review: cycle 1 7.33 FAIL (disabled buttons with no visible reason) → cycle 2 **7.75 PASS**; polish → UX Debt.
+  - Docs: combat.md, clan-succession.md, banter.md + writing guide, qa-sim, ui-review, index, CLAUDE.md tree, PLAN. Uncommitted.
+  Next: A6-3c bosses need 23E/17 (not built) → **A7 sect base scene (Phase 38A)** is the next buildable art-track task →
+  2.8 QA & Balance (tune arena purses, NPC pace, duel balance).
+
+Date: 2026-09-29 (user present) — part 48
+Agent: **A6-3a people on the battle page** (A6-3 split into 3a people · 3b Arena · 3c bosses; assessment approved; on Opus).
+  User handles commits. Spec + as-built: combat.md → "A6-3a".
+  - Engine: person fights to DUEL_TO = 3 (odds kept); a won fight waits for the end choice — personFightChoices /
+    personFightFinish: finish / spare (lethal) · raise / humble (until one yields); reactions by temper
+    (SPARE/RAISE/HUMBLE_REACTION → p.feud debt | grudge), p.vsYou record, SPARE_KARMA; humbling cows the clan
+    (f.cowedUntilYear: only grudge-holders dare); _pickChallenger weights grudges ×3, never picks a debtor; FEUD_POWER in
+    personFightOdds (+ the new `personfight` breakdown card); yield ±FEUD_YIELD. Step-down: answerStepDown(true) pauses
+    in f.bracket on each of your bouts (fight kind 'stepdown'); _finishStepDown shared with the watched bracket.
+  - UI: CombatView person mode (fight step with stakes/temper/Yield/record/feud, end step, Between Bouts → "Face <name>"),
+    duelistSlots (new assets/data/duelists.js; never your robe), BattleScene person foe (mirrored, ember crescent). The
+    family-overlay fight card is gone (duel / head-challenge / step-down cards hand over to the battle page). Clan tile:
+    Challenge the Head shows its odds pill + the head's grudge. Attention routes person fights to the battle page.
+  - Sim bot makes end choices; sim:quick healthy. Tests: new checks/duels.js (29) + family-fights/-marriage/succession
+    checks updated → **506 ok**; smoke new scenarios/duels.js, fights.js + succession.js moved to the battle page (the
+    succession smoke also now steps through 40b's Immortal cinematic, which had broken it), combat.js still passes.
+  - Review: cycle 1 UI 7.5 + 2 blockers / asset 7.8 → cycle 2 **UI 7.83 PASS, duelist 8.1 PASS**; polish → UX Debt.
+  - Docs: combat.md, family.md, clan-succession.md, qa-sim, ui-review, index, CLAUDE.md tree, PLAN (A6-3a ✅). Uncommitted.
+  Next: **A6-3b the Arena** (duelist ladder, stakes, streak, named rivals that remember you — reuses the duelists + feuds)
+  → A6-3c bosses (needs 23E/17) → A7 sect base scene → 2.8 QA & Balance.
+
+Date: 2026-09-28 → 2026-09-29 (user present) — part 47
+Agent: **A6-2 the Hunt + the Bestiary** (Phase 35; spec user-approved, the Arena moved to A6-3). Built by an agent that
+  ran out of usage before the review/wrap-up; finished by the next session (user: one review cycle only). User handles commits.
+  - Engine: HUNT_GROUNDS (5 grounds, realm gate, stone cost, track time) + BEAST_SLAYER_VENGEFUL(_MAX) in beasts.js;
+    game-state _spawnBeastEncounter (one sighting path, sim seeds unchanged), huntInfo / startHunt / cancelHunt /
+    _resolveHunt (from tick(), so it resolves while closed), s.hunt (+ _ensurePhase35Fields), bestiary[type].seen +
+    bestiarySeenVer migration, slayer reputation (grateful chance −0.02 per beast slain, cap −0.2).
+  - UI: renderer/game/hunt-view.js (HuntView + BestiaryView), #tab-hunt / #tab-bestiary under Roam, attention item `hunt`.
+  - Banter: beast_slain / beast_spared / battle_lost (174 lines, token {beast}).
+  - Sim: bot hunts + fights (≥ 60% odds), report "Beast battles + hunts", invariants health_negative / battle_without_beast.
+  - Tests: npm test clean · npm run checks **472 ok** (combat.js 51) · smoke scenarios/hunt.js all ok, zero console errors.
+  - Review: reviewer agent **7.7 PASS** (layout 6.5 lowest; 3 polish → UX Debt). Docs: combat.md, qa-sim, banter,
+    ui-review, index, CLAUDE.md tree, PLAN (A6-2 ✅). Uncommitted.
+  Next: **A6-3** (the Arena + duels/head challenges/tournament bouts on the battle page + humanoid duelist art + bosses)
+  → A7 sect base scene → 2.8 QA & Balance (battle balance is untuned).
+
 Date: 2026-09-28 (user present) — part 46
 Agent: **A6-1 beast battles + the battle page** (Phase 35; A6 split into A6-1/2/3, assessment approved; on Opus). User handles commits.
   - Spec first: docs/systems/combat.md (depth + UX pass, state/API, odds, as-built). Data: beasts.js BEAST_FIGHT_STYLE (habits),

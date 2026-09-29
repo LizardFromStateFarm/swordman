@@ -26,6 +26,7 @@ _The brief for anyone writing lines for `assets/data/banter-lines.js`. The engin
 | `{hours}` | whole hours away, e.g. "9" | `welcome_back` only |
 | `{enemy}` | enemy sect name | `war_call`, `war_won`, `war_lost` only |
 | `{sect}` | your sect's name | `war_call`, `war_won`, `war_lost` only |
+| `{beast}` | the beast's name, e.g. "White Tiger" (write "the {beast}") | `beast_slain`, `beast_spared`, `battle_lost` only |
 
 Use tokens in maybe 1 of 5 lines. Lines must read fine with any value substituted.
 
@@ -47,6 +48,10 @@ Use tokens in maybe 1 of 5 lines. Lines must read fine with any value substitute
 | `welcome_back` | The player reopened the game after hours away | 4 |
 | `morning` | Real-world morning (5–10 am) | 4 |
 | `night` | Real-world late night (11 pm–4 am). Teasing the player for being up is great | 4 |
+| `beast_slain` | Finished off a beast after winning a battle | 4 |
+| `beast_spared` | Spared a beaten beast, let it flee, or bound it as a companion | 4 |
+| `battle_lost` | Lost a beast battle, or broke away from one | 4 |
+| `arena_win` | Won a bout in the Arena (the purse grows; the crowd cheers) | 4 |
 
 ## The 14 personalities
 Each one is: id · name · voice in one line · what drives the jokes · two sample lines.

@@ -40,7 +40,7 @@ Writers: see `banter-writing-guide.md` (voice, tokens, triggers, the 14 personal
 ## Data Shape
 - `PERSONALITIES = [{ id, name, nameCN, blurb }]`, 14 entries.
 - `BANTER_LINES = { generic: {trigger: [..]}, <personalityId>: {trigger: [..]} }`, with
-  `BANTER_TRIGGERS = [..18 ids..]` (`soul_remembers` added in Phase 40a, said by game.js when the death card after an Ascension Trial closes; `married`/`child_born` added in M2 2.5; `twilight` was added in 2.3 and removed with
+  `BANTER_TRIGGERS = [..21 ids..]` (`beast_slain` / `beast_spared` / `battle_lost` added in Phase 35 A6-2 from game-state emits with token `{beast}`; `arena_win` added in A6-3b, no token; `soul_remembers` added in Phase 40a, said by game.js when the death card after an Ascension Trial closes; `married`/`child_born` added in M2 2.5; `twilight` was added in 2.3 and removed with
   old age on 2026-09-26) and `BANTER_MIN_LINES = { idle: 25, other: 4, genericIdle: 20, genericOther: 2 }`.
 
 ## Wiring

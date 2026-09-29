@@ -20,7 +20,8 @@ the window (`100vw × 100vh`); nothing in CSS hard-codes the window size any mor
 #main-pane                   wrapper for the navigation (Phase 6E); a row in Expanded/Desktop (rail | view)
   #tabs              ~38px   1.8b-1: six group buttons (glyph over name); a 64px vertical rail in Expanded/Desktop
   #view                      sub-tab row + tab body
-    #subtabs         ~30px   pill sub-tabs of the open group + the 自 automation chip (hidden for 1-view groups w/o chip)
+    #subtabs         ~30px   pill sub-tabs of the open group + the 自 automation chip (hidden for 1-view groups w/o chip;
+                             Roam has none since 2026-09-29 — Auto-Explore's switch is in the Explore expedition panel)
     #tab-body        flex:1  ~246px in Overlay (was 305 after 1.7; nav + strip cost ~60px); active .panel scrolls
 #resize-grip                 Desktop only: ◢ bottom-right
 ```

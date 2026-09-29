@@ -7,9 +7,13 @@
 const { createSim } = require('../loader.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
 // 1.8b-3b: your fights are played exchange by exchange. Plays one out with the best (want 'win') or worst tactic.
-const fought = (sim, gs, start, want = 'win') => { let r = null
+// A6-3a: a won fight waits for the end choice — `end` picks it (default: finish a lethal fight, raise a non-lethal one,
+// which reproduce the old outcomes). A step-down bracket chains bouts until it is settled.
+const fought = (sim, gs, start, want = 'win', end = null) => { let r = null
   sim.ev(`globalThis.__fr = Math.random; Math.random = () => ${want === 'win' ? 0.001 : 0.999}`)   // decide it, not luck
-  for (let i = 0; i < 12 && gs.get().family?.fight; i++) {
+  for (let i = 0; i < 60 && gs.get().family?.fight; i++) {
+    const fi = gs.get().family.fight
+    if (fi.over === 'won') { r = gs.personFightFinish(end || (fi.lethal ? 'finish' : 'raise')); continue }
     const t = Object.entries(gs.fightInfo().tactics).sort((a, b) => want === 'win' ? b[1] - a[1] : a[1] - b[1])[0][0]
     r = gs.fightExchange(t) }
   sim.ev('Math.random = globalThis.__fr')
@@ -337,12 +341,12 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
 
   // 18. Step-down mass tournament: join and dominate → you take the seat + branches; decline → resolved without
   // you; too few entrants without you → no contest.
-  { const { gs } = await nonHeadLife(50, 3, { overrides: ['TOURNAMENT_LUCK = 0'] })
+  { const { sim, gs } = await nonHeadLife(50, 3, { overrides: ['TOURNAMENT_LUCK = 0'] })
     const s = gs.get(), clan = clanOf(gs), headId = clan.headId, linesBefore = clan.lines.length
     const m1 = addMember(gs, { stage: 3 }), m2 = addMember(gs, { stage: 3 })
     s.stageIndex = 40; s.maxStageThisLife = 40
     s.family.stepDownOffer = { headId, year: Math.floor(s.world.year), entrantIds: [m1.id, m2.id, s.self.id], eligible: true }
-    const res = gs.answerStepDown(true)
+    const res = fought(sim, gs, gs.answerStepDown(true))   // A6-3a: your bouts are played (fought) on the battle page
     assert(res.ok && res.joined && res.outcome === 'won', `join + dominate → ${res.outcome}`)
     assert(clanOf(gs).headId === s.self.id, 'you take the seat')
     assert(clanOf(gs).lines.length > linesBefore, `places 2–4 found new branches (${linesBefore} → ${clanOf(gs).lines.length} lines)`)

@@ -8,7 +8,7 @@ const NAV_GROUPS = [
   { id: 'cultivate', glyph: '修', name: 'Path',  title: 'Cultivation: techniques and your character',
     views: [['stats', 'Character'], ['techniques', 'Techniques']] },
   { id: 'adventure', glyph: '歷', name: 'Roam',  title: 'Adventure: expeditions, the road, spirit beasts',
-    views: [['explore', 'Explore'], ['beasts', 'Beasts']], auto: 'autoExplore' },
+    views: [['explore', 'Explore'], ['beasts', 'Beasts'], ['hunt', 'Hunt'], ['bestiary', 'Bestiary'], ['arena', 'Arena']] },   // A6-2: Hunt + Bestiary · A6-3b: Arena (Auto-Explore's switch: the Explore expedition panel)
   { id: 'kin',       glyph: '家', name: 'Kin',   title: 'Family, clan and the Ancestral Hall',
     views: [['family', 'Family'], ['clan', 'Clan'], ['hall', 'Hall']] },
   // 1.8b-5: which sub-views show depends on your standing (NavUI.setAvailable, from game.js sectViews())

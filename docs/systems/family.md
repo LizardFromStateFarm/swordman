@@ -45,7 +45,7 @@ tally: {events, crises, affairs, discovered, accept, sabotage, duel, suicide, mu
 - Duel: win = clamp(0.5 + 0.08 × (your stage − spouse stage), 0.1, 0.9). Win → spouse dies (`duel`), you lose
   `DUEL_WIN_HEALTH_COST` 30 Health (min 1). Lose → `_die('spouse_duel')`. Flee → spouse leaves.
 - [B] Encounters: `LOVER_ENCOUNTER_CHANCE` 0.12 per expedition from `PROPOSAL_MIN_STAGE`, max 3 pending, never expire;
-  `SEDUCE_CHANCE` 0.65. Affairs fade on their own after `AFFAIR_YEARS` [15,50] (added after the first sim: without it
+  `SEDUCE_CHANCE` 0.65. **Slaughter** (combat.md A6-3a) turns one into a lethal road fight on the battle page. Affairs fade on their own after `AFFAIR_YEARS` [15,50] (added after the first sim: without it
   lovers piled up to ~60 children per life). Discovery (married, not tolerant): 0.02 per lover per game year; 0.40 when a lover's child
   is born. On discovery: affection −25 (−10 more if via a child); tolerant spouse: −5, no reaction.
 - [B] `AFFAIR_REACTIONS[personalityId] = {accept, sabotage, duel, suicide, murder_suicide}` weights (table in the
@@ -57,7 +57,7 @@ tally: {events, crises, affairs, discovered, accept, sabotage, duel, suicide, mu
 ## API (game-state.js) — see also "1.8b-3a → As built" below
 - `resolveMarriageEvent(i)` → `{ok, affection, outcome}` · `{ok:false, reason:'no_event'|'bad_choice'|'cant_afford'}`
 - `resolveDuel('fight'|'flee')` → `{ok, outcome:'won'|'lost'|'fled', chance}` · `{ok:false, reason:'no_duel'|'bad_choice'}`
-- [B] `seduceEncounter(i)` → `{ok, success}` · `dismissEncounter(i)` → `{ok}` · `endAffair(personId)` → `{ok}`
+- [B] `seduceEncounter(i)` → `{ok, success}` · `slaughterEncounter(i)` → `{ok, fight}` (A6-3a, lethal) · `dismissEncounter(i)` → `{ok}` · `endAffair(personId)` → `{ok}`
 - `affectionLabel()`-style tiers are UI-only: Devoted ≥75 · Warm ≥50 · Cool ≥25 · Cold <25.
 - Emits: `marriage_event`, `spouse_left`, `spouse_died {cause}`, `duel`, [B] `lover_encounter`, `affair_discovered {reaction}`.
   No banter pools for these (tragic outcomes are not joked about).
@@ -69,7 +69,7 @@ tally: {events, crises, affairs, discovered, accept, sabotage, duel, suicide, mu
 - `_recalc()` → breakthrough bonus: +Devoted, −sabotage. `attemptBreakthrough()` clears `btSabotage` after any attempt.
 - game.js: `#family-overlay` (events, crises, duel) auto-opens once per pending item per session, Stats has
   "A family matter awaits" to reopen; Stats family section (spouse + affection, former spouses, [B] lovers + End
-  affair, children); [B] Explore encounter cards (Seduce / Leave). All overlays go in BanterSystem's `isBlocked`.
+  affair, children); [B] Explore encounter cards (Seduce / Slaughter / Leave). All overlays go in BanterSystem's `isBlocked`.
 
 ## Invariants (sim)
 1. `affection ∈ [0,100]`; spouse null or alive; `event`/`duel` only while married.
@@ -158,6 +158,9 @@ youngest-12 cap; Overlay = compact rows, tap to expand actions), lovers, former 
 urgent 願 child wish; ready 約 courtship meeting; idle 冷 spouse Cool/Cold with an action ready.
 
 ## 1.8b-3b — Affairs on your terms + your own fights (spec, 2026-09-27; user approved as one task)
+> **A6-3a (2026-09-29, combat.md → "A6-3a"):** the fight card below was retired. The spouse duel (and head challenges,
+> defending the seat) now play on the battle page to `DUEL_TO` = 3 exchanges, and a won duel waits for your choice:
+> **Finish** (the spouse dies, as before) or **Spare** (they leave you, alive, with a debt or a grudge by temper).
 **Affairs.** The world still rolls discovery, but every player-side choice is explicit (lover cards, Family view):
 - **Cover your tracks** (`coverTracks(id)`): stones (`COVER_TRACKS_COST`, scaled) → that lover's discovery chance
   × `COVER_DISCOVERY_MULT` for `COVER_YEARS`. `affairRisk(id)` returns the yearly chance and why (shown on the card).

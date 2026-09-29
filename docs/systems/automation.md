@@ -17,6 +17,10 @@ automation: {
   autoExploreLocationId: string|null — which location Auto-Explore idles on (null = the last one you sent); set in the Mode panel (autoExplorePaused is legacy, unused)
   lastExploreLocationId: string|null  — set by every startExpedition() call, manual or automated
   autoSectMissions:   bool            — re-queues the same mission type when a slot frees up
+  autoSectMissionIds: [missionId]     — (2026-09-29) missions Auto-Missions keeps running, ≤ SECT_MAX_MISSIONS; [] = re-take
+                                        whichever finished (the old behaviour). Read when a slot frees → changing picks
+                                        mid-mission swaps what runs next without cancelling the running one
+  _slotAcc: number                    — throttle for the free-slot fill (AUTO_SLOT_CHECK_SECONDS)
   autoCraft:          bool            — master switch; per-recipe toggle below gates which recipes repeat
   autoCraftRecipes:   { [recipeId]: true } — recipes flagged to auto-repeat whenever materials allow
   autoBreakthrough:   bool            — attempts a breakthrough once Qi crosses the threshold below
@@ -24,6 +28,9 @@ automation: {
   _craftAcc: number                   — internal throttle accumulator (not player-facing)
 }
 ```
+Per beast (2026-09-29, `s.beasts[i]`): `autoExp: bool`, `autoExpLocId: string|null` (null = its last trip),
+`lastExpLocId: string|null` (set by every `sendBeastExpedition`). Migrated in `_ensurePhase22Fields`.
+
 `s.expedition.pushed: bool` (new field) — Active Mode's one-time Push Harder purchase for the current expedition.
 
 ## API (game-state.js)
@@ -34,6 +41,12 @@ setAutomation(key, value) → { ok, reason? }                keys: autoExplore/a
                                                             (number). reason: unknown/invalid/locked
 setAutoExploreLocation(locationId|null) → { ok }
 setAutoCraftRecipe(recipeId, enabled) → { ok }
+setAutoSectMission(missionId, on) → { ok, reason? }         pick/unpick for Auto-Missions; reason: unknown/rank/full.
+                                                            Fills free slots at once when Auto-Missions is on (Idle)
+beastAutoUnlocked(beast) → bool                            level ≥ BEAST_AUTO_EXPEDITION_LEVEL (5)
+beastAutoTarget(beast) → location|null                     autoExpLocId || lastExpLocId
+setBeastAuto(beastId, on) → { ok, reason? }                reason: not_found/locked; a beast at home sets out at once
+setBeastAutoLocation(beastId, locId|null) → { ok, reason? } where it goes next; read at launch → swaps on return
 automationUnlocked(key) → bool                             checked against AUTOMATION_UNLOCKS + live state
 pushExpedition() → { ok, reason? }                          reason: not_active/no_expedition/already/too_early/stones
 attemptBreakthrough({ minQiFrac?, focusBonus? } = {})       minQiFrac defaults 0.90 (unchanged manual behavior);
@@ -63,6 +76,29 @@ Harder cost/window, breakthrough focus window/bonus, craft Master's Touch chance
   instead (automation toggles do nothing there, per spec).
 - Per-location pause toggle: Explore tab location rows (`.pack-chip`, reused). Per-recipe auto toggle: Craft
   tab recipe rows (`.pack-chip`, reused).
+- **Auto-Explore switch in the expedition panel (2026-09-29, user request):** the Roam group no longer has a sub-tab
+  strip automation chip (it was clipped once Roam had five sub-tabs). `renderExplore()` puts an Auto-Explore row in the
+  expedition status block (`.exp-auto`: On/Off `.set-seg` like the Mode panel, a note saying where it sends you or that
+  it rests in Active Mode, or "unlocks at …"). The Mode panel row + location picker are unchanged. Smoke:
+  `scenarios/auto-explore-pick.js`.
+- **Queued targets (2026-09-29, user request): "set what you want to automate and once the slot is open it swaps."**
+  Every auto target is read at launch time, so it can be changed while a run is out:
+  - *Explore:* while an expedition is out and Auto-Explore is on, the other unlocked location cards turn into a dashed
+    **Go next** tile (`.loc-queue`, `data-queue`) → `setAutoExploreLocation()`; the queued card reads "Next up" and the
+    Auto-Explore row says "when this run returns, next is X" (gold `.exp-auto-next`). With Auto-Explore off the cards
+    stay locked with "One at a time · turn on Auto-Explore to queue it next".
+  - *Sect missions:* Sect → Missions has an Auto-Missions row (`.exp-auto.sv-auto`, SectView `_autoRow`, `data-sa="auto"`)
+    and a **Keep / Kept** chip per open mission card (`.sv-keep`, `data-sa="autopick"`); the Mode panel shows the same
+    picks as a "Keep running" chip row ("Whatever finished" = no picks). `_fillAutoSectMissions()` starts picks in free
+    slots on resolve, on pick, on switch-on, and from `_tickAutomation` every AUTO_SLOT_CHECK_SECONDS.
+  - *Beasts:* **per-companion Auto-Expedition from Lv.5** (`BEAST_AUTO_EXPEDITION_LEVEL`). Card row (`.exp-auto.beast-auto`,
+    `data-bauto`) with On/Off + where next + "change where" (opens the details page); locked row below Lv.5 says why.
+    Details page: switch + chip picker of where it goes next (works while it is out). `_maybeAutoBeast()` fires from
+    `resolveBeastExpedition()` and the throttled tick (a beast at home with auto on — e.g. back from Active Mode).
+    Level 5 logs a one-time "it can go out on its own" event (discovery). Mode panel has a "Beast Auto-Expedition"
+    roadmap row (N of M on auto). Beast auto is live-only (like missions); war-lent beasts are untouched.
+  Checks: `scripts/sim/checks/automation.js` (26). Smoke: `scenarios/auto-explore-pick.js` (Go next, Missions row +
+  Keep, Mode picker, beast card + details). UI review: see ui-review.md (2026-09-29, automation queueing).
 - Auto-Explore fires from `resolveExpedition()` (`_maybeAutoExplore()`), live AND during `initSlot()` offline
   catch-up (see Offline Catch-Up below). Auto-Sect-Missions fires from `resolveSectMission()`
   (`_maybeAutoSectMission()`), **live only**. Auto-Craft and Auto-Breakthrough are ticked every frame inside

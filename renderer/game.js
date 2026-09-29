@@ -121,7 +121,7 @@
   window.immortalView = immortalView   // smoke tests (scripts/smoke/scenarios/immortal.js) freeze + capture it
   // Phase 35 (A6-1): the battle page — beast battles from Roam → Beasts (renderer/game/combat.js, docs/systems/combat.md)
   const combatView = new CombatView(gameState, {
-    esc: escHtml, flash: (m, t) => flashMessage(m, t), settings: () => gameState.getSettings(),
+    esc: escHtml, flash: (m, t) => flashMessage(m, t), settings: () => gameState.getSettings(), fmt: v => fmt(v), go: v => nav.go(v),
     zoom: () => (gameState.getSettings().fontSize || 13) / 13,
   })
   window.combatView = combatView       // smoke tests (scripts/smoke/scenarios/combat.js)
@@ -475,6 +475,8 @@
       // On every tick: only update the live expedition timer without re-rendering
       if (activeTab === 'explore') updateExpeditionTimerInPlace(s)
       updateBeastTimersInPlace()   // Roam > Beasts list + the beast details page count down live
+      if (activeTab === 'hunt') HuntView.tickInPlace(document.getElementById('tab-hunt'), fmtTime)   // A6-2: the search countdown
+      if (activeTab === 'arena' && ArenaView.tickInPlace(document.getElementById('tab-arena'), fmtTime)) renderView('arena', gameState.get())   // A6-3b: a ring's rest
       if (activeTab.startsWith('sect')) updateSectTimersInPlace(s)
       if (activeTab === 'pack')    updatePackDeltaInPlace(s)   // Phase 21: per-frame currency delta fade
     } else {
@@ -484,10 +486,16 @@
   }
 
   const ALL_VIEWS = NAV_GROUPS.flatMap(g => g.views.map(v => v[0]))
+  // A6-2 (Roam → Hunt / Bestiary, renderer/game/hunt-view.js)
+  const huntHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmtTime, fight: id => combatView.open(id), go: v => nav.go(v) }
+  const arenaHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmt, fmtTime, fight: () => combatView.resume() }   // A6-3b
   // 1.8b-1: one entry point per view (NAV_GROUPS in renderer/game/nav.js)
   const VIEW_RENDER = {
     techniques: s => renderTechniques(s), stats: s => renderStats(s), explore: s => renderExplore(s),
-    beasts: s => renderBeasts(s), family: s => renderFamily(s), clan: s => renderClan(s), hall: s => renderHall(s), sect: s => renderSect(s),
+    beasts: s => renderBeasts(s), hunt: s => HuntView.render(s, document.getElementById('tab-hunt'), gameState, huntHelpers),
+    bestiary: s => BestiaryView.render(s, document.getElementById('tab-bestiary'), gameState, huntHelpers),
+    arena: s => ArenaView.render(s, document.getElementById('tab-arena'), gameState, arenaHelpers),   // A6-3b
+    family: s => renderFamily(s), clan: s => renderClan(s), hall: s => renderHall(s), sect: s => renderSect(s),
     'sect-missions': s => renderSect(s, 'sect-missions'), 'sect-halls': s => renderSect(s, 'sect-halls'),
     'sect-disciples': s => renderSect(s, 'sect-disciples'), 'sect-war': s => renderSect(s, 'sect-war'),
     pack: s => renderPack(s), craft: s => renderCraft(s), events: s => renderEvents(s), banter: s => renderBanter(s),
@@ -727,7 +735,7 @@
     $('_challenge-head')?.addEventListener('click', () => {
       showConfirm('Challenge the head?', 'The head decides whether this is to the death. If they choose blood and you lose, this life ends.', () => {
         const res = gameState.challengeHead()
-        if (res.fight) openFamilyOverlay(gameState.get())   // 1.8b-3b: fight it out on the fight card
+        if (res.fight) combatView.resume()   // A6-3a: fight it out on the battle page
       }, 'Challenge')
     })
     $('_declare-branch-war')?.addEventListener('click', () => {
@@ -821,7 +829,7 @@
 
     const ROWS = [
       ['autoExplore', 'Auto-Explore', 'Sends you back out when an expedition returns. Choose where below.'],
-      ['autoSectMissions', 'Auto-Missions', 'Re-takes a finished sect mission while a slot is free.'],
+      ['autoSectMissions', 'Auto-Missions', 'Keeps the missions you pick running, or re-takes whichever finished.'],
       ['autoCraft', 'Auto-Craft', 'Crafts every recipe you mark Auto in Pack → Craft, whenever materials allow.'],
       ['autoBreakthrough', 'Auto-Breakthrough', 'Attempts a breakthrough once Qi reaches the threshold.'],
     ]
@@ -879,6 +887,37 @@
         box.appendChild(pick)
       }
 
+      // Auto-Missions: which missions to keep running (same chip picker as Auto-Explore's "Idle on"). Picks are read
+      // when a slot frees, so changing them mid-mission swaps what runs next.
+      if (key === 'autoSectMissions' && unlocked && s.automation.autoSectMissions && s.sect?.id) {
+        const pick = document.createElement('div')
+        pick.className = 'auto-loc-pick'
+        const ids = s.automation.autoSectMissionIds
+        pick.innerHTML = `<div class="auto-loc-h">Keep running <span class="auto-loc-n">${ids.length ? `${ids.length} of ${SECT_MAX_MISSIONS} picked` : 'up to ' + SECT_MAX_MISSIONS}</span></div>`
+        const chips = document.createElement('div')
+        chips.className = 'auto-loc-chips'
+        const any = document.createElement('button')
+        any.className = 'pack-chip' + (ids.length ? '' : ' active')
+        any.textContent = 'Whatever finished'
+        any.title = 'Re-takes each mission as it finishes'
+        any.addEventListener('click', () => { for (const id of [...ids]) gameState.setAutoSectMission(id, false) })
+        chips.appendChild(any)
+        for (const m of SECT_MISSIONS.filter(m => s.sect.rank >= m.minRank)) {
+          const b = document.createElement('button')
+          const on = ids.includes(m.id)
+          b.className = 'pack-chip' + (on ? ' active' : '')
+          b.textContent = m.name
+          b.title = on ? 'Picked: taken up whenever a slot is free. Click to unpick.' : `Keep ${m.name} running`
+          b.addEventListener('click', () => {
+            const res = gameState.setAutoSectMission(m.id, !on)
+            if (!res.ok) flashMessage(res.reason === 'full' ? `Pick at most ${SECT_MAX_MISSIONS}: unpick one first` : 'Cannot pick that mission', 'negative')
+          })
+          chips.appendChild(b)
+        }
+        pick.appendChild(chips)
+        box.appendChild(pick)
+      }
+
       if (key === 'autoBreakthrough' && unlocked && s.automation.autoBreakthrough) {
         const tr = document.createElement('div')
         tr.className = 'set-row'
@@ -902,6 +941,14 @@
         box.appendChild(tr)
       }
     }
+
+    // Beast Auto-Expedition is set per companion (Roam → Beasts); this row says it exists and how many are on it.
+    const beasts = s.beasts || [], ready = beasts.filter(b => gameState.beastAutoUnlocked(b)), onAuto = beasts.filter(b => b.autoExp && gameState.beastAutoUnlocked(b))
+    const brow = document.createElement('div')
+    brow.className = 'set-row auto-row' + (ready.length ? '' : ' locked')
+    brow.innerHTML = `<div class="set-label"><span class="auto-name">${ready.length ? '' : `${Icon('lock')} `}Beast Auto-Expedition</span><span class="auto-what">Each companion from Lv.${BEAST_AUTO_EXPEDITION_LEVEL} can keep going out on its own. Set it on the beast's card.</span></div>
+      <div class="auto-unlock">${ready.length ? `${onAuto.length} of ${ready.length} on auto` : `at beast Lv.${BEAST_AUTO_EXPEDITION_LEVEL}`}</div>`
+    box.appendChild(brow)
     el.appendChild(box)
   }
 
@@ -1089,6 +1136,31 @@
         <div class="exp-idle">Idle — choose a location below</div>
       `
     }
+    // Auto-Explore lives here now (was a chip in the Roam sub-tab strip, clipped once Roam had five tabs): an On/Off
+    // switch, what it does while on (where it sends you, that it rests in Active Mode), or when it unlocks.
+    const autoRow = document.createElement('div')
+    autoRow.className = 'exp-auto'
+    if (gameState.automationUnlocked('autoExplore')) {
+      const on = !!s.automation.autoExplore
+      const where = s.automation.autoExploreLocationId ? LOCATIONS.find(l => l.id === s.automation.autoExploreLocationId)?.name : null
+      const nextId = s.automation.autoExploreLocationId || s.automation.lastExploreLocationId
+      const swaps = s.expedition.active && nextId && nextId !== s.expedition.locationId
+      const note = !on ? 'sends you back out when an expedition returns'
+        : s.playMode === 'active' ? 'rests while you play in Active Mode'
+        : swaps ? `on: when this run returns, next is <b class="exp-auto-next">${escHtml(LOCATIONS.find(l => l.id === nextId)?.name || '?')}</b> · <button class="exp-auto-where" data-exp-where>change</button>`
+        : `on: back out to ${where ? escHtml(where) : 'the last place you went'} · ${s.expedition.active ? 'pick <b>Go next</b> on a card to switch' : '<button class="exp-auto-where" data-exp-where>change where</button>'}`
+      autoRow.innerHTML = `<span class="exp-auto-l">${Icon('auto')}<b>Auto-Explore</b><small>${note}</small></span>
+        <span class="set-seg"><button class="set-opt is-on${on ? ' active' : ''}" data-exp-auto="1">On</button><button class="set-opt${on ? '' : ' active'}" data-exp-auto="0">Off</button></span>`
+      autoRow.querySelectorAll('[data-exp-auto]').forEach(b => b.addEventListener('click', () => {
+        const res = gameState.setAutomation('autoExplore', b.dataset.expAuto === '1')
+        if (!res.ok) flashMessage('Cannot change Auto-Explore now', 'negative')
+      }))
+      autoRow.querySelector('[data-exp-where]')?.addEventListener('click', () => openModePanel())   // the location picker lives there
+    } else {
+      autoRow.classList.add('locked')
+      autoRow.innerHTML = `<span class="exp-auto-l">${Icon('lock')}<b>Auto-Explore</b><small>unlocks at ${escHtml(AUTOMATION_UNLOCKS.autoExplore.label)}</small></span>`
+    }
+    statusDiv.appendChild(autoRow)
     el.appendChild(statusDiv)
     document.getElementById('_exp_push')?.addEventListener('click', () => {
       const r = gameState.pushExpedition()
@@ -1122,18 +1194,20 @@
         ? `${Math.floor(loc.duration/60)}m`
         : `${loc.duration}s`
 
-      const autoTarget = unlocked && s.automation.autoExplore && gameState.automationUnlocked('autoExplore')
-        && loc.id === (s.automation.autoExploreLocationId || s.automation.lastExploreLocationId)
+      const autoOn = s.automation.autoExplore && gameState.automationUnlocked('autoExplore')
+      const autoTarget = unlocked && autoOn && loc.id === (s.automation.autoExploreLocationId || s.automation.lastExploreLocationId)
+      // While a run is out and Auto-Explore is on, another card queues itself as the next run ("Go next").
+      const queue = unlocked && !here && s.expedition.active && autoOn
       const lock = !unlocked ? `Opens at ${stageShortName(loc.minStage)}`
-        : here ? '' : s.expedition.active ? 'One expedition at a time' : ''
-      const tileName = here ? 'Underway' : 'Set out'
-      const tileSub  = here ? 'your party is on the road' : `${durText} away · Tier ${loc.enemyTier} foes`
+        : here || queue ? '' : s.expedition.active ? (gameState.automationUnlocked('autoExplore') ? 'One at a time · turn on Auto-Explore to queue it next' : 'One expedition at a time') : ''
+      const tileName = here ? 'Underway' : queue ? (autoTarget ? 'Next up' : 'Go next') : 'Set out'
+      const tileSub  = here ? 'your party is on the road' : queue ? (autoTarget ? 'Auto-Explore goes here next' : `after this run · ${durText} away`) : `${durText} away · Tier ${loc.enemyTier} foes`
       row.innerHTML = `
         <div class="sv-card-h"><span class="sv-card-n" title="${escHtml(loc.nameCN)}">${escHtml(loc.name)}</span>${autoTarget ? `<span class="pack-chip loc-auto active" title="Auto-Explore idles here. Change it from the Idle button, top right.">${Icon('play')} Auto</span>` : ''}<span class="sv-card-t">${durText}</span></div>
         <div class="sv-card-d">${escHtml(loc.desc || '')}</div>
         <div class="sv-gains" title="Chance each item comes back from one run, and how many">${gameState.dropPreview(loc.id).map(d =>
           `<span class="sv-gain">${d.min === d.max ? d.min : `${d.min}–${d.max}`} ${escHtml(d.name)} <b class="ld-pct">${Math.round(d.chance * 100)}%</b></span>`).join('')}</div>
-        <button class="fa-btn wide sv-go loc-btn${lock ? ' locked' : ''}${here ? ' info' : ''}" data-locid="${loc.id}" ${lock || here ? 'disabled' : ''}>
+        <button class="fa-btn wide sv-go loc-btn${lock ? ' locked' : ''}${here || (queue && autoTarget) ? ' info' : ''}${queue ? ' loc-queue' : ''}" data-locid="${loc.id}" ${queue ? 'data-queue' : ''} ${lock || here || (queue && autoTarget) ? 'disabled' : ''}>
           <span class="fa-g">${Icon.g('explore')}</span><span class="fa-t"><span class="fa-n">${tileName}</span>
           <span class="fa-e">${lock ? `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i>${escHtml(lock)}</span>` : tileSub}</span></span></button>
       `
@@ -1142,7 +1216,12 @@
 
     // Wire Send buttons
     el.querySelectorAll('.loc-btn[data-locid]').forEach(btn => {
-      btn.addEventListener('click', () => quickActions.sendExpedition(btn.dataset.locid))
+      btn.addEventListener('click', () => {
+        if (btn.dataset.queue == null) return quickActions.sendExpedition(btn.dataset.locid)
+        const res = gameState.setAutoExploreLocation(btn.dataset.locid)
+        if (res.ok) flashMessage(`Next run: ${LOCATIONS.find(l => l.id === btn.dataset.locid)?.name}`, 'positive')
+        else flashMessage('Cannot queue that location', 'negative')
+      })
     })
 
     // ── Encounters on the Road (family.md) — potential lovers, never expire ────
@@ -1155,6 +1234,8 @@
       people.forEach((enc, i) => {
         const p = enc.person
         const pers = PERSONALITIES.find(x => x.id === p.personality)
+        // A6-3a: Slaughter — a fight to the death, on the battle page. Locked while another fight runs or you are hurt.
+        const lock = s.family.fight ? 'Another fight is underway' : (s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH ? 'Too wounded to fight' : null
         const row = document.createElement('div')
         row.className = 'suitor-card'
         row.style.marginBottom = '6px'
@@ -1164,13 +1245,19 @@
           <div style="margin:3px 0">At ${escHtml(enc.place)}, they ${escHtml(enc.text || '')}.</div>
           <div style="display:flex;gap:6px">
             <button class="sect-btn" style="flex:1;min-height:32px" data-seduce="${i}">Seduce</button>
+            <button class="sect-btn" style="flex:1;min-height:32px" data-slaughter="${i}" ${lock ? `disabled title="${escHtml(lock)}"` : `title="Fight them to the death. You choose every exchange; if you lose, this life ends."`}>Slaughter</button>
             <button class="sect-btn" style="flex:1;min-height:32px" data-leave="${i}">Leave</button>
-          </div>${s.family.spouse && !s.family.tolerant ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)">${escHtml(s.family.spouse.given)} may find out.</div>` : ''}`
+          </div>${lock ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)"><span data-icon="lock"></span>${escHtml(lock)}</div>` : ''}${s.family.spouse && !s.family.tolerant ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)">${escHtml(s.family.spouse.given)} may find out.</div>` : ''}`
         el.appendChild(row)
       })
       el.querySelectorAll('[data-seduce]').forEach(btn => btn.addEventListener('click', () => {
         const res = gameState.seduceEncounter(+btn.dataset.seduce)
         if (res.ok) flashMessage(res.success ? 'An affair begins.' : 'Rebuffed.', res.success ? 'special' : 'negative')
+      }))
+      el.querySelectorAll('[data-slaughter]').forEach(btn => btn.addEventListener('click', () => {
+        const res = gameState.slaughterEncounter(+btn.dataset.slaughter)
+        if (!res.ok) return flashMessage({ busy: 'Another fight is underway.', wounded: 'Too wounded to fight.' }[res.reason] || 'You cannot fight now.', 'negative')
+        combatView.resume()
       }))
       el.querySelectorAll('[data-leave]').forEach(btn => btn.addEventListener('click', () => gameState.dismissEncounter(+btn.dataset.leave)))
     }
@@ -1282,6 +1369,22 @@
             : `<span style="color:var(--jade);font-size:10px">On expedition: ${escHtml(loc?.name || '?')} · <span data-beast-left="${beast.expedition.endsAt}">${fmtTime(Math.ceil(msLeft/1000))}</span></span>`
         }
 
+        // Auto-Expedition (per beast, Lv.BEAST_AUTO_EXPEDITION_LEVEL+): On/Off + where it goes next; the details page picks where.
+        let autoHtml
+        if (!gameState.beastAutoUnlocked(beast)) {
+          autoHtml = `<div class="exp-auto beast-auto locked"><span class="exp-auto-l">${Icon('lock')}<b>Auto-Expedition</b><small>at Lv.${BEAST_AUTO_EXPEDITION_LEVEL}: it learns the roads and can go out on its own</small></span></div>`
+        } else {
+          const tgt = gameState.beastAutoTarget(beast), on = !!beast.autoExp
+          const swaps = on && isOnExp && tgt && tgt.id !== beast.expedition.locationId && !beast.expedition.war
+          const note = !on ? 'keeps it going out on its own'
+            : s.playMode === 'active' ? 'rests while you play in Active Mode'
+            : !tgt ? 'on: send it once yourself, or pick where on its page'
+            : swaps ? `on: when it returns, next is <b class="exp-auto-next">${escHtml(tgt.name)}</b>`
+            : `on: back out to <b>${escHtml(tgt.name)}</b>`
+          autoHtml = `<div class="exp-auto beast-auto"><span class="exp-auto-l">${Icon('auto')}<b>Auto-Expedition</b><small>${note} · <button class="exp-auto-where bdx-open" data-bdx="beast:${escHtml(beast.id)}">change where</button></small></span>
+            <span class="set-seg"><button class="set-opt is-on${on ? ' active' : ''}" data-bauto="${escHtml(beast.id)}" data-on="1">On</button><button class="set-opt${on ? '' : ' active'}" data-bauto="${escHtml(beast.id)}" data-on="0">Off</button></span></div>`
+        }
+
         row.innerHTML = `
           <div class="beast-row-top">${BeastPortraits.html('beast:' + beast.id, prof.art)}<div class="beast-row-main">
           <div class="beast-row-header">
@@ -1296,6 +1399,7 @@
           <div class="beast-traits" style="margin-top:3px">${traitTags}</div>
           </div></div>
           ${statusHtml ? `<div style="margin:3px 0">${statusHtml}</div>` : ''}
+          ${autoHtml}
           <div class="beast-btns">
             <button class="beast-exp-btn" data-sendid="${escHtml(beast.id)}" ${isOnExp ? 'disabled' : ''}>
               ${isOnExp ? 'Expeditioning…' : 'Send on Expedition'}
@@ -1337,6 +1441,13 @@
         })
       })
 
+      el.querySelectorAll('[data-bauto]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const res = gameState.setBeastAuto(btn.dataset.bauto, btn.dataset.on === '1')
+          if (!res.ok) flashMessage(res.reason === 'locked' ? `Auto-Expedition opens at Lv.${BEAST_AUTO_EXPEDITION_LEVEL}` : 'Cannot change Auto-Expedition', 'negative')
+        })
+      })
+
       el.querySelectorAll('.beast-dismiss-btn[data-dismissid]').forEach(btn => {
         btn.addEventListener('click', () => {
           const res = gameState.dismissBeast(btn.dataset.dismissid)
@@ -1348,7 +1459,7 @@
     if (!encounters.length && !beasts.length) {
       const empty = document.createElement('div')
       empty.className = 'empty-note'
-      empty.textContent = 'No beasts yet. Wild ones are sighted on expeditions; tame them with a Beast Taming Talisman.'
+      empty.textContent = 'No beasts yet. Wild ones are sighted on expeditions, or track one down in Roam → Hunt. Tame them with a Beast Taming Talisman, or fight them.'
       el.appendChild(empty)
     }
     BeastPortraits.mount(el, gameState.getSettings())   // A4-2: fill the portrait placeholders (pooled ink canvases)
@@ -1814,6 +1925,7 @@
     spouse_duel:        'Slain by your spouse in a duel to the death',
     challenge_lost:     'Slain challenging the head for their seat',
     beast_hunt:         'Killed by the beast you went to slay',
+    arena_blood:        'Killed in a blood match in the Arena',
     challenged:         'Slain defending the head seat',
     stepdown_tournament: 'Fallen in the succession tournament',
     branch_war:          'Fallen leading your branch to war',
@@ -1969,8 +2081,7 @@
   function familyPendingKey(s) {
     const f = s.family
     if (!f) return null
-    if (f.fight?.kind === 'beast') return null   // Phase 35: the battle page owns a beast battle; family matters wait for it
-    if (f.fight) return `fight:${f.fight.kind}:${f.fight.oppId}:${f.fight.round}`   // 1.8b-3b: a fight underway comes first
+    if (f.fight) return null   // Phase 35 / A6-3a: the battle page owns every fight; family matters wait for it
     if (f.spouse && f.duel)  return `duel:${f.duel.year}`
     if (f.headChallenge) return `hc:${f.headChallenge.challengerId}:${f.headChallenge.year}`   // 2.6e
     if (f.stepDownOffer) return `sd:${f.stepDownOffer.headId}:${f.stepDownOffer.year}`          // 2.6e
@@ -1980,58 +2091,13 @@
     return null
   }
 
-  // 1.8b-3b: the fight card (spouse duel / head challenge / defending the seat) — every exchange is your move.
-  // Press beats Feint, Feint beats Guard, Guard beats Press; their habits come from their temper (FIGHT_STYLE).
-  const FIGHT_TITLE = { duel: 'A Duel to the Death', challenge: 'Challenge for the Head Seat', defend: 'Defending the Head Seat' }
-  const FIGHT_YIELD = { duel: 'your marriage ends', challenge: 'you lose; heal before you try again', defend: 'you give up the head seat' }
-  function renderFightCard(s) {
-    const info = gameState.fightInfo()
-    if (!info) return
-    const box = document.getElementById('family-box'), choicesEl = document.getElementById('family-choices')
-    const opp = info.opp, pers = PERSONALITIES.find(p => p.id === opp?.personality)
-    box.classList.toggle('crisis', info.lethal)
-    box.classList.add('fight')
-    document.getElementById('family-title').textContent = FIGHT_TITLE[info.kind] || 'A Fight'
-    const pips = (n, cls) => Array.from({ length: info.to }, (_, i) => `<i class="${i < n ? 'on ' + cls : ''}"></i>`).join('')
-    const last = info.log[info.log.length - 1]
-    const VERB = { press: 'presses', guard: 'guards', feint: 'feints' }
-    const lastLine = !last ? 'You circle each other. Choose your first move.'
-      : last.yieldRefused ? `You offered to yield. ${opp.given} refused.`
-      : last.you === last.them ? `You both ${FIGHT_TACTICS[last.you].name.toLowerCase()}; no read wins it, so strength decides. ${last.won ? 'You take the exchange.' : `${opp.given} takes the exchange.`}`
-      : `You ${FIGHT_TACTICS[last.you].name.toLowerCase()}; ${opp.given} ${VERB[last.them]}. ${last.won ? 'You take the exchange.' : `${opp.given} takes the exchange.`}`
-    const clash = last && !last.yieldRefused
-      ? `<span class="fc-clash"><b class="${last.won ? 'win' : ''}">${Icon.g(FIGHT_TACTICS[last.you].glyph)}<small>you</small></b><i>vs</i><b class="${last.won ? '' : 'win'}">${Icon.g(FIGHT_TACTICS[last.them].glyph)}<small>them</small></b></span>` : ''
-    const pct = v => `${Math.round(v * 100)}%`
-    document.getElementById('family-desc').innerHTML = `
-      <div class="fc-opp"><b>${escHtml(Persons.fullName(opp))}</b><br>${escHtml(stageShortName(opp.stageIndex))} <span class="fc-chip${info.lethal ? ' lethal' : ''}">${info.lethal ? 'to the death' : 'until one yields'}</span></div>
-      <div class="fc-score"><span class="fc-plate"><span class="fc-side">You</span><span class="fc-pips">${pips(info.you, 'you')}</span></span><span class="fc-vs">first to ${info.to}</span><span class="fc-plate r"><span class="fc-pips">${pips(info.them, 'them')}</span><span class="fc-side">${escHtml(opp.given)}</span></span></div>
-      <div class="fc-read"><span class="fc-k">${escHtml(pers ? pers.name : 'Their temper')}</span> ${escHtml(info.hint)}.
-        <span class="fc-habits">Press ${pct(info.habits.press)} · Guard ${pct(info.habits.guard)} · Feint ${pct(info.habits.feint)}</span></div>
-      <div class="fc-last${last && !last.yieldRefused ? (last.won ? ' up' : ' down') : ''}">${clash}<span>${escHtml(lastLine)}</span></div>
-      <div class="fc-first">first to ${info.to} exchanges</div>
-      <div class="fc-cap">Your odds this exchange</div>`
-    choicesEl.innerHTML = `<div class="fc-tacs">${Object.entries(FIGHT_TACTICS).map(([id, t]) =>
-      `<button class="fc-tac${last && !last.yieldRefused && last.you === id ? ' picked' : ''}" data-tactic="${id}"><span class="fc-g">${Icon.g(t.glyph)}</span><span class="fc-t"><span class="fc-n">${t.name}${last && !last.yieldRefused && last.you === id ? ' <em class="fc-lastpick">last</em>' : ''}</span><span class="family-sub">beats ${FIGHT_TACTICS[t.beats].name}</span></span><span class="fc-pct">${pct(info.tactics[id])}<small>win</small></span></button>`).join('')}</div>` +
-      `<button class="fc-tac fc-yield" data-tactic="yield"><span class="fc-g" data-icon="yield"></span><span class="fc-t"><span class="fc-n">Yield</span><span class="family-sub">${info.lethal ? `they accept about ${pct(info.yieldAccept)} of the time; ` : ''}${FIGHT_YIELD[info.kind]}</span></span></button>`
-    choicesEl.querySelectorAll('[data-tactic]').forEach(btn => btn.addEventListener('click', () => {
-      const r = gameState.fightExchange(btn.dataset.tactic)
-      if (!r.ok) return
-      if (!r.done) return renderFightCard(gameState.get())
-      document.getElementById('family-overlay').classList.add('hidden')
-      const good = ['won', 'won_lethal', 'won_nonlethal'].includes(r.outcome)
-      if (r.outcome && r.outcome !== 'lost' && r.outcome !== 'lost_lethal')
-        flashMessage(good ? 'You stand. It is over.' : r.yielded ? 'You yield, and live.' : 'You are beaten, but alive.', good ? 'positive' : 'negative')
-    }))
-    document.getElementById('family-overlay').classList.remove('hidden')
-  }
-
+  // (1.8b-3b's family-overlay fight card was retired in A6-3a: every fight plays on the battle page, CombatView.)
   function openFamilyOverlay(s) {
     const f = s.family
     if (!familyPendingKey(s)) return
     const box = document.getElementById('family-box')
     const choicesEl = document.getElementById('family-choices')
     box.classList.remove('fight')
-    if (f.fight) return renderFightCard(s)
     if (f.spouse && f.duel) {
       const pct = Math.round(gameState.duelChance() * 100)
       box.classList.add('crisis')
@@ -2042,32 +2108,34 @@
       choicesEl.querySelectorAll('[data-duel]').forEach(btn => btn.addEventListener('click', () => {
         document.getElementById('family-overlay').classList.add('hidden')
         const res = gameState.resolveDuel(btn.dataset.duel)
-        if (res.fight) openFamilyOverlay(gameState.get())   // 1.8b-3b: the fight card
+        if (res.fight) combatView.resume()   // A6-3a: the battle page
       }))
     } else if (f.headChallenge) {   // 2.6e: an NPC calls you out for the head seat — you decide lethal or not
       const challenger = gameState.person(f.headChallenge.challengerId)
       box.classList.add('crisis')
       document.getElementById('family-title').textContent = 'Challenged for the Head Seat'
       document.getElementById('family-desc').textContent = challenger
-        ? `${Persons.fullName(challenger)} strides into the hall and calls you out. Will this be to the death, or will the loser simply yield?`
+        ? `${Persons.fullName(challenger)} strides into the hall and calls you out.${challenger.feud === 'grudge' ? ' They have not forgotten what you did to them.' : ''} Will this be to the death, or will the loser simply yield?`
         : 'A challenger waits. The matter must be settled.'
-      choicesEl.innerHTML = `<button data-hc="1">To the Death<span class="family-sub">the loser does not walk away</span></button>
-        <button data-hc="0">Non-Lethal<span class="family-sub">the loser yields and lives</span></button>`
+      const hco = challenger ? Math.round(gameState.personFightOdds(challenger, 'defend').chance * 100) : null
+      choicesEl.innerHTML = `<button data-hc="1">To the Death<span class="family-sub">${hco != null ? `about ${hco}% to win · ` : ''}the loser does not walk away</span></button>
+        <button data-hc="0">Non-Lethal<span class="family-sub">the loser yields and lives; lose, and you give up the seat</span></button>`
       choicesEl.querySelectorAll('[data-hc]').forEach(btn => btn.addEventListener('click', () => {
         document.getElementById('family-overlay').classList.add('hidden')
         const res = gameState.resolveHeadChallenge(btn.dataset.hc === '1')
-        if (res.fight) openFamilyOverlay(gameState.get())
+        if (res.fight) combatView.resume()   // A6-3a: the battle page
       }))
     } else if (f.stepDownOffer) {   // 2.6e: the sitting head is stepping down — join the tournament, or watch
       const off = f.stepDownOffer, head = gameState.person(off.headId)
       box.classList.remove('crisis')
       document.getElementById('family-title').textContent = 'The Head Seat Stands Open'
       document.getElementById('family-desc').textContent = `${head ? Persons.fullName(head) : 'The head'} steps back and lets the clan settle it. ${off.entrantIds.length} may contest the seat. Will you enter?`
-      choicesEl.innerHTML = `<button data-sd="1">Enter the Tournament<span class="family-sub">win it all, or fall trying</span></button>
+      choicesEl.innerHTML = `<button data-sd="1">Enter the Tournament<span class="family-sub">you fight every bout of yours on the battle page; win it all, or fall trying</span></button>
         <button data-sd="0">Stay Out<span class="family-sub">watch the clan settle it without you</span></button>`
       choicesEl.querySelectorAll('[data-sd]').forEach(btn => btn.addEventListener('click', () => {
         document.getElementById('family-overlay').classList.add('hidden')
         const res = gameState.answerStepDown(btn.dataset.sd === '1')
+        if (res.next) return combatView.resume()                   // A6-3a: your first bout
         if (res.outcome === 'won') flashMessage('You took the head seat.', 'positive')
         else if (res.outcome === 'died') flashMessage('You fell in the tournament.', 'negative')
       }))

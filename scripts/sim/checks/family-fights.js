@@ -6,6 +6,8 @@ const { createSim } = require('../loader.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
 const rng = (sim, v) => sim.ev(`globalThis.__r = globalThis.__r || Math.random; Math.random = () => ${v}`)
 const unrng = sim => sim.ev('Math.random = globalThis.__r')
+// P(first to `to` exchanges) for a single-exchange chance p (A6-3a: people fight to DUEL_TO = 3)
+const raceTo = (p, to) => { let sum = 0, c = 1; for (let k = 0; k < to; k++) { sum += c * Math.pow(p, to) * Math.pow(1 - p, k); c = c * (to + k) / (k + 1) } return sum }
 async function married(seed, stage = 12) {
   const sim = await createSim({ seed }); await sim.boot(0); const gs = sim.gs, s = gs.get()
   s.stageIndex = stage; s.maxStageThisLife = stage; s.spiritStones = 1e6; gs._recalc()
@@ -71,7 +73,7 @@ const addLover = (gs, personality) => {
     const info = gs.fightInfo()
     assert(start.fight && info && info.kind === 'duel' && info.lethal, 'a duel opens the fight card')
     // Neutral play keeps the old odds: a race to FIGHT_TO with p reproduces duelChance
-    const p = info.base, race = p * p * (3 - 2 * p)
+    const p = info.base, race = raceTo(p, info.to)
     assert(Math.abs(race - start.chance) < 1e-6, `exchange odds ${(p * 100).toFixed(1)}% → match ${(race * 100).toFixed(1)}% = duelChance ${(start.chance * 100).toFixed(1)}%`)
     f.spouse.personality = 'hotblood'
     const t = gs.fightInfo().tactics
@@ -84,8 +86,20 @@ const addLover = (gs, personality) => {
     assert(y2.yielded && y2.outcome === 'fled' && !gs.get().family.spouse, 'an accepted yield: you live, your spouse leaves') }
   { const { sim, gs } = await married(7); const s = gs.get(), f = s.family
     f.duel = { year: 1, reason: 'test' }; gs.resolveDuel('fight')
-    rng(sim, 0.0); let r; for (let i = 0; i < 4 && gs.get().family.fight; i++) r = gs.fightExchange('guard'); unrng(sim)
-    assert(r.done && r.outcome === 'won' && gs.get().family.formerSpouses.at(-1).endCause === 'duel', 'winning the exchanges wins the duel (old outcome)') }
+    rng(sim, 0.0); let r; for (let i = 0; i < 6 && !gs.get().family.fight?.over; i++) r = gs.fightExchange('guard'); unrng(sim)
+    assert(r.over === 'won' && gs.get().family.fight?.over === 'won' && gs.get().family.spouse, 'A6-3a: winning the exchanges waits for your end choice')
+    const ch = gs.personFightChoices()
+    assert(ch && ch.ids.join() === 'finish,spare', `a lethal win offers finish / spare (${ch?.ids})`)
+    r = gs.personFightFinish('finish')
+    assert(r.ok && r.outcome === 'won' && gs.get().family.formerSpouses.at(-1).endCause === 'duel', 'Finish them: the old duel outcome (your spouse dies)') }
+  { const { sim, gs } = await married(9); const s = gs.get(), f = s.family
+    f.duel = { year: 1, reason: 'test' }; f.spouse.personality = 'arrogant'; gs.resolveDuel('fight')
+    const k0 = s.karma
+    rng(sim, 0.0); for (let i = 0; i < 6 && !gs.get().family.fight?.over; i++) gs.fightExchange('guard'); unrng(sim)
+    const sp = gs.get().family.spouse, r = gs.personFightFinish('spare'), former = gs.get().family.formerSpouses.at(-1)
+    assert(r.ok && r.outcome === 'spared' && former.id === sp.id && former.alive !== false && former.endCause === 'left', 'Spare them: your spouse lives and leaves you')
+    assert(r.feud === 'grudge' && former.feud === 'grudge' && gs.get().karma > k0, `an arrogant spouse spared holds a grudge (${r.feud}); karma +${gs.get().karma - k0}`)
+    assert(gs.personRecord(former).youWon === 1 && gs.personRecord(former).spared === 1, 'the fight is on their record: won 1, spared 1') }
 
   // ── Tournament: spare a loser ──
   { const { sim, gs } = await married(8, 15); const s = gs.get(), f = s.family

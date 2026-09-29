@@ -86,10 +86,18 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await shot('2.6e-1-challenge-confirm')
   await click('#confirm-yes')
   await sleep(300)
-  // 1.8b-3b: the challenge is fought on the fight card, exchange by exchange
-  assert(await ev('!!gameState.get().family.fight && !document.getElementById("family-overlay").classList.contains("hidden")'), 'the challenge opens the fight card')
+  // A6-3a: the challenge is fought on the battle page, exchange by exchange; a win waits for the end choice
+  const playOut = async t => {
+    for (let i = 0; i < 12 && await ev('combatView.step === "fight" || combatView.step === "end"'); i++) {
+      if (await ev('combatView.step === "end"')) { await click('#combat-panel .cb-end'); await sleep(200); continue }
+      await ev('combatView.lockUntil = 0'); await click(`#combat-panel [data-tac="${t}"]`); await sleep(150)
+    }
+    await ev('combatView.isOpen() && combatView.step !== "died" && (combatView.step = "result", combatView.close())')
+    if (await ev('combatView.step === "died"')) await sleep(3200)
+  }
+  assert(await ev('!!gameState.get().family.fight && combatView.isOpen() && combatView.mode === "person"'), 'the challenge opens the battle page')
   await shot('2.6e-2-fight-card')
-  for (let i = 0; i < 8 && await ev('!!gameState.get().family.fight'); i++) { await click('#family-choices [data-tactic="guard"]'); await sleep(150) }
+  await playOut('guard')
   await shot('2.6e-2-after-challenge')
   if (await ev('!!gameState.get().interlude')) { await ev('gameState.finishInterlude()'); await click('#death-ok') }   // walked back to a live game if you lost lethally
 
@@ -106,8 +114,8 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   const hcTitle = await ev('document.getElementById("family-title").textContent')
   assert(hcTitle.includes('Challenged'), `head-challenge card: "${hcTitle}"`)
   await shot('2.6e-3-head-challenge-card')
-  await click('#family-choices [data-hc="1"]'); await sleep(200)
-  for (let i = 0; i < 8 && await ev('!!gameState.get().family.fight'); i++) { await click('#family-choices [data-tactic="press"]'); await sleep(150) }
+  await click('#family-choices [data-hc="1"]'); await sleep(300)
+  await playOut('press')
   assert(await ev('!gameState.get().family.headChallenge && !gameState.get().family.fight'), 'challenge fought out (you decided lethal)')
   if (await ev('!!gameState.get().interlude')) { await ev('gameState.finishInterlude()'); await click('#death-ok') }   // walked back if you lost lethally
 
@@ -130,8 +138,19 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   const sdTitle = await ev('document.getElementById("family-title").textContent')
   assert(sdTitle.includes('Open'), `step-down card: "${sdTitle}"`)
   await shot('2.6e-4-stepdown-card')
-  await click('#family-choices [data-sd="1"]')
-  assert(await ev('!gameState.get().family.stepDownOffer'), 'step-down tournament resolved')
+  await click('#family-choices [data-sd="1"]'); await sleep(300)
+  for (let b = 0; b < 4 && await ev('!!gameState.get().family.bracket'); b++) {   // A6-3a: your bouts are played
+    if (!await ev('combatView.isOpen()')) await ev('combatView.resume()')
+    await ev('Math.__r = Math.random; Math.random = () => 0')
+    for (let i = 0; i < 12 && await ev('combatView.step === "fight" || combatView.step === "end"'); i++) {
+      if (await ev('combatView.step === "end"')) { await click('#combat-panel .cb-end'); await sleep(200); continue }
+      await ev('combatView.lockUntil = 0'); await click('#combat-panel [data-tac="press"]'); await sleep(150)
+    }
+    await ev('Math.random = Math.__r')
+    if (await ev('!!document.querySelector("#combat-panel [data-nextbout]")')) { await click('#combat-panel [data-nextbout]'); await sleep(300) }
+  }
+  await ev('combatView.isOpen() && (combatView.step = "result", combatView.close())')
+  assert(await ev('!gameState.get().family.stepDownOffer && !gameState.get().family.bracket'), 'step-down tournament resolved')
   const stats2 = await ev('document.getElementById("tab-clan").innerText')
   assert(await ev('gameState.isClanHead()'), 'you dominated the tournament and now lead the clan')
   await shot('2.6e-5-after-stepdown')
@@ -246,6 +265,12 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await ev('window.__savedRandom = Math.random; Math.random = () => 0')   // force the ascension roll to succeed
   await click('#ascend-now')
   await ev('Math.random = window.__savedRandom')
+  // 40b: a successful Trial plays the Immortal Ascension cinematic + finish screen first; skip to its end, Continue
+  if (await ev('typeof immortalView !== "undefined" && immortalView.isOpen()')) {
+    await ev('(() => { const c = immortalView.cine; c.frozen = false; c.t = Math.max(c.t, c.length - 0.05); if (!c.running) c._start() })()')
+    await wait('document.getElementById("finish-box").classList.contains("shown")', 4000); await sleep(1300)
+    await click('#finish-box [data-fin="continue"]'); await sleep(500)
+  }
   await wait('!document.getElementById("death-overlay").classList.contains("hidden")')
   const cause = await ev('document.getElementById("death-cause").textContent')
   assert(/Ascended Ancestor|Immortal Realms/i.test(cause), `Ascension now ends the life instead of leaving it idle: "${cause}"`)

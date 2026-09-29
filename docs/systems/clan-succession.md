@@ -9,6 +9,16 @@ User-designed 2026-09-26. You never *play as* your heir. The heir (an NPC) takes
 their reign; you are **reborn one generation later as a descendant** who doesn't remember, and nobody knows it's you.
 Everything here respects pillars 4 (nothing progresses offline except idle jobs) and 7 (systems talk to each other).
 
+## NPC growth: your Qi edge (user rule 2026-09-29)
+At the **same root and stage, your Qi gain is `PLAYER_QI_EDGE` (1.1)× an NPC's**. NPCs don't hold Qi: they gain stages
+on the game clock. So every NPC growth path (world persons in `_advancePersons`, your spouse, your children) now runs at
+`_npcStageRate(stage, root, yearsPerStage)` = min(its old flat pace, your bare pace ÷ 1.1), where your bare pace = the
+stage's `baseQps × root`, filling its `qiCap`, over the 120 open seconds a game year takes. An NPC with a better root can
+still outpace you (you can upgrade your root); none can with the same root. Effect: unchanged through Qi Condensation;
+from Foundation up NPCs slow sharply (a root-1 NPC: 48 yrs at Foundation Early vs the old 12; ~stage 14 after 600
+years). Sim (2 seeds × 48h): casual heirs' median stage 21 → 13, active 10 → 9. Pinned by `checks/qi-edge.js`.
+`npcXp` is now progress through the current stage (0–1).
+
 ## Depth pass
 - **Memory:** per-child `bond` (how you treated them), per-person `morality` (−100 ruthless … +100 righteous),
   lethal-tournament `trauma`, clan `tradition` (how successions have gone), clan-to-clan `relation` (−100…+100).
@@ -203,7 +213,9 @@ Then life-loop.md 2.7 (Ancestral Hall, legacies — Sect Continuity legacy is su
   ends with that child as heir (handled in `_tickFamily`, never inside `_recalc`).
   **1.8b-3b:** `fightTournamentRound(pairs, spare)` — in a lethal round you may spare any pair's loser (alive, estranged,
   `spared`, bond −20); trauma and `lethalFought` only follow a round with a death. Challenging the head / being
-  challenged is now fought exchange by exchange on the fight card (family.md → "1.8b-3b").
+  challenged is now fought exchange by exchange on the fight card (family.md → "1.8b-3b"). **A6-3a (combat.md):** both
+  now play on the battle page, a won fight waits for your end choice (finish / spare · raise / humble → debt or grudge,
+  humbling cows the clan), and your own bouts in a step-down tournament are played too (`f.bracket` pauses the bracket).
 - **Bloodline:** growth += `BLOODLINE_G_HEIR` (4) × (heir stage / 22)² + `BLOODLINE_G_TRAUMA_HEIR` (2) if the heir has
   `trauma`. `lastReincarnation` gained `heirStage`, `heirTrauma`, `heirKind` ('chosen'|'tournament'), `heirTerm`,
   `tournamentDeaths`.

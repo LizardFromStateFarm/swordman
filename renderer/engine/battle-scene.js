@@ -9,6 +9,8 @@
 //   ends      won (it slumps, you are lit gold) · finish (it dissolves into ash) · spare / flee (it limps off) ·
 //             bind (a ring of gold dots closes on it) · lost (you slump, it rears) · died (you dissolve) · retreat
 // Reduced motion keeps the flashes and numbers but drops the movement. Used by renderer/game/combat.js.
+// A6-3a: the opponent may be a person (a duelist): their realm's INK_ART dressed in INK_PARTS slots, mirrored; their
+// Press / Feint throw a crescent in their stage colour.
 // Test hooks: freeze(t) holds one exact moment; perf(n) = ms per frame.
 
 class BattleScene {
@@ -32,20 +34,25 @@ class BattleScene {
   _fig(ink) { return { ink, art: null, crop: null, glow: '#87CEEB' } }
 
   // youState: INK_ART sprite state · youColor: stage colour · foeArt: INK_BEASTS key · foeGlow: its glow colour
-  setup({ youState, youColor, youSlots = null, foeArt, foeGlow, reducedMotion = false, speed = 1 }) {
+  // A6-3a: a person opponent — foePerson: true, foeArt = their realm's INK_ART state, foeSlots = INK_PARTS look
+  // (assets/data/duelists.js); they are mirrored to face you, and their Press throws a crescent back (a beast's: claws)
+  setup({ youState, youColor, youSlots = null, foeArt, foeGlow, foePerson = false, foeSlots = null, reducedMotion = false, speed = 1 }) {
     this.calm = !!reducedMotion; this.speed = speed > 0 ? speed : 1
     const Y = this.you
     Y.glow = youColor || '#87CEEB'
     Y.ink.setStageColor(Y.glow); Y.ink.setReducedMotion(this.calm)
     if (youSlots) Y.ink.setSlots(youSlots)
     Y.ink.setState(youState); Y.ink.stop(); Y.art = youState
-    if (!this.foe.ink || this.foe.art !== foeArt) {
-      this.foe.ink = new InkRenderer(document.createElement('canvas'), { table: INK_BEASTS, bare: true })
-      this.foe.art = foeArt
+    const table = foePerson ? INK_ART : INK_BEASTS
+    if (!this.foe.ink || this.foe.art !== foeArt || this.foe.table !== table) {
+      this.foe.ink = new InkRenderer(document.createElement('canvas'), { table, bare: true })
+      this.foe.art = foeArt; this.foe.table = table
     }
     const F = this.foe
-    F.glow = foeGlow || INK_BEASTS[foeArt]?.glow || '#7A6AB0'
+    F.person = !!foePerson; F.flip = !!foePerson
+    F.glow = foeGlow || (!foePerson && INK_BEASTS[foeArt]?.glow) || '#7A6AB0'
     F.ink.setStageColor(F.glow); F.ink.setReducedMotion(this.calm)
+    if (foeSlots) F.ink.setSlots(foeSlots)
     F.ink.setState(foeArt); F.ink.stop()
     for (const f of [Y, F]) { f.ink.death = 0; f.ink.bt = 0; f.ink.btTarget = 0; f.ink.fail = 0; f.dis = null; f.d = 0 }
     this.queue = []; this.cur = null; this.floaters = []
@@ -140,7 +147,8 @@ class BattleScene {
     const g = { W, H, dpr, ground, figH, youX: W * 0.24, foeX: W * 0.735, bg: null }
     this.geo = g
     this._sizeFig(this.you, INK_ART, figH * 1.12, 0.14)
-    this._sizeFig(this.foe, INK_BEASTS, figH * 1.08, 0.04)
+    if (this.foe.person) this._sizeFig(this.foe, INK_ART, figH * 1.12, 0.14)
+    else this._sizeFig(this.foe, INK_BEASTS, figH * 1.08, 0.04)
     g.bg = this._backdrop(g)
     return g
   }
@@ -285,7 +293,8 @@ class BattleScene {
     }
     if (ev.type === 'won') { o.sink = 0.07 * u; o.crouch = 0.08 * u; o.a = 1 - 0.4 * u; o.flash = (1 - u) * 0.5 }
     if (ev.type === 'finish') { o.sink = 0.07; o.crouch = 0.08; o.a = 1; o.d = Math.min(1, u * 1.1) }
-    if (ev.type === 'spare' || ev.type === 'flee') { o.sink = 0.07 * (1 - u); o.a = 0.6 * (1 - u * u); o.x += calm ? 0 : g.W * 0.3 * u * u }
+    // (a spared person steps back rather than bolting: their aura stays inside the frame)
+    if (ev.type === 'spare' || ev.type === 'flee') { o.sink = 0.07 * (1 - u); o.a = 0.6 * (1 - u * u); o.x += calm ? 0 : g.W * (this.foe.person ? 0.08 : 0.3) * u * u }
     if (ev.type === 'bind') { o.sink = 0.07 * (1 - u); o.a = u < 0.7 ? 0.6 + 0.4 * (u / 0.7) : 1 - (u - 0.7) / 0.3; o.bt = u }
     if (ev.type === 'lost') o.bt = 0.6 * u
     return o
@@ -313,16 +322,21 @@ class BattleScene {
     const sink = (o.sink || 0) * dh
     const shx = o.shake ? Math.sin(this.t * 61) * o.shake : 0
     const dx = o.x - dw / 2 + shx, dy = o.y - dh + sink
+    o.cx = o.x + shx; o.cy = dy + dh * 0.5; o.top = dy; o.w = dw; o.h = dh
+    // A6-3a: a person opponent faces you — mirrored about their own centre line
+    if (f.flip) { ctx.save(); ctx.translate(2 * (o.x + shx), 0); ctx.scale(-1, 1) }
     if (o.ghosts > 0.02) {                                   // feint afterimages, trailing to either side
       ctx.globalAlpha = 0.22 * o.ghosts * o.a
       ctx.drawImage(ink.cv, sx, sy, sw, sh, dx - dw * 0.1 * o.ghosts, dy, dw, dh)
       ctx.drawImage(ink.cv, sx, sy, sw, sh, dx + dw * 0.1 * o.ghosts, dy, dw, dh)
     }
-    o.cx = o.x + shx; o.cy = dy + dh * 0.5; o.top = dy; o.w = dw; o.h = dh
-    if (o.d > 0) return this._dissolve(ctx, f, o, [sx, sy, sw, sh], [dx, dy, dw, dh])
-    ctx.globalAlpha = o.a
-    ctx.drawImage(ink.cv, sx, sy, sw, sh, dx, dy, dw, dh)
-    ctx.globalAlpha = 1
+    if (o.d > 0) this._dissolve(ctx, f, o, [sx, sy, sw, sh], [dx, dy, dw, dh])
+    else {
+      ctx.globalAlpha = o.a
+      ctx.drawImage(ink.cv, sx, sy, sw, sh, dx, dy, dw, dh)
+      ctx.globalAlpha = 1
+    }
+    if (f.flip) ctx.restore()
   }
 
   // The fall (finish / died): the figure comes apart into ash motes, head first, carried off on the wind; where a mote
@@ -345,7 +359,7 @@ class BattleScene {
       for (const p of dots) {
         const n = inkRnd(p.x * 91.7 + p.y * 37.3), yN = (p.y - top) / Math.max(0.01, bot - top)
         p.delay = Math.max(0.01, (p.y - 0.04) / 1.3 + 0.08 * n)         // released as the wipe passes (see below), a little raggedly
-        p.drift = (0.25 + 0.6 * inkRnd(p.x * 13 + p.y * 7)) * (f === this.foe ? 1 : -1)
+        p.drift = (0.25 + 0.6 * inkRnd(p.x * 13 + p.y * 7)) * (f === this.foe && !f.flip ? 1 : -1)   // (a mirrored figure's local x runs the other way)
         p.rise = 0.15 + 0.35 * inkRnd(p.x * 5 + p.y * 17)
       }
       f.dis = { dots, step: step / W }
@@ -412,7 +426,15 @@ class BattleScene {
         this._crescent(ctx, hx, y, g.figH * (ev.you === 'feint' ? 0.22 : 0.34), '#F0D060', fade * (ev.you === 'feint' ? 0.6 : 1) * (1 - scatter * 0.6), 1, scatter)
       }
     }
-    if (ev.them === 'press') {
+    if (this.foe.person && (ev.them === 'press' || ev.them === 'feint')) {   // A6-3a: a duelist's sword-light, thrown back at you
+      const p = Math.min(1, Math.max(0, (u - 0.18) / 0.3)), fade = u < 0.5 ? 1 : Math.max(0, 1 - (u - 0.5) / 0.2)
+      if (p > 0 && fade > 0) {
+        const hx = g.foeX - (!ev.won ? (g.foeX - g.youX) * 0.92 : (g.foeX - mid) * 0.8) * p
+        const scatter = ev.won ? Math.max(0, (u - 0.36) / 0.3) : 0
+        // an ember tint on their stage colour, so the incoming blade never reads as more of the gold aura (review A6-3a)
+        this._crescent(ctx, hx, y + g.figH * 0.04, g.figH * (ev.them === 'feint' ? 0.22 : 0.34), inkMix(this.foe.glow, '#F0604A', 0.75), fade * (ev.them === 'feint' ? 0.6 : 1) * (1 - scatter * 0.6), -1, scatter)
+      }
+    } else if (ev.them === 'press') {
       const p = Math.min(1, Math.max(0, (u - 0.28) / 0.2)), fade = u < 0.55 ? 1 : Math.max(0, 1 - (u - 0.55) / 0.25)
       if (p > 0 && fade > 0) this._claws(ctx, ev.won ? mid - g.figH * 0.1 : g.youX + g.figH * 0.08, y - g.figH * 0.05, g.figH * 0.36, p, fade, this.foe.glow)
     }

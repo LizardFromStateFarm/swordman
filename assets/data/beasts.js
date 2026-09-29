@@ -1,7 +1,7 @@
 // Beast traits, rarity tiers, beast types and their rare colour variants (Phase 3 Spiritual Beasts; roster of 10 + tiers +
 // variants 2026-09-28). Used by: game-state.js (encounter / tame / expedition logic, beastProfile, trait Might in _recalc),
 // renderer/game/beasts.js, game.js (Roam → Beasts), renderer/game/beast-detail.js (details page), attention.js.
-// Phase 35 battles (BEAST_FIGHT_STYLE, BEAST_NATURE, BATTLE_TO, BEAST_*): game-state.js fight engine, combat.js, breakdowns.js.
+// Phase 35 battles (BEAST_FIGHT_STYLE, BEAST_NATURE, BATTLE_TO, BEAST_*, HUNT_GROUNDS): game-state.js fight engine + hunt, combat.js, hunt-view.js, breakdowns.js.
 // Art: each type's `spriteState` (and each variant's `art`) is an INK_BEASTS key (assets/sprites/ink-beasts.js).
 
 const BEAST_TRAITS = {
@@ -176,3 +176,26 @@ const BEAST_SLAY_LOOT = {
   legendary: [['spirit_stone', 25, 50, 1], ['beast_core', 4, 6, 1], ['demon_essence', 3, 4, 1], ['heavenly_ore', 1, 2, 1], ['celestial_herb', 1, 2, 0.6]],
 }
 const BEAST_VARIANT_LOOT = 1.5
+
+// ── Phase 35 (A6-2, combat.md → "the Hunt"): hunting grounds for Roam → Hunt ─────────────
+// types: beast type id → weight multiplier on its encounterChance (deeper grounds keep the shallower kinds, rarer).
+// trackSeconds: real seconds the search takes (it also runs while the game is closed). cost: Spirit Stones up front.
+const HUNT_GROUNDS = [
+  { id: 'misty_foothills', name: 'Misty Foothills', minStage: 0, trackSeconds: 60, cost: 0,
+    desc: 'Terraced hills where the fog never quite lifts. Foxes drink from the rice channels; something long sleeps in the marsh.',
+    types: { spirit_fox: 1, blood_python: 1 } },
+  { id: 'thunder_crags', name: 'Thunder Crags', minStage: 6, trackSeconds: 120, cost: 5,
+    desc: 'Black rock split by old lightning. Eagles nest where storms break, and a cold light walks the passes at night.',
+    types: { thunder_eagle: 1, spectral_bear: 1, blood_python: 0.4 } },
+  { id: 'western_wilds', name: 'The Western Wilds', minStage: 13, trackSeconds: 180, cost: 15,
+    desc: 'Grassland with metal in the wind. The tigers here have never been hunted, and they walk like it.',
+    types: { white_tiger: 1, qilin: 1, spectral_bear: 0.4 } },
+  { id: 'star_rift', name: 'The Star Rift', minStage: 15, trackSeconds: 240, cost: 30,
+    desc: 'A crack in the world where the night shows through. Things step out of it that were not born under this sky.',
+    types: { void_hound: 1, black_tortoise: 1, white_tiger: 0.4 } },
+  { id: 'cloud_sea_summit', name: 'Cloud Sea Summit', minStage: 19, trackSeconds: 300, cost: 60,
+    desc: 'The last peak above the clouds. Few come up here to hunt. Fewer come down.',
+    types: { azure_dragon: 1, golden_dragon: 1, black_tortoise: 0.4 } },
+]
+const BEAST_SLAYER_VENGEFUL = 0.02    // grateful-return chance lost per beast you have slain (all kinds)…
+const BEAST_SLAYER_VENGEFUL_MAX = 0.2 // …capped here

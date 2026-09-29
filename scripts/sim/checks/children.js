@@ -28,8 +28,11 @@ const tickYears = (gs, n) => { for (let i = 0; i < n; i++) { gs.get().world.year
     const c = gs._makeChild(f.spouse); c.root = { type: 'heavenly', name: 'x', mult: 3.0 }
     tickYears(gs, 15); assert(c.stageIndex === 0, 'child does not cultivate before age 16')
     tickYears(gs, 60); assert(c.stageIndex === 10 && c.xp <= 1, `child capped at your stage 10 (at ${c.stageIndex}, xp ${c.xp.toFixed(2)})`)
+    // (PLAYER_QI_EDGE, 2026-09-29: Foundation → Core now takes a heavenly-root child ~125 years, not 30)
     s.stageIndex = 14; s.maxStageThisLife = 14; tickYears(gs, 30)
-    assert(c.stageIndex === 14, `cap rises with you → ${c.stageIndex}`)
+    assert(c.stageIndex > 10 && c.stageIndex < 14, `cap rises with you, at the Qi-edge pace → ${c.stageIndex} after 30 years`)
+    tickYears(gs, 110)
+    assert(c.stageIndex === 14, `…and reaches your stage in time → ${c.stageIndex}`)
     assert(typeof c.morality === 'number' && c.morality >= -100 && c.morality <= 100 && c.bond <= 50, `child has morality ${c.morality}, bond ${c.bond}`) }
   // Child event choice effects
   { const { sim, gs } = await married(3); const s = gs.get(), f = s.family

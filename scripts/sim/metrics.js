@@ -167,6 +167,10 @@ class Recorder {
     if (!(s.health >= 0 && s.health <= 100)) this.violate('health_out_of_range', s.health)
     if (!(s.bloodlineQuality >= 0 && s.bloodlineQuality <= this.D.BLOODLINE_CAP)) this.violate('bloodline_out_of_range', s.bloodlineQuality)
     if (!(s.generation >= 1)) this.violate('generation_invalid', s.generation)
+    // Phase 35: Health only goes below 0 in a Slay battle, and that ends the life at once
+    if (!s.interlude && (s.health ?? 100) < 0) this.violate('health_negative', s.health)
+    if (s.family?.fight?.kind === 'beast' && !s.beastEncounters.some(e => e.id === s.family.fight.beast?.encId) && !s.family.fight.over)
+      this.violate('battle_without_beast', s.family.fight.beast?.encId)
     // Phase 30: age is a stat only (no lifespan since 2026-09-26) — it just never runs below the awakening age.
     if (!(s.age >= this.D.AWAKENING_AGE)) this.violate('age_below_awakening', s.age)
     // clan-succession.md 2.6a: the world survives deaths; the living player is only ever s.self.

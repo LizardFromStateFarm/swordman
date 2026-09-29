@@ -14,6 +14,10 @@ const MAX_BRANCHES           = 3         // a clan has ≤ 1 main line + 3 branc
 const BRANCH_NAMES           = ['Eastern Branch', 'Western Branch', 'Southern Branch', 'Northern Branch']
 const NPC_YEARS_PER_STAGE    = 12        // coarse NPC growth during a reign (÷ root.mult), same pace as your children
 const NPC_STAGE_CAP          = 21        // NPCs never ascend (matches SPOUSE_STAGE_CAP)
+// User rule (2026-09-29): at the SAME root and stage, your Qi gain is this much higher than any NPC's. NPC growth (world
+// persons, spouse, children) is capped at your bare pace at their stage (stage baseQps × their root, against the stage's
+// qiCap, per game year) ÷ this — a better-rooted NPC can still outpace you; you can always upgrade your root.
+const PLAYER_QI_EDGE         = 1.1
 const WORLD_PRUNE_YEARS      = 400       // dead persons older than this drop out of the registry (heads/past lives kept)
 
 // ── Who takes the head seat when nobody was named (the clan's own pick) ──────

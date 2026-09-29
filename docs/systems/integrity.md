@@ -23,7 +23,9 @@ Heaven Defying Pill guarantees success → integrity block never reached.
 
 ### Beasts
 - `tameEncounteredBeast(encounterId)` → `{ ok, beast? }` — consumes 1 Beast Taming Talisman
-- `sendBeastExpedition(beastId, locationId)` → `{ ok, loc? }` — starts beast expedition
+- `sendBeastExpedition(beastId, locationId)` → `{ ok, loc? }` — starts beast expedition (records `beast.lastExpLocId`)
+- Auto-Expedition per beast from Lv.5 (`autoExp`, `autoExpLocId`; `setBeastAuto` / `setBeastAutoLocation` /
+  `beastAutoTarget`) — relaunches on return; see automation.md → "Queued targets"
 - `resolveBeastExpedition(beastId)` → void — called by BeastSystem on timer completion
 - `dismissBeast(beastId)` → `{ ok }` — removes a tamed beast
 
@@ -74,7 +76,9 @@ A wild encounter can also be **fought**: a Fight button (with win odds) on the R
 opens the battle page. Winning lets you finish it (loot + karma by its nature, maybe a cub encounter), spare it, or
 **bind** it (tame with a talisman; joins at Lv.2). Encounters can carry `mood`: `grateful` (a spared beast came back —
 taming is free), `vengeful` (stronger), `cub`. `s.bestiary[typeId]` records your history with each kind (details page
-"Bestiary" row). `tameEncounteredBeast` refuses (`fighting`) the beast you are currently fighting.
+"Bestiary" row). `tameEncounteredBeast` refuses (`fighting`) the beast you are currently fighting. A6-2: beasts can also be tracked on a
+hunting ground (Roam → Hunt, `startHunt`); every sighting goes through `_spawnBeastEncounter` and marks the kind seen for
+Roam → Bestiary.
 
 ## Invariants
 

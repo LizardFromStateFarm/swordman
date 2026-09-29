@@ -118,6 +118,52 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
         `Each exchange, the move that beats its move adds ${Math.round(FIGHT_EDGE * 100)}% (Press beats Feint, Feint beats Guard, Guard beats Press). Read its habits to beat these odds.`] }
   }
 
+  // A6-3b (combat.md): the Arena purse multiplier — streak × renown (× blood for a blood match)
+  if (kind === 'arena') {
+    const info = gs.arenaInfo?.()
+    if (!info) return null
+    const streak = info.run?.streak || 0, m = info.run?.mult || info.mult
+    const rows = [{ label: 'A win, at base', val: '×1.00', op: 'base' },
+      { label: `Streak (${streak} in a row, +${Math.round(ARENA_STREAK_STEP * 100)}% each, max ×${ARENA_STREAK_MAX})`, val: `×${m.streak.toFixed(2)}`, op: 'x', tone: m.streak > 1 ? 'up' : '' },
+      { label: `Renown ${info.renown} (+${(ARENA_RENOWN_PURSE * 100).toFixed(1)}% each, max +${Math.round(ARENA_RENOWN_CAP * 100)}%)`, val: `×${m.renown.toFixed(2)}`, op: 'x', tone: m.renown > 1 ? 'up' : '' },
+      { label: 'Your next win pays', val: `×${m.total.toFixed(2)}`, tone: '' }]
+    return { glyph: 'sword', title: 'The purse', total: `×${m.total.toFixed(2)}`, totalLabel: 'On the next win', rows,
+      sections: [{ title: 'Renown', rows: [
+        { label: 'A win', val: `+${ARENA_RENOWN.win}`, tone: 'up' }, { label: 'A blood match won', val: `+${ARENA_RENOWN.blood} more`, tone: 'up' },
+        { label: 'Beating a champion', val: `+${ARENA_RENOWN.champion} more`, tone: 'up' }, { label: 'Humbling a beaten foe', val: `+${ARENA_RENOWN.humble}`, tone: 'up' },
+        { label: 'Letting a call-out go', val: `${ARENA_RENOWN.declined}`, tone: 'down' }] }],
+      notes: [`A blood match pays ×${ARENA_BLOOD_MULT} on top. Walk away to be paid; lose a bout and you keep ${Math.round(ARENA_LOSS_KEEP * 100)}%. A grudge match pays ×${ARENA_CALLOUT_MULT} the ring's prize, with no fee.`] }
+  }
+
+  // A6-3a (combat.md): a fight with a person — kind 'personfight:<personId>:<kind>' (duel / challenge / defend /
+  // stepdown). Both powers term by term (a grudge adds to theirs), or the spouse duel's stage rule.
+  if (kind.startsWith('personfight:')) {
+    const [, pid, fk] = kind.split(':')
+    const sp = gs.get().family?.spouse
+    const p = fk === 'duel' && sp?.id === pid ? sp : fk === 'arena' ? gs.get().arena?.duelists?.[pid] : gs.person?.(pid)
+    const o = p && gs.personFightOdds?.(p, fk)
+    if (!o) return null
+    const to = gs.get().family?.fight?.to || (typeof DUEL_TO !== 'undefined' ? DUEL_TO : 3)
+    const total = o.chance < 0.01 ? '<1%' : `${Math.round(o.chance * 100)}%`
+    const notes = [`Each exchange, the move that beats theirs adds ${Math.round(FIGHT_EDGE * 100)}% (Press beats Feint, Feint beats Guard, Guard beats Press). Their temper shows their habits. First to ${to} exchanges wins.`]
+    if (p.feud === 'debt') notes.push('They owe you: more likely to accept your yield.')
+    if (p.feud === 'grudge') notes.push('They hold a grudge: harder, and less likely to accept your yield.')
+    if (o.duel) {
+      const rows = [{ label: 'An even match', val: BD_PCT(o.base), op: 'base' },
+        { label: o.gap >= 0 ? `You are ${o.gap} stage${o.gap === 1 ? '' : 's'} ahead` : `They are ${-o.gap} stage${o.gap === -1 ? '' : 's'} ahead`, val: `${o.gap >= 0 ? '+' : '−'}${Math.round(Math.abs(o.gap) * o.perStage * 100)}%`, op: '+', tone: o.gap >= 0 ? 'up' : 'down' }]
+      notes.unshift(`A duel: ${Math.round(o.base * 100)}% ± ${Math.round(o.perStage * 100)}% per stage between you, held between ${Math.round(o.range[0] * 100)}% and ${Math.round(o.range[1] * 100)}%.`)
+      return { glyph: 'duel', title: 'Duel odds', total, totalLabel: 'Your odds to win', rows, notes }
+    }
+    const num = v => (v > 0 ? '+' : '') + Math.round(v)
+    const side = (parts, mineUp) => parts.map((x, i) => ({ label: x.label, val: i ? num(x.value) : String(Math.round(x.value)), op: i ? '+' : 'base', tone: i ? ((x.value < 0) === mineUp ? 'down' : 'up') : '' }))
+    const rows = [...side(o.you.parts, true), { label: 'Your power', val: String(Math.round(o.you.total)), tone: '' }]
+    const theirs = [...side(o.them.parts, false), { label: 'Their power', val: String(Math.round(o.them.total)), tone: '' }]
+    const gap = o.you.total - o.them.total
+    notes.unshift(`Odds follow the gap between the two powers: ${TOURNAMENT_SPREAD} points either way is about 73%.`)
+    return { glyph: 'sword', title: 'Fight odds', total, totalLabel: 'Your odds to win', rows,
+      sections: [{ title: p.given || 'Them', rows: theirs }, { title: gap >= 0 ? `You lead by ${Math.round(gap)}` : `They lead by ${Math.round(-gap)}`, rows: [] }], notes }
+  }
+
   // 1.8b-5: sect war odds — the real roll (gs.sectWarOdds): your strength multiplier against a rival of ×0.6–1.4
   if (kind === 'sectwar') {
     const o = gs.sectWarOdds()

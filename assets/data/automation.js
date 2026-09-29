@@ -27,6 +27,11 @@ const AUTO_BREAKTHROUGH_THRESHOLD_STEP    = 0.01
 const AUTO_EXPLORE_MIN_HEALTH_OUTCLASSED = 60
 
 const AUTO_CRAFT_CHECK_SECONDS = 3   // throttle: how often the auto-craft list is re-checked (crafting is instant)
+const AUTO_SLOT_CHECK_SECONDS  = 3   // throttle: how often picked sect missions / auto beasts fill a free slot
+
+// A companion beast can go out on its own (Auto-Expedition, set per beast in Roam → Beasts) from this level up.
+// Independent of the realm-gated automations above; like them it rests in Active Mode.
+const BEAST_AUTO_EXPEDITION_LEVEL = 5
 
 // ── Active Mode (22C) — modest bonuses for attentive players; never required (pillar 4) ───────────────────
 const ACTIVE_EXPEDITION_TIME_MULT    = 0.65   // -35% expedition duration

@@ -40,7 +40,7 @@ class Bot {
       this.interlude()   // an action this check-in may have ended the life — never act on an unborn one
       const before = this.s.spiritStones
       const acted = this.family() || this.legacies() || this.soul() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
-        this.elixirs() || this.memberWar() || this.beasts() || this.sect() || this.ownSect() || this.war() ||
+        this.elixirs() || this.memberWar() || this.beasts() || this.hunt() || this.arena() || this.sect() || this.ownSect() || this.war() ||
         this.pushExpedition() || this.expedition()
       if (!acted) break
       this.rec.stones(this.rec.lastAction, this.s.spiritStones - before)
@@ -182,6 +182,14 @@ class Bot {
     if (this._plannedFor !== this.s.self.id) { this._plannedFor = this.s.self.id; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : this.profile === 'casual' ? 'ask' : 'many') }
     // 1.8b-3b: a fight you're in is played out exchange by exchange. 'active' reads the opponent (best tactic, and
     // yields a hopeless lethal fight when they'd likely accept); casual/afk pick at random.
+    if (f.fight?.kind === 'beast') return this.battle()   // Phase 35: beast battles have their own end choice
+    if (f.fight?.over === 'won') {       // A6-3a: a won fight waits for the end choice. 'active' makes friends where it can
+      const ch = this.gs.personFightChoices()   // (a debt), and finishes / humbles the rest; casual/afk pick at random.
+      const pick = this.profile === 'active'
+        ? (ch.lethal ? (ch.reaction.spare === 'debt' ? 'spare' : 'finish') : (ch.reaction.raise === 'debt' ? 'raise' : 'humble'))
+        : ch.ids[Math.floor(this.rand() * ch.ids.length)]
+      return this.do('fight_end_' + pick, this.gs.personFightFinish(pick))
+    }
     if (f.fight) {
       const info = this.gs.fightInfo()
       const ranked = Object.entries(info.tactics).sort((a, b) => b[1] - a[1])
@@ -478,12 +486,73 @@ class Bot {
   beasts() {
     const s = this.s
     const enc = s.beastEncounters[0]
-    if (enc && this.inv('beast_taming_talisman') && s.beasts.length < s.derived.maxBeasts)
+    if (enc && (this.inv('beast_taming_talisman') || enc.mood === 'grateful') && s.beasts.length < s.derived.maxBeasts)
       return this.do('tame_beast', this.gs.tameEncounteredBeast(enc.id))
+    // Phase 35 (A6-2): a waiting beast it can't tame is fought when the odds are good (Drive off if Slay could kill it)
+    for (const e of s.beastEncounters) {
+      const pv = this.gs.beastFightPreview(e.id)
+      if (!pv || pv.locked || pv.chance < 0.6 || (s.health ?? 100) < 60) continue
+      return this.do('beast_fight', this.gs.startBeastFight(e.id, pv.stance.slay.canDie ? 'drive' : 'slay'))
+    }
     const idle = s.beasts.find(b => !b.expedition)
     if (idle) {
       const loc = this.bestLocation(this.actEverySec)
       if (loc) return this.do('beast_expedition', this.gs.sendBeastExpedition(idle.id, loc.id))
+    }
+    return false
+  }
+
+  // ── Phase 35 (A6-2): beast battles + the hunt (docs/systems/combat.md → "Sim bot") ──
+  // A battle underway: 'active' plays the best-odds tactic and retreats a Slay it could die in; casual/afk play at random.
+  // A won battle: bind it (talisman + room), else finish it.
+  battle() {
+    const s = this.s, fi = s.family.fight
+    if (fi.over) {
+      const ch = this.gs.beastFightChoices()
+      const pick = !ch.bindLock ? 'bind' : ch.ids.includes('finish') ? 'finish' : 'flee'
+      return this.do('beast_' + pick, this.gs.beastFightFinish(pick))
+    }
+    const info = this.gs.fightInfo()
+    const ranked = Object.entries(info.tactics).sort((a, b) => b[1] - a[1])
+    if (this.profile === 'active' && info.stance === 'slay' && (s.health ?? 100) <= info.wound * 2 + info.lossWound) return this.do('beast_retreat', this.gs.fightExchange('retreat'))
+    const t = this.profile === 'active' ? ranked[0][0] : ranked[Math.floor(this.rand() * ranked.length)][0]
+    return this.do('beast_exchange', this.gs.fightExchange(t))
+  }
+
+  // Hunt when idle, healthy and no beast is waiting: the deepest open ground whose cost is under a fifth of its stones.
+  hunt() {
+    const s = this.s
+    if (s.hunt || s.family?.fight || s.beastEncounters.length || (s.health ?? 100) < 70) return false
+    const g = this.gs.huntInfo().grounds.filter(x => !x.lock && (x.cost || 0) <= s.spiritStones * 0.2).pop()
+    return g ? this.do('hunt', this.gs.startHunt(g.id)) : false
+  }
+
+  // A6-3b the Arena ('afk' never enters). Call-outs: answer when favoured. A run: fight the best-odds opponent while
+  // healthy, walk away at a streak target (active 4, casual 2) or when nothing good is left. Blood only when heavily
+  // favoured ('active', ≥ 95%). Starts a run in the deepest open ring with a ≥ 60% opponent when healthy and flush.
+  arena() {
+    const s = this.s
+    if (this.profile === 'afk' || !s.arena || s.family?.fight) return false
+    const info = this.gs.arenaInfo()
+    if (info.callout) {
+      const odds = this.gs.personFightOdds(info.callout.p, 'arena').chance
+      const yes = odds >= (info.callout.blood ? 0.75 : 0.55) && (s.health ?? 100) >= 60
+      return this.do('arena_callout_' + (yes ? 'accept' : 'decline'), this.gs.answerArenaCallout(yes))
+    }
+    const pickIn = (R, min) => (R?.rows || []).filter(r => !r.lock && r.odds >= min).sort((a, b) => b.odds - a.odds)[0]
+    if (info.run) {
+      const R = info.rings.find(r => r.id === info.run.ringId)
+      const target = this.profile === 'active' ? 4 : 2
+      const next = pickIn(R, this.profile === 'active' ? 0.55 : 0.6)
+      if (info.run.streak >= target || !next || (s.health ?? 100) < info.minHealth + 15) return this.do('arena_walk', this.gs.arenaWalkAway())
+      const blood = this.profile === 'active' && !next.bloodLock && next.odds >= 0.95
+      return this.do('arena_bout', this.gs.startArenaBout(R.id, next.id, blood))
+    }
+    if ((s.health ?? 100) < 80) return false
+    for (const R of [...info.rings].reverse()) {
+      if (!R.open || s.spiritStones < R.entry * 5) continue
+      const r = pickIn(R, 0.6)
+      if (r) return this.do('arena_bout', this.gs.startArenaBout(R.id, r.id, this.profile === 'active' && !r.bloodLock && r.odds >= 0.95))
     }
     return false
   }

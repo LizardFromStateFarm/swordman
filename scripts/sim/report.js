@@ -256,6 +256,25 @@ function buildReport(runs, args) {
       flags.push(`[${p} ${longest}h] Median life ${fmtH(medLife)} outside life-loop.md target ${target[0]}-${target[1]}h`)
   }
   L.push(``)
+  // Phase 35 (A6-2, combat.md → "Sim bot"): beast battles + hunts (action counts summed over the run, median across seeds)
+  L.push(`## Beast battles + hunts — Phase 35 (${longest}h runs; median per run)`)
+  L.push(`| Profile | Hunts | Battles | Exchanges | Won (finish · bind · flee) | Retreats | Deaths by beast_hunt |`)
+  L.push(`|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const g = group(p, longest), a = k => med(g.map(r => r.actions?.[k] || 0))
+    const won = med(g.map(r => (r.actions?.beast_finish || 0) + (r.actions?.beast_bind || 0) + (r.actions?.beast_flee || 0)))
+    L.push(`| ${p} | ${f(a('hunt'))} | ${f(a('beast_fight'))} | ${f(a('beast_exchange'))} | ${f(won)} (${f(a('beast_finish'))} · ${f(a('beast_bind'))} · ${f(a('beast_flee'))}) | ${f(a('beast_retreat'))} | ${f(med(g.map(r => r.lineage?.deathsByCause?.beast_hunt || 0)))} |`)
+  }
+  L.push('')
+  // A6-3b (combat.md): the Arena — bouts started, runs cashed out, call-outs, blood deaths
+  L.push(`## The Arena — A6-3b (${longest}h runs; median per run)`)
+  L.push(`| Profile | Bouts | Runs cashed (walk away) | Call-outs (accepted · declined) | Deaths by arena_blood |`)
+  L.push(`|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const g = group(p, longest), a = k => med(g.map(r => r.actions?.[k] || 0))
+    L.push(`| ${p} | ${f(a('arena_bout'))} | ${f(a('arena_walk'))} | ${f(a('arena_callout_accept'))} · ${f(a('arena_callout_decline'))} | ${f(med(g.map(r => r.lineage?.deathsByCause?.arena_blood || 0)))} |`)
+  }
+  L.push('')
   // family.md: what marriages and affairs did per life (totals across all lives, per-life means in brackets).
   L.push(`## Family — marriage events, affairs, reactions (${longest}h runs; totals over all lives)`)
   L.push(`| Profile | Lives | Events / crises | Spouses lost (left · died) | Duels won/lost/fled | Affairs · discovered | Reactions (acc/sab/duel/sui/murder) | Children born · lost (mean/life) |`)

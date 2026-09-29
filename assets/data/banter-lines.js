@@ -1,11 +1,15 @@
 // BANTER_LINES — what the cultivator says, per personality × trigger, plus a shared generic pool (Phase 29).
 // Used by renderer/game/banter.js; sim checks for holes (scripts/sim/metrics.js). Brief: docs/systems/banter-writing-guide.md.
-// 1753 lines (58 `soul_remembers`, Phase 40a; 116 for `married`/`child_born`, M2 task 2.5; the 58 `twilight` lines were removed with twilight, 2026-09-26).
+// 1927 lines (174 battle lines for beast_slain/beast_spared/battle_lost, A6-2; 58 `soul_remembers`, Phase 40a; 116 for `married`/`child_born`, M2 task 2.5; the 58 `twilight` lines were removed with twilight, 2026-09-26).
 // Tokens: {name} {stage} anywhere; {item} rare_drop; {hours} welcome_back; {enemy} {sect} war_*; {spouse} married; {child} child_born.
 
 const BANTER_LINES = {
   // ── generic ───────────────────────────────────────────────────────────────
   generic: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Another one down. The crowd is louder than my heartbeat.",
+      "The purse grows. So does the temptation to keep going.",
+    ],
     idle: [
       "Absorb Qi. Circulate Qi. Wonder why nobody warned me cultivation was this boring.",
       "Ten thousand years of cultivation and I still can't fold a robe properly.",
@@ -95,6 +99,18 @@ const BANTER_LINES = {
       "Heaven itself wants to test me. Bold of Heaven, honestly.",
       "Become immortal or die trying. The novels make this look so easy.",
     ],
+    beast_slain: [
+      "The {beast} is dead. The hills are quieter. So am I.",
+      "One {beast} fewer in the world. I'll carry its core and try not to think about it.",
+    ],
+    beast_spared: [
+      "Go on, then. Run. And stay out of my path.",
+      "I let the {beast} go. Mercy is also a kind of cultivation. A cheap kind.",
+    ],
+    battle_lost: [
+      "The {beast} won that one. My ribs would like a word with me.",
+      "Beaten by a beast. Write it down nowhere.",
+    ],
     soul_remembers: [
       "Something in me is warm that shouldn't be. Like an ember someone else left burning.",
       "My Qi flows easier than it has any right to. As if I've walked this road before, and fallen off the end.",
@@ -117,6 +133,12 @@ const BANTER_LINES = {
   },
   // ── arrogant ──────────────────────────────────────────────────────────────
   arrogant: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Was that supposed to be a challenge? Bring me someone worth the sand.",
+      "Kneel in the dust. It suits you better than a sword.",
+      "The crowd chants my name. As it should.",
+      "Another fool who thought the arena was fair. It is. I am simply better.",
+    ],
     idle: [
       "Hmph. This Qi is barely worthy of being absorbed by me.",
       "Who dares disturb this young master's meditation?! ...Oh. A leaf.",
@@ -245,6 +267,24 @@ const BANTER_LINES = {
       "Immortals, prepare a seat. Front row. Cushioned. Not a peasant cushion.",
       "I am not scared. My knees are shaking in respect. Different thing.",
     ],
+    beast_slain: [
+      "A {beast}? It dared bare its teeth at this young master. Now it bares nothing.",
+      "Hmph. Its core will make a passable paperweight.",
+      "Did anyone see that? Someone should have seen that.",
+      "The beast knelt before me in the end. They always do.",
+    ],
+    beast_spared: [
+      "I spare you, beast. Tell the others of my magnanimity.",
+      "Killing you would be beneath me. Leaving you alive is a greater humiliation.",
+      "Go. Live with the knowledge that you met your superior.",
+      "This young master is merciful today. Do not grow used to it.",
+    ],
+    battle_lost: [
+      "I slipped. On a rock. A rock that will be punished.",
+      "That {beast} got lucky. Very, very lucky. Repeatedly.",
+      "I let it win. For strategic reasons I will not explain.",
+      "No one saw that. If anyone saw that, they are mistaken.",
+    ],
     soul_remembers: [
       "I feel a memory of standing at Heaven's Gate. Naturally. Where else would someone like me stand?",
       "My soul has done this before. It failed once, which is Heaven's mistake, and Heaven will correct it.",
@@ -275,6 +315,12 @@ const BANTER_LINES = {
   },
   // ── coward ────────────────────────────────────────────────────────────────
   coward: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "I won?! I won. Nobody tell them I had my eyes closed.",
+      "That was terrifying and I would like my winnings now, please.",
+      "They yielded before I could. What luck. What glorious luck.",
+      "One more? No. Maybe. How much is one more?",
+    ],
     idle: [
       "A true genius knows when to flee. I am a true genius.",
       "Retreat is also a kind of Dao. My kind.",
@@ -403,6 +449,24 @@ const BANTER_LINES = {
       "I'll go in. Eventually. After I've checked it for traps. For a century or so.",
       "Is there a way to ascend by hiding? A Dao of Lurking? I would be SO good at that.",
     ],
+    beast_slain: [
+      "It's dead? Really dead? Poke it again. From further away.",
+      "I won! I won and I didn't even scream. Much.",
+      "Its teeth were right there. RIGHT there. I need to lie down.",
+      "The {beast} is slain. I'm going to pretend I planned that.",
+    ],
+    beast_spared: [
+      "You live, I live, everybody lives. The best kind of ending.",
+      "Run along, {beast}. And please never come back. Ever.",
+      "Mercy! Also known as not getting any closer to it.",
+      "It left. I let it. I would like credit for letting it.",
+    ],
+    battle_lost: [
+      "I ran away, and I'm alive to say so. That's a victory, technically.",
+      "Retreat is a noble art. I am a master of it.",
+      "Nobody could have beaten that {beast}. I checked. With my legs.",
+      "My legs knew before my head did. Good legs.",
+    ],
     soul_remembers: [
       "I remember... falling. From very high. Lightning. I'm never climbing anything again. Probably.",
       "My soul carries a scar from the Trial. It's telling me to run. My soul is wise.",
@@ -433,6 +497,12 @@ const BANTER_LINES = {
   },
   // ── hotblood ──────────────────────────────────────────────────────────────
   hotblood: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "AGAIN! SEND THE NEXT ONE! I AM ONLY WARMED UP!",
+      "THAT is how you fight! With your WHOLE SOUL!",
+      "The sand is hot, the crowd is hotter, and my blood is hottest!",
+      "Did you see that?! I punched through their GUARD!",
+    ],
     idle: [
       "I WILL PUNCH THE HEAVENS! ...After lunch.",
       "Tribulation lightning? FINALLY, A WORTHY OPPONENT!",
@@ -561,6 +631,24 @@ const BANTER_LINES = {
       "Other people prepare for years. I'M PREPARING BY YELLING AT IT. AAAAH! READY!",
       "If I die, bury me mid-punch! FACING THE SKY! SO IT KNOWS!",
     ],
+    beast_slain: [
+      "THE {beast} IS DOWN! BRING ME ANOTHER ONE!",
+      "YES! BLOOD! GLORY! ...Why is my arm bent that way?",
+      "THAT WAS THE BEST FIGHT OF MY LIFE! UNTIL THE NEXT ONE!",
+      "I PUNCHED A BEAST UNTIL IT STOPPED! CULTIVATION!",
+    ],
+    beast_spared: [
+      "YOU FOUGHT WELL, {beast}! GO AND GET STRONGER! THEN COME BACK!",
+      "I SPARE YOU! TRAIN HARD! WE WILL MEET AGAIN!",
+      "A WORTHY RIVAL! RIVALS DON'T DIE IN CHAPTER ONE!",
+      "GO, BEAST! TELL YOUR FRIENDS! I WANT MORE FIGHTS!",
+    ],
+    battle_lost: [
+      "IT BEAT ME! INCREDIBLE! AGAIN! AFTER I HEAL!",
+      "I LOST! THIS IS THE START OF MY TRAINING ARC!",
+      "THAT {beast} HITS HARDER THAN MY MASTER! I LOVE IT!",
+      "DEFEAT IS JUST VICTORY THAT HASN'T HAPPENED YET!",
+    ],
     soul_remembers: [
       "I DON'T REMEMBER THE TRIAL BUT MY SOUL IS STILL ANGRY ABOUT IT! REMATCH, HEAVEN!",
       "MY QI IS FASTER! MY SOUL LEVELED UP! I DIED AND GOT STRONGER! BEST DEAL EVER!",
@@ -591,6 +679,12 @@ const BANTER_LINES = {
   },
   // ── miser ─────────────────────────────────────────────────────────────────
   miser: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "The purse grows. My heart grows with it.",
+      "Walking away now would be prudent. Walking away rich would be art.",
+      "Every bruise is an investment. The returns are excellent.",
+      "I will count it twice. Then once more, for luck.",
+    ],
     idle: [
       "Three spirit stones for ONE pill? Daylight robbery under the Nine fucking Heavens!",
       "Qi is free. That's why I absorb so much of it. Never refuse a free thing.",
@@ -719,6 +813,24 @@ const BANTER_LINES = {
       "If I die in the trial, who inherits my stones? Nobody. Burn them with me. Every one.",
       "Immortals live forever. That's forever without spending. The dream. The fucking dream.",
     ],
+    beast_slain: [
+      "A {beast} core! Do you know what these go for? I do. To the copper.",
+      "Dead beast, free materials. The best kind of shopping.",
+      "It cost me some blood. Blood is free. Good trade.",
+      "Hide, teeth, core. Nothing wasted. Nothing wasted ever.",
+    ],
+    beast_spared: [
+      "Letting it go is losing money and I can feel every coin of it.",
+      "Sparing it. Once. Because binding talismans are not cheap.",
+      "A spared beast is an investment. It had better pay dividends.",
+      "Mercy costs nothing, they said. They lied. It cost a core.",
+    ],
+    battle_lost: [
+      "I lost the fight AND the stones I spent getting there.",
+      "Healing pills cost money. That beast owes me money.",
+      "The {beast} won. I'm sending it the bill.",
+      "Beaten, bruised, and down a day's income. Heaven is a thief.",
+    ],
     soul_remembers: [
       "I died at the Trial and my soul kept the receipt. Finally, a death that paid out.",
       "Soul Points. Points! Carried over! No tax, no fee, no sect cut. The heavens can be reasonable.",
@@ -749,6 +861,12 @@ const BANTER_LINES = {
   },
   // ── glutton ───────────────────────────────────────────────────────────────
   glutton: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Winning makes me hungry. Losing would have made me hungrier.",
+      "The vendors by the ring sell skewers. I have earned every one.",
+      "A victory feast! Well. A victory snack. Several snacks.",
+      "They fought like an underseasoned dumpling. Bland, and soon gone.",
+    ],
     idle: [
       "My dantian is a stomach. I've always known. The elders just won't admit it.",
       "Qi tastes like nothing. Who the fuck designed this system? Add some salt, Heaven.",
@@ -878,6 +996,24 @@ const BANTER_LINES = {
       "Immortality awaits. Eternal life. Eternal snacks. I hope. Please let there be snacks.",
       "The trial could kill me. Then let me go out full. No one should die hungry.",
     ],
+    beast_slain: [
+      "A {beast}. I wonder if it tastes like chicken. Spirit chicken.",
+      "The hunt is over. Now the part I actually came for.",
+      "Slain. Skewered. Seasoned, soon.",
+      "Its core glows. Is that edible? I'm asking for me.",
+    ],
+    beast_spared: [
+      "Go. You're too stringy to eat anyway.",
+      "I spare you, {beast}. Mostly because I just ate.",
+      "Run along and fatten up. For no particular reason.",
+      "Mercy for the beast. Dumplings for me. Everyone wins.",
+    ],
+    battle_lost: [
+      "The {beast} almost ate me. The hunter became the lunch.",
+      "I lost. I need comfort food. All the comfort food.",
+      "Beaten on an empty stomach. That's why. It's always why.",
+      "It bit me. I respect that. I also bite.",
+    ],
     soul_remembers: [
       "I remember the Heavenly Gate. It smelled like peaches. I didn't get any. Next time.",
       "My soul is warm, like a bun fresh from the steamer. A bun that was struck by lightning.",
@@ -908,6 +1044,12 @@ const BANTER_LINES = {
   },
   // ── poet ──────────────────────────────────────────────────────────────────
   poet: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Blades like falling petals; one of us had to be the wind.",
+      "The sand remembers every step. Today it remembers mine.",
+      "Applause, like rain on a tiled roof. I could live in this sound.",
+      "A duel is a poem only one of us gets to finish.",
+    ],
     idle: [
       "O Heaven, why hast thou forsaken me? There is a pebble in my shoe.",
       "The plum blossoms fall like tears. Also like dandruff. Mostly dandruff.",
@@ -1037,6 +1179,24 @@ const BANTER_LINES = {
       "The heavens await me like an old lover. The kind that throws lightning.",
       "My final verse before the trial: 'Please, oh please, oh please.' It's minimalist.",
     ],
+    beast_slain: [
+      "The {beast} falls like autumn's last leaf. I weep. My sleeve is also torn.",
+      "A life ends in the moonlit grass. The grass does not care. How cruel, the grass.",
+      "I have slain a legend of the hills. I will write it an elegy. A long one.",
+      "Blood on snow. So stark. So poetic. So hard to get out of silk.",
+    ],
+    beast_spared: [
+      "Go, wild heart, into the mist. Carry my mercy like a lantern.",
+      "I spared it, and it looked back once. That look will haunt my verses.",
+      "Two souls met in battle and parted as strangers. Ah, the tragedy.",
+      "The {beast} lives. My poem ends on a hopeful stanza, for once.",
+    ],
+    battle_lost: [
+      "Defeated beneath the indifferent stars. They are very indifferent tonight.",
+      "The {beast} has written its name on my ribs, in bruise.",
+      "I lost, and the wind laughed. I heard it laugh.",
+      "Fallen, like a poet's reputation after his second collection.",
+    ],
     soul_remembers: [
       "Once I rose toward the Gate, and the sky said no. Now my Qi sings of it, softly, in every breath.",
       "An ember of a fallen life glows in me. I shall call it Sorrow. It helps me cultivate. How fitting.",
@@ -1068,6 +1228,12 @@ const BANTER_LINES = {
   },
   // ── stoic ─────────────────────────────────────────────────────────────────
   stoic: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Done.",
+      "Their guard opened. I went through it.",
+      "The crowd's noise changes nothing.",
+      "Next.",
+    ],
     idle: [
       "My left meridian has been on fire for an hour. It's fine. It's a warm day anyway.",
       "A spirit beast is eating my robe. I am letting it. We are both cultivating patience.",
@@ -1198,6 +1364,24 @@ const BANTER_LINES = {
       "Ascension. The heavens will try to kill me. They're welcome to try.",
       "I've awaited this trial for centuries. I feel… nothing. As planned.",
     ],
+    beast_slain: [
+      "The {beast} is dead. I am not. That is the correct order.",
+      "Beast slain. Also I think I'm missing a tooth. Fine.",
+      "It fought well. It is now a crafting ingredient.",
+      "Victory. My heart rate is unchanged. My arm is not.",
+    ],
+    beast_spared: [
+      "I let it go. It will either thank me or eat me later. Noted.",
+      "Spared. No particular reason. The weather was nice.",
+      "The {beast} leaves. I remain. Nothing is different.",
+      "Mercy dispensed. Moving on.",
+    ],
+    battle_lost: [
+      "I lost. I have many bruises. They are also calm.",
+      "The {beast} was stronger. Correcting that is next week's task.",
+      "Defeat. My dignity is intact. My shoulder is not.",
+      "Retreated. It was the logical option. I dislike the logic.",
+    ],
     soul_remembers: [
       "Previous life: struck down at the Trial. This life: Qi flows five percent better. Acceptable trade.",
       "There is an ember in my soul. It is warm. I have no feelings about this.",
@@ -1228,6 +1412,12 @@ const BANTER_LINES = {
   },
   // ── demonking ─────────────────────────────────────────────────────────────
   demonking: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Bow, insects. The Demon Sovereign graces your little pit.",
+      "Their fear tasted sweeter than their blood would have.",
+      "Let the crowd scream. Screaming is the correct response to me.",
+      "One more crushed beneath my heel. The heel is barely dusty.",
+    ],
     idle: [
       "Kneel, mortals! …The squirrel ran away. Coward. He knows my power.",
       "My right arm contains a sealed demon of the Ninth Abyss. Also a mild rash.",
@@ -1358,6 +1548,24 @@ const BANTER_LINES = {
       "Tribulation lightning shall be my crown! My dark, crackling, extremely painful crown!",
       "If I die, let it be known I died looking cool. Someone write 'looking cool' down.",
     ],
+    beast_slain: [
+      "Kneel, beast! Oh. You're dead. Kneeling is harder now.",
+      "The {beast} is mine. Its core will sit on my throne. Next to the other cores.",
+      "Tremble, hills! Your champion is slain by the future Demon Emperor!",
+      "Another soul for my collection. It's a modest collection so far.",
+    ],
+    beast_spared: [
+      "Live, beast, and spread terror of my name!",
+      "I grant you life. Serve me well in the war to come.",
+      "The Demon King is merciful. Once. Write it down.",
+      "Flee, {beast}! Tell every beast in the land who rules here now.",
+    ],
+    battle_lost: [
+      "A tactical retreat. The Demon King simply chose to be elsewhere.",
+      "This {beast} has earned a place at the top of my revenge list.",
+      "Mock me now, beast. In ten years I will return with an army.",
+      "Even demon kings stub their toes on destiny.",
+    ],
     soul_remembers: [
       "The heavens struck me down! And yet my soul returns STRONGER! Tremble, sky! This is only my second form!",
       "An ember of my past defeat burns within! It is not humiliation! It is FUEL!",
@@ -1388,6 +1596,12 @@ const BANTER_LINES = {
   },
   // ── paranoid ──────────────────────────────────────────────────────────────
   paranoid: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "They lost too easily. Who paid them to lose? Who is watching?",
+      "The purse is real. I checked. I will check again.",
+      "Everyone in the stands saw my technique. Now they can copy it. Terrible.",
+      "I won, which means someone wanted me to win. Why?",
+    ],
     idle: [
       "The squirrel smiled at me. Squirrels don't smile. Who is paying that squirrel?",
       "I hid my real cultivation base. And the fake one. And the fake fake one. I forget which is real.",
@@ -1518,6 +1732,24 @@ const BANTER_LINES = {
       "Immortality means an eternity of people plotting against me. Fine. I'll plot longer.",
       "If the Heavenly Dao wants me dead, it has to get past my 400 layers of precautions. And the moat.",
     ],
+    beast_slain: [
+      "It's dead. Or it wants me to think it's dead. I'm waiting.",
+      "Who sent this {beast}? Beasts don't just attack people. Someone paid it.",
+      "Slain. I'll burn the body. Just in case it had friends. Or a plan.",
+      "The core is warm. Why is it warm? What does it know?",
+    ],
+    beast_spared: [
+      "I let it go. Now it knows my face. This was a mistake.",
+      "Spared it. It's going to report back to someone. I just know it.",
+      "Run, {beast}. Run to whoever sent you. I'll follow.",
+      "Mercy is a trap. I am setting the trap. Or walking into one.",
+    ],
+    battle_lost: [
+      "It was waiting for me. It knew. How did it know?",
+      "The {beast} had help. The wind was on its side.",
+      "Beaten. Somebody sold my hunting route. I have suspects.",
+      "I retreated because I sensed a second one. There's always a second one.",
+    ],
     soul_remembers: [
       "My Qi flows faster this life. Who arranged this? What do they want? I'll find out.",
       "I remember the Trial. The lightning was aimed. Lightning is never an accident.",
@@ -1548,6 +1780,12 @@ const BANTER_LINES = {
   },
   // ── grumpy ────────────────────────────────────────────────────────────────
   grumpy: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Back in my day the arena had standards. And fewer spectators.",
+      "Yes, yes, I won. Stop cheering, it is giving me a headache.",
+      "Young people these days fight like they are dancing. Badly.",
+      "The sand gets everywhere. Everywhere.",
+    ],
     idle: [
       "In my day a breakthrough took a thousand years and we were grateful. Now kids do it over lunch.",
       "Spiritual roots. Hmph. Back then we had one root, it was a turnip, and we were happy.",
@@ -1676,6 +1914,24 @@ const BANTER_LINES = {
       "In my day the Ascension Trial had nine hundred steps and a dragon. Now it's one button. Soft.",
       "If I die in there, I'm filing a complaint. With whom? Doesn't matter. I'll find someone.",
     ],
+    beast_slain: [
+      "Dead {beast}. Good. Now it'll stop howling at night.",
+      "In my day we killed beasts with our bare hands. I used a sword. Fine.",
+      "Kids these days hunt for fun. I hunt because the thing was annoying.",
+      "Slain. Now get off my lawn, rest of the forest.",
+    ],
+    beast_spared: [
+      "Go on, get. And don't come round here again.",
+      "I spared it. Don't tell anyone. They'll think I've gone soft.",
+      "Too old to chase it. That's called mercy now apparently.",
+      "Shoo. Shoo, {beast}. I have a nap to get back to.",
+    ],
+    battle_lost: [
+      "My back went out. The beast had nothing to do with it.",
+      "Beaten by a {beast}. Beasts had more respect in my day.",
+      "I lost because the ground was uneven. Terrible ground here.",
+      "That beast will get old one day. Then we'll see.",
+    ],
     soul_remembers: [
       "Died at the Trial last time. Back in my day we died properly and stayed dead. Soft, these heavens.",
       "My soul remembers the lightning. My knees remember it too. My knees remember everything.",
@@ -1708,6 +1964,12 @@ const BANTER_LINES = {
   },
   // ── lazy ──────────────────────────────────────────────────────────────────
   lazy: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Can I win the next one sitting down?",
+      "That was a lot of moving. I need a nap before the next one.",
+      "They wore themselves out. I simply let them. Efficient.",
+      "Walk away? Walking is also effort. Hmm.",
+    ],
     idle: [
       "I'm not napping. I'm practicing the Sleeping Dragon Technique. Very advanced. Do not disturb.",
       "Qi flows downhill, right? So I'll just lie at the bottom of the hill and wait.",
@@ -1837,6 +2099,24 @@ const BANTER_LINES = {
       "I'll take the trial. Eventually. Heaven's waited ten thousand years, it can wait one more nap.",
       "Do I have to face my inner demons? Mine are asleep. Let's not wake them.",
     ],
+    beast_slain: [
+      "It's dead. Great. Can someone else carry the core?",
+      "That took effort. I'm owed a nap for every exchange.",
+      "The {beast} is slain. I'm going to lie down next to it. Not in a weird way.",
+      "Hunting is exhausting. Being hunted sounds even worse. Done.",
+    ],
+    beast_spared: [
+      "Letting it go is less work than finishing it. Easy choice.",
+      "Bye, {beast}. Don't come back, that would mean more fighting.",
+      "Mercy. Also known as not bending down to finish the job.",
+      "Spared. I had already put my sword away. Picking it up again? No.",
+    ],
+    battle_lost: [
+      "Lost. That's fine. Winning sounded like more work anyway.",
+      "The {beast} wanted it more. It can have it.",
+      "Retreating was the laziest option. I'm proud of my consistency.",
+      "I lost the fight but gained a reason to stay in bed.",
+    ],
     soul_remembers: [
       "My soul did the hard part last life and kept the progress. This is the kind of saving I respect.",
       "Died at the Trial. Came back with faster Qi. So dying is a shortcut. Noted. Not trying it on purpose.",
@@ -1868,6 +2148,12 @@ const BANTER_LINES = {
   },
   // ── niceguy ───────────────────────────────────────────────────────────────
   niceguy: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Good fight! Are you all right? Do you need a hand up?",
+      "I hope they are not too hurt. I will send them some tea.",
+      "Winning is nice, but I made a friend, maybe? Maybe.",
+      "Thank you for the match! Truly, it was an honour.",
+    ],
     idle: [
       "Cultivation tip: drink water. Your meridians are mostly water. I think. Please hydrate.",
       "I sent a thank-you letter to the Heavens. They sent lightning back. Still, it's the thought.",
@@ -1996,6 +2282,24 @@ const BANTER_LINES = {
       "The Heavens are testing me. I studied! I made flashcards! One of them just says 'don't die'.",
       "Scared? A little. But I'd rather try than wonder forever. Wow, I'm brave. Hold my hand?",
     ],
+    beast_slain: [
+      "I'm sorry, {beast}. You fought bravely. I'll use every part of you well.",
+      "It had to be done. It still feels awful. I'll say a prayer.",
+      "The village is safe now. I hope it had no little ones.",
+      "Rest now. No more hunger, no more fighting.",
+    ],
+    beast_spared: [
+      "Go home, friend. Be safe out there.",
+      "Everyone deserves a second chance. Even things with that many teeth.",
+      "I hope it finds a quiet valley somewhere. With lots of food.",
+      "Sparing it was right. My heart feels lighter already.",
+    ],
+    battle_lost: [
+      "It won fair and square. Good for it, honestly.",
+      "Ow. Okay. I'll heal up and we can try being friends instead.",
+      "I think it was just protecting its home. I'd have done the same.",
+      "Lost, but nobody died. That's a good day by my count.",
+    ],
     soul_remembers: [
       "I don't remember my last life, but I think it tried really hard at the end. Thank you, last me.",
       "There's a little warmth in my soul, left over from the Trial. I'll try to deserve it.",
@@ -2026,6 +2330,12 @@ const BANTER_LINES = {
   },
   // ── psycho ────────────────────────────────────────────────────────────────
   psycho: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "Again. Again. AGAIN. I want to see that look on the next face.",
+      "The sand is so pretty when it is this colour.",
+      "They screamed so nicely. Is there a louder one?",
+      "Hehehe. The crowd loves me. The crowd should be afraid of me.",
+    ],
     idle: [
       "I'm not angry. I just wrote your name in my little book. It's a nice book. Hehe.",
       "Meditation is so peaceful. So quiet. Like a crypt. I love crypts. Anyway!",
@@ -2155,6 +2465,24 @@ const BANTER_LINES = {
       "Immortality means outliving everyone I don't like. That's so wholesome. I'm tearing up.",
       "Come on, trial! Don't hold back! If you hold back, I'll know. I'll always know.",
     ],
+    beast_slain: [
+      "Hehe. It stopped moving. Do it again. Do it AGAIN.",
+      "The {beast} made such a lovely sound at the end.",
+      "Its eyes went dim. I watched the whole time. Beautiful.",
+      "I'm keeping a tooth. And a claw. And maybe the eyes.",
+    ],
+    beast_spared: [
+      "I let it go. Now I get to hunt it twice. What a gift.",
+      "Run, little {beast}. Run fast. I'll count to a hundred.",
+      "Mercy is just saving dessert for later.",
+      "It's scared of me now. I can smell it. Delicious.",
+    ],
+    battle_lost: [
+      "It hurt me! Ha! It HURT me! I love it! Again!",
+      "The {beast} bit back. We're going to be such good enemies.",
+      "Losing is fun too. The pain is so honest.",
+      "Retreat. For now. I'll dream about it. Warm dreams.",
+    ],
     soul_remembers: [
       "Heaven struck me down! Hehe. Heaven made a very long list today. I'm at the top of it. I made the list.",
       "My soul kept a little ember from the lightning. I'm going to feed it. It's going to grow up big and bitey.",
@@ -2185,6 +2513,12 @@ const BANTER_LINES = {
   },
   // ── gremlin ───────────────────────────────────────────────────────────────
   gremlin: {
+    arena_win: [   // A6-3b: you won a bout in the Arena
+      "I won with a move I invented just now. Its name is Sudden Elbow.",
+      "The purse jingles! I shall bite every coin to see which ones scream.",
+      "Nobody expected that, including me. Especially me.",
+      "Victory! Now to steal the ring announcer's hat.",
+    ],
     idle: [
       "Borgin. Gorgin. Sporgin. The third one is new. He has a hat.",
       "My dantian is making the noise again. Hwoooomp. That's the Dao saying hi.",
@@ -2313,6 +2647,24 @@ const BANTER_LINES = {
       "Immortality: forever. Death: also forever, but lying down. Tough choice. Blorp.",
       "The Heavens are opening. It smells like toast up there. I am going toward the toast.",
       "Survive or perish? I choose option three: wiggle. Nobody expects the wiggle.",
+    ],
+    beast_slain: [
+      "The {beast} is dead and I'm keeping its tail as a hat.",
+      "I win! Winner gets the teeth. Those are the rules. I made them.",
+      "It died mad. It died SO mad.",
+      "Hunting achievement unlocked: stabby.",
+    ],
+    beast_spared: [
+      "Go, {beast}! Be free! Cause chaos in my name!",
+      "I let it go because I want to see what it does next.",
+      "It ran away. I licked its footprint. For science.",
+      "Spared! Now there's a beast out there that owes me a favour.",
+    ],
+    battle_lost: [
+      "It beat me up and took nothing. Rude. I had snacks.",
+      "I lost on purpose to study its moves. Also by accident.",
+      "The {beast} won. I have decided it's my nemesis now.",
+      "Ran away screaming. Good cardio. Ten out of ten.",
     ],
     soul_remembers: [
       "My soul has a little ember in it now. I named it Borgin. Borgin helps with the Qi. Good Borgin.",

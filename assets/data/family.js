@@ -636,3 +636,16 @@ const FIGHT_STYLE = {
   niceguy:   { press: 25, guard: 50, feint: 25, hint: 'does not want to hurt you' },
 }
 const TOURNAMENT_SPARE_BOND = -20   // a spared loser leaves the house in disgrace
+
+// ── Phase 35 / A6-3a (combat.md): your fights with people, on the battle page ──
+const DUEL_TO = 3                   // exchanges to win a fight with a person (beasts: BATTLE_TO); odds keep the old match chance
+// A won fight waits for your end choice. What each temper makes of it: 'debt' (they owe you) or 'grudge' (they hate you).
+const SPARE_REACTION = { default: 'debt', arrogant: 'grudge', demonking: 'grudge', psycho: 'grudge', hotblood: 'grudge', grumpy: 'grudge' }
+const RAISE_REACTION = { default: 'debt', psycho: 'grudge', demonking: 'grudge' }
+const HUMBLE_REACTION = { default: 'grudge', coward: 'debt', niceguy: 'debt' }
+const HUMBLE_QUIET_YEARS = [15, 25] // after you humble someone, no one else dares challenge you for this long
+const FEUD_CHALLENGE_WEIGHT = 3     // a grudge-holder is this many times likelier to be the one who calls you out
+const FEUD_POWER = 30               // …and fights you this much harder (a debtor never challenges you)
+const FEUD_YIELD = 0.25             // yield acceptance: + for a debtor, − for a grudge-holder
+const SPARE_KARMA = 2               // sparing a life you could have taken
+const FEUD_TEXT = { debt: 'owes you', grudge: 'holds a grudge' }

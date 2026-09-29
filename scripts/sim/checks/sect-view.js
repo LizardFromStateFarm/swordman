@@ -71,7 +71,7 @@ function montecarlo(gs, resolve, reset, n = 4000) {
   const info = gs.ownSectInfo()
   const qiSum = info.disciples.reduce((a, x) => a + x.qi, 0)
   assert(Math.abs(qiSum - s.derived.discipleQiFrac) < 1e-12, `disciple Qi shares sum to derived (+${(qiSum * 100).toFixed(2)}% Qi/s)`)
-  assert(info.fame.disciples + info.fame.buildings + info.fame.hall + info.fame.wins === s.derived.sectFame, `fame terms sum to ${s.derived.sectFame}`)
+  assert(info.fame.disciples + info.fame.buildings + info.fame.hall + info.fame.wins + info.fame.arena === s.derived.sectFame, `fame terms sum to ${s.derived.sectFame}`)
   s.ownSect._incomeAcc = { spirit_stone: 0, spirit_herb: 0 }
   s.ownSect.poolRefreshAt = Date.now() + 1e9
   const stones0 = s.spiritStones, herbs0 = s.inventory.spirit_herb || 0

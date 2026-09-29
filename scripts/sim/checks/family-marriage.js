@@ -58,7 +58,8 @@ const years = (sim, n) => { for (let i = 0; i < n * 120 + 5; i++) sim.step(1) }
     st.stageIndex = want === 'won' ? 21 : 1; st.family.spouse.stageIndex = want === 'won' ? 1 : 21; g._recalc()
     m.sim.ev('globalThis.__r = Math.random; Math.random = () => ' + (want === 'won' ? 0.0 : 0.99))
     let d = g.resolveDuel('fight')   // 1.8b-3b: exchange by exchange, under the forced RNG
-    for (let i = 0; i < 8 && g.get().family?.fight; i++) d = { ...g.fightExchange('press'), chance: d.chance }
+    for (let i = 0; i < 8 && g.get().family?.fight; i++)   // A6-3a: a won duel waits for the end choice — Finish (the old outcome)
+      d = { ...(g.get().family.fight.over ? g.personFightFinish('finish') : g.fightExchange('press')), chance: d.chance }
     m.sim.ev('Math.random = globalThis.__r')
     const after = g.get()
     if (want === 'won') assert(d.outcome === 'won' && after.family.formerSpouses.at(-1).alive === false && after.family.formerSpouses.at(-1).endCause === 'duel' && after.health >= 1, `duel won (chance ${d.chance}) → spouse dead, you wounded`)

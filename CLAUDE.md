@@ -151,7 +151,7 @@ docs/
     clan-succession.md  ← SPEC (M2 2.6a–f): world/life split, heirs as NPCs, rebirth as descendant, tournaments, branch wars
     backpack.md         ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
     automation.md       ← Active/Idle Mode + staged automation unlocks, Active Mode bonuses (Phase 22)
-    combat.md           ← Phase 35 battles: A6-1 built (beast battles from Roam → Beasts, battle page, bestiary); A6-2 arena / A6-3 duels + duelist art spec
+    combat.md           ← Phase 35 battles: A6-1 built (beast battles, battle page) · A6-2 built (Roam → Hunt, Bestiary view, battle banter, sim bot hunts) · A6-3a built (duels/challenges/step-down bouts on the battle page, ink duelists, end choices, feuds) · A6-3b built (the Arena: rings, purse, streak, renown, blood matches, call-outs) · A6-3c bosses spec
     auction.md          ← SPEC (Phase 36): themed crates, beast/person quality rolls, person `gender`
     scene-art.md        ← SPEC (Phase 38): large-area sect-base + island scenes (view-only, grow as you build)
     soul-points.md      ← Phase 40 (v1 finish): cross-save Soul Points + Soul Resonance + Soul screen (40a) · Immortal Ascension cinematic + finish screen (40b)
@@ -218,7 +218,9 @@ renderer/
     immortal-view.js    ← ImmortalView — plays the cinematic, then the finish screen ("your race to immortality") / later-Immortal card (Phase 40b)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
     icons.js            ← Icon(name) → inline SVG from assets/icons/ui-icons.js; Icon.g() for glyph slots; [data-icon] auto-filled (1.8d)
-    combat.js           ← CombatView — the battle page: prepare (stance odds) → fight (Press/Guard/Feint, Retreat) → end choice (finish/spare/bind) → result (Phase 35 / A6-1)
+    arena-view.js       ← ArenaView — Roam → Arena: rings, duelist rosters (odds, Fight / Blood), the run's purse + Walk away, grudge call-outs, the rest countdown (Phase 35 / A6-3b)
+    hunt-view.js        ← HuntView + BestiaryView — Roam → Hunt (hunting grounds, track a beast, live countdown) and Roam → Bestiary (seen/unseen kinds, habits, record) (Phase 35 / A6-2)
+    combat.js           ← CombatView — the battle page: prepare (stance odds) → fight (Press/Guard/Feint, Retreat/Yield) → end choice (finish/spare/bind · raise/humble) → result; beasts (A6-1) + people: duels, challenges, step-down bouts (A6-3a)
     base-view.js        ← SPEC (Phase 38A): Sect Base view — the large sect-compound scene
 assets/
   icons/
@@ -237,6 +239,7 @@ assets/
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
     bloodline.js        ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
     lifespan.js         ← Game clock + family timing constants (Phase 30/16-lite; age is a stat only, no lifespan)
+    duelists.js         ← DUELIST_LOOK + DUELIST_ROLE_LOOK — a person you fight: temper/role → INK_PARTS slots on the battle page (A6-3a)
     family.js           ← Affection, MARRIAGE_EVENTS / crisis, duel + affairs, AFFAIR_REACTIONS, CHILD_EVENTS, PERSONALITY_MORALITY, COURT_BEATS + spouse/child actions (1.8b-3a)
     succession.js       ← M2 2.6d: parenting styles, heir bet, reign/rebirth weights, rival rebirth, chronicle text, UPBRINGING_EVENTS
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
@@ -247,7 +250,7 @@ assets/
     soul.js             ← SOUL_* — Soul Points grants + Soul Resonance rank cost/bonus/cap (Phase 40a)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
     crates.js           ← SPEC (Phase 36): CRATES — themed crate costs + weighted contents (item/beast/person)
-    arena.js            ← SPEC (Phase 35): arena ladder tiers, stakes, duelist pools
+    arena.js            ← ARENA_RINGS + ARENA_* — the Arena's six rings (fees, prizes, titles, bands) + purse/streak/renown/rest/call-out tuning (A6-3b)
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
     ink-cultivator.js   ← INK_ART — hybrid ink art base figure (body parts, strokes, effects, default slots); Qi Condensation so far

@@ -1,5 +1,5 @@
 // Real-app smoke scenario — 1.8b-3b (docs/systems/family.md → "1.8b-3b"): a lover's ultimatum + lover card (cover /
-// confess / end it), the fight card of a spouse duel (odds per tactic, an exchange played, the score), and a Tournament
+// confess / end it), a spouse duel handed to the battle page (A6-3a; scenarios/duels.js shoots the page), and a Tournament
 // of Heirs round with the spare-the-loser toggle; Overlay + Desktop. Screenshots: scripts/smoke/out/fight-*.png.
 // Run: node scripts/smoke/cdp.js scripts/smoke/scenarios/fights.js
 module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
@@ -36,19 +36,17 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   assert(await ev('gameState.get().family.lovers.some(l => l.coverUntil)'), 'covering tracks takes effect')
   await ev(`(() => { const f = gameState.get().family; const id = f.lovers[0].person.id; gameState.answerLoverUltimatum(id, 'one_more') })()`)
 
-  // ── The duel: fight card ──
+  // ── The duel: A6-3a plays it on the battle page (scenarios/duels.js covers the page itself) ──
   await ev(`(() => { gameState.get().family.duel = { year: 1, reason: 'affair' }; gameState._notify() })()`); await sleep(250)
   await click('#attention [data-att="duel"]'); await sleep(300)
-  await click('#family-choices [data-duel="fight"]'); await sleep(300)
-  assert(await ev('!!gameState.get().family.fight && document.querySelectorAll("#family-choices [data-tactic]").length === 4'), 'the fight card: three tactics + yield')
-  await shot('fight-overlay-card')
-  await click('#family-choices [data-tactic="guard"]'); await sleep(300)
+  await click('#family-choices [data-duel="fight"]'); await sleep(400)
+  assert(await ev('gameState.get().family.fight?.kind === "duel" && combatView.isOpen() && combatView.mode === "person" && document.querySelectorAll("#combat-panel [data-tac]").length === 4'), 'the duel opens the battle page: three tactics + yield')
+  assert(await ev('document.getElementById("family-overlay").classList.contains("hidden")'), 'the family card is not a fight card any more')
+  await ev('combatView.lockUntil = 0'); await click('#combat-panel [data-tac="guard"]'); await sleep(300)
   assert(await ev('gameState.get().family.fight ? gameState.get().family.fight.log.length === 1 : true'), 'an exchange is played and logged')
-  await shot('fight-overlay-exchange')
-  await pick('desktop'); await ev('document.getElementById("family-overlay").classList.contains("hidden") || true'); await sleep(200)
-  if (await ev('!!gameState.get().family.fight')) { await click('#attention [data-att="fight"]'); await sleep(300); await shot('fight-desktop-card') }
+  await ev('combatView.step = "result"; combatView.close()')
   await ev(`(() => { const gs = gameState; gs.get().family.fight = null; gs.get().family.duel = null; gs._notify() })()`)
-  await ev('document.getElementById("family-overlay").classList.add("hidden")')
+  await pick('desktop')
   await click('[data-tab="family"]'); await sleep(250); await top(); await shot('fight-desktop-family')
 
   // ── Tournament of Heirs: spare a loser ──

@@ -13,8 +13,9 @@ battle page drawn with the ink engine.
   beside Tame), the battle page, the bestiary (engine + details page line), and a breakdown card.
 - **A6-2**: Beast Hunt / Arena entry in the Roam group (`startArenaFight(tier)`, `s.arena = {streak, best, tier}`,
   `assets/data/arena.js`), a bestiary view, and banter triggers for battles.
-- **A6-3**: route duels, head challenges, defending the seat, and your bouts in step-down tournaments onto the
-  battle page (they use the family fight card today), plus humanoid duelist art (A3 part slots) and boss fights (23E/17).
+- **A6-3** (split 2026-09-29): **A6-3a** ✅ duels, head challenges, defending the seat and your step-down bouts on the
+  battle page + ink duelists + end choices + feuds (below) · **A6-3b** the Arena (duelist ladder, stakes, streak, rivals)
+  · **A6-3c** boss fights (needs 23E/17).
 
 Ordinary expeditions keep auto-resolving (pillar 4). Every battle is started by the player, and every exchange is the
 player's move (CLAUDE.md agency rule). There is no auto-fight.
@@ -76,10 +77,12 @@ player's move (CLAUDE.md agency rule). There is no auto-fight.
 
 `s.family.fight`: the one fight in progress (shared gate with duels and head challenges; `null` when none).
 ```
-{ kind: 'duel'|'challenge'|'defend'|'beast', oppId, lethal, p, to, you, them, round, log: [...], year,
+{ kind: 'duel'|'challenge'|'defend'|'stepdown'|'arena'|'slaughter'|'beast', oppId, lethal, p, to, you, them, round, log: [...], year,
   // kind 'beast' only:
   beast: { encId, typeId, variant?, traits, mood? },   // snapshot: the fight does not need the encounter to exist
-  stance: 'slay'|'drive', power, over: null|'won' }     // over = won, waiting for the end choice
+  stance: 'slay'|'drive', power, over: null|'won',      // over = won, waiting for the end choice
+  // kind 'slaughter' only (A6-3a): the road stranger + where you met — never in the world registry
+  foe: Person, place }
 ```
 `to` is new: family fights keep `FIGHT_TO` (2), beast battles use `BATTLE_TO` (4). A save without `to` reads `FIGHT_TO`.
 The load guard (`_ensure…`) drops a beast fight whose snapshot is missing a known type.
@@ -149,6 +152,185 @@ mood power, karma per nature (`BEAST_KARMA`), cub chance, return chance, bound l
 - **Not done here (A6-2 / A6-3 / QA):** the sim bot doesn't hunt yet (it never starts a beast battle, so balance is
   untouched); no banter lines for battles (`beast_slain` is emitted but not a banter trigger); duels/tournaments still
   use the family fight card.
+
+## A6-2: the Hunt + the Bestiary (spec 2026-09-28, user-approved; the Arena moved to A6-3) — built 2026-09-28
+
+**Hunt (Roam → Hunt).** `HUNT_GROUNDS` (beasts.js, data only): five grounds, each with a realm gate (`minStage`), the beast
+types found there, a track time (real seconds) and a Spirit Stone cost. Misty Foothills (fox, python) → Thunder Crags
+(eagle, bear) → the Western Wilds (tiger, qilin) → the Star Rift (hound, tortoise) → the Cloud Sea Summit (the two
+dragons). Deeper grounds also hold the shallower tiers at a lower weight.
+- `startHunt(groundId)` → `{ok}` or `{ok:false, reason}` (`stage`, `busy` already tracking, `crowded` 3 beasts already
+  waiting, `stones`, `unknown`). Pays the cost, sets `s.hunt = { groundId, startedAt, endsAt }`.
+- `cancelHunt()` calls it off (the cost is not refunded).
+- Resolves in `tick()` once `Date.now() >= endsAt`, so it also resolves after the game was closed: a beast from the
+  ground's table whose `minStage ≤` yours (weighted by `encounterChance`) is pushed through the same
+  `_spawnBeastEncounter(type, source)` used by expeditions. It gets its traits, variant roll, and a returning
+  grateful/vengeful mood. The encounter gets `hunted: groundId`, and `s.hunt.found = encId` stays until you look.
+  The log says what was found and where.
+- `huntInfo()`: the grounds with lock reasons, odds per type (only for types you can meet), the danger (highest tier),
+  and the current track state.
+
+**Bestiary (Roam → Bestiary).** A card per beast type (sorted by realm gate). Unseen kinds show as a dim silhouette with
+only their realm gate and where they can be hunted. Seen kinds show the portrait, tier, nature, lore, habits (once learned)
+and your record (fought / won / slain / spared / bound). A pending return is hinted ("Something out there remembers
+you"). `bestiary[type].seen` is set at every sighting and tame, and migration marks your current companions and waiting
+encounters as seen.
+
+**Reputation.** A long slay record makes spared beasts come back vengeful more often: the grateful chance −0.02 per beast
+you have slain (all kinds, capped at −0.2).
+
+**Banter.** Three new triggers, each with ≥ 4 lines per personality and 2 generic: `beast_slain` (you finish a beast),
+`beast_spared` (spare / let flee / bind), `battle_lost` (lost or retreated). Token `{beast}` = the beast's name
+(these triggers only).
+
+**Sim bot.** It hunts when idle and healthy on the richest ground it can enter, and fights a waiting encounter when its
+odds are ≥ 60% (the 'active' profile reads habits; casual/afk play random tactics). End choice: bind when it has a
+talisman and room, otherwise finish. It retreats when a Slay loss could kill it. Metrics: battles, win rate, beasts
+slain/bound, deaths by `beast_hunt`. Invariants: Health is never below 0 outside a Slay death, and no `f.fight` survives a
+life.
+
+### A6-2 as built
+- Engine: `_spawnBeastEncounter(type, hunt)` is the one sighting path (expedition roll + hunt), same random draws as
+  before (sim seeds unchanged); `_huntLock` / `_huntTable` / `huntInfo` / `startHunt` / `cancelHunt` / `_resolveHunt`
+  (from `tick()`); a found hunt clears itself once its beast is gone. `bestiary[type].seen`; `bestiarySeenVer` migration.
+  State: `s.hunt` (`_newGame` + `_ensurePhase35Fields`). Constants `HUNT_GROUNDS`, `BEAST_SLAYER_VENGEFUL(_MAX)` in beasts.js.
+- UI: renderer/game/hunt-view.js (`HuntView.render/tickInPlace`, `BestiaryView.render`), panels `#tab-hunt` /
+  `#tab-bestiary`, NAV_GROUPS adventure views, attention item `hunt` (the found beast is left out of the generic
+  wild-beasts item). The Roam sub-tab row got Sect-style narrow sizing.
+- Banter: triggers `beast_slain` / `beast_spared` (spare, flee, bind) / `battle_lost` (lost, retreat), 174 lines, token
+  `{beast}` (fallback "beast").
+- Sim: bot.js `battle()` + `hunt()` (+ fights a waiting beast at ≥ 60%); report section "Beast battles + hunts";
+  invariants `health_negative`, `battle_without_beast`. sim:quick 24h: active ~11 hunts, ~69 battles, 0 violations —
+  battle balance is untuned (2.8 QA).
+- Tests: checks/combat.js (51) · smoke scenarios/hunt.js (hunt-*.png, bestiary-*.png).
+
+## A6-3a: people on the battle page (spec 2026-09-29, user-approved; A6-3 split into 3a people · 3b Arena · 3c bosses)
+
+Your own fights against people (the spouse duel, challenging the head, defending the seat, and **your bouts in a
+step-down tournament**) leave the small family fight card and play on the battle page, against an ink duelist.
+
+**Engine.**
+- Person fights use `DUEL_TO` = 3 exchanges (was `FIGHT_TO` 2; a save mid-fight without `to` still reads 2). Odds still
+  come from `_exchangeChance(matchChance, to)`, so neutral play keeps the old match odds.
+- **A won fight waits for your end choice** (`fi.over = 'won'`, like a beast), read by `personFightChoices()` and
+  settled by `personFightFinish(choice)`:
+  - to the death: `finish` (they die: the old lethal outcome) or `spare` (they live: the old non-lethal outcome — for the
+    spouse duel, they leave you);
+  - until one yields: `raise` (help them up: they owe you) or `humble` (shame them before the clan: they hate you, but
+    the clan is cowed — no one else challenges you for `HUMBLE_QUIET_YEARS`).
+  A lost fight still ends at once (your death, or the old non-lethal loss). A coward who loses to the death begs; it's
+  still your call.
+- **Memory** on the person record: `p.vsYou = { fought, youWon, theyWon, spared, raised, humbled }` and
+  `p.feud = null | 'debt' | 'grudge'`. Sparing reads their temper (`SPARE_REACTION` in family.js: proud tempers turn
+  mercy into a grudge); raising → debt (a psycho / demon king still resents it); humbling → grudge (a coward / nice guy
+  takes it as a debt).
+- **Feedback:** a grudge-holder is `FEUD_CHALLENGE_WEIGHT`× likelier to be the one who calls you out and fights you with
+  `FEUD_POWER` more power; a debtor never challenges you; yield acceptance ±`FEUD_YIELD` (debt +, grudge −). The
+  breakdown card (`personfight`) lists every power term, the feud included.
+- **Step-down tournament:** `answerStepDown(true)` runs the bracket until a pairing includes you, then pauses in
+  `f.bracket` (resumable state, saved) and starts `f.fight` kind `stepdown` against that opponent at `_powerChance` odds;
+  `personFightFinish` / a loss continues the bracket (NPC–NPC bouts stay rolled: the world's fights). If you fall to the
+  death the rest of the bracket still resolves (new head, branches) before `_die('stepdown_tournament')`.
+
+**UI.** `CombatView.resume()` opens any fight. Person fights skip the prepare step (the family card before it holds the
+decision: fight or flee, lethal or not, enter or stay out) and open on the fight step with a stakes line ("To the death:
+the loser does not rise"), the person's temper hint + habits, the record + feud, Yield instead of Retreat, and a
+"why these odds" card. End step: Finish / Spare or Raise / Humble with the likely reaction shown. The family overlay no
+longer draws fights (`renderFightCard` removed); the attention item and the family card route to the battle page.
+
+**Duelist art.** The opponent is the ink cultivator for their own realm (`INK_ART[stage.spriteState]`, `bare`), mirrored
+to face you, dressed from INK_PARTS by `duelistSlots(person)` (DUELIST_LOOK in assets/data/duelists.js: temper → face /
+hair / robe / weapon / aura; the clan head wears the crown, a spouse the moon-white robe). Their stage colour is the glow.
+A person's Press throws a crescent back at you (a beast's is claws).
+
+### A6-3a as built (2026-09-29)
+- Engine (game-state.js → "A6-3a"): `_startFight` defaults `to` to `DUEL_TO`; `fightExchange` sets `over: 'won'` for a
+  person win; `_finishFight(fi, opp, won, yielded, died)` notes the record and routes `stepdown` to `_stepdownBoutEnd`;
+  `personFightOdds(opp, kind)` / `_personPowerParts` / `personRecord` / `personFightChoices` / `personFightFinish`;
+  `_bracketStep` / `_bracketRecord` / `_bracketInfo` / `_afterBoutInfo` (`{ next: true }` when your next bout already
+  started) / `_finishStepDown` (the seat, shared with the watched bracket). `answerStepDown(true)` returns
+  `{ outcome: 'bout', next: true }` when you're in it. A paused `f.bracket` with no fight runs on in `tick()`.
+  `_pickChallenger(clan, cowed)` weights feuds. State: `f.bracket`, `f.cowedUntilYear` (`_newGame` + `_ensurePhase35Fields`),
+  `p.vsYou`, `p.feud`. Data: family.js `DUEL_TO`, `SPARE/RAISE/HUMBLE_REACTION`, `HUMBLE_QUIET_YEARS`, `FEUD_*`,
+  `SPARE_KARMA`, `FEUD_TEXT`; new assets/data/duelists.js (`DUELIST_LOOK`, `DUELIST_ROLE_LOOK`).
+- A6-3a also covers **Roam → Explore → Slaughter**: `slaughterEncounter(i)` consumes a road encounter (same busy/wounded
+  gate as every fight) and starts `f.fight` kind `slaughter` — lethal, with a `foe` snapshot of the stranger (they are not
+  in the world registry, so `_fightOpp` reads `fi.foe`). `_slaughterOutcome` kills on Finish (`CHALLENGE_KARMA_DEATH`), the
+  stranger walks away on Spare, and a lethal loss is `_die('slaughter')`. Explore's encounter card is Seduce / Slaughter /
+  Leave; the battle page reuses the whole person UI (title "A Killing on the Road", Yield, Finish/Spare).
+- UI: `CombatView.resume()` handles every fight (`mode` beast / person); `_fightPerson`, `_endPerson`, `_platesPerson`
+  (realm + feud chip; keeps the finished bout on the result card while the next one waits), `_stepdownTail`
+  ("Face <name>" → `resume()`), `duelistSlots(p)`. BattleScene `setup({ foePerson, foeSlots })`: INK_ART table, `flip`
+  (mirrored draw incl. dissolve), a returning crescent. The family overlay no longer draws fights (`renderFightCard`
+  removed; `familyPendingKey` returns null for any fight); duel / head-challenge / step-down cards hand over to the battle
+  page, the head-challenge card shows its odds. Kin → Clan: Challenge the Head shows its odds pill (breakdown
+  `personfight:<id>:<kind>`) + the head's feud; the "busy" lock now says why. Attention: a person fight opens `combat`.
+- Sim: the bot makes the end choice (active: befriend where it gets a debt, else finish / humble). sim:quick healthy.
+- Tests: checks/duels.js (29) + family-fights / family-marriage / succession checks updated for the end choice · smoke
+  scenarios/duels.js (duel-*.png, all four modes, frame 4.3 ms); fights.js + succession.js smoke moved onto the battle page.
+- Not done: the Tournament of Heirs (your children fight, you don't) is untouched; NPC–NPC bouts stay rolled.
+
+**Depth pass.** Memory: vsYou + feud. Choices: finish / spare, raise / humble, yield, every exchange. Hooks: family
+(spouse duel → spouse leaves or dies), clan succession (head seat, step-down bracket, branch founders), Health & Death,
+karma, challenger scheduling. Drama: best — you spare the heir who challenged you and they stand by you for life;
+worst — the cousin you humbled returns with a grudge and cuts you down in your own hall. Agency: the step-down
+bouts you are in were a hidden roll; now every one is played.
+
+## A6-3b: the Arena (spec 2026-09-29, user-approved: blood matches opt-in, push-your-luck purse)
+
+**Roam → Arena.** Six rings (`ARENA_RINGS`, assets/data/arena.js), each opening at a realm: Dust (Mortal) · Iron (Qi
+Condensation 3) · Jade (Foundation) · Golden (Core) · Lotus (Nascent Soul) · Heaven's (Spirit Severing). Each ring holds a
+roster of `ARENA_ROSTER` named duelists (stages across the ring's band, tempers rolled) and a **champion** at the top of
+the band. Duelists are person records kept in `s.arena.duelists` (not the world registry: they are the Arena's, per life),
+so they carry `vsYou` + `feud` exactly like A6-3a opponents.
+
+**A run.** Pick a ring and an opponent → pay the ring's entry fee → the bout plays on the battle page (f.fight kind
+`arena`, `until one yields` unless you chose a **blood match**). Each win adds `prize × streak mult × renown mult × (blood
+×3)` to the run's **purse**; the streak raises its multiplier (+`ARENA_STREAK_STEP` per win, capped). Between bouts the
+choice is yours: **Walk away** (the purse is paid) or **fight on** (pick the next opponent; each duelist once per run).
+The champion only answers after `ARENA_CHAMP_AFTER` wins in the run; beating them earns the ring's **title** and a
+champion's prize. Losing ends the run and pays **half** the purse. A lost blood match kills you (cause `arena_blood`).
+Wounds are real (FIGHT_WOUND per lost exchange); a run needs `ARENA_MIN_HEALTH`.
+
+**Renown** (`s.arena.renown`): +wins (more for blood, champions, humbling), −declined call-outs; it multiplies purses
+(+`ARENA_RENOWN_PURSE` per point, capped).
+
+**Memory + drama.** The A6-3a end choices apply (finish / spare in a blood match, raise / humble otherwise), so arena
+duelists owe you or hate you. A **grudge-holder may call you out** (`s.arena.callout`, a yearly roll): an urgent
+attention card offers a grudge match (their stakes: a bloodthirsty temper demands blood) at `ARENA_CALLOUT_MULT`× the
+purse — accept, or decline (−renown, the grudge stays). A **debtor may send a gift** (stones, and the debt is paid).
+A coward refuses blood matches. A duelist who dies is replaced in the roster after the run.
+
+**Hooks.** Health & Death · Spirit Stones · sects (a won bout: +`ARENA_SECT_FAME` fame for a founded sect, or
++contribution for a joined one) · A6-3a feuds + end choices · karma (a blood kill costs karma, sparing gains it) ·
+banter (arena_win) · the sim bot.
+
+**UX.** Roam → Arena: a run panel (purse, streak, multiplier math with a `arena` "why" card, Walk away) · ring cards
+(lock reason, fee, prize, title held) · roster rows (name, temper, realm, your odds, record, feud, Fight · Blood match,
+lock reasons: beaten this run / champion needs N more wins / coward refuses blood / wounded). The battle page's result
+card for an arena bout shows the purse and offers Walk away / Choose your next opponent. Attention: a call-out (urgent),
+a run waiting between bouts (ready), a newly opened ring (nudge). First visit: a one-line hint.
+
+### A6-3b as built (2026-09-29)
+- Data: assets/data/arena.js (`ARENA_RINGS` + tuning; loaded by index.html and the sim loader). Death cause `arena_blood`
+  (game.js text, clan-legacies.js epitaphs).
+- Engine (game-state.js → "A6-3b"): `s.arena` (`_blankArena()` in `_newGame` + `_ensurePhase35Fields`; per life) =
+  `{ run, duelists, rings: { [id]: { roster, championId } }, titles, renown, best, callout, sectFame, seenRings, restUntil,
+  record, last }`. `_arenaEnsureRosters` (lazy; the dead are replaced once no run holds the ring), `arenaInfo()`,
+  `startArenaBout(ringId, oppId, blood)`, `arenaWalkAway()`, `answerArenaCallout(accept)`, `_arenaBoutEnd` (from
+  `_finishFight`), `_tickArena` (yearly, beside `_tickFamily`: call-outs + gifts), `_arenaLock` (gone / stage / busy /
+  other_ring / beaten / resting / champion / wounded / stones / no_blood). `_fightOpp` reads `s.arena.duelists` for kind
+  `arena`, and so does the family load guard (a bug found by the smoke test: it dropped arena bouts on the next recalc).
+  Humbling in the arena gives renown instead of cowing the clan; finishing costs `ARENA_KILL_KARMA`.
+- **Balance (sim:quick, active bot):** the first numbers made arena purses 97% of all stones (726k / 24h) → prizes cut
+  ~20×, and after every run the whole Arena rests `ARENA_REST_SECONDS` (30 min, real time) → arena ≈ 54% of an active
+  min-maxer's stones (21k / 24h vs ~11k before the Arena). Still generous: tune in 2.8 QA.
+- UI: renderer/game/arena-view.js (`ArenaView.render` / `tickInPlace` for the rest countdown), `#tab-arena`, NAV_GROUPS
+  Roam → Arena, breakdown kinds `arena` (the purse) + `personfight:<id>:arena`, attention `arena-callout` / `arena-run` /
+  `arena-ring`, CombatView arena titles / purse line / "Fight on · Walk away" result, Sect → Fame "Your Arena wins".
+- Banter: trigger `arena_win` (4 lines per personality + 2 generic).
+- Sim: bot.js `arena()` (active + casual; blood only at ≥ 95%), report section "The Arena".
+- Tests: checks/arena.js (34) · smoke scenarios/arena.js (arena-*.png, all four modes).
 
 ## Gotchas
 

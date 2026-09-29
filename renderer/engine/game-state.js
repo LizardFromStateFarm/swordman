@@ -136,7 +136,10 @@ class GameState {
       _intRegenAcc:     0,
       beasts:           [],
       beastEncounters:  [],
-      bestiary:         {},   // Phase 35 (combat.md): per beast type — fought/won/lost/slain/spared/bound, habitsKnown, returning
+      bestiary:         {},   // Phase 35 (combat.md): per beast type — seen, fought/won/lost/slain/spared/bound, habitsKnown, returning
+      bestiarySeenVer:  1,
+      arena:            this._blankArena(),   // A6-3b (combat.md): rings, duelists, the run, renown, titles, call-outs
+      hunt:             null, // A6-2: { groundId, startedAt, endsAt, found: encId | null } while tracking on a hunting ground
       // Phase 4
       sect:             { id: null, rank: 0, contribution: 0, activeMissions: [] },
       // Phase 5A
@@ -207,6 +210,23 @@ class GameState {
   _ensurePhase35Fields() {
     const s = this._s
     if (!s.bestiary || typeof s.bestiary !== 'object') s.bestiary = {}
+    if (s.hunt === undefined || (s.hunt && (typeof s.hunt !== 'object' || !HUNT_GROUNDS.some(g => g.id === s.hunt.groundId)))) s.hunt = null
+    // A6-2: what you have already met counts as seen in the Bestiary (companions + beasts waiting), once
+    if (!s.bestiarySeenVer) {
+      s.bestiarySeenVer = 1
+      for (const b of [...(s.beasts || []), ...(s.beastEncounters || [])]) if (b?.typeId) this._bestiary(b.typeId).seen = true
+    }
+    // A6-3a: a paused step-down bracket (you are in it); a step-down bout without its bracket is dropped
+    const f = s.family
+    if (f) {
+      if (f.bracket === undefined || (f.bracket && (typeof f.bracket !== 'object' || !Array.isArray(f.bracket.pool)))) f.bracket = null
+      if (f.fight?.kind === 'stepdown' && !f.bracket) f.fight = null
+      if (f.cowedUntilYear === undefined) f.cowedUntilYear = null
+    }
+    // A6-3b: the Arena; an arena bout whose duelist is gone is dropped (and its run, if any, pays out)
+    if (!s.arena || typeof s.arena !== 'object') s.arena = this._blankArena()
+    else for (const [k, v] of Object.entries(this._blankArena())) if (s.arena[k] === undefined) s.arena[k] = v
+    if (f?.fight?.kind === 'arena' && !s.arena.duelists[f.fight.oppId]) f.fight = null
   }
 
   _ensurePhase4Fields() {
@@ -291,7 +311,7 @@ class GameState {
   _blankAutomation() {
     return {
       autoExplore: false, autoExplorePaused: {}, autoExploreLocationId: null, lastExploreLocationId: null,
-      autoSectMissions: false,
+      autoSectMissions: false, autoSectMissionIds: [],
       autoCraft: false, autoCraftRecipes: {},
       autoBreakthrough: false, breakthroughThreshold: AUTO_BREAKTHROUGH_THRESHOLD_DEFAULT,
       _craftAcc: 0,
@@ -312,6 +332,16 @@ class GameState {
     if (typeof a.autoExploreLocationId !== 'string') a.autoExploreLocationId = null                 // null = the last location you sent
     if (a.lastExploreLocationId === undefined) a.lastExploreLocationId = null
     if (typeof a.autoSectMissions !== 'boolean') a.autoSectMissions = false
+    // Which missions Auto-Missions keeps running ([] = re-take whichever one just finished). At most one per slot.
+    if (!Array.isArray(a.autoSectMissionIds)) a.autoSectMissionIds = []
+    a.autoSectMissionIds = [...new Set(a.autoSectMissionIds.filter(id => SECT_MISSIONS.some(m => m.id === id)))].slice(0, SECT_MAX_MISSIONS)
+    if (!(a._slotAcc >= 0)) a._slotAcc = 0
+    // Per-beast Auto-Expedition (Lv.BEAST_AUTO_EXPEDITION_LEVEL+): autoExp on/off, autoExpLocId (null = its last trip)
+    for (const b of s.beasts || []) {
+      if (typeof b.autoExp !== 'boolean') b.autoExp = false
+      if (typeof b.autoExpLocId !== 'string') b.autoExpLocId = null
+      if (typeof b.lastExpLocId !== 'string') b.lastExpLocId = b.expedition?.locationId || null
+    }
     if (typeof a.autoCraft !== 'boolean') a.autoCraft = false
     if (!a.autoCraftRecipes || typeof a.autoCraftRecipes !== 'object') a.autoCraftRecipes = {}
     if (typeof a.autoBreakthrough !== 'boolean') a.autoBreakthrough = false
@@ -675,7 +705,9 @@ class GameState {
              planVer: 1, childWish: null, expecting: [], spouseCd: {}, childTryAt: null,
              lastAff: null, affTrail: [], court: null, seekCooldownAt: null, spurned: [],
              // 1.8b-3b: a fight you are in (spouse duel / head challenge), exchange by exchange
-             fight: null }
+             fight: null,
+             // A6-3a (combat.md): a step-down bracket paused on your bout; no one else challenges you until this year
+             bracket: null, cowedUntilYear: null }
   }
 
   _blankFamilyTally() {
@@ -744,6 +776,7 @@ class GameState {
     if (f.court && f.spouse) f.court = null
     if (f.fight && (typeof f.fight !== 'object' || !f.fight.kind || (f.fight.kind === 'duel' ? !f.spouse
       : f.fight.kind === 'beast' ? !(typeof BEAST_TYPES !== 'undefined' && BEAST_TYPES.some(b => b.id === f.fight.beast?.typeId))
+      : f.fight.kind === 'arena' ? !s.arena?.duelists?.[f.fight.oppId]            // A6-3b: the Arena's own duelists
       : !this.person(f.fight.oppId)))) f.fight = null
     for (const c of f.children) {
       if (!c.cd || typeof c.cd !== 'object') c.cd = {}
@@ -1035,10 +1068,11 @@ class GameState {
     // Spouse: gains a stage every SPOUSE_YEARS_PER_STAGE married years (never ascends, never dies of age).
     const sp = f.spouse
     if (sp) {
-      while (y - f.spouseStageYear >= SPOUSE_YEARS_PER_STAGE && sp.stageIndex < SPOUSE_STAGE_CAP) {
+      // (PLAYER_QI_EDGE: the years a stage takes are capped by your bare pace at their stage and root)
+      for (let need; sp.stageIndex < SPOUSE_STAGE_CAP && y - f.spouseStageYear >= (need = 1 / this._npcStageRate(sp.stageIndex, sp.root?.mult || 1, SPOUSE_YEARS_PER_STAGE, false));) {
         sp.stageIndex++
         sp.maxStage = Math.max(sp.maxStage, sp.stageIndex)
-        f.spouseStageYear += SPOUSE_YEARS_PER_STAGE
+        f.spouseStageYear += need
       }
       if (sp.stageIndex >= SPOUSE_STAGE_CAP) f.spouseStageYear = y
       // Affection drifts slowly back toward AFFECTION_REST.
@@ -1077,7 +1111,7 @@ class GameState {
     for (const c of home) if (c.bond > neglect) c.bond = Math.max(neglect, c.bond - CHILD_NEGLECT_DRIFT)
     for (const c of home) {
       if (this._childAge(c) < AWAKENING_AGE) continue
-      c.xp += (c.root?.mult || 1) / CHILD_YEARS_PER_STAGE
+      c.xp += this._npcStageRate(c.stageIndex, c.root?.mult || 1, CHILD_YEARS_PER_STAGE)   // (PLAYER_QI_EDGE cap)
       this._growChild(c, cap)
     }
 
@@ -1151,11 +1185,12 @@ class GameState {
 
     // 2.6e: while you hold the head seat, a rival with a real shot may call you out — one pending at a time.
     const clan = this._playerClan()
-    if (clan && this.isClanHead() && !f.headChallenge && !f.fight) {
+    if (clan && this.isClanHead() && !f.headChallenge && !f.fight && !f.bracket) {
       if (f.nextChallengerYear == null) f.nextChallengerYear = y + this._randRange(CHALLENGER_EVENT_YEARS)
       else if (y >= f.nextChallengerYear) {
         f.nextChallengerYear = y + this._randRange(CHALLENGER_EVENT_YEARS)
-        const ch = Math.random() < CHALLENGER_EVENT_CHANCE ? this._pickChallenger(clan) : null
+        // A6-3a: while the clan is cowed (you humbled someone), only a grudge-holder dares
+        const ch = Math.random() < CHALLENGER_EVENT_CHANCE ? this._pickChallenger(clan, f.cowedUntilYear != null && y < f.cowedUntilYear) : null
         if (ch) {
           f.headChallenge = { challengerId: ch.id, year: yr }
           this.addEvent({ text: `Year ${yr}: ${Persons.fullName(ch)} strides into the hall and calls you out for the head seat.`, type: 'negative' })
@@ -1166,7 +1201,7 @@ class GameState {
 
     // 2.6e: while an NPC leads (not you), they may eventually tire of the seat — anyone adult may join the
     // tournament that follows, you included.
-    if (clan && clan.headId && clan.headId !== s.self.id && !f.stepDownOffer) {
+    if (clan && clan.headId && clan.headId !== s.self.id && !f.stepDownOffer && !f.bracket) {
       if (f.nextStepDownYear == null) f.nextStepDownYear = y + this._randRange(STEPDOWN_CHECK_YEARS)
       else if (y >= f.nextStepDownYear) {
         f.nextStepDownYear = y + this._randRange(STEPDOWN_CHECK_YEARS)
@@ -1333,7 +1368,7 @@ class GameState {
       }
       discQi *= libMult
       discCap = SECT_HALL_LEVELS[Math.min(own.hallLevel, SECT_HALL_LEVELS.length) - 1].cap
-      fame   += 10 * bIds.length + 25 * own.hallLevel + 5 * (s.sectWar?.warVictories || 0)
+      fame   += 10 * bIds.length + 25 * own.hallLevel + 5 * (s.sectWar?.warVictories || 0) + (s.arena?.sectFame || 0)   // A6-3b: arena wins
     }
     qMul('Disciples’ offerings', 1 + discQi)
 
@@ -1471,6 +1506,7 @@ class GameState {
   tick(dt) {
     const s = this._s
     if (!s || s.interlude) return   // 2.6d: between lives the clock stops until the player chooses
+    if (s.family?.bracket && !s.family.fight) this._bracketStep()   // A6-3a: a bracket saved between bouts runs on
 
     // Phase 30 (M2 task 2.3): game clock. Age/gameYear advance ONLY here — never in initSlot()/offline
     // catch-up (life-loop.md pillar 4; §10 gotcha: "open" means the process is running, tray included,
@@ -1480,7 +1516,8 @@ class GameState {
     const prevYear = Math.floor(s.world.year)
     s.age      += years
     s.world.year += years
-    if (Math.floor(s.world.year) !== prevYear) this._tickFamily()   // Phase 16-lite (M2 task 2.5)
+    if (Math.floor(s.world.year) !== prevYear) { this._tickFamily(); this._tickArena() }   // Phase 16-lite (M2 task 2.5) · A6-3b
+    if (s.hunt && !s.hunt.found && Date.now() >= s.hunt.endsAt) this._resolveHunt()   // Phase 35 (A6-2)
 
     const gain = s.derived.qiPerSecondBoosted * dt
     s.qi = Math.min(s.qi + gain, s.derived.qiCap)
@@ -1721,6 +1758,20 @@ class GameState {
     }
     this._recalc(); this._notify()
     return { ok: true, success }
+  }
+
+  // A6-3a: fight the i-th pending expedition encounter to the death (fight kind `slaughter`). Consumes the encounter
+  // the same way seducing does; the bout plays on the battle page (docs/systems/combat.md).
+  slaughterEncounter(i) {
+    const s = this._s, f = s.family, enc = f.encounters[i]
+    if (!enc) return { ok: false, reason: 'unknown' }
+    if (f.fight) return { ok: false, reason: 'busy' }                 // one fight at a time (shared gate)
+    if ((s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH) return { ok: false, reason: 'wounded' }
+    const person = enc.person
+    f.encounters.splice(i, 1)
+    this.addEvent({ text: `You draw steel on ${Persons.fullName(person)} on the road at ${enc.place}.`, type: 'negative' })
+    this._startFight('slaughter', person, true, this.personFightOdds(person, 'slaughter').chance, { foe: person, place: enc.place })
+    return { ok: true, fight: true }
   }
 
   dismissEncounter(i) {
@@ -2421,7 +2472,7 @@ class GameState {
   // extra (Phase 35 beast battles): { to, beast, stance, power, over } — `to` = exchanges to win (default FIGHT_TO).
   _startFight(kind, opp, lethal, matchChance, extra = null) {
     const s = this._s, f = s.family
-    const to = extra?.to || FIGHT_TO
+    const to = extra?.to || DUEL_TO                  // A6-3a: people fight to DUEL_TO on the battle page (was FIGHT_TO)
     f.fight = { kind, oppId: opp.id, lethal: !!lethal, p: this._exchangeChance(matchChance, to), to, you: 0, them: 0, round: 1,
                 log: [], year: Math.floor(s.world.year), ...(extra || {}) }
     this._emit('fight_start', { kind, lethal: !!lethal })
@@ -2446,7 +2497,41 @@ class GameState {
     const f = this._s.family, fi = f.fight
     if (!fi) return null
     if (fi.kind === 'beast') return this._beastOpp(fi.beast, fi.oppId)
+    if (fi.kind === 'arena') return this._s.arena?.duelists?.[fi.oppId] || null   // A6-3b: the Arena's own duelists
+    if (fi.kind === 'slaughter') return fi.foe || null                            // A6-3a: a road stranger (never in the world registry)
     return fi.kind === 'duel' ? f.spouse : this.person(fi.oppId)
+  }
+
+  // ── A6-3a (combat.md): your fights with people — odds, memory, the end choice ──
+  // A fighter's luck-free power, term by term (the same total as _expectedPower), plus a grudge against you.
+  _personPowerParts(p, self = false) {
+    const stage = p.stageIndex || 0, sn = typeof stageShortName === 'function' ? stageShortName(stage) : 'stage ' + stage
+    const parts = [{ label: `${self ? 'Your' : 'Their'} realm (${sn})`, value: stage * 100 },
+      { label: `${self ? 'Your' : 'Their'} spirit root`, value: Math.round((p.root?.mult || 1) * 10) }]
+    const temper = TOURNAMENT_PERSONALITY_POWER[p.personality] || 0
+    if (temper) parts.push({ label: `${self ? 'Your' : 'Their'} temper (${PERSONALITIES.find(x => x.id === p.personality)?.name || p.personality})`, value: temper })
+    if (!self && p.feud === 'grudge') parts.push({ label: 'Their grudge against you', value: FEUD_POWER })
+    return { parts, total: parts.reduce((a, x) => a + x.value, 0) }
+  }
+
+  // The match odds of a fight with a person (what the battle page + the breakdown card show). The spouse duel keeps its
+  // own stage rule (duelChance); the rest are the logistic of the two powers.
+  personFightOdds(opp, kind) {
+    if (!opp) return null
+    if (kind === 'duel') {
+      const gap = this._s.stageIndex - (opp.stageIndex || 0)
+      return { duel: true, chance: this.duelChance(), gap, base: DUEL_BASE_WIN, perStage: DUEL_WIN_PER_STAGE, range: DUEL_WIN_RANGE }
+    }
+    const you = this._personPowerParts(this._selfAsPerson(), true), them = this._personPowerParts(opp)
+    return { you, them, chance: 1 / (1 + Math.exp(-(you.total - them.total) / TOURNAMENT_SPREAD)) }
+  }
+
+  personRecord(p) { return { fought: 0, youWon: 0, theyWon: 0, spared: 0, raised: 0, humbled: 0, ...(p?.vsYou || {}) } }
+  _noteVsYou(p, field) {
+    if (!p) return
+    p.vsYou = this.personRecord(p)
+    p.vsYou.fought++
+    if (field) p.vsYou[field]++
   }
 
   _fightStyle(opp) { return opp?.beast ? this._beastStyle(opp.typeId, opp.traits) : FIGHT_STYLE[opp?.personality] || FIGHT_STYLE.default }
@@ -2460,6 +2545,8 @@ class GameState {
     let a = YIELD_ACCEPT_BASE + (opp?.morality ?? 0) / 100
     if (fi.kind === 'duel') a += (f.affection - 50) / 200
     else if (fi.kind === 'challenge') a += (this._bondWithHead(opp) - 50) / 200
+    if (opp?.feud === 'debt') a += FEUD_YIELD                   // A6-3a: they owe you / they hate you
+    else if (opp?.feud === 'grudge') a -= FEUD_YIELD
     return Math.max(0.05, Math.min(0.95, a))
   }
 
@@ -2481,6 +2568,14 @@ class GameState {
              habitsKnown: known, yieldAccept: beast ? 1 : this._yieldAccept(opp), log: [...fi.log] }
     if (beast) Object.assign(out, { beast: { ...fi.beast }, stance: fi.stance, over: fi.over || null, health: this._s.health ?? 100,
       wound: this._beastWound(fi.beast, fi.stance), lossWound: this._beastLossWound(fi.beast, fi.stance), power: fi.power })
+    else Object.assign(out, { over: fi.over || null, health: this._s.health ?? 100, wound: FIGHT_WOUND, record: this.personRecord(opp),
+      feud: opp?.feud || null, odds: this.personFightOdds(opp, fi.kind), bracket: this._bracketInfo() })
+    if (fi.kind === 'arena') {                                     // A6-3b: the ring, the purse, what this win would add
+      const A = this._s.arena, R = ARENA_RINGS.find(r => r.id === fi.arena?.ringId)
+      out.arena = { ...fi.arena, ring: R, purse: A.run?.purse || 0, streak: A.run?.streak || 0,
+        prize: R ? this._arenaPrize(R, !!fi.arena?.champion, !!fi.arena?.blood, A.run?.streak || 0, !!fi.arena?.callout) : 0,
+        keep: Math.floor((A.run?.purse || 0) * ARENA_LOSS_KEEP) }
+    }
     return out
   }
 
@@ -2489,14 +2584,14 @@ class GameState {
     if (!fi) return { ok: false, reason: 'no_fight' }
     const opp = this._fightOpp()
     if (!opp) { f.fight = null; this._notify(); return { ok: false, reason: 'no_opponent' } }
+    if (fi.over) return { ok: false, reason: 'decide' }         // a won fight waits for its end choice (beast or person)
     if (fi.kind === 'beast') {                                   // Phase 35: a won battle waits for beastFightFinish()
-      if (fi.over) return { ok: false, reason: 'decide' }
       if (tactic === 'retreat' || tactic === 'yield') return this._beastRetreat(fi, opp)
     }
     if (tactic === 'yield') {
       if (Math.random() < this._yieldAccept(opp)) {
         f.fight = null
-        return { ok: true, done: true, yielded: true, outcome: this._finishFight(fi, opp, false, true) }
+        return { ok: true, done: true, yielded: true, outcome: this._finishFight(fi, opp, false, true), ...this._afterBoutInfo() }
       }
       fi.log.push({ round: fi.round, yieldRefused: true })
       this.addEvent({ text: `You lower your blade — ${opp.given} does not. This ends with one of you.`, type: 'negative' })
@@ -2521,27 +2616,291 @@ class GameState {
     fi.log.push({ round: fi.round, you: tactic, them: theirs, won, ...(dmg ? { dmg } : {}) })
     fi.round++
     if (fi.kind === 'beast') return this._beastAfterExchange(fi, opp, { you: tactic, them: theirs, won, dmg })
-    if (fi.you >= FIGHT_TO || fi.them >= FIGHT_TO) {
+    const to = fi.to || FIGHT_TO, exchange = { you: tactic, them: theirs, won, dmg: won ? 0 : FIGHT_WOUND }
+    if (fi.you >= to) {                                          // A6-3a: you won — the end choice is yours (personFightFinish)
+      fi.over = 'won'
+      this.addEvent({ text: `${opp.given} is down. What happens now is your choice.`, type: 'positive' })
+      this._notify()
+      return { ok: true, done: false, over: 'won', exchange }
+    }
+    if (fi.them >= to) {
       f.fight = null
-      const outcome = this._finishFight(fi, opp, fi.you >= FIGHT_TO, false)
-      return { ok: true, done: true, exchange: { you: tactic, them: theirs, won }, outcome }
+      const outcome = this._finishFight(fi, opp, false, false)
+      return { ok: true, done: true, exchange, outcome, ...this._afterBoutInfo() }
     }
     this._notify()
-    return { ok: true, done: false, exchange: { you: tactic, them: theirs, won } }
+    return { ok: true, done: false, exchange }
   }
 
-  // Applies the old outcome of each fight kind. A lethal loser dies — except a cowardly NPC, who may still yield.
-  _finishFight(fi, opp, won, yielded) {
+  // Applies the outcome of each fight kind. `died` = the loser does not rise: a lethal loss for you, or your Finish.
+  _finishFight(fi, opp, won, yielded, died = !won && fi.lethal && !yielded) {
+    this._noteVsYou(opp, won ? 'youWon' : 'theyWon')
     if (fi.kind === 'duel') return this._duelOutcome(won, yielded)
-    const s = this._s, me = this._selfAsPerson()
-    let died = false, npcYield = false
-    if (fi.lethal && !yielded) {
-      if (won && opp.personality === 'coward' && Math.random() < TOURNAMENT_COWARD_YIELD) npcYield = true
-      else died = true
-    }
-    const res = won ? { winner: me, loser: opp, died, yielded: npcYield } : { winner: opp, loser: me, died, yielded }
+    const me = this._selfAsPerson()
+    const res = won ? { winner: me, loser: opp, died, yielded: false } : { winner: opp, loser: me, died, yielded }
+    if (fi.kind === 'stepdown') return this._stepdownBoutEnd(fi, opp, res)
+    if (fi.kind === 'arena') return this._arenaBoutEnd(fi, opp, res)
+    if (fi.kind === 'slaughter') return this._slaughterOutcome(fi, opp, res)
     const clan = this._playerClan()
     return fi.kind === 'challenge' ? this._challengeOutcome(clan, opp, fi.lethal, res) : this._defendOutcome(clan, opp, fi.lethal, res)
+  }
+
+  // After a won fight: what the end step offers. Lethal → finish / spare; until one yields → raise / humble. The
+  // reaction each would leave is read from their temper (shown to you: tempers are known).
+  personFightChoices() {
+    const f = this._s.family, fi = f.fight
+    if (!fi || fi.kind === 'beast' || fi.over !== 'won') return null
+    const opp = this._fightOpp(), pid = opp?.personality
+    const react = T => T[pid] || T.default
+    const ids = fi.lethal ? ['finish', 'spare'] : ['raise', 'humble']
+    const karma = { finish: fi.kind === 'duel' ? 0 : fi.kind === 'arena' ? ARENA_KILL_KARMA : CHALLENGE_KARMA_DEATH, spare: SPARE_KARMA, raise: 0, humble: 0 }
+    return { kind: fi.kind, lethal: fi.lethal, ids, name: opp?.given, begs: fi.lethal && pid === 'coward',
+      reaction: { spare: react(SPARE_REACTION), raise: react(RAISE_REACTION), humble: react(HUMBLE_REACTION) }, karma,
+      quietYears: fi.kind === 'arena' ? null : HUMBLE_QUIET_YEARS, bracket: this._bracketInfo(),
+      arena: fi.kind === 'arena' ? { ...fi.arena, renownHumble: ARENA_RENOWN.humble } : null }
+  }
+
+  // Your end choice after a won fight with a person. Returns { ok, choice, outcome, feud, next? } — `next` = a step-down
+  // bracket paused on your next bout (a new f.fight is already set).
+  personFightFinish(choice) {
+    const s = this._s, f = s.family, fi = f.fight
+    const ch = this.personFightChoices()
+    if (!ch) return { ok: false, reason: 'no_choice' }
+    if (!ch.ids.includes(choice)) return { ok: false, reason: 'bad_choice' }
+    const opp = this._fightOpp(), yr = Math.floor(s.world.year)
+    f.fight = null
+    let feud = null
+    if (choice !== 'finish') {
+      feud = ch.reaction[choice]
+      if (opp) opp.feud = feud
+      if (choice === 'spare') { s.karma = Math.min(100, s.karma + SPARE_KARMA); if (opp) opp.vsYou = { ...this.personRecord(opp), spared: this.personRecord(opp).spared + 1 } }
+      if (choice === 'raise' && opp) opp.vsYou = { ...this.personRecord(opp), raised: this.personRecord(opp).raised + 1 }
+      if (choice === 'humble') {
+        if (opp) opp.vsYou = { ...this.personRecord(opp), humbled: this.personRecord(opp).humbled + 1 }
+        if (fi.kind === 'arena') s.arena.renown += ARENA_RENOWN.humble   // the crowd loves it; the clan never saw it
+        else f.cowedUntilYear = yr + Math.round(this._randRange(HUMBLE_QUIET_YEARS))
+      }
+      const said = { spare: `You lower your blade and let ${opp?.given} live.`, raise: `You offer ${opp?.given} your hand and help them up.`,
+        humble: `You leave ${opp?.given} in the dust before the whole clan.` }[choice]
+      this.addEvent({ text: `${said} ${feud === 'debt' ? 'They will remember they owe you.' : 'They will not forget it.'}`, type: feud === 'debt' ? 'positive' : 'negative' })
+    }
+    let outcome
+    if (fi.kind === 'duel' && choice === 'spare') {              // the spouse duel, spared: they leave you, alive
+      this._noteVsYou(opp, 'youWon')
+      f.tally.duelWon++
+      s.health = Math.max(1, (s.health ?? 100) - DUEL_WIN_HEALTH_COST)
+      this._spouseEnds('left', `${Persons.fullName(opp)} kneels in the courtyard, beaten. You sheathe your blade; they gather what they own and go.`)
+      this._recalc(); this._notify()
+      outcome = 'spared'
+    } else outcome = this._finishFight(fi, opp, true, false, choice === 'finish')
+    this._emit('fight_end', { kind: fi.kind, choice })
+    return { ok: true, choice, outcome, feud, ...this._afterBoutInfo() }
+  }
+
+  // ── A6-3b (docs/systems/combat.md → "A6-3b"): the Arena ────────────────────
+  // Six rings by realm, each with a roster of duelists + a champion (person records kept in s.arena.duelists, per life).
+  // A run: pay the entry fee, fight bout after bout (f.fight kind 'arena'); each win adds to the purse (prize × streak ×
+  // renown × blood); walk away to be paid, lose to keep half, lose a blood match to die. The A6-3a end choices apply.
+
+  _blankArena() {
+    return { run: null, duelists: {}, rings: {}, titles: [], renown: 0, best: 0, callout: null, sectFame: 0, seenRings: [], restUntil: 0,
+             record: { runs: 0, bouts: 0, won: 0, lost: 0, blood: 0, champions: 0, kills: 0 }, last: null }
+  }
+
+  // Rolls any missing roster slot / champion for every ring you can enter (and again for the dead, once no run holds them)
+  _arenaEnsureRosters() {
+    const s = this._s, A = s.arena, yr = Math.floor(s.world.year)
+    const alive = id => A.duelists[id] && A.duelists[id].alive !== false
+    for (const R of ARENA_RINGS) {
+      if (s.stageIndex < R.minStage) continue
+      const ring = A.rings[R.id] || (A.rings[R.id] = { roster: [], championId: null })
+      if (A.run?.ringId === R.id) continue
+      const make = stage => {
+        const p = this._genPerson({ family: Persons.rollSurname(), bornYear: yr - 20 - this._randInt([0, 40]), stage, role: 'duelist' })
+        p.arenaRing = R.id; A.duelists[p.id] = p; return p.id
+      }
+      ring.roster = ring.roster.filter(alive)
+      while (ring.roster.length < ARENA_ROSTER) ring.roster.push(make(R.band[0] + Math.round((R.band[1] - R.band[0]) * ring.roster.length / Math.max(1, ARENA_ROSTER - 1))))
+      if (!alive(ring.championId)) ring.championId = make(R.champ)
+    }
+    for (const [id, p] of Object.entries(A.duelists))            // the dead that no ring holds any more
+      if (p.alive === false && !Object.values(A.rings).some(r => r.roster.includes(id) || r.championId === id) && s.family?.fight?.oppId !== id) delete A.duelists[id]
+  }
+
+  _arenaMult(streak, blood) {
+    const A = this._s.arena
+    const st = Math.min(ARENA_STREAK_MAX, 1 + ARENA_STREAK_STEP * streak)
+    const rn = 1 + Math.min(ARENA_RENOWN_CAP, Math.max(0, A.renown) * ARENA_RENOWN_PURSE)
+    const bl = blood ? ARENA_BLOOD_MULT : 1
+    return { streak: st, renown: rn, blood: bl, total: st * rn * bl }
+  }
+  // What a win against this duelist would add to the purse right now
+  _arenaPrize(R, champion, blood, streak, callout = false) {
+    const base = (champion ? R.champPrize : R.prize) * (callout ? ARENA_CALLOUT_MULT : 1)
+    return Math.round(base * this._arenaMult(streak, blood).total)
+  }
+
+  // Why you can't fight this duelist now (null = you can). blood = a blood match.
+  _arenaLock(R, id, blood) {
+    const s = this._s, A = s.arena, run = A.run, p = A.duelists[id], ring = A.rings[R.id]
+    if (!p || p.alive === false) return 'gone'
+    if (s.stageIndex < R.minStage) return 'stage'
+    if (s.interlude || s.family?.fight || A.callout) return 'busy'
+    if (run && run.ringId !== R.id) return 'other_ring'
+    if (run?.beaten.includes(id)) return 'beaten'
+    if (!run && (A.restUntil || 0) > Date.now()) return 'resting'
+    if (ring?.championId === id && (run?.wins || 0) < ARENA_CHAMP_AFTER) return 'champion'
+    if ((s.health ?? 100) < ARENA_MIN_HEALTH) return 'wounded'
+    if (!run && s.spiritStones < R.entry) return 'stones'
+    if (blood && ARENA_NO_BLOOD.includes(p.personality)) return 'no_blood'
+    return null
+  }
+
+  // Everything Roam → Arena shows
+  arenaInfo() {
+    const s = this._s, A = s.arena
+    this._arenaEnsureRosters()
+    for (const R of ARENA_RINGS) if (s.stageIndex >= R.minStage && !A.seenRings.includes(R.id)) A.seenRings.push(R.id)   // (the "opens to you" nudge)
+    const run = A.run
+    const rings = ARENA_RINGS.map(R => {
+      const open = s.stageIndex >= R.minStage, ring = A.rings[R.id]
+      const row = (id, champion) => {
+        const p = A.duelists[id]
+        return { id, p, champion, odds: this.personFightOdds(p, 'arena').chance, record: this.personRecord(p), feud: p.feud || null,
+          lock: this._arenaLock(R, id, false), bloodLock: this._arenaLock(R, id, true),
+          prize: this._arenaPrize(R, champion, false, run?.ringId === R.id ? run.streak : 0),
+          bloodPrize: this._arenaPrize(R, champion, true, run?.ringId === R.id ? run.streak : 0) }
+      }
+      const rows = open && ring ? [...ring.roster.map(id => row(id, false)), row(ring.championId, true)] : []
+      return { ...R, open, title: A.titles.includes(R.id), rows, here: run?.ringId === R.id }
+    })
+    const cur = run ? { ...run, ring: ARENA_RINGS.find(r => r.id === run.ringId), mult: this._arenaMult(run.streak, false),
+      champLeft: Math.max(0, ARENA_CHAMP_AFTER - run.wins) } : null
+    const co = A.callout ? { ...A.callout, p: A.duelists[A.callout.id], ring: ARENA_RINGS.find(r => r.id === A.callout.ringId) } : null
+    if (co?.p) co.prize = this._arenaPrize(co.ring, false, co.blood, 0, true)
+    return { rings, run: cur, renown: A.renown, mult: this._arenaMult(run?.streak || 0, false), best: A.best, record: { ...A.record },
+      titles: A.titles.map(id => ARENA_RINGS.find(r => r.id === id)?.title).filter(Boolean), callout: co?.p ? co : null,
+      health: s.health ?? 100, minHealth: ARENA_MIN_HEALTH, last: A.last,
+      restUntil: !run && (A.restUntil || 0) > Date.now() ? A.restUntil : null }
+  }
+
+  // Your choice: fight this duelist (a blood match = to the death, ×3). Starts a run (pays the fee) if none is underway.
+  startArenaBout(ringId, oppId, blood = false) {
+    const s = this._s, A = s.arena, R = ARENA_RINGS.find(r => r.id === ringId)
+    if (!R) return { ok: false, reason: 'unknown' }
+    this._arenaEnsureRosters()
+    const lock = this._arenaLock(R, oppId, !!blood)
+    if (lock) return { ok: false, reason: lock }
+    if (!A.run) {
+      s.spiritStones -= R.entry
+      A.run = { ringId: R.id, purse: 0, streak: 0, wins: 0, beaten: [], startedYear: Math.floor(s.world.year) }
+      A.record.runs++
+      this.addEvent({ text: `You pay ${R.entry} Spirit Stones and step onto the ${R.name}.`, type: 'neutral' })
+    }
+    const opp = A.duelists[oppId]
+    this._startFight('arena', opp, !!blood, this.personFightOdds(opp, 'arena').chance,
+      { arena: { ringId: R.id, blood: !!blood, champion: A.rings[R.id].championId === oppId, callout: false } })
+    return { ok: true, fight: true }
+  }
+
+  // Your choice between bouts: take the purse and go
+  arenaWalkAway() {
+    const s = this._s, A = s.arena, run = A.run
+    if (!run) return { ok: false, reason: 'no_run' }
+    if (s.family?.fight?.kind === 'arena') return { ok: false, reason: 'busy' }
+    s.spiritStones += run.purse
+    const R = ARENA_RINGS.find(r => r.id === run.ringId)
+    this.addEvent({ text: `You walk off the ${R?.name || 'sand'} with ${run.purse} Spirit Stones${run.streak > 1 ? ` and a streak of ${run.streak}` : ''}.`, type: 'positive' })
+    A.last = { walked: true, purse: run.purse, streak: run.streak, ringId: run.ringId }
+    A.run = null
+    A.restUntil = Date.now() + ARENA_REST_SECONDS * 1000
+    this._arenaEnsureRosters()
+    this._recalc(); this._notify()
+    return { ok: true, purse: run.purse }
+  }
+
+  // A bout is over (your loss / yield, or your end choice after a win)
+  _arenaBoutEnd(fi, opp, res) {
+    const s = this._s, A = s.arena, run = A.run, yr = Math.floor(s.world.year)
+    const R = ARENA_RINGS.find(r => r.id === fi.arena?.ringId) || ARENA_RINGS[0]
+    const blood = !!fi.arena?.blood, champion = !!fi.arena?.champion
+    A.record.bouts++
+    if (res.winner.id === s.self.id) {
+      A.record.won++
+      const gain = this._arenaPrize(R, champion, blood, run?.streak || 0, !!fi.arena?.callout)
+      if (run) { run.purse += gain; run.streak++; run.wins++; run.beaten.push(opp.id) }
+      A.renown += ARENA_RENOWN.win + (blood ? ARENA_RENOWN.blood : 0) + (champion ? ARENA_RENOWN.champion : 0)
+      if (blood) A.record.blood++
+      let title = null
+      if (champion && !A.titles.includes(R.id)) { A.titles.push(R.id); A.record.champions++; title = R.title }
+      if (res.died) { opp.alive = false; opp.diedYear = yr; opp.cause = 'arena_blood'; A.record.kills++; s.karma = Math.max(0, s.karma + ARENA_KILL_KARMA) }
+      A.best = Math.max(A.best, run?.streak || 0)
+      if (s.ownSect?.founded) A.sectFame += R.fame
+      else if (s.sect?.id) s.sect.contribution += R.contribution
+      A.last = { won: true, gain, purse: run?.purse || 0, streak: run?.streak || 0, title, ringId: R.id, champLeft: Math.max(0, ARENA_CHAMP_AFTER - (run?.wins || 0)) }
+      this.addEvent({ text: `The ${R.name}: you beat ${Persons.fullName(opp)}${res.died ? ', and they do not rise' : ''}. +${gain} to the purse (${run?.purse || gain} now).${title ? ` The crowd names you ${title}.` : ''}`, type: title ? 'special' : 'positive' })
+      this._emit('arena_win', { ring: R.id, streak: run?.streak || 0, blood, champion, title: !!title })
+      this._recalc(); this._notify()
+      return 'arena_won'
+    }
+    A.record.lost++
+    const keep = run ? Math.floor(run.purse * ARENA_LOSS_KEEP) : 0
+    s.spiritStones += keep
+    A.last = { lost: true, keep, purse: run?.purse || 0, streak: run?.streak || 0, ringId: R.id, died: !!res.died }
+    A.run = null
+    A.restUntil = Date.now() + ARENA_REST_SECONDS * 1000
+    if (res.died) {
+      this.addEvent({ text: `Year ${yr}: on the ${R.name}, ${Persons.fullName(opp)}'s blade is faster. The crowd roars for the wrong one.`, type: 'negative' })
+      this._recalc(); this._notify()
+      this._die('arena_blood')
+      return 'died'
+    }
+    this.addEvent({ text: `The ${R.name}: ${Persons.fullName(opp)} beats you. Your run ends; you keep ${keep} of the purse.`, type: 'negative' })
+    this._arenaEnsureRosters()
+    this._recalc(); this._notify()
+    return 'arena_lost'
+  }
+
+  // Yearly: a grudge-holding duelist may call you out; a duelist who owes you may send a gift (world rolls, not yours)
+  _tickArena() {
+    const s = this._s, A = s.arena
+    if (!A || s.interlude) return
+    const yr = Math.floor(s.world.year)
+    const living = Object.values(A.duelists).filter(p => p.alive !== false)
+    const grudges = living.filter(p => p.feud === 'grudge' && p.arenaRing && s.stageIndex >= (ARENA_RINGS.find(r => r.id === p.arenaRing)?.minStage ?? 0))
+    if (!A.callout && !A.run && !s.family?.fight && grudges.length && Math.random() < ARENA_CALLOUT_CHANCE) {
+      const p = grudges[Math.floor(Math.random() * grudges.length)]
+      A.callout = { id: p.id, ringId: p.arenaRing, year: yr, blood: ARENA_CALLOUT_BLOOD.includes(p.personality) }
+      this.addEvent({ text: `Year ${yr}: ${Persons.fullName(p)} has not forgotten. They call you out on the ${ARENA_RINGS.find(r => r.id === p.arenaRing)?.name}${A.callout.blood ? ', to the death' : ''}.`, type: 'negative' })
+      this._emit('arena_callout', { id: p.id })
+    }
+    const debtors = living.filter(p => p.feud === 'debt')
+    if (debtors.length && Math.random() < ARENA_GIFT_CHANCE) {
+      const p = debtors[Math.floor(Math.random() * debtors.length)], R = ARENA_RINGS.find(r => r.id === p.arenaRing) || ARENA_RINGS[0]
+      s.spiritStones += R.prize; p.feud = null
+      this.addEvent({ text: `${Persons.fullName(p)} sends ${R.prize} Spirit Stones with a note: "For the hand you gave me on the sand. We are even."`, type: 'positive' })
+    }
+  }
+
+  // Your choice: answer a call-out (their ring, their stakes, ARENA_CALLOUT_MULT × the purse) or let it go (−renown)
+  answerArenaCallout(accept) {
+    const s = this._s, A = s.arena, c = A.callout
+    if (!c) return { ok: false, reason: 'no_callout' }
+    const p = A.duelists[c.id], R = ARENA_RINGS.find(r => r.id === c.ringId)
+    if (accept && (s.family?.fight || A.run)) return { ok: false, reason: 'busy' }
+    A.callout = null
+    if (!p || p.alive === false || !R) { this._notify(); return { ok: true, outcome: 'moot' } }
+    if (!accept) {
+      A.renown += ARENA_RENOWN.declined
+      this.addEvent({ text: `You let ${Persons.fullName(p)}'s challenge go unanswered. The arena crowds call it fear.`, type: 'negative' })
+      this._notify()
+      return { ok: true, outcome: 'declined' }
+    }
+    A.run = { ringId: R.id, purse: 0, streak: 0, wins: 0, beaten: [], startedYear: Math.floor(s.world.year), callout: true }
+    A.record.runs++
+    this._startFight('arena', p, !!c.blood, this.personFightOdds(p, 'arena').chance,
+      { arena: { ringId: R.id, blood: !!c.blood, champion: A.rings[R.id]?.championId === p.id, callout: true } })
+    return { ok: true, fight: true }
   }
 
   // ── Phase 35 (docs/systems/combat.md): beast battles ────────────────────────
@@ -2550,7 +2909,7 @@ class GameState {
 
   bestiaryEntry(typeId) {
     const b = this._s.bestiary?.[typeId]
-    return { fought: 0, won: 0, lost: 0, slain: 0, spared: 0, bound: 0, habitsKnown: false, returning: null, ...(b || {}) }
+    return { seen: false, fought: 0, won: 0, lost: 0, slain: 0, spared: 0, bound: 0, habitsKnown: false, returning: null, ...(b || {}) }
   }
   _bestiary(typeId) {
     const s = this._s
@@ -2681,6 +3040,7 @@ class GameState {
     if (fi.stance !== 'slay') s.health = Math.max(1, s.health)
     if (s.health <= 0) return this._beastFightDeath(fi, opp)
     this.addEvent({ text: `The ${opp.name} throws you down (−${extra} Health). You crawl away; it still prowls Roam → Beasts.`, type: 'negative' })
+    this._emit('battle_lost', { beast: opp.name })
     this._recalc(); this._notify()
     return 'lost'
   }
@@ -2695,6 +3055,7 @@ class GameState {
     b.fought++
     if (fi.round > 1) b.habitsKnown = true                       // you traded blows: you saw how it fights
     this.addEvent({ text: `You break away from the ${opp.name}. Its parting blow costs you ${dmg} Health; it still prowls Roam → Beasts.`, type: 'negative' })
+    this._emit('battle_lost', { beast: opp.name, retreated: true })
     this._recalc(); this._notify()
     return { ok: true, done: true, retreated: true, outcome: 'retreated', dmg }
   }
@@ -2758,17 +3119,20 @@ class GameState {
         this.addEvent({ text: `Something small cries in the ${name}'s den. A cub waits in Roam → Beasts.`, type: 'special' })
         res.cub = true
       }
-      this._emit('beast_slain', { name, tier: prof.tier.id })
+      this._emit('beast_slain', { beast: name, tier: prof.tier.id })
     } else if (choice === 'spare' || choice === 'flee') {
       b.spared++
       s.karma = Math.max(0, Math.min(100, s.karma + ch.spareKarma))
       if (!ch.cub && Math.random() < BEAST_RETURN_CHANCE) {
-        const g = Math.max(0.2, Math.min(0.85, BEAST_GRATEFUL_BASE + (s.karma - 50) / 100))
+        // karma pulls toward gratitude; a long slay record (every kind) pulls toward vengeance (A6-2)
+        const slain = Object.values(s.bestiary || {}).reduce((a, e) => a + (e.slain || 0), 0)
+        const g = Math.max(0.2, Math.min(0.85, BEAST_GRATEFUL_BASE + (s.karma - 50) / 100 - Math.min(BEAST_SLAYER_VENGEFUL_MAX, slain * BEAST_SLAYER_VENGEFUL)))
         b.returning = Math.random() < g ? 'grateful' : 'vengeful'
         res.returning = b.returning
       }
       this.addEvent({ text: choice === 'spare' ? `You lower your blade. The ${name} limps into the trees and looks back once.`
         : `The ${name} breaks off and flees. It will remember this place, and you.`, type: 'neutral' })
+      this._emit('beast_spared', { beast: name })
     } else {                                                     // bind: tame it now, broken to your will
       if (!ch.bindFree) {
         s.inventory['beast_taming_talisman']--
@@ -2782,6 +3146,7 @@ class GameState {
       res.beast = beast
       this._claimFirst('first_beast')
       this.addEvent({ text: `Beaten and bound, the ${name} bows its head. It joins you at Lv.${BEAST_BOUND_LEVEL}.`, type: 'special' })
+      this._emit('beast_spared', { beast: name, bound: true })
       this._emit('beast_tamed', { name })
     }
     res.karma = Math.round((s.karma - karma0) * 10) / 10
@@ -3084,21 +3449,36 @@ class GameState {
 
   // ── 2.6d (clan-succession.md): between lives — succession, reign, rebirth ─────────────────────────────
 
+  // User rule (2026-09-29, PLAYER_QI_EDGE): an NPC's stages per game year at `stage` — its own flat pace (root ÷
+  // yearsPerStage), but never more than your bare pace at that stage and root ÷ PLAYER_QI_EDGE. Your bare pace = the
+  // stage's baseQps × root, filling its qiCap, over the open seconds one game year takes.
+  _npcStageRate(stage, rootMult, yearsPerStage, flatUsesRoot = true) {   // (a spouse's flat pace ignores root)
+    const flat = (flatUsesRoot ? rootMult : 1) / yearsPerStage
+    const st = CULTIVATION_STAGES[stage]
+    if (!st || !(st.qiCap > 0) || !isFinite(st.qiCap)) return flat
+    const yours = st.baseQps * rootMult * (3600 / GAME_YEARS_PER_OPEN_HOUR) / st.qiCap
+    return Math.min(flat, yours / PLAYER_QI_EDGE)
+  }
+
   // Coarse NPC growth up to `year` for every living person in the registry (never the living player, who isn't
   // in it). Stage progress only counts years past AWAKENING_AGE; capped at NPC_STAGE_CAP. No Math.random().
+  // npcXp = progress through the current stage (0–1); each stage has its own pace (_npcStageRate).
   _advancePersons(w, year) {
     for (const p of Object.values(w.persons)) {
       if (p.alive === false) continue
       const from = Math.max(p.grownYear ?? year, (p.bornYear ?? 0) + AWAKENING_AGE)
       p.grownYear = year
       if (year <= from || (p.stageIndex || 0) >= NPC_STAGE_CAP) continue
-      p.npcXp = (p.npcXp || 0) + (year - from) * (p.root?.mult || 1) / NPC_YEARS_PER_STAGE
-      const gain = Math.floor(p.npcXp)
-      if (gain > 0) {
-        p.npcXp -= gain
-        p.stageIndex = Math.min(NPC_STAGE_CAP, (p.stageIndex || 0) + gain)
-        p.maxStage = Math.max(p.maxStage || 0, p.stageIndex)
+      let left = year - from, xp = p.npcXp || 0
+      p.stageIndex = p.stageIndex || 0
+      while (left > 0 && p.stageIndex < NPC_STAGE_CAP) {
+        const rate = this._npcStageRate(p.stageIndex, p.root?.mult || 1, NPC_YEARS_PER_STAGE)
+        const need = (1 - xp) / rate
+        if (left < need) { xp += left * rate; left = 0; break }
+        left -= need; xp = 0; p.stageIndex++
       }
+      p.npcXp = p.stageIndex >= NPC_STAGE_CAP ? 0 : xp
+      p.maxStage = Math.max(p.maxStage || 0, p.stageIndex)
     }
   }
 
@@ -3649,7 +4029,7 @@ class GameState {
     clan.tradition.challenges = (clan.tradition.challenges || 0) + 1
     this.addEvent({ text: `Year ${yr}: you call out ${Persons.fullName(head)} before the clan. ${lethal ? 'They answer: to the death.' : 'They answer: until one yields.'}`, type: 'special' })
     // 1.8b-3b: fought exchange by exchange on the fight card; the outcome lands in _challengeOutcome().
-    this._startFight('challenge', head, lethal, this._powerChance(this._selfAsPerson(), head))
+    this._startFight('challenge', head, lethal, this.personFightOdds(head, 'challenge').chance)
     return { ok: true, fight: true, lethal }
   }
 
@@ -3684,12 +4064,19 @@ class GameState {
   }
 
   // A challenger from the roster with a real shot: adult, on the clan roster, within a plausible stage of you.
-  _pickChallenger(clan) {
+  // A6-3a: a debtor never calls you out; a grudge-holder is FEUD_CHALLENGE_WEIGHT× likelier (and the only one who dares
+  // while the clan is cowed).
+  _pickChallenger(clan, cowed = false) {
     const w = this._s.world, s = this._s, yr = Math.floor(w.year)
     const ids = [...new Set(this._clanMemberIds(clan))].filter(id => id !== s.self.id)
-    const cands = ids.map(id => w.persons[id]).filter(p => p && p.alive !== false && !p.estranged &&
+    const cands = ids.map(id => w.persons[id]).filter(p => p && p.alive !== false && !p.estranged && p.feud !== 'debt' &&
+      (!cowed || p.feud === 'grudge') &&
       yr - (p.bornYear ?? 0) >= ADULT_AGE && Math.abs((p.stageIndex || 0) - s.stageIndex) <= CHALLENGER_STAGE_GAP_MAX)
-    return cands.length ? cands[Math.floor(Math.random() * cands.length)] : null
+    if (!cands.length) return null
+    const wt = p => p.feud === 'grudge' ? FEUD_CHALLENGE_WEIGHT : 1
+    let r = Math.random() * cands.reduce((a, p) => a + wt(p), 0)
+    for (const p of cands) if ((r -= wt(p)) < 0) return p
+    return cands[cands.length - 1]
   }
 
   // Public (UI): resolve a pending NPC challenge against you (you're head) — YOUR call on lethality.
@@ -3703,7 +4090,7 @@ class GameState {
     clan.tradition.challenges = (clan.tradition.challenges || 0) + 1
     lethal = !!lethal
     // 1.8b-3b: your call on lethality stays here; the fight itself is on the fight card (→ _defendOutcome).
-    this._startFight('defend', challenger, lethal, this._powerChance(this._selfAsPerson(), challenger))
+    this._startFight('defend', challenger, lethal, this.personFightOdds(challenger, 'defend').chance)
     return { ok: true, fight: true, lethal }
   }
 
@@ -3728,6 +4115,34 @@ class GameState {
     }
     this._installHead(clan, challenger.id)
     this.addEvent({ text: `Year ${yr}: ${Persons.fullName(challenger)} beats you before the whole clan. You step down; they take the head seat.`, type: 'negative' })
+    this._recalc(); this._notify()
+    return 'lost_nonlethal'
+  }
+
+  // A road encounter fought to the death (A6-3a). A stranger has no clan, seat or name worth keeping: the loser simply
+  // does not get up. Killing them costs karma; the end step can spare them instead (they walk on). Losing is death.
+  _slaughterOutcome(fi, opp, res) {
+    const s = this._s, yr = Math.floor(s.world.year)
+    this._applyLethalTrauma(res, fi.lethal)
+    const name = Persons.fullName(opp)
+    if (res.winner.id === s.self.id) {
+      if (res.died) {
+        s.karma = Math.max(0, s.karma + CHALLENGE_KARMA_DEATH)
+        this.addEvent({ text: `Year ${yr}: you cut ${name} down on the road at ${fi.place || 'the wayside'} and leave them where they fell.`, type: 'negative' })
+        this._recalc(); this._notify()
+        return 'won_lethal'
+      }
+      this.addEvent({ text: `Year ${yr}: you beat ${name} down and let them crawl away.`, type: 'neutral' })
+      this._recalc(); this._notify()
+      return 'won_nonlethal'
+    }
+    if (res.died) {
+      this.addEvent({ text: `Year ${yr}: ${name}'s blade is faster. You die on the road, far from home.`, type: 'negative' })
+      this._recalc(); this._notify()
+      this._die('slaughter')
+      return 'lost_lethal'
+    }
+    this.addEvent({ text: `Year ${yr}: you yield. ${name} lets you live, and walks on.`, type: 'neutral' })
     this._recalc(); this._notify()
     return 'lost_nonlethal'
   }
@@ -3811,9 +4226,91 @@ class GameState {
     }
     const lethal = head ? this._headDecidesLethal(head, clan) : true
     this.addEvent({ text: `Year ${yr}: ${pool.length} step forward to contest the seat${lethal ? ', to the death' : ''}.`, type: lethal ? 'negative' : 'neutral' })
+    if (pool.includes(s.self.id)) {                              // A6-3a: you are in it — your bouts are played on the battle page
+      f.bracket = { headId: off.headId, yr, lethal, pool: [...pool], round: 1, order: null, i: 0, next: [], eliminated: [], selfOut: null, deaths: 0 }
+      return { ok: true, joined: true, lethal, ...this._bracketStep() }
+    }
     const result = this._runBracket(pool, lethal, yr)
     for (const line of result.lines) this.addEvent({ text: line, type: line.includes('do not rise') ? 'negative' : 'neutral' })
-    const joined = pool.includes(s.self.id)
+    return this._finishStepDown(clan, result, lethal, false, yr)
+  }
+
+  // A6-3a: runs the paused bracket (f.bracket) until a pairing includes you — then starts that bout (f.fight kind
+  // 'stepdown') and returns { outcome: 'bout', next: true } — or until one stands, then settles the seat. NPC–NPC bouts
+  // are rolled (_resolveFight) and logged as they happen. Same shape as _runBracket.
+  _bracketStep() {
+    const s = this._s, f = s.family, br = f.bracket, self = s.self.id, w = s.world
+    if (!br) return { outcome: 'moot' }
+    const clan = this._playerClan()
+    if (!clan) { f.bracket = null; return { outcome: 'moot' } }
+    const get = id => id === self ? this._selfAsPerson() : w.persons[id]
+    const nameOf = id => id === self ? s.name : Persons.fullName(w.persons[id])
+    for (let guard = 0; guard < 500; guard++) {
+      if (!br.order) {
+        br.pool = br.pool.filter(id => id === self ? !br.selfOut : w.persons[id] && w.persons[id].alive !== false)
+        if (br.pool.length <= 1) break
+        br.roundLethal = br.lethal && br.pool.length > TOURNAMENT_TOP
+        br.order = [...br.pool].sort(() => Math.random() - 0.5); br.next = []; br.i = 0
+        if (br.order.length % 2) br.next.push(br.order.pop())
+      }
+      if (br.i >= br.order.length) { br.pool = br.next; br.order = null; br.round++; continue }
+      const idA = br.order[br.i], idB = br.order[br.i + 1]
+      if (idA === self || idB === self) {
+        const opp = get(idA === self ? idB : idA)
+        br.oppId = opp.id
+        this._startFight('stepdown', opp, br.roundLethal, this.personFightOdds(opp, 'stepdown').chance)
+        return { outcome: 'bout', next: true }
+      }
+      const pa = get(idA), pb = get(idB)
+      const res = this._resolveFight(pa, pb, br.roundLethal)
+      this._applyLethalTrauma(res, br.roundLethal)
+      const winId = res.winner === pa ? idA : idB, loseId = winId === idA ? idB : idA
+      this._bracketRecord(br, winId, loseId, res)
+      this.addEvent({ text: `${nameOf(winId)} defeats ${nameOf(loseId)}${res.died ? ', and they do not rise' : res.yielded ? ' as they yield' : ''}.`, type: res.died ? 'negative' : 'neutral' })
+    }
+    const ranking = [br.pool[0], ...br.eliminated.sort((a, b) => (b.round - a.round) || (b.stage - a.stage)).map(e => e.id)]
+    const result = { winnerId: br.pool[0], ranking, deaths: br.deaths, lines: [], selfOut: br.selfOut }
+    f.bracket = null
+    return this._finishStepDown(clan, result, br.lethal, true, br.yr)
+  }
+
+  _bracketRecord(br, winId, loseId, res) {
+    const self = this._s.self.id
+    br.next.push(winId)
+    if (res.died) { br.deaths++; if (loseId === self) br.selfOut = 'died'; else this._killPerson(loseId, br.yr, 'stepdown_tournament') }
+    else if (loseId === self && !br.selfOut) br.selfOut = 'eliminated'
+    const lp = loseId === self ? this._selfAsPerson() : this._s.world.persons[loseId]
+    br.eliminated.push({ id: loseId, round: br.round, died: !!res.died, stage: lp?.stageIndex ?? 0 })
+    br.i += 2
+  }
+
+  // Your bout in the bracket is over (lost / yielded, or your end choice after a win): record it, run on.
+  _stepdownBoutEnd(fi, opp, res) {
+    const s = this._s, br = s.family.bracket
+    if (!br) return 'moot'
+    this._applyLethalTrauma(res, fi.lethal)
+    const youWon = res.winner.id === s.self.id
+    this._bracketRecord(br, res.winner.id, res.loser.id, res)
+    const oppName = Persons.fullName(opp)
+    this.addEvent({ text: youWon ? `You defeat ${oppName}${res.died ? ', and they do not rise' : ''}.` : `${oppName} defeats you${res.died ? '' : '. You are out of the contest'}.`, type: youWon ? 'positive' : 'negative' })
+    return this._bracketStep().outcome
+  }
+
+  // What the battle page shows about a bracket you are in (null when none): round, fighters left, blood or not.
+  _bracketInfo() {
+    const br = this._s.family?.bracket
+    if (!br) return null
+    return { round: br.round, left: (br.pool || []).length, lethal: !!br.roundLethal, bloodTo: TOURNAMENT_TOP }
+  }
+  // After a person fight ends: a step-down bracket may already have started your next bout.
+  _afterBoutInfo() {
+    const fi = this._s.family?.fight
+    return fi?.kind === 'stepdown' && !fi.over && fi.you === 0 && fi.them === 0 ? { next: true } : {}
+  }
+
+  // Settles the seat after a step-down bracket (yours, played; or the one you watched). `joined` = you were in it.
+  _finishStepDown(clan, result, lethal, joined, yr) {
+    const s = this._s, f = s.family, w = s.world
     const youWin = result.winnerId === s.self.id
     if (lethal) clan.tradition.lethalTournaments++; else clan.tradition.peacefulSuccessions++
     let branchLines = []
@@ -3892,7 +4389,7 @@ class GameState {
   // No pending family matter may overlap a war/secession decision — same "busy" gate chooseHeir/startTournament use.
   _branchWarBusy() {
     const f = this._s.family
-    return !!(f.tournament || f.headChallenge || f.stepDownOffer || f.fight)
+    return !!(f.tournament || f.headChallenge || f.stepDownOffer || f.fight || f.bracket)
   }
 
   // Public (UI): can you press your branch head to war right now? (member, not head, off cooldown)
@@ -4206,41 +4703,7 @@ class GameState {
         let beastType = eligible[eligible.length - 1]
         for (const bt of eligible) { rw -= bt.encounterChance; if (rw <= 0) { beastType = bt; break } }
 
-        // traits: each roll draws from the type's favored traits with the tier's chance, else from the whole pool
-        const traitKeys = Object.keys(typeof BEAST_TRAITS !== 'undefined' ? BEAST_TRAITS : {})
-        const tier = (typeof BEAST_TIERS !== 'undefined' && BEAST_TIERS[beastType.tier]) || { favored: 0 }
-        const fav = (beastType.favoredTraits || []).filter(t => traitKeys.includes(t))
-        const traits = []
-        for (let guard = 0; traits.length < 3 && traitKeys.length >= 3 && guard < 50; guard++) {
-          const favLeft = fav.filter(t => !traits.includes(t))
-          const pool = favLeft.length && Math.random() < tier.favored ? favLeft : traitKeys
-          const t = pool[Math.floor(Math.random() * pool.length)]
-          if (!traits.includes(t)) traits.push(t)
-        }
-        const V = (beastType.variants || [])[0]
-        const variant = V && Math.random() < (typeof BEAST_VARIANT_CHANCE !== 'undefined' ? BEAST_VARIANT_CHANCE : 0) ? V.id : null
-        // Phase 35: a beast you spared (or drove off) comes back on its kind's next sighting, grateful or vengeful
-        const back = s.bestiary?.[beastType.id]?.returning || null
-        if (back) s.bestiary[beastType.id].returning = null
-        s.beastEncounters = s.beastEncounters || []
-        s.beastEncounters.push({
-          id: `${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-          typeId: beastType.id,
-          ...(variant ? { variant } : {}),
-          traits,
-          ...(back ? { mood: back } : {}),
-          seenAt: Date.now(),
-        })
-        const seenName = variant ? V.name : beastType.name
-        this.addEvent({
-          text: back === 'grateful' ? `The ${beastType.name} you spared has found you again. It follows at a distance and asks for nothing. (Roam → Beasts: it would come without a talisman.)`
-            : back === 'vengeful' ? `The ${beastType.name} you let go has come back bigger, and it has not forgotten you. It waits in Roam → Beasts.`
-            : beastType.tier === 'legendary'
-            ? `The sky darkens. A ${seenName} watches you from the clouds, a legendary beast few cultivators ever see. It waits in Roam → Beasts, for now.`
-            : `A wild ${seenName}${variant ? ' (a rare colour)' : ''} was spotted during the expedition! Tame it or fight it in Roam → Beasts.`,
-          type: 'special',
-        })
-        this._emit('beast_sighted', { name: seenName, tier: beastType.tier, variant: !!variant })
+        this._spawnBeastEncounter(beastType)
       }
     }
 
@@ -4408,6 +4871,128 @@ class GameState {
 
   // ── Phase 3: Spiritual Beasts ─────────────────────────────────────────────
 
+  // One wild beast sighting (an expedition roll, or a hunt that found its quarry — A6-2): traits, rare colour, a returning
+  // grateful/vengeful mood, the log line. The random draws are in the same order as the pre-A6-2 inline code (sim seeds).
+  _spawnBeastEncounter(beastType, hunt = null) {
+    const s = this._s
+    // traits: each roll draws from the type's favored traits with the tier's chance, else from the whole pool
+    const traitKeys = Object.keys(typeof BEAST_TRAITS !== 'undefined' ? BEAST_TRAITS : {})
+    const tier = (typeof BEAST_TIERS !== 'undefined' && BEAST_TIERS[beastType.tier]) || { favored: 0 }
+    const fav = (beastType.favoredTraits || []).filter(t => traitKeys.includes(t))
+    const traits = []
+    for (let guard = 0; traits.length < 3 && traitKeys.length >= 3 && guard < 50; guard++) {
+      const favLeft = fav.filter(t => !traits.includes(t))
+      const pool = favLeft.length && Math.random() < tier.favored ? favLeft : traitKeys
+      const t = pool[Math.floor(Math.random() * pool.length)]
+      if (!traits.includes(t)) traits.push(t)
+    }
+    const V = (beastType.variants || [])[0]
+    const variant = V && Math.random() < (typeof BEAST_VARIANT_CHANCE !== 'undefined' ? BEAST_VARIANT_CHANCE : 0) ? V.id : null
+    // Phase 35: a beast you spared (or drove off) comes back on its kind's next sighting, grateful or vengeful
+    const back = s.bestiary?.[beastType.id]?.returning || null
+    if (back) s.bestiary[beastType.id].returning = null
+    s.beastEncounters = s.beastEncounters || []
+    const enc = {
+      id: `${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      typeId: beastType.id,
+      ...(variant ? { variant } : {}),
+      traits,
+      ...(back ? { mood: back } : {}),
+      ...(hunt ? { hunted: hunt.id } : {}),
+      seenAt: Date.now(),
+    }
+    s.beastEncounters.push(enc)
+    this._bestiary(beastType.id).seen = true
+    const seenName = variant ? V.name : beastType.name
+    this.addEvent({
+      text: back === 'grateful' ? `The ${beastType.name} you spared has found you again. It follows at a distance and asks for nothing. (Roam → Beasts: it would come without a talisman.)`
+        : back === 'vengeful' ? `The ${beastType.name} you let go has come back bigger, and it has not forgotten you. It waits in Roam → Beasts.`
+        : beastType.tier === 'legendary'
+        ? `The sky darkens. A ${seenName} watches you from the clouds, a legendary beast few cultivators ever see. It waits in Roam → Beasts, for now.`
+        : `A wild ${seenName}${variant ? ' (a rare colour)' : ''} was ${hunt ? 'found in ' + hunt.name : 'spotted during the expedition'}! Tame it or fight it in Roam → Beasts.`,
+      type: 'special',
+    })
+    this._emit('beast_sighted', { name: seenName, tier: beastType.tier, variant: !!variant })
+    return enc
+  }
+
+  // ── Phase 35 (A6-2, combat.md → "the Hunt"): go looking for a beast on a hunting ground ──
+  _huntLock(g) {
+    const s = this._s
+    // a finished hunt ends once its beast is dealt with (tamed, fought to the end, or gone)
+    if (s.hunt?.found && !(s.beastEncounters || []).some(e => e.id === s.hunt.found)) s.hunt = null
+    if (!g) return 'unknown'
+    if (s.stageIndex < g.minStage) return 'stage'
+    if (s.hunt) return 'busy'
+    if ((s.beastEncounters || []).length >= 3) return 'crowded'
+    if ((s.spiritStones || 0) < (g.cost || 0)) return 'stones'
+    return null
+  }
+
+  // The beasts a ground can yield for you right now (minStage ≤ yours), with their share of the draw.
+  _huntTable(g) {
+    const s = this._s
+    const rows = Object.entries(g.types).map(([id, mult]) => ({ type: BEAST_TYPES.find(b => b.id === id), mult }))
+      .filter(r => r.type)
+    const open = rows.filter(r => r.type.minStage <= s.stageIndex)
+    const W = open.reduce((a, r) => a + r.type.encounterChance * r.mult, 0)
+    return rows.map(r => ({ id: r.type.id, name: r.type.name, tier: r.type.tier, minStage: r.type.minStage,
+      open: r.type.minStage <= s.stageIndex, chance: r.type.minStage <= s.stageIndex && W > 0 ? r.type.encounterChance * r.mult / W : 0,
+      seen: !!s.bestiary?.[r.type.id]?.seen }))
+  }
+
+  huntInfo() {
+    const s = this._s, order = BEAST_TIER_ORDER
+    this._huntLock(HUNT_GROUNDS[0])                              // (clears a finished hunt whose beast is gone)
+    const grounds = HUNT_GROUNDS.map(g => {
+      const table = this._huntTable(g)
+      const danger = table.reduce((best, r) => order.indexOf(r.tier) > order.indexOf(best) ? r.tier : best, 'common')
+      return { ...g, table, danger, lock: this._huntLock(g) }
+    })
+    const h = s.hunt
+    const cur = h ? { ...h, ground: HUNT_GROUNDS.find(g => g.id === h.groundId), left: Math.max(0, Math.ceil((h.endsAt - Date.now()) / 1000)),
+      foundEnc: h.found ? (s.beastEncounters || []).find(e => e.id === h.found) || null : null } : null
+    return { grounds, hunt: cur }
+  }
+
+  startHunt(groundId) {
+    const s = this._s, g = HUNT_GROUNDS.find(x => x.id === groundId)
+    const lock = this._huntLock(g)
+    if (lock) return { ok: false, reason: lock }
+    s.spiritStones -= g.cost || 0
+    s.hunt = { groundId, startedAt: Date.now(), endsAt: Date.now() + g.trackSeconds * 1000, found: null }
+    this.addEvent({ text: `You set out into ${g.name} to track a beast.`, type: 'neutral' })
+    this._notify()
+    return { ok: true }
+  }
+
+  // Calls off a search, or clears a finished one once you have seen what it found. The cost is not refunded.
+  cancelHunt() {
+    const s = this._s
+    if (!s.hunt) return { ok: false, reason: 'no_hunt' }
+    const found = !!s.hunt.found
+    s.hunt = null
+    if (!found) this.addEvent({ text: 'You call off the hunt and come home empty-handed.', type: 'neutral' })
+    this._notify()
+    return { ok: true }
+  }
+
+  _resolveHunt() {
+    const s = this._s, g = HUNT_GROUNDS.find(x => x.id === s.hunt.groundId)
+    const table = g ? this._huntTable(g).filter(r => r.open) : []
+    if (!table.length || (s.beastEncounters || []).length >= 3) {
+      this.addEvent({ text: `The trail in ${g?.name || 'the wilds'} goes cold. You come home with nothing.`, type: 'neutral' })
+      s.hunt = null
+      return
+    }
+    let r = Math.random()
+    let pick = table[table.length - 1]
+    for (const row of table) { r -= row.chance; if (r <= 0) { pick = row; break } }
+    const enc = this._spawnBeastEncounter(BEAST_TYPES.find(b => b.id === pick.id), g)
+    s.hunt.found = enc.id
+    this._notify()
+  }
+
   // What a beast (encounter or companion record) is: its type, tier, variant, display name, art key and Might
   // (the multiplier on what its traits do: tier × type override × variant). DOM-free; the UI reads it too.
   beastProfile(rec) {
@@ -4454,6 +5039,7 @@ class GameState {
     s.beasts = s.beasts || []
     s.beasts.push(beast)
 
+    this._bestiary(enc.typeId).seen = true
     this._claimFirst('first_beast')
     this._recalc(); this._notify()
     this._emit('beast_tamed', { name: beast.name })
@@ -4474,8 +5060,51 @@ class GameState {
     const duration = hasSwift ? Math.floor(loc.duration * 0.85) : loc.duration
 
     beast.expedition = { locationId, endsAt: Date.now() + duration * 1000 }
+    beast.lastExpLocId = locationId
     this._notify()
     return { ok: true, loc }
+  }
+
+  // Auto-Expedition (per beast, from Lv.BEAST_AUTO_EXPEDITION_LEVEL): where it goes next — its picked location, or
+  // its last trip. Read at launch time, so changing the pick while it is out takes effect when it comes home.
+  beastAutoUnlocked(beast) { return !!beast && beast.level >= BEAST_AUTO_EXPEDITION_LEVEL }
+  beastAutoTarget(beast) {
+    const id = beast?.autoExpLocId || beast?.lastExpLocId
+    return id ? LOCATIONS.find(l => l.id === id) || null : null
+  }
+  setBeastAuto(beastId, on) {
+    const beast = (this._s.beasts || []).find(b => b.id === beastId)
+    if (!beast) return { ok: false, reason: 'not_found' }
+    if (on && !this.beastAutoUnlocked(beast)) return { ok: false, reason: 'locked' }
+    beast.autoExp = !!on
+    if (on) this._maybeAutoBeast(beast)          // at home already: sets out now
+    this._save(); this._notify()
+    return { ok: true }
+  }
+  setBeastAutoLocation(beastId, locationId) {
+    const s = this._s
+    const beast = (s.beasts || []).find(b => b.id === beastId)
+    if (!beast) return { ok: false, reason: 'not_found' }
+    if (locationId != null) {
+      const loc = LOCATIONS.find(l => l.id === locationId)
+      if (!loc) return { ok: false, reason: 'unknown_location' }
+      if (s.stageIndex < loc.minStage) return { ok: false, reason: 'stage' }
+    }
+    beast.autoExpLocId = locationId ?? null
+    if (beast.autoExp) this._maybeAutoBeast(beast)
+    this._save(); this._notify()
+    return { ok: true }
+  }
+  _maybeAutoBeast(beast) {
+    const s = this._s
+    if (s.playMode !== 'idle' || !beast?.autoExp || beast.expedition || !this.beastAutoUnlocked(beast)) return
+    const loc = this.beastAutoTarget(beast)
+    if (!loc || s.stageIndex < loc.minStage) return
+    const res = this.sendBeastExpedition(beast.id, loc.id)
+    if (res.ok) {
+      this.addEvent({ text: `[Auto] ${beast.name} sets out for ${loc.name}.`, type: 'neutral' })
+      this._emit('auto_fire', { system: 'beast_expedition' })
+    }
   }
 
   resolveBeastExpedition(beastId) {
@@ -4511,6 +5140,7 @@ class GameState {
       text: `${beast.name} returned: ${parts.length ? parts.join(', ') : 'nothing found'}.`,
       type: 'positive',
     })
+    this._maybeAutoBeast(beast)
     this._recalc(); this._notify()
   }
 
@@ -4520,6 +5150,8 @@ class GameState {
       beast.xp   -= 100
       beast.level++
       this.addEvent({ text: `${beast.name} reached level ${beast.level}!`, type: 'positive' })
+      if (beast.level === BEAST_AUTO_EXPEDITION_LEVEL)
+        this.addEvent({ text: `${beast.name} knows the roads now: it can go out on its own. Turn on Auto-Expedition on its card in Roam → Beasts.`, type: 'special' })
     }
     if (beast.level >= 10) beast.xp = Math.min(beast.xp, 99)
   }
@@ -4611,10 +5243,13 @@ class GameState {
   // Phase 22: re-queues the same mission type if Auto-Sect-Missions is on, unlocked, and a slot is free.
   // Live only — Phase 4 sect missions have never fast-forwarded during offline catch-up (SectSystem only
   // ticks live); see docs/systems/automation.md Offline Catch-Up.
+  // With missions picked (automation.autoSectMissionIds) it fills free slots with those instead — read when a slot
+  // frees, so changing the picks mid-mission swaps what runs next without cancelling what is underway.
   _maybeAutoSectMission(missionId) {
     const s = this._s
     if (s.playMode !== 'idle' || !s.automation.autoSectMissions) return
     if (!s.sect.id || !this.automationUnlocked('autoSectMissions')) return
+    if (s.automation.autoSectMissionIds.length) { this._fillAutoSectMissions(); return }
     if (s.sect.activeMissions.length >= SECT_MAX_MISSIONS) return
     const m = SECT_MISSIONS.find(x => x.id === missionId)
     if (!m || s.sect.rank < m.minRank) return
@@ -4623,6 +5258,39 @@ class GameState {
       this.addEvent({ text: `[Auto] ${m.name} re-queued.`, type: 'neutral' })
       this._emit('auto_fire', { system: 'sect_mission' })
     }
+  }
+
+  _fillAutoSectMissions() {
+    const s = this._s
+    for (const id of s.automation.autoSectMissionIds) {
+      if (s.sect.activeMissions.length >= SECT_MAX_MISSIONS) return
+      const m = SECT_MISSIONS.find(x => x.id === id)
+      if (!m || s.sect.rank < m.minRank || s.sect.activeMissions.some(a => a.missionId === id)) continue
+      if (this.startSectMission(id).ok) {
+        this.addEvent({ text: `[Auto] ${m.name} taken up.`, type: 'neutral' })
+        this._emit('auto_fire', { system: 'sect_mission' })
+      }
+    }
+  }
+
+  // Pick / unpick a mission for Auto-Missions to keep running (at most SECT_MAX_MISSIONS; [] = repeat what finished).
+  setAutoSectMission(missionId, on) {
+    const s = this._s
+    if (!s) return { ok: false, reason: 'no_state' }
+    const m = SECT_MISSIONS.find(x => x.id === missionId)
+    if (!m) return { ok: false, reason: 'unknown' }
+    const ids = s.automation.autoSectMissionIds
+    if (on) {
+      if (ids.includes(missionId)) return { ok: true }
+      if (s.sect.id && s.sect.rank < m.minRank) return { ok: false, reason: 'rank' }
+      if (ids.length >= SECT_MAX_MISSIONS) return { ok: false, reason: 'full' }
+      ids.push(missionId)
+    } else {
+      s.automation.autoSectMissionIds = ids.filter(id => id !== missionId)
+    }
+    if (s.playMode === 'idle' && s.automation.autoSectMissions && s.sect.id && this.automationUnlocked('autoSectMissions')) this._fillAutoSectMissions()
+    this._save(); this._notify()
+    return { ok: true }
   }
 
   resolveSectMission(uid) {
@@ -5071,7 +5739,7 @@ class GameState {
       disciples, candidates, buildings, full,
       totals: { stonesMin: disciples.reduce((a, x) => a + x.stonesMin, 0), herbsMin: disciples.reduce((a, x) => a + x.herbsMin, 0), qi: d.discipleQiFrac || 0 },
       hall: { level: o.hallLevel, cap: d.discipleCap || 0, nextCap: SECT_HALL_LEVELS[lvl]?.cap ?? null, cost: hallNext, ok: hallNext != null && s.spiritStones >= hallNext },
-      fame: { total: d.sectFame || 0, disciples: disciples.reduce((a, x) => a + x.fame, 0), buildings: 10 * builtN, hall: 25 * o.hallLevel, wins: 5 * (s.sectWar?.warVictories || 0) },
+      fame: { total: d.sectFame || 0, disciples: disciples.reduce((a, x) => a + x.fame, 0), buildings: 10 * builtN, hall: 25 * o.hallLevel, wins: 5 * (s.sectWar?.warVictories || 0), arena: s.arena?.sectFame || 0 },
     }
   }
 
@@ -5339,6 +6007,7 @@ class GameState {
       if (typeof value !== 'boolean') return { ok: false, reason: 'invalid' }
       if (value && !this.automationUnlocked(key)) return { ok: false, reason: 'locked' }
       a[key] = value
+      if (key === 'autoSectMissions' && value && s.playMode === 'idle' && s.sect.id) this._fillAutoSectMissions()
     } else if (key === 'breakthroughThreshold') {
       const n = Number(value)
       if (!isFinite(n)) return { ok: false, reason: 'invalid' }
@@ -5398,6 +6067,15 @@ class GameState {
         else if (res.reason === 'failed') this.addEvent({ text: '[Auto] Breakthrough attempt failed.', type: 'negative' })
         if (res.success || res.reason === 'failed') this._emit('auto_fire', { system: 'breakthrough' })
       }
+    }
+
+    // Free slots: picked sect missions and beasts on Auto-Expedition set out (turned on while home, back from Active Mode,
+    // a slot freed by a manual cancel). Returns and resolves already relaunch at once; this is the catch-all.
+    a._slotAcc = (a._slotAcc || 0) + dt
+    if (a._slotAcc >= AUTO_SLOT_CHECK_SECONDS) {
+      a._slotAcc = 0
+      if (a.autoSectMissions && a.autoSectMissionIds.length && s.sect.id && this.automationUnlocked('autoSectMissions')) this._fillAutoSectMissions()
+      for (const b of s.beasts || []) if (b.autoExp && !b.expedition) this._maybeAutoBeast(b)
     }
 
     if (a.autoCraft && this.automationUnlocked('autoCraft')) {

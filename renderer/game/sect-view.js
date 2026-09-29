@@ -200,6 +200,8 @@ class SectView {
   _missions(s, def) {
     const h = this.h, sect = s.sect, mult = SECT_RANKS[sect.rank].rewardMult
     const full = sect.activeMissions.length >= SECT_MAX_MISSIONS
+    const autoOk = this.gs.automationUnlocked('autoSectMissions'), autoOn = autoOk && s.automation.autoSectMissions
+    const picks = s.automation.autoSectMissionIds || []
     const cards = SECT_MISSIONS.map(m => {
       const active = sect.activeMissions.find(a => a.missionId === m.id)
       const unlocked = sect.rank >= m.minRank
@@ -214,15 +216,31 @@ class SectView {
         foot = `<div class="sv-timer"><span class="sect-mission-timer" data-uid="${active.uid}" data-mid="${m.id}">${h.fmtTime(Math.ceil(left / 1000))} remaining</span>
           <span class="fam-bar"><i class="tone-jade" data-barfor="${active.uid}" data-w="${Math.max(0, Math.min(100, 100 - left / (m.duration * 1000) * 100))}"></i></span></div>`
       } else {
-        const lock = !unlocked ? `${SECT_RANKS[m.minRank].name} and above` : full ? 'Both mission slots are busy' : ''
+        const lock = !unlocked ? `${SECT_RANKS[m.minRank].name} and above` : full ? (autoOn ? (picks.includes(m.id) ? 'Picked: taken up when a slot frees' : 'Both slots busy · pick Keep to queue it') : 'Both mission slots are busy') : ''
         foot = this._tile('mission', 'explore', 'Set out', `${dur} away`, lock, 'wide sv-go', ` data-id="${m.id}"`)
       }
+      const picked = picks.includes(m.id)
+      const chip = autoOn && unlocked ? `<button class="pack-chip loc-auto sv-keep${picked ? ' active' : ''}" data-sa="autopick" data-id="${m.id}" data-on="${picked ? 0 : 1}" title="${picked ? 'Auto-Missions keeps this running. Click to unpick.' : 'Have Auto-Missions keep this running'}">${Icon('play')} ${picked ? 'Kept' : 'Keep'}</button>` : ''
       return `<div class="sv-card${active ? ' active' : ''}${unlocked ? '' : ' locked'}">
-        <div class="sv-card-h"><span class="sv-card-n" title="${h.esc(m.nameCN)}">${h.esc(m.name)}</span><span class="sv-card-t">${dur}</span></div>
+        <div class="sv-card-h"><span class="sv-card-n" title="${h.esc(m.nameCN)}">${h.esc(m.name)}</span>${chip}<span class="sv-card-t">${dur}</span></div>
         <div class="sv-card-d">${h.esc(m.desc)}</div><div class="sv-gains">${gains}</div>${foot}</div>`
     }).join('')
     return `<div class="sv-head"><span>${sect.activeMissions.length} of ${SECT_MAX_MISSIONS} missions underway</span><span class="sv-head-n">Rewards ×${mult} at your rank · missions finish while you are away</span></div>
+      ${this._autoRow(s, autoOk, autoOn, picks)}
       <div class="sv-grid">${cards}</div>`
+  }
+
+  // Auto-Missions switch (same row as Explore's Auto-Explore): On/Off, what it keeps running, or when it unlocks.
+  _autoRow(s, autoOk, autoOn, picks) {
+    const h = this.h
+    if (!autoOk) return `<div class="exp-auto sv-auto locked"><span class="exp-auto-l">${Icon('lock')}<b>Auto-Missions</b><small>unlocks at ${h.esc(AUTOMATION_UNLOCKS.autoSectMissions.label)}</small></span></div>`
+    const names = picks.map(id => SECT_MISSIONS.find(m => m.id === id)?.name).filter(Boolean)
+    const note = !autoOn ? 're-takes missions for you when a slot frees'
+      : s.playMode === 'active' ? 'rests while you play in Active Mode'
+      : names.length ? `on: keeps <b class="exp-auto-next">${names.map(h.esc).join('</b> and <b class="exp-auto-next">')}</b> running · tap <b>Kept</b> to let one go`
+      : 'on: re-takes each mission as it finishes · pick <b>Keep</b> on a card to choose'
+    return `<div class="exp-auto sv-auto"><span class="exp-auto-l">${Icon('auto')}<b>Auto-Missions</b><small>${note}</small></span>
+      <span class="set-seg"><button class="set-opt is-on${autoOn ? ' active' : ''}" data-sa="auto" data-on="1">On</button><button class="set-opt${autoOn ? '' : ' active'}" data-sa="auto" data-on="0">Off</button></span></div>`
   }
 
   // ── Own sect ───────────────────────────────────────────────────────────────
@@ -240,7 +258,7 @@ class SectView {
         <section class="fam-card sect"><div class="fc-head"><span class="fc-glyph" data-icon="hall"></span><div class="fc-id">
           <div class="fc-name">${h.esc(o.name)}</div>
           <div class="fc-sub">Your sect, founded by your own hand. Disciples cultivate beside you and share what they gather.</div>
-          <div class="fc-tags"><span class="fam-tag tone-gold"><b data-icon="crown"></b>Sect Leader</span><span class="fam-tag" title="Fame: disciples ${f.disciples} + halls ${f.buildings} + Sect Hall ${f.hall} + victories ${f.wins}. Fame draws stronger rivals, and more often.">Fame ${h.fmt(f.total)}</span></div></div></div>
+          <div class="fc-tags"><span class="fam-tag tone-gold"><b data-icon="crown"></b>Sect Leader</span><span class="fam-tag" title="Fame: disciples ${f.disciples} + halls ${f.buildings} + Sect Hall ${f.hall} + victories ${f.wins}${f.arena ? ` + the Arena ${f.arena}` : ''}. Fame draws stronger rivals, and more often.">Fame ${h.fmt(f.total)}</span></div></div></div>
           <div class="sv-stats">
             ${this._stat('Spirit Stones', `${info.totals.stonesMin.toFixed(1)}<small>/min</small>`, 'gold')}
             ${this._stat('Spirit Herbs', `${info.totals.herbsMin.toFixed(1)}<small>/min</small>`, 'jade')}
@@ -264,7 +282,7 @@ class SectView {
 
   _fameSec(f) {
     const h = this.h
-    return this._sec('Fame', `<div class="sv-fame">${[['Disciples (talent × level)', f.disciples], ['Halls raised', f.buildings], ['Sect Hall', f.hall], ['Wars won', f.wins]].map(([k, v]) =>
+    return this._sec('Fame', `<div class="sv-fame">${[['Disciples (talent × level)', f.disciples], ['Halls raised', f.buildings], ['Sect Hall', f.hall], ['Wars won', f.wins], ...(f.arena ? [['Your Arena wins', f.arena]] : [])].map(([k, v]) =>
       `<div class="sv-fx-row"><span>${k}</span><b>${h.fmt(v)}</b></div>`).join('')}</div>
       <div class="fk-note">Fame draws rivals: the more you have, the sooner the next one comes, and the richer the spoils.</div>`, h.fmt(f.total), 'sv-fame-sec')
   }
@@ -425,6 +443,9 @@ class SectView {
       case 'donate': return say(gs.donateToSect(n), r => `Gave ${n} stones (+${r.gained} Contribution)`, stones)
       case 'leave': return h.confirm('Leave the sect?', `You lose your rank and all Contribution, and pay karma for it${sectWarActive(gs.get()) ? ', more for deserting a war' : ''}. Rejoining starts again as an Outer Disciple.`, () => gs.leaveSect(), 'Leave')
       case 'mission': return h.startMission(id)
+      case 'auto': { const r = gs.setAutomation('autoSectMissions', b.dataset.on === '1'); return r.ok ? null : h.flash('Cannot change Auto-Missions now', 'negative') }
+      case 'autopick': { const r = gs.setAutoSectMission(id, b.dataset.on === '1')
+        return r.ok ? null : h.flash({ full: `Keep at most ${SECT_MAX_MISSIONS}: unpick one first`, rank: 'Rank too low' }[r.reason] || 'Cannot pick that mission', 'negative') }
       case 'hall': return say(gs.upgradeSectHall(), r => `The Sect Hall rises to Lv.${r.level}`, { ...stones, max_level: 'The hall is at its full height' })
       case 'build': return say(gs.buildSectBuilding(id), r => `The ${r.building.name} is raised`, { ...stones, items: 'Missing materials' })
       case 'recruit': return say(gs.recruitDisciple(id), r => `${r.disciple.name} joins your sect`, { ...stones, full: 'Every seat is taken', not_found: 'They have gone' })

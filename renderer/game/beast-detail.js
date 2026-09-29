@@ -83,7 +83,24 @@ const BeastDetail = {
       const busy = !!rec.expedition
       const locBtns = (typeof LOCATIONS !== 'undefined' ? LOCATIONS : []).filter(l => s.stageIndex >= l.minStage)
         .map(l => `<button class="bdx-loc" data-loc="${esc(l.id)}" ${busy ? 'disabled' : ''}>${esc(l.name)} (${l.duration >= 60 ? Math.floor(l.duration / 60) + 'm' : l.duration + 's'})</button>`).join('')
-      action = `<div class="bdx-sec-sm">${busy ? 'On the road: it cannot be sent again until it returns.' : 'Send on Expedition'}</div>
+      // Auto-Expedition (Lv.BEAST_AUTO_EXPEDITION_LEVEL+): On/Off + where it goes next. The pick works while it is out:
+      // it is read when the beast comes home, so the next trip swaps without cutting this one short.
+      const gs = this.deps.gameState
+      let auto
+      if (!gs.beastAutoUnlocked(rec)) {
+        auto = `<div class="bdx-sec">Auto-Expedition</div><div class="bdx-why">Opens at Lv.${BEAST_AUTO_EXPEDITION_LEVEL}: once it knows the roads it can go out on its own.</div>`
+      } else {
+        const on = !!rec.autoExp, tgt = gs.beastAutoTarget(rec), cur = rec.autoExpLocId
+        const picks = [[null, `Its last trip${rec.lastExpLocId ? ` (${esc(LOCATIONS.find(l => l.id === rec.lastExpLocId)?.name || '?')})` : ''}`]]
+          .concat(LOCATIONS.filter(l => s.stageIndex >= l.minStage).map(l => [l.id, esc(l.name)]))
+        const note = !on ? 'Off: it waits for you to send it.' : s.playMode === 'active' ? 'Resting while you play in Active Mode.'
+          : busy && tgt && tgt.id !== rec.expedition.locationId ? `When it returns it sets out for <b>${esc(tgt.name)}</b>.`
+          : tgt ? `It keeps going back to <b>${esc(tgt.name)}</b>.` : 'Send it once, or pick a place below.'
+        auto = `<div class="bdx-sec bdx-auto-h">Auto-Expedition <span class="set-seg bdx-auto-seg"><button class="set-opt is-on${on ? ' active' : ''}" data-bauto="1">On</button><button class="set-opt${on ? '' : ' active'}" data-bauto="0">Off</button></span></div>
+          <div class="bdx-auto-note">${note}</div>
+          ${on ? `<div class="bdx-locs bdx-auto-picks">${picks.map(([lid, n]) => `<button class="pack-chip${cur === lid ? ' active' : ''}" data-bautoloc="${lid ?? ''}">${n}</button>`).join('')}</div>` : ''}`
+      }
+      action = `${auto}<div class="bdx-sec">Send now</div><div class="bdx-sec-sm">${busy ? 'On the road: it cannot be sent again until it returns.' : 'Pick a place for one trip.'}</div>
         <div class="bdx-locs">${locBtns}</div>
         <div class="bdx-actions" style="margin-top:10px"><button class="bdx-release" title="Releases it into the wild for good">Release</button></div>`
     }
@@ -106,6 +123,14 @@ const BeastDetail = {
       const res = this.deps.gameState.sendBeastExpedition(id, b.dataset.loc)
       if (res.ok) this.deps.flash(`${rec.name} sent to ${res.loc.name}.`, 'positive')
       else this.deps.flash({ not_found: 'Beast not found', active: 'Already on expedition', stage: 'Stage too low', unknown_location: 'Unknown location' }[res.reason] || 'Cannot send', 'negative')
+    }))
+    body.querySelectorAll('[data-bauto]').forEach(b => b.addEventListener('click', () => {
+      const res = this.deps.gameState.setBeastAuto(id, b.dataset.bauto === '1')
+      if (!res.ok) this.deps.flash('Cannot change Auto-Expedition', 'negative')
+    }))
+    body.querySelectorAll('[data-bautoloc]').forEach(b => b.addEventListener('click', () => {
+      const res = this.deps.gameState.setBeastAutoLocation(id, b.dataset.bautoloc || null)
+      if (!res.ok) this.deps.flash('Cannot choose that location', 'negative')
     }))
     body.querySelector('.bdx-release')?.addEventListener('click', () => {
       this.deps.confirm(`Release ${rec.name}?`, 'You lose its trait bonuses and it will not return.', () => {
