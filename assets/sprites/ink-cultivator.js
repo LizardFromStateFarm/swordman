@@ -24,8 +24,8 @@ const INK_ART = {
     // The default look: one option per slot from INK_PARTS (assets/sprites/ink-parts.js). A3-2; A5 lets the player choose.
     slots: { face: 'calm', hair: 'bun', robe: 'moon', weapon: 'sword', aura: 'orbit' },
     palette: {
-      sky0: '#0B0716', sky1: '#140C22', moon: '#E8E2D0',
-      mountFar: '#241D3A', mountNear: '#312A4C', mist: '#8C88AA', bleed: '#07040D',
+      sky0: '#081428', sky1: '#16304A', moon: '#EEF0D8',
+      mountFar: '#2A5048', mountNear: '#3A6A4E', mist: '#9CC0B0', bleed: '#06120E',     // A4-3: moonlit green hills
       robe: '#E2DACA', robeShade: '#76739A', robeDeep: '#403D60', rim: '#FFF8EA',
       cuff: '#4A4670', sash: '#B8433A', sashShade: '#6A2522',
       trim: '#DCBC68', trimShade: '#8A6E30',
@@ -33,7 +33,9 @@ const INK_ART = {
       hair: '#262B45', hairMid: '#3C4570', hairHi: '#8490C0',
       steel: '#D6DEEC', steelShade: '#6E7890', grip: '#4A3230', gripHi: '#9A7A58',
       tassel: '#C83030', gold: '#F0D060', eyeInk: '#3A2826', eyeGlow: '#D4F2FF', mouthInk: '#5A3030',
-      blush: '#DE9C8C', jade: '#8FD0B4', jadeShade: '#2F6E58',
+      blush: '#DE9C8C', jade: '#8FD0B4', jadeShade: '#2F6E58', pine: '#3A3462',
+      grass: '#4E8A58', grassHi: '#A8DC90', flowerA: '#F0E27A', flowerB: '#F4A6C8', flowerC: '#E8F0FF',   // A4-3: the meadow
+      bark: '#3A2E2A', leaf: '#3E7056', firefly: '#E8F59A', cloudPale: '#8CA0C0',
     },
     parts: [
       // ── lap: crossed legs in lotus, knees wide ──
@@ -111,10 +113,26 @@ const INK_ART = {
     motes: { count: 12, btCount: 30, x0: 66, x1: 234, speed: 0.11 }, // straight-rising ambient Qi
     background: {
       glow: { x: 150, y: 48, r: 125 },
-      moon: { x: 252, y: 26, r: 8 },
+      moon: { x: 252, y: 10, r: 6 },
       ridgeFar: [78, 10, 0.021, 1, 6, 0.057, 2, 3, 0.13, 0],   // y + Σ amp·sin(x·freq + phase)
       ridgeNear: [98, 8, 0.03, 4, 4, 0.09, 1, 1.5, 0.21, 2],
       mistY: [92, 121],
+      // A4-3 realm scenery (static, baked) + ambience (animated). Every realm variant sets both, so none leaks upward.
+      // User (2026-09-28): the realms are a journey upward — before a waterfall → above a waterfall → the mountains →
+      // the clouds → above the earth → the stars, and every background moves.
+      // User (2026-09-28, cycle 3): Mortal reads as a desert, so the climb is desert → grasslands → the foot of a mountain → the peaks.
+      // Qi Condensation: moonlit grasslands — gentle rolling hills, a lone wind-bent tree, grass and wildflowers waving in the wind.
+      ridgeFar: [86, 6, 0.012, 1, 3, 0.03, 2, 1.5, 0.07, 0],   // gentle rolling hills (Mortal keeps its own ridges)
+      ridgeNear: [104, 7, 0.018, 4, 3, 0.045, 1, 1, 0.09, 2],
+      mistY: [96, 120], mistA: 0.5,
+      scenery: [{ kind: 'tree', x: 238, h: 54, lean: 6, trunk: 'bark', leaf: 'leaf' }],
+      ambience: [
+        { kind: 'stars', n: 50, color: 'moon', y1: 70 },
+        { kind: 'cloudBank', y: 14, h: 14, speed: 3, seed: 5, gap: 0.55, color: 'cloudPale', hi: 'moon', alpha: 0.3 },
+        { kind: 'cloudBank', y: 34, h: 12, speed: 5, seed: 9, gap: 0.7, color: 'cloudPale', hi: 'moon', alpha: 0.22 },
+        { kind: 'grass', n: 320, y0: 106, y1: 156, color: 'grass', hi: 'grassHi', wind: 4.2, flowers: ['flowerA', 'flowerB', 'flowerC'], flowerRate: 0.09 },
+        { kind: 'fireflies', n: 8, color: 'firefly', box: [0, 80, 300, 132] },
+      ],
     },
   },
 }
@@ -136,11 +154,26 @@ INK_ART.idle = {
   extends: 'meditating', id: 'cultivator_mortal',
   aura: false,                                            // no Qi to shape: the aura slot has nothing to show yet
   slots: { robe: 'hemp', hair: 'rag', weapon: 'none' },
-  palette: { skin: '#E0B890', skinShade: '#94694A' },     // sun-browned from field work
+  palette: {
+    skin: '#E0B890', skinShade: '#94694A',                 // sun-browned from field work
+    // A4-3: dusk over the paddies at home (a low sun, warm hills, one lit window, fireflies)
+    sky0: '#170B16', sky1: '#40201F', moon: '#F4A65C', mountFar: '#4A2636', mountNear: '#3A1E2C', mist: '#D0907A', bleed: '#120709',
+    field: '#B08058', fieldWater: '#F0A870', roof: '#8A6A44', wall: '#4A3228', lamp: '#FFC468', pine: '#4E2A38',
+  },
   halo: null, qiPearl: null, rings: [], glyphs: [],
   body: { breathe: 0.045 },
   motes: { count: 4, btCount: 26, x0: 100, x1: 200, speed: 0.05 },
-  background: { glow: { x: 150, y: 70, r: 70 } },
+  background: {
+    glow: { x: 150, y: 70, r: 70 },
+    moon: { x: 58, y: 76, r: 11, sun: true },
+    ridges: true, mistA: 0.7,
+    ridgeFar: [78, 10, 0.021, 1, 6, 0.057, 2, 3, 0.13, 0], ridgeNear: [98, 8, 0.03, 4, 4, 0.09, 1, 1.5, 0.21, 2], mistY: [92, 121],
+    scenery: [
+      { kind: 'fields', y0: 106, y1: 156, n: 7, color: 'field', water: 'fieldWater' },
+      { kind: 'hut', x: 262, y: 106, w: 30, h: 22 },
+    ],
+    ambience: [{ kind: 'fireflies', n: 10, color: 'lamp', box: [0, 88, 300, 140] }],
+  },
   // bare chest and arms, hemp trousers, a rope belt (the lap is the trousers: `robe` takes the hemp palette)
   parts: [
     INK_ART.meditating.parts[0],
@@ -180,7 +213,32 @@ INK_ART.meditating_deep = {
   halo: { x: 150, y: 32, r: 25 },                         // the halo: Foundation is where it first appears
   formation: { cx: 150, cy: 124, rx: 86, ry: 12.5, speed: 0.07, alpha: 0.9 },
   motes: { count: 16, btCount: 34, x0: 60, x1: 240, speed: 0.12 },
-  background: { glow: { x: 150, y: 56, r: 140 } },
+  // A4-3: the foot of a great mountain — the massif rises behind, snow on its crown and cloud wrapped round it, a thin
+  // waterfall threads down its face, a pine forest along its base, mist drifting through the trees, birds wheeling
+  palette: {
+    sky0: '#050C15', sky1: '#0C1C28', moon: '#DCEEF0', mountFar: '#16283A', mountNear: '#1E3446', mist: '#80A8B6', bleed: '#03080C',
+    rock: '#4A6A80', rockHi: '#8AB8C8', water: '#E4FAFF', spray: '#C8E0E8', rockFar: '#2C4460', snowFar: '#A8C8D6', snow: '#EEF8FC', pine: '#62A08A', meadow: '#34566E', meadowHi: '#8AB4CC',
+  },
+  background: {
+    glow: { x: 150, y: 56, r: 140 },
+    moon: { x: 36, y: 16, r: 7 }, ridges: true, mistA: 1.5, mistY: [70, 104],   // mist wrapped round the mountain's waist
+    ridgeFar: [100, 4, 0.02, 1, 3, 0.05, 2, 1.5, 0.11, 0],    // the forested foothills at the mountain's foot
+    ridgeNear: [110, 5, 0.026, 4, 3, 0.07, 1, 1, 0.14, 2],
+    scenery: [
+      { kind: 'peaks', back: true, color: 'rockFar', snow: 'snowFar', alpha: 0.55, snowline: 0.3, items: [[34, 112, 62, 70, 6], [300, 110, 70, 76, -6]] },
+      { kind: 'peaks', back: true, color: 'rock', snow: 'snow', alpha: 0.95, snowline: 0.3, snowSlope: 0.55,   // the massif: a shouldered ridge, the crown off-centre
+        items: [[110, 118, 78, 90, -10], [276, 118, 92, 88, 6], [202, 118, 122, 120, -6]] },
+      { kind: 'bigFalls', back: true, x: 238, w: 3.5, wb: 6, top: 40, bottom: 104, cliffs: false, lipArc: 0, color: 'water', alpha: 0.8 },
+      { kind: 'pines', color: 'pine', items: [[6, 12], [16, 15], [27, 11], [40, 13], [52, 10], [248, 11], [259, 14], [270, 12], [283, 15], [295, 11]] },
+    ],
+    ambience: [
+      { kind: 'stars', n: 34, color: 'moon', y1: 40 },
+      { kind: 'bigFalls', x: 238, w: 4, wb: 7, top: 40, bottom: 104, lipArc: 0, n: 60, speed: 1.2, color: 'water', alpha: 1 },
+      { kind: 'cloudBank', y: 92, h: 16, speed: 10, seed: 3, gap: 0.3, color: 'spray', hi: 'water', alpha: 0.42 },
+      { kind: 'grass', n: 150, y0: 118, y1: 156, color: 'meadow', hi: 'meadowHi', wind: 2, flowers: ['snow'], flowerRate: 0.03 },   // sparse cold hill grass
+      { kind: 'birds', n: 6, y0: 30, y1: 64, speed: 6, size: 0.9, color: 'water', alpha: 0.85 },
+    ],
+  },
 }
 
 INK_ART.levitating = {
@@ -196,13 +254,36 @@ INK_ART.levitating = {
     { cx: 150, cy: 70, rx: 86, ry: 30, tilt: -0.22, speed: 0.42, phase: 0.6, arc: 1.4, size: 3.2, wave: 1.5, bob: 6, tier: 1 },
   ],
   motes: { count: 18, btCount: 36, x0: 56, x1: 244, speed: 0.13 },
-  background: { glow: { x: 150, y: 52, r: 145 } },
+  // A4-3: the mountains — hovering over a summit among snow peaks at dawn, mist drifting between, cranes flying past
+  palette: {
+    sky0: '#080A22', sky1: '#2C2A58', moon: '#F0E8FF', mist: '#C0BCE8', bleed: '#04040E',
+    rock: '#2A2C58', snow: '#E6EAFF', rockFar: '#3C3E6E', snowFar: '#9EA6D4', cloud: '#A8A4D8', cloudHi: '#ECE8FF', crane: '#EEF0FA',
+  },
+  background: {
+    glow: { x: 150, y: 52, r: 145 },
+    moon: { x: 254, y: 14, r: 6 }, ridges: false, mistY: [104, 122], mistA: 1.1,
+    scenery: [
+      { kind: 'peaks', color: 'rockFar', snow: 'snowFar', alpha: 0.6, snowline: 0.36,
+        items: [[-24, 112, 52, 40, 3], [34, 112, 74, 48, 6], [96, 108, 50, 36], [212, 110, 60, 42, -4], [276, 112, 84, 52, 5], [338, 112, 56, 40]] },
+      { kind: 'peaks', color: 'rock', snow: 'snow', snowline: 0.3, items: [[4, 150, 62, 48, 5], [302, 152, 60, 50, -4]] },
+    ],
+    ambience: [
+      { kind: 'stars', n: 36, color: 'moon', y1: 34 },
+      { kind: 'cloudBank', y: 96, h: 26, speed: 4, seed: 1, color: 'cloud', hi: 'cloudHi', alpha: 0.55 },
+      { kind: 'birds', n: 6, y0: 18, y1: 58, speed: 8, size: 1, color: 'crane' },
+    ],
+  },
 }
 
 INK_ART.transcending = {
   extends: 'levitating', id: 'cultivator_nascent',
   slots: { robe: 'crimson', hair: 'crown' },
-  palette: { ribbon: '#8FE0C4' },                         // jade ribbons against the gold dragons
+  palette: {
+    ribbon: '#8FE0C4',                                    // jade ribbons against the gold dragons
+    // A4-3: in the clouds — a moonlit sea of cloud, banks drifting past at three depths, birds flying through
+    sky0: '#0C0A24', sky1: '#2C2658', moon: '#F4ECD8', mist: '#9C90BC', bleed: '#06040C',
+    cloud: '#B4ACE0', cloudHi: '#F6F2FF', bird: '#ECE8FA',
+  },
   float: { y: -9, bob: 1.8, shadow: { x: 150, y: 133, rx: 58, ry: 5.5 } },
   view: [-26, -26, 352, 176],
   figureBox: [60, -14, 240, 132],
@@ -221,15 +302,28 @@ INK_ART.transcending = {
     { cx: 150, cy: 74, rx: 92, ry: 26, tilt: 0.24, speed: 0.36, phase: 3.5, arc: 1.7, size: 4.2, wave: 2, bob: 7, tier: 2 },
   ],
   motes: { count: 22, btCount: 42, x0: 40, x1: 260, speed: 0.15 },
-  background: { glow: { x: 150, y: 50, r: 160 } },
+  background: {
+    glow: { x: 150, y: 50, r: 160 },
+    moon: { x: 244, y: 20, r: 10, a: 2 }, ridges: false, mistA: 0,
+    scenery: [{ kind: 'cloudSea', y: 120, amp: 7, depth: 30, thin: 0.7, crest: 3.4, color: 'cloud', hi: 'cloudHi', alpha: 0.5 }],
+    ambience: [
+      { kind: 'stars', n: 44, color: 'moon', y1: 50 },
+      { kind: 'cloudBank', y: 26, h: 20, speed: 3, seed: 4, color: 'cloud', hi: 'cloudHi', alpha: 0.3 },
+      { kind: 'birds', n: 9, y0: 8, y1: 70, speed: 11, size: 0.9, color: 'bird' },
+      { kind: 'cloudBank', y: 74, h: 26, speed: 6, seed: 7, color: 'cloud', hi: 'cloudHi', alpha: 0.5 },
+      { kind: 'cloudBank', y: 102, h: 30, speed: 10, seed: 11, color: 'cloud', hi: 'cloudHi', alpha: 0.8 },
+    ],
+  },
 }
 
 INK_ART.severing = {
   extends: 'transcending', id: 'cultivator_severing',
   slots: { robe: 'sovereign', hair: 'crown' },
   palette: {
-    sky0: '#10050B', sky1: '#23091A', moon: '#F0B0A0', mountFar: '#2E1224', mountNear: '#3C1830', mist: '#A8707E',
+    sky0: '#10050B', sky1: '#2A0B1C', moon: '#E0505A', mountFar: '#2E1224', mountNear: '#3C1830', mist: '#A8707E',
     bleed: '#080308', ribbon: '#E8C070', swordGlow: '#FF9A7A',
+    // A4-3: above the earth — the planet curving below and turning, a crimson atmosphere, a red moon, the stars
+    sea: '#3C7ACC', land: '#86BC6E', earthCloud: '#EDE8F2', atmo: '#FF7A6A', star: '#F4E8F0',
   },
   view: [-34, -34, 368, 184],
   figureBox: [50, -24, 250, 132],
@@ -240,15 +334,26 @@ INK_ART.severing = {
     { cx: 150, cy: 74, rx: 108, ry: 30, tilt: 0.22, speed: 0.3, phase: 3.3, arc: 2.0, size: 5.2, wave: 2.4, bob: 8, tier: 3, color: 'gold' },
   ],
   motes: { count: 28, btCount: 50, x0: 20, x1: 280, speed: 0.17 },
-  background: { glow: { x: 150, y: 48, r: 175 } },
+  background: {
+    glow: { x: 150, y: 48, r: 175 },
+    moon: { x: 34, y: 10, r: 10, a: 2 }, ridges: false, mistA: 0,
+    scenery: [{ kind: 'earthRim', cx: 150, cy: 540, r: 420, color: 'atmo' }],
+    ambience: [
+      { kind: 'stars', n: 130, color: 'star', y1: 190, avoid: [150, 540, 420] },
+      { kind: 'earth', cx: 150, cy: 540, r: 420, rot: 0.05, sea: 'sea', land: 'land', cloud: 'earthCloud' },
+    ],
+  },
 }
 
 INK_ART.ascended = {
   extends: 'severing', id: 'cultivator_ascended',
   slots: { robe: 'celestial', hair: 'crown' },
   palette: {
-    sky0: '#1C1020', sky1: '#4A2C1E', moon: '#FFE8A8', mountFar: '#46302E', mountNear: '#5A3C2C', mist: '#F0D090',
-    bleed: '#1A0E0C', ribbon: '#FFF2C8', swordGlow: '#FFE08A', dragonPale: '#FFF6DA',
+    moon: '#FFE8A8', mountFar: '#7A5A44', mountNear: '#8E6A4C', mist: '#F0D090',
+    bleed: '#4A3020', ridgeRim: '#F0CC88', ribbon: '#FFF2C8', swordGlow: '#FFE08A', dragonPale: '#FFF6DA',
+    // A4-3: among the stars — nebulae, a galaxy band, big stars that flare, shooting stars
+    sky0: '#06041A', sky1: '#160C2E', nebGold: '#D4A060', nebViolet: '#8A64C0', nebBlue: '#5A86C8',
+    starGold: '#FFE2A0', starWhite: '#FFFFFF', starBlue: '#BCD4FF',
   },
   view: [-40, -40, 380, 190],
   figureBox: [40, -30, 260, 132],
@@ -261,5 +366,16 @@ INK_ART.ascended = {
     { cx: 150, cy: 56, rx: 104, ry: 46, tilt: 0.05, speed: -0.24, phase: 4.4, arc: 1.9, size: 5.0, wave: 2.4, bob: 7, tier: 4, color: 'dragonPale' },
   ],
   motes: { count: 34, btCount: 60, x0: 10, x1: 290, speed: 0.2 },
-  background: { glow: { x: 150, y: 46, r: 190 }, moon: { x: 250, y: 20, r: 12 } },
+  background: {
+    glow: { x: 150, y: 46, r: 190 }, moon: null, ridges: false, mistA: 0,
+    scenery: [{ kind: 'nebula', items: [
+      [150, 76, 240, 20, 'nebBlue', -0.35, 0.3],                              // the galaxy band, corner to corner
+      [36, 12, 80, 30, 'nebViolet', -0.5, 0.45], [272, 138, 96, 32, 'nebGold', -0.3, 0.5], [262, 6, 50, 20, 'nebGold', 0.4, 0.3],
+    ] }],
+    ambience: [
+      { kind: 'stars', n: 170, color: 'starWhite', y1: 190 },
+      { kind: 'bigStars', n: 14, size: 2.1, colors: ['starGold', 'starWhite', 'starBlue'], y1: 180, clear: [96, -12, 204, 136] },
+      { kind: 'shooting', every: 4.5, color: 'starWhite' },
+    ],
+  },
 }

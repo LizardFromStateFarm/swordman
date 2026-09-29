@@ -49,6 +49,7 @@ class InkRenderer {
     this.art = null             // base + the chosen slot options merged in (what every painter reads)
     this.slotSel = {}           // player/dev choices per slot kind; unset kinds use base.slots
     this.fail = 0; this.demote = false   // failed-breakthrough moment, eases 1 → 0
+    this.death = 0; this.deathKind = 'fall'   // death moment (A4-3): 0 = alive, rises to 1 as the figure dissolves; held until clearDeath()
     this.t = 0
     this.bt = 0; this.btTarget = 0; this.btStart = 0     // breakthrough intensity eases between 0 and 1
     this.speed = 1
@@ -136,6 +137,16 @@ class InkRenderer {
   // Failed breakthrough: the gathered Qi collapses (halo cracks, rings stutter and redden, the figure shudders, the
   // face strains). demoted = the realm shatters: the halo breaks apart and falls.
   triggerFailure(demoted = false) { this.fail = 1; this.demote = !!demoted; this.btTarget = 0; this.failStart = this.t }
+  // The end of a life (A4-3): 'fall' = the figure comes apart into ash-grey dust carried off on the wind, the scene dims;
+  // 'ascend' = it turns to gold light and rises (the Ascension Trial passed). Plays over DEATH_SECONDS (real time, even
+  // with Reduced motion, which swaps the dust for a plain fade) and holds the empty scene until clearDeath().
+  static DEATH_SECONDS = 3.2
+  triggerDeath(kind = 'fall') {
+    this.death = 0.001; this.deathKind = kind === 'ascend' ? 'ascend' : 'fall'
+    if (this.deathKind === 'ascend') { this.btTarget = 1; this.btStart = this.t }
+    if (!this.running) this._start()
+  }
+  clearDeath() { this.death = 0; this.btTarget = 0 }
 
   stop() {
     this.running = false
@@ -155,16 +166,17 @@ class InkRenderer {
   still(...args) { return this.stillCanvas(...args).toDataURL('image/png') }
   // Same, as a canvas (the page CSP blocks data: images, so compose sheets from canvases).
   stillCanvas(w, h, dpr, t, opts = {}) {
-    const { bt = 0, crop = null, slots = null, fail = 0, demote = false } = opts
+    const { bt = 0, crop = null, slots = null, fail = 0, demote = false, death = 0, deathKind = 'fall' } = opts
     const prevSel = { ...this.slotSel }
     if (slots) { this.slotSel = { ...this.slotSel, ...slots }; this.art = this._effective() }
     const cv = document.createElement('canvas')
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr)
     const cache = this._buildCache(w, h, dpr)
-    const saved = [this.t, this.bt, this.btStart, this.fail, this.demote, this.failStart]
+    const saved = [this.t, this.bt, this.btStart, this.fail, this.demote, this.failStart, this.death, this.deathKind]
     this.t = t; this.bt = bt; this.btStart = t - 0.4; this.fail = fail; this.demote = demote; this.failStart = t - (1 - fail) * 1.8
+    this.death = death; this.deathKind = deathKind
     this._drawTo(cv.getContext('2d'), cache)
-    ;[this.t, this.bt, this.btStart, this.fail, this.demote, this.failStart] = saved
+    ;[this.t, this.bt, this.btStart, this.fail, this.demote, this.failStart, this.death, this.deathKind] = saved
     if (slots) { this.slotSel = prevSel; this.art = this._effective() }
     if (!crop) return cv
     const out = document.createElement('canvas')
@@ -198,6 +210,7 @@ class InkRenderer {
           if (!this.reducedMotion) this.t += step * this.speed
           const k = Math.min(1, step * (this.btTarget > this.bt ? 4 : this.fail > 0 ? 5 : 1.2))
           if (this.fail > 0) this.fail = Math.max(0, this.fail - step / 1.8)
+          if (this.death > 0 && this.death < 1) this.death = Math.min(1, this.death + step / (this.reducedMotion ? 1.2 : InkRenderer.DEATH_SECONDS))
           this.bt += (this.btTarget - this.bt) * k
         }
         if (!this.skipHidden || this.cv.offsetParent) this._draw()
@@ -243,11 +256,22 @@ class InkRenderer {
     ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)              // logical scene units from here on
 
     // Mist drifting between the ridges (pre-rendered band, wraps around)
-    if (!C.lod) {
+    if (!C.lod && (A.background.mistA ?? 1) > 0) {
       const drift = (t * 3) % 600, vx0 = -C.ox / C.S, vx1 = (C.cw - C.ox) / C.S   // tile over the whole visible span (wide phone canvases)
-      ctx.globalAlpha = 0.9
+      ctx.globalAlpha = Math.min(1, 0.9 * (A.background.mistA ?? 1))
       for (let x = Math.floor((vx0 + drift) / 600) * 600 - drift; x < vx1; x += 600) ctx.drawImage(C.mist, x, 0, 600, 150)
       ctx.globalAlpha = 1
+    }
+    // Realm ambience (A4-3): fireflies, stars, falling water, birds, drifting clouds, the turning earth, sparkling stars…
+    if (!C.lod && A.background.ambience) this._ambience(ctx, C, t)
+
+    // Death moment (A4-3): everything in front of the scenery is composed on its own canvas, then dissolved (_deathCompose)
+    const dying = this.death > 0, scene = ctx
+    if (dying) {
+      if (!C.dth) { C.dth = document.createElement('canvas'); C.dth.width = C.cw; C.dth.height = C.ch }
+      ctx = C.dth.getContext('2d')
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, C.cw, C.ch)
+      ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
     }
 
     // Breakthrough: a column of light behind the figure
@@ -268,7 +292,7 @@ class InkRenderer {
     const F = A.float
     const fy = F ? F.y + (calm ? 0 : Math.sin(t * 0.8) * F.bob) : 0           // logical units, negative = lifted
     if (A.formation) this._formation(ctx, C, glowCol, t, bt)
-    if (F) this._groundShadow(ctx, F, fy, glowCol)
+    if (F && F.shadow) this._groundShadow(ctx, F, fy, glowCol)                // (no shadow when there is no ground below)
 
     ctx.save(); ctx.translate(0, fy)                                          // everything below rides with the body
     if (A.swords) this._swordFan(ctx, C, t, bt)                               // Spirit Severing on: flying swords fanned behind
@@ -336,7 +360,8 @@ class InkRenderer {
     this._rings(ctx, C, glowCol, t, bt, 'front')
     if (A.dragons) this._dragons(ctx, C, t, bt, 'front')
     if (A.bolts && !this.reducedMotion) this._bolts(ctx, C, t)
-    if (bt > 0.01) this._ripples(ctx, C, t, bt, headDy)
+    if (bt > 0.01 && !dying) this._ripples(ctx, C, t, bt, headDy)
+    if (dying) { ctx = scene; this._deathCompose(ctx, C, fy) }
     if (fail > 0.01) {                                          // the scene dims as the Qi drains away
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.fillStyle = inkRgba('#06030A', 0.28 * fail); ctx.fillRect(0, 0, C.cw, C.ch)
@@ -1150,11 +1175,20 @@ class InkRenderer {
     gl.addColorStop(0, inkRgba(this.stageColor, 0.11)); gl.addColorStop(1, inkRgba(this.stageColor, 0))
     ctx.fillStyle = gl; ctx.fillRect(x0, -C.oy / C.S, x1 - x0, y1 + C.oy / C.S)
     if (C.lod) return
-    // a pale moon, soft
+    // a pale moon, soft (`sun: true` = a low setting sun: wider, warmer glow; `moon: null` = none)
     const m = B.moon
-    inkSoftDot(ctx, m.x, m.y, m.r * 3, PAL.moon, 0.06)
-    inkSoftDot(ctx, m.x, m.y, m.r, PAL.moon, 0.22)
-    const ridge = (R, x) => R[0] + R[1] * Math.sin(x * R[2] + R[3]) + R[4] * Math.sin(x * R[5] + R[6]) + R[7] * Math.sin(x * R[8] + R[9])
+    if (m && m.sun) {
+      inkSoftDot(ctx, m.x, m.y, m.r * 7, PAL.moon, 0.09)
+      inkSoftDot(ctx, m.x, m.y, m.r * 2.4, PAL.moon, 0.22)
+      inkSoftDot(ctx, m.x, m.y, m.r, PAL.moon, 0.75)
+    } else if (m) {                                                          // `a` brightens a realm's moon
+      inkSoftDot(ctx, m.x, m.y, m.r * 3, PAL.moon, 0.06 * (m.a || 1))
+      inkSoftDot(ctx, m.x, m.y, m.r, PAL.moon, 0.22 * (m.a || 1))
+    }
+    // A4-3 scenery drawn BEHIND the ridges (floating islands, god rays)
+    for (const el of B.scenery || []) if (el.back) this._scenery(ctx, C, el, x0, x1, y1)
+    const ridge = (R, x) => this._ridge(R, x)
+    if (B.ridges !== false) {                                    // `ridges: false` = no mountain ridges (waterfalls, sky, space)
     // ink bleed: a blurred dark wash under each ridge line (brush feel instead of a hard band)
     for (const [R, col, blur] of [[B.ridgeFar, PAL.mountFar, 3], [B.ridgeNear, PAL.bleed, 2.5]]) {
       ctx.save()
@@ -1167,6 +1201,7 @@ class InkRenderer {
     }
     // ink-dot mountains: dots thin out below each ridge line, like ink soaking into paper
     const P = A.dot.pitch * 0.85, RY = P * 0.866
+    const rimPath = PAL.ridgeRim ? new Path2D() : null                     // an optional lit edge on each ridge line
     for (const [R, col, depth, rad] of [[B.ridgeFar, PAL.mountFar, 12, 0.3], [B.ridgeNear, PAL.mountNear, 15, 0.34]]) {
       const path = new Path2D()
       for (let r = 0; r * RY < 152; r++) {
@@ -1175,13 +1210,728 @@ class InkRenderer {
           const d = y - ridge(R, x)
           if (d < 0) continue
           if (R === B.ridgeFar && y > ridge(B.ridgeNear, x) - 1) continue
-          if (inkRnd(Math.floor(x * 13 + y * 7)) < d / depth) continue
+          if (inkRnd2(x, y) < d / depth) continue
+          if (rimPath && d < 1.3) { rimPath.moveTo(x + P * rad, y); rimPath.arc(x, y, P * rad, 0, Math.PI * 2); continue }
           const rr = P * rad * (1 - 0.4 * Math.min(1, d / depth))
           path.moveTo(x + rr, y); path.arc(x, y, rr, 0, Math.PI * 2)
         }
       }
       ctx.fillStyle = col; ctx.fill(path)
     }
+    if (rimPath) { ctx.fillStyle = inkRgba(PAL.ridgeRim, 0.7); ctx.fill(rimPath) }
+    }
+    // A4-3 realm scenery in front of the ridges (fields, a hut, pines, a cliff + falls, a cloud sea, a lake…)
+    for (const el of B.scenery || []) if (!el.back) this._scenery(ctx, C, el, x0, x1, y1)
+  }
+
+  // A waterfall's shape (static curtain + animated water share it): edges widen from w at the lip to wb at the foot and
+  // wobble; the lip bulges up (lipArc) where the water rolls over.
+  _fallsGeo(el) {
+    const top = el.top, bot = el.bottom, wb = el.wb ?? el.w * 1.25, arc = el.lipArc ?? 4
+    const f = y => Math.max(0, Math.min(1, (y - top) / (bot - top)))
+    const half = y => (el.w + (wb - el.w) * f(y) ** 1.4) / 2
+    const L = y => el.x - half(y) - 1.6 * Math.sin(y * 0.11 + 1) - 0.9 * Math.sin(y * 0.29)
+    const R = y => el.x + half(y) + 1.6 * Math.sin(y * 0.13 + 2) + 0.9 * Math.sin(y * 0.31 + 1)
+    const lipY = x => top - arc * Math.sin(Math.max(0, Math.min(1, (x - el.x + el.w / 2) / el.w)) * Math.PI) + 0.9 * Math.sin(x * 0.7)
+    const Ls = y => el.x - half(y), Rs = y => el.x + half(y)
+    // x of a streak at fraction u across: smooth inside (no shared wobble bands), the ragged edge only near the sides
+    const at = (u, y) => { const e = Math.max(0, 1 - Math.min(u, 1 - u) * 7), a = Ls(y) + u * (Rs(y) - Ls(y)); return a + e * ((L(y) + u * (R(y) - L(y))) - a) }
+    return { top, bot, L, R, lipY, at }
+  }
+
+  _ridge(R, x) { return R[0] + R[1] * Math.sin(x * R[2] + R[3]) + R[4] * Math.sin(x * R[5] + R[6]) + R[7] * Math.sin(x * R[8] + R[9]) }
+
+  // ── Realm scenery + ambience (A4-3) ──────────────────────────────────────
+  // Dots only (no wash), like the rest of the new art. Scenery is static and baked into the background cache;
+  // ambience is animated and drawn each frame (a few dozen soft dots). Data: INK_ART[state].background.scenery /
+  // .ambience (assets/sprites/ink-cultivator.js). Colours are palette keys.
+
+  // Fill a polygon with hex-staggered ink dots. `shade(x, y)` → radius factor (0 = no dot) for tone and texture.
+  _dotPoly(ctx, pts, col, P, rad, alpha = 1, shade = null) {
+    const path = new Path2D(); path.moveTo(pts[0][0], pts[0][1])
+    for (let i = 1; i < pts.length; i++) path.lineTo(pts[i][0], pts[i][1])
+    path.closePath()
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity
+    for (const [x, y] of pts) { bx0 = Math.min(bx0, x); by0 = Math.min(by0, y); bx1 = Math.max(bx1, x); by1 = Math.max(by1, y) }
+    const RY = P * 0.866, out = new Path2D(), probe = this._probe
+    for (let r = Math.floor(by0 / RY); r * RY <= by1; r++) {
+      const y = r * RY
+      for (let x = Math.floor(bx0 / P) * P + (r & 1 ? P / 2 : 0); x <= bx1; x += P) {
+        if (!probe.isPointInPath(path, x, y)) continue
+        const f = shade ? shade(x, y) : 1
+        if (f <= 0) continue
+        const rr = P * rad * f
+        out.moveTo(x + rr, y); out.arc(x, y, rr, 0, Math.PI * 2)
+      }
+    }
+    ctx.fillStyle = inkRgba(col, alpha); ctx.fill(out)
+  }
+
+  _scenery(ctx, C, el, x0, x1, y1) {
+    const PAL = this.art.palette, B = this.art.background, P = this.art.dot.pitch * 0.85, RY = P * 0.866
+    const col = k => PAL[k] || k
+    switch (el.kind) {
+      case 'fields': {                                   // terraced paddies: bright bund lines, water catching the sky
+        const bund = new Path2D(), water = new Path2D()
+        const edge = (i, x) => el.y0 + (el.y1 - el.y0) * Math.pow(i / el.n, 1.25) + Math.sin(x * 0.021 + i * 1.7) * 2.2
+        for (let r = Math.floor(el.y0 / RY); r * RY <= y1 + 2; r++) {
+          const y = r * RY
+          for (let x = Math.floor(x0 / P) * P + (r & 1 ? P / 2 : 0); x < x1; x += P) {
+            let i = 0; while (i < el.n && edge(i + 1, x) < y) i++
+            if (i >= el.n || y < edge(0, x)) continue
+            const dEdge = y - edge(i, x), n = inkRnd2(x, y)
+            if (dEdge < 1.1) { bund.moveTo(x + P * 0.34, y); bund.arc(x, y, P * 0.34, 0, Math.PI * 2) }
+            else if (n < 0.16 - dEdge * 0.006) { const rr = P * (0.18 + 0.12 * n); water.moveTo(x + rr, y); water.arc(x, y, rr, 0, Math.PI * 2) }
+          }
+        }
+        ctx.fillStyle = inkRgba(col(el.water), 0.55); ctx.fill(water)
+        ctx.fillStyle = inkRgba(col(el.color), 0.8); ctx.fill(bund)
+        break
+      }
+      case 'hut': {                                      // a thatched field hut with one lit window
+        const { x, y, w, h } = el, roofY = y - h * 0.55
+        this._dotPoly(ctx, [[x - w * 0.42, y], [x - w * 0.42, roofY], [x + w * 0.42, roofY], [x + w * 0.42, y]], col('wall'), P, 0.32, 0.9)
+        this._dotPoly(ctx, [[x - w * 0.62, roofY + 2], [x - w * 0.1, y - h], [x + w * 0.1, y - h], [x + w * 0.62, roofY + 2]], col('roof'), P, 0.36, 0.95,
+          (px, py) => 0.75 + 0.35 * inkRnd2(px, py))
+        inkSoftDot(ctx, x + w * 0.14, y - h * 0.3, 7, col('lamp'), 0.22)
+        this._dotPoly(ctx, [[x + w * 0.04, y - h * 0.4], [x + w * 0.24, y - h * 0.4], [x + w * 0.24, y - h * 0.18], [x + w * 0.04, y - h * 0.18]], col('lamp'), P * 0.8, 0.4, 1)
+        break
+      }
+      case 'tree': {                                     // a lone broad tree on the near ridge, bent by the wind
+        const base = this._ridge(B.ridgeNear, el.x) + 1.5, h = el.h, lean = el.lean ?? 4
+        this._dotPoly(ctx, [[el.x - 1.6, base], [el.x - 1 + lean * 0.4, base - h * 0.45], [el.x + lean - 0.6, base - h * 0.62], [el.x + lean + 0.6, base - h * 0.62],
+          [el.x + 1 + lean * 0.4, base - h * 0.45], [el.x + 1.6, base]], col(el.trunk), P, 0.34, 0.95)
+        for (const [dx, dy, rx, ry] of [[0, -0.72, 0.42, 0.2], [-0.3, -0.62, 0.3, 0.16], [0.34, -0.64, 0.3, 0.15], [0.12, -0.84, 0.28, 0.14]]) {
+          const cx = el.x + lean + dx * h, cy = base + dy * h, pts = []
+          for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2, wob = 1 + 0.12 * Math.sin(i * 2.7 + el.x); pts.push([cx + Math.cos(a) * rx * h * wob, cy + Math.sin(a) * ry * h * wob]) }
+          this._dotPoly(ctx, pts, col(el.leaf), P, 0.36, 0.95, (px, py) => {
+            const n = inkRnd2(px, py), lit = (cx - px) + (cy - py) * 1.4                       // upper-left side catches the moon
+            if (n < 0.14) return 0
+            return 0.62 + 0.3 * n + (lit > 3 ? 0.18 : 0)
+          })
+        }
+        break
+      }
+      case 'pines': {                                    // stacked tiers of dots standing on the near ridge line
+        for (const [x, h] of el.items) {
+          const base = this._ridge(B.ridgeNear, x) + 2
+          this._dotPoly(ctx, [[x - 0.6, base], [x - 0.6, base - h * 0.3], [x + 0.6, base - h * 0.3], [x + 0.6, base]], col(el.color), P, 0.3, 0.9)
+          for (let k = 0; k < 3; k++) {
+            const top = base - h * (0.42 + k * 0.24) - h * 0.2, half = h * 0.3 * (1 - k * 0.24)
+            this._dotPoly(ctx, [[x - half, top + h * 0.26], [x, top], [x + half, top + h * 0.26]], col(el.color), P, 0.34, 0.9)
+          }
+        }
+        break
+      }
+      case 'cliff': {                                    // a rock face: its skyline edge frays into loose, lit dots
+        const edge = el.pts.slice(0, -2)                                    // the open outline (not the off-screen closing corners)
+        const rim = new Path2D()
+        this._dotPoly(ctx, el.pts, col(el.color), P, 0.36, 0.95, (px, py) => {
+          const n = inkRnd2(px, py), e = inkPolyDist(px, py, edge)
+          if (e < 3.6 && n > 0.25) { rim.moveTo(px + P * 0.36, py); rim.arc(px, py, P * 0.36, 0, Math.PI * 2); return 0 }   // the lit edge
+          if (e < 5 && n < 0.62 - e * 0.12) return 0                          // frayed edge
+          if (e > 6 && Math.sin(px * 0.3 + py * 0.035 + inkRnd2(px * 0.12, py * 0.03) * 5) > 0.55) return 0   // dark crevices running down the face
+          if (n < Math.min(0.5, 0.08 + e / 45)) return 0                       // the rock thins toward the inside: depth, not a flat block
+          if (e < 3.2) { rim.moveTo(px + P * 0.32, py); rim.arc(px, py, P * 0.32, 0, Math.PI * 2); return 0 }
+          return 0.5 + 0.4 * n + (e < 9 ? 0.18 : 0)
+        })
+        ctx.fillStyle = inkRgba(col(el.hi || el.color), 0.95); ctx.fill(rim)
+        break
+      }
+      case 'falls': {                                    // the still part of a waterfall: a pale column + a mist pool
+        const path = new Path2D()
+        for (let r = Math.floor(el.y0 / RY); r * RY <= el.y1; r++) {
+          const y = r * RY, f = (y - el.y0) / (el.y1 - el.y0), hw = el.w * (0.35 + 0.45 * f) + Math.sin(y * 0.4) * 0.6
+          for (let x = el.x - hw; x <= el.x + hw; x += P * 0.8) {
+            if (inkRnd2(x, y) < 0.35 + 0.5 * (Math.abs(x - el.x) / hw) ** 2) continue          // soft, ragged edges
+            path.moveTo(x + P * 0.22, y); path.arc(x, y, P * 0.22, 0, Math.PI * 2)
+          }
+        }
+        ctx.fillStyle = inkRgba(col(el.color), 0.5); ctx.fill(path)
+        const plume = new Path2D()                                           // the mist plume at the foot
+        for (let i = 0; i < 60; i++) {
+          const a = inkRnd(i * 3.7) * Math.PI, rr = el.w * (0.6 + 2.2 * inkRnd(i * 5.1)), x = el.x + Math.cos(a) * rr * 1.6, y = el.y1 - Math.sin(a) * rr * 0.7
+          plume.moveTo(x + 0.4, y); plume.arc(x, y, 0.4, 0, Math.PI * 2)
+        }
+        ctx.fillStyle = inkRgba(col(el.color), 0.35); ctx.fill(plume)
+        inkSoftDot(ctx, el.x, el.y1, el.w * 3.5, col(el.color), 0.16)
+        break
+      }
+      case 'cloudSea': {                                 // a sea of cloud: billowing tops, thinning below
+        const top = x => el.y - Math.abs(Math.sin(x * 0.061)) * el.amp - Math.abs(Math.sin(x * 0.027 + 1.3)) * el.amp * 0.7
+        const hi = new Path2D(), lo = new Path2D()
+        for (let r = Math.floor((el.y - el.amp * 2) / RY); r * RY <= y1 + 2; r++) {
+          const y = r * RY
+          for (let x = Math.floor(x0 / P) * P + (r & 1 ? P / 2 : 0); x < x1; x += P) {
+            const d = y - top(x)
+            if (d < 0) continue
+            const n = inkRnd2(x, y)
+            if (n < Math.min(1, d / el.depth) * (el.thin ?? 0.63)) continue
+            const rr = P * 0.36 * (1 - 0.45 * Math.min(1, d / el.depth)), p = d < (el.crest ?? 2.2) ? hi : lo
+            p.moveTo(x + rr, y); p.arc(x, y, rr, 0, Math.PI * 2)
+          }
+        }
+        ctx.fillStyle = inkRgba(col(el.color), el.alpha ?? 0.5); ctx.fill(lo)
+        ctx.fillStyle = inkRgba(col(el.hi || el.color), 0.85); ctx.fill(hi)
+        break
+      }
+      case 'lake': {                                     // still water: faint ripple rows, the moon's path in bright dots
+        const rip = new Path2D(), path = new Path2D(), m = B.moon
+        for (let r = Math.floor(el.y / RY); r * RY <= y1 + 2; r++) {
+          const y = r * RY, depth = (y - el.y) / 40
+          for (let x = Math.floor(x0 / P) * P + (r & 1 ? P / 2 : 0); x < x1; x += P) {
+            const n = inkRnd2(x, y)
+            const band = Math.sin(x * 0.09 + y * 1.7) > 0.55                                   // ripples come in short dashes
+            const half = el.path * (0.5 + 0.9 * depth), dash = m ? Math.floor((x - m.x + 40) / 3.4 + r * 1.7) : 0
+            if (m && Math.abs(x - m.x) < half && r % 2 && inkRnd(dash * 7.3 + r) > 0.35 + 0.55 * Math.abs(x - m.x) / half) { path.moveTo(x + P * 0.3, y); path.arc(x, y, P * 0.3, 0, Math.PI * 2) }
+            else if (band && n < 0.45) { rip.moveTo(x + P * 0.24, y); rip.arc(x, y, P * 0.24, 0, Math.PI * 2) }
+          }
+        }
+        ctx.fillStyle = inkRgba(col(el.color), 0.55); ctx.fill(rip)
+        ctx.fillStyle = inkRgba(col(el.hi), 0.5); ctx.fill(path)
+        break
+      }
+      case 'pads': {                                     // lotus pads (a notched disc of dots) and closed buds on the water
+        for (const [x, y, s, bud] of el.items) {
+          const rx = 7 * s, ry = 2.2 * s, pts = []
+          for (let i = 0; i <= 20; i++) { const a = 0.35 + i / 20 * (Math.PI * 2 - 0.7); pts.push([x + Math.cos(a) * rx, y + Math.sin(a) * ry]) }
+          pts.push([x, y])
+          this._dotPoly(ctx, pts, col(el.color), P * 0.8, 0.36, 0.75, (px, py) => 0.6 + 0.5 * inkRnd2(px, py))
+          if (bud) this._dotPoly(ctx, [[x - 1.6 * s, y - 1], [x - 0.9 * s, y - 4 * s], [x, y - 5.6 * s], [x + 0.9 * s, y - 4 * s], [x + 1.6 * s, y - 1]], col(el.bud), P * 0.6, 0.4, 0.9)
+        }
+        break
+      }
+      case 'bigFalls': {                                 // a great waterfall (between two cliffs unless cliffs: false); the falling water is ambience
+        const G = this._fallsGeo(el), top = G.top, bot = G.bot, sky = el.cliffTop ?? top - 10, A0 = el.alpha ?? 1
+        if (el.cliffs !== false) {
+          const side = dir => {                                               // a cliff whose inner face follows the falls' edge
+            const edgeAt = y => (dir > 0 ? G.L(y) - 1.5 : G.R(y) + 1.5), pts = [[edgeAt(bot), bot + 40]]
+            for (let y = bot; y >= top; y -= 6) pts.push([edgeAt(y) - dir * 2.5 * inkRnd(y * 1.7 + dir), y])
+            pts.push([edgeAt(top) - dir * 5, top - 5])                           // a broken, rocky skyline stepping up and away
+            for (let i = 1; i <= 14; i++) pts.push([edgeAt(top) - dir * i * 9, sky - i * 1.2 + (inkRnd(i * 3.7 + dir) - 0.5) * 12 - (i % 3 === 0 ? 6 : 0)])
+            pts.push([edgeAt(top) - dir * 400, sky - 20], [edgeAt(top) - dir * 400, bot + 40])
+            this._scenery(ctx, C, { kind: 'cliff', color: el.rock, hi: el.rockHi, pts }, x0, x1, y1)
+          }
+          side(1); side(-1)
+        }
+        // the curtain: streaks that follow the widening shape and wobble, three brightnesses, broken into runs
+        const streak = [new Path2D(), new Path2D(), new Path2D()], lip = new Path2D()
+        const w0 = G.R(top) - G.L(top), n = Math.round(w0 / (P * 0.95))
+        for (let s = 0; s <= n; s++) {
+          const u = s / n, lvl = inkRnd(s * 3.3 + el.x) > 0.7 ? 2 : inkRnd(s * 5.1 + el.x) > 0.4 ? 1 : 0, ph = inkRnd(s * 7.1 + el.x) * 40
+          const lx = G.L(top) + u * w0
+          for (let y = G.lipY(lx) + 1.4; y <= bot; y += 1.1) {
+            if (Math.sin(y * 0.07 + ph) + 0.6 * Math.sin(y * 0.19 + ph * 2) < -0.55) continue
+            const x = G.at(u, y) + Math.sin(y * 0.05 + ph) * 0.5, rr = P * [0.14, 0.18, 0.22][lvl]
+            streak[lvl].moveTo(x + rr, y); streak[lvl].arc(x, y, rr, 0, Math.PI * 2)
+          }
+          if (inkRnd(Math.floor(s / 3) * 5.7 + el.x) < 0.18) continue                  // breaks in the lip
+          for (let k = 0; k < 3; k++) { const y = G.lipY(lx) + k * 1.1 + (k ? inkRnd(s + k) * 0.8 : 0); lip.moveTo(lx + P * 0.3, y); lip.arc(lx, y, P * 0.3, 0, Math.PI * 2) }
+        }
+        ;[0.2, 0.36, 0.6].forEach((a, i) => { ctx.fillStyle = inkRgba(col(el.color), a * A0); ctx.fill(streak[i]) })
+        if (top > -20) { ctx.fillStyle = inkRgba(col(el.color), 0.9 * A0); ctx.fill(lip) }
+        if (el.pool) {                                                         // the plunge pool: churned foam, then ripples
+          const foam = new Path2D(), rip = new Path2D(), fl = G.L(bot) - 14, fr = G.R(bot) + 14
+          const cloudTop = x => bot - 8 - 14 * Math.abs(Math.sin(x * 0.07 + 1)) * (0.5 + 0.5 * inkRnd(Math.floor(x / 9)))   // billows 8-22 up
+          for (let r = Math.floor((bot - 24) / RY); r * RY <= y1 + 2; r++) {
+            const y = r * RY, d = y - bot
+            for (let x = Math.floor(x0 / P) * P + (r & 1 ? P / 2 : 0); x < x1; x += P) {
+              const nn = inkRnd2(x, y), side = Math.max(0, Math.max(fl - x, x - fr)) / 16      // fades out past the fall's sides
+              const top = cloudTop(x) + side * 16, h = bot + 6 - top
+              if (y >= top && y < bot + 6 && nn > 0.25 + 0.6 * (bot + 6 - y) / h * 0.4 + side * 0.5) { foam.moveTo(x + P * 0.3, y); foam.arc(x, y, P * 0.3, 0, Math.PI * 2) }
+              else if (d > 6 && Math.sin(x * 0.08 + y * 1.9) > 0.6 && nn < 0.4) { rip.moveTo(x + P * 0.22, y); rip.arc(x, y, P * 0.22, 0, Math.PI * 2) }
+            }
+          }
+          ctx.fillStyle = inkRgba(col(el.color), 0.4); ctx.fill(rip)
+          ctx.fillStyle = inkRgba(col(el.color), 0.55); ctx.fill(foam)
+        }
+        break
+      }
+      case 'rainbow': {                                  // a faint dotted rainbow standing in the spray
+        const cols = ['#E86A6A', '#E8A45A', '#E8D66A', '#6AC88C', '#6A8CE8', '#9A74D8']
+        cols.forEach((c, i) => {
+          const rr = el.r - i * 1.5, path = new Path2D()
+          for (let a = Math.PI * 1.08; a < Math.PI * 1.92; a += 1.3 / rr) {
+            const f = Math.sin((a - Math.PI * 1.08) / (Math.PI * 0.84) * Math.PI)       // fades at both feet
+            if (inkRnd(a * 97 + i) > f * 0.9) continue
+            const x = el.x + Math.cos(a) * rr, y = el.y + Math.sin(a) * rr
+            path.moveTo(x + 0.42, y); path.arc(x, y, 0.42, 0, Math.PI * 2)
+          }
+          ctx.fillStyle = inkRgba(c, el.alpha ?? 0.4); ctx.fill(path)
+        })
+        break
+      }
+      case 'peaks': {                                    // jagged mountain peaks: lit left faces, snow on the summits
+        for (const [cx, base, h, w, skew = 0] of el.items) {
+          // the ridgeline is a random walk (small spurs and notches), not a ruler-straight triangle side
+          const sx = cx + skew, sy = base - h, pts = [[cx - w, base + 40], [cx - w, base]], N = 22
+          let walk = 0
+          for (let i = 1; i < N; i++) {
+            const f = i / N; walk = walk * 0.6 + (inkRnd(cx * 3 + i) - 0.5) * h * 0.09
+            pts.push([cx - w + (sx - cx + w) * f + (inkRnd(cx + i) - 0.5) * 3, base - h * f ** 0.9 + walk - (i % 5 === 2 ? h * 0.04 : 0)])
+          }
+          pts.push([sx, sy]); walk = 0
+          for (let i = 1; i < N; i++) {
+            const f = i / N; walk = walk * 0.6 + (inkRnd(cx * 7 + i) - 0.5) * h * 0.09
+            pts.push([sx + (cx + w - sx) * f + (inkRnd(cx + i * 5) - 0.5) * 3, sy + h * f ** 1.1 + walk - (i % 6 === 3 ? h * 0.04 : 0)])
+          }
+          pts.push([cx + w, base], [cx + w, base + 40])
+          const snowY = sy + h * (el.snowline ?? 0.3)
+          const snowLine = px => snowY - Math.abs(px - sx) * (el.snowSlope ?? 0.12)                         // snowSlope: the cap narrows down the slopes
+          const isSnow = (px, py) => py < snowLine(px) + (inkRnd2(px, py) - 0.5) * 8
+          this._dotPoly(ctx, pts, col(el.color), P, 0.36, el.alpha ?? 0.95, (px, py) => isSnow(px, py) ? 0 : (px < sx ? 0.9 : 0.62) * (0.75 + 0.35 * inkRnd2(px, py)))
+          this._dotPoly(ctx, pts, col(el.snow), P, 0.36, el.alpha ?? 0.95, (px, py) => {
+            if (!isSnow(px, py)) return 0
+            const down = Math.max(0, Math.min(1, (py - sy) / Math.max(4, snowLine(px) - sy)))               // 0 at the summit → 1 at the snowline
+            if (inkRnd2(px * 1.7, py) < down * 0.65) return 0                                               // the snow thins toward its lower edge
+            return (px < sx ? 1 : 0.72) * (1 - 0.35 * down)
+          })
+        }
+        break
+      }
+      case 'nebula': {                                   // clouds of star-dust: soft falloff, broken up by noise
+        for (const [cx, cy, rx, ry, c, ang = 0, a0 = 0.5] of el.items) {
+          const path = new Path2D(), ca = Math.cos(ang), sa = Math.sin(ang), R = Math.max(rx, ry)
+          for (let r = Math.floor((cy - R) / RY); r * RY <= cy + R; r++) {
+            const y = r * RY
+            for (let x = Math.floor((cx - R) / P) * P + (r & 1 ? P / 2 : 0); x < cx + R; x += P) {
+              const dx = x - cx, dy = y - cy, u = (dx * ca + dy * sa) / rx, v = (-dx * sa + dy * ca) / ry, d2 = u * u + v * v
+              if (d2 > 1) continue
+              const n = 0.6 * inkRnd2(x * 0.25, y * 0.25) + 0.4 * inkRnd2(x, y)
+              if (n < 0.35 + 0.6 * d2) continue
+              const rr = P * (0.16 + 0.2 * (1 - d2))
+              path.moveTo(x + rr, y); path.arc(x, y, rr, 0, Math.PI * 2)
+            }
+          }
+          ctx.fillStyle = inkRgba(col(c), a0); ctx.fill(path)
+        }
+        break
+      }
+      case 'earthRim': {                                 // the atmosphere: a glowing dotted limb around the planet
+        const { cx, cy, r } = el
+        for (const [dr, a, rad] of [[0.8, 0.9, 0.42], [2.4, 0.5, 0.36], [4.2, 0.25, 0.3], [6.2, 0.12, 0.26]]) {
+          const path = new Path2D(), R = r + dr
+          for (let q = -Math.PI; q < 0; q += 1.5 / R) {
+            const x = cx + Math.cos(q) * R, y = cy + Math.sin(q) * R
+            if (x < x0 - 4 || x > x1 + 4 || y > y1 + 4) continue
+            path.moveTo(x + rad, y); path.arc(x, y, rad, 0, Math.PI * 2)
+          }
+          ctx.fillStyle = inkRgba(col(el.color), a); ctx.fill(path)
+        }
+        inkSoftDot(ctx, cx, cy - r, 60, col(el.color), 0.08)
+        break
+      }
+      case 'rays': {                                     // god rays: faint dotted lines fanning down from the sky
+        const path = new Path2D()
+        for (let i = 0; i < el.n; i++) {
+          const ang = Math.PI / 2 + (i / (el.n - 1) - 0.5) * el.spread
+          for (let d = 6; d < el.len; d += 2.4) {
+            if (inkRnd(i * 97 + d) < d / el.len * 0.8) continue
+            const x = el.x + Math.cos(ang) * d, y = el.y + Math.sin(ang) * d
+            path.moveTo(x + 0.45, y); path.arc(x, y, 0.45, 0, Math.PI * 2)
+          }
+        }
+        ctx.fillStyle = inkRgba(col(el.color), 0.35); ctx.fill(path)
+        break
+      }
+      case 'islands': {                                  // floating islands, each with a pavilion of the immortals
+        for (const [x, y, s] of el.items) {
+          const w = 26 * s, jag = i => (inkRnd(x + i * 3.7) - 0.5) * 4 * s
+          const under = [[x - w, y], [x + w, y], [x + w * 0.5 + jag(1), y + 8 * s], [x + w * 0.15 + jag(2), y + 16 * s], [x, y + 24 * s], [x - w * 0.2 + jag(3), y + 15 * s], [x - w * 0.6 + jag(4), y + 7 * s]]
+          this._dotPoly(ctx, under, col(el.rock), P, 0.36, 0.9, (px, py) => (py - y < 2 ? 1.15 : 0.6 + 0.4 * inkRnd2(px, py)))
+          // the pavilion: two pillars, a hall, a curved two-tier roof with upturned eaves
+          const hw = 9 * s, hy = y - 1
+          this._dotPoly(ctx, [[x - hw * 0.8, hy], [x - hw * 0.8, hy - 7 * s], [x + hw * 0.8, hy - 7 * s], [x + hw * 0.8, hy]], col(el.hall), P * 0.9, 0.3, 0.85)
+          for (const [ry, rw, rh] of [[hy - 7 * s, hw * 1.35, 4 * s], [hy - 12 * s, hw * 0.9, 3.5 * s]]) {
+            this._dotPoly(ctx, [[x - rw, ry - rh * 0.1], [x - rw * 1.08, ry - rh * 0.55], [x - rw * 0.55, ry - rh * 0.6], [x, ry - rh * 1.25],
+              [x + rw * 0.55, ry - rh * 0.6], [x + rw * 1.08, ry - rh * 0.55], [x + rw, ry - rh * 0.1]], col(el.roof), P * 0.8, 0.4, 1)
+          }
+          inkSoftDot(ctx, x, hy - 4 * s, 10 * s, col(el.roof), 0.16)
+        }
+        break
+      }
+    }
+  }
+
+  // Animated ambience, drawn every frame between the mist and the figure. Deterministic per index (no allocation per dot).
+  _ambience(ctx, C, t) {
+    const PAL = this.art.palette, B = this.art.background, calm = this.reducedMotion
+    const vx0 = -C.ox / C.S, vx1 = (C.cw - C.ox) / C.S, W = vx1 - vx0
+    const col = k => PAL[k] || k
+    for (const a of B.ambience) {
+      switch (a.kind) {
+        case 'stars': {                                  // twinkling stars above the far ridge
+          const path = [new Path2D(), new Path2D()]
+          for (let i = 0; i < a.n; i++) {
+            const x = vx0 + inkRnd(i * 3.3) * W, y = -30 + inkRnd(i * 7.9) * (a.y1 + 30)
+            if (B.ridges !== false && y > this._ridge(B.ridgeFar, x) - 4) continue
+            if (a.y0 != null && y < a.y0) continue
+            if (a.avoid && Math.hypot(x - a.avoid[0], y - a.avoid[1]) < a.avoid[2] + 3) continue
+            const tw = calm ? 0.5 : 0.5 + 0.5 * Math.sin(t * (0.8 + inkRnd(i) * 1.6) + i)
+            const rr = 0.3 + 0.35 * inkRnd(i * 1.7) * tw
+            path[tw > 0.6 ? 1 : 0].moveTo(x + rr, y); path[tw > 0.6 ? 1 : 0].arc(x, y, rr, 0, Math.PI * 2)
+          }
+          ctx.fillStyle = inkRgba(col(a.color), 0.4); ctx.fill(path[0])
+          ctx.fillStyle = inkRgba(col(a.color), 0.85); ctx.fill(path[1])
+          break
+        }
+        case 'grass': {                                  // a meadow in the wind: blades of dots, the gust travels across; flowers on some tips
+          const paths = [new Path2D(), new Path2D(), new Path2D()], flowers = (a.flowers || []).map(() => new Path2D())
+          for (let i = 0; i < a.n; i++) {
+            const depth = inkRnd(i * 3.7) ** 0.6, x = vx0 + inkRnd(i * 5.9) * W
+            const base = Math.max(a.y0 + depth * (a.y1 - a.y0), B.ridges !== false ? this._ridge(B.ridgeNear, x) + 3 : 0)
+            const h = (2.5 + 5 * inkRnd(i * 8.3)) * (0.5 + 0.7 * depth), m = Math.max(2, Math.round(h / 1.1))
+            const gust = calm ? 0.3 : 0.35 + 0.65 * Math.max(0, Math.sin(t * 2.2 - x * 0.021)) ** 2   // a wave of wind rolling across (~3 s)
+            const sway = (Math.sin(t * 2.2 + i * 0.7 + x * 0.05) * 0.5 + 0.9) * gust * (a.wind ?? 2.4) * (0.6 + 0.6 * depth)
+            const lvl = depth > 0.75 ? 2 : depth > 0.4 ? 1 : 0, rr = 0.3 + 0.16 * depth
+            for (let k = 0; k <= m; k++) {
+              const f = k / m, xx = x + sway * f * f, yy = base - k * 1.1
+              paths[lvl].moveTo(xx + rr, yy); paths[lvl].arc(xx, yy, rr, 0, Math.PI * 2)
+            }
+            if (flowers.length && inkRnd(i * 11.3) < (a.flowerRate ?? 0.08)) {
+              const fi = Math.floor(inkRnd(i * 13.1) * flowers.length), xx = x + sway, yy = base - m * 1.1 - 0.4
+              flowers[fi].moveTo(xx + 0.7, yy); flowers[fi].arc(xx, yy, 0.7, 0, Math.PI * 2)
+            }
+          }
+          ;[0.4, 0.62, 0.85].forEach((al, i) => { ctx.fillStyle = inkRgba(inkMix(col(a.color), col(a.hi || a.color), i / 2), al); ctx.fill(paths[i]) })
+          ;(a.flowers || []).forEach((c, i) => { ctx.fillStyle = inkRgba(col(c), 0.9); ctx.fill(flowers[i]) })
+          break
+        }
+        case 'fireflies': {                              // slow wandering sparks that pulse
+          const [bx0, by0, bx1, by1] = a.box
+          for (let i = 0; i < a.n; i++) {
+            const x = bx0 + (bx1 - bx0) * (inkRnd(i * 5.1) + 0.06 * Math.sin(t * 0.21 + i * 2.3)) , y = by0 + (by1 - by0) * (inkRnd(i * 9.7) + 0.08 * Math.sin(t * 0.33 + i))
+            const pl = calm ? 0.6 : Math.max(0, Math.sin(t * (0.9 + inkRnd(i * 2) * 0.8) + i * 1.9))
+            if (pl < 0.05) continue
+            inkSoftDot(ctx, x, y, 3.2, col(a.color), 0.28 * pl)
+            inkSoftDot(ctx, x, y, 0.6, inkMix(col(a.color), '#FFFFFF', 0.4), 0.9 * pl)
+          }
+          break
+        }
+        case 'falls': {                                  // water streaming down + spray at the foot
+          const path = new Path2D()
+          for (let i = 0; i < a.n; i++) {
+            const ph = ((t * a.speed + inkRnd(i * 3.1)) % 1 + 1) % 1
+            const f = ph * ph, x = a.x + (inkRnd(i * 7.7) - 0.5) * a.w * (0.7 + 0.9 * f), y = a.y0 + f * (a.y1 - a.y0)
+            path.moveTo(x + 0.5, y); path.arc(x, y, 0.5, 0, Math.PI * 2)
+          }
+          ctx.fillStyle = inkRgba(col(a.color), 0.75); ctx.fill(path)
+          for (let i = 0; i < 6; i++) {
+            const ph = ((t * 0.6 + i / 6) % 1 + 1) % 1
+            inkSoftDot(ctx, a.x + (inkRnd(i) - 0.5) * a.w * 3, a.y1 - ph * 8, 2 + ph * 3, col(a.color), 0.16 * (1 - ph))
+          }
+          break
+        }
+        case 'lanterns': {                               // sky lanterns drifting up from the water
+          for (let i = 0; i < a.n; i++) {
+            const ph = ((t * a.speed + inkRnd(i * 4.3)) % 1 + 1) % 1
+            const x = a.x0 + (a.x1 - a.x0) * inkRnd(i * 6.1) + 4 * Math.sin(t * 0.4 + i), y = a.y0 - ph * (a.y0 - a.y1)
+            const fade = Math.min(1, ph * 5, (1 - ph) * 3), s = 0.7 + 0.5 * inkRnd(i * 2.9)
+            inkSoftDot(ctx, x, y, 5 * s, col(a.color), 0.2 * fade)
+            ctx.fillStyle = inkRgba(inkMix(col(a.color), '#FFFFFF', 0.25), 0.85 * fade)
+            for (const [dx, dy] of [[0, -0.9], [-0.8, 0], [0.8, 0], [0, 0.9]]) { ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, 0.55 * s, 0, Math.PI * 2); ctx.fill() }
+          }
+          break
+        }
+        case 'petals': {                                 // petals (or embers) falling on the wind
+          const H = 190
+          for (let i = 0; i < a.n; i++) {
+            const x = vx0 + ((inkRnd(i * 2.1) * W + t * a.wind * (0.7 + inkRnd(i) * 0.6)) % W + W) % W
+            const y = ((inkRnd(i * 5.3) * H + t * a.fall * (0.7 + inkRnd(i * 3) * 0.6)) % H + H) % H - 30
+            const fl = Math.sin(t * 2.2 + i * 1.3)                                        // flutter: the petal turns
+            ctx.fillStyle = inkRgba(col(a.color), 0.7)
+            ctx.beginPath(); ctx.arc(x, y, 0.65, 0, Math.PI * 2); ctx.fill()
+            ctx.beginPath(); ctx.arc(x + 1.1 * fl, y + 0.5, 0.5, 0, Math.PI * 2); ctx.fill()
+          }
+          break
+        }
+        case 'lightning': {                              // a distant storm: a dotted bolt behind the far peaks, the sky flickers
+          if (calm) break
+          const k = Math.floor(t / a.every), ph = t - k * a.every
+          if (ph > 0.45) break
+          const fl = ph < 0.08 ? 1 : ph < 0.16 ? 0.25 : ph < 0.26 ? 0.8 : Math.max(0, 1 - (ph - 0.26) / 0.19)
+          const bx = vx0 + W * (0.1 + 0.8 * inkRnd(k * 3.7))
+          if (Math.abs(bx - 150) < 50) break                                                  // never across the figure
+          ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0)
+          const g = ctx.createRadialGradient(C.ox + bx * C.S, C.oy + 30 * C.S, 0, C.ox + bx * C.S, C.oy + 30 * C.S, 110 * C.S)
+          g.addColorStop(0, inkRgba(col(a.color), 0.16 * fl)); g.addColorStop(1, inkRgba(col(a.color), 0))
+          ctx.fillStyle = g; ctx.fillRect(0, 0, C.cw, C.ch); ctx.restore()
+          const path = new Path2D(), end = this._ridge(B.ridgeFar, bx)
+          let x = bx
+          for (let y = -30; y < end; y += 1.6) {
+            x += (inkRnd(k * 31 + y) - 0.5) * 2.2
+            path.moveTo(x + 0.5, y); path.arc(x, y, 0.5, 0, Math.PI * 2)
+          }
+          ctx.fillStyle = inkRgba(col(a.color), 0.8 * fl); ctx.fill(path)
+          break
+        }
+        case 'bigFalls': {                               // the waterfall: bright clumps racing down, spray bursting at the foot, pool rings
+          const G = this._fallsGeo(a), H = G.bot - G.top, A0 = a.alpha ?? 1
+          const head = new Path2D(), mid = new Path2D(), tail = new Path2D()
+          for (let i = 0; i < a.n; i++) {
+            const sp = 0.75 + 0.5 * inkRnd(i * 1.3), ph = ((t * a.speed * sp + inkRnd(i * 3.1)) % 1 + 1) % 1
+            const u = inkRnd(i * 7.7), y = G.top + ph ** 1.6 * (H + 4), len = 4 + 7 * inkRnd(i * 2.2)
+            for (let k = 0; k < 6; k++) {
+              const yy = y - k * len / 5
+              if (yy < G.lipY(G.at(u, yy)) + 1) break
+              const x = G.at(u, yy), rr = k === 0 ? 0.6 : 0.45, pth = k === 0 ? head : k < 3 ? mid : tail
+              pth.moveTo(x + rr, yy); pth.arc(x, yy, rr, 0, Math.PI * 2)
+            }
+          }
+          ctx.fillStyle = inkRgba(col(a.color), 0.3 * A0); ctx.fill(tail)
+          ctx.fillStyle = inkRgba(col(a.color), 0.6 * A0); ctx.fill(mid)
+          ctx.fillStyle = inkRgba(inkMix(col(a.color), '#FFFFFF', 0.5), 0.95 * A0); ctx.fill(head)
+          if (a.spray !== false) {                                                 // spray bursting up and out at the foot
+            const spray = new Path2D(), wl = G.L(G.bot), wr = G.R(G.bot)
+            for (let i = 0; i < 44; i++) {
+              const p = ((t * 0.9 * (0.7 + 0.6 * inkRnd(i)) + inkRnd(i * 4.4)) % 1 + 1) % 1
+              const bx = wl + (wr - wl) * inkRnd(i * 6.6), x = bx + (inkRnd(i * 2.2) - 0.5) * 36 * p, y = G.bot + 2 - Math.sin(p * Math.PI) * (5 + 11 * inkRnd(i * 8.1))
+              const rr = 0.55 * (1 - p) + 0.2
+              spray.moveTo(x + rr, y); spray.arc(x, y, rr, 0, Math.PI * 2)
+            }
+            ctx.fillStyle = inkRgba(col(a.color), 0.95 * A0); ctx.fill(spray)
+            for (let i = 0; i < 10; i++) {
+              const ph = ((t * 0.3 + i / 10) % 1 + 1) % 1
+              inkSoftDot(ctx, wl + (wr - wl) * inkRnd(i * 2.3) + (inkRnd(i) - 0.5) * 24 * ph, G.bot - ph * 16, 5 + ph * 8, col(a.color), 0.12 * (1 - ph) * A0)
+            }
+          }
+          if (a.pool && !calm) {                                                   // rings spreading across the pool
+            for (let i = 0; i < 3; i++) {
+              const q = t * 0.32 + i / 3, p = q - Math.floor(q), cx = a.x + (inkRnd(Math.floor(q) * 3 + i) - 0.5) * 40
+              const rx = 10 + p * 70, ry = rx * 0.14, ring = new Path2D()
+              for (let ang = 0; ang < Math.PI * 2; ang += 2 / rx) {
+                const x = cx + Math.cos(ang) * rx, y = G.bot + 7 + Math.sin(ang) * ry
+                if (y < G.bot + 2) continue
+                ring.moveTo(x + 0.55, y); ring.arc(x, y, 0.55, 0, Math.PI * 2)
+              }
+              ctx.fillStyle = inkRgba(col(a.color), 0.85 * (1 - p)); ctx.fill(ring)
+            }
+          }
+          break
+        }
+        case 'birds': {                                  // birds / cranes in small V flocks crossing the sky, wings beating
+          const groups = Math.ceil(a.n / 3), span = W + 60
+          ctx.fillStyle = inkRgba(col(a.color), a.alpha ?? 0.85)
+          for (let g = 0; g < groups; g++) {
+            const sp = a.speed * (0.8 + 0.4 * inkRnd(g * 3.7))
+            const bx = vx0 - 30 + (((inkRnd(g * 5.3) * span + t * sp) % span) + span) % span, by = a.y0 + (a.y1 - a.y0) * inkRnd(g * 2.9) + Math.sin(t * 0.4 + g) * 2
+            for (let j = 0; j < 3 && g * 3 + j < a.n; j++) {
+              const s = (a.size ?? 1) * (0.85 + 0.3 * inkRnd(g * 3 + j)), x = bx - j * 5 * s, y = by + j * 3 * s          // a small V: the leader in front
+              const flap = calm ? 0.3 : Math.sin(t * 7 + g * 2 + j * 0.9)
+              ctx.beginPath(); ctx.arc(x, y, 0.55 * s, 0, Math.PI * 2); ctx.fill()
+              for (let k = 1; k <= 3; k++) for (const sd of [-1, 1]) {
+                ctx.beginPath(); ctx.arc(x + sd * k * 1.05 * s, y - flap * k * 0.55 * s + k * 0.12 * s, 0.42 * s, 0, Math.PI * 2); ctx.fill()
+              }
+            }
+          }
+          break
+        }
+        case 'cloudBank': {                              // a band of cloud drifting across (pre-rendered, 600 wide, tiles)
+          const key = 'cb' + a.y + a.seed
+          C.amb = C.amb || {}
+          if (!C.amb[key]) {
+            const cv = document.createElement('canvas'), H = a.h + 6
+            cv.width = Math.round(600 * C.S); cv.height = Math.round(H * C.S)
+            const g = cv.getContext('2d'); g.setTransform(C.S, 0, 0, C.S, 0, 0)
+            const P2 = this.art.dot.pitch * 0.9, RY2 = P2 * 0.866, k = Math.PI * 2 / 600, hi = new Path2D(), lo = new Path2D()
+            for (let r = 0; r * RY2 < H; r++) {
+              const y = r * RY2
+              for (let x = (r & 1 ? P2 / 2 : 0); x < 600; x += P2) {
+                const gap = Math.sin(x * k * 2 + a.seed) + 0.6 * Math.sin(x * k * 5 + a.seed * 3)
+                if (gap < (a.gap ?? -0.2)) continue                                     // clear sky between banks (higher gap = separate wisps)
+                const top = a.h * (0.55 - 0.3 * Math.abs(Math.sin(x * k * 9 + a.seed)) - 0.2 * Math.abs(Math.sin(x * k * 17 + a.seed * 2)) - 0.15 * Math.min(1, gap))
+                const d = y - top
+                if (d < 0 || inkRnd2(x + a.seed * 50, y) < d / a.h * 1.1) continue
+                const p = d < 2.2 ? hi : lo, rr = P2 * (d < 2.2 ? 0.36 : 0.3)
+                p.moveTo(x + rr, y); p.arc(x, y, rr, 0, Math.PI * 2)
+              }
+            }
+            g.fillStyle = inkRgba(col(a.color), 0.55); g.fill(lo)
+            g.fillStyle = inkRgba(col(a.hi || a.color), 0.9); g.fill(hi)
+            C.amb[key] = cv
+          }
+          const drift = ((t * a.speed) % 600 + 600) % 600
+          ctx.globalAlpha = a.alpha ?? 1
+          for (let x = Math.floor((vx0 + drift) / 600) * 600 - drift; x < vx1; x += 600) ctx.drawImage(C.amb[key], x, a.y, 600, a.h + 6)
+          ctx.globalAlpha = 1
+          break
+        }
+        case 'earth': {                                  // the planet below, turning: land, sea and cloud dots on a sphere
+          C.amb = C.amb || {}
+          let E = C.amb.earth
+          if (!E) {                                                               // the dot grid + a wrap-around land/cloud table, once per cache
+            const P2 = this.art.dot.pitch * 1.2, RY2 = P2 * 0.866, pts = [], TW = 512, TH = 128
+            for (let r = Math.floor((a.cy - a.r) / RY2); r * RY2 < (C.ch - C.oy) / C.S + 2; r++) {
+              const y = r * RY2
+              for (let x = Math.floor(vx0 / P2) * P2 + (r & 1 ? P2 / 2 : 0); x < vx1; x += P2) {
+                const dx = (x - a.cx) / a.r, dy = (y - a.cy) / a.r, q = 1 - dx * dx - dy * dy
+                if (q <= 0) continue
+                const z = Math.sqrt(q), k = a.tilt ?? 1.2                            // tilt: the visible band is low latitudes, not the pole
+                const dy2 = dy * Math.cos(k) + z * Math.sin(k), z2 = -dy * Math.sin(k) + z * Math.cos(k)
+                pts.push(x, y, z, Math.atan2(dx, z2), Math.asin(Math.max(-1, Math.min(1, dy2))))
+              }
+            }
+            const vnoise = (u, v, s, seed) => {                                   // smooth value noise that wraps in u
+              const cu = u * s, cv = v * s, iu = Math.floor(cu), iv = Math.floor(cv), fu = cu - iu, fv = cv - iv
+              const h = (i, j) => inkRnd(((i % s) + s) % s * 131 + j * 17 + seed)
+              const sm = f => f * f * (3 - 2 * f)
+              const a0 = h(iu, iv) + (h(iu + 1, iv) - h(iu, iv)) * sm(fu), a1 = h(iu, iv + 1) + (h(iu + 1, iv + 1) - h(iu, iv + 1)) * sm(fu)
+              return a0 + (a1 - a0) * sm(fv)
+            }
+            // smooth land / cloud fields (thresholded per dot); built once per app, they do not depend on the canvas size
+            const { land, cloud } = InkRenderer._earthTbl || (InkRenderer._earthTbl = (() => {
+              const land = new Float32Array(TW * TH), cloud = new Float32Array(TW * TH)
+              for (let j = 0; j < TH; j++) for (let i = 0; i < TW; i++) {
+                const u = i / TW, v = j / TH
+                land[j * TW + i] = 0.55 * vnoise(u, v, 8, 1) + 0.3 * vnoise(u, v, 24, 7) + 0.15 * vnoise(u, v, 64, 5)
+                cloud[j * TW + i] = 0.5 * vnoise(u, v, 14, 3) + 0.3 * vnoise(u, v, 40, 9) + 0.2 * vnoise(u, v, 96, 2)
+              }
+              return { land, cloud }
+            })())
+            E = C.amb.earth = { pts, land, cloud, TW, TH, P2, frame: null, at: -1 }
+          }
+          // redraw the sphere into its own canvas ~10×/s (it turns slowly), then blit every frame
+          if (!E.frame) { E.frame = document.createElement('canvas'); E.frame.width = C.cw; E.frame.height = C.ch }
+          if (Math.abs(t - E.at) > 0.1 || calm && E.at < 0) {
+            E.at = t
+            const g = E.frame.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, C.cw, C.ch); g.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
+            const rot = t * a.rot, paths = [[], [], []].map(() => [new Path2D(), new Path2D(), new Path2D()])   // [sea|land|cloud][shade]
+            const { pts, land, cloud, TW, TH, P2 } = E
+            for (let k = 0; k < pts.length; k += 5) {
+              const x = pts[k], y = pts[k + 1], z = pts[k + 2], lon = pts[k + 3], lat = pts[k + 4]
+              const fj = (lat / Math.PI + 0.5) * (TH - 1)
+              const smp = (F, lo) => {                                          // bilinear: smooth coastlines on the fixed dot grid
+                const fi = ((lo / (Math.PI * 2)) * TW % TW + TW) % TW, i0 = Math.floor(fi), j0 = Math.min(TH - 2, Math.floor(fj)), u = fi - i0, v = fj - j0, i1 = (i0 + 1) % TW
+                return (F[j0 * TW + i0] * (1 - u) + F[j0 * TW + i1] * u) * (1 - v) + (F[(j0 + 1) * TW + i0] * (1 - u) + F[(j0 + 1) * TW + i1] * u) * v
+              }
+              const kind = smp(cloud, lon + rot * 1.35) > 0.6 ? 2 : smp(land, lon + rot) > 0.52 ? 1 : 0
+              const sh = z > 0.55 ? 2 : z > 0.25 ? 1 : 0, rr = P2 * (kind ? 0.42 : 0.36) * (0.7 + 0.3 * z)
+              paths[kind][sh].moveTo(x + rr, y); paths[kind][sh].arc(x, y, rr, 0, Math.PI * 2)
+            }
+            ;[a.sea, a.land, a.cloud].forEach((c, kind) => [0.5, 0.75, 0.95].forEach((al, sh) => { g.fillStyle = inkRgba(col(c), al); g.fill(paths[kind][sh]) }))
+          }
+          ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(E.frame, 0, 0); ctx.restore()
+          break
+        }
+        case 'bigStars': {                               // big sparkling stars: a bright core and four dotted spikes that flare
+          const cols = a.colors || [a.color]
+          for (let i = 0; i < a.n; i++) {
+            const x = vx0 + inkRnd(i * 4.1 + 7) * W, y = -36 + inkRnd(i * 6.7 + 3) * (a.y1 + 36)
+            if (a.clear && x > a.clear[0] && x < a.clear[2] && y > a.clear[1] && y < a.clear[3]) continue   // keep off the figure
+            const s = a.size * (0.6 + 0.8 * inkRnd(i * 9.1)), c = col(cols[i % cols.length])
+            const pl = calm ? 0.6 : 0.35 + 0.65 * Math.max(0, Math.sin(t * (0.6 + inkRnd(i) * 1.1) + i * 2.3)) ** 2
+            inkSoftDot(ctx, x, y, s * 3.2, c, 0.18 * pl)
+            const path = new Path2D(), L = s * (2.2 + 3.2 * pl)
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+              for (let d = 0.9; d < L; d += 0.9) { const rr = 0.42 * (1 - d / L) + 0.1; path.moveTo(x + dx * d + rr, y + dy * d); path.arc(x + dx * d, y + dy * d, rr, 0, Math.PI * 2) }
+            }
+            ctx.fillStyle = inkRgba(inkMix(c, '#FFFFFF', 0.4), 0.85 * pl); ctx.fill(path)
+            inkSoftDot(ctx, x, y, 0.9 * s, inkMix(c, '#FFFFFF', 0.6), 0.95)
+          }
+          break
+        }
+        case 'shooting': {                               // now and then a shooting star streaks across
+          if (calm) break
+          const k = Math.floor(t / a.every), ph = (t - k * a.every) / 1.1
+          if (ph > 1) break
+          const sx = vx0 + W * (0.15 + 0.7 * inkRnd(k * 2.7)), sy = -20 + 50 * inkRnd(k * 5.1), dir = inkRnd(k) < 0.5 ? -1 : 1
+          const hx = sx + dir * ph * 110, hy = sy + ph * 45, path = new Path2D()
+          for (let i = 0; i < 16; i++) {
+            const f = i / 16, x = hx - dir * f * 30, y = hy - f * 12.3, rr = 0.6 * (1 - f) + 0.12
+            path.moveTo(x + rr, y); path.arc(x, y, rr, 0, Math.PI * 2)
+          }
+          ctx.fillStyle = inkRgba(col(a.color), 0.9 * Math.sin(ph * Math.PI)); ctx.fill(path)
+          break
+        }
+        case 'shimmer': {                                // glints dancing on the moon's path over the water
+          if (!B.moon) break
+          for (let i = 0; i < a.n; i++) {
+            const y = a.y0 + (a.y1 - a.y0) * inkRnd(i * 3.9), spread = a.w * (0.4 + (y - a.y0) / 40)
+            const x = B.moon.x + (inkRnd(i * 8.3) - 0.5) * 2 * spread
+            const pl = calm ? 0.5 : Math.max(0, Math.sin(t * (1.5 + inkRnd(i) * 2) + i * 2.1))
+            if (pl < 0.3) continue
+            ctx.fillStyle = inkRgba(col(a.color), 0.9 * pl)
+            ctx.beginPath(); ctx.ellipse(x, y, 1.4, 0.4, 0, 0, Math.PI * 2); ctx.fill()
+          }
+          break
+        }
+      }
+    }
+  }
+
+  // The death moment (A4-3). The foreground (figure + every Qi effect) was drawn on C.dth this frame; each sampled dot
+  // of the figure lifts away as a mote when its turn comes, leaving a hole behind (the dissolve front), and the rest
+  // fades. 'fall' = ash drifting off on the wind while the scene dims; 'ascend' = gold light rising, feet first.
+  _deathCompose(ctx, C, fy) {
+    const d = this.death, asc = this.deathKind === 'ascend', calm = this.reducedMotion, P = this.art.palette
+    const D = this._deathDots(C), fx = C.dth.getContext('2d')
+    const smooth = (a, b, x) => { const u = Math.max(0, Math.min(1, (x - a) / (b - a))); return u * u * (3 - 2 * u) }
+    if (!calm && D.dots.length) {                                       // holes where the motes have already left
+      fx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy + fy * C.S)
+      fx.globalCompositeOperation = 'destination-out'
+      const hole = new Path2D()
+      for (const p of D.dots) if (d > p.delay) { hole.moveTo(p.x + D.r, p.y); hole.arc(p.x, p.y, D.r, 0, Math.PI * 2) }
+      fx.fill(hole)
+      fx.globalCompositeOperation = 'source-over'
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.globalAlpha = calm ? 1 - d : 1 - smooth(asc ? 0.45 : 0.6, 0.95, d)
+    ctx.drawImage(C.dth, 0, 0)
+    ctx.globalAlpha = 1
+    if (!calm) {
+      ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy + fy * C.S)
+      const ash = '#8E8A96'
+      for (const p of D.dots) {
+        const lp = (d - p.delay) / 0.5
+        if (lp <= 0 || lp >= 1) continue
+        const e = lp * lp
+        const x = p.x + (asc ? Math.sin(lp * 5 + p.ph) * 3 * lp : e * p.drift + Math.sin(lp * 6 + p.ph) * 2 * lp)
+        const y = asc ? p.y - e * p.rise * 1.8 : p.y - Math.sin(lp * Math.PI) * p.rise * 0.45 + e * 16   // ash lifts, then sinks away
+        const c = asc ? inkMix(p.c, P.gold, Math.min(1, lp * 2.2)) : inkMix(p.c, ash, Math.min(1, lp * 3))
+        ctx.fillStyle = inkRgba(c, (1 - lp) * 0.95)
+        ctx.beginPath(); ctx.arc(x, y, D.r * (asc ? 0.9 : 0.75) * (1 - 0.5 * lp), 0, Math.PI * 2); ctx.fill()
+      }
+    }
+    if (asc) {                                                          // a column of light takes the last of them up
+      const g = smooth(0, 0.35, d) * (1 - smooth(0.8, 1, d) * 0.6)
+      ctx.save(); ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy); ctx.translate(150, 40); ctx.scale(0.3, 1.4)
+      const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, 100)
+      gr.addColorStop(0, inkRgba(P.gold, 0.3 * g)); gr.addColorStop(1, inkRgba(P.gold, 0))
+      ctx.fillStyle = gr; ctx.fillRect(-100, -100, 200, 200); ctx.restore()
+    } else {                                                            // the world goes quiet
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.fillStyle = inkRgba('#05030A', 0.3 * smooth(0.2, 1, d)); ctx.fillRect(0, 0, C.cw, C.ch)
+    }
+    ctx.setTransform(C.S, 0, 0, C.S, C.ox, C.oy)
+  }
+
+  // Sample the figure's dots once per cache: a coarse grid over the figure layers, keeping each opaque cell's colour.
+  _deathDots(C) {
+    if (C.deathDots && C.deathDots.kind === this.deathKind) return C.deathDots
+    const step = C.lod ? 3 : 2.1, A = this.art, box = A.figureBox, dots = []
+    const imgs = this._layerOrder().map(L => C.layers[L].getContext('2d').getImageData(0, 0, C.cw, C.ch).data).reverse()   // front first
+    let top = Infinity, bot = -Infinity
+    for (let y = box[1]; y <= box[3]; y += step) {
+      for (let x = box[0]; x <= box[2]; x += step) {
+        const px = Math.round(C.ox + x * C.S), py = Math.round(C.oy + y * C.S)
+        if (px < 0 || py < 0 || px >= C.cw || py >= C.ch) continue
+        const o = (py * C.cw + px) * 4
+        const im = imgs.find(a => a[o + 3] > 70)
+        if (!im) continue
+        const hex = '#' + [im[o], im[o + 1], im[o + 2]].map(v => v.toString(16).padStart(2, '0')).join('')
+        dots.push({ x, y, c: hex, ph: inkRnd(x * 3 + y) * 6 })
+        top = Math.min(top, y); bot = Math.max(bot, y)
+      }
+    }
+    const asc = this.deathKind === 'ascend'
+    for (const p of dots) {
+      const yN = (p.y - top) / Math.max(1, bot - top), n = inkRnd(p.x * 7.1 + p.y * 3.3)
+      p.delay = asc ? 0.03 + 0.18 * n + 0.28 * (1 - yN) : 0.03 + 0.28 * n + 0.18 * yN      // ash: the head goes first; light: the feet
+      p.rise = asc ? 40 + 50 * inkRnd(p.x + p.y * 9) : 12 + 26 * inkRnd(p.x + p.y * 9)
+      p.drift = 18 + 40 * inkRnd(p.x * 5 + p.y)
+    }
+    C.deathDots = { dots, r: step * 0.72, kind: this.deathKind }
+    return C.deathDots
   }
 
   // Two soft mist bands, 600 logical px wide (drawn twice for a seamless drift).
@@ -1221,6 +1971,8 @@ function inkRecolor(rgb, R) {
   return [r, g, b].map(v => Math.max(0, Math.min(255, v)))
 }
 
+// 2-D noise for scenery textures (a linear seed like x*5+y*3 bands diagonally)
+function inkRnd2(x, y) { return inkRnd(Math.floor(x * 8.37) * 0.618 + inkRnd(Math.floor(y * 8.37) * 1.31) * 9187.3) }
 function inkRnd(i) { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x) }
 
 function inkHexRgb(hex) {

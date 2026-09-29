@@ -1,7 +1,7 @@
 # Art Engine (hybrid ink) — Reference
 _Covers: renderer/engine/ink-renderer.js · renderer/engine/sprite-renderer.js · assets/sprites/ink-cultivator.js ·
 assets/data/settings.js (artStyle) · renderer/game/settings.js · renderer/game/layout.js (canvas sizing) ·
-scripts/smoke/scenarios/ink-art.js · Phase: 34 (roadmap A3-1) · Updated: 2026-09-27_
+scripts/smoke/scenarios/ink-art.js · death-moment.js · Phase: 34 (roadmap A3-1 … A4-3) · Updated: 2026-09-28_
 
 The HYBRID direction the user picked in A2 (ui-review.md → "A2 art bake-off"): (c)'s ink figure/scene/halo + (b)'s
 glyph parts and thin rotating mote rings. A3-1 = the engine core + ONE cultivator (Qi Condensation, idle +
@@ -82,6 +82,50 @@ layer first erases (destination-out) what lies behind its solid silhouette mask 
 pitch), so a swaying tail / beating wing never shows through the body's dot gaps. Region masks must take in a WHOLE
 moving part (the fox's lower tail curl included), or the part tears where it is split; breakthrough rim = gold on the silhouette. The dot grid is cached per map + box; the image loads async
 (`InkRenderer.image`) and the cache rebuilds on load.
+
+## Realm scenery + death moment (A4-3, 2026-09-28)
+Each realm now stands in its own place (all dots, no wash; data in `INK_ART[state].background`).
+User cycles 2-3 (2026-09-28): the realms are a **journey upward** (desert → grasslands → the foot of a mountain → the peaks → the clouds → above the earth → the stars) and **every background moves**. `peaks` ridgelines are a random walk with spurs.
+
+| Realm | Scene | `scenery` (baked into C.bg) | `ambience` (per frame) |
+|---|---|---|---|
+| Mortal | dusk over the home paddies | `fields`, `hut`; `moon.sun` (a low sun); `ridges: true` | `fireflies` |
+| Qi Condensation | moonlit grasslands (user cycle 3: Mortal reads as a desert) | gentle ridges, `tree` | `grass` (blades + wildflowers, a gust rolls across ~3 s), `cloudBank` wisps (`gap`), `fireflies`, `stars` |
+| Foundation | the foot of a great mountain | `peaks` (`back`: a shouldered massif, crown off-centre, snow thinning down the slopes), a thin `bigFalls` down its face, foothill ridges + `pines` | `bigFalls`, mist `cloudBank`, cold `grass`, `birds`, `stars` |
+| Core | the mountains: hovering over a summit | `peaks` far + near (lit left faces, snow) | `cloudBank`, `birds` (cranes), `stars` |
+| Nascent Soul | in the clouds | `cloudSea` | 3 × `cloudBank` (depths), `birds`, `stars` |
+| Spirit Severing | above the earth | `earthRim` (atmosphere) | `earth` (the planet turns), `stars` (`avoid` the disc) |
+| Ascension | among the stars | `nebula` (galaxy band + clouds) | `stars`, `bigStars` (four dotted spikes flare), `shooting` |
+
+Older kinds kept for later scenes: `cliff falls lake pads islands rays rainbow`, `lanterns petals lightning shimmer`.
+Engine notes: `ridges: false` skips the mountain ridges; `mistA: 0` skips the mist; `float` without `shadow` casts none.
+`cloudBank` pre-renders a seamless 600-wide strip per cache (`C.amb`) and tiles it with a drift. `earth`: a sphere sampled on
+a dot grid once per cache, tilted (`tilt`, default 1.2 rad) so the band we see is low latitudes; land/cloud come from smooth
+value-noise tables built once per app (`InkRenderer._earthTbl`, bilinear per dot); redrawn into its own canvas ~10×/s. Smoke
+writes `out/ink-motion-sheet.png` (each moving realm at three moments).
+
+- Background keys: `moon: { x, y, r, sun?, a? }` (`a` brightens, `null` = none), `mistA` (mist strength), `scenery[]`,
+  `ambience[]`, ridge params per realm. **`background` merges key by key**, so every realm sets its own `scenery` +
+  `ambience` (else it inherits the previous realm's). Palette keys: `pine field fieldWater roof wall lamp rock rockHi
+  water cloud cloudHi lake lakeHi lantern pad bud petal bolt ridgeRim isleRock isleHall`.
+- Engine: `_scenery(kind)`, `_ambience(kind)`, `_dotPoly(pts, col, pitch, rad, alpha, shade)` (hex dots inside a
+  polygon, `shade(x,y)` → radius factor), `_ridge()`, `inkRnd2(x, y)` (2-D noise: a linear seed like `x*5+y*3` bands
+  diagonally — used for every scenery texture). LOD (banner) skips scenery + ambience.
+- **Death moment**: `InkRenderer.triggerDeath('fall' | 'ascend')` / `clearDeath()`; `death` eases 0 → 1 over
+  `DEATH_SECONDS` (3.2 s, real time; Reduced motion = a 1.2 s plain fade). Everything in front of the scenery is drawn on
+  `C.dth`; `_deathDots` samples the figure layers once (a 2.1-unit grid, colour per cell) and each dot lifts off at its
+  `delay` (fall: head first, turns ash-grey, lifts then sinks on the wind, the scene dims; ascend: feet first, turns
+  gold and rises in a column of light, bt rim on) leaving a hole behind it (destination-out) — the dissolve front.
+  `SpriteRenderer.playDeath(kind)` returns how long game.js waits before the death card (0 on Classic art) and holds the
+  dying figure's state until `clearDeath()` (called when the death card closes). `ascend` switches to the Ascension art
+  first. game.js: the `lastReincarnation` watcher + `_deathHoldUntil` (the interlude card does not pop early). The state has
+  already become the heir's when the watcher fires, so it passes the dying realm (`summary.stageAtDeath`, new in _die) and
+  its colour to `playDeath(kind, spriteState, color)`; the stage colour is held too.
+- Smoke gotcha: dev saves have Auto-Breakthrough on and plenty of Qi, so setting `stageIndex = 0` breaks through to Qi
+  Condensation within a tick; zero `qi` and switch `automation.autoBreakthrough` off before capturing a realm.
+- Smoke: `scenarios/ink-art.js` also writes `out/ink-death-sheet.png` (4 moments × fall/fall/ascend) and checks the live
+  moment; `scenarios/death-moment.js` = the real flow (card waits, opens, closing it clears; Classic opens at once).
+  Ascension frame ~3.9 ms (budget 6).
 
 ## Planned (PLAN.md Phase 39, user 2026-09-27)
 - A5: the player picks face / hair / robe at every creation and rebirth (live ink preview); robe + effect changeable

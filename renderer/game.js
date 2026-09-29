@@ -225,6 +225,7 @@
     // Seed with the loaded save's existing value so a prior-session death doesn't re-pop the overlay.
     let _lastDeathTs = gameState.get()?.lastReincarnation?.ts ?? null
     let _lastBanterTs = gameState.get()?.banter?.last?.ts ?? null
+    let _deathHoldUntil = 0   // A4-3: while the death moment plays, the interlude card waits
 
     gameState.subscribe((s, fromTick) => {
       if (!s) return
@@ -233,8 +234,14 @@
       updateSprite(s)
       if (s.lastReincarnation && s.lastReincarnation.ts !== _lastDeathTs) {
         _lastDeathTs = s.lastReincarnation.ts
-        showDeathOverlay(s.lastReincarnation)
-      } else if (s.interlude && document.getElementById('death-overlay').classList.contains('hidden')) {
+        // A4-3: the life ends on screen first (ink: the figure dissolves into ash, or rises as gold light when it
+        // Ascended), then the death card opens. Classic art has no moment (hold 0).
+        const lr = s.lastReincarnation, dying = CULTIVATION_STAGES[lr.stageAtDeath ?? lr.maxStageReached]
+        const hold = renderer.playDeath(lr.cause === 'ascended' ? 'ascend' : 'fall', dying?.spriteState, dying?.color)   // the one who died, not the heir
+        _deathHoldUntil = Date.now() + hold
+        if (hold) setTimeout(() => showDeathOverlay(gameState.get()?.lastReincarnation), hold)
+        else showDeathOverlay(s.lastReincarnation)
+      } else if (s.interlude && Date.now() >= _deathHoldUntil && document.getElementById('death-overlay').classList.contains('hidden')) {
         showDeathOverlay(s.lastReincarnation)   // 2.6d: never leave an interlude without its card
       }
       if (s.banter?.last && s.banter.last.ts !== _lastBanterTs) {
@@ -1820,7 +1827,9 @@
 
   document.getElementById('death-ok').addEventListener('click', () => {
     document.getElementById('death-overlay').classList.add('hidden')
+    renderer.clearDeath()                                   // A4-3: the new life's figure takes the stage
     const s = gameState.get()
+    if (s) updateSprite(s)
     if (s?.birth) flashMessage(`${s.name} awakens. A new life begins.`, 'special')
   })
 

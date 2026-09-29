@@ -2622,7 +2622,7 @@ class GameState {
     const automation  = s.automation
 
     const summary = {
-      cause, maxStageReached: maxStage, generation: priorGen,
+      cause, maxStageReached: maxStage, stageAtDeath: s.stageIndex, generation: priorGen,   // A4-3: the death moment draws this realm
       parentBloodlineQuality: parentBQ, newBloodlineQuality: Math.min(BLOODLINE_CAP, baseBQ), ts: Date.now(),
       // Phase 30 (M2 task 2.3): life-length metrics (sim + future UI). Additive only — existing
       // consumers (death overlay, sim dedupe) only ever read the keys above.

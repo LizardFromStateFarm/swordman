@@ -126,7 +126,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   // one in-app capture per realm art (Overlay), at the frozen moment
   const firstOf = st => ev(`CULTIVATION_STAGES.findIndex(s => s.spriteState === '${st}')`)
   for (const [name, idx] of [['mortal', 0], ['foundation', await firstOf('meditating_deep')], ['core', await firstOf('levitating')], ['nascent', await firstOf('transcending')], ['severing', await firstOf('severing')], ['ascension', nStages - 1]]) {
-    await ev(`(() => { const gs = gameState, s = gs.get(); s.stageIndex = ${idx}; gs._recalc(); gs._notify() })()`); await sleep(250)
+    await ev(`(() => { spriteRenderer.holdUntil = 0; const gs = gameState, s = gs.get(); s.automation.autoBreakthrough = false; s.qi = 0; s.stageIndex = ${idx}; gs._recalc(); gs._notify() })()`); await sleep(250)
     await ev(`spriteRenderer.ink.freeze(${T}, 0)`); await sleep(120); await shot(`ink-realm-${name}`, await canvasClip(3))
   }
   const fr = await ev('(() => { const i = spriteRenderer.ink; i._buildCache(i.w, i.h, i._dpr()); return i.perf(90) })()')
@@ -153,6 +153,50 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     return cv.toDataURL('image/png')
   })()`)
   savePng('ink-realms-sheet', realmSheet)
+
+  // A4-3 motion sheet: the moving backgrounds at three moments each (falling water, drifting clouds + birds, the turning
+  // earth, flaring stars) — stills cannot show motion, so this is what a reviewer looks at for it
+  const motionSheet = await ev(`(() => {
+    const rows = [['meditating', [2.1, 2.5, 2.9]], ['meditating_deep', [2.1, 2.5, 2.9]], ['levitating', [0, 4, 8]], ['transcending', [0, 5, 10]], ['severing', [0, 40, 80]], ['ascended', [0.6, 1.4, 3.3]]]
+    const W = 600, H = 300
+    const cv = document.createElement('canvas'); cv.width = W * 3; cv.height = (H + 32) * rows.length
+    const g = cv.getContext('2d'); g.fillStyle = '#0A0612'; g.fillRect(0, 0, cv.width, cv.height)
+    g.font = '18px Georgia, serif'; g.fillStyle = '#E8D9B0'; g.textAlign = 'center'
+    rows.forEach(([state, ts], ri) => {
+      const st = CULTIVATION_STAGES.find(s => s.spriteState === state), r = new InkRenderer(document.createElement('canvas'))
+      r.setStageColor(st.color); r.base = InkRenderer.resolve(state); r.art = r._effective()
+      ts.forEach((tt, ci) => {
+        g.drawImage(r.stillCanvas(300, 150, 2, tt), ci * W, ri * (H + 32) + 32)
+        g.fillText(st.realm + ' — t = ' + tt + ' s', ci * W + W / 2, ri * (H + 32) + 24)
+      })
+    })
+    return cv.toDataURL('image/png')
+  })()`)
+  savePng('ink-motion-sheet', motionSheet)
+
+  // A4-3 death moment: 'fall' (ash on the wind) at Qi Condensation + Nascent Soul, 'ascend' (gold light) at Ascension,
+  // each at four points of the moment; plus a live check that triggerDeath runs to 1 and clearDeath brings the figure back
+  const deathSheet = await ev(`(() => {
+    const rows = [['meditating', 3, 'fall'], ['transcending', CULTIVATION_STAGES.findIndex(s => s.spriteState === 'transcending'), 'fall'], ['ascended', CULTIVATION_STAGES.length - 1, 'ascend']]
+    const ds = [0.15, 0.4, 0.65, 1], W = 600, H = 300
+    const cv = document.createElement('canvas'); cv.width = W * ds.length; cv.height = (H + 36) * rows.length
+    const g = cv.getContext('2d'); g.fillStyle = '#0A0612'; g.fillRect(0, 0, cv.width, cv.height)
+    g.font = '18px Georgia, serif'; g.fillStyle = '#E8D9B0'; g.textAlign = 'center'
+    rows.forEach(([state, idx, kind], ri) => {
+      const r = new InkRenderer(document.createElement('canvas')), st = CULTIVATION_STAGES[idx]
+      r.setStageColor(st.color); r.base = InkRenderer.resolve(state); r.art = r._effective(); r.deathKind = kind
+      ds.forEach((d, ci) => {
+        g.drawImage(r.stillCanvas(300, 150, 2, ${T}, { death: d, deathKind: kind, bt: kind === 'ascend' ? d : 0 }), ci * W, ri * (H + 36) + 36)
+        g.fillText(st.realm + ' — ' + kind + ' ' + Math.round(d * 100) + '%', ci * W + W / 2, ri * (H + 36) + 26)
+      })
+    })
+    return cv.toDataURL('image/png')
+  })()`)
+  savePng('ink-death-sheet', deathSheet)
+  await ev('spriteRenderer.ink.resume(); spriteRenderer.ink.triggerDeath("fall")'); await sleep(3800)
+  assert(await ev('spriteRenderer.ink.death === 1'), 'triggerDeath plays to the end in real time')
+  await ev('spriteRenderer.clearDeath()')
+  assert(await ev('spriteRenderer.ink.death === 0'), 'clearDeath brings the figure back')
 
   await ev('(() => { const gs = gameState, s = gs.get(); s.stageIndex = 3; gs._recalc(); gs._notify() })()'); await sleep(300)
   assert(await ev('spriteRenderer.isInk()'), 'back at Qi Condensation → ink again')

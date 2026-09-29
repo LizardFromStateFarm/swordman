@@ -35,7 +35,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | **Custom UI icon set** (`Icon()`, 36 icons, emoji + chrome CJK purge) | ✅ 1.8d-1 + 1.8d-2 (2026-09-27): 78 icons, 0 chrome CJK (lint in npm test); gates 7.2 / 7.2 accepted by the user |
 | **Mobile / narrow layout** (viewport meta + bottom tab bar + safe areas + touch targets) | ◐ Phase 6E task 1.8e (2026-09-27) — built + smoke-verified; Visual Review Gate **7.6 PASS** (1.8b-6 cycle 2) |
 | Android shell + Google Play beta pipeline (`npm run release:android`) | ◐ (2026-09-27) — pipeline built + verified (builds a real `.aab`); signing needs `android/keystore.properties`; Play Console side is the user's |
-| Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); **A4-2 beasts** redone (dots only, angular) 2026-09-28, reviewer 7.5, awaiting the user; then 10 beasts × 2 variants; A4-3 backgrounds next |
+| Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); A4-2 beasts ✅ (10 + variants); **A4-3 realm scenery + death moment** built 2026-09-28, reviewer 8.2, awaiting the user; A4-4 next |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -124,8 +124,9 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   leaves ~200px so each view opens on a cut-off card; buildings
   have no levels, so a founder with all six raised has nothing to do in Halls but the Sect Hall; Explore/Craft grid
   cards keep the old flat row style; standing-order war-chest note is still a paragraph (could be a 詳 card).
-- **Beast details page (7.9):** the portrait VIEW tag is small/low-contrast; a companion's page has no Send on
-  Expedition / Release buttons (close the page to act).
+- **Beast details page (7.9):** the portrait VIEW tag is small/low-contrast.
+- **A4-3 scenery polish:** Foundation's waterfall has no source notch / landing, its mid-slopes are murky and the mountains
+  sit close in value to the sky; in-app death ash reads as a glittering cone (more downward drift on the lower motes).
 - **Family view leftovers (1.8b-3a):** no hint of what each temper *likes* beyond the blurb and the meeting-choice
   approach hints (a "likes/dislikes" line per personality would need data); lovers are still a plain list (3b);
   Overlay tab pane is small, so the married view is ~3 screens.
@@ -142,6 +143,38 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-28 (user present) — part 41
+Agent: **A4-3 cycle 3 (user):** "still dont like foundation and qi condensation … mortal looks like a desert, qi condensation a
+  grass lands then foundation at the bottom of a mountan". QC = moonlit grasslands (rolling hills, a lone tree, grass +
+  wildflowers waving in a travelling gust, fireflies, cloud wisps); Foundation = the foot of a shouldered snow mountain (thin
+  falls on its face, mist, pines, cold grass, birds; no longer floats). Engine: scenery `tree`, ambience `grass`, cloudBank
+  `gap`, peaks `snowSlope` + random-walk ridgelines (Core picked these up too). Reviewer: QC 8.3 PASS, Foundation 7.1 → 7.7 →
+  8.0 PASS. npm test · checks (390) · smoke ink-art + death-moment pass. Uncommitted, awaiting the user.
+
+Date: 2026-09-28 (user present) — part 40
+Agent: **A4-3 cycle 2 (user):** "alot of them are great" + a journey upward with moving backgrounds. Mortal kept; QC = before a
+  great waterfall (cliffs, plunge pool, spray, rings); Foundation = floating (new float) high beside a tall fall into a mist sea,
+  far peaks + birds below, rainbow; Core = snowy peaks + drifting mist + cranes; Nascent = in the clouds (3 drifting banks,
+  birds); Severing = above the earth (a tilted sphere of land/sea/cloud dots turning, crimson atmosphere); Ascension = among
+  the stars (nebulae, galaxy band, big four-spike flaring stars, shooting stars). Engine: ridges:false, bigFalls (+ _fallsGeo),
+  rainbow, peaks, nebula, earthRim; ambience birds, cloudBank, earth, bigStars, shooting. Smoke writes ink-motion-sheet.png.
+  Reviewer agents 7.0 → 7.3 → **8.1 PASS**. npm test · checks (390) · smoke ink-art + death-moment pass. Uncommitted, awaiting the user.
+
+Date: 2026-09-28 (user present) — part 39
+Agent: **A4-3 realm scenery + death moment** (assessment approved; on Opus). As-built: art-engine.md → "Realm scenery + death moment".
+  - Each realm has its own place, all ink dots: Mortal dusk paddies + hut + low sun + fireflies · QC night ridges + stars +
+    pines · Foundation gorge (frayed cliff, waterfall + plume) · Core above a cloud sea · Nascent lotus lake (moon road,
+    pads, sky lanterns) · Severing blood moon, jagged lit peaks, far lightning, petals · Ascension golden isles + god rays.
+    Data: INK_ART[state].background.scenery / .ambience; engine _scenery / _ambience / _dotPoly / inkRnd2.
+  - Death moment: InkRenderer.triggerDeath(fall|ascend) (3.2 s, Reduced motion = 1.2 s fade); SpriteRenderer.playDeath
+    returns the hold, game.js opens the death card after it; closing the card clearDeath()s. _die summary gets stageAtDeath
+    so the one who died is drawn, not the heir. Classic art: no moment, card at once.
+  - New smoke scenarios/death-moment.js (8 checks); ink-art.js also writes ink-death-sheet.png (+ realm-capture fix:
+    dev saves auto-break-through at Mortal). npm test · npm run checks (390) · smoke ink-art + death-moment pass, zero
+    console errors. Ascension frame 3.9 ms.
+  - Reviewer agents: 7.25 → 8.08 → **8.2 PASS** (asset gate 8.0). **Awaiting the user.** Uncommitted.
+  Next: user verdict → A4-4 (Ink default + sprite emoji lint).
+
 Date: 2026-09-28 (user present) — part 38
 Agent: **Auto-Explore location picker + companion page actions.** (1) Per-card Auto chips removed: the Mode panel
   (Idle button, top right) Auto-Explore row has an "Idle on" chip picker (Last one I sent / each unlocked location);

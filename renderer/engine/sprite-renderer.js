@@ -31,13 +31,29 @@ class SpriteRenderer {
     this.active.setState(name)
   }
 
-  setStageColor(hex) { this.color = hex; this.ascii.setStageColor(hex); this.ink.setStageColor(hex) }
+  setStageColor(hex) { if (this.holdUntil === Infinity) return; this.color = hex;   // (held during a death moment)
+    this.ascii.setStageColor(hex); this.ink.setStageColor(hex) }
   setSize(w, h, scale = 1) { this.size = [w, h, scale]; this.active.setSize(w, h, scale) }
   setSpeed(m) { this.ascii.setSpeed(m); this.ink.setSpeed(m) }
   setReducedMotion(on) { this.ascii.setReducedMotion(on); this.ink.setReducedMotion(on) }
   triggerBreakthroughBurst() { this.active.triggerBreakthroughBurst() }
   triggerFailure(demoted) { this.holdUntil = performance.now() + 1400; this.active.triggerFailure?.(demoted) }       // ink only; the classic sprite has the window shake
   setSlots(sel) { this.ink.setSlots(sel) }                                // ink part slots (A3-2); A5 wires a player choice
+  // A4-3 death moment (ink only). Returns how long (ms) game.js should let it play before opening the death card; the
+  // dying figure's state is held (the heir's stage must not swap in under it) until clearDeath().
+  playDeath(kind, dyingState = null, color = null) {
+    if (!this.isInk()) return 0
+    if (color) this.setStageColor(color)
+    const st = kind === 'ascend' ? 'ascended' : dyingState   // it is the Ascended who rises; else the one who died (not the heir already in state)
+    if (st && InkRenderer.has(st)) { this.state = this.base = st; this.ink.setState(st) }
+    this.holdUntil = Infinity
+    this.ink.triggerDeath(kind)
+    return Math.round((this.ink.reducedMotion ? 1.2 : InkRenderer.DEATH_SECONDS) * 1000) + 400
+  }
+  clearDeath() {
+    this.ink.clearDeath()
+    if (this.holdUntil === Infinity) this.holdUntil = 0
+  }
   stop() { this.ascii.stop(); this.ink.stop() }
 
   isInk() { return this.active === this.ink }
