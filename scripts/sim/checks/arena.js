@@ -6,6 +6,7 @@
 // a grudge call-out (accept → a grudge match with no fee · decline → −renown), a debtor's gift, the purse breakdown sums,
 // migration. Run: npm run checks · node scripts/sim/checks/arena.js. Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
+const { playFight } = require('../fight-helpers.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
 const rng = (sim, v) => sim.ev(`globalThis.__r = globalThis.__r || Math.random; Math.random = () => ${v}`)
 const unrng = sim => sim.ev('Math.random = globalThis.__r')
@@ -16,14 +17,12 @@ async function setup(seed, stage = 5, stones = 1e5) {
   gs._recalc()
   return { sim, gs, s, K: n => sim.ev(n) }
 }
-// Win (or lose) the current bout's exchanges; a won bout then takes `end` (default raise / finish)
+// Win (or lose) the current bout on moves (fight-helpers.js); a won bout then takes `end` (default raise / finish).
+// Wounds carry between bouts (1.14a); a won bout here heals you back to full so each check starts the next bout fresh.
 function bout(sim, gs, how, end = null) {
-  rng(sim, how === 'win' ? 0 : 0.999)
-  let r
-  for (let i = 0; i < 20 && gs.get().family.fight && !gs.get().family.fight.over; i++) r = gs.fightExchange('guard')
-  unrng(sim)
+  let r = playFight(gs, how)
   const fi = gs.get().family.fight
-  if (fi?.over === 'won') r = gs.personFightFinish(end || (fi.lethal ? 'finish' : 'raise'))
+  if (fi?.over === 'won') { r = gs.personFightFinish(end || (fi.lethal ? 'finish' : 'raise')); gs.get().health = 100 }
   return r
 }
 const iron = gs => gs.arenaInfo().rings.find(r => r.id === 'iron')

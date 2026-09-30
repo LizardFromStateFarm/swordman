@@ -11,7 +11,8 @@
 //   moves; uses art.element) · statusResist · lifesteal · parry (parry window ×) · heal (Health back after a won fight)
 // sig: 'beast:<typeId>' | 'arena:<ringId>' — a signature art: only from that source, never offered or dropped elsewhere.
 // starter: true — the Yellow move a new cultivator of that root element starts with.
-// Balance targets live in arts.md; the move engine that reads these numbers is task 1.13.
+// Balance targets live in arts.md; the move engine that reads these numbers is task 1.13 (beasts) + 1.14a (people:
+// PERSON_* at the bottom).
 
 const ART_ELEMENTS = {
   metal:   { name: 'Metal',   icon: 'el_metal',   color: '--el-metal',   status: 'bleed' },
@@ -52,6 +53,10 @@ const ART_PASSIVE_SLOTS_MAX = 5
 // Study: one manual at a time; Comprehension (s.comprehension, raised by Heavenly Insight events) shortens it.
 const ART_STUDY_COMPREHENSION = 0.05   // time ÷ (1 + 0.05 × comprehension)
 const ART_STUDY_MIN_FRAC      = 0.5    // …never below half
+// 1.14b (user 2026-09-30): the higher your realm, the more manuals you can study at once — study desks by realm
+// (the user's pick, the slower curve): Mortal / Qi Condensation 1 · Foundation / Core 2 · Nascent Soul and up 3.
+const ART_STUDY_SLOTS = [{ stage: 0, slots: 1 }, { stage: 10, slots: 2 }, { stage: 16, slots: 3 }]
+const ART_STUDY_SLOTS_MAX = 3
 // Mastery 1–5: a duplicate manual studied = +1 level now; battle use adds xp (1.13). Each level past 1: +power, −cost.
 const ART_MASTERY_MAX       = 5
 const ART_MASTERY_XP        = [0, 0, 20, 50, 100, 180]   // xp to reach level n (index = level)
@@ -235,9 +240,9 @@ const ARTS_LIST = [
 
   // ── Earth: guard, counters, stuns · Daze ───────────────────────────────────────────────────────────────────
   A('mountain_bearing_stance', 'Mountain-Bearing Stance', '负山式', 'earth', 'yellow', 0, 'move', { type: 'ward', power: 0, cost: 12, ward: 0.6, counter: 0.3, desc: 'Braces like a mountain: cuts the next hit and returns part of it.' },
-    'Carry the mountain long enough and it stops feeling heavy.', { starter: true }),
-  A('stone_fist', 'Stone Fist', '石拳', 'earth', 'yellow', 1, 'move', { type: 'strike', power: 38, cost: 14, status: { id: 'daze', chance: 0.2, turns: 1 }, desc: 'A fist like a falling rock; it may daze.' },
-    'Not subtle. Does not need to be.'),
+    'Carry the mountain long enough and it stops feeling heavy.'),
+  A('stone_fist', 'Stone Fist', '石拳', 'earth', 'yellow', 0, 'move', { type: 'strike', power: 38, cost: 14, status: { id: 'daze', chance: 0.2, turns: 1 }, desc: 'A fist like a falling rock; it may daze.' },
+    'Not subtle. Does not need to be.', { starter: true }),
   A('quaking_stomp', 'Quaking Stomp', '震地踏', 'earth', 'yellow', 3, 'move', { type: 'strike', power: 34, cost: 18, status: { id: 'daze', chance: 0.45, turns: 1 }, desc: 'The ground jumps; the enemy may lose their footing and their turn.' },
     'The earth is a drum. Strike it and everything standing on it hears.'),
   A('mountain_bear_roar', 'Mountain Bear Roar', '山熊吼', 'earth', 'earth', 10, 'move', { type: 'hex', power: 20, cost: 24, status: { id: 'daze', chance: 0.8, turns: 1 }, desc: 'A roar that shakes the ground and the enemy\'s wits.' },
@@ -273,3 +278,121 @@ const ARTS_LIST = [
 
 const ARTS = Object.fromEntries(ARTS_LIST.map(a => [a.id, a]))
 
+
+// ── Move combat (Phase 42b, task 1.13a; arts.md → "Move combat" + "Parry") ─────────────────────────────────────────
+// Beast fights use these now; people fights move over in 1.14. The engine (game-state.js "42b") reads every number here.
+const MOVE_COMBAT = {
+  qiPool: 100, qiRegen: 15,              // combat Qi: starts full, refills each turn. No cooldowns (user 2026-09-29).
+  circulateQi: 35,                       // Circulate: skip the attack, gather Qi
+  parryQi: 25, parryCirculateMult: 2,    // a parried hit: 0 damage + Qi back (double on a Circulate turn)
+  parryWindowMs: 300, parryWideMult: 1.6, parryMinMs: 120, parryMaxMs: 650,   // user pick: "fair, ~300 ms"
+  parryLeadMs: [700, 1100], parryTutorialLead: 1.8, parryGapMs: 420,
+  parryPromptChance: 0.35, parryBigShare: 0.9,   // user 2026-09-29: fewer prompts — charges, finishers and a beast's strongest
+                                                 // arts always telegraph; other blows 35% of the time (the rest just land)
+  parryMult: { multi: 0.8, priority: 0.8, charge: 1.4, finisher: 0.75 },     // windows by the attack's kind
+  parrySwift: 0.01,                      // ±1% window per point of Swift over / under the attacker
+  dmgScale: 0.4, powerSpread: 333, powerRatioClamp: [0.3, 3.5], spread: [0.75, 1.1],   // one stage ≈ ×1.35 damage both ways
+  critBase: 0.05, critMult: 1.5, elementOver: 1.4, elementUnder: 0.75, affinity: 0.2,
+  guardBreakMult: 1.3, counterTakenMult: 0.5,
+  bleedDmg: 4, burnDmg: 3, burnStackMax: 3, dazeSkip: 0.4, entangleCost: 8,
+  beastHpBase: 80, beastHpMight: 0.5, swiftBase: 50, swiftTrait: 15,
+  foeDmgMult: 1.15, foeHpMult: 1,        // global beast tuning knobs (1.13a balance pass; ×1.15 with fewer parry prompts, user 2026-09-29)
+  beastParryPerGuard: 0.004, beastParryMax: 0.3,   // a beast parries your blows by a roll (its guard habit)
+  driveTakenMult: 0.5, driveThrownHp: 10,          // Drive off: half damage; at this Health you are thrown down (never dies)
+  estimateRuns: 300, parryRateDefault: 0.3, parryRateWindow: 30, maxTurns: 30,
+  masteryXpPerUse: 1,
+}
+// Each beast's moves (ARTS ids; the signature art is the beast's own) + a free basic attack of its element.
+const BEAST_MOVES = {
+  spirit_fox:    ['fox_fire_lantern', 'heart_flame_fist', 'ember_scatter'],
+  blood_python:  ['coiling_venom_fang', 'spring_vine_binding', 'life_stealing_thorn'],
+  thunder_eagle: ['thunder_talon_strike', 'iron_needle_rain', 'edge_seeking_thrust'],
+  spectral_bear: ['mountain_bear_roar', 'stone_fist', 'mountain_bearing_stance'],
+  white_tiger:   ['white_tiger_rending_claw', 'armour_rending_slash', 'severing_crescent'],
+  qilin:         ['qilin_flame_hoof', 'flame_lotus_storm', 'sutra_of_stillness'],
+  void_hound:    ['void_hound_fang', 'mirror_lake_mist', 'abyssal_current'],
+  black_tortoise:['black_tortoise_shell', 'tide_turning_current', 'frost_lotus_palm'],
+  azure_dragon:  ['azure_dragon_spring_tide', 'withering_blight', 'thousand_roots_prison'],
+  golden_dragon: ['golden_dragon_divine_fist', 'ten_thousand_swords_rain', 'severing_crescent'],
+}
+// Per-beast HP tuning (movesets differ in strength; 1.13a balance pass: a well-kept loadout at the same realm, parrying ~30%,
+// wins ≈ 55%, one realm up ≈ 80%; the two dragons stay far harder). Missing = 1.
+const BEAST_HP_MULT = { spirit_fox: 1.3, blood_python: 1.0, thunder_eagle: 1.1, spectral_bear: 1.65, white_tiger: 1, qilin: 0.8, void_hound: 1.05, black_tortoise: 0.7, azure_dragon: 1, golden_dragon: 0.95 }
+const BEAST_BASIC = { name: 'Rake', move: { type: 'strike', power: 22, cost: 0, desc: 'Tooth and claw.' } }
+// Move types that are attacks (a parry window opens on each hit)
+const MOVE_ATTACKS = ['strike', 'multi', 'charge', 'finisher', 'drain']
+
+// ── Phase 42c (task 1.14a): people on moves ─────────────────────────────────────────────────────────────────────────
+// A person's arts (p.arts) are rolled once per realm from their root's elements + temper, seeded by their id (never
+// Math.random), then kept. Moves: PERSON_MOVE_COUNT by stage; the rarity of each pick follows their stage (by the
+// same realm thresholds as ART_PASSIVE_SLOTS); their passive slots follow ART_PASSIVE_SLOTS like yours.
+const PERSON_MOVE_COUNT = [{ stage: 0, n: 2 }, { stage: 4, n: 3 }, { stage: 13, n: 4 }]
+// (1.14a balance: a notch below the grades your breakthrough offers give, so a kept loadout meets them ~evenly)
+const PERSON_ART_WEIGHTS = [
+  { stage: 0,  w: { yellow: 100 } },
+  { stage: 4,  w: { yellow: 80, profound: 20 } },
+  { stage: 10, w: { yellow: 40, profound: 50, earth: 10 } },
+  { stage: 13, w: { yellow: 10, profound: 50, earth: 35, heaven: 5 } },
+  { stage: 16, w: { profound: 30, earth: 50, heaven: 20 } },
+  { stage: 19, w: { profound: 10, earth: 45, heaven: 42, immortal: 3 } },
+]
+const PERSON_PASSIVE_SHARE = 0.5       // they fill this share of the passive slots you would have at their realm (rounded up)
+const PERSON_ART_OWN_ELEMENT = 4       // an art of one of their root's elements is this many times likelier than a neutral one
+// Temper → which move kinds they reach for when picking arts (×weight), and how they choose in a fight (×weight per move
+// type; `hurt` applies below half Health). The world's rolls, never yours (agency rule). FIGHT_STYLE (family.js) still
+// sets how often they attack / guard / trick, and their parry chance.
+const PERSON_TEMPER_ARTS = {
+  hotblood:  { strike: 2, multi: 1.6 },          arrogant: { charge: 3, finisher: 2 },  demonking: { charge: 3, finisher: 2.5 },
+  stoic:     { ward: 3, counter: 3 },            coward:   { heal: 3, ward: 2 },        psycho:    { hex: 3, drain: 2 },
+  grumpy:    { counter: 2.5, ward: 1.5 },        paranoid: { hex: 2, counter: 1.5 },    gremlin:   { hex: 2, multi: 1.5 },
+  poet:      { multi: 2, hex: 1.5 },             miser:    { drain: 2.5, ward: 1.5 },   glutton:   { strike: 1.8, drain: 1.5 },
+  niceguy:   { ward: 2, heal: 2 },               lazy:     { counter: 2, ward: 1.5 },
+}
+const PERSON_TEMPER_AI = {
+  hotblood:  { strike: 1.5, multi: 1.4, ward: 0.3 },   arrogant: { charge: 2.5, finisher: 2, ward: 0.5 },
+  demonking: { charge: 2.5, finisher: 2 },            stoic:    { hurt: { ward: 3, counter: 3, heal: 2 } },
+  coward:    { hurt: { heal: 3, ward: 3 }, ward: 1.5 }, psycho:   { hex: 2.5, drain: 1.8 },
+  grumpy:    { counter: 2, ward: 1.4 },                paranoid: { hex: 2, counter: 1.5 },
+  gremlin:   { hex: 1.8, multi: 1.4 },                 poet:     { multi: 1.6, hex: 1.3 },
+  niceguy:   { hurt: { heal: 2, ward: 2 } },           lazy:     { circulate: 1.5, counter: 1.5 },
+}
+const PERSON_FIGHT = {
+  hpBase: 100,                     // a person's battle HP (yours = your Health, 0–100)
+  hpPerRealm: 0,                   // + this per realm past Mortal (0: the same 100 as your Health; the realm gap is in power)
+  powerSpread: 700,                // power gap → blow ratio e^(gap/this); beasts use MOVE_COMBAT.powerSpread (333)
+  dmgMult: 1.15,                   // global knob for people's damage (beasts: MOVE_COMBAT.foeDmgMult)
+  grudgeDmgMult: 1.2,              // one who holds a grudge against you hits this much harder (on top of FEUD_POWER)
+  parryPerGuard: 0.004, parryMax: 0.3,   // they parry your blows by a roll: FIGHT_STYLE guard × this
+  yieldThrownHp: 30,               // a fight "until one yields": at this Health you are beaten (never below 1) …
+  yieldFoeFrac: 0.3,               // … and they yield at this share of their HP (both sides stop at ~30%: the loss stays a wound)
+  estimateRuns: 150,               // Monte Carlo runs for a person (roster rows show many at once)
+}
+
+// ── Phase 42c part 2 (task 1.14b): rivals + libraries ───────────────────────────────────────────────────────────────
+// Rival counters: a person remembers which elements your blows carried (p.vsYou.els). One who holds a grudge, once
+// you have struck them this many times with one element, trains against it: they fight as the element that overcomes
+// it (your arts of it are resisted) and carry an art of that element. The world's roll, never yours.
+const RIVAL_COUNTER_MIN_BLOWS = 3
+// After a won fight: raise one who then owes you → they teach you one of their arts (a manual, always, if they know one
+// you don't); finish them → their manual drops with this chance (a signature art never drops this way).
+const PERSON_FINISH_MANUAL = 0.6
+// A joined sect's library: its arts (the sect's elements + neutral), each grade opened by your rank, bought for
+// Contribution (spending it does not lower the rank you already hold). A manual comes into your pack.
+const SECT_ART_ELEMENTS = {
+  azure_sword: ['metal'], myriad_herb: ['wood', 'water'], thunder_palace: ['metal', 'fire'],
+  void_moon: ['water', 'earth'], heaven_defying: ['fire', 'earth'],
+}
+const SECT_LIBRARY_GRADE_BY_RANK = ['yellow', 'profound', 'profound', 'earth', 'earth', 'heaven']   // highest grade each rank opens
+const SECT_LIBRARY_PRICE = { yellow: 40, profound: 120, earth: 350, heaven: 900 }                   // Contribution per manual
+// The clan library (Kin → Hall): write an art you know into it for Spirit Stones; it stays with the clan across lives.
+// Anyone of the clan who does not know it studies it from the library at this share of the time, with no manual.
+const CLAN_LIBRARY_WRITE_COST = { yellow: 60, profound: 200, earth: 600, heaven: 1500, immortal: 4000 }
+const CLAN_LIBRARY_STUDY_FRAC = 0.5
+// Giving a manual to your sect (user 2026-09-30: "contribute your extra art books for the sect to learn"). The manual goes
+// onto the sect's shelf (who gave it, when); a joined sect pays Contribution for it; every shelved art trains the sect's
+// disciples: war strength ×(1 + the sum by grade, capped). A founded sect's shelf is its own library: you (and later lives
+// while the sect stands) study a shelved art at SECT_SHELF_STUDY_FRAC of the time, with no manual. One copy of an art per shelf.
+const SECT_DONATE_CONTRIB = { yellow: 20, profound: 60, earth: 175, heaven: 450, immortal: 1000 }
+const SECT_SHELF_WAR = { yellow: 0.01, profound: 0.02, earth: 0.04, heaven: 0.07, immortal: 0.12 }
+const SECT_SHELF_WAR_CAP = 0.25
+const SECT_SHELF_STUDY_FRAC = 0.5

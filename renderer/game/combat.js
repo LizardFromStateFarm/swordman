@@ -1,10 +1,11 @@
-// CombatView — the battle page (Phase 35 / roadmap A6-1 + A6-3a, docs/systems/combat.md). A full-window overlay: the ink
-// field (BattleScene, renderer/engine/battle-scene.js) with a name plate per side (vigor pips, your live Health) above a
-// control panel that walks through the steps:
-//   prepare  (beasts only) what you're facing, known habits, and a card per stance (Slay / Drive off) with odds, wound per
-//            blow and the worst case; "why these odds" opens the beastfight breakdown card. Nothing is committed yet.
-//   fight    Press / Guard / Feint with this exchange's odds, Retreat (beast) / Yield (person), the last exchange in words
-//            and a short log. Every exchange is your move (the scene animates it).
+// CombatView — the battle page (Phase 35 / roadmap A6-1 + A6-3a; moves since Phase 42b/c, docs/systems/combat.md + arts.md).
+// A full-window overlay: the ink field (BattleScene, renderer/engine/battle-scene.js) with a name plate per side (Health,
+// your combat Qi, status chips, their element) above a control panel that walks through the steps:
+//   prepare  (beasts only) what you're facing, its element + known arts, and a card per stance (Slay / Drive off) with the
+//            estimate, the Health it costs and the worst case; the parry window; "why these odds" opens the breakdown card.
+//   fight    your 4 equipped arts (keys 1–4), Circulate (C), Palm Strike, Retreat (beast) / Yield (person), the last turn in
+//            words and a log. An enemy blow may open the parry prompt on the field (Space). A person's panel adds what you
+//            know of them (root, arts seen, habits once fought), the feud, your record, the stakes (1.14a).
 //   end      after a won fight: finish / spare / bind (beast, Slay) · let it flee / bind (Drive) · finish / spare (a person,
 //            to the death) · raise / humble (a person, until one yields) — with loot / karma / the reaction shown;
 //            then the result card. A loss, retreat or yield goes straight to the result.
@@ -44,6 +45,7 @@ class CombatView {
     this.box = document.getElementById('combat-box')
     this.panel = document.getElementById('combat-panel')
     this.plates = document.getElementById('combat-plates')
+    this.parryEl = document.getElementById('combat-parry')    // the parry prompt, on the field between you and it (user 2026-09-29)
     this.scene = new BattleScene(document.getElementById('combat-canvas'))
     this.step = null                   // 'prepare' | 'fight' | 'end' | 'result' | 'died'
     this.mode = 'beast'                // 'beast' | 'person' (A6-3a)
@@ -59,8 +61,12 @@ class CombatView {
       if (!this.isOpen()) return
       if (e.key === 'Escape' && !document.getElementById('breakdown-overlay').classList.contains('hidden')) return
       if (e.key === 'Escape') { e.preventDefault(); this.close(); return }
-      const key = { '1': 'press', '2': 'guard', '3': 'feint' }[e.key]
-      if (key && this.step === 'fight') this.panel.querySelector(`[data-tac="${key}"]`)?.click()
+      if (this.step === 'fight') {                                  // Phase 42b (people since 1.14a): moves 1–4, C circulate, Space parry
+        if (e.key === ' ' || e.key === 'p' || e.key === 'P') { if (this.qte) { e.preventDefault(); this._parryPress() } return }
+        const slot = { '1': 0, '2': 1, '3': 2, '4': 3 }[e.key]
+        if (slot != null) this.panel.querySelectorAll('.cb-moves > *')[slot]?.click?.()
+        if (e.key === 'c' || e.key === 'C') this.panel.querySelector('[data-move="circulate"]')?.click()
+      }
     })
     window.addEventListener('resize', () => { if (this.isOpen()) this.scene.geo = null })
   }
@@ -99,6 +105,7 @@ class CombatView {
     if (fi.over === 'won') this.scene.pose.foe = 'down'
     this.step = fi.over === 'won' ? 'end' : 'fight'
     this.render()
+    if (fi.m?.pending && this.step === 'fight') this._startParry(fi.m.pending)
   }
 
   close() {
@@ -106,6 +113,9 @@ class CombatView {
     this.ov.classList.add('hidden')
     this.scene.stop()
     this.step = null
+    this.qte = null                                              // a parry prompt restarts when you come back
+    this.scene.telegraph(null)
+    this.parryEl.classList.add('hidden'); this._parryKey = null
     const fi = this.gs.get()?.family?.fight
     if (fi && !fi.over) this.h.flash(fi.kind === 'beast' ? 'The beast waits. Return to the fight from the strip above.' : 'Your opponent waits. Return to the fight from the strip above.', 'neutral')
   }
@@ -162,10 +172,11 @@ class CombatView {
     if (this.step === 'fight' && fi?.over === 'won') this.step = 'end'
     const P = this.mode === 'person'
     const html = this.step === 'prepare' ? this._prepare()
-      : this.step === 'fight' ? (P ? this._fightPerson() : this._fight())
+      : this.step === 'fight' ? this._fight()
       : this.step === 'end' ? (P ? this._endPerson() : this._end())
       : this._result()
     this.panel.innerHTML = html
+    this._renderParry()
     document.getElementById('combat-title').textContent = this._title()
     document.getElementById('combat-close').textContent = this.step === 'fight' ? 'Step back' : 'Leave'
     document.getElementById('combat-close').title = this.step === 'fight'
@@ -191,74 +202,71 @@ class CombatView {
     return rec ? this.gs.beastProfile(rec).name + (rec.mood === 'cub' ? ' cub' : '') : (this.result?.name || 'beast')
   }
 
-  // ── Name plates: vigor pips (exchanges left to lose), your Health ──
+  // ── Name plates (Phase 42b; people since 1.14a): HP + your combat Qi + status chips + their element ──
+  // A beast's plate carries its tier; a person's their realm and a feud chip (they owe you / hold a grudge).
   _plates() {
-    if (this.mode === 'person') return this._platesPerson()
-    const s = this.gs.get(), fi = s.family?.fight, esc = this.h.esc
-    const beastFi = fi?.kind === 'beast' ? fi : null
-    const rec = beastFi ? beastFi.beast : (s.beastEncounters || []).find(e => e.id === this.encId)
-    // After the battle the fight (and often the encounter) is gone: the plates keep its last state (snap), with the
-    // final blow applied by _ended / the end choice, and your Health read live unless you fell.
-    if (beastFi) this.snap = { name: this.gs.beastProfile(rec).name, youName: s.name, rec, to: beastFi.to, you: beastFi.you, them: beastFi.them }
-    const after = !beastFi && this.snap && (this.step === 'result' || this.step === 'died')
-    const S = after ? this.snap : null
-    const to = S?.to || beastFi?.to || (typeof BATTLE_TO !== 'undefined' ? BATTLE_TO : 4)
-    const pips = (left, cls) => Array.from({ length: to }, (_, i) => `<i class="${i < left ? 'on ' + cls : ''}"></i>`).join('')
-    const hp = S?.dead ? 0 : Math.max(0, Math.ceil(s.health ?? 100))
-    const prec = S ? S.rec : rec
-    const prof = prec ? this.gs.beastProfile(prec) : null
-    const youLeft = S ? to - S.them : beastFi ? to - beastFi.them : to, foeLeft = S ? to - S.you : beastFi ? to - beastFi.you : to
-    const foeGone = S?.foeGone ? ' gone' : ''
-    const sig = [hp, youLeft, foeLeft, prof?.name, this.step, foeGone].join('|')
-    if (sig === this._plateSig) return
-    this._plateSig = sig
-    this.plates.innerHTML = `
-      <div class="cb-plate you"><div class="cb-pn">${esc((S?.youName ?? s.name) || 'You')}</div>
-        <div class="cb-pips" title="Exchanges you can still lose">${pips(youLeft, 'you')}</div>
-        <div class="cb-hp${hp < 30 ? ' low' : ''}"><span data-icon="health"></span><span class="cb-hpbar"><b style="width:${Math.min(100, hp)}%"></b></span><span class="cb-hpv">${hp}</span></div></div>
-      <div class="cb-plate foe${foeGone}"><div class="cb-pn">${esc(prof?.name || '')}${prec?.mood === 'cub' ? ' cub' : ''}</div>
-        <div class="cb-pips" title="Exchanges it can still lose">${pips(foeLeft, 'foe')}</div>
-        ${prof ? `<div class="cb-tier">${S?.foeGone ? `<span class="cb-fate">${esc(S.foeGone)}</span>` : ''}<span class="tier-chip tier-${prof.tier.id}">${esc(prof.tier.name)}</span>${prof.variant ? '<span class="tier-chip tier-variant">Rare colour</span>' : ''}</div>` : ''}</div>`
-  }
-
-  // A6-3a: the person's plate — full name, realm, temper, and a feud chip (they owe you / hold a grudge)
-  _platesPerson() {
-    const s = this.gs.get(), fi = s.family?.fight, esc = this.h.esc
+    const s = this.gs.get(), fi = s.family?.fight, esc = this.h.esc, P = this.mode === 'person'
     // (a step-down bracket may already hold your next bout while the result card still speaks of the last one)
     // _settling: the engine notifies mid-call (refresh → here) before this view has moved on to the result step
     const done = this._settling || this.step === 'result' || this.step === 'died'
-    const live = fi && fi.kind !== 'beast' && !done ? fi : null
-    const opp = this._opp()
-    if (live && opp) this.snap = { name: Persons.fullName(opp), youName: s.name, to: live.to || (typeof FIGHT_TO !== 'undefined' ? FIGHT_TO : 2), you: live.you, them: live.them,
-      stage: opp.stageIndex || 0, temper: PERSONALITIES.find(p => p.id === opp.personality)?.name || '', feud: opp.feud || null, foeGone: this.snap?.foeGone || null }
-    const S = this.snap
-    if (!S) return
-    const after = !live && done
-    const to = S.to, hp = S.dead ? 0 : Math.max(0, Math.ceil(s.health ?? 100))
-    const pips = (left, cls) => Array.from({ length: to }, (_, i) => `<i class="${i < left ? 'on ' + cls : ''}"></i>`).join('')
-    const youLeft = to - S.them, foeLeft = to - S.you
-    const sig = ['p', hp, youLeft, foeLeft, S.name, this.step, S.foeGone, S.feud].join('|')
+    const live = fi && (P ? fi.kind !== 'beast' && !done : fi.kind === 'beast') ? fi : null
+    const clone = m => m ? JSON.parse(JSON.stringify(m)) : null
+    let rec = null, opp = null
+    if (P) {
+      opp = this._opp()
+      if (live && opp) this.snap = { person: true, name: Persons.fullName(opp), youName: s.name, stage: opp.stageIndex || 0, feud: opp.feud || null, m: clone(live.m), foeGone: this.snap?.foeGone || null }
+      if (!this.snap) return
+    } else {
+      rec = live ? live.beast : (s.beastEncounters || []).find(e => e.id === this.encId)
+      if (live) this.snap = { name: this.gs.beastProfile(rec).name, youName: s.name, rec, m: clone(live.m), foeGone: this.snap?.foeGone || null }
+    }
+    const after = !live && this.snap && done
+    const S = after || P ? this.snap : null
+    const M = after ? S.m : live?.m || (P ? S.m : null)
+    const hp = S?.dead ? 0 : Math.max(0, Math.ceil(s.health ?? 100))
+    const prec = P ? null : (after ? S.rec : rec)
+    const prof = prec ? this.gs.beastProfile(prec) : null
+    const pv = !P && !M && this.encId ? this.gs.beastFightPreview(this.encId) : null
+    const fallen = after && ['slain', 'fallen'].includes(S?.foeGone)
+    const fHp = M ? Math.max(0, fallen ? 0 : M.foe.hp) : pv?.stance.slay.foeHp || 0, fMax = M ? M.foe.max : fHp || 1
+    const el = M?.foe.element || pv?.element || null
+    const qi = M ? Math.round(M.you.qi) : null, pool = M ? M.you.pool : 0
+    const chips = F => Object.entries(F?.st || {}).map(([k, n]) => `<span class="cb-st ${k}" title="${esc(ART_STATUS[k].desc)}">${esc(ART_STATUS[k].name)}${k === 'burn' && F.burn > 1 ? ` ×${F.burn}` : ''} <b>${n}</b></span>`).join('')
+      + (F?.charging ? `<span class="cb-st charge" title="Lands next turn">Gathering</span>` : '')
+    const foeGone = after && S?.foeGone ? ' gone' : ''
+    // 1.13b: the scene draws each live status as an aura (and a gathered charge as an orb in its element)
+    const aura = F => F ? { ...F.st, ...(F.charging ? { charge: (typeof ARTS !== 'undefined' && ARTS[F.charging]?.element) || F.element || 'neutral' } : {}) } : {}
+    this.scene.setStatus('you', M && !after ? aura(M.you) : {}); this.scene.setStatus('foe', M && !after ? aura(M.foe) : {})
+    const foeName = P ? S.name : `${prof?.name || ''}${prec?.mood === 'cub' ? ' cub' : ''}`
+    const sig = [hp, qi, fHp, JSON.stringify(M?.you.st), JSON.stringify(M?.foe.st), M?.you.charging, M?.foe.charging, foeName, this.step, foeGone, S?.feud].join('|')
     if (sig === this._plateSig) return
     this._plateSig = sig
-    const feud = S.feud ? `<span class="cb-feud ${S.feud}">${esc(FEUD_TEXT[S.feud])}</span>` : ''
+    const fate = after && S?.foeGone ? `<span class="cb-fate">${esc(S.foeGone)}</span>` : ''
+    const tier = P ? `<div class="cb-tier">${fate}<span class="cb-realm">${esc(stageShortName(S.stage))}</span>${S.feud ? `<span class="cb-feud ${S.feud}">${esc(FEUD_TEXT[S.feud])}</span>` : ''}</div>`
+      : prof ? `<div class="cb-tier">${fate}<span class="tier-chip tier-${prof.tier.id}">${esc(prof.tier.name)}</span>${prof.variant ? '<span class="tier-chip tier-variant">Rare colour</span>' : ''}</div>` : ''
     this.plates.innerHTML = `
-      <div class="cb-plate you"><div class="cb-pn">${esc(S.youName || 'You')}</div>
-        <div class="cb-pips" title="Exchanges you can still lose">${pips(youLeft, 'you')}</div>
-        <div class="cb-hp${hp < 30 ? ' low' : ''}"><span data-icon="health"></span><span class="cb-hpbar"><b style="width:${Math.min(100, hp)}%"></b></span><span class="cb-hpv">${hp}</span></div></div>
-      <div class="cb-plate foe${after && S.foeGone ? ' gone' : ''}"><div class="cb-pn">${esc(S.name)}</div>
-        <div class="cb-pips" title="Exchanges they can still lose">${pips(foeLeft, 'foe')}</div>
-        <div class="cb-tier">${after && S.foeGone ? `<span class="cb-fate">${esc(S.foeGone)}</span>` : ''}<span class="cb-realm">${esc(stageShortName(S.stage))}</span>${feud}</div></div>`
+      <div class="cb-plate you"><div class="cb-pn">${esc((S?.youName ?? s.name) || 'You')}</div>
+        <div class="cb-hp${hp < 30 ? ' low' : ''}" title="Your Health: wounds here are real"><span data-icon="health"></span><span class="cb-hpbar"><b style="width:${Math.min(100, hp)}%"></b></span><span class="cb-hpv">${hp}</span></div>
+        ${M ? `<div class="cb-qi" title="Combat Qi: each move costs some; +${M.you.regen} a turn, more from Circulate and parries"><span data-icon="qi"></span><span class="cb-qibar"><b style="width:${Math.round(100 * qi / pool)}%"></b></span><span class="cb-hpv">${qi}</span></div>` : ''}
+        <div class="cb-sts">${chips(M?.you)}</div></div>
+      <div class="cb-plate foe${foeGone}"><div class="cb-pn">${el ? `<span class="cb-el el-${el}" title="${esc(ART_ELEMENTS[el].name)}${P ? ': their root' : ''}">${Icon(ART_ELEMENTS[el].icon)}</span>` : ''}${esc(foeName)}</div>
+        <div class="cb-hp foe" title="${P ? 'Their strength' : 'Its strength'}"><span class="cb-hpv">${Math.ceil(fHp)}</span><span class="cb-hpbar"><b style="width:${Math.round(100 * fHp / fMax)}%"></b></span></div>
+        <div class="cb-sts">${chips(M?.foe)}</div>
+        ${tier}</div>`
+    Icon.hydrate?.(this.plates)
   }
 
-  // ── Step 1: prepare (beasts) ──
+  // ── Step 1: prepare (beasts) — the estimate per stance, its element + known moves, your parry window ──
   _prepare() {
     const pv = this.gs.beastFightPreview(this.encId), esc = this.h.esc
     if (!pv) return `<div class="cb-line">It has gone.</div>`
-    const pct = v => v < 0.01 ? '<1%' : `${Math.round(v * 100)}%`
-    const T = pv.prof.type
+    const pct = v => v < 0.01 ? '<1%' : v > 0.99 ? '>99%' : `${Math.round(v * 100)}%`
+    const T = pv.prof.type, el = pv.element, s = this.gs.get(), mode = s.arts?.parryMode || 'normal'
+    const moves = pv.moves ? pv.moves.map(id => this.gs._mbArt(id)).filter(Boolean).map(a => `<span class="cb-mv-tag el-${a.element || el}">${esc(a.name)}</span>`).join('') : ''
     const read = pv.habitsKnown
-      ? `<div class="cb-read"><span class="cb-k">How it fights</span> ${esc(pv.hint)}. <span class="cb-habits">Press ${pct(pv.habits.press)} · Guard ${pct(pv.habits.guard)} · Feint ${pct(pv.habits.feint)}</span></div>`
-      : `<div class="cb-read"><span class="cb-k">How it fights</span> Unknown. You have never fought one of these; after this battle you will know.</div>`
+      ? `<div class="cb-read"><span class="cb-k">How it fights</span> ${esc(pv.hint)}. <span class="cb-habits">Its arts: ${moves}</span></div>`
+      : `<div class="cb-read"><span class="cb-k">How it fights</span> Unknown. You have never fought one of these; after this battle you will know its arts.</div>`
+    const elLine = `<div class="cb-read"><span class="cb-k">Element</span><span class="cb-el el-${el}">${Icon(ART_ELEMENTS[el].icon)}</span>${esc(ART_ELEMENTS[el].name)}${this._matchupHint(el)}</div>`
     const rec = pv.record.fought ? `<div class="cb-rec">Your record: fought ${pv.record.fought} · won ${pv.record.won} · slain ${pv.record.slain}${pv.record.spared ? ` · spared ${pv.record.spared}` : ''}</div>` : ''
     const mood = pv.mood === 'grateful' ? '<div class="cb-mood good">This one remembers your mercy. It would come to you without a talisman.</div>'
       : pv.mood === 'vengeful' ? '<div class="cb-mood bad">This one remembers you, and it has grown stronger since.</div>'
@@ -266,103 +274,226 @@ class CombatView {
     const S = pv.stance.slay, D = pv.stance.drive
     const card = (id, title, sub, st, lines) => `
       <button class="cb-stance ${id}${S.canDie && id === 'slay' ? ' deadly' : ''}" data-stance="${id}" ${pv.locked ? 'disabled' : ''}>
-        <span class="cb-st-h"><span class="cb-st-n">${title}</span><span class="cb-st-p">${pct(st.chance)}<small>to win</small></span></span>
+        <span class="cb-st-h"><span class="cb-st-n">${title}</span><span class="cb-st-p">${pct(st.chance)}<small>to win (estimate)</small></span></span>
         <span class="cb-st-sub">${sub}</span>
         ${lines.map(l => `<span class="cb-st-l${l.warn ? ' warn' : ''}">${l.t}</span>`).join('')}
       </button>`
+    const parry = `<div class="cb-parry-mode"><span class="cb-k">Parry window</span>${['normal', 'wide', 'off'].map(v => `<button class="pack-chip${mode === v ? ' active' : ''}" data-parrymode="${v}">${{ normal: 'Normal', wide: 'Wide', off: 'Off' }[v]}</button>`).join('')}
+      <span class="cb-note">${mode === 'off' ? 'No parry prompts: every blow lands.' : `When it strikes, a ring closes on you: press Parry (Space) as it meets the mark for no damage and +${MOVE_COMBAT.parryQi} Qi.${mode === 'wide' ? ' Wide: a gentler window.' : ''}`}</span></div>`
     return `
       <div class="cb-prep">
         <div class="cb-intro">${esc(pv.prof.variant ? pv.prof.variant.name : T?.name || pv.name)}, ${esc(BEAST_NATURE_TEXT[pv.nature] || 'a wild beast')}. ${esc(T?.desc || '')}</div>
-        ${mood}${read}${rec}
+        ${mood}${elLine}${read}${rec}
         <div class="cb-stances">
-          ${card('slay', 'Slay it', 'It fights for its life. Take its body for materials.', S, [
-            { t: `Each blow you take: −${S.wound} Health` },
-            { t: `Lose the battle: −${S.lossWound} more` },
-            S.canDie ? { t: `This could kill you: you have ${Math.ceil(pv.health)} Health, a full loss costs up to ${S.worst}.`, warn: true } : { t: `Worst case −${S.worst} of your ${Math.ceil(pv.health)} Health` },
+          ${card('slay', 'Slay it', 'It fights for its life. Take its body, and perhaps its art.', S, [
+            { t: `Its blows: about −${S.wound} Health each, before parrying` },
+            { t: `You would lose about ${S.hurt} Health (${Math.round(S.turns)} turns)` },
+            S.canDie ? { t: `This could kill you: about ${pct(S.died)} of such fights end in your death.`, warn: true } : { t: `Health ${Math.ceil(pv.health)}: a loss here would not kill you` },
           ])}
           ${card('drive', 'Drive it off', 'It fights to get away. Safer, and no spoils.', D, [
-            { t: `Each blow you take: −${D.wound} Health` },
-            { t: 'Never below 1 Health' },
+            { t: `Its blows: about −${D.wound} Health each (half)` },
+            { t: `Thrown down at ${MOVE_COMBAT.driveThrownHp} Health, never killed` },
             { t: 'Win, and bind it or let it go' },
           ])}
         </div>
+        ${parry}
         <div class="cb-foot">
           <button class="cb-why" data-bd="beastfight:${esc(this.encId)}:slay"><span data-icon="why"></span>Why these odds</button>
-          ${pv.locked ? `<span class="cb-lock"><span data-icon="lock"></span>${esc(COMBAT_REASON[pv.locked] || 'You cannot fight now.')}</span>` : '<span class="cb-note">Nothing happens until you choose.</span>'}
+          ${pv.locked ? `<span class="cb-lock"><span data-icon="lock"></span>${esc(COMBAT_REASON[pv.locked] || 'You cannot fight now.')}</span>` : `<span class="cb-note">The estimate assumes you parry ${pct(S.parryRate)} (${mode === 'off' ? 'parrying is off' : 'your recent rate'}). Nothing happens until you choose.</span>`}
         </div>
       </div>`
   }
+  _matchupHint(el) {
+    const mine = (this.gs.get().arts?.loadout?.moves || []).filter(Boolean).map(id => ARTS[id]).filter(a => a && a.element && a.element !== 'neutral')
+    const over = mine.filter(a => ELEMENT_OVERCOMES[a.element] === el), under = mine.filter(a => ELEMENT_OVERCOMES[el] === a.element)
+    return over.length ? ` · <span class="up">${this.h.esc(over[0].name)} overcomes it</span>` : under.length ? ` · <span class="down">it resists your ${this.h.esc(under[0].name)}</span>` : ''
+  }
 
-  // ── Step 2: the fight (beast) ──
+  // ── Step 2: the fight (Phase 42b; people since 1.14a) — your 4 moves, Circulate, Palm Strike, Retreat / Yield; or the
+  // parry prompt. A person's panel adds what you know of them (their root, the arts you have seen, how they fight), the
+  // feud, your record together and the stakes (to the death / until one yields, the Arena purse, the bracket).
   _fight() {
     const info = this.gs.fightInfo(), esc = this.h.esc
-    if (!info || info.kind !== 'beast') return this._result()
-    const name = info.opp.name
+    if (!info || !info.m) return this._result()
+    const P = info.kind !== 'beast'
+    const m = info.m, name = P ? (info.opp?.given || 'Your opponent') : info.opp.name, mv = this.gs.fightMoves()
+    const The = P ? name : `The ${name}`
     const pct = v => `${Math.round(v * 100)}%`
-    const last = info.log[info.log.length - 1]
-    const VERB = { press: 'lunges', guard: 'braces', feint: 'feints' }
-    const line = !last ? `The ${name} circles you. First to ${info.to} exchanges. Choose your move.`
-      : `You ${FIGHT_TACTICS[last.you].name.toLowerCase()}; it ${VERB[last.them]}. ${last.won ? 'You land the blow.' : `It catches you (−${last.dmg} Health).`}`
-    const read = info.habitsKnown ? `${esc(info.hint)} · Press ${pct(info.habits.press)} · Guard ${pct(info.habits.guard)} · Feint ${pct(info.habits.feint)}`
-      : 'Unknown. These odds assume it fights evenly.'
-    const log = info.log.slice(-5).reverse().map(l => `<li class="${l.won ? 'up' : 'down'}"><span class="cb-lr">${l.round}</span>${FIGHT_TACTICS[l.you].name} vs ${FIGHT_TACTICS[l.them].name}<em>${l.won ? 'hit' : `−${l.dmg}`}</em></li>`).join('')
-    return `
-      <div class="cb-last${last ? (last.won ? ' up' : ' down') : ''}">${esc(line)}</div>
-      ${this._tacs(info, last)}
-      <div class="cb-row2">
-        <div class="cb-read sm"><span class="cb-k">Its habits</span> ${read}</div>
-        <button class="cb-retreat" data-tac="retreat"><span data-icon="yield"></span>Retreat<small>parting blow −${info.wound}</small></button>
-      </div>
-      <div class="cb-foot"><span class="cb-chip${info.stance === 'slay' ? ' lethal' : ''}">${info.stance === 'slay' ? 'Slay: a loss can kill you' : 'Drive off: never below 1 Health'}</span>
-        <button class="cb-why" data-bd="beastfight:${esc(info.beast.encId)}:${info.stance}"><span data-icon="why"></span>Why</button></div>
-      ${log ? `<ol class="cb-log">${log}</ol>` : ''}`
+    const lastTurn = m.lines.length ? m.lines[m.lines.length - 1].turn : 0
+    const turnLines = m.lines.filter(l => l.turn === lastTurn).slice(-3)
+    const last = !m.lines.length ? `<div class="cb-last">${P ? `${esc(name)} faces you${info.lethal ? ', and one of you will not walk away' : ''}.` : `The ${esc(name)} circles you.`} Choose your move: each costs combat Qi, and there are no cooldowns.</div>`
+      : `<div class="cb-last">${turnLines.map(l => `<div class="cb-ll ${l.tone}">${esc(l.text)}</div>`).join('')}</div>`
+    // an incoming blow: the prompt is on the field (#combat-parry); your moves stay in view, locked until it is answered
+    const pend = !!m.pending
+    const btn = (x, i) => {
+      if (!x) return `<div class="cb-mv empty">Empty slot<small>equip an art in Path → Arts</small></div>`
+      const lock = pend ? 'parry first' : x.lock === 'qi' ? `needs ${x.cost} Qi` : x.lock === 'sealed' ? 'sealed' : x.lock === 'charging' ? 'gathering' : ''
+      const tag = x.matchup === 'over' ? '<span class="cb-mt up">overcomes</span>' : x.matchup === 'under' ? '<span class="cb-mt down">resisted</span>' : ''
+      const pw = x.power ? `${x.hits > 1 ? `${x.power}×${x.hits}` : x.power} power` : { ward: 'ward', counter: 'counter', buff: 'buff', heal: 'heal', hex: 'hex' }[x.type] || x.type
+      return `<button class="cb-mv el-${x.element || 'neutral'}${x.release ? ' release' : ''}" data-move="${x.id}" ${lock ? 'disabled' : ''} title="${esc(x.desc || '')}">
+        <span class="cb-mv-h"><span class="cb-el">${Icon(ART_ELEMENTS[x.element || 'neutral'].icon)}</span><span class="cb-mv-n">${x.release ? 'Release ' : ''}${esc(x.name)}</span>${i != null ? `<kbd>${i + 1}</kbd>` : ''}</span>
+        <span class="cb-mv-m">${x.release ? 'lands now · no cost' : `${x.cost} Qi · ${pw}`}${x.affinity ? ' · your root' : ''}</span>
+        <span class="cb-mv-f">${lock ? `<span class="cb-mt lock">${lock}</span>` : tag}</span></button>`
+    }
+    const incoming = pend ? `<div class="cb-last down">${esc(The)} uses <b>${esc(m.pending.name)}</b>${m.pending.hits > 1 ? ` · ${m.pending.hits} hits` : ''}. ${this.gs.get().arts?.parryTaught ? 'Parry it on the field, or take the blow.' : 'Press Parry on the field (or Space) as the ring closes on you. Too soon and you are open; too late and it lands.'}</div>` : ''
+    const grid = `<div class="cb-moves${pend ? ' locked' : ''}">${mv.slots.map((x, i) => btn(x, i)).join('')}</div>`
+    const note = P ? '' : `<span class="cb-note cb-flex">${m.foe.element ? `It is ${ART_ELEMENTS[m.foe.element].name}.` : ''} ${info.habitsKnown ? esc(info.hint) + '.' : 'Its arts are unknown until it uses them.'}</span>`
+    const out = P
+      ? `<button class="cb-retreat" data-tac="yield" ${pend ? 'disabled' : ''}><span data-icon="yield"></span>Yield<small>${info.lethal ? `accepted ~${pct(info.yieldAccept)} · ` : ''}${esc(PERSON_FIGHT_YIELD[info.kind] || 'you lose')}</small></button>`
+      : `<button class="cb-retreat" data-tac="retreat" ${pend ? 'disabled' : ''}><span data-icon="yield"></span>Retreat<small>it gets a parting blow</small></button>`
+    const extra = `<div class="cb-row2">
+        <button class="cb-retreat qi" data-move="circulate" ${mv.charging || pend ? 'disabled' : ''}>Circulate<small>+${MOVE_COMBAT.circulateQi} Qi, no attack</small></button>
+        ${mv.palm ? `<button class="cb-retreat qi" data-move="palm_strike" ${mv.palm.lock || pend ? 'disabled' : ''}>Palm Strike<small>free · ${mv.palm.power} power</small></button>` : ''}
+        ${P ? '<span class="cb-flex"></span>' : note}${out}
+      </div>`
+    const older = m.lines.filter(l => l.turn !== lastTurn).slice(-6).reverse()
+    const log = older.map(l => `<li class="${l.tone}"><span class="cb-lr">${l.turn}</span>${esc(l.text)}</li>`).join('')
+    let foot
+    if (P) {
+      const ar = info.arena, br = info.bracket
+      const stake = ar ? (info.lethal ? `Blood match: to the death, ×${typeof ARENA_BLOOD_MULT !== 'undefined' ? ARENA_BLOOD_MULT : 3} purse` : 'Until one yields: lose, and keep half the purse')
+        : info.lethal ? 'To the death: the loser does not rise' : `Until one yields: at ${PERSON_FIGHT.yieldThrownHp} Health you are beaten`
+      const yieldAt = !info.lethal ? `<span class="cb-note">They yield at ${Math.round(m.foe.max * PERSON_FIGHT.yieldFoeFrac)}</span>` : ''
+      const side = ar ? `<span class="cb-note">Purse ${this.h.fmt ? this.h.fmt(ar.purse) : ar.purse} · a win adds <b class="gold">+${this.h.fmt ? this.h.fmt(ar.prize) : ar.prize}</b>${ar.champion ? ' · the champion' : ''}</span>`
+        : br ? `<span class="cb-note">Round ${br.round} · ${br.left} left${br.lethal ? '' : ` · blood at the last ${br.bloodTo}`}</span>` : ''
+      foot = `<div class="cb-foot"><span class="cb-chip${info.lethal ? ' lethal' : ''}">${stake}</span>${side}${ar || br ? '' : yieldAt}
+        <span class="cb-note">Turn ${m.turn}${br ? '' : ' · keys 1–4, C'}</span>
+        <button class="cb-why" data-bd="personfight:${esc(info.opp?.id || '')}:${info.kind}"><span data-icon="why"></span>Why</button></div>`
+    } else foot = `<div class="cb-foot"><span class="cb-chip${info.stance === 'slay' ? ' lethal' : ''}">${info.stance === 'slay' ? 'Slay: a loss can kill you' : 'Drive off: never below 1 Health'}</span>
+        <span class="cb-note">Turn ${m.turn} · keys 1–4, C to circulate</span>
+        <button class="cb-why" data-bd="beastfight:${esc(info.beast.encId)}:${info.stance}"><span data-icon="why"></span>Why</button></div>`
+    return `${pend ? incoming : last}${grid}${extra}${P ? this._scout(info, name) : ''}
+      ${foot}
+      ${log ? `<ol class="cb-log lines">${log}</ol>` : ''}`
   }
-
-  _tacs(info, last) {
-    const pct = v => `${Math.round(v * 100)}%`
-    return `<div class="cb-tacs">${Object.entries(FIGHT_TACTICS).map(([id, t], i) => `
-        <button class="cb-tac${last?.you === id ? ' picked' : ''}" data-tac="${id}">
-          <span class="cb-g">${Icon.g(t.glyph)}</span>
-          <span class="cb-t"><span class="cb-n">${t.name}<kbd>${i + 1}</kbd></span><span class="cb-b">beats ${FIGHT_TACTICS[t.beats].name}</span></span>
-          <span class="cb-pct">${pct(info.tactics[id])}<small>this exchange</small></span>
-        </button>`).join('')}</div>`
-  }
-
-  // ── Step 2: the fight (a person, A6-3a) ──
-  _fightPerson() {
-    const info = this.gs.fightInfo(), esc = this.h.esc
-    if (!info || info.kind === 'beast') return this._result()
-    const opp = info.opp, who = opp?.given || 'Your opponent'
-    const pct = v => `${Math.round(v * 100)}%`
-    const last = info.log[info.log.length - 1]
-    const VERB = { press: 'presses', guard: 'guards', feint: 'feints' }
-    const line = !last ? `${who} faces you across the ring. First to ${info.to} exchanges. Choose your move.`
-      : last.yieldRefused ? `You offered to yield. ${who} refused. This ends with one of you.`
-      : last.you === last.them ? `You both ${FIGHT_TACTICS[last.you].name.toLowerCase()}; no read wins it, so strength decides. ${last.won ? 'You land the blow.' : `${who} catches you (−${last.dmg || FIGHT_WOUND} Health).`}`
-      : `You ${FIGHT_TACTICS[last.you].name.toLowerCase()}; ${who} ${VERB[last.them]}. ${last.won ? 'You land the blow.' : `${who} catches you (−${last.dmg || FIGHT_WOUND} Health).`}`
-    const pers = PERSONALITIES.find(p => p.id === opp?.personality)
+  // 1.14a: what you know of a person you fight — their root's element (always), the arts you have seen them use (the rest
+  // stay "?"), how they fight + how often they parry (once you have fought them); the feud and your record; and, before the
+  // first move, the parry window (beasts choose it on the prepare step; people open straight on the fight).
+  _scout(info, who) {
+    const esc = this.h.esc, sc = info.scout, m = info.m
+    if (!sc) return ''
+    const el = ART_ELEMENTS[sc.element] || ART_ELEMENTS.neutral
+    const arts = sc.moves.map(x => x.seen ? `<span class="cb-mv-tag el-${ARTS[x.id]?.element || 'neutral'}">${esc(ARTS[x.id]?.name || x.id)}</span>` : '<span class="cb-mv-tag unseen" title="Not yet seen: it shows once they use it on you">?</span>').join('')
+    const how = info.habitsKnown ? `${esc(sc.hint)}; ${sc.parryWord}.` : 'How they fight shows once you have crossed blades.'
+    // 1.14b: a rival who trained against you fights as the counter element (their root stays what it was)
+    const rootEl = ART_ELEMENTS[sc.rootElement] || el
+    const who2 = sc.counter ? `<span class="cb-el el-${sc.rootElement}">${Icon(rootEl.icon)}</span>${esc(rootEl.name)} root, <span class="down">${sc.rootElement === sc.counter.el ? `honed` : `trained in ${esc(el.name)}`} against your ${esc(ART_ELEMENTS[sc.counter.vs].name)}</span>`
+      : `<span class="cb-el el-${sc.element}">${Icon(el.icon)}</span>${esc(el.name)} root`
+    const read = `<div class="cb-read sm cb-scout"><span class="cb-k">What you know</span>${who2}${this._matchupHint(sc.element)} · <span class="cb-habits">Arts ${sc.seen} of ${sc.total} seen: ${arts}</span> <span class="cb-hint">${how}</span></div>`
     const rec = info.record, feud = info.feud
     const recLine = rec.fought ? `<div class="cb-rec">You and ${esc(who)}: fought ${rec.fought} · you won ${rec.youWon} · they won ${rec.theyWon}${rec.spared ? ` · spared ${rec.spared}` : ''}${rec.humbled ? ` · humbled ${rec.humbled}` : ''}</div>` : ''
-    const feudLine = feud === 'grudge' ? `<div class="cb-mood bad">${esc(who)} holds a grudge against you: they fight harder, and will not easily let you yield.</div>`
+    const feudLine = feud === 'grudge' ? `<div class="cb-mood bad">${esc(who)} holds a grudge against you: they hit harder, and will not easily let you yield.</div>`
       : feud === 'debt' ? `<div class="cb-mood good">${esc(who)} owes you. They would more readily accept your yield.</div>` : ''
-    const br = info.bracket
-    const ar = info.arena
-    const stake = ar ? (info.lethal ? `Blood match: to the death, ×${typeof ARENA_BLOOD_MULT !== 'undefined' ? ARENA_BLOOD_MULT : 3} purse` : 'Until one yields: lose, and keep half the purse')
-      : info.lethal ? 'To the death: the loser does not rise' : 'Until one yields: the loser lives'
-    const bracketLine = ar ? `<span class="cb-note">Purse ${this.h.fmt ? this.h.fmt(ar.purse) : ar.purse} · a win adds <b class="gold">+${this.h.fmt ? this.h.fmt(ar.prize) : ar.prize}</b>${ar.champion ? ' · the champion' : ''}</span>`
-      : br ? `<span class="cb-note">Round ${br.round} · ${br.left} still standing${br.lethal ? '' : ` · blood ends at the last ${br.bloodTo}`}</span>` : ''
-    const log = info.log.filter(l => !l.yieldRefused).slice(-5).reverse().map(l => `<li class="${l.won ? 'up' : 'down'}"><span class="cb-lr">${l.round}</span>${FIGHT_TACTICS[l.you].name} vs ${FIGHT_TACTICS[l.them].name}<em>${l.won ? 'hit' : `−${l.dmg || FIGHT_WOUND}`}</em></li>`).join('')
-    return `
-      <div class="cb-last${last && !last.yieldRefused ? (last.won ? ' up' : ' down') : ''}">${esc(line)}</div>
-      ${this._tacs(info, last?.yieldRefused ? null : last)}
-      <div class="cb-row2">
-        <div class="cb-read sm"><span class="cb-k">${esc(pers ? pers.name : 'Their temper')}</span> ${esc(info.hint)} · Press ${pct(info.habits.press)} · Guard ${pct(info.habits.guard)} · Feint ${pct(info.habits.feint)}</div>
-        <button class="cb-retreat" data-tac="yield"><span data-icon="yield"></span>Yield<small>${info.lethal ? `accepted ~${pct(info.yieldAccept)} · ` : ''}${esc(PERSON_FIGHT_YIELD[info.kind] || 'you lose')}</small></button>
-      </div>
-      ${feudLine}${recLine}
-      <div class="cb-foot"><span class="cb-chip${info.lethal ? ' lethal' : ''}">${stake}</span>${bracketLine}
-        <button class="cb-why" data-bd="personfight:${esc(opp?.id || '')}:${info.kind}"><span data-icon="why"></span>Why</button></div>
-      ${log ? `<ol class="cb-log">${log}</ol>` : ''}`
+    const mode = this.gs.get().arts?.parryMode || 'normal'
+    const parry = m.turn === 1 && !m.lines.length && !m.pending
+      ? `<div class="cb-parry-mode"><span class="cb-k">Parry window</span>${['normal', 'wide', 'off'].map(v => `<button class="pack-chip${mode === v ? ' active' : ''}" data-parrymode="${v}">${{ normal: 'Normal', wide: 'Wide', off: 'Off' }[v]}</button>`).join('')}
+          <span class="cb-note">${mode === 'off' ? 'No parry prompts: every blow lands.' : `A ring closes on you when they strike: Parry (Space) on the mark for no damage and +${MOVE_COMBAT.parryQi} Qi.`}</span></div>` : ''
+    return `${read}${feudLine}${recLine}${parry}`
+  }
+  // The parry prompt on the field, between you and it (user 2026-09-29: don't cover the moves). The closing ring is drawn on
+  // the canvas around you (BattleScene.telegraph); the button glows when the window is open. Reduced motion: a filling bar.
+  _renderParry() {
+    const fi = this.gs.get()?.family?.fight, p = this.step === 'fight' ? fi?.m?.pending : null
+    if (!p) { this.parryEl.classList.add('hidden'); this.parryEl.innerHTML = ''; this._parryKey = null; return }
+    const key = `${fi.m.turn}:${p.id}`
+    if (key === this._parryKey) return                            // keep the live pips / feedback
+    this._parryKey = key
+    const q = this.qte, done = q ? q.results.length : 0, esc = this.h.esc
+    const tut = !this.gs.get().arts?.parryTaught
+    this.parryEl.innerHTML = `
+      <div class="cb-parry-h"><b>${esc(p.name)}</b>${p.hits > 1 ? ` · ${p.hits} hits` : ''}${p.type === 'charge' ? ' · slow, heavy' : ''}</div>
+      <div class="cb-parry-ring${this.h.settings().reducedMotion ? ' calm' : ''}"><i class="cb-ring-bar"><b></b></i></div>
+      <button class="cb-parry-btn" data-parry>Parry<small>Space</small></button>
+      ${p.hits > 1 ? `<div class="cb-parry-hits">${Array.from({ length: p.hits }, (_, i) => `<i class="${i < done ? (q.results[i] ? 'ok' : 'no') : ''}"></i>`).join('')}</div>` : ''}
+      <div class="cb-parry-fb" aria-live="polite"></div>`
+    this.parryEl.classList.remove('flash', 'miss', 'hot')
+    this.parryEl.classList.toggle('tut', tut)
+    this.parryEl.classList.remove('hidden')
+  }
+
+  // The parry QTE: each hit gets a window of p.windowMs centred on its moment of impact
+  _startParry(p) {
+    if (this.qte && !this.qte.sent) return
+    const tut = !this.gs.get().arts?.parryTaught
+    const lead = (MOVE_COMBAT.parryLeadMs[0] + Math.random() * (MOVE_COMBAT.parryLeadMs[1] - MOVE_COMBAT.parryLeadMs[0])) * (tut ? MOVE_COMBAT.parryTutorialLead : 1)
+    const t0 = performance.now()
+    this.qte = { p, t0, results: [], due: Array.from({ length: p.hits }, (_, i) => t0 + lead + i * (MOVE_COMBAT.parryGapMs + p.windowMs)), lead, w: p.windowMs }
+    const q = this.qte
+    const loop = () => {
+      if (this.qte !== q || q.sent) return
+      const now = performance.now(), i = q.results.length
+      if (i < q.p.hits && now > q.due[i] + q.w / 2) this._parryHit(false, 'It lands')
+      const el = this.parryEl.querySelector('.cb-parry-ring'), j = q.results.length
+      if (el && j < q.p.hits) {
+        const start = j === 0 ? q.t0 : q.due[j - 1] + q.w / 2, span = q.due[j] - start
+        const k = Math.max(0, (q.due[j] - now) / span)
+        el.querySelector('.cb-ring-bar b').style.width = `${Math.min(100, (1 - k) * 100).toFixed(1)}%`
+        el.classList.toggle('hot', Math.abs(now - q.due[j]) <= q.w / 2)
+        this.parryEl.classList.toggle('hot', Math.abs(now - q.due[j]) <= q.w / 2)
+      }
+      if (j < q.p.hits) {                                          // 1.13b: the same ring, on the field
+        const start = j === 0 ? q.t0 : q.due[j - 1] + q.w / 2
+        this.scene.telegraph({ k: Math.max(0, (q.due[j] - now) / (q.due[j] - start)), hot: Math.abs(now - q.due[j]) <= q.w / 2, el: q.p.element })
+      }
+      else this.scene.telegraph(null)
+      if (!q.sent) requestAnimationFrame(loop)
+      else this.scene.telegraph(null)
+    }
+    requestAnimationFrame(loop)
+  }
+  _parryHit(ok, text) {
+    const q = this.qte
+    if (!q || q.sent || q.results.length >= q.p.hits) return
+    q.results.push(ok)
+    const fb = this.parryEl.querySelector('.cb-parry-fb')
+    if (fb) { fb.textContent = text; fb.className = 'cb-parry-fb ' + (ok ? 'ok' : 'no') }
+    const pip = this.parryEl.querySelectorAll('.cb-parry-hits i')[q.results.length - 1]
+    if (pip) pip.className = ok ? 'ok' : 'no'
+    const pe = this.parryEl
+    pe.classList.remove('flash', 'miss', 'hot'); void pe.offsetWidth; pe.classList.add(ok ? 'flash' : 'miss')
+    if (q.results.length >= q.p.hits) { q.sent = true; this.scene.telegraph(null); setTimeout(() => this._sendParry(q), 380) }
+  }
+  _parryPress() {
+    const q = this.qte
+    if (!q || q.sent) return
+    const now = performance.now(), i = q.results.length, d = q.due[i]
+    if (Math.abs(now - d) <= q.w / 2) { this.scene.parryFlash(true); this._parryHit(true, 'Parried!') }
+    else if (now < d - q.w / 2) { this.scene.parryFlash(false); this._parryHit(false, 'Too soon') }
+  }
+  _sendParry(q) {
+    if (this.qte === q) this.qte = null
+    const name = this._name()
+    const r = this._settle(() => this.gs.fightParry(q.results))
+    this._afterMove(r, name)
+  }
+  // A step-down bout can end and start the next in one call: hold the plates on this bout until the result card is up
+  _settle(fn) {
+    this._settling = this.mode === 'person' && this.gs.get().family?.fight?.kind === 'stepdown'
+    try { return fn() } finally { this._settling = false }
+  }
+  // Play a turn's events on the scene, then move the page on (the end choice, the result, or the next parry)
+  _afterMove(r, name) {
+    if (!r.ok) return this.render()
+    this.lockUntil = performance.now() + (this.h.settings().reducedMotion ? 250 : 500)
+    for (const ev of r.events || []) this.scene.play(this._sceneEv(ev))
+    if (r.over === 'won') { this.scene.play({ type: 'won' }); this.step = 'end' }
+    if (r.done) (this.mode === 'person' ? this._endedPerson(r, name) : this._ended(r, name))
+    this.render()
+    if (r.pending) this._startParry(r.pending)
+  }
+  _sceneEv(ev) {
+    const atk = MOVE_ATTACKS.includes(ev.type) && !ev.gather
+    const t = ev.hits?.length > 1 ? 'feint' : 'press'
+    // 1.13b: what the scene needs to draw the art by its element (battle-scene.js → _fxFront)
+    const fx = { side: ev.side, id: ev.id, el: ev.element || null, type: ev.type, hits: ev.hits?.length || 0, mask: (ev.hits || []).map(h => h.parried ? 0 : 1),
+      parried: ev.parried || 0, em: ev.hits?.find(h => h.em)?.em || 1, crit: !!ev.hits?.some(h => h.crit), status: ev.status || null, heal: ev.heal || 0,
+      gather: !!ev.gather, release: !!ev.release, dazed: !!ev.dazed, claw: ev.side === 'foe' && ev.id === 'beast_rake' }
+    if (ev.side === 'you') {
+      if (atk) return { type: 'ex', you: t, won: ev.total > 0, foeDmg: ev.total || 0, nohit: !ev.total, fx }
+      return { type: 'ex', you: ev.type === 'hex' ? 'feint' : 'guard', won: !!ev.status, nohit: !ev.status && !ev.hits?.length, foeDmg: ev.hits?.[0]?.dmg || 0, fx }
+    }
+    if (atk) return { type: 'ex', them: 'press', you: ev.parried ? 'guard' : null, won: !ev.total, dmg: ev.total || 0, nohit: !ev.total, fx }
+    return { type: 'ex', them: ev.type === 'hex' ? 'feint' : 'guard', won: !ev.status, nohit: !ev.status, dmg: ev.hits?.[0]?.dmg || 0, fx }
   }
 
   // ── Step 3: the end choice (beast) ──
@@ -386,11 +517,21 @@ class CombatView {
     const bindSub = ch.bindFree ? 'It bows its head to you. No talisman needed.'
       : selGr ? `${esc(selGr.name)} charm — ${Math.round(selGr.chance * 100)}%. If it fails, it is gone.`
       : 'You carry no taming talismans.'
-    const bind = `<button class="cb-end bind" data-end="bind"${sel ? ` data-grade="${sel}"` : ''} ${bindLock ? 'disabled' : ''}><span class="cb-st-n">Bind it</span><span class="cb-st-sub">${bindSub}</span><span class="cb-st-l">Joins you at Lv.${typeof BEAST_BOUND_LEVEL !== 'undefined' ? BEAST_BOUND_LEVEL : 2}</span>${bindLock ? `<span class="cb-st-l warn">${bindLock}</span>` : ''}</button>`
+    const bind = `<button class="cb-end bind" data-end="bind"${sel ? ` data-grade="${sel}"` : ''} ${bindLock ? 'disabled' : ''}><span class="cb-st-n">Bind it</span><span class="cb-st-sub">${bindSub}</span><span class="cb-st-l">Joins you at Lv.${typeof BEAST_BOUND_LEVEL !== 'undefined' ? BEAST_BOUND_LEVEL : 2}</span><span class="cb-st-l">no karma change</span>${bindLock ? `<span class="cb-st-l warn">${bindLock}</span>` : ''}</button>`
+    // Karma, with why (a man-eater's death is a good deed; a guardian's weighs on you) and what actually applies at 0 / 100
+    const kWhy = (v, why) => {
+      const now = this.gs.get().karma ?? 50, eff = Math.max(0, Math.min(100, now + v)) - now
+      const cap = eff !== v ? ` (you are at ${now >= 100 ? 'the most karma, 100' : now <= 0 ? 'the least karma, 0' : Math.round(now)}: ${eff ? `${eff > 0 ? '+' : ''}${Math.round(eff * 10) / 10} applies` : 'no change'})` : ''
+      return `<span class="cb-st-l${v < 0 ? ' warn' : ''}">${k(v)}${why ? ` · ${why}` : ''}${cap}</span>`
+    }
+    const WHY = {
+      finish: ch.cub ? 'it is a cub' : { fell: 'a man-eater: ending it is a good deed', benign: 'a guardian beast: its death weighs on you', wild: 'a wild beast' }[ch.nature],
+      spare: { fell: 'a man-eater let loose will hunt again', benign: 'mercy to a guardian', wild: 'mercy' }[ch.nature],
+    }
     const opts = ch.ids.includes('finish')
-      ? opt('finish', 'Finish it', ch.cub ? 'It is only a cub.' : 'Take what its body holds.', `<span class="cb-st-l">${esc(loot)}</span><span class="cb-st-l${ch.finishKarma < 0 ? ' warn' : ''}">${k(ch.finishKarma)}</span>`)
-        + opt('spare', 'Spare it', 'Let it limp away. It may come back one day.', `<span class="cb-st-l">${k(ch.spareKarma)}</span>`) + bind
-      : opt('flee', 'Let it flee', 'It runs, and may come back one day.', `<span class="cb-st-l">${k(ch.spareKarma)}</span>`) + bind
+      ? opt('finish', 'Finish it', ch.cub ? 'It is only a cub.' : 'Take what its body holds.', `<span class="cb-st-l">${esc(loot)}</span>${kWhy(ch.finishKarma, WHY.finish)}`)
+        + opt('spare', 'Spare it', 'Let it limp away. It may come back one day.', kWhy(ch.spareKarma, WHY.spare)) + bind
+      : opt('flee', 'Let it flee', 'It runs, and may come back one day.', kWhy(ch.spareKarma, WHY.spare)) + bind
     return `<div class="cb-last up">The ${esc(name)} is down. What happens now is yours to decide.</div>${gradeRow}<div class="cb-ends${ch.ids.length === 3 ? ' three' : ''}">${opts}</div>`
   }
 
@@ -406,11 +547,14 @@ class CombatView {
     const FIN = { duel: 'End it. Your spouse does not rise.', challenge: 'End it, and take the head seat over their body.', defend: 'End it. Your seat is secure.', stepdown: 'End it. One fewer between you and the seat.', arena: 'End it on the sand. The crowd roars.', slaughter: 'End it. They do not rise, and the road keeps the body.' }
     const SPR = { duel: 'Lower your blade. They leave you, and live.', challenge: 'Let them live. You take the head seat all the same.', defend: 'Let them live. Your seat is secure.', stepdown: 'Let them live. They are out of the contest.', arena: 'Let them live. The crowd will remember your mercy.', slaughter: 'Lower your blade. They get up and go.' }
     const quiet = ch.quietYears ? `${ch.quietYears[0]}–${ch.quietYears[1]}` : ''
+    // 1.14b: what each choice brings in arts — a debtor raised teaches you one of theirs; a body may hold its manual
+    const manual = ch.finishManual ? `<span class="cb-st-l good">their manual: ${Math.round(ch.finishManual * 100)}% chance</span>` : ''
+    const taught = ch.teach ? `<span class="cb-st-l good">in thanks, they teach you one of their arts</span>` : ''
     const opts = ch.lethal
-      ? opt('finish', 'Finish them', FIN[ch.kind] || 'End it.', `<span class="cb-st-l warn">${esc(who)} dies; no one is left to remember it</span><span class="cb-st-l${ch.karma.finish < 0 ? ' warn' : ''}">${k(ch.karma.finish) || 'no karma change'}</span>`)
+      ? opt('finish', 'Finish them', FIN[ch.kind] || 'End it.', `<span class="cb-st-l warn">${esc(who)} dies; no one is left to remember it</span>${manual}<span class="cb-st-l${ch.karma.finish < 0 ? ' warn' : ''}">${k(ch.karma.finish) || 'no karma change'}</span>`)
         + opt('spare', 'Spare them', SPR[ch.kind] || 'Let them live.', `${react(ch.reaction.spare)}<span class="cb-st-l">${k(ch.karma.spare)}</span>`)
       : opt('raise', 'Raise them up', `Offer your hand before the ${ch.arena ? 'crowd' : 'clan'}. Mercy, seen by all.`,
-          `${react(ch.reaction.raise)}<span class="cb-st-l">${ch.arena ? 'One who owes you may repay it one day' : 'A debtor never challenges you'}</span>`)
+          `${react(ch.reaction.raise)}${taught}<span class="cb-st-l">${ch.arena ? 'One who owes you may repay it one day' : 'A debtor never challenges you'}</span>`)
         + opt('humble', 'Humble them', ch.arena ? 'Leave them in the dust before the crowd.' : 'Leave them in the dust before the clan.',
           `${react(ch.reaction.humble)}<span class="cb-st-l">${ch.arena ? `+${ch.arena.renownHumble} renown: the crowd loves it` : `No one else dares challenge you for ${quiet} years`}</span>`)
     const head = ch.begs ? `${esc(who)} is down, and begs for their life. It is your choice.` : `${esc(who)} is down. What happens now is your choice.`
@@ -434,6 +578,7 @@ class CombatView {
   }
 
   _click(e) {
+    if (this.qte && e.target.closest('[data-parry-zone]') && !e.target.closest('button')) return this._parryPress()   // tap anywhere on the prompt
     const t = e.target.closest('button')
     if (!t || t.disabled || t.dataset.bd != null) return
     if (t.dataset.leave != null) return this.close()
@@ -450,16 +595,21 @@ class CombatView {
       this.step = 'fight'
       return this.render()
     }
-    if (t.dataset.tac) {
-      if (performance.now() < this.lockUntil) return
+    if (t.dataset.parry != null) return this._parryPress()
+    if (t.dataset.parrymode) { this.gs.setParryMode(t.dataset.parrymode); return this.render() }
+    if (t.dataset.move) {                                         // Phase 42b: one of your moves
+      if (performance.now() < this.lockUntil || this.qte) return
       const name = this._name()
-      this._settling = this.mode === 'person' && this.gs.get().family?.fight?.kind === 'stepdown'
-      const r = this.gs.fightExchange(t.dataset.tac)
-      this._settling = false
+      const r = this._settle(() => this.gs.fightMove(t.dataset.move))
+      if (!r.ok) { this.h.flash({ qi: 'Not enough combat Qi. Circulate, or use a cheaper move.', sealed: 'That art is sealed.', charging: 'You are gathering a charge: release it.' }[r.reason] || 'Not now.', 'negative'); return this.render() }
+      return this._afterMove(r, name)
+    }
+    if (t.dataset.tac) {                                          // Retreat (a beast) / Yield (a person): the only non-move ends
+      if (performance.now() < this.lockUntil || this.qte) return
+      const name = this._name()
+      const r = this._settle(() => this.gs.fightExchange(t.dataset.tac))
       if (!r.ok) return this.render()
-      this.lockUntil = performance.now() + (this.h.settings().reducedMotion ? 250 : 650)
-      if (r.exchange) this.scene.play({ type: 'ex', ...r.exchange })
-      if (r.over === 'won') { this.scene.play({ type: 'won' }); this.step = 'end' }
+      if (r.refused) this.h.flash(`${name} refuses your yield. This ends with one of you.`, 'negative')
       if (r.done) (this.mode === 'person' ? this._endedPerson(r, name) : this._ended(r, name))
       return this.render()
     }
@@ -545,6 +695,7 @@ class CombatView {
 
   _finishPerson(choice) {
     const name = this._name(), kind = this.kind
+    this.snapOpp = this._opp()                                     // (1.14b: read their counter after the fight is gone)
     this._settling = true
     const r = this.gs.personFightFinish(choice)
     this._settling = false
@@ -562,7 +713,11 @@ class CombatView {
       slaughter: { finish: 'Their body lies on the road behind you.', spare: 'They get up and go, and do not look back.' },
     }
     const karma = choice === 'spare' ? (typeof SPARE_KARMA !== 'undefined' ? SPARE_KARMA : 0) : choice === 'finish' && kind === 'arena' ? (typeof ARENA_KILL_KARMA !== 'undefined' ? ARENA_KILL_KARMA : 0) : 0
-    this.result = { name, tone: choice === 'finish' ? 'gold' : 'jade', karma, head: HEAD[choice], text: `${TXT[kind]?.[choice] || ''} ${feud}`.trim() }
+    // 1.14b: an art that came of it (taught by a debtor, or a manual on the body)
+    const artLine = r.art && ARTS[r.art] ? (choice === 'raise' ? ` In thanks, ${name} writes out ${ARTS[r.art].name} for you: the manual is in your pack, study it in Path → Arts.` : ` On the body: the ${ARTS[r.art].name} manual, now in your pack.`) : ''
+    const counter = r.feud === 'grudge' && this.snapOpp?.counter
+    const counterLine = counter ? ` Word will come that they train in ${ART_ELEMENTS[counter.el].name} arts, against your ${ART_ELEMENTS[counter.vs].name}.` : ''
+    this.result = { name, tone: choice === 'finish' ? 'gold' : 'jade', karma, head: HEAD[choice], text: `${TXT[kind]?.[choice] || ''} ${feud}${artLine}${counterLine}`.trim(), art: r.art || null }
     if (kind === 'arena') {                                          // A6-3b: what the win put in the purse; walk away or fight on
       const L = this.gs.get().arena?.last
       if (L?.won) Object.assign(this.result, { arena: true, purse: L.purse, gain: L.gain, streak: L.streak,

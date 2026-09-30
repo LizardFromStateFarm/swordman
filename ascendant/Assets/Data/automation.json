@@ -1,0 +1,39 @@
+{
+  "PLAY_MODE_DEFAULT": "idle",
+  "AUTOMATION_UNLOCKS": {
+    "autoExplore": {
+      "stageIndex": 13,
+      "label": "Core Formation"
+    },
+    "autoSectMissions": {
+      "sectRank": 3,
+      "hallLevel": 2,
+      "label": "Elder rank or Sect Hall Lv.2"
+    },
+    "autoCraft": {
+      "stageIndex": 19,
+      "label": "Spirit Severing"
+    },
+    "autoBreakthrough": {
+      "stageIndex": 16,
+      "label": "Nascent Soul"
+    }
+  },
+  "AUTO_BREAKTHROUGH_THRESHOLD_DEFAULT": 0.95,
+  "AUTO_BREAKTHROUGH_THRESHOLD_MIN": 0.8,
+  "AUTO_BREAKTHROUGH_THRESHOLD_MAX": 1,
+  "AUTO_BREAKTHROUGH_THRESHOLD_STEP": 0.01,
+  "AUTO_EXPLORE_MIN_HEALTH_OUTCLASSED": 60,
+  "AUTO_CRAFT_CHECK_SECONDS": 3,
+  "AUTO_SLOT_CHECK_SECONDS": 3,
+  "BEAST_AUTO_EXPEDITION_LEVEL": 5,
+  "ACTIVE_EXPEDITION_TIME_MULT": 0.65,
+  "ACTIVE_SECT_MISSION_TIME_MULT": 0.75,
+  "ACTIVE_BT_QI_LOSS_BONUS": 0.1,
+  "ACTIVE_PUSH_HARDER_COST": 10,
+  "ACTIVE_PUSH_HARDER_WINDOW_FRAC": 0.2,
+  "ACTIVE_BT_FOCUS_WINDOW_SECONDS": 3,
+  "ACTIVE_BT_FOCUS_BONUS": 0.05,
+  "ACTIVE_CRAFT_TOUCH_CHANCE": 0.1,
+  "ACTIVE_CRAFT_TOUCH_WINDOW_SECONDS": 60
+}

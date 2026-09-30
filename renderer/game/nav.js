@@ -13,7 +13,7 @@ const NAV_GROUPS = [
     views: [['family', 'Family'], ['clan', 'Clan'], ['hall', 'Hall']] },
   // 1.8b-5: which sub-views show depends on your standing (NavUI.setAvailable, from game.js sectViews())
   { id: 'sect',      glyph: '宗', name: 'Sect',  title: 'Your sect: missions, wars, buildings',
-    views: [['sect', 'Overview'], ['sect-missions', 'Missions'], ['sect-halls', 'Halls'], ['sect-disciples', 'Disciples'], ['sect-war', 'War']],
+    views: [['sect', 'Overview'], ['sect-missions', 'Missions'], ['sect-library', 'Library'], ['sect-halls', 'Halls'], ['sect-disciples', 'Disciples'], ['sect-war', 'War']],
     auto: 'autoSectMissions' },
   { id: 'pack',      glyph: '囊', name: 'Pack',  title: 'Your pack and the alchemy furnace',
     views: [['craft', 'Craft'], ['pack', 'Items']], autoView: { craft: 'autoCraft' } },

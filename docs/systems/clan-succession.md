@@ -216,6 +216,10 @@ Then life-loop.md 2.7 (Ancestral Hall, legacies — Sect Continuity legacy is su
   challenged is now fought exchange by exchange on the fight card (family.md → "1.8b-3b"). **A6-3a (combat.md):** both
   now play on the battle page, a won fight waits for your end choice (finish / spare · raise / humble → debt or grudge,
   humbling cows the clan), and your own bouts in a step-down tournament are played too (`f.bracket` pauses the bracket).
+  **1.14a (arts.md → "42c part 1"):** all of these are move fights now (your arts vs theirs, the parry prompt, wounds that
+  carry from bout to bout); the odds shown are the move-fight estimate. NPC-vs-NPC bouts are still rolled.
+  **1.14b:** the clan record gains `library` (arts written in by any life, studied by the clan's later lives at half time
+  without a manual — Kin → Hall; arts.md → "42c part 2").
 - **Bloodline:** growth += `BLOODLINE_G_HEIR` (4) × (heir stage / 22)² + `BLOODLINE_G_TRAUMA_HEIR` (2) if the heir has
   `trauma`. `lastReincarnation` gained `heirStage`, `heirTrauma`, `heirKind` ('chosen'|'tournament'), `heirTerm`,
   `tournamentDeaths`.

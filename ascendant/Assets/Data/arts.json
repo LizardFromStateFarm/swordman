@@ -1,0 +1,3293 @@
+{
+  "ART_ELEMENTS": {
+    "metal": {
+      "name": "Metal",
+      "icon": "el_metal",
+      "color": "--el-metal",
+      "status": "bleed"
+    },
+    "wood": {
+      "name": "Wood",
+      "icon": "el_wood",
+      "color": "--el-wood",
+      "status": "entangle"
+    },
+    "water": {
+      "name": "Water",
+      "icon": "el_water",
+      "color": "--el-water",
+      "status": "chill"
+    },
+    "fire": {
+      "name": "Fire",
+      "icon": "el_fire",
+      "color": "--el-fire",
+      "status": "burn"
+    },
+    "earth": {
+      "name": "Earth",
+      "icon": "el_earth",
+      "color": "--el-earth",
+      "status": "daze"
+    },
+    "neutral": {
+      "name": "Neutral",
+      "icon": "el_neutral",
+      "color": "--el-neutral",
+      "status": null
+    }
+  },
+  "ELEMENT_OVERCOMES": {
+    "metal": "wood",
+    "wood": "earth",
+    "earth": "water",
+    "water": "fire",
+    "fire": "metal"
+  },
+  "ART_STATUS": {
+    "bleed": {
+      "name": "Bleed",
+      "desc": "Loses Health every turn."
+    },
+    "entangle": {
+      "name": "Entangled",
+      "desc": "Every move costs more Qi."
+    },
+    "chill": {
+      "name": "Chilled",
+      "desc": "Acts last, whatever its speed."
+    },
+    "burn": {
+      "name": "Burning",
+      "desc": "Loses Health every turn; stacks."
+    },
+    "daze": {
+      "name": "Dazed",
+      "desc": "May lose its turn."
+    },
+    "seal": {
+      "name": "Sealed",
+      "desc": "One of its moves cannot be used."
+    },
+    "guardbreak": {
+      "name": "Guard Broken",
+      "desc": "Takes more damage."
+    }
+  },
+  "ART_RARITY_ORDER": [
+    "yellow",
+    "profound",
+    "earth",
+    "heaven",
+    "immortal"
+  ],
+  "ART_RARITY": {
+    "yellow": {
+      "name": "Yellow",
+      "color": "--r-yellow",
+      "studySeconds": 60,
+      "sellValue": 3
+    },
+    "profound": {
+      "name": "Profound",
+      "color": "--r-profound",
+      "studySeconds": 300,
+      "sellValue": 10
+    },
+    "earth": {
+      "name": "Earth",
+      "color": "--r-earth",
+      "studySeconds": 1200,
+      "sellValue": 30
+    },
+    "heaven": {
+      "name": "Heaven",
+      "color": "--r-heaven",
+      "studySeconds": 3600,
+      "sellValue": 80
+    },
+    "immortal": {
+      "name": "Immortal",
+      "color": "--r-immortal",
+      "studySeconds": 7200,
+      "sellValue": 200
+    }
+  },
+  "ART_MOVE_SLOTS": 4,
+  "ART_PASSIVE_SLOTS": [
+    {
+      "stage": 0,
+      "slots": 1
+    },
+    {
+      "stage": 10,
+      "slots": 2
+    },
+    {
+      "stage": 13,
+      "slots": 3
+    },
+    {
+      "stage": 16,
+      "slots": 4
+    },
+    {
+      "stage": 19,
+      "slots": 5
+    }
+  ],
+  "ART_PASSIVE_SLOTS_MAX": 5,
+  "ART_STUDY_COMPREHENSION": 0.05,
+  "ART_STUDY_MIN_FRAC": 0.5,
+  "ART_MASTERY_MAX": 5,
+  "ART_MASTERY_XP": [
+    0,
+    0,
+    20,
+    50,
+    100,
+    180
+  ],
+  "ART_MASTERY_POWER": 0.08,
+  "ART_MASTERY_COST": 1,
+  "ART_BASICS": [
+    "palm_strike",
+    "qi_shield"
+  ],
+  "ART_STAGE_GRANTS": {
+    "4": "drifting_step_palm",
+    "7": "rising_qi_kick"
+  },
+  "ART_OFFER_COUNT": 3,
+  "ART_OFFER_WEIGHTS": {
+    "Qi Condensation": {
+      "yellow": 80,
+      "profound": 20
+    },
+    "Foundation Building": {
+      "yellow": 35,
+      "profound": 50,
+      "earth": 15
+    },
+    "Core Formation": {
+      "profound": 40,
+      "earth": 45,
+      "heaven": 15
+    },
+    "Nascent Soul": {
+      "earth": 55,
+      "heaven": 45
+    },
+    "Spirit Severing": {
+      "earth": 30,
+      "heaven": 70
+    }
+  },
+  "ART_EXPEDITION_DROP": 0.02,
+  "ART_EXPEDITION_DROP_TIER": 0.01,
+  "ART_DROP_WEIGHTS_BY_TIER": {
+    "1": {
+      "yellow": 90,
+      "profound": 10
+    },
+    "2": {
+      "yellow": 70,
+      "profound": 28,
+      "earth": 2
+    },
+    "3": {
+      "yellow": 45,
+      "profound": 45,
+      "earth": 10
+    },
+    "4": {
+      "profound": 50,
+      "earth": 42,
+      "heaven": 8
+    },
+    "5": {
+      "profound": 25,
+      "earth": 55,
+      "heaven": 20
+    },
+    "6": {
+      "earth": 55,
+      "heaven": 45
+    }
+  },
+  "ART_BEAST_SIG_CHANCE": {
+    "common": 0.06,
+    "uncommon": 0.08,
+    "rare": 0.1,
+    "epic": 0.12,
+    "legendary": 0.25
+  },
+  "ART_BEAST_ELEMENT_DROP": 0.05,
+  "BEAST_ELEMENT": {
+    "spirit_fox": "fire",
+    "blood_python": "wood",
+    "thunder_eagle": "metal",
+    "spectral_bear": "earth",
+    "white_tiger": "metal",
+    "qilin": "fire",
+    "void_hound": "water",
+    "black_tortoise": "water",
+    "azure_dragon": "wood",
+    "golden_dragon": "metal"
+  },
+  "ART_ARENA_BOUT_DROP": 0.06,
+  "ART_ARENA_RING_WEIGHTS": {
+    "dust": {
+      "yellow": 90,
+      "profound": 10
+    },
+    "iron": {
+      "yellow": 60,
+      "profound": 40
+    },
+    "jade": {
+      "profound": 60,
+      "earth": 40
+    },
+    "golden": {
+      "profound": 30,
+      "earth": 60,
+      "heaven": 10
+    },
+    "lotus": {
+      "earth": 60,
+      "heaven": 40
+    },
+    "heaven": {
+      "earth": 30,
+      "heaven": 70
+    }
+  },
+  "ARTS_LIST": [
+    {
+      "id": "palm_strike",
+      "name": "Palm Strike",
+      "nameCN": "掌击",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 20,
+        "cost": 0,
+        "desc": "A plain palm. Costs nothing, so you are never without a move."
+      },
+      "lore": "The first thing any master teaches, and the last thing a dying man forgets."
+    },
+    {
+      "id": "qi_shield",
+      "name": "Qi Shield",
+      "nameCN": "护体气",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "ward",
+        "power": 0,
+        "cost": 10,
+        "ward": 0.5,
+        "desc": "Halves the next hit you take this turn."
+      },
+      "lore": "A skin of breath held tight around the body."
+    },
+    {
+      "id": "drifting_step_palm",
+      "name": "Drifting Step Palm",
+      "nameCN": "游步掌",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 30,
+        "cost": 8,
+        "priority": 1,
+        "desc": "Steps in first and strikes before the enemy moves."
+      },
+      "lore": "Taught to every Qi Condensation disciple who has learned to stop falling over."
+    },
+    {
+      "id": "rising_qi_kick",
+      "name": "Rising Qi Kick",
+      "nameCN": "升气腿",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 38,
+        "cost": 14,
+        "desc": "A kick carried upward on a burst of Qi."
+      },
+      "lore": "The legs are three times stronger than the arms. Most cultivators forget this."
+    },
+    {
+      "id": "echoing_fist",
+      "name": "Echoing Fist",
+      "nameCN": "回响拳",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 14,
+        "hits": 3,
+        "cost": 18,
+        "desc": "Three quick blows; each can be parried on its own."
+      },
+      "lore": "Strike once and let the Qi strike twice more on its way out."
+    },
+    {
+      "id": "mind_piercing_shout",
+      "name": "Mind-Piercing Shout",
+      "nameCN": "破神喝",
+      "element": "neutral",
+      "rarity": "profound",
+      "minStage": 5,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 0,
+        "cost": 20,
+        "status": {
+          "id": "seal",
+          "chance": 0.7,
+          "turns": 2
+        },
+        "desc": "A shout that locks away one of the enemy's moves."
+      },
+      "lore": "A roar that reaches past the ears and closes a door in the mind."
+    },
+    {
+      "id": "void_step",
+      "name": "Void Step",
+      "nameCN": "虚空步",
+      "element": "neutral",
+      "rarity": "profound",
+      "minStage": 8,
+      "kind": "move",
+      "move": {
+        "type": "counter",
+        "power": 30,
+        "cost": 22,
+        "priority": 2,
+        "desc": "Vanishes before the enemy's blow and strikes from behind if they attacked."
+      },
+      "lore": "For a breath you are not there. Then you are behind them."
+    },
+    {
+      "id": "sutra_of_stillness",
+      "name": "Sutra of Stillness",
+      "nameCN": "静心经",
+      "element": "neutral",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "move",
+      "move": {
+        "type": "heal",
+        "power": 0,
+        "cost": 30,
+        "heal": 14,
+        "desc": "Restores Health and clears one of your ailments."
+      },
+      "lore": "Recited in a single breath, it smooths the torn channels."
+    },
+    {
+      "id": "shattering_palm_seal",
+      "name": "Shattering Palm Seal",
+      "nameCN": "碎印掌",
+      "element": "neutral",
+      "rarity": "earth",
+      "minStage": 11,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 62,
+        "cost": 32,
+        "status": {
+          "id": "guardbreak",
+          "chance": 0.5,
+          "turns": 2
+        },
+        "desc": "A seal-stamped palm that can crack the enemy's guard."
+      },
+      "lore": "The seal is carved into the palm itself, one character for every year of practice."
+    },
+    {
+      "id": "heart_of_the_blade",
+      "name": "Heart of the Blade",
+      "nameCN": "剑心",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "passive",
+      "passive": {
+        "stat": "crit",
+        "value": 0.05,
+        "desc": "+5% critical chance."
+      },
+      "lore": "Before the sword is drawn, it has already found the gap."
+    },
+    {
+      "id": "unmoving_mind",
+      "name": "Unmoving Mind",
+      "nameCN": "不动心",
+      "element": "neutral",
+      "rarity": "profound",
+      "minStage": 9,
+      "kind": "passive",
+      "passive": {
+        "stat": "parry",
+        "value": 1.25,
+        "desc": "Your parry window is 25% wider."
+      },
+      "lore": "Fear narrows the moment. A still mind keeps it wide."
+    },
+    {
+      "id": "myriad_forms_insight",
+      "name": "Myriad Forms Insight",
+      "nameCN": "万象悟",
+      "element": "neutral",
+      "rarity": "heaven",
+      "minStage": 15,
+      "kind": "passive",
+      "passive": {
+        "stat": "qiRegen",
+        "value": 6,
+        "desc": "+6 combat Qi every turn."
+      },
+      "lore": "All arts are one art. The one who sees it breathes easier in every fight."
+    },
+    {
+      "id": "golden_dragon_divine_fist",
+      "name": "Golden Dragon Divine Fist",
+      "nameCN": "金龙神拳",
+      "element": "neutral",
+      "rarity": "immortal",
+      "minStage": 19,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 140,
+        "cost": 60,
+        "status": {
+          "id": "daze",
+          "chance": 0.4,
+          "turns": 1
+        },
+        "desc": "A fist that carries the roar of a true dragon."
+      },
+      "lore": "Torn from the heart of the Golden Dragon. It still remembers the sky.",
+      "sig": "beast:golden_dragon"
+    },
+    {
+      "id": "heaven_severing_intent",
+      "name": "Heaven-Severing Sword Intent",
+      "nameCN": "断天剑意",
+      "element": "neutral",
+      "rarity": "immortal",
+      "minStage": 19,
+      "kind": "move",
+      "move": {
+        "type": "finisher",
+        "power": 110,
+        "cost": 55,
+        "finisher": 1,
+        "desc": "Doubles its power against a foe below a third of their Health."
+      },
+      "lore": "The One Beneath Heaven kept it for the one who would one day beat them.",
+      "sig": "arena:heaven"
+    },
+    {
+      "id": "autumn_blade_qi",
+      "name": "Autumn Blade Qi",
+      "nameCN": "秋刃气",
+      "element": "metal",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 36,
+        "cost": 14,
+        "status": {
+          "id": "bleed",
+          "chance": 0.25,
+          "turns": 2
+        },
+        "desc": "A thin arc of cutting Qi that may open a bleeding wound."
+      },
+      "lore": "Cold as the first frost on a blade.",
+      "starter": true
+    },
+    {
+      "id": "iron_needle_rain",
+      "name": "Iron Needle Rain",
+      "nameCN": "铁针雨",
+      "element": "metal",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 12,
+        "hits": 4,
+        "cost": 20,
+        "desc": "Four needles of hardened Qi; parry each or eat each."
+      },
+      "lore": "A beggar's trick, until a cultivator does it with Qi."
+    },
+    {
+      "id": "edge_seeking_thrust",
+      "name": "Edge-Seeking Thrust",
+      "nameCN": "寻隙刺",
+      "element": "metal",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 44,
+        "cost": 18,
+        "crit": 0.15,
+        "desc": "A precise thrust with a high critical chance."
+      },
+      "lore": "Every guard has a gap the width of a hair."
+    },
+    {
+      "id": "armour_rending_slash",
+      "name": "Armour-Rending Slash",
+      "nameCN": "裂甲斩",
+      "element": "metal",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 48,
+        "cost": 24,
+        "status": {
+          "id": "guardbreak",
+          "chance": 0.6,
+          "turns": 2
+        },
+        "desc": "Splits the enemy's guard open for a few turns."
+      },
+      "lore": "Made for the scaled hides of the Demon Marsh."
+    },
+    {
+      "id": "thunder_talon_strike",
+      "name": "Thunder Talon Strike",
+      "nameCN": "雷爪击",
+      "element": "metal",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 52,
+        "cost": 22,
+        "priority": 1,
+        "desc": "A diving strike that lands first, like the eagle's stoop."
+      },
+      "lore": "Learned by watching a Thunder Eagle fall from a clear sky onto its prey.",
+      "sig": "beast:thunder_eagle"
+    },
+    {
+      "id": "white_tiger_rending_claw",
+      "name": "White Tiger Rending Claw",
+      "nameCN": "白虎裂爪",
+      "element": "metal",
+      "rarity": "earth",
+      "minStage": 13,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 26,
+        "hits": 3,
+        "cost": 34,
+        "status": {
+          "id": "bleed",
+          "chance": 0.35,
+          "turns": 3
+        },
+        "desc": "Three raking claws of white Qi; each may leave a bleeding wound."
+      },
+      "lore": "The White Tiger guards the west. Its claws are the autumn wind given teeth.",
+      "sig": "beast:white_tiger"
+    },
+    {
+      "id": "severing_crescent",
+      "name": "Severing Crescent",
+      "nameCN": "断月弧",
+      "element": "metal",
+      "rarity": "earth",
+      "minStage": 11,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 72,
+        "cost": 36,
+        "status": {
+          "id": "bleed",
+          "chance": 0.4,
+          "turns": 3
+        },
+        "desc": "A crescent of blade-light that cuts deep."
+      },
+      "lore": "A moon-shaped cut that keeps opening after the blade has passed."
+    },
+    {
+      "id": "ten_thousand_swords_rain",
+      "name": "Ten Thousand Swords Rain",
+      "nameCN": "万剑雨",
+      "element": "metal",
+      "rarity": "heaven",
+      "minStage": 15,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 22,
+        "hits": 5,
+        "cost": 50,
+        "desc": "Five falling swords of Qi. Parry them all and you are a master."
+      },
+      "lore": "The sky fills with blades, and every one of them knows your name."
+    },
+    {
+      "id": "unbreakable_edge",
+      "name": "Unbreakable Edge",
+      "nameCN": "不折锋",
+      "element": "metal",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "crit",
+        "value": 0.06,
+        "desc": "+6% critical chance."
+      },
+      "lore": "A blade that does not bend does not miss its mark."
+    },
+    {
+      "id": "metal_bone_tempering",
+      "name": "Metal-Bone Tempering",
+      "nameCN": "金骨淬",
+      "element": "metal",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "passive",
+      "passive": {
+        "stat": "might",
+        "value": 0.08,
+        "desc": "+8% Might."
+      },
+      "lore": "Bones soaked in metal Qi until they ring when struck."
+    },
+    {
+      "id": "autumn_killing_intent",
+      "name": "Autumn Killing Intent",
+      "nameCN": "秋杀意",
+      "element": "metal",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.15,
+        "desc": "Your Metal moves hit 15% harder."
+      },
+      "lore": "Autumn is the season of executions. Its Qi remembers."
+    },
+    {
+      "id": "sword_heart_clarity",
+      "name": "Sword-Heart Clarity",
+      "nameCN": "剑心通明",
+      "element": "metal",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "passive",
+      "passive": {
+        "stat": "crit",
+        "value": 0.12,
+        "desc": "+12% critical chance."
+      },
+      "lore": "When the heart is a sword, the world is made of openings."
+    },
+    {
+      "id": "spring_vine_binding",
+      "name": "Spring Vine Binding",
+      "nameCN": "春藤缚",
+      "element": "wood",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 30,
+        "cost": 12,
+        "status": {
+          "id": "entangle",
+          "chance": 0.5,
+          "turns": 2
+        },
+        "desc": "Vines of green Qi that make every move cost the enemy more."
+      },
+      "lore": "The softest thing in the garden holds the strongest man still.",
+      "starter": true
+    },
+    {
+      "id": "life_stealing_thorn",
+      "name": "Life-Stealing Thorn",
+      "nameCN": "噬命棘",
+      "element": "wood",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "drain",
+        "power": 32,
+        "cost": 16,
+        "drain": 0.5,
+        "desc": "Heals you for half the damage it deals."
+      },
+      "lore": "The thorn drinks. The rose blooms. You are the rose."
+    },
+    {
+      "id": "verdant_mending",
+      "name": "Verdant Mending",
+      "nameCN": "青木回春",
+      "element": "wood",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "heal",
+        "power": 0,
+        "cost": 22,
+        "heal": 12,
+        "desc": "Restores Health with the patience of growing things."
+      },
+      "lore": "Grass grows back. So can you."
+    },
+    {
+      "id": "coiling_venom_fang",
+      "name": "Coiling Venom Fang",
+      "nameCN": "缠毒牙",
+      "element": "wood",
+      "rarity": "profound",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 40,
+        "cost": 18,
+        "status": {
+          "id": "bleed",
+          "chance": 0.5,
+          "turns": 3
+        },
+        "desc": "A venomed strike that keeps hurting after it lands."
+      },
+      "lore": "Studied from a Blood Python that had eaten three hunters and was still hungry.",
+      "sig": "beast:blood_python"
+    },
+    {
+      "id": "thousand_roots_prison",
+      "name": "Thousand Roots Prison",
+      "nameCN": "千根狱",
+      "element": "wood",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 0,
+        "cost": 24,
+        "status": {
+          "id": "entangle",
+          "chance": 0.9,
+          "turns": 3
+        },
+        "desc": "Roots rise and hold; the enemy pays dearly for every move."
+      },
+      "lore": "The forest is patient, and it is everywhere."
+    },
+    {
+      "id": "azure_dragon_spring_tide",
+      "name": "Azure Dragon Spring Tide",
+      "nameCN": "青龙春潮",
+      "element": "wood",
+      "rarity": "heaven",
+      "minStage": 19,
+      "kind": "move",
+      "move": {
+        "type": "drain",
+        "power": 80,
+        "cost": 46,
+        "drain": 0.6,
+        "desc": "A surge of living Qi that heals you for most of what it takes."
+      },
+      "lore": "The Azure Dragon of the east is spring itself. Its breath makes the dead trees bud.",
+      "sig": "beast:azure_dragon"
+    },
+    {
+      "id": "withering_blight",
+      "name": "Withering Blight",
+      "nameCN": "枯萎诀",
+      "element": "wood",
+      "rarity": "earth",
+      "minStage": 11,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 58,
+        "cost": 30,
+        "status": {
+          "id": "entangle",
+          "chance": 0.6,
+          "turns": 3
+        },
+        "desc": "Grey Qi that saps strength and chokes the channels."
+      },
+      "lore": "The other face of wood: rot, and the slow return of all things to soil."
+    },
+    {
+      "id": "world_tree_verdance",
+      "name": "World Tree Verdance",
+      "nameCN": "建木长青",
+      "element": "wood",
+      "rarity": "earth",
+      "minStage": 13,
+      "kind": "move",
+      "move": {
+        "type": "heal",
+        "power": 0,
+        "cost": 36,
+        "heal": 24,
+        "desc": "A great heal that also clears every ailment on you."
+      },
+      "lore": "A seed from the tree that holds up the sky, planted in the dantian."
+    },
+    {
+      "id": "evergreen_heart",
+      "name": "Evergreen Heart",
+      "nameCN": "长青心",
+      "element": "wood",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "heal",
+        "value": 3,
+        "desc": "Recover 3 Health after every won fight."
+      },
+      "lore": "An evergreen does not mourn the winter."
+    },
+    {
+      "id": "sap_and_marrow",
+      "name": "Sap and Marrow",
+      "nameCN": "液髓",
+      "element": "wood",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "passive",
+      "passive": {
+        "stat": "lifesteal",
+        "value": 0.08,
+        "desc": "Every hit heals you for 8% of its damage."
+      },
+      "lore": "The body learns to feed on the fight itself."
+    },
+    {
+      "id": "spring_eternal",
+      "name": "Spring Eternal",
+      "nameCN": "永春",
+      "element": "wood",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.15,
+        "desc": "Your Wood moves hit 15% harder."
+      },
+      "lore": "Every spring is the same spring, returning."
+    },
+    {
+      "id": "rootbound_body",
+      "name": "Rootbound Body",
+      "nameCN": "根生体",
+      "element": "wood",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "passive",
+      "passive": {
+        "stat": "statusResist",
+        "value": 0.4,
+        "desc": "Ailments land on you 40% less often."
+      },
+      "lore": "Roots run from the soles into the earth. Nothing moves you now."
+    },
+    {
+      "id": "frost_lotus_palm",
+      "name": "Frost Lotus Palm",
+      "nameCN": "霜莲掌",
+      "element": "water",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 32,
+        "cost": 12,
+        "status": {
+          "id": "chill",
+          "chance": 0.4,
+          "turns": 2
+        },
+        "desc": "A palm that blooms into frost and slows the enemy."
+      },
+      "lore": "The lotus that opens on the frozen lake.",
+      "starter": true
+    },
+    {
+      "id": "flowing_water_step",
+      "name": "Flowing Water Step",
+      "nameCN": "流水步",
+      "element": "water",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "counter",
+        "power": 28,
+        "cost": 14,
+        "desc": "Yield like water; if they strike, the blow is turned back on them."
+      },
+      "lore": "Water does not fight the rock. It goes around, and in time the rock is gone."
+    },
+    {
+      "id": "tide_drinking_palm",
+      "name": "Tide-Drinking Palm",
+      "nameCN": "吞潮掌",
+      "element": "water",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 30,
+        "cost": 10,
+        "qiDrain": 15,
+        "desc": "Steals combat Qi from the enemy into your own pool."
+      },
+      "lore": "The tide goes out of them and into you."
+    },
+    {
+      "id": "tide_turning_current",
+      "name": "Tide-Turning Current",
+      "nameCN": "逆潮流",
+      "element": "water",
+      "rarity": "profound",
+      "minStage": 5,
+      "kind": "move",
+      "move": {
+        "type": "counter",
+        "power": 46,
+        "cost": 22,
+        "desc": "A counter that returns a heavy strike with interest."
+      },
+      "lore": "The harder they push, the harder the sea pushes back."
+    },
+    {
+      "id": "mirror_lake_mist",
+      "name": "Mirror-Lake Mist",
+      "nameCN": "镜湖雾",
+      "element": "water",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 0,
+        "cost": 20,
+        "status": {
+          "id": "chill",
+          "chance": 0.85,
+          "turns": 3
+        },
+        "desc": "A cold mist that makes the enemy act last for three turns."
+      },
+      "lore": "On the mirror lake nothing moves quickly, and nothing is where it seems."
+    },
+    {
+      "id": "black_tortoise_shell",
+      "name": "Black Tortoise Shell",
+      "nameCN": "玄武甲",
+      "element": "water",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "move",
+      "move": {
+        "type": "ward",
+        "power": 0,
+        "cost": 30,
+        "ward": 0.9,
+        "desc": "Turns aside almost all of the next blow, and chills the one who struck."
+      },
+      "lore": "The Black Tortoise carries the north on its back and has never once set it down.",
+      "sig": "beast:black_tortoise"
+    },
+    {
+      "id": "abyssal_current",
+      "name": "Abyssal Current",
+      "nameCN": "渊流",
+      "element": "water",
+      "rarity": "earth",
+      "minStage": 11,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 66,
+        "cost": 34,
+        "qiDrain": 20,
+        "desc": "Deep water that drags the enemy's Qi down with it."
+      },
+      "lore": "Nothing comes back up from the deepest water."
+    },
+    {
+      "id": "void_hound_fang",
+      "name": "Void Hound Fang",
+      "nameCN": "虚犬牙",
+      "element": "water",
+      "rarity": "earth",
+      "minStage": 15,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 70,
+        "cost": 34,
+        "priority": 1,
+        "status": {
+          "id": "chill",
+          "chance": 0.4,
+          "turns": 2
+        },
+        "desc": "A bite from nowhere that lands first and leaves a chill."
+      },
+      "lore": "The Void Hound does not run to you. It is simply there, already biting.",
+      "sig": "beast:void_hound"
+    },
+    {
+      "id": "deep_pool_breath",
+      "name": "Deep Pool Breath",
+      "nameCN": "深潭息",
+      "element": "water",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "qiRegen",
+        "value": 3,
+        "desc": "+3 combat Qi every turn."
+      },
+      "lore": "Breathe as the deep pool breathes: slowly, and without end."
+    },
+    {
+      "id": "still_water_mind",
+      "name": "Still Water Mind",
+      "nameCN": "止水心",
+      "element": "water",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "passive",
+      "passive": {
+        "stat": "parry",
+        "value": 1.2,
+        "desc": "Your parry window is 20% wider."
+      },
+      "lore": "On still water every ripple shows."
+    },
+    {
+      "id": "boundless_sea",
+      "name": "Boundless Sea",
+      "nameCN": "无涯海",
+      "element": "water",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "qiPool",
+        "value": 30,
+        "desc": "+30 combat Qi at the start of a fight."
+      },
+      "lore": "The sea is never full."
+    },
+    {
+      "id": "north_sea_sovereign",
+      "name": "North Sea Sovereign",
+      "nameCN": "北冥主",
+      "element": "water",
+      "rarity": "heaven",
+      "minStage": 17,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.2,
+        "desc": "Your Water moves hit 20% harder."
+      },
+      "lore": "In the northern darkness there is a fish, and its name is Kun."
+    },
+    {
+      "id": "heart_flame_fist",
+      "name": "Heart Flame Fist",
+      "nameCN": "心火拳",
+      "element": "fire",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 40,
+        "cost": 16,
+        "status": {
+          "id": "burn",
+          "chance": 0.3,
+          "turns": 2
+        },
+        "desc": "A burning fist; it may set the enemy alight."
+      },
+      "lore": "The fire in the heart, let out through the knuckles.",
+      "starter": true
+    },
+    {
+      "id": "ember_scatter",
+      "name": "Ember Scatter",
+      "nameCN": "散烬",
+      "element": "fire",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 13,
+        "hits": 3,
+        "cost": 16,
+        "status": {
+          "id": "burn",
+          "chance": 0.2,
+          "turns": 2
+        },
+        "desc": "Three embers, each with a chance to burn."
+      },
+      "lore": "Throw a handful of sparks at a dry field and walk away."
+    },
+    {
+      "id": "blazing_charge",
+      "name": "Blazing Charge",
+      "nameCN": "炎冲",
+      "element": "fire",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "charge",
+        "power": 70,
+        "cost": 26,
+        "desc": "Gathers fire this turn and lands a huge blow the next. Easy to see coming."
+      },
+      "lore": "The sun takes all night to rise. Then there is no stopping it."
+    },
+    {
+      "id": "fox_fire_lantern",
+      "name": "Fox-Fire Lantern",
+      "nameCN": "狐火灯",
+      "element": "fire",
+      "rarity": "profound",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 10,
+        "cost": 18,
+        "status": {
+          "id": "burn",
+          "chance": 0.9,
+          "turns": 3
+        },
+        "desc": "A ghost-light that clings and burns for three turns."
+      },
+      "lore": "A Spirit Fox's lantern led you in circles for a night before you learned to carry one yourself.",
+      "sig": "beast:spirit_fox"
+    },
+    {
+      "id": "phoenix_rebirth_blaze",
+      "name": "Phoenix Rebirth Blaze",
+      "nameCN": "凤凰涅槃焰",
+      "element": "fire",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "move",
+      "move": {
+        "type": "charge",
+        "power": 110,
+        "cost": 40,
+        "heal": 10,
+        "desc": "A charge that lands a burning blow next turn and heals you as it does."
+      },
+      "lore": "The phoenix burns down to ash every five hundred years, and chooses to come back."
+    },
+    {
+      "id": "qilin_flame_hoof",
+      "name": "Qilin Flame Hoof",
+      "nameCN": "麒麟焰蹄",
+      "element": "fire",
+      "rarity": "earth",
+      "minStage": 14,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 74,
+        "cost": 34,
+        "status": {
+          "id": "burn",
+          "chance": 0.5,
+          "turns": 3
+        },
+        "desc": "A stamp of holy flame. Righteous fire, but fire all the same."
+      },
+      "lore": "The Qilin walks on grass without bending it. When it chooses to, it walks on you.",
+      "sig": "beast:qilin"
+    },
+    {
+      "id": "flame_lotus_storm",
+      "name": "Flame Lotus Storm",
+      "nameCN": "火莲风暴",
+      "element": "fire",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 54,
+        "cost": 26,
+        "status": {
+          "id": "burn",
+          "chance": 0.4,
+          "turns": 3
+        },
+        "desc": "Petals of fire whirl around the enemy."
+      },
+      "lore": "A lotus of fire blooms, and every petal is a blade."
+    },
+    {
+      "id": "sun_devouring_blaze",
+      "name": "Sun-Devouring Blaze",
+      "nameCN": "吞日焰",
+      "element": "fire",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 100,
+        "cost": 52,
+        "status": {
+          "id": "burn",
+          "chance": 0.6,
+          "turns": 3
+        },
+        "selfDamage": 6,
+        "desc": "Fire hot enough to hurt you too. Very little survives it."
+      },
+      "lore": "Some say it was made by a man who tried to swallow the sun. He is not mentioned otherwise."
+    },
+    {
+      "id": "kindled_meridians",
+      "name": "Kindled Meridians",
+      "nameCN": "燃脉",
+      "element": "fire",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "might",
+        "value": 0.05,
+        "desc": "+5% Might."
+      },
+      "lore": "The channels run warm and a little too fast."
+    },
+    {
+      "id": "blazing_marrow",
+      "name": "Blazing Marrow",
+      "nameCN": "炎髓",
+      "element": "fire",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "passive",
+      "passive": {
+        "stat": "might",
+        "value": 0.12,
+        "ward": -0.05,
+        "desc": "+12% Might, but −5% Ward."
+      },
+      "lore": "Fire in the bones makes the fists heavy and the skin thin."
+    },
+    {
+      "id": "undying_ember",
+      "name": "Undying Ember",
+      "nameCN": "不灭烬",
+      "element": "fire",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.15,
+        "desc": "Your Fire moves hit 15% harder."
+      },
+      "lore": "Bury it under a mountain and it will still be warm in a thousand years."
+    },
+    {
+      "id": "vermilion_bird_plumage",
+      "name": "Vermilion Bird Plumage",
+      "nameCN": "朱雀羽",
+      "element": "fire",
+      "rarity": "heaven",
+      "minStage": 17,
+      "kind": "passive",
+      "passive": {
+        "stat": "swift",
+        "value": 12,
+        "desc": "+12 Swift: you act first more often."
+      },
+      "lore": "The Vermilion Bird of the south is never the second to arrive."
+    },
+    {
+      "id": "mountain_bearing_stance",
+      "name": "Mountain-Bearing Stance",
+      "nameCN": "负山式",
+      "element": "earth",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "ward",
+        "power": 0,
+        "cost": 12,
+        "ward": 0.6,
+        "counter": 0.3,
+        "desc": "Braces like a mountain: cuts the next hit and returns part of it."
+      },
+      "lore": "Carry the mountain long enough and it stops feeling heavy."
+    },
+    {
+      "id": "stone_fist",
+      "name": "Stone Fist",
+      "nameCN": "石拳",
+      "element": "earth",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 38,
+        "cost": 14,
+        "status": {
+          "id": "daze",
+          "chance": 0.2,
+          "turns": 1
+        },
+        "desc": "A fist like a falling rock; it may daze."
+      },
+      "lore": "Not subtle. Does not need to be.",
+      "starter": true
+    },
+    {
+      "id": "quaking_stomp",
+      "name": "Quaking Stomp",
+      "nameCN": "震地踏",
+      "element": "earth",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 34,
+        "cost": 18,
+        "status": {
+          "id": "daze",
+          "chance": 0.45,
+          "turns": 1
+        },
+        "desc": "The ground jumps; the enemy may lose their footing and their turn."
+      },
+      "lore": "The earth is a drum. Strike it and everything standing on it hears."
+    },
+    {
+      "id": "mountain_bear_roar",
+      "name": "Mountain Bear Roar",
+      "nameCN": "山熊吼",
+      "element": "earth",
+      "rarity": "earth",
+      "minStage": 10,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 20,
+        "cost": 24,
+        "status": {
+          "id": "daze",
+          "chance": 0.8,
+          "turns": 1
+        },
+        "desc": "A roar that shakes the ground and the enemy's wits."
+      },
+      "lore": "The Spectral Bear's roar is felt in the soles of the feet before it is heard.",
+      "sig": "beast:spectral_bear"
+    },
+    {
+      "id": "iron_body",
+      "name": "Iron Body",
+      "nameCN": "铁身",
+      "element": "earth",
+      "rarity": "profound",
+      "minStage": 5,
+      "kind": "move",
+      "move": {
+        "type": "buff",
+        "power": 0,
+        "cost": 20,
+        "self": {
+          "stat": "ward",
+          "value": 0.3,
+          "turns": 3
+        },
+        "desc": "Hardens the body: +30% Ward for three turns."
+      },
+      "lore": "Iron Body Tempering, the cultivation method, made into a fighting stance."
+    },
+    {
+      "id": "collapsing_peak",
+      "name": "Collapsing Peak",
+      "nameCN": "崩山",
+      "element": "earth",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "move",
+      "move": {
+        "type": "finisher",
+        "power": 70,
+        "cost": 36,
+        "finisher": 0.8,
+        "desc": "Brings the mountain down on a weakened foe: far stronger when they are hurt."
+      },
+      "lore": "A mountain does not fall often. When it does, there is no second blow needed."
+    },
+    {
+      "id": "rampart_of_ten_li",
+      "name": "Rampart of Ten Li",
+      "nameCN": "十里壁",
+      "element": "earth",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "move",
+      "move": {
+        "type": "ward",
+        "power": 0,
+        "cost": 22,
+        "ward": 0.8,
+        "desc": "Raises a wall of stone Qi that stops most of the next blow."
+      },
+      "lore": "The wall ran ten li across the pass. The army that came to it went home."
+    },
+    {
+      "id": "yellow_dragon_earth_sovereign",
+      "name": "Yellow Dragon Earth Sovereign",
+      "nameCN": "黄龙镇地",
+      "element": "earth",
+      "rarity": "heaven",
+      "minStage": 17,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 96,
+        "cost": 48,
+        "status": {
+          "id": "daze",
+          "chance": 0.5,
+          "turns": 1
+        },
+        "self": {
+          "stat": "ward",
+          "value": 0.2,
+          "turns": 2
+        },
+        "desc": "A crushing blow that also steadies you behind a stone guard."
+      },
+      "lore": "The Yellow Dragon keeps the centre, where all the elements meet and none of them move it."
+    },
+    {
+      "id": "grounded_stance",
+      "name": "Grounded Stance",
+      "nameCN": "扎根桩",
+      "element": "earth",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "ward",
+        "value": 0.06,
+        "desc": "+6% Ward."
+      },
+      "lore": "Stand for an hour in the horse stance, every morning, for ten years."
+    },
+    {
+      "id": "stone_skin",
+      "name": "Stone Skin",
+      "nameCN": "石肤",
+      "element": "earth",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "passive",
+      "passive": {
+        "stat": "ward",
+        "value": 0.1,
+        "desc": "+10% Ward."
+      },
+      "lore": "Grey and rough, and blades slide off it."
+    },
+    {
+      "id": "bedrock_will",
+      "name": "Bedrock Will",
+      "nameCN": "磐石意",
+      "element": "earth",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.15,
+        "desc": "Your Earth moves hit 15% harder."
+      },
+      "lore": "Below the soil, below the stone, there is the thing that does not move."
+    },
+    {
+      "id": "mountain_heart",
+      "name": "Mountain Heart",
+      "nameCN": "山心",
+      "element": "earth",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "passive",
+      "passive": {
+        "stat": "ward",
+        "value": 0.2,
+        "desc": "+20% Ward."
+      },
+      "lore": "The mountain does not fight. It is simply still there afterwards."
+    },
+    {
+      "id": "dust_ring_haymaker",
+      "name": "Dust Ring Haymaker",
+      "nameCN": "尘台重拳",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 46,
+        "cost": 16,
+        "desc": "A wide, heavy swing that the Dust Ring crowd loves."
+      },
+      "lore": "Nobody in the Dust Ring has ever blocked it. Most of them never saw it coming either.",
+      "sig": "arena:dust"
+    },
+    {
+      "id": "iron_bell_toll",
+      "name": "Iron Bell Toll",
+      "nameCN": "铁钟鸣",
+      "element": "metal",
+      "rarity": "profound",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 50,
+        "cost": 22,
+        "status": {
+          "id": "daze",
+          "chance": 0.5,
+          "turns": 1
+        },
+        "desc": "A palm struck like a temple bell; the ringing dazes the enemy."
+      },
+      "lore": "The Master of the Iron Bell rings it once at the start of every bout, and once at the end.",
+      "sig": "arena:iron"
+    },
+    {
+      "id": "jade_terrace_sweep",
+      "name": "Jade Terrace Sweep",
+      "nameCN": "玉台横扫",
+      "element": "earth",
+      "rarity": "earth",
+      "minStage": 10,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 64,
+        "cost": 30,
+        "status": {
+          "id": "guardbreak",
+          "chance": 0.5,
+          "turns": 2
+        },
+        "desc": "A low sweep across the terrace that knocks the guard aside."
+      },
+      "lore": "The Lord of the Jade Terrace sweeps the floor with their challengers, as the saying goes.",
+      "sig": "arena:jade"
+    },
+    {
+      "id": "golden_pit_fury",
+      "name": "Golden Pit Fury",
+      "nameCN": "金坑怒",
+      "element": "fire",
+      "rarity": "earth",
+      "minStage": 13,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 28,
+        "hits": 3,
+        "cost": 36,
+        "status": {
+          "id": "burn",
+          "chance": 0.3,
+          "turns": 2
+        },
+        "desc": "Three furious burning blows in the style of the pit."
+      },
+      "lore": "The Sovereign of the Golden Pit fights like the pit is on fire. It usually is.",
+      "sig": "arena:golden"
+    },
+    {
+      "id": "soul_lotus_bloom",
+      "name": "Soul Lotus Bloom",
+      "nameCN": "魂莲绽",
+      "element": "wood",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "move",
+      "move": {
+        "type": "drain",
+        "power": 76,
+        "cost": 44,
+        "drain": 0.5,
+        "status": {
+          "id": "entangle",
+          "chance": 0.5,
+          "turns": 2
+        },
+        "desc": "A lotus of soul-light that drinks from the enemy and binds them."
+      },
+      "lore": "The Keeper of the Soul Lotus does not strike. The lotus does.",
+      "sig": "arena:lotus"
+    }
+  ],
+  "ARTS": {
+    "palm_strike": {
+      "id": "palm_strike",
+      "name": "Palm Strike",
+      "nameCN": "掌击",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 20,
+        "cost": 0,
+        "desc": "A plain palm. Costs nothing, so you are never without a move."
+      },
+      "lore": "The first thing any master teaches, and the last thing a dying man forgets."
+    },
+    "qi_shield": {
+      "id": "qi_shield",
+      "name": "Qi Shield",
+      "nameCN": "护体气",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "ward",
+        "power": 0,
+        "cost": 10,
+        "ward": 0.5,
+        "desc": "Halves the next hit you take this turn."
+      },
+      "lore": "A skin of breath held tight around the body."
+    },
+    "drifting_step_palm": {
+      "id": "drifting_step_palm",
+      "name": "Drifting Step Palm",
+      "nameCN": "游步掌",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 30,
+        "cost": 8,
+        "priority": 1,
+        "desc": "Steps in first and strikes before the enemy moves."
+      },
+      "lore": "Taught to every Qi Condensation disciple who has learned to stop falling over."
+    },
+    "rising_qi_kick": {
+      "id": "rising_qi_kick",
+      "name": "Rising Qi Kick",
+      "nameCN": "升气腿",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 38,
+        "cost": 14,
+        "desc": "A kick carried upward on a burst of Qi."
+      },
+      "lore": "The legs are three times stronger than the arms. Most cultivators forget this."
+    },
+    "echoing_fist": {
+      "id": "echoing_fist",
+      "name": "Echoing Fist",
+      "nameCN": "回响拳",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 14,
+        "hits": 3,
+        "cost": 18,
+        "desc": "Three quick blows; each can be parried on its own."
+      },
+      "lore": "Strike once and let the Qi strike twice more on its way out."
+    },
+    "mind_piercing_shout": {
+      "id": "mind_piercing_shout",
+      "name": "Mind-Piercing Shout",
+      "nameCN": "破神喝",
+      "element": "neutral",
+      "rarity": "profound",
+      "minStage": 5,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 0,
+        "cost": 20,
+        "status": {
+          "id": "seal",
+          "chance": 0.7,
+          "turns": 2
+        },
+        "desc": "A shout that locks away one of the enemy's moves."
+      },
+      "lore": "A roar that reaches past the ears and closes a door in the mind."
+    },
+    "void_step": {
+      "id": "void_step",
+      "name": "Void Step",
+      "nameCN": "虚空步",
+      "element": "neutral",
+      "rarity": "profound",
+      "minStage": 8,
+      "kind": "move",
+      "move": {
+        "type": "counter",
+        "power": 30,
+        "cost": 22,
+        "priority": 2,
+        "desc": "Vanishes before the enemy's blow and strikes from behind if they attacked."
+      },
+      "lore": "For a breath you are not there. Then you are behind them."
+    },
+    "sutra_of_stillness": {
+      "id": "sutra_of_stillness",
+      "name": "Sutra of Stillness",
+      "nameCN": "静心经",
+      "element": "neutral",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "move",
+      "move": {
+        "type": "heal",
+        "power": 0,
+        "cost": 30,
+        "heal": 14,
+        "desc": "Restores Health and clears one of your ailments."
+      },
+      "lore": "Recited in a single breath, it smooths the torn channels."
+    },
+    "shattering_palm_seal": {
+      "id": "shattering_palm_seal",
+      "name": "Shattering Palm Seal",
+      "nameCN": "碎印掌",
+      "element": "neutral",
+      "rarity": "earth",
+      "minStage": 11,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 62,
+        "cost": 32,
+        "status": {
+          "id": "guardbreak",
+          "chance": 0.5,
+          "turns": 2
+        },
+        "desc": "A seal-stamped palm that can crack the enemy's guard."
+      },
+      "lore": "The seal is carved into the palm itself, one character for every year of practice."
+    },
+    "heart_of_the_blade": {
+      "id": "heart_of_the_blade",
+      "name": "Heart of the Blade",
+      "nameCN": "剑心",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "passive",
+      "passive": {
+        "stat": "crit",
+        "value": 0.05,
+        "desc": "+5% critical chance."
+      },
+      "lore": "Before the sword is drawn, it has already found the gap."
+    },
+    "unmoving_mind": {
+      "id": "unmoving_mind",
+      "name": "Unmoving Mind",
+      "nameCN": "不动心",
+      "element": "neutral",
+      "rarity": "profound",
+      "minStage": 9,
+      "kind": "passive",
+      "passive": {
+        "stat": "parry",
+        "value": 1.25,
+        "desc": "Your parry window is 25% wider."
+      },
+      "lore": "Fear narrows the moment. A still mind keeps it wide."
+    },
+    "myriad_forms_insight": {
+      "id": "myriad_forms_insight",
+      "name": "Myriad Forms Insight",
+      "nameCN": "万象悟",
+      "element": "neutral",
+      "rarity": "heaven",
+      "minStage": 15,
+      "kind": "passive",
+      "passive": {
+        "stat": "qiRegen",
+        "value": 6,
+        "desc": "+6 combat Qi every turn."
+      },
+      "lore": "All arts are one art. The one who sees it breathes easier in every fight."
+    },
+    "golden_dragon_divine_fist": {
+      "id": "golden_dragon_divine_fist",
+      "name": "Golden Dragon Divine Fist",
+      "nameCN": "金龙神拳",
+      "element": "neutral",
+      "rarity": "immortal",
+      "minStage": 19,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 140,
+        "cost": 60,
+        "status": {
+          "id": "daze",
+          "chance": 0.4,
+          "turns": 1
+        },
+        "desc": "A fist that carries the roar of a true dragon."
+      },
+      "lore": "Torn from the heart of the Golden Dragon. It still remembers the sky.",
+      "sig": "beast:golden_dragon"
+    },
+    "heaven_severing_intent": {
+      "id": "heaven_severing_intent",
+      "name": "Heaven-Severing Sword Intent",
+      "nameCN": "断天剑意",
+      "element": "neutral",
+      "rarity": "immortal",
+      "minStage": 19,
+      "kind": "move",
+      "move": {
+        "type": "finisher",
+        "power": 110,
+        "cost": 55,
+        "finisher": 1,
+        "desc": "Doubles its power against a foe below a third of their Health."
+      },
+      "lore": "The One Beneath Heaven kept it for the one who would one day beat them.",
+      "sig": "arena:heaven"
+    },
+    "autumn_blade_qi": {
+      "id": "autumn_blade_qi",
+      "name": "Autumn Blade Qi",
+      "nameCN": "秋刃气",
+      "element": "metal",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 36,
+        "cost": 14,
+        "status": {
+          "id": "bleed",
+          "chance": 0.25,
+          "turns": 2
+        },
+        "desc": "A thin arc of cutting Qi that may open a bleeding wound."
+      },
+      "lore": "Cold as the first frost on a blade.",
+      "starter": true
+    },
+    "iron_needle_rain": {
+      "id": "iron_needle_rain",
+      "name": "Iron Needle Rain",
+      "nameCN": "铁针雨",
+      "element": "metal",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 12,
+        "hits": 4,
+        "cost": 20,
+        "desc": "Four needles of hardened Qi; parry each or eat each."
+      },
+      "lore": "A beggar's trick, until a cultivator does it with Qi."
+    },
+    "edge_seeking_thrust": {
+      "id": "edge_seeking_thrust",
+      "name": "Edge-Seeking Thrust",
+      "nameCN": "寻隙刺",
+      "element": "metal",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 44,
+        "cost": 18,
+        "crit": 0.15,
+        "desc": "A precise thrust with a high critical chance."
+      },
+      "lore": "Every guard has a gap the width of a hair."
+    },
+    "armour_rending_slash": {
+      "id": "armour_rending_slash",
+      "name": "Armour-Rending Slash",
+      "nameCN": "裂甲斩",
+      "element": "metal",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 48,
+        "cost": 24,
+        "status": {
+          "id": "guardbreak",
+          "chance": 0.6,
+          "turns": 2
+        },
+        "desc": "Splits the enemy's guard open for a few turns."
+      },
+      "lore": "Made for the scaled hides of the Demon Marsh."
+    },
+    "thunder_talon_strike": {
+      "id": "thunder_talon_strike",
+      "name": "Thunder Talon Strike",
+      "nameCN": "雷爪击",
+      "element": "metal",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 52,
+        "cost": 22,
+        "priority": 1,
+        "desc": "A diving strike that lands first, like the eagle's stoop."
+      },
+      "lore": "Learned by watching a Thunder Eagle fall from a clear sky onto its prey.",
+      "sig": "beast:thunder_eagle"
+    },
+    "white_tiger_rending_claw": {
+      "id": "white_tiger_rending_claw",
+      "name": "White Tiger Rending Claw",
+      "nameCN": "白虎裂爪",
+      "element": "metal",
+      "rarity": "earth",
+      "minStage": 13,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 26,
+        "hits": 3,
+        "cost": 34,
+        "status": {
+          "id": "bleed",
+          "chance": 0.35,
+          "turns": 3
+        },
+        "desc": "Three raking claws of white Qi; each may leave a bleeding wound."
+      },
+      "lore": "The White Tiger guards the west. Its claws are the autumn wind given teeth.",
+      "sig": "beast:white_tiger"
+    },
+    "severing_crescent": {
+      "id": "severing_crescent",
+      "name": "Severing Crescent",
+      "nameCN": "断月弧",
+      "element": "metal",
+      "rarity": "earth",
+      "minStage": 11,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 72,
+        "cost": 36,
+        "status": {
+          "id": "bleed",
+          "chance": 0.4,
+          "turns": 3
+        },
+        "desc": "A crescent of blade-light that cuts deep."
+      },
+      "lore": "A moon-shaped cut that keeps opening after the blade has passed."
+    },
+    "ten_thousand_swords_rain": {
+      "id": "ten_thousand_swords_rain",
+      "name": "Ten Thousand Swords Rain",
+      "nameCN": "万剑雨",
+      "element": "metal",
+      "rarity": "heaven",
+      "minStage": 15,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 22,
+        "hits": 5,
+        "cost": 50,
+        "desc": "Five falling swords of Qi. Parry them all and you are a master."
+      },
+      "lore": "The sky fills with blades, and every one of them knows your name."
+    },
+    "unbreakable_edge": {
+      "id": "unbreakable_edge",
+      "name": "Unbreakable Edge",
+      "nameCN": "不折锋",
+      "element": "metal",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "crit",
+        "value": 0.06,
+        "desc": "+6% critical chance."
+      },
+      "lore": "A blade that does not bend does not miss its mark."
+    },
+    "metal_bone_tempering": {
+      "id": "metal_bone_tempering",
+      "name": "Metal-Bone Tempering",
+      "nameCN": "金骨淬",
+      "element": "metal",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "passive",
+      "passive": {
+        "stat": "might",
+        "value": 0.08,
+        "desc": "+8% Might."
+      },
+      "lore": "Bones soaked in metal Qi until they ring when struck."
+    },
+    "autumn_killing_intent": {
+      "id": "autumn_killing_intent",
+      "name": "Autumn Killing Intent",
+      "nameCN": "秋杀意",
+      "element": "metal",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.15,
+        "desc": "Your Metal moves hit 15% harder."
+      },
+      "lore": "Autumn is the season of executions. Its Qi remembers."
+    },
+    "sword_heart_clarity": {
+      "id": "sword_heart_clarity",
+      "name": "Sword-Heart Clarity",
+      "nameCN": "剑心通明",
+      "element": "metal",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "passive",
+      "passive": {
+        "stat": "crit",
+        "value": 0.12,
+        "desc": "+12% critical chance."
+      },
+      "lore": "When the heart is a sword, the world is made of openings."
+    },
+    "spring_vine_binding": {
+      "id": "spring_vine_binding",
+      "name": "Spring Vine Binding",
+      "nameCN": "春藤缚",
+      "element": "wood",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 30,
+        "cost": 12,
+        "status": {
+          "id": "entangle",
+          "chance": 0.5,
+          "turns": 2
+        },
+        "desc": "Vines of green Qi that make every move cost the enemy more."
+      },
+      "lore": "The softest thing in the garden holds the strongest man still.",
+      "starter": true
+    },
+    "life_stealing_thorn": {
+      "id": "life_stealing_thorn",
+      "name": "Life-Stealing Thorn",
+      "nameCN": "噬命棘",
+      "element": "wood",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "drain",
+        "power": 32,
+        "cost": 16,
+        "drain": 0.5,
+        "desc": "Heals you for half the damage it deals."
+      },
+      "lore": "The thorn drinks. The rose blooms. You are the rose."
+    },
+    "verdant_mending": {
+      "id": "verdant_mending",
+      "name": "Verdant Mending",
+      "nameCN": "青木回春",
+      "element": "wood",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "heal",
+        "power": 0,
+        "cost": 22,
+        "heal": 12,
+        "desc": "Restores Health with the patience of growing things."
+      },
+      "lore": "Grass grows back. So can you."
+    },
+    "coiling_venom_fang": {
+      "id": "coiling_venom_fang",
+      "name": "Coiling Venom Fang",
+      "nameCN": "缠毒牙",
+      "element": "wood",
+      "rarity": "profound",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 40,
+        "cost": 18,
+        "status": {
+          "id": "bleed",
+          "chance": 0.5,
+          "turns": 3
+        },
+        "desc": "A venomed strike that keeps hurting after it lands."
+      },
+      "lore": "Studied from a Blood Python that had eaten three hunters and was still hungry.",
+      "sig": "beast:blood_python"
+    },
+    "thousand_roots_prison": {
+      "id": "thousand_roots_prison",
+      "name": "Thousand Roots Prison",
+      "nameCN": "千根狱",
+      "element": "wood",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 0,
+        "cost": 24,
+        "status": {
+          "id": "entangle",
+          "chance": 0.9,
+          "turns": 3
+        },
+        "desc": "Roots rise and hold; the enemy pays dearly for every move."
+      },
+      "lore": "The forest is patient, and it is everywhere."
+    },
+    "azure_dragon_spring_tide": {
+      "id": "azure_dragon_spring_tide",
+      "name": "Azure Dragon Spring Tide",
+      "nameCN": "青龙春潮",
+      "element": "wood",
+      "rarity": "heaven",
+      "minStage": 19,
+      "kind": "move",
+      "move": {
+        "type": "drain",
+        "power": 80,
+        "cost": 46,
+        "drain": 0.6,
+        "desc": "A surge of living Qi that heals you for most of what it takes."
+      },
+      "lore": "The Azure Dragon of the east is spring itself. Its breath makes the dead trees bud.",
+      "sig": "beast:azure_dragon"
+    },
+    "withering_blight": {
+      "id": "withering_blight",
+      "name": "Withering Blight",
+      "nameCN": "枯萎诀",
+      "element": "wood",
+      "rarity": "earth",
+      "minStage": 11,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 58,
+        "cost": 30,
+        "status": {
+          "id": "entangle",
+          "chance": 0.6,
+          "turns": 3
+        },
+        "desc": "Grey Qi that saps strength and chokes the channels."
+      },
+      "lore": "The other face of wood: rot, and the slow return of all things to soil."
+    },
+    "world_tree_verdance": {
+      "id": "world_tree_verdance",
+      "name": "World Tree Verdance",
+      "nameCN": "建木长青",
+      "element": "wood",
+      "rarity": "earth",
+      "minStage": 13,
+      "kind": "move",
+      "move": {
+        "type": "heal",
+        "power": 0,
+        "cost": 36,
+        "heal": 24,
+        "desc": "A great heal that also clears every ailment on you."
+      },
+      "lore": "A seed from the tree that holds up the sky, planted in the dantian."
+    },
+    "evergreen_heart": {
+      "id": "evergreen_heart",
+      "name": "Evergreen Heart",
+      "nameCN": "长青心",
+      "element": "wood",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "heal",
+        "value": 3,
+        "desc": "Recover 3 Health after every won fight."
+      },
+      "lore": "An evergreen does not mourn the winter."
+    },
+    "sap_and_marrow": {
+      "id": "sap_and_marrow",
+      "name": "Sap and Marrow",
+      "nameCN": "液髓",
+      "element": "wood",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "passive",
+      "passive": {
+        "stat": "lifesteal",
+        "value": 0.08,
+        "desc": "Every hit heals you for 8% of its damage."
+      },
+      "lore": "The body learns to feed on the fight itself."
+    },
+    "spring_eternal": {
+      "id": "spring_eternal",
+      "name": "Spring Eternal",
+      "nameCN": "永春",
+      "element": "wood",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.15,
+        "desc": "Your Wood moves hit 15% harder."
+      },
+      "lore": "Every spring is the same spring, returning."
+    },
+    "rootbound_body": {
+      "id": "rootbound_body",
+      "name": "Rootbound Body",
+      "nameCN": "根生体",
+      "element": "wood",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "passive",
+      "passive": {
+        "stat": "statusResist",
+        "value": 0.4,
+        "desc": "Ailments land on you 40% less often."
+      },
+      "lore": "Roots run from the soles into the earth. Nothing moves you now."
+    },
+    "frost_lotus_palm": {
+      "id": "frost_lotus_palm",
+      "name": "Frost Lotus Palm",
+      "nameCN": "霜莲掌",
+      "element": "water",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 32,
+        "cost": 12,
+        "status": {
+          "id": "chill",
+          "chance": 0.4,
+          "turns": 2
+        },
+        "desc": "A palm that blooms into frost and slows the enemy."
+      },
+      "lore": "The lotus that opens on the frozen lake.",
+      "starter": true
+    },
+    "flowing_water_step": {
+      "id": "flowing_water_step",
+      "name": "Flowing Water Step",
+      "nameCN": "流水步",
+      "element": "water",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "counter",
+        "power": 28,
+        "cost": 14,
+        "desc": "Yield like water; if they strike, the blow is turned back on them."
+      },
+      "lore": "Water does not fight the rock. It goes around, and in time the rock is gone."
+    },
+    "tide_drinking_palm": {
+      "id": "tide_drinking_palm",
+      "name": "Tide-Drinking Palm",
+      "nameCN": "吞潮掌",
+      "element": "water",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 30,
+        "cost": 10,
+        "qiDrain": 15,
+        "desc": "Steals combat Qi from the enemy into your own pool."
+      },
+      "lore": "The tide goes out of them and into you."
+    },
+    "tide_turning_current": {
+      "id": "tide_turning_current",
+      "name": "Tide-Turning Current",
+      "nameCN": "逆潮流",
+      "element": "water",
+      "rarity": "profound",
+      "minStage": 5,
+      "kind": "move",
+      "move": {
+        "type": "counter",
+        "power": 46,
+        "cost": 22,
+        "desc": "A counter that returns a heavy strike with interest."
+      },
+      "lore": "The harder they push, the harder the sea pushes back."
+    },
+    "mirror_lake_mist": {
+      "id": "mirror_lake_mist",
+      "name": "Mirror-Lake Mist",
+      "nameCN": "镜湖雾",
+      "element": "water",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 0,
+        "cost": 20,
+        "status": {
+          "id": "chill",
+          "chance": 0.85,
+          "turns": 3
+        },
+        "desc": "A cold mist that makes the enemy act last for three turns."
+      },
+      "lore": "On the mirror lake nothing moves quickly, and nothing is where it seems."
+    },
+    "black_tortoise_shell": {
+      "id": "black_tortoise_shell",
+      "name": "Black Tortoise Shell",
+      "nameCN": "玄武甲",
+      "element": "water",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "move",
+      "move": {
+        "type": "ward",
+        "power": 0,
+        "cost": 30,
+        "ward": 0.9,
+        "desc": "Turns aside almost all of the next blow, and chills the one who struck."
+      },
+      "lore": "The Black Tortoise carries the north on its back and has never once set it down.",
+      "sig": "beast:black_tortoise"
+    },
+    "abyssal_current": {
+      "id": "abyssal_current",
+      "name": "Abyssal Current",
+      "nameCN": "渊流",
+      "element": "water",
+      "rarity": "earth",
+      "minStage": 11,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 66,
+        "cost": 34,
+        "qiDrain": 20,
+        "desc": "Deep water that drags the enemy's Qi down with it."
+      },
+      "lore": "Nothing comes back up from the deepest water."
+    },
+    "void_hound_fang": {
+      "id": "void_hound_fang",
+      "name": "Void Hound Fang",
+      "nameCN": "虚犬牙",
+      "element": "water",
+      "rarity": "earth",
+      "minStage": 15,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 70,
+        "cost": 34,
+        "priority": 1,
+        "status": {
+          "id": "chill",
+          "chance": 0.4,
+          "turns": 2
+        },
+        "desc": "A bite from nowhere that lands first and leaves a chill."
+      },
+      "lore": "The Void Hound does not run to you. It is simply there, already biting.",
+      "sig": "beast:void_hound"
+    },
+    "deep_pool_breath": {
+      "id": "deep_pool_breath",
+      "name": "Deep Pool Breath",
+      "nameCN": "深潭息",
+      "element": "water",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "qiRegen",
+        "value": 3,
+        "desc": "+3 combat Qi every turn."
+      },
+      "lore": "Breathe as the deep pool breathes: slowly, and without end."
+    },
+    "still_water_mind": {
+      "id": "still_water_mind",
+      "name": "Still Water Mind",
+      "nameCN": "止水心",
+      "element": "water",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "passive",
+      "passive": {
+        "stat": "parry",
+        "value": 1.2,
+        "desc": "Your parry window is 20% wider."
+      },
+      "lore": "On still water every ripple shows."
+    },
+    "boundless_sea": {
+      "id": "boundless_sea",
+      "name": "Boundless Sea",
+      "nameCN": "无涯海",
+      "element": "water",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "qiPool",
+        "value": 30,
+        "desc": "+30 combat Qi at the start of a fight."
+      },
+      "lore": "The sea is never full."
+    },
+    "north_sea_sovereign": {
+      "id": "north_sea_sovereign",
+      "name": "North Sea Sovereign",
+      "nameCN": "北冥主",
+      "element": "water",
+      "rarity": "heaven",
+      "minStage": 17,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.2,
+        "desc": "Your Water moves hit 20% harder."
+      },
+      "lore": "In the northern darkness there is a fish, and its name is Kun."
+    },
+    "heart_flame_fist": {
+      "id": "heart_flame_fist",
+      "name": "Heart Flame Fist",
+      "nameCN": "心火拳",
+      "element": "fire",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 40,
+        "cost": 16,
+        "status": {
+          "id": "burn",
+          "chance": 0.3,
+          "turns": 2
+        },
+        "desc": "A burning fist; it may set the enemy alight."
+      },
+      "lore": "The fire in the heart, let out through the knuckles.",
+      "starter": true
+    },
+    "ember_scatter": {
+      "id": "ember_scatter",
+      "name": "Ember Scatter",
+      "nameCN": "散烬",
+      "element": "fire",
+      "rarity": "yellow",
+      "minStage": 2,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 13,
+        "hits": 3,
+        "cost": 16,
+        "status": {
+          "id": "burn",
+          "chance": 0.2,
+          "turns": 2
+        },
+        "desc": "Three embers, each with a chance to burn."
+      },
+      "lore": "Throw a handful of sparks at a dry field and walk away."
+    },
+    "blazing_charge": {
+      "id": "blazing_charge",
+      "name": "Blazing Charge",
+      "nameCN": "炎冲",
+      "element": "fire",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "charge",
+        "power": 70,
+        "cost": 26,
+        "desc": "Gathers fire this turn and lands a huge blow the next. Easy to see coming."
+      },
+      "lore": "The sun takes all night to rise. Then there is no stopping it."
+    },
+    "fox_fire_lantern": {
+      "id": "fox_fire_lantern",
+      "name": "Fox-Fire Lantern",
+      "nameCN": "狐火灯",
+      "element": "fire",
+      "rarity": "profound",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 10,
+        "cost": 18,
+        "status": {
+          "id": "burn",
+          "chance": 0.9,
+          "turns": 3
+        },
+        "desc": "A ghost-light that clings and burns for three turns."
+      },
+      "lore": "A Spirit Fox's lantern led you in circles for a night before you learned to carry one yourself.",
+      "sig": "beast:spirit_fox"
+    },
+    "phoenix_rebirth_blaze": {
+      "id": "phoenix_rebirth_blaze",
+      "name": "Phoenix Rebirth Blaze",
+      "nameCN": "凤凰涅槃焰",
+      "element": "fire",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "move",
+      "move": {
+        "type": "charge",
+        "power": 110,
+        "cost": 40,
+        "heal": 10,
+        "desc": "A charge that lands a burning blow next turn and heals you as it does."
+      },
+      "lore": "The phoenix burns down to ash every five hundred years, and chooses to come back."
+    },
+    "qilin_flame_hoof": {
+      "id": "qilin_flame_hoof",
+      "name": "Qilin Flame Hoof",
+      "nameCN": "麒麟焰蹄",
+      "element": "fire",
+      "rarity": "earth",
+      "minStage": 14,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 74,
+        "cost": 34,
+        "status": {
+          "id": "burn",
+          "chance": 0.5,
+          "turns": 3
+        },
+        "desc": "A stamp of holy flame. Righteous fire, but fire all the same."
+      },
+      "lore": "The Qilin walks on grass without bending it. When it chooses to, it walks on you.",
+      "sig": "beast:qilin"
+    },
+    "flame_lotus_storm": {
+      "id": "flame_lotus_storm",
+      "name": "Flame Lotus Storm",
+      "nameCN": "火莲风暴",
+      "element": "fire",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 54,
+        "cost": 26,
+        "status": {
+          "id": "burn",
+          "chance": 0.4,
+          "turns": 3
+        },
+        "desc": "Petals of fire whirl around the enemy."
+      },
+      "lore": "A lotus of fire blooms, and every petal is a blade."
+    },
+    "sun_devouring_blaze": {
+      "id": "sun_devouring_blaze",
+      "name": "Sun-Devouring Blaze",
+      "nameCN": "吞日焰",
+      "element": "fire",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 100,
+        "cost": 52,
+        "status": {
+          "id": "burn",
+          "chance": 0.6,
+          "turns": 3
+        },
+        "selfDamage": 6,
+        "desc": "Fire hot enough to hurt you too. Very little survives it."
+      },
+      "lore": "Some say it was made by a man who tried to swallow the sun. He is not mentioned otherwise."
+    },
+    "kindled_meridians": {
+      "id": "kindled_meridians",
+      "name": "Kindled Meridians",
+      "nameCN": "燃脉",
+      "element": "fire",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "might",
+        "value": 0.05,
+        "desc": "+5% Might."
+      },
+      "lore": "The channels run warm and a little too fast."
+    },
+    "blazing_marrow": {
+      "id": "blazing_marrow",
+      "name": "Blazing Marrow",
+      "nameCN": "炎髓",
+      "element": "fire",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "passive",
+      "passive": {
+        "stat": "might",
+        "value": 0.12,
+        "ward": -0.05,
+        "desc": "+12% Might, but −5% Ward."
+      },
+      "lore": "Fire in the bones makes the fists heavy and the skin thin."
+    },
+    "undying_ember": {
+      "id": "undying_ember",
+      "name": "Undying Ember",
+      "nameCN": "不灭烬",
+      "element": "fire",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.15,
+        "desc": "Your Fire moves hit 15% harder."
+      },
+      "lore": "Bury it under a mountain and it will still be warm in a thousand years."
+    },
+    "vermilion_bird_plumage": {
+      "id": "vermilion_bird_plumage",
+      "name": "Vermilion Bird Plumage",
+      "nameCN": "朱雀羽",
+      "element": "fire",
+      "rarity": "heaven",
+      "minStage": 17,
+      "kind": "passive",
+      "passive": {
+        "stat": "swift",
+        "value": 12,
+        "desc": "+12 Swift: you act first more often."
+      },
+      "lore": "The Vermilion Bird of the south is never the second to arrive."
+    },
+    "mountain_bearing_stance": {
+      "id": "mountain_bearing_stance",
+      "name": "Mountain-Bearing Stance",
+      "nameCN": "负山式",
+      "element": "earth",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "ward",
+        "power": 0,
+        "cost": 12,
+        "ward": 0.6,
+        "counter": 0.3,
+        "desc": "Braces like a mountain: cuts the next hit and returns part of it."
+      },
+      "lore": "Carry the mountain long enough and it stops feeling heavy."
+    },
+    "stone_fist": {
+      "id": "stone_fist",
+      "name": "Stone Fist",
+      "nameCN": "石拳",
+      "element": "earth",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 38,
+        "cost": 14,
+        "status": {
+          "id": "daze",
+          "chance": 0.2,
+          "turns": 1
+        },
+        "desc": "A fist like a falling rock; it may daze."
+      },
+      "lore": "Not subtle. Does not need to be.",
+      "starter": true
+    },
+    "quaking_stomp": {
+      "id": "quaking_stomp",
+      "name": "Quaking Stomp",
+      "nameCN": "震地踏",
+      "element": "earth",
+      "rarity": "yellow",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 34,
+        "cost": 18,
+        "status": {
+          "id": "daze",
+          "chance": 0.45,
+          "turns": 1
+        },
+        "desc": "The ground jumps; the enemy may lose their footing and their turn."
+      },
+      "lore": "The earth is a drum. Strike it and everything standing on it hears."
+    },
+    "mountain_bear_roar": {
+      "id": "mountain_bear_roar",
+      "name": "Mountain Bear Roar",
+      "nameCN": "山熊吼",
+      "element": "earth",
+      "rarity": "earth",
+      "minStage": 10,
+      "kind": "move",
+      "move": {
+        "type": "hex",
+        "power": 20,
+        "cost": 24,
+        "status": {
+          "id": "daze",
+          "chance": 0.8,
+          "turns": 1
+        },
+        "desc": "A roar that shakes the ground and the enemy's wits."
+      },
+      "lore": "The Spectral Bear's roar is felt in the soles of the feet before it is heard.",
+      "sig": "beast:spectral_bear"
+    },
+    "iron_body": {
+      "id": "iron_body",
+      "name": "Iron Body",
+      "nameCN": "铁身",
+      "element": "earth",
+      "rarity": "profound",
+      "minStage": 5,
+      "kind": "move",
+      "move": {
+        "type": "buff",
+        "power": 0,
+        "cost": 20,
+        "self": {
+          "stat": "ward",
+          "value": 0.3,
+          "turns": 3
+        },
+        "desc": "Hardens the body: +30% Ward for three turns."
+      },
+      "lore": "Iron Body Tempering, the cultivation method, made into a fighting stance."
+    },
+    "collapsing_peak": {
+      "id": "collapsing_peak",
+      "name": "Collapsing Peak",
+      "nameCN": "崩山",
+      "element": "earth",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "move",
+      "move": {
+        "type": "finisher",
+        "power": 70,
+        "cost": 36,
+        "finisher": 0.8,
+        "desc": "Brings the mountain down on a weakened foe: far stronger when they are hurt."
+      },
+      "lore": "A mountain does not fall often. When it does, there is no second blow needed."
+    },
+    "rampart_of_ten_li": {
+      "id": "rampart_of_ten_li",
+      "name": "Rampart of Ten Li",
+      "nameCN": "十里壁",
+      "element": "earth",
+      "rarity": "profound",
+      "minStage": 7,
+      "kind": "move",
+      "move": {
+        "type": "ward",
+        "power": 0,
+        "cost": 22,
+        "ward": 0.8,
+        "desc": "Raises a wall of stone Qi that stops most of the next blow."
+      },
+      "lore": "The wall ran ten li across the pass. The army that came to it went home."
+    },
+    "yellow_dragon_earth_sovereign": {
+      "id": "yellow_dragon_earth_sovereign",
+      "name": "Yellow Dragon Earth Sovereign",
+      "nameCN": "黄龙镇地",
+      "element": "earth",
+      "rarity": "heaven",
+      "minStage": 17,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 96,
+        "cost": 48,
+        "status": {
+          "id": "daze",
+          "chance": 0.5,
+          "turns": 1
+        },
+        "self": {
+          "stat": "ward",
+          "value": 0.2,
+          "turns": 2
+        },
+        "desc": "A crushing blow that also steadies you behind a stone guard."
+      },
+      "lore": "The Yellow Dragon keeps the centre, where all the elements meet and none of them move it."
+    },
+    "grounded_stance": {
+      "id": "grounded_stance",
+      "name": "Grounded Stance",
+      "nameCN": "扎根桩",
+      "element": "earth",
+      "rarity": "yellow",
+      "minStage": 1,
+      "kind": "passive",
+      "passive": {
+        "stat": "ward",
+        "value": 0.06,
+        "desc": "+6% Ward."
+      },
+      "lore": "Stand for an hour in the horse stance, every morning, for ten years."
+    },
+    "stone_skin": {
+      "id": "stone_skin",
+      "name": "Stone Skin",
+      "nameCN": "石肤",
+      "element": "earth",
+      "rarity": "profound",
+      "minStage": 6,
+      "kind": "passive",
+      "passive": {
+        "stat": "ward",
+        "value": 0.1,
+        "desc": "+10% Ward."
+      },
+      "lore": "Grey and rough, and blades slide off it."
+    },
+    "bedrock_will": {
+      "id": "bedrock_will",
+      "name": "Bedrock Will",
+      "nameCN": "磐石意",
+      "element": "earth",
+      "rarity": "earth",
+      "minStage": 12,
+      "kind": "passive",
+      "passive": {
+        "stat": "element",
+        "value": 0.15,
+        "desc": "Your Earth moves hit 15% harder."
+      },
+      "lore": "Below the soil, below the stone, there is the thing that does not move."
+    },
+    "mountain_heart": {
+      "id": "mountain_heart",
+      "name": "Mountain Heart",
+      "nameCN": "山心",
+      "element": "earth",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "passive",
+      "passive": {
+        "stat": "ward",
+        "value": 0.2,
+        "desc": "+20% Ward."
+      },
+      "lore": "The mountain does not fight. It is simply still there afterwards."
+    },
+    "dust_ring_haymaker": {
+      "id": "dust_ring_haymaker",
+      "name": "Dust Ring Haymaker",
+      "nameCN": "尘台重拳",
+      "element": "neutral",
+      "rarity": "yellow",
+      "minStage": 0,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 46,
+        "cost": 16,
+        "desc": "A wide, heavy swing that the Dust Ring crowd loves."
+      },
+      "lore": "Nobody in the Dust Ring has ever blocked it. Most of them never saw it coming either.",
+      "sig": "arena:dust"
+    },
+    "iron_bell_toll": {
+      "id": "iron_bell_toll",
+      "name": "Iron Bell Toll",
+      "nameCN": "铁钟鸣",
+      "element": "metal",
+      "rarity": "profound",
+      "minStage": 3,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 50,
+        "cost": 22,
+        "status": {
+          "id": "daze",
+          "chance": 0.5,
+          "turns": 1
+        },
+        "desc": "A palm struck like a temple bell; the ringing dazes the enemy."
+      },
+      "lore": "The Master of the Iron Bell rings it once at the start of every bout, and once at the end.",
+      "sig": "arena:iron"
+    },
+    "jade_terrace_sweep": {
+      "id": "jade_terrace_sweep",
+      "name": "Jade Terrace Sweep",
+      "nameCN": "玉台横扫",
+      "element": "earth",
+      "rarity": "earth",
+      "minStage": 10,
+      "kind": "move",
+      "move": {
+        "type": "strike",
+        "power": 64,
+        "cost": 30,
+        "status": {
+          "id": "guardbreak",
+          "chance": 0.5,
+          "turns": 2
+        },
+        "desc": "A low sweep across the terrace that knocks the guard aside."
+      },
+      "lore": "The Lord of the Jade Terrace sweeps the floor with their challengers, as the saying goes.",
+      "sig": "arena:jade"
+    },
+    "golden_pit_fury": {
+      "id": "golden_pit_fury",
+      "name": "Golden Pit Fury",
+      "nameCN": "金坑怒",
+      "element": "fire",
+      "rarity": "earth",
+      "minStage": 13,
+      "kind": "move",
+      "move": {
+        "type": "multi",
+        "power": 28,
+        "hits": 3,
+        "cost": 36,
+        "status": {
+          "id": "burn",
+          "chance": 0.3,
+          "turns": 2
+        },
+        "desc": "Three furious burning blows in the style of the pit."
+      },
+      "lore": "The Sovereign of the Golden Pit fights like the pit is on fire. It usually is.",
+      "sig": "arena:golden"
+    },
+    "soul_lotus_bloom": {
+      "id": "soul_lotus_bloom",
+      "name": "Soul Lotus Bloom",
+      "nameCN": "魂莲绽",
+      "element": "wood",
+      "rarity": "heaven",
+      "minStage": 16,
+      "kind": "move",
+      "move": {
+        "type": "drain",
+        "power": 76,
+        "cost": 44,
+        "drain": 0.5,
+        "status": {
+          "id": "entangle",
+          "chance": 0.5,
+          "turns": 2
+        },
+        "desc": "A lotus of soul-light that drinks from the enemy and binds them."
+      },
+      "lore": "The Keeper of the Soul Lotus does not strike. The lotus does.",
+      "sig": "arena:lotus"
+    }
+  },
+  "MOVE_COMBAT": {
+    "qiPool": 100,
+    "qiRegen": 15,
+    "circulateQi": 35,
+    "parryQi": 25,
+    "parryCirculateMult": 2,
+    "parryWindowMs": 300,
+    "parryWideMult": 1.6,
+    "parryMinMs": 120,
+    "parryMaxMs": 650,
+    "parryLeadMs": [
+      700,
+      1100
+    ],
+    "parryTutorialLead": 1.8,
+    "parryGapMs": 420,
+    "parryMult": {
+      "multi": 0.8,
+      "priority": 0.8,
+      "charge": 1.4,
+      "finisher": 0.75
+    },
+    "parrySwift": 0.01,
+    "dmgScale": 0.4,
+    "powerSpread": 333,
+    "powerRatioClamp": [
+      0.3,
+      3.5
+    ],
+    "spread": [
+      0.75,
+      1.1
+    ],
+    "critBase": 0.05,
+    "critMult": 1.5,
+    "elementOver": 1.4,
+    "elementUnder": 0.75,
+    "affinity": 0.2,
+    "guardBreakMult": 1.3,
+    "counterTakenMult": 0.5,
+    "bleedDmg": 4,
+    "burnDmg": 3,
+    "burnStackMax": 3,
+    "dazeSkip": 0.4,
+    "entangleCost": 8,
+    "beastHpBase": 80,
+    "beastHpMight": 0.5,
+    "swiftBase": 50,
+    "swiftTrait": 15,
+    "foeDmgMult": 1,
+    "foeHpMult": 1,
+    "beastParryPerGuard": 0.004,
+    "beastParryMax": 0.3,
+    "driveTakenMult": 0.5,
+    "driveThrownHp": 10,
+    "estimateRuns": 300,
+    "parryRateDefault": 0.3,
+    "parryRateWindow": 30,
+    "maxTurns": 30,
+    "masteryXpPerUse": 1
+  },
+  "BEAST_MOVES": {
+    "spirit_fox": [
+      "fox_fire_lantern",
+      "heart_flame_fist",
+      "ember_scatter"
+    ],
+    "blood_python": [
+      "coiling_venom_fang",
+      "spring_vine_binding",
+      "life_stealing_thorn"
+    ],
+    "thunder_eagle": [
+      "thunder_talon_strike",
+      "iron_needle_rain",
+      "edge_seeking_thrust"
+    ],
+    "spectral_bear": [
+      "mountain_bear_roar",
+      "stone_fist",
+      "mountain_bearing_stance"
+    ],
+    "white_tiger": [
+      "white_tiger_rending_claw",
+      "armour_rending_slash",
+      "severing_crescent"
+    ],
+    "qilin": [
+      "qilin_flame_hoof",
+      "flame_lotus_storm",
+      "sutra_of_stillness"
+    ],
+    "void_hound": [
+      "void_hound_fang",
+      "mirror_lake_mist",
+      "abyssal_current"
+    ],
+    "black_tortoise": [
+      "black_tortoise_shell",
+      "tide_turning_current",
+      "frost_lotus_palm"
+    ],
+    "azure_dragon": [
+      "azure_dragon_spring_tide",
+      "withering_blight",
+      "thousand_roots_prison"
+    ],
+    "golden_dragon": [
+      "golden_dragon_divine_fist",
+      "ten_thousand_swords_rain",
+      "severing_crescent"
+    ]
+  },
+  "BEAST_HP_MULT": {
+    "spirit_fox": 1.3,
+    "blood_python": 1,
+    "thunder_eagle": 1.1,
+    "spectral_bear": 1.65,
+    "white_tiger": 1,
+    "qilin": 0.8,
+    "void_hound": 1.05,
+    "black_tortoise": 0.7,
+    "azure_dragon": 1,
+    "golden_dragon": 0.95
+  },
+  "BEAST_BASIC": {
+    "name": "Rake",
+    "move": {
+      "type": "strike",
+      "power": 22,
+      "cost": 0,
+      "desc": "Tooth and claw."
+    }
+  },
+  "MOVE_ATTACKS": [
+    "strike",
+    "multi",
+    "charge",
+    "finisher",
+    "drain"
+  ]
+}

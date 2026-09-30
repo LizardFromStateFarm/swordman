@@ -1,0 +1,52 @@
+{
+  "RANDOM_EVENTS": [
+    {
+      "id": "spirit_spring",
+      "weight": 8,
+      "minStage": 0,
+      "name": "Spirit Spring Discovered"
+    },
+    {
+      "id": "passing_senior",
+      "weight": 5,
+      "minStage": 1,
+      "name": "Passing Senior Cultivator"
+    },
+    {
+      "id": "demon_disturbance",
+      "weight": 6,
+      "minStage": 2,
+      "name": "Demon Disturbance"
+    },
+    {
+      "id": "heavenly_insight",
+      "weight": 3,
+      "minStage": 3,
+      "name": "Heavenly Insight"
+    },
+    {
+      "id": "spirit_stone_vein",
+      "weight": 4,
+      "minStage": 2,
+      "name": "Spirit Stone Vein"
+    },
+    {
+      "id": "inner_demon",
+      "weight": 5,
+      "minStage": 5,
+      "name": "Inner Demon Manifestation"
+    },
+    {
+      "id": "auspicious_cloud",
+      "weight": 4,
+      "minStage": 0,
+      "name": "Auspicious Cloud"
+    },
+    {
+      "id": "heavenly_lightning",
+      "weight": 2,
+      "minStage": 4,
+      "name": "Stray Heavenly Lightning"
+    }
+  ]
+}

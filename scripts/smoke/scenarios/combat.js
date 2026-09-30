@@ -19,6 +19,16 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
       gs._recalc(); gs._notify() })()`)
     await sleep(200)
   }
+  // Phase 42b: one turn on moves. The parry prompt (if its attack opens one) is answered: ok = pressed on the mark
+  const turn = async (sel, ok) => {
+    await ev('combatView.lockUntil = 0'); await ev(`document.querySelector('#combat-panel ${sel}')?.click()`); await sleep(160)
+    for (let g = 0; g < 6 && await ev('!!combatView.qte && !combatView.qte.sent'); g++) {
+      if (ok) { await ev('combatView.qte.due[combatView.qte.results.length] = performance.now()'); await ev('document.querySelector("#combat-parry [data-parry]").click()') }
+      else await ev('combatView._parryHit(false, "It lands")')
+      await sleep(80)
+    }
+    await sleep(520)
+  }
   const openBeasts = async () => { await click('#tabs [data-group="adventure"]'); await sleep(200); await click('[data-tab="beasts"]'); await sleep(400) }
 
   await ev(`(async () => { await window.electron.saveSlot(0, gameState.buildDevSave('member_elder')) })()`)
@@ -44,18 +54,27 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     assert(await ev('document.querySelectorAll("#combat-panel .cb-stance").length === 2'), `${mode}: two stances with odds`)
     await ev('combatView.scene.freeze(0)'); await shot(`combat-prepare-${mode}`)
 
-    // the battle: lose one exchange, then win it out (Press every time)
+    // the battle (Phase 42b, moves): the 2×2 grid; its attack opens the parry prompt; take a hit; parry one; then win it out
     await click('#combat-panel .cb-stance.slay'); await sleep(300)
     assert(await ev('gameState.get().family.fight?.kind === "beast" && combatView.step === "fight"'), `${mode}: Slay starts the battle`)
-    await rng(0.999); await ev('combatView.lockUntil = 0'); await click('#combat-panel [data-tac="press"]'); await unrng()
-    await sleep(300)
-    assert(await ev('gameState.get().health < 100 && document.querySelector("#combat-panel .cb-last.down") != null'), `${mode}: a lost exchange costs Health and says so`)
-    await ev('combatView.scene.freeze(0.5, { type: "ex", you: "press", them: "press", won: false, dmg: 7 })'); await shot(`combat-hit-${mode}`)
-    await ev('combatView.scene.start()'); await rng(0.0)
-    for (let i = 0; i < 4; i++) { await ev('combatView.lockUntil = 0'); await click('#combat-panel [data-tac="feint"]'); await sleep(120) }
-    await unrng()
-    await ev('combatView.scene.freeze(0.46, { type: "ex", you: "feint", them: "guard", won: true })'); await shot(`combat-fight-${mode}`)
+    assert(await ev('document.querySelectorAll("#combat-panel .cb-moves > *").length === 4 && !!document.querySelector("#combat-panel [data-move=circulate]")'), `${mode}: four move slots + Circulate`)
+    await ev('combatView.scene.freeze(0)'); await shot(`combat-moves-${mode}`); await ev('combatView.scene.start()')
+    await ev('(() => { const m = gameState.get().family.fight.m; m.foe.moves = ["beast_rake"]; m.foe.P.parryChance = 0; gameState.get().arts.parryMode = "normal" })()')
+    await ev('combatView.lockUntil = 0'); await ev('document.querySelector("#combat-panel .cb-moves [data-move]:not([disabled])").click()'); await sleep(200)
+    assert(await ev('!!combatView.qte && !!document.querySelector("#combat-parry:not(.hidden) .cb-parry-btn")'), `${mode}: its attack opens the parry prompt`)
+    assert(await ev('document.querySelectorAll("#combat-panel .cb-moves.locked [data-move][disabled]").length > 0 && !!document.querySelector("#combat-panel [data-move=circulate][disabled]")'), `${mode}: the prompt sits on the field; your moves stay in view, locked`)
+    await shot(`combat-parry-${mode}`)
+    await ev('combatView._parryHit(false, "It lands")'); await sleep(560)
+    assert(await ev('gameState.get().health < 100 && [...document.querySelectorAll("#combat-panel .cb-ll")].some(l => /damage/.test(l.textContent))'), `${mode}: a missed parry costs Health and says so`)
+    const hp0 = await ev('gameState.get().health')
+    await turn('[data-move=circulate]', true)
+    assert(await ev(`gameState.get().health === ${hp0}`), `${mode}: a parry on the mark takes no damage`)
+    await ev('combatView.scene.freeze(0.5, { type: "ex", them: "press", you: null, won: false, dmg: 7 })'); await shot(`combat-hit-${mode}`); await ev('combatView.scene.start()')
+    await ev('(() => { const m = gameState.get().family.fight.m; m.foe.hp = 1 })()')
+    for (let i = 0; i < 4 && await ev('combatView.step === "fight"'); i++) await turn('.cb-moves [data-move]:not([disabled])', false)
+    await ev('combatView.scene.freeze(0.46, { type: "ex", you: "press", won: true, foeDmg: 14 })'); await shot(`combat-fight-${mode}`)
     assert(await ev('combatView.step === "end" && document.querySelectorAll("#combat-panel .cb-end").length === 3'), `${mode}: a won battle offers finish / spare / bind`)
+    assert(await ev('/karma · /.test(document.querySelector("#combat-panel .cb-end.finish")?.textContent || "")'), `${mode}: the Finish card says why it moves karma`)
     await ev('combatView.scene.freeze(0, null, { foe: "down" })'); await shot(`combat-end-${mode}`)
 
     // why these odds (the breakdown card) — from a fresh prepare in desktop only
@@ -123,9 +142,8 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   await openBeasts(); await click('#tab-beasts .beast-fight-btn[data-fight=smoke_enc]'); await sleep(400)
   assert(await ev('!!document.querySelector("#combat-panel .cb-stance.slay.deadly")'), 'Slay is marked deadly when a loss could kill you')
   await click('#combat-panel .cb-stance.slay'); await sleep(200)
-  await rng(0.999)
-  for (let i = 0; i < 6 && await ev('combatView.step === "fight"'); i++) { await ev('combatView.lockUntil = 0'); await click('#combat-panel [data-tac="guard"]'); await sleep(100) }
-  await unrng()
+  await ev('(() => { const m = gameState.get().family.fight.m; m.foe.power = 99999; gameState.get().arts.parryMode = "off" })()')
+  for (let i = 0; i < 12 && await ev('combatView.step === "fight"'); i++) { await ev('combatView.lockUntil = 0'); await click('#combat-panel [data-move="circulate"]'); await sleep(120) }
   assert(await ev('combatView.step === "died" && gameState.get().lastReincarnation?.cause === "beast_hunt"'), 'you die to the dragon (cause beast_hunt)')
   await sleep(1900); await shot('combat-died')
   await sleep(1700)

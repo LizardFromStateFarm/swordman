@@ -16,11 +16,11 @@ async function setup(seed, stage, typeId, extra = {}) {
   gs._recalc()
   return { sim, gs, s }
 }
-// Win the e1 fight outright (every exchange won).
+// Win the e1 fight outright (Phase 42b: on moves — it is one blow from falling, parrying off).
 function winFight(sim, gs) {
-  rseq(sim, [0])
-  for (let i = 0; i < 20; i++) { const r = gs.fightExchange('press'); if (!r.ok || r.done || r.over) break }
-  unrng(sim)
+  const s = gs.get(), m = s.family.fight.m
+  s.arts.parryMode = 'off'; m.foe.hp = 1; m.foe.P.parryChance = 0
+  for (let i = 0; i < 20; i++) { const r = gs.beastMove('palm_strike'); if (!r.ok || r.done || r.over) break }
 }
 
 ;(async () => {

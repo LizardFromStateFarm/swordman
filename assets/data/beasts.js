@@ -1,7 +1,7 @@
 // Beast traits, rarity tiers, beast types and their rare colour variants (Phase 3 Spiritual Beasts; roster of 10 + tiers +
 // variants 2026-09-28). Used by: game-state.js (encounter / tame / expedition logic, beastProfile, trait Might in _recalc),
 // renderer/game/beasts.js, game.js (Roam → Beasts), renderer/game/beast-detail.js (details page), attention.js.
-// Phase 35 battles (BEAST_FIGHT_STYLE, BEAST_NATURE, BATTLE_TO, BEAST_*, HUNT_GROUNDS): game-state.js fight engine + hunt, combat.js, hunt-view.js, breakdowns.js.
+// Phase 35 battles (BEAST_FIGHT_STYLE, BEAST_NATURE, BEAST_*, HUNT_GROUNDS): game-state.js fight engine + hunt, combat.js, hunt-view.js, breakdowns.js.
 // Art: each type's `spriteState` (and each variant's `art`) is an INK_BEASTS key (assets/sprites/ink-beasts.js).
 
 const BEAST_TRAITS = {
@@ -149,7 +149,7 @@ const BEAST_KARMA = {                           // karma for the end choice, by 
   cub: -8,                                      // finishing a cub, whatever its kind
 }
 
-const BATTLE_TO                = 4       // exchanges to win a battle (family fights keep FIGHT_TO)
+
 const BEAST_FIGHT_BASE_POWER   = 30      // its power = minStage × 100 + this + (might − 1) × MIGHT_POWER + trait/mood terms
 const BEAST_FIGHT_MIGHT_POWER  = 150
 const BEAST_TRAIT_POWER        = { iron_skin: 25 }

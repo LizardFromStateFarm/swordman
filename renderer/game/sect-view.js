@@ -1,5 +1,9 @@
 // SectView — 宗 Sect as sub-views (roadmap 1.8b-5, Phase 33): Overview · Missions · War for a sect you joined,
 // Overview · Buildings · Disciples · War for one you founded, and the list of sects (+ founding) when you have none.
+// 1.14b: Library (joined sects) — the sect's martial art manuals by grade, each grade opened by your rank, bought with
+// Contribution (gameState.sectLibrary() / buySectArt()). Giving (user 2026-09-30): your spare manuals go onto the sect's
+// shelf for Contribution + war strength (sectDonateInfo / donateManualToSect); a founder's Library is that shelf, studied
+// at half time (studyFromSect).
 // Replaces the old one-long-list Sect tab (15 screens of scroll for a founder). Every number says what it is made
 // of: the sect's blessing in plain terms, what each rank / mission / building / disciple gives, and war odds that
 // are the real roll (gameState.sectWarOdds(), "why" card data-bd="sectwar"). Built from the Family/Clan components
@@ -36,8 +40,8 @@ class SectView {
 
   // Which sub-views your standing offers (NavUI.setAvailable)
   static viewsFor(s) {
-    if (s.ownSect?.founded) return ['sect', 'sect-halls', 'sect-disciples', 'sect-war']
-    if (s.sect?.id) return ['sect', 'sect-missions', 'sect-war']
+    if (s.ownSect?.founded) return ['sect', 'sect-halls', 'sect-disciples', 'sect-war']   // (a founder's library sits in Halls: a 5th tab would not fit Overlay)
+    if (s.sect?.id) return ['sect', 'sect-missions', 'sect-library', 'sect-war']
     return ['sect']
   }
 
@@ -47,7 +51,9 @@ class SectView {
     let html = ''
     if (view === 'sect') html = own ? this._ownOverview(s) : def ? this._memberOverview(s, def) : this._unaffiliated(s)
     else if (view === 'sect-missions' && def) html = this._missions(s, def)
-    else if (view === 'sect-halls' && own) html = this._halls(s)
+    else if (view === 'sect-library' && def) html = this._library(s, def)
+
+    else if (view === 'sect-halls' && own) html = this._halls(s) + `<div class="sv-ownlib" id="sv-ownlib">${this._ownLibrary(s)}</div>`
     else if (view === 'sect-disciples' && own) html = this._disciples(s)
     else if (view === 'sect-war' && (own || def)) html = this._war(s, own)
     el.innerHTML = html
@@ -179,7 +185,8 @@ class SectView {
           ${this._tile('go', 'token', `Missions · ${act} of ${SECT_MAX_MISSIONS} underway`, `${open} open to your rank${act < SECT_MAX_MISSIONS ? ' · <span class="up">a slot is free</span>' : ''}`, '', '', ' data-view="sect-missions"')}
           ${this._tile('go', 'flag', warOn ? `War with the ${h.esc(w.enemyName)}` : 'Sect wars', warOn
             ? `battle in ${this._warClock(w)} · <span class="${this._oddsClass(odds?.chance || 0)}">${this._pct(odds?.chance || 0)}</span> to win${w.answered ? '' : ' · <span class="down">unanswered</span>'}`
-            : `next call in ${this._warClock(w)} · record ${w.warVictories || 0}–${w.warDefeats || 0}`, '', warOn && !w.answered ? 'urgent' : '', ' data-view="sect-war"')}</div>`)}
+            : `next call in ${this._warClock(w)} · record ${w.warVictories || 0}–${w.warDefeats || 0}`, '', warOn && !w.answered ? 'urgent' : '', ' data-view="sect-war"')}
+          ${this._libraryTile(s)}</div>`)}
         ${this._underway(s)}
         ${found ? '<div class="fk-note">You are strong enough to found a sect of your own. Leave this one first.</div>' : ''}
       </div></div>`
@@ -228,6 +235,81 @@ class SectView {
     return `<div class="sv-head"><span>${sect.activeMissions.length} of ${SECT_MAX_MISSIONS} missions underway</span><span class="sv-head-n">Rewards ×${mult} at your rank · missions finish while you are away</span></div>
       ${this._autoRow(s, autoOk, autoOn, picks)}
       <div class="sv-grid">${cards}</div>`
+  }
+
+  // ── 1.14b: the library ─────────────────────────────────────────────────────
+  _libraryTile(s) {
+    const lib = this.gs.sectLibrary?.()
+    if (!lib) return ''
+    const buyable = lib.arts.filter(x => !x.lock && !x.known).length
+    const els = lib.elements.map(e => ART_ELEMENTS[e].name).join(' + ')
+    return this._tile('go', 'scroll', 'The library', `${els} + neutral arts${buyable ? ` · <span class="up">${buyable} you can take now</span>` : ''}`, '', '', ' data-view="sect-library"')
+  }
+  _library(s, def) {
+    const h = this.h, lib = this.gs.sectLibrary()
+    if (!lib) return ''
+    const R = ART_RARITY_ORDER, groups = {}
+    for (const x of lib.arts) (groups[ARTS[x.id].rarity] ||= []).push(x)
+    const els = lib.elements.map(e => `<span class="art-root el-${e}">${Icon(ART_ELEMENTS[e].icon)}${ART_ELEMENTS[e].name}</span>`).join('')
+    const card = x => {
+      const a = ARTS[x.id], short = x.price - lib.contribution
+      const foot = x.lock === 'rank' ? this._tile('buyart', 'lock', 'Sealed', '', `${SECT_RANKS[x.needRank]?.name || 'A higher rank'} and above`, 'wide sv-go')
+        : this._tile('buyart', 'scroll', `Take the manual`, `<span class="cost">${x.price} Contribution</span>${short > 0 ? ` <span class="down">· ${h.fmt(short)} short</span>` : ''}`,
+            x.lock === 'contribution' ? `${h.fmt(short)} Contribution short` : '', 'wide sv-go', ` data-id="${x.id}"`)
+      const tags = [x.known ? '<span class="art-tag on">you know it · a copy deepens it</span>' : '', x.held ? `<span class="art-tag">${x.held} in your pack</span>` : '',
+        x.tooProfound ? `<span class="art-tag">studied from ${h.esc(stageShortName(a.minStage))}</span>` : ''].join('')
+      return `<div class="sv-card sv-art el-${a.element}${x.lock === 'rank' ? ' locked' : ''}">
+        <div class="sv-card-h">${Icon(ART_ELEMENTS[a.element].icon)}<span class="sv-card-n art-n r-${a.rarity}">${h.esc(a.name)}</span></div>
+        <div class="sv-art-m">${h.esc(ArtsView.meta(this.gs, a.id))}</div>
+        <div class="sv-card-d">${h.esc(a.move?.desc || a.passive.desc)}</div>${tags ? `<div class="sv-gains">${tags}</div>` : ''}${foot}</div>`
+    }
+    const sections = R.filter(g => groups[g]).map(g => {
+      const need = SECT_LIBRARY_GRADE_BY_RANK.findIndex(x => R.indexOf(x) >= R.indexOf(g))
+      const open = lib.rank >= need
+      return this._sec(`${ART_RARITY[g].name} grade`, `<div class="sv-grid">${groups[g].map(card).join('')}</div>`,
+        open ? `${SECT_LIBRARY_PRICE[g]} Contribution each` : `opens to ${SECT_RANKS[need].name}`, open ? '' : 'sv-sealed')
+    }).join('')
+    return `<div class="sv-head"><span>The ${h.esc(def.name)} library · ${els}<span class="art-root el-neutral">${Icon('el_neutral')}Neutral</span></span>
+        <span class="sv-head-n"><b class="gold">${h.fmt(lib.contribution)}</b> Contribution to spend · spending it keeps your rank · a manual goes to your pack, study it in Path → Arts</span></div>
+      ${this._giving(s)}${sections}`
+  }
+  // Your founded sect's library: only what you have given it (disciples train in it for war; you study it at half time)
+  _ownLibrary(s) {
+    const h = this.h, info = this.gs.sectDonateInfo()
+    if (!info) return ''
+    if (!info.shelf.length && !info.manuals.length)                   // empty and nothing to give: one line, Halls stays short
+      return this._sec('Sect library', '<div class="fk-note">Empty. Give it a spare art manual and your disciples train in it for war; you can study it here at half the time.</div>')
+    return `<div class="sv-head"><span>The ${h.esc(s.ownSect.name)} library</span>
+        <span class="sv-head-n">Manuals you give: war strength, and study at half the time.</span></div>
+      ${this._giving(s, true)}`
+  }
+  // Giving manuals (both kinds of sect): the shelf so far, then the manuals in your pack and what each would bring.
+  // `fold` (a founder's library under Halls): the give list folds shut, with its count, so Halls stays short.
+  _giving(s, fold = false) {
+    const h = this.h, info = this.gs.sectDonateInfo()
+    if (!info) return ''
+    const pct = v => `${Math.round(v * 100)}%`
+    const lockText = { member: '', known: 'You know it', busy: 'Every study desk is in use', studying: 'On a study desk now' }
+    const shelf = info.shelf.map(x => {
+      const a = ARTS[x.artId]
+      const act = !info.own ? '' : !x.lock ? `<button class="lg-buy" data-sa="sectstudy" data-id="${x.artId}">Study<span>${h.fmtTime(x.seconds)}</span></button>`
+        : `<span class="lib-lock">${x.lock === 'known' ? Icon('check') : Icon('lock')}${h.esc(x.lock === 'stage' ? `Opens at ${stageShortName(a.minStage)}` : lockText[x.lock] || '')}</span>`
+      return `<div class="lib-row el-${a.element}"><span class="lib-g">${Icon(ART_ELEMENTS[a.element].icon)}</span>
+        <span class="lib-t"><span class="art-n r-${a.rarity}">${h.esc(a.name)}</span><span class="lib-m">${h.esc(ART_RARITY[a.rarity].name)} · war strength +${pct(SECT_SHELF_WAR[a.rarity] || 0)}</span><span class="lib-m lib-by">given by ${h.esc(x.by)}, year ${x.year}</span></span>${act}</div>`
+    }).join('') || `<div class="fam-empty">Nothing given yet. A manual you give ${info.own ? 'stays in your library' : 'earns Contribution'} and trains the ${info.own ? 'disciples' : 'sect'} for war.</div>`
+    const give = info.manuals.map(x => {
+      const a = ARTS[x.id]
+      const pays = [x.contribution ? `<span class="up">+${x.contribution} Contribution</span>` : '', x.war ? `war strength +${pct(x.war)}` : 'the war bonus is at its cap'].filter(Boolean).join(' · ')
+      return `<div class="lib-row el-${a.element}"><span class="lib-g">${Icon(ART_ELEMENTS[a.element].icon)}</span>
+        <span class="lib-t"><span class="art-n r-${a.rarity}">${h.esc(a.name)}</span><span class="lib-m">${x.n} in your pack${x.known ? ' · <span class="up">you know it: a spare</span>' : ' · <span class="down">not yet learned</span>'}</span><span class="lib-m">${pays}</span></span>
+        ${x.lock ? `<span class="lib-lock">${Icon('check')}Already on the shelf</span>` : `<button class="lg-buy" data-sa="donate-art" data-id="${x.id}">Give<span>1 manual</span></button>`}</div>`
+    }).join('') || '<div class="fam-empty">No manuals in your pack. Spares turn up on expeditions, beasts, the Arena and people you defeat.</div>'
+    const giveSec = fold && info.manuals.length
+      ? `<section class="fam-sec clan-lib sv-give"><details class="lib-write"${this.giveOpen ? ' open' : ''}><summary class="fa-quiet" data-sa="givefold"><span class="lib-fold">${Icon('play')}</span>Give a manual <span class="fam-count">${info.manuals.length} in your pack</span></summary>${give}</details></section>`
+      : this._sec('Give a manual', give, info.manuals.length ? `${info.manuals.length} in your pack` : '', 'clan-lib sv-give')
+    return `<div class="sv-give-cols">
+      ${this._sec('Given to the library', shelf, `war strength +${pct(info.war)} of +${pct(info.cap)}`, 'clan-lib sv-shelf')}
+      ${giveSec}</div>`
   }
 
   // Auto-Missions switch (same row as Explore's Auto-Explore): On/Off, what it keeps running, or when it unlocks.
@@ -443,6 +525,14 @@ class SectView {
       case 'donate': return say(gs.donateToSect(n), r => `Gave ${n} stones (+${r.gained} Contribution)`, stones)
       case 'leave': return h.confirm('Leave the sect?', `You lose your rank and all Contribution, and pay karma for it${sectWarActive(gs.get()) ? ', more for deserting a war' : ''}. Rejoining starts again as an Outer Disciple.`, () => gs.leaveSect(), 'Leave')
       case 'mission': return h.startMission(id)
+      case 'buyart': return say(gs.buySectArt(id), r => `The ${ARTS[id].name} manual is yours (−${r.price} Contribution). Study it in Path → Arts.`, { rank: 'Your rank is too low', contribution: 'Not enough Contribution' })
+      case 'givefold': this.giveOpen = !b.closest('details').open; return   // (the fold survives re-renders)
+      case 'donate-art': {
+        const known = !!gs.get().arts.known[id]
+        const go = () => say(gs.donateManualToSect(id), r => `You give the ${ARTS[id].name} manual${r.contribution ? ` (+${r.contribution} Contribution)` : ''}.`, { shelved: 'The library already has it' })
+        return known ? go() : h.confirm(`Give away ${ARTS[id].name}?`, 'You have not learned this art yet. Once given, the manual is the sect\'s.', go, 'Give it')
+      }
+      case 'sectstudy': return say(gs.studyFromSect(id), () => `You take ${ARTS[id].name} down from your library.`, { busy: 'Every study desk is in use', known: 'You know it already', stage: 'Too profound for your realm' })
       case 'auto': { const r = gs.setAutomation('autoSectMissions', b.dataset.on === '1'); return r.ok ? null : h.flash('Cannot change Auto-Missions now', 'negative') }
       case 'autopick': { const r = gs.setAutoSectMission(id, b.dataset.on === '1')
         return r.ok ? null : h.flash({ full: `Keep at most ${SECT_MAX_MISSIONS}: unpick one first`, rank: 'Rank too low' }[r.reason] || 'Cannot pick that mission', 'negative') }
@@ -462,6 +552,6 @@ class SectView {
     }
   }
 }
-SectView.VIEWS = ['sect', 'sect-missions', 'sect-halls', 'sect-disciples', 'sect-war']
+SectView.VIEWS = ['sect', 'sect-missions', 'sect-library', 'sect-halls', 'sect-disciples', 'sect-war']
 
 function sectWarActive(s) { const w = s.sectWar; return !!w && (w.phase === 'scouting' || w.phase === 'preparing') }

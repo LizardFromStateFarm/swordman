@@ -1,14 +1,15 @@
-// Scenario checks — docs/systems/combat.md → "A6-3a: people on the battle page". Person fights go to DUEL_TO with the
-// old match odds, a won fight waits for your end choice (finish / spare · raise / humble), the reaction each choice
+// Scenario checks — docs/systems/combat.md → "A6-3a: people on the battle page". Person fights are fought on moves (1.14a,
+// fight-helpers.js wins / loses them), a won fight waits for your end choice (finish / spare · raise / humble), the reaction each choice
 // leaves by temper (debt / grudge), the record on the person, feud feedback (a debtor never challenges you, a grudge-holder
 // is likelier + stronger + less willing to accept your yield, humbling cows the clan), the step-down bracket pausing on
 // your bouts (saved mid-bracket, a loss or a death still settles the seat), and the stale-bout migration.
 // Run: npm run checks · node scripts/sim/checks/duels.js. Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
+const { playFight } = require('../fight-helpers.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
 const rng = (sim, v) => sim.ev(`globalThis.__r = globalThis.__r || Math.random; Math.random = () => ${v}`)
 const unrng = sim => sim.ev('Math.random = globalThis.__r')
-const raceTo = (p, to) => { let sum = 0, c = 1; for (let k = 0; k < to; k++) { sum += c * Math.pow(p, to) * Math.pow(1 - p, k); c = c * (to + k) / (k + 1) } return sum }
+
 
 // A first-life clan head (stage 18), married, with `nKids` adult children.
 async function head(seed, nKids = 3, opts = {}) {
@@ -34,24 +35,18 @@ function addMember(gs, { stage = 5, personality = 'stoic' } = {}) {
   p.personality = personality; w.persons[p.id] = p; clan.lines[0].memberIds.push(p.id)
   return p
 }
-// Win (or lose) the exchanges of the current fight until it is over or waits for the end choice.
-function play(sim, gs, how) {
-  rng(sim, how === 'win' ? 0 : 0.999)
-  let r
-  for (let i = 0; i < 20 && gs.get().family.fight && !gs.get().family.fight.over; i++) r = gs.fightExchange('guard')
-  unrng(sim)
-  return r
-}
+// Win (or lose) the current fight on moves until it is over or waits for the end choice.
+const play = (sim, gs, how) => playFight(gs, how)
 
 ;(async () => {
-  // ── The fight itself: DUEL_TO, odds kept ──
+  // ── The fight itself: on moves (1.14a) ──
   { const { sim, gs } = await nonHead(1)
     const hd = gs.person(clanOf(gs).headId); gs.get().stageIndex = hd.stageIndex
     const start = gs.challengeHead(), info = gs.fightInfo()
-    assert(start.fight && info.to === sim.ev('DUEL_TO') && info.to === 3, `a head challenge is fought to ${info.to} exchanges`)
-    const P = gs.personFightOdds(hd, 'challenge').chance
-    assert(Math.abs(raceTo(info.base, info.to) - P) < 1e-6, `neutral play keeps the match odds (${(P * 100).toFixed(1)}%)`)
-    assert(info.odds && info.odds.you.parts.length >= 2 && info.record.fought === 0, 'fightInfo carries the odds parts and an empty record') }
+    assert(start.fight && info.m && info.m.foe.person && info.m.foe.moves.includes('palm_strike') && info.m.stance === (info.lethal ? 'slay' : 'yield'), `a head challenge is fought on moves (${info.m?.foe.moves.join(', ')})`)
+    const o = gs.personFightOdds(hd, 'challenge')
+    assert(o.chance > 0.05 && o.chance < 0.95 && o.est && o.you.parts.length >= 2, `even realms: the estimate is a real contest (${(o.chance * 100).toFixed(0)}%), with the power parts`)
+    assert(info.record.fought === 0 && info.scout && info.scout.seen === 0 && !info.habitsKnown, 'a first fight: an empty record, no arts seen, habits unknown') }
 
   // ── Lethal win → finish / spare ──
   { const { sim, gs } = await head(2, 1)
@@ -100,7 +95,8 @@ function play(sim, gs, how) {
     assert(picks.grudge > picks.none * 2, `a grudge-holder is likelier (grudge ${picks.grudge} vs the plain one ${picks.none} of 600)`)
     let cowed = new Set(); for (let i = 0; i < 100; i++) cowed.add(gs._pickChallenger(clan, true)?.id)
     assert(cowed.size === 1 && cowed.has(kids[1].id), 'while the clan is cowed only the grudge-holder dares')
-    const plain = gs.personFightOdds(kids[2], 'defend'), hate = gs.personFightOdds(kids[1], 'defend')
+    const hate = gs.personFightOdds(kids[1], 'defend'); kids[1].feud = null
+    const plain = gs.personFightOdds(kids[1], 'defend'); kids[1].feud = 'grudge'
     assert(hate.chance < plain.chance && hate.them.parts.some(p => /grudge/.test(p.label) && p.value === sim.ev('FEUD_POWER')), `a grudge fights harder (${(plain.chance * 100).toFixed(0)}% → ${(hate.chance * 100).toFixed(0)}% for you)`)
     const s = gs.get()
     const who = kids[2]; who.morality = 0                              // the same person, three ways
@@ -158,7 +154,7 @@ function play(sim, gs, how) {
   { const { gs } = await head(10, 1)
     const s = gs.get()
     delete s.family.bracket; delete s.family.cowedUntilYear
-    s.family.fight = { kind: 'stepdown', oppId: 'x', lethal: false, p: 0.5, to: 3, you: 0, them: 0, round: 1, log: [], year: 1 }
+    s.family.fight = { kind: 'stepdown', oppId: 'x', lethal: false, round: 1, log: [], year: 1 }
     gs._ensurePhase35Fields()
     assert(s.family.bracket === null && s.family.cowedUntilYear === null && s.family.fight === null, 'old saves get the new fields; a step-down bout without its bracket is dropped') }
 })()

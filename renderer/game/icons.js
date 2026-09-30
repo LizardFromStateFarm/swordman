@@ -24,7 +24,7 @@ Icon.names = () => Object.keys(UI_ICONS)
 // Static markup (index.html) is already parsed when this script runs (scripts sit at the end of <body>).
 Icon.hydrate()
 
-// A glyph slot that may hold an icon name or plain text (data like COURT_WAYS/FIGHT_TACTICS carries icon names).
+// A glyph slot that may hold an icon name or plain text (data like COURT_WAYS carries icon names).
 Icon.g = x => (UI_ICONS[x] ? Icon(x) : x)
 
 // Views rebuild their HTML with innerHTML all the time: fill any new [data-icon] node before it paints

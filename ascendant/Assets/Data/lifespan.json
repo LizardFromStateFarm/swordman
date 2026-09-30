@@ -1,0 +1,49 @@
+{
+  "GAME_YEARS_PER_OPEN_HOUR": 30,
+  "AWAKENING_AGE": 16,
+  "OFFLINE_QI_MULT": 1,
+  "PROPOSAL_MIN_STAGE": 10,
+  "PROPOSAL_FIRST_DELAY_YEARS": [
+    5,
+    20
+  ],
+  "PROPOSAL_RETRY_YEARS": [
+    20,
+    40
+  ],
+  "PROPOSAL_SUITORS": [
+    1,
+    3
+  ],
+  "SUITOR_STAGE_OFFSET": [
+    -3,
+    1
+  ],
+  "SUITOR_AGE_OFFSET_YEARS": [
+    -20,
+    20
+  ],
+  "SPOUSE_YEARS_PER_STAGE": 25,
+  "SPOUSE_STAGE_CAP": 21,
+  "FIRST_CHILD_YEARS": [
+    8,
+    20
+  ],
+  "CHILD_INTERVAL_BY_PLAN": {
+    "ask": [
+      15,
+      30
+    ],
+    "none": null,
+    "some": [
+      40,
+      70
+    ],
+    "many": [
+      15,
+      30
+    ]
+  },
+  "FAMILY_PLAN_DEFAULT": "ask",
+  "ADULT_AGE": 16
+}

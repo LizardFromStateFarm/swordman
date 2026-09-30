@@ -33,8 +33,13 @@ tally: {events, crises, affairs, discovered, accept, sabotage, duel, suicide, mu
 `endCause` ∈ `left` (spouse walked out / you fled a duel) · `divorced` · `suicide` · `murder_suicide` · `duel` (you won).
 
 ## Data (`assets/data/family.js`, data only)
-- Affection: `AFFECTION_START` 60 (+10 same personality as you), drift 0.3/yr toward 50, `AFFECTION_DEVOTED` 75,
-  `AFFECTION_CRISIS` 25, `DEVOTED_BT_BONUS` 0.05, `SABOTAGE_BT_MALUS` 0.25.
+- Affection: `AFFECTION_START` 60 (+10 same personality as you), drift `AFFECTION_DRIFT_PER_YEAR` 0.3/yr toward 50,
+  `AFFECTION_DEVOTED` 75, `AFFECTION_CRISIS` 25, `DEVOTED_BT_BONUS` 0.05, `SABOTAGE_BT_MALUS` 0.25.
+  **2026-09-30 (user): the drift runs at the full rate only while you are actively playing** (Active Mode, window
+  focused); while you are away (window hidden to the tray / unfocused — `gameState.setPresent()` from game.js's loop) or
+  in Idle Mode it is `AFFECTION_DRIFT_AWAY_FRAC` 0.1 of that (0.03/yr), so absence does not cool a relationship
+  (`gameState.affectionDriftRate()`; the Affection breakdown card shows the effective rate). *Note: `PLAY_MODE_DEFAULT`
+  is `'idle'`, so a player who never touches the Mode toggle gets the slow rate by default.*
 - Events: every `MARRIAGE_EVENT_YEARS` [10,25] while married; below `AFFECTION_CRISIS`, `CRISIS_EVENT_CHANCE` 0.6
   to draw from the crisis pool instead. `MARRIAGE_EVENTS` (~24) / `MARRIAGE_CRISIS_EVENTS` (`spouse_cheated`,
   `spouse_leaving`): `{ id, title, text, requires?: 'sect'|'beast'|'children'|'stones', choices: [{ label, result,

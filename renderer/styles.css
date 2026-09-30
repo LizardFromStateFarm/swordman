@@ -4308,18 +4308,12 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
 .cb-plate.foe { text-align: right; }
 .cb-pn { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
 .cb-plate.you .cb-pn { color: color-mix(in srgb, var(--jade) 45%, var(--text)); }
-.cb-pips { display: flex; gap: 4px; }
-.cb-plate.foe .cb-pips { justify-content: flex-end; }
-.cb-pips i { width: 14px; height: 6px; border-radius: 1px; border: 1px solid color-mix(in srgb, var(--dim) 60%, transparent); transition: background .3s, box-shadow .3s; }
-.cb-pips i.on.you { background: var(--jade); border-color: var(--jade); box-shadow: 0 0 6px color-mix(in srgb, var(--jade) 50%, transparent); }
-.cb-pips i.on.foe { background: color-mix(in srgb, var(--purple) 70%, var(--text)); border-color: var(--purple); box-shadow: 0 0 6px color-mix(in srgb, var(--purple) 55%, transparent); }
 .cb-hp { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 11px; color: color-mix(in srgb, var(--jade) 60%, var(--text)); }
 .cb-hpbar { width: 64px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; }
 .cb-hpbar b { display: block; height: 100%; background: var(--jade); transition: width .4s; }
 .cb-hp.low { color: var(--red-text); } .cb-hp.low .cb-hpbar b { background: var(--red); }
 .cb-hpv { font-variant-numeric: tabular-nums; min-width: 2ch; }
 .cb-tier { margin-top: 4px; } .cb-tier .tier-chip { margin-left: 4px; }
-.cb-plate.gone .cb-pips, .cb-plate.gone .cb-tier .tier-chip { opacity: .45; }
 .cb-fate { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-hi); border: 1px solid var(--border); border-radius: 2px; padding: 0 4px; vertical-align: 1px; }
 /* A6-3a: a person's plate — realm + feud chip (they owe you / hold a grudge)
    UI review: 7.8 (2026-09-29, cycle 2; duelist asset 8.1) */
@@ -4328,6 +4322,7 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
 .cb-feud { display: inline-block; margin-left: 6px; font-size: 9.5px; letter-spacing: .5px; padding: 0 5px; border-radius: 2px; border: 1px solid currentColor; vertical-align: 1px; }
 .cb-feud.debt { color: color-mix(in srgb, var(--jade) 75%, var(--text)); }
 .cb-feud.grudge { color: var(--red-text); }
+.cb-plate.gone .cb-tier .tier-chip { opacity: .45; }
 .cb-plate.gone .cb-realm, .cb-plate.gone .cb-feud { opacity: .55; }
 .cb-st-l.good { color: color-mix(in srgb, var(--jade) 75%, var(--text)); }
 
@@ -4366,25 +4361,10 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
 .cb-st-l { font-size: 10.5px; line-height: 1.4; color: var(--dim-hi); }
 .cb-st-l.warn { color: var(--red-text); }
 
-/* The fight: three tactics in a row with this exchange's odds, Retreat beside the habits line */
+/* The fight: the last turn in words, then the moves grid (1.13a) and Circulate / Palm Strike / Retreat or Yield */
 .cb-last { font-size: 12px; line-height: 1.45; padding: 6px 9px; margin-bottom: 8px; border-left: 2px solid color-mix(in srgb, var(--gold) 45%, transparent); background: rgba(8,4,14,0.4); }
 .cb-last.up { border-left-color: var(--jade); color: color-mix(in srgb, var(--jade) 65%, var(--text)); }
 .cb-last.down { border-left-color: var(--red); color: color-mix(in srgb, var(--red-text) 80%, var(--text)); }
-.cb-tacs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.cb-tac { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px 9px; font-family: var(--font); color: var(--text);
-  border-radius: 4px; cursor: pointer; min-height: 44px; text-align: center;
-  background: linear-gradient(180deg, rgba(44,24,10,0.7), rgba(20,10,4,0.9)); border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--border));
-  transition: border-color .15s, background .15s, transform .1s; }
-.cb-tac:hover { border-color: color-mix(in srgb, var(--gold) 70%, transparent); background: linear-gradient(180deg, rgba(64,36,12,0.75), rgba(26,12,4,0.92)); }
-.cb-tac:active { transform: translateY(1px); }
-.cb-tac.picked { border-color: color-mix(in srgb, var(--gold) 65%, transparent); box-shadow: inset 0 0 12px color-mix(in srgb, var(--gold) 10%, transparent); }
-.cb-g { font-size: 20px; color: var(--gold); text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 40%, transparent); line-height: 1; }
-.cb-t { display: flex; flex-direction: column; align-items: center; }
-.cb-n { font-size: 13px; }
-.cb-n kbd { font-family: var(--font); font-size: 9px; color: var(--dim); border: 1px solid var(--border); border-radius: 2px; padding: 0 3px; margin-left: 5px; vertical-align: 1px; }
-.cb-b { font-size: 10.5px; color: var(--dim-hi); }
-.cb-pct { font-size: 17px; color: var(--gold); font-variant-numeric: tabular-nums; margin-top: 2px; }
-.cb-pct small { display: block; font-size: 9.5px; color: var(--dim-hi); }
 .cb-row2 { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
 .cb-retreat { flex: none; display: inline-flex; flex-direction: column; align-items: center; font-family: var(--font); font-size: 12px; color: var(--dim-hi);
   background: rgba(8,4,14,0.5); border: 1px dashed color-mix(in srgb, var(--dim) 70%, transparent); border-radius: 4px; padding: 5px 12px; min-height: 40px; cursor: pointer; }
@@ -4430,10 +4410,6 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
   .cb-stances, .cb-ends, .cb-ends.three { grid-template-columns: 1fr; }
   .cb-stance, .cb-end { padding: 8px 10px; }
   .cb-st-p { font-size: 17px; }
-  .cb-tacs { gap: 5px; }
-  .cb-tac { padding: 8px 3px 7px; }
-  .cb-n kbd { display: none; }
-  .cb-pct small { display: none; }
   /* A6-3a review: the habits line gets the full width; Yield / Retreat takes its own row below it */
   .cb-row2 { flex-direction: column; align-items: stretch; gap: 6px; }
   .cb-row2 .cb-read.sm { flex: none; }
@@ -4443,9 +4419,7 @@ button.bdx-open:hover { text-decoration: underline; text-underline-offset: 2px; 
   #combat-panel { padding: 8px 9px 10px; }
   .cb-plate { padding: 4px 6px 5px; }
   .cb-pn { font-size: 11px; }
-  .cb-pips i { width: 10px; }
   .cb-hpbar { width: 40px; }
-  .cb-b { font-size: 9.5px; }
 }
 @media (max-height: 560px) { #combat-stage { min-height: 120px; flex-basis: 40%; } #combat-panel { max-height: 64%; } }
 
@@ -4693,6 +4667,13 @@ body[data-layout="overlay"] .arts-view { display: flex; flex-direction: column; 
 .el-chip { display: inline-flex; align-items: center; gap: 3px; }
 .el-chip .ic { width: 12px; height: 12px; color: var(--el); }
 body[data-layout="overlay"] .el-chip span { display: none; }   /* icon-only in the 300px pane; the title names it */
+/* grade chips (library filter, 2026-09-30): each carries its grade's colour, so the filter reads like the art names */
+.rar-chip { --grade: var(--dim-hi); color: var(--grade); border-color: color-mix(in srgb, var(--grade) 42%, var(--border)); }
+.rar-chip:hover:not(.active) { color: var(--grade); border-color: color-mix(in srgb, var(--grade) 70%, var(--border)); }
+.rar-chip.active { color: var(--grade); border-color: var(--grade); background: color-mix(in srgb, var(--grade) 15%, transparent); }
+.rar-chip.g-yellow { --grade: var(--r-yellow); } .rar-chip.g-profound { --grade: var(--r-profound); }
+.rar-chip.g-earth { --grade: var(--r-earth); } .rar-chip.g-heaven { --grade: var(--r-heaven); }
+.rar-chip.g-immortal { --grade: var(--r-immortal); }
 .art-list { display: flex; flex-direction: column; gap: 4px; }
 .art-row { border: 1px solid var(--border); border-left: 2px solid color-mix(in srgb, var(--el) 60%, var(--border)); border-radius: 3px; }
 .art-row.open { border-color: color-mix(in srgb, var(--el) 50%, var(--border)); background: rgba(8,4,14,0.4); }
@@ -4710,3 +4691,145 @@ body[data-layout="overlay"] .el-chip span { display: none; }   /* icon-only in t
 .art-lock .ic { width: 11px; height: 11px; }
 @media (max-width: 420px) { .art-moves { grid-template-columns: 1fr; } }   /* phone: one move per row, the meta stays on one line */
 .art-empty { font-size: 11px; color: var(--dim-hi); font-style: italic; padding: 10px 2px; }
+
+/* UI review: 7.8 (2026-09-29) */
+/* ── Move combat on the battle page (Phase 42b, task 1.13a; renderer/game/combat.js; arts.md → "Move combat") ──────────
+   Plates: HP + combat Qi + status chips + its element. Panel: the 2×2 move grid, Circulate / Palm Strike / Retreat, the
+   parry prompt (a ring closing on a mark + a big Parry button), a turn log in words. */
+.cb-qi { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 11px; color: color-mix(in srgb, var(--gold) 70%, var(--text)); }
+.cb-qi [data-icon], .cb-qi .ic { width: 12px; height: 12px; }
+.cb-qibar { width: 64px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.cb-qibar b { display: block; height: 100%; background: var(--gold); transition: width .35s; }
+.cb-hp.foe { justify-content: flex-end; color: color-mix(in srgb, var(--purple) 55%, var(--text)); }
+.cb-hp.foe .cb-hpbar b { background: color-mix(in srgb, var(--purple) 70%, var(--text)); }
+.cb-sts { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; min-height: 0; }
+.cb-plate.foe .cb-sts { justify-content: flex-end; }
+.cb-st { font-size: 9.5px; letter-spacing: .3px; padding: 0 5px; border-radius: 2px; border: 1px solid currentColor; color: var(--dim-hi); background: rgba(8,4,14,0.55); }
+.cb-st b { font-weight: normal; opacity: .75; }
+.cb-st.bleed { color: #E8836F; } .cb-st.burn { color: var(--el-fire); } .cb-st.chill { color: var(--el-water); } .cb-st.entangle { color: var(--el-wood); }
+.cb-st.daze { color: var(--el-earth); } .cb-st.seal { color: var(--purple); } .cb-st.guardbreak { color: var(--red-text); } .cb-st.charge { color: var(--gold); }
+.cb-el { display: inline-flex; vertical-align: -2px; margin-right: 4px; color: var(--el, var(--gold)); }
+.cb-el .ic { width: 13px; height: 13px; }
+.cb-read .cb-el { margin: 0 3px 0 2px; }
+.cb-read .up { color: color-mix(in srgb, var(--jade) 75%, var(--text)); } .cb-read .down { color: var(--red-text); }
+.cb-mv-tag { display: inline-block; font-size: 10px; color: var(--text); border: 1px solid color-mix(in srgb, var(--el, var(--dim)) 55%, var(--border)); border-radius: 2px; padding: 0 5px; margin: 2px 3px 0 0; }
+/* 1.14a: what you know of a person you fight (root, arts seen, how they fight) — unseen arts are dashed "?" chips */
+/* UI review: 7.75 (2026-09-30, task 1.14a) */
+.cb-scout { margin: 10px 0 2px; padding-top: 7px; border-top: 1px solid color-mix(in srgb, var(--purple) 18%, transparent); }
+.cb-scout .cb-habits { display: inline; }
+.cb-mv-tag.unseen { color: var(--dim-hi); border-style: dashed; border-color: color-mix(in srgb, var(--dim) 60%, transparent); min-width: 18px; padding: 1px 5px; text-align: center; }
+.cb-scout .cb-hint { display: block; font-size: 11px; color: color-mix(in srgb, var(--text) 62%, var(--dim)); margin-top: 3px; }
+.cb-parry-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; margin: 4px 0 2px; }
+.cb-parry-mode .cb-note { flex-basis: 100%; }
+/* the last turn, in words */
+.cb-ll { font-size: 11.5px; line-height: 1.45; }
+.cb-ll.up { color: color-mix(in srgb, var(--jade) 70%, var(--text)); } .cb-ll.down { color: color-mix(in srgb, var(--red-text) 85%, var(--text)); } .cb-ll.qi { color: color-mix(in srgb, var(--gold) 70%, var(--text)); }
+/* your moves: a 2×2 grid */
+.cb-moves { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.cb-mv { display: flex; flex-direction: column; align-items: stretch; gap: 2px; text-align: left; font-family: var(--font); color: var(--text); cursor: pointer;
+  padding: 8px 10px 8px; min-height: 60px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--el, var(--gold)) 45%, var(--border));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--el, var(--gold)) 9%, rgba(24,12,30,0.7)), rgba(12,6,18,0.92)); transition: border-color .15s, transform .1s, background .15s; }
+.cb-mv:hover:not(:disabled) { border-color: var(--el, var(--gold)); }
+.cb-mv:active:not(:disabled) { transform: translateY(1px); }
+.cb-mv:disabled { opacity: .5; cursor: not-allowed; }
+.cb-mv.release { border-color: var(--gold); box-shadow: 0 0 12px color-mix(in srgb, var(--gold) 25%, transparent); }
+.cb-mv.empty { align-items: center; justify-content: center; border-style: dashed; color: var(--dim); font-size: 11px; cursor: default; background: none; }
+.cb-mv.empty small { display: block; font-size: 9.5px; }
+.cb-mv-h { display: flex; align-items: center; gap: 4px; }
+.cb-mv-h .cb-el { margin-right: 2px; }
+.cb-mv-n { font-size: 12.5px; flex: 1; min-width: 0; line-height: 1.25; overflow-wrap: anywhere; }   /* a move's name wraps, never cut (review 1.13a) */
+.cb-mv kbd { font-family: var(--font); font-size: 9px; color: var(--dim); border: 1px solid var(--border); border-radius: 2px; padding: 0 3px; }
+.cb-mv-m { font-size: 10.5px; color: var(--dim-hi); }
+.cb-mv-f { min-height: 13px; }
+.cb-mt { font-size: 9.5px; letter-spacing: .5px; text-transform: uppercase; }
+.cb-mt.up { color: color-mix(in srgb, var(--jade) 80%, var(--text)); } .cb-mt.down { color: var(--red-text); } .cb-mt.lock { color: var(--dim); text-transform: none; letter-spacing: 0; }
+.cb-retreat.qi { border-style: solid; border-color: color-mix(in srgb, var(--gold) 35%, var(--border)); color: var(--text); }
+.cb-retreat.qi small { color: var(--dim-hi); }
+.cb-retreat:disabled { opacity: .45; cursor: not-allowed; }
+.cb-flex { flex: 1; min-width: 0; }
+.cb-row2 { flex-wrap: wrap; }
+.cb-log.lines { display: block; }
+.cb-log.lines li { display: flex; align-items: flex-start; gap: 6px; margin: 2px 0; }
+.cb-log.lines li.up { color: color-mix(in srgb, var(--jade) 55%, var(--dim-hi)); } .cb-log.lines li.down { color: color-mix(in srgb, var(--red-text) 60%, var(--dim-hi)); }
+/* the parry prompt — on the field between you and it (user 2026-09-29); the closing ring is on the canvas around you */
+/* UI review: 7.75 (2026-09-29) */
+#combat-parry { position: absolute; left: 46%; top: 54%; transform: translate(-50%, -50%); z-index: 3; zoom: var(--cz, 1);
+  display: flex; flex-direction: column; align-items: center; gap: 5px; max-width: 46%; padding: 6px 10px 8px; border-radius: 10px;
+  background: radial-gradient(ellipse at center, rgba(8,4,14,0.78), rgba(8,4,14,0.4) 70%, rgba(8,4,14,0));
+  cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+#combat-parry.hidden { display: none; }
+#combat-parry .cb-parry-h { font-size: 11.5px; color: var(--red-text); }
+#combat-parry .cb-parry-sub { font-size: 10px; max-width: 200px; }
+#combat-parry .cb-parry-ring { width: auto; height: auto; margin: 0; }
+#combat-parry .cb-parry-ring:not(.calm) { display: none; }
+#combat-parry .cb-parry-ring.calm .cb-ring-bar { position: static; display: block; width: 120px; }
+#combat-parry .cb-parry-btn { min-width: 132px; min-height: 48px; padding: 6px 16px; font-size: 15px; transition: box-shadow .08s, border-color .08s, color .08s; }
+#combat-parry.hot .cb-parry-btn { color: #FFF4D0; border-color: #FFF4D0; box-shadow: 0 0 22px color-mix(in srgb, var(--gold) 75%, transparent), 0 0 4px #FFF4D0 inset; }
+#combat-parry.flash .cb-parry-btn { border-color: var(--jade); color: var(--jade); box-shadow: 0 0 20px color-mix(in srgb, var(--jade) 60%, transparent); }
+#combat-parry.miss .cb-parry-btn { border-color: var(--red); color: var(--red-text); box-shadow: none; }
+#combat-parry .cb-parry-fb { min-height: 14px; font-size: 11px; text-shadow: 0 1px 2px #000; }
+.cb-moves.locked .cb-mv-h, .cb-moves.locked .cb-mv-m { opacity: 0.45; }     /* locked by an incoming blow: the reason stays readable */
+.cb-moves.locked .cb-mt.lock { color: var(--red-text); opacity: 0.9; }
+@media (max-width: 420px) { #combat-parry { max-width: 40%; top: 56%; padding: 4px 6px 6px; gap: 3px; } #combat-parry .cb-parry-btn { min-width: 0; width: 100%; min-height: 44px; padding: 4px 10px; font-size: 13px; letter-spacing: 2px; } }
+#combat-panel button:disabled.cb-retreat { opacity: 0.45; cursor: default; }
+.cb-parry { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px 4px; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.cb-parry-h { font-size: 12.5px; color: var(--red-text); text-align: center; } .cb-parry-h b { font-weight: normal; color: var(--text); }
+.cb-parry-sub { font-size: 10.5px; color: var(--dim-hi); text-align: center; max-width: 440px; line-height: 1.4; }
+.cb-parry-ring { position: relative; width: 86px; height: 86px; margin: 4px 0; }
+.cb-parry-ring i { position: absolute; inset: 0; margin: auto; border-radius: 50%; }
+.cb-ring-mark { width: 44px; height: 44px; border: 2px solid color-mix(in srgb, var(--gold) 70%, transparent); box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 30%, transparent) inset; }
+.cb-ring { width: 44px; height: 44px; border: 2px dotted color-mix(in srgb, var(--red) 85%, var(--text)); transform-origin: center; }
+.cb-parry-ring.hot .cb-ring { border-style: solid; border-color: var(--gold); box-shadow: 0 0 14px color-mix(in srgb, var(--gold) 60%, transparent); }
+.cb-parry-ring.flash .cb-ring-mark { background: color-mix(in srgb, var(--jade) 35%, transparent); border-color: var(--jade); transition: background .2s; }
+.cb-parry-ring.miss .cb-ring-mark { background: color-mix(in srgb, var(--red) 30%, transparent); border-color: var(--red); }
+.cb-ring-bar { display: none; }
+.cb-parry-ring.calm .cb-ring { display: none; }          /* reduced motion: a filling bar instead of a closing ring */
+.cb-parry-ring.calm .cb-ring-bar { display: block; top: auto; bottom: -10px; width: 86px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.cb-parry-ring.calm .cb-ring-bar b { display: block; height: 100%; width: 0; background: var(--red); }
+.cb-parry-ring.calm.hot .cb-ring-bar b { background: var(--gold); }
+.cb-parry-hits { display: flex; gap: 5px; min-height: 8px; }
+.cb-parry-hits i { width: 8px; height: 8px; transform: rotate(45deg); border: 1px solid var(--dim); }
+.cb-parry-hits i.ok { background: var(--jade); border-color: var(--jade); } .cb-parry-hits i.no { background: var(--red); border-color: var(--red); }
+.cb-parry-btn { display: flex; flex-direction: column; align-items: center; min-width: 180px; min-height: 52px; padding: 8px 22px; font-family: var(--font); font-size: 16px; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--gold); cursor: pointer; border-radius: 4px; border: 1px solid var(--gold);
+  background: linear-gradient(180deg, rgba(64,40,12,0.8), rgba(26,14,4,0.95)); box-shadow: 0 0 16px color-mix(in srgb, var(--gold) 22%, transparent); }
+.cb-parry-btn small { font-size: 9.5px; letter-spacing: 1px; color: var(--dim-hi); text-transform: none; }
+.cb-parry-btn:active { transform: translateY(1px); }
+.cb-parry-fb { min-height: 16px; font-size: 12px; letter-spacing: 1px; }
+.cb-parry-fb.ok { color: var(--jade); } .cb-parry-fb.no { color: var(--red-text); }
+@container (max-width: 420px) { .cb-mv { min-height: 54px; padding: 6px 8px; } .cb-mv-n { font-size: 11.5px; } }
+
+/* ── 1.14b: study desks (Path → Arts), the sect library (Sect → Library), the clan library (Kin → Hall) ──
+   UI review: 7.6 (2026-09-30, task 1.14b) */
+.art-desks { display: flex; flex-direction: column; gap: 6px; }
+.art-desks .art-sec-h { margin-bottom: 0; }
+.art-study.locked { align-items: center; padding: 6px 9px; border-color: color-mix(in srgb, var(--border) 80%, transparent); }
+.art-study.locked > .ic { width: 14px; height: 14px; margin: 0; }
+.sv-card.sv-art { border-left: 2px solid color-mix(in srgb, var(--el, var(--purple)) 55%, var(--border)); }
+.sv-card.sv-art .sv-card-h > .ic { width: 14px; height: 14px; flex: none; align-self: center; color: var(--el, var(--gold)); }
+.sv-art-m { font-size: 10.5px; color: var(--dim-hi); font-variant-numeric: tabular-nums; margin-top: -2px; }
+.sv-sealed .fam-sec-title { opacity: .8; }
+/* a narrow Hall column (Expanded, Overlay): the action wraps under the name instead of squeezing it */
+.clan-lib .lib-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 6px 2px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.clan-lib .lib-t { flex: 1 1 150px; }
+.clan-lib .lib-row > .lg-buy, .clan-lib .lib-row > .lib-lock { margin-left: auto; }
+.lib-by { font-style: italic; }
+.lib-fold { display: inline-flex; width: 12px; height: 12px; margin-right: 4px; transition: transform .15s; }
+.lib-fold .ic { width: 12px; height: 12px; }
+.lib-write[open] .lib-fold { transform: rotate(90deg); }
+.sv-head .art-root { margin-left: 8px; }
+/* giving manuals: the shelf beside what you could give (stacked in narrow panes) */
+.sv-give-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 12px; }
+.sv-ownlib { margin-top: 14px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--gold) 22%, var(--border)); }
+.clan-lib .lib-row:last-child { border-bottom: 0; }
+.lib-g { flex: none; width: 16px; height: 16px; color: var(--el, var(--gold)); }
+.lib-g .ic { width: 16px; height: 16px; }
+.lib-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.lib-t .art-n { font-size: 12px; }
+.lib-m { font-size: 10.5px; color: var(--dim-hi); line-height: 1.35; }
+.lib-lock { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--dim-hi); }
+.lib-lock .ic { width: 12px; height: 12px; }
+.lib-write { margin-top: 8px; }
+.lib-write > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lib-write > summary::-webkit-details-marker { display: none; }
+.lib-write[open] > summary { margin-bottom: 4px; }

@@ -1,10 +1,14 @@
-// Real-app smoke scenario — A6-3a people on the battle page (docs/systems/combat.md → "A6-3a"): a spouse duel opens on the
-// fight step against an ink duelist (mirrored, dressed by temper), an exchange lost and won, the lethal end choice
-// (finish / spare with the reaction shown), the result card; defending the seat until one yields (raise / humble);
+// Real-app smoke scenario — A6-3a people on the battle page (docs/systems/combat.md → "A6-3a"), on moves since 1.14a
+// (arts.md → "42c part 1"): a spouse duel opens on the fight step against an ink duelist (mirrored, dressed by temper)
+// with the move grid, Yield, what you know of them (root, arts seen) and the parry window; a move plays a turn (both sides
+// act, per-element effects on the field, their art is then "seen"); the parry prompt on a person's blow; the lethal end
+// choice (finish / spare with the reaction shown), the result card; defending the seat until one yields (raise / humble);
 // the Challenge-the-Head tile's odds pill + the personfight "why" card; a step-down bracket that chains bouts through a
 // "Face the next" result card. Overlay / Expanded / Desktop / phone. Screenshots: scripts/smoke/out/duel-*.png.
 // Run: node scripts/smoke/cdp.js scripts/smoke/scenarios/duels.js
-module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEmulation }) => {
+module.exports = async (ctx) => {
+  const { ev, click, wait, shot, assert, sleep, emulate, clearEmulation } = ctx
+  const F = require('../fight-ui.js')(ctx)
   const pick = async mode => {
     await ev('combatView.isOpen() && (combatView.step = "result", combatView.close())')
     await click('#btn-layout'); await sleep(150)
@@ -12,7 +16,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   }
   const rng = v => ev(`globalThis.__r = globalThis.__r || Math.random; Math.random = () => ${v}`)
   const unrng = () => ev('Math.random = globalThis.__r')
-  const tac = async (t, n = 1) => { for (let i = 0; i < n && await ev('combatView.step === "fight"'); i++) { await ev('combatView.lockUntil = 0'); await click(`#combat-panel [data-tac="${t}"]`); await sleep(120) } }
+
   const clear = () => ev(`(() => { const f = gameState.get().family; f.fight = null; f.bracket = null; f.duel = null; f.headChallenge = null; f.stepDownOffer = null; gameState.get().health = 100; gameState._notify() })()`)
 
   await ev(`(async () => { await window.electron.saveSlot(0, gameState.buildDevSave('member_elder')) })()`)
@@ -35,15 +39,32 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     if (mode === 'phone') { await pick('desktop'); await emulate(390, 844); await ev('window.dispatchEvent(new Event("resize"))'); await sleep(500) }
     else await pick(mode)
     await clear()
-    await ev(`(() => { gameState.get().family.duel = { year: 1, reason: 'affair' }; gameState.resolveDuel('fight'); combatView.resume() })()`); await sleep(500)
+    await ev(`(() => { const f = gameState.get().family; if (f.spouse) f.spouse.vsYou = null; f.duel = { year: 1, reason: 'affair' }; gameState.resolveDuel('fight'); combatView.resume() })()`); await sleep(500)
     assert(await ev('combatView.isOpen() && combatView.mode === "person" && combatView.step === "fight"'), `${mode}: the duel opens on the fight step`)
     assert(await ev('combatView.scene.foe.person && combatView.scene.foe.flip && document.querySelector("#combat-panel .cb-retreat[data-tac=yield]") != null'), `${mode}: a mirrored duelist; Yield instead of Retreat`)
     assert(await ev('/A Duel to the Death/.test(document.getElementById("combat-title").textContent)'), `${mode}: the title names the fight`)
-    await rng(0.999); await tac('press'); await unrng(); await sleep(250)
-    assert(await ev('gameState.get().family.fight.them === 1 && !!document.querySelector("#combat-panel .cb-last.down")'), `${mode}: a lost exchange scores for them and says so`)
-    await ev('combatView.scene.freeze(0.45, { type: "ex", you: "guard", them: "press", won: false, dmg: 4 })'); await shot(`duel-fight-${mode}`)
+    assert(await ev('document.querySelectorAll("#combat-panel .cb-moves > *").length === 4 && !!document.querySelector("#combat-panel [data-move=circulate]") && !document.querySelector("#combat-panel [data-tac=press]")'), `${mode}: your four moves + Circulate (no Press/Guard/Feint)`)
+    assert(await ev('!!document.querySelector("#combat-panel .cb-scout") && /0 of \\d seen/.test(document.querySelector("#combat-panel .cb-scout").textContent) && document.querySelectorAll("#combat-panel .cb-mv-tag.unseen").length > 0'), `${mode}: what you know of them: their root, no arts seen yet`)
+    assert(await ev('document.querySelectorAll("#combat-panel [data-parrymode]").length === 3 && !!document.querySelector("#combat-plates .cb-plate.foe .cb-el") && !!document.querySelector("#combat-plates .cb-plate.you .cb-qi")'), `${mode}: the parry window on the first turn; plates carry their element and your Qi`)
+    if (mode === 'desktop') { await ev('combatView.scene.freeze(0)'); await shot('duel-open-desktop'); await ev('combatView.scene.start()') }
+    await ev('(() => { const m = gameState.get().family.fight.m; m.foe.moves = [m.foe.moves[0]]; m.foe.qi = 100 })()')   // they answer with their first art
+    await rng(0.5); await F.move(); await unrng(); await sleep(250)
+    assert(await ev('gameState.get().family.fight.m.turn === 2 && document.querySelectorAll("#combat-panel .cb-last .cb-ll").length >= 2'), `${mode}: a move plays the turn; both sides' actions are told`)
+    assert(await ev('/1 of \\d seen/.test(document.querySelector("#combat-panel .cb-scout")?.textContent || "") || gameState.get().family.fight.m.events.every(e => e.side === "you")'), `${mode}: the art they used is now seen`)
+    await ev('(() => { const m = gameState.get().family.fight.m, ev = m.events.find(e => e.side === "foe") || m.events[0]; combatView.scene.freeze(0.45, combatView._sceneEv(ev)) })()'); await shot(`duel-fight-${mode}`)
     await ev('combatView.scene.start()')
-    await rng(0.0); await tac('feint', 4); await unrng(); await sleep(250)
+    if (mode === 'desktop') {                                     // the parry prompt on a person's blow
+      await ev(`(() => { const m = gameState.get().family.fight.m; m.foe.moves = ['palm_strike']; m.foe.charging = null; gameState.get().arts.parryMode = 'normal'
+        const T = GameState.prototype._mbTelegraphed; globalThis.__tg = T; GameState.prototype._mbTelegraphed = () => true })()`)
+      await ev('combatView.lockUntil = 0'); await click('#combat-panel [data-move="circulate"]'); await sleep(350)
+      assert(await ev('!!combatView.qte && !document.getElementById("combat-parry").classList.contains("hidden")'), 'desktop: a person\'s blow opens the parry prompt on the field')
+      await ev('combatView.qte.t0 = performance.now(); combatView.scene.freeze(0.3)'); await sleep(200); await shot('duel-parry-desktop')
+      await ev('combatView.scene.start()')
+      await ev('GameState.prototype._mbTelegraphed = globalThis.__tg')
+      for (let i = 0; i < 20 && await ev('!!combatView.qte'); i++) await sleep(200)
+      await sleep(600)
+    }
+    await F.win()
     assert(await ev('combatView.step === "end" && document.querySelectorAll("#combat-panel .cb-end").length === 2'), `${mode}: a won duel offers finish / spare`)
     assert(await ev('/grudge/.test(document.querySelector("#combat-panel .cb-end.spare")?.textContent)'), `${mode}: sparing a psycho shows the grudge it leaves`)
     await ev('combatView.scene.freeze(0, null, { foe: "down" })'); await shot(`duel-end-${mode}`)
@@ -76,7 +97,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     await ev('document.getElementById("_challenge-head")?.scrollIntoView({ block: "center" })'); await sleep(150)
     await shot('duel-clan-tile-expanded')
     await click('#_challenge-head .odds-in'); await sleep(400)
-    assert(await ev('!document.getElementById("breakdown-overlay").classList.contains("hidden") && /Fight odds/.test(document.querySelector(".bd-pop")?.textContent) && /grudge/.test(document.querySelector(".bd-pop")?.textContent)'), 'the why card lists both powers, the grudge included')
+    assert(await ev('!document.getElementById("breakdown-overlay").classList.contains("hidden") && /Fight odds/.test(document.querySelector(".bd-pop")?.textContent) && /grudge/.test(document.querySelector(".bd-pop")?.textContent) && /estimate/.test(document.querySelector(".bd-pop")?.textContent)'), 'the why card: the estimate, both powers, the grudge included')
     await shot('duel-why-expanded')
     await ev('document.querySelector("[data-bd-close]")?.click()'); await sleep(150)
 
@@ -90,7 +111,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     await sleep(500)
     assert(await ev('combatView.scene.foe.ink.slots().robe !== combatView.scene.you.ink.slots().robe'), 'a hot-blooded (crimson) rival never wears your robe')
     assert(await ev('combatView.isOpen() && /Defending/.test(document.getElementById("combat-title").textContent) && /Until one yields/.test(document.getElementById("combat-panel").textContent)'), 'defending the seat, until one yields')
-    await rng(0.0); await tac('guard', 4); await unrng(); await sleep(250)
+    await F.win()
     assert(await ev('document.querySelectorAll("#combat-panel .cb-end.raise, #combat-panel .cb-end.humble").length === 2'), 'raise / humble offered')
     await ev('combatView.scene.freeze(0, null, { foe: "down" })'); await shot('duel-end-yield-desktop')
     await click('#combat-panel .cb-end.humble'); await sleep(300)
@@ -110,15 +131,14 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     await ev(`(() => { GameState.prototype._headDecidesLethal = globalThis.__hdl })()`)
     assert(await ev('gameState.get().family.fight?.kind === "stepdown" && combatView.isOpen() && /Contest for the Head Seat · Round 1/.test(document.getElementById("combat-title").textContent)'), 'the step-down contest: your first bout, round 1')
     await ev('combatView.scene.freeze(0)'); await shot('duel-stepdown-desktop')
-    await rng(0.0); await tac('press', 4); await unrng(); await sleep(250)
-    await click('#combat-panel .cb-end.raise'); await sleep(300)
+    await F.win('raise')
     const chained = await ev('!!document.querySelector("#combat-panel [data-nextbout]")')
     const settled = await ev('!gameState.get().family.bracket')
     assert(chained || settled, `after your bout: ${chained ? 'the next opponent waits' : 'the contest is settled'}`)
     await ev('combatView.scene.freeze(0.6, { type: "spare" }, { foe: "down" })'); await shot('duel-between-desktop')
     if (chained) {
       await click('#combat-panel [data-nextbout]'); await sleep(400)
-      assert(await ev('combatView.step === "fight" && gameState.get().family.fight?.you === 0'), 'Face the next: a fresh bout')
+      assert(await ev('combatView.step === "fight" && gameState.get().family.fight?.m?.turn === 1'), 'Face the next: a fresh bout')
     }
     await ev('combatView.step = "result"; combatView.close()')
   }

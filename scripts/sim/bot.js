@@ -180,8 +180,8 @@ class Bot {
     // (Was once per run until 2.6d — every later life silently fell back to the default 'many'.)
     // 1.8b-3a: casual keeps the "Ask me" default and answers each wish; afk delegates ('many').
     if (this._plannedFor !== this.s.self.id) { this._plannedFor = this.s.self.id; this.gs.setFamilyPlanning(this.profile === 'active' ? 'some' : this.profile === 'casual' ? 'ask' : 'many') }
-    // 1.8b-3b: a fight you're in is played out exchange by exchange. 'active' reads the opponent (best tactic, and
-    // yields a hopeless lethal fight when they'd likely accept); casual/afk pick at random.
+    // 1.8b-3b / 1.14a: a fight you're in is played on moves (the default policy, like beast battles) and the parry QTE
+    // lands at a per-profile rate; 'active' yields a hopeless lethal fight when they'd likely accept.
     if (f.fight?.kind === 'beast') return this.battle()   // Phase 35: beast battles have their own end choice
     if (f.fight?.over === 'won') {       // A6-3a: a won fight waits for the end choice. 'active' makes friends where it can
       const ch = this.gs.personFightChoices()   // (a debt), and finishes / humbles the rest; casual/afk pick at random.
@@ -191,11 +191,18 @@ class Bot {
       return this.do('fight_end_' + pick, this.gs.personFightFinish(pick))
     }
     if (f.fight) {
-      const info = this.gs.fightInfo()
-      const ranked = Object.entries(info.tactics).sort((a, b) => b[1] - a[1])
-      let t = this.profile === 'active' ? ranked[0][0] : ranked[Math.floor(this.rand() * ranked.length)][0]
-      if (this.profile === 'active' && info.lethal && ranked[0][1] < 0.2 && info.yieldAccept > 0.5) t = 'yield'
-      return this.do('fight_' + (t === 'yield' ? 'yield' : 'exchange'), this.gs.fightExchange(t))
+      const info = this.gs.fightInfo(), m = info.m
+      if (m?.pending) {
+        const rate = { active: 0.6, casual: 0.25 }[this.profile] ?? 0.1
+        return this.do('fight_parry', this.gs.fightParry(Array.from({ length: m.pending.hits }, () => this.rand() < rate)))
+      }
+      if (this.profile === 'active' && info.lethal && m.turn === 1 && !this._yieldTried && info.yieldAccept > 0.5 &&
+          this.gs.personFightOdds(info.opp, info.kind, true).chance < 0.2) {
+        this._yieldTried = true
+        return this.do('fight_yield', this.gs.fightExchange('yield'))
+      }
+      this._yieldTried = false
+      return this.do('fight_move', this.gs.fightMove(this.gs._mbPolicy(m)))
     }
     // 1.8b-3b: a lover's ultimatum — 'active' keeps its marriage safe; casual/afk choose at random.
     const ult = (f.lovers || []).find(l => l.ultimatum)
@@ -532,11 +539,17 @@ class Bot {
       const pick = !ch.bindLock ? 'bind' : ch.ids.includes('finish') ? 'finish' : 'flee'
       return this.do('beast_' + pick, this.gs.beastFightFinish(pick))
     }
-    const info = this.gs.fightInfo()
-    const ranked = Object.entries(info.tactics).sort((a, b) => b[1] - a[1])
-    if (this.profile === 'active' && info.stance === 'slay' && (s.health ?? 100) <= info.wound * 2 + info.lossWound) return this.do('beast_retreat', this.gs.fightExchange('retreat'))
-    const t = this.profile === 'active' ? ranked[0][0] : ranked[Math.floor(this.rand() * ranked.length)][0]
-    return this.do('beast_exchange', this.gs.fightExchange(t))
+    // Phase 42b: move combat. The default policy picks the move; the parry QTE lands at a per-profile rate.
+    const m = fi.m
+    if (m?.pending) {
+      const rate = { active: 0.6, casual: 0.25 }[this.profile] ?? 0.1
+      return this.do('beast_parry', this.gs.beastParry(Array.from({ length: m.pending.hits }, () => this.rand() < rate)))
+    }
+    if (m) {
+      if (this.profile === 'active' && fi.stance === 'slay' && (s.health ?? 100) <= 20) return this.do('beast_retreat', this.gs.fightExchange('retreat'))
+      return this.do('beast_move', this.gs.beastMove(this.gs._mbPolicy(m)))
+    }
+    return this.do('beast_retreat', this.gs.fightExchange('retreat'))
   }
 
   // Hunt when idle, healthy and no beast is waiting: the deepest open ground whose cost is under a fifth of its stones.

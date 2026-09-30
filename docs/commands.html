@@ -64,7 +64,7 @@
 
   <nav>
     <a href="#setup">Setup</a><a href="#dev">Dev</a><a href="#test">Tests</a><a href="#bot">Sim bot</a>
-    <a href="#smoke">Smoke tests</a><a href="#build">Builds</a><a href="#android">Android</a><a href="#ios">iOS</a>
+    <a href="#export">Data export</a><a href="#smoke">Smoke tests</a><a href="#build">Builds</a><a href="#android">Android</a><a href="#ios">iOS</a>
   </nav>
 
   <section id="setup">
@@ -95,6 +95,22 @@
       <p>Runs every scenario check in <code>scripts/sim/checks/</code>. Each one sets up an exact game situation
       (a marriage crisis, a tournament, a succession) and prints <code>ok</code> or <code>FAIL</code>. New files
       in that folder are picked up automatically. To run just one check: <code>node scripts/sim/checks/family-marriage.js</code></p></div>
+  </section>
+
+  <section id="export">
+    <h2>Data export <span class="tag t-dev">dev</span></h2>
+    <p class="intro">Exports the game's declarative data (<code>assets/data/*.js</code>) to language-neutral JSON for the
+    Unity/C# port of the sim. One JSON per source file, plus a <code>manifest.json</code>. It only reads the repo and
+    writes to <code>ascendant/Assets/Data/</code>; it never touches <code>assets/</code>.</p>
+    <div class="cmd"><div class="cmd-head"><code>npm run export:data</code><button class="copy">Copy</button></div>
+      <p>Regenerates the JSON. Non-finite numbers (the Ascension stage's <code>qiCap: Infinity</code>) are preserved as
+      <code>{"__number__":"Infinity"}</code>. Function-valued data (the random events' <code>apply</code>) cannot be JSON
+      and is listed under <code>manifest.logicToPort</code> for hand-porting to C#.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run export:data:check</code><button class="copy">Copy</button></div>
+      <p>The drift check: exits 1 if the JSON is stale, missing or orphaned. Run it after changing any
+      <code>assets/data/*.js</code> file.</p></div>
+    <p class="intro">Add <code>--report</code> to print the logic-to-port list: <code>node scripts/export-sim-data.js --report</code>.
+    Full context is in the 3D port plan and <code>ascendant/docs/</code>.</p>
   </section>
 
   <section id="bot">

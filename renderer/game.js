@@ -310,6 +310,9 @@
     function step(now) {
       const dt = Math.min((now - lastTick) / 1000, 2)
       lastTick = now
+      // 2026-09-30: tell the engine whether the player is actually at the game (same test NotificationSystem uses) —
+      // away (hidden to the tray / unfocused) makes a spouse's affection drift far slower.
+      gameState.setPresent(!document.hidden && document.hasFocus())
       gameState.tick(dt)
       cultSys.tick(dt)
       expSys.tick(dt)
@@ -498,7 +501,7 @@
     arena: s => ArenaView.render(s, document.getElementById('tab-arena'), gameState, arenaHelpers),   // A6-3b
     arts: s => ArtsView.render(s, document.getElementById('tab-arts'), gameState, { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmtTime }),   // Phase 42
     family: s => renderFamily(s), clan: s => renderClan(s), hall: s => renderHall(s), sect: s => renderSect(s),
-    'sect-missions': s => renderSect(s, 'sect-missions'), 'sect-halls': s => renderSect(s, 'sect-halls'),
+    'sect-missions': s => renderSect(s, 'sect-missions'), 'sect-library': s => renderSect(s, 'sect-library'), 'sect-halls': s => renderSect(s, 'sect-halls'),
     'sect-disciples': s => renderSect(s, 'sect-disciples'), 'sect-war': s => renderSect(s, 'sect-war'),
     pack: s => renderPack(s), craft: s => renderCraft(s), events: s => renderEvents(s), banter: s => renderBanter(s),
   }
@@ -697,7 +700,7 @@
 
   // ── 家 Kin → Clan + Hall (1.8b-4: renderer/game/clan-view.js) ──
   let clanView = null, hallView = null
-  const kinHelpers = () => ({ esc: escHtml, fmt, stageLabel: personStageLabel, bondLabel, confirm: showConfirm, flash: flashMessage,
+  const kinHelpers = () => ({ esc: escHtml, fmt, fmtTime, stageLabel: personStageLabel, bondLabel, confirm: showConfirm, flash: flashMessage,
     wire: wireKinButtons, go: view => openHallOverlay(view), epitaphFor, fillEpitaph, openSoul: () => soulView.open() })
   function renderClan(s) { (clanView ||= new ClanView(gameState, kinHelpers())).render(s) }
   function renderHall(s) { (hallView ||= new HallView(gameState, kinHelpers())).render(s) }
@@ -1820,10 +1823,15 @@
         if (item.type === 'manual' && invQty > 0) {   // Phase 42: study it (or say why not), or look at it in Path → Arts
           const lock = gameState.artStudyLock(item.art), art = ARTS[item.art], known = s.arts.known[item.art]
           btnsHTML += lock === 'stage' ? `<span class="pack-item-hint">Too profound: opens at ${escHtml(stageShortName(art.minStage))}.</span>`
-            : lock === 'busy' ? `<span class="pack-item-hint">You are studying another manual.</span>`
+            : lock === 'busy' ? `<span class="pack-item-hint">Every study desk is in use (${gameState.studySlots()} at your realm).</span>`
+            : lock === 'studying' ? `<span class="pack-item-hint">Already on a study desk.</span>`
             : lock === 'maxed' ? `<span class="pack-item-hint">Mastered: sell the spare.</span>`
             : `<button class="pack-btn-use" data-studyart="${item.art}">${known ? 'Study to deepen' : 'Study'} · ${fmtTime(gameState.artStudySeconds(item.art))}</button>`
           btnsHTML += `<button class="pack-btn-equip" data-gotoarts>See it in Arts</button>`
+          // Giving it to your sect (user 2026-09-30): what it pays, or that the shelf has it already
+          const give = gameState.sectDonateInfo()?.manuals.find(x => x.id === item.art)
+          if (give) btnsHTML += give.lock ? `<span class="pack-item-hint">Your sect's library has it.</span>`
+            : `<button class="pack-btn-equip" data-giveart="${item.art}">Give to the sect${give.contribution ? ` · +${give.contribution} Contribution` : ''}</button>`
         }
         if (isEquip && !equipped && invQty > 0) {
           btnsHTML += `<button class="pack-btn-equip" data-equip="${id}">Equip</button>`
@@ -1894,10 +1902,15 @@
         }, 'Discard')
       })
     })
+    el.querySelectorAll('[data-giveart]').forEach(btn => btn.addEventListener('click', () => {
+      const id = btn.dataset.giveart
+      const go = () => { const r = gameState.donateManualToSect(id); flashMessage(r.ok ? `You give the ${ARTS[id].name} manual to your sect${r.contribution ? ` (+${r.contribution} Contribution)` : ''}.` : 'The library already has it', r.ok ? 'positive' : 'negative') }
+      if (gameState.get().arts.known[id]) go(); else showConfirm(`Give away ${ARTS[id].name}?`, 'You have not learned this art yet. Once given, the manual is the sect\'s.', go, 'Give it')
+    }))
     el.querySelectorAll('[data-studyart]').forEach(btn => btn.addEventListener('click', () => {
       const r = gameState.studyArt(btn.dataset.studyart)
       if (r.ok) flashMessage(`You begin studying ${ARTS[btn.dataset.studyart].name}.`, 'positive')
-      else flashMessage({ stage: 'Too profound for your realm', busy: 'You are studying another manual' }[r.reason] || 'Cannot study', 'negative')
+      else flashMessage({ stage: 'Too profound for your realm', busy: 'Every study desk is in use', studying: 'Already on a study desk' }[r.reason] || 'Cannot study', 'negative')
     }))
     el.querySelectorAll('[data-gotoarts]').forEach(btn => btn.addEventListener('click', () => nav.go('arts')))
     el.querySelectorAll('[data-sell]').forEach(btn => {

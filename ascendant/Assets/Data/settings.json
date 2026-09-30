@@ -1,0 +1,302 @@
+{
+  "SETTINGS_DEFS": [
+    {
+      "id": "displayNumbers",
+      "label": "Numbers",
+      "group": "Display",
+      "type": "choice",
+      "default": "formatted",
+      "options": [
+        {
+          "value": "raw",
+          "label": "Raw"
+        },
+        {
+          "value": "formatted",
+          "label": "1.2K"
+        },
+        {
+          "value": "scientific",
+          "label": "1.2e3"
+        }
+      ]
+    },
+    {
+      "id": "fontSize",
+      "label": "Panel text",
+      "group": "Display",
+      "type": "choice",
+      "default": 13,
+      "options": [
+        {
+          "value": 11,
+          "label": "Small"
+        },
+        {
+          "value": 13,
+          "label": "Normal"
+        },
+        {
+          "value": 15,
+          "label": "Large"
+        }
+      ]
+    },
+    {
+      "id": "colorblind",
+      "label": "Color vision",
+      "group": "Display",
+      "type": "choice",
+      "default": "off",
+      "options": [
+        {
+          "value": "off",
+          "label": "Off"
+        },
+        {
+          "value": "deuteranopia",
+          "label": "Deutan"
+        },
+        {
+          "value": "protanopia",
+          "label": "Protan"
+        }
+      ],
+      "hint": "Red/green become vermillion/teal"
+    },
+    {
+      "id": "bgOpacity",
+      "label": "Background",
+      "group": "Window",
+      "type": "range",
+      "default": 1,
+      "min": 0.2,
+      "max": 1,
+      "step": 0.05,
+      "hint": "Lower lets your desktop show through"
+    },
+    {
+      "id": "banterFreq",
+      "label": "Chatter",
+      "group": "Banter",
+      "type": "choice",
+      "default": "normal",
+      "options": [
+        {
+          "value": "off",
+          "label": "Off"
+        },
+        {
+          "value": "rare",
+          "label": "Rare"
+        },
+        {
+          "value": "normal",
+          "label": "Norm"
+        },
+        {
+          "value": "chatty",
+          "label": "Chatty"
+        }
+      ]
+    },
+    {
+      "id": "profanity",
+      "label": "Swearing",
+      "group": "Banter",
+      "type": "choice",
+      "default": "uncensored",
+      "options": [
+        {
+          "value": "uncensored",
+          "label": "Uncut"
+        },
+        {
+          "value": "masked",
+          "label": "F***"
+        }
+      ]
+    },
+    {
+      "id": "animSpeed",
+      "label": "Animation",
+      "group": "Motion",
+      "type": "choice",
+      "default": 1,
+      "options": [
+        {
+          "value": 0.5,
+          "label": "0.5×"
+        },
+        {
+          "value": 1,
+          "label": "1×"
+        },
+        {
+          "value": 2,
+          "label": "2×"
+        }
+      ]
+    },
+    {
+      "id": "reducedMotion",
+      "label": "Reduce motion",
+      "group": "Motion",
+      "type": "choice",
+      "default": false,
+      "options": [
+        {
+          "value": false,
+          "label": "Off"
+        },
+        {
+          "value": true,
+          "label": "On"
+        }
+      ],
+      "hint": "Hides particles and aura rings"
+    },
+    {
+      "id": "canvasBrightness",
+      "label": "Sprite glow",
+      "group": "Motion",
+      "type": "choice",
+      "default": 1,
+      "options": [
+        {
+          "value": 0.7,
+          "label": "70%"
+        },
+        {
+          "value": 1,
+          "label": "100%"
+        },
+        {
+          "value": 1.3,
+          "label": "130%"
+        }
+      ]
+    },
+    {
+      "id": "artStyle",
+      "label": "Sprite art",
+      "group": "Motion",
+      "type": "choice",
+      "default": "ink",
+      "options": [
+        {
+          "value": "ink",
+          "label": "Ink"
+        },
+        {
+          "value": "classic",
+          "label": "Classic"
+        }
+      ],
+      "hint": "Ink is the painted art; Classic is the original ASCII"
+    },
+    {
+      "id": "closeButton",
+      "label": "Close button",
+      "group": "Desktop",
+      "type": "choice",
+      "default": "quit",
+      "options": [
+        {
+          "value": "quit",
+          "label": "Quit"
+        },
+        {
+          "value": "tray",
+          "label": "Hide to tray"
+        }
+      ],
+      "hint": "Hide to tray keeps cultivating in the background; quit it from the tray icon"
+    },
+    {
+      "id": "notifyBreakthrough",
+      "label": "Breakthrough ready",
+      "group": "Notifications",
+      "type": "choice",
+      "default": false,
+      "options": [
+        {
+          "value": false,
+          "label": "Off"
+        },
+        {
+          "value": true,
+          "label": "On"
+        }
+      ]
+    },
+    {
+      "id": "notifyExpedition",
+      "label": "Expedition returned",
+      "group": "Notifications",
+      "type": "choice",
+      "default": false,
+      "options": [
+        {
+          "value": false,
+          "label": "Off"
+        },
+        {
+          "value": true,
+          "label": "On"
+        }
+      ]
+    },
+    {
+      "id": "notifyWar",
+      "label": "War news",
+      "group": "Notifications",
+      "type": "choice",
+      "default": false,
+      "options": [
+        {
+          "value": false,
+          "label": "Off"
+        },
+        {
+          "value": true,
+          "label": "On"
+        }
+      ]
+    },
+    {
+      "id": "notifyBeastTamed",
+      "label": "Beast tamed",
+      "group": "Notifications",
+      "type": "choice",
+      "default": false,
+      "options": [
+        {
+          "value": false,
+          "label": "Off"
+        },
+        {
+          "value": true,
+          "label": "On"
+        }
+      ]
+    },
+    {
+      "id": "notifyDeath",
+      "label": "Life has ended",
+      "group": "Notifications",
+      "type": "choice",
+      "default": false,
+      "options": [
+        {
+          "value": false,
+          "label": "Off"
+        },
+        {
+          "value": true,
+          "label": "On"
+        }
+      ]
+    }
+  ]
+}

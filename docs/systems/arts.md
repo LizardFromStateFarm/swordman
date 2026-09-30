@@ -2,7 +2,7 @@
 _Covers (planned): assets/data/arts.js (ARTS, rarity, elements, movesets) · game-state.js (art library, study, loadout,
 the move-combat engine replacing Press/Guard/Feint, selling) · renderer/game/arts-view.js (Path → Arts) · combat.js
 (battle page moves) · battle-scene.js (move effects) · backpack (Sell) · Phase: 42 · Spec written 2026-09-29 (user
-request) · Status: **42-0 ✅ (selling) · 42a ✅ (arts core, 2026-09-29)** · 42b–d not built_
+request) · Status: **42-0 ✅ (selling) · 42a ✅ (arts core) · 42b ✅ (beasts on moves + scene effects, 2026-09-29) · 42c part 1 ✅ (people on moves, 2026-09-30) · 42c part 2 ✅ (rivals, libraries, study desks, 2026-09-30)** · 42d (QA & Balance, task 1.15) not built_
 
 **User request (2026-09-29):** "I hate that" (Press/Guard/Feint: a small ±18% lever, and useless against an opponent
 with no habit). Replace it with **Pokemon-like combat**: you equip moves from your **Arts**. There should be many, many arts
@@ -24,7 +24,7 @@ extra items**.
 | **42-0** | **Sell items** (Pack → Sell). Independent and small, so it goes first | — |
 | **42a** | **Arts core:** `ARTS` data (the combat library), manuals as items, study, library, loadout (4 moves + passive slots by realm), breakthrough grants, drop wiring, **Path → Arts** screen, `root.elements` | 42-0 (manual resale) |
 | **42b** | **Move combat engine + battle page**, beasts first: HP, combat Qi (no cooldowns), the parry QTE, elements, statuses, turn order, opponent AI, beast movesets, prepare-panel estimate, "why" card, move effects on the scene | 42a |
-| **42c** | **People on the new engine:** duels, head challenges, step-down bouts, road slaughter, the Arena. Person movesets (`p.arts`), scouting, rival counters, arts as Arena prizes, sect library | 42b |
+| **42c** | **People on the new engine** (split 2026-09-30): **part 1 = task 1.14a** ✅ duels, head challenges, step-down bouts, road slaughter, the Arena on moves; person movesets (`p.arts`), temper AI, scouting · **part 2 = task 1.14b** rival counters, raise → taught / finish → manual, sect + clan libraries, arts as Arena prizes | 42b |
 | **42d** | **QA & Balance** (CLAUDE.md): sim bot policy, multi-seed sim, checks, smoke in all modes, UX walkthrough, dist + build:web | 42c |
 | later (23E) | **Non-combat arts** (Solitary Lineage, Tortoise Breath, Heaven-Evading, Blood Refinement…) as content on the 42a library. No new infrastructure | 42a |
 
@@ -93,7 +93,7 @@ flavour line each, no emoji, the effect in plain words.
 ### Manuals, study, mastery
 - A manual is an item: `ITEMS['manual_<artId>']`, category `'manual'` (a new Pack chip **Arts**), generated from ARTS so
   the two never drift.
-- **Study** a manual from Pack or from Path → Arts. Studying runs one at a time on a real-time timer (by rarity: Yellow
+- **Study** a manual from Pack or from Path → Arts. (Since 1.14b: several at once — study desks by realm, see "42c part 2".) Studying runs one at a time on a real-time timer (by rarity: Yellow
   1 min … Immortal 2 h), and **Comprehension** speeds it up (`s.comprehension` already exists and is otherwise unused).
   The manual is consumed. Your realm must be ≥ `minStage`, otherwise the manual is locked with "Too profound: opens at
   <realm>". Studying runs while you're away (a timer, like expeditions).
@@ -104,7 +104,9 @@ flavour line each, no emoji, the effect in plain words.
 
 ### Loadout
 - **4 active move slots** and **N passive slots** (ART_PASSIVE_SLOTS by realm). Locked slots show "opens at <realm>".
-- Swap freely outside a fight. The loadout is locked while a fight is underway (the battle page says so).
+- **Swap freely, even mid-fight.** A battle runs on the deck it began with (`_mbYou` snapshots your slots), so a change
+  to your loadout never alters a fight already underway — it only applies to your next one. (2026-09-30: the old
+  "loadout locked mid-fight" rule was removed as confusing; it was never needed.)
 - An empty move slot falls back to Palm Strike, so you can never enter a fight with no move.
 - (Polish, 42d) two saved loadouts ("Hunt" / "Duel").
 
@@ -237,7 +239,7 @@ flavour line each, no emoji, the effect in plain words.
 - A save paused mid-fight on the old engine: that fight restarts on the new engine at its current Health (it can't be
   converted exactly). Tested by a check.
 - The FIGHT_TACTICS / FIGHT_STYLE / `_exchangeChance` path is removed in 42c after every fight kind has moved over
-  (`FIGHT_STYLE` survives as the AI temper weights).
+  (`FIGHT_STYLE` survives as the AI temper weights). **Done in 1.14a** (see "42c part 1 as built").
 
 ## Tests (to write while building)
 - checks/arts.js: study gates, mastery, loadout rules, slots by realm, breakthrough offers, drops, migration.
@@ -267,15 +269,236 @@ flavour line each, no emoji, the effect in plain words.
   Comprehension, never below half), `artStudyLock(id)`, `studyArt(id)` / `cancelStudy()` (the manual goes back) /
   `_finishStudy` (tick(); timestamps, so it completes after a closed game too), `_learnArt(id, how)` (known → +1 mastery),
   `_grantManual(id, where)`, `_rollArt(weights, element)` (prefers unknown arts 80%, never signatures/basics/grants),
-  `_offerArts(realm)` + `chooseArtOffer(offerId, artId)`, `setArtSlot(kind, index, id|null)` (swaps; refuses mid-fight,
-  locked slot, wrong kind, unknown), `passiveSlots(stage)`, `rootElements()`.
+  `_offerArts(realm)` + `chooseArtOffer(offerId, artId)`, `setArtSlot(kind, index, id|null)` (swaps; never refused
+  mid-fight since 2026-09-30 — a battle keeps its own `you.slots` snapshot; still refuses a locked slot, wrong kind,
+  unknown), `passiveSlots(stage)`, `rootElements()`.
 - **Sources wired**: breakthrough into a new realm → offer of 3 (one of your element; waits, never expires); Layer 4 and 7
   grant Drifting Step Palm / Rising Qi Kick; expeditions (2% + 1%/tier); beast **Finish** → its signature (6–25% by
   tier) else 5% a manual of its element; Arena **first title** → the champion's art, any win 6% a manual. Sect library,
   events, duelists and the clan library are 42c.
 - **UI** `renderer/game/arts-view.js` (Path → Arts, `#tab-arts`): offer card, root line, study desk (live countdown via
-  `ArtsView.tickInPlace`), 2×2 moves + passive strip (locks name the realm), library (found count, kind/element chips,
-  rows → effect/lore/slot buttons; picking a slot filters to equippable arts and scrolls to them). Attention:
+  `ArtsView.tickInPlace`), 2×2 moves + passive strip (locks name the realm), library (found count + "· N shown",
+  kind / **grade** / element chip rows, rows → effect/lore/slot buttons; picking a slot filters to equippable arts and
+  scrolls to them). The **grade** row (2026-09-30) is `Any grade` + the five grades, each chip tinted with its grade's
+  colour (`g-<grade>` → `--r-*`); it hides while picking, as the kind row does. Attention:
   `arts-offer` / `arts-study` (ready) and `arts-slot` (idle). Six **element icons** `el_*` + element/grade CSS tokens.
 - **Tests**: `scripts/sim/checks/arts.js` (44) · smoke `scripts/smoke/scenarios/arts.js` (Overlay / Expanded / Desktop /
   phone, early + late). Not done here: battle use (1.13), the sim bot doesn't study/equip (1.15), a tutorial hint.
+
+---
+
+## 42b part 1 as built (task 1.13a, 2026-09-29): beast fights on moves
+User picks (2026-09-29): split 1.13 → **1.13a** engine + parry + battle UI, **1.13b** per-element move effects on the scene;
+parry window "fair, ~300 ms".
+- **Engine** (game-state.js → "Phase 42b"): a battle `fi.m` is plain data; `_mbStep(b, rng, provider, youId)` plays a
+  turn (order = wards/counters first, then priority, then Swift; Chilled acts last; ties to you) and pauses at an enemy
+  attack for the parry QTE (`provider` returns null → `b.pending`). `_mbAct` handles every move type (strike, multi,
+  charge (gather → release next turn), finisher, drain, ward (+reflect), counter, buff, hex, heal, Circulate), statuses
+  (bleed/burn tick; burn stacks ×3; daze 40% skip; entangle +8 Qi; seal one move; guardbreak ×1.3), lifesteal, qiDrain,
+  selfDamage. `_mbDamage` = power × dmgScale × e^(Δpower/333) × element × root affinity × Might/Ward × spread × crit.
+  `_mbAi` = habit-weighted beast choice; `_mbPolicy` = the default player policy (estimate + sim bot).
+- **Live API**: `startBeastFight` builds `fi.m`; `beastMoves()` (the buttons); `beastMove(id)` (reasons: qi / sealed /
+  charging / unknown / decide / parry); `beastParry([bool per hit])` (logs your parry rate, `s.arts.parryLog`, last 30);
+  `setParryMode('normal'|'wide'|'off')`; Retreat still `fightExchange('retreat')` (parting blow = its Rake). Win →
+  `fi.over = 'won'` → the unchanged end choice. HP = `s.health`; Drive = half damage, thrown down at 10, never below 1.
+  Mastery through use: `_artUse` (+1 xp per use; level at ART_MASTERY_XP).
+- **Estimate**: `_mbEstimate` plays the fight 300× with its own seeded RNG (never touches Math.random; cached per
+  loadout/health/parry rate) at **your recent parry rate** (default 30%). `beastFightPreview` stance cards read it
+  (chance, died, turns, hurt, wound = its Rake before parrying).
+- **Battle page** (combat.js): plates with Health + combat Qi + status chips + the beast's element/HP; prepare step with the
+  element, known arts, estimate per stance and the **Parry window** choice; fight step = last turn in words, 2×2 move grid
+  (keys 1–4), Circulate (C), Palm Strike if unequipped, Retreat; the **parry prompt** (a ring closing on a mark, Parry
+  button / Space / tap, per-hit pips, "Parried! / Too soon / It lands"; a slower first-time tutorial lead; reduced motion
+  = a filling bar). Scene: each side's move is one `ex` event (`nohit`, `foeDmg` floaters). Breakdown `beastfight`
+  rewritten for the estimate.
+- **Diverged from the spec**: (1) the parry window lives on the battle page (`s.arts.parryMode`), **not ⚙ Settings** —
+  settings must stay presentation-only (settings.md invariant #2) and the window changes difficulty. (2) **Your defence
+  has no element** (elements only boost your attacks + root affinity): a starter-only character facing a beast that
+  overcomes its root was near 0%. So the vengeful beast's "counter-element art" was retired (it keeps its +power).
+  (3) Elements ×1.4 / ×0.75 (not ×1.5 / ×0.67). (4) Per-beast HP multipliers (BEAST_HP_MULT) because movesets differ.
+- **Balance (first pass, parry 30%, a well-kept loadout)**: same realm ≈ 35–100% by beast (fox 75, eagle 64, tiger 60,
+  qilin 35, hound 39), one realm up ≈ 84–100%, the dragons 16–17% at their gate and ~90% two realms up. Starter-only
+  loadouts are weaker (fox 63% at Mortal). Parrying is a big lever (0% → 60% parry swings an even fight ~20→80%).
+  Tune in 1.15 (the knobs: MOVE_COMBAT.foeDmgMult/foeHpMult, BEAST_HP_MULT).
+- **Sim bot**: `battle()` uses `_mbPolicy` + parries at 60% (active) / 25% (casual) / 10%. sim:quick clean.
+- **Tests**: checks/combat.js rewritten for beasts (estimate vs real play, Qi, no cooldowns, parry, elements, mastery,
+  Drive/Slay, retreat, old-engine migration) · talismans.js winFight on moves · smoke scenarios/combat.js (moves, parry
+  prompt, a missed vs an on-the-mark parry, the dragon death) · duels/arena smoke still pass (people keep the old engine
+  until 1.14).
+
+---
+
+## 42b part 2 as built (task 1.13b, 2026-09-29): per-element move effects on the scene
+- **Event → scene**: `CombatView._sceneEv` adds `fx = { side, id, el, type, hits, mask (1 landed / 0 parried per hit),
+  parried, em, crit, status, heal, gather, release, dazed, claw }` to each `ex` event. BattleScene draws an event with
+  `fx` by element (`_fxBack` wards behind the figures, `_fxFront` blows in front, additive "lighter" blending so Qi reads as
+  light over the dense dot figures; stones and blood opt out). Without `fx` (people fights, old engine until 1.14) the A6
+  press/guard/feint art plays unchanged. Motion: attacks lunge (multi-hit = afterimages, earth = a stamp), wards brace.
+- **Elements differ by shape** (colour-blind safe): metal = flying sword-light → two crossing cuts + sparks · wood = shoots
+  racing along the ground → four thorned vines bursting up · water = crested wave → three frost rings + six-armed ice
+  crystals + frost dust · fire = ember comet → flame burst + leaning tongues + embers · earth = the caster stamps → three
+  dotted boulders fall, crumble, fragments + dust ring · neutral = the gold crescent + clash burst · a beast's plain Rake
+  = claws tinted by its element. Multi-hit spreads impacts u 0.36–0.62.
+- **Meaning**: a parried hit breaks on a six-sided ward in front of the defender (jade for you) and the attack's motes fly
+  back; overcoming adds an element ring (×1.28 size); resisted = ×0.72 and greyed; a telling blow flares white; release /
+  finisher ×1.2. Drain: motes flow back to the attacker. Non-attacks: heal (jade spiral + ground ring), buff (climbing
+  ring), Circulate (motes drawn to the dantian), gathering a charge (element orb), hex (a status sigil flies, breaks into
+  the status or fizzles grey). Wards by element: blades · woven vines · flowing water arc · flame wall · rising stones.
+- **Floaters** gain a small line naming why: overcomes / resisted / telling blow / the status taken; "Parried +25 Qi";
+  "+N Health".
+- **Status auras** (`scene.setStatus(side, st)` from `_plates`, incl. `charge: <element>`): burn embers · chill frost
+  ring + snow + rime · bleed drops · entangle vine helix · daze circling stars · seal rotating ring · guardbreak cracked
+  arc · charge orb. Cleared when the fight ends.
+- **Parry on the field** (1.13a UX debt): the QTE loop calls `scene.telegraph({ k, hot, el })` each frame with the panel
+  ring's exact k (timestamps, never frames), so a dotted ring closes on your figure and the beast draws back gathering
+  light; `parryFlash(ok)` on a press (ward on the mark / red broken ring too soon). Cleared when answered or on Step back.
+- **Reduced motion**: no flying projectiles or closing ring (impacts, auras and the brightening mark stay, static).
+- **Perf**: a busy frame (three-hit fire + five auras) ≈ 2 ms. **Tests**: smoke `scenarios/battle-fx.js` (effect sheet
+  pages + all four modes); combat.js smoke unchanged and passing.
+
+### Parry pacing + the on-field prompt (user 2026-09-29, after 1.13b)
+- **Fewer prompts** ("parries happen a lot"): `_mbTelegraphed(b, art, rng)` decides once per enemy blow (stored on the
+  plan entry, so resuming after the QTE never re-rolls): charges, finishers and the beast's strongest arts
+  (≥ `MOVE_COMBAT.parryBigShare` 0.9 of its top power × hits) **always** open a parry window; any other blow only
+  `parryPromptChance` (35%). An untelegraphed blow lands (`ev.unwarned`, log: "Too quick to parry."). The live fight,
+  the estimate and the sim bot share `_mbStep`, so the odds stay honest. To compensate, **`foeDmgMult` 1 → 1.15**.
+  sim:quick after: no beast deaths, win/finish counts unchanged.
+- **The prompt is on the field** ("instead of blocking all your moves with a pop-up"): `#combat-parry` sits in
+  `#combat-stage` between the figures (the attack's name, PARRY / Space, per-hit pips, feedback; glows when the window
+  is open; jade on a parry, red when missed). The closing ring is only on the canvas now (BattleScene.telegraph);
+  Reduced motion keeps a filling bar in the control. The move panel stays in view, locked ("parry first") under a red line
+  naming the blow (the first time: how to parry).
+- **Beast end cards say why karma moves**: "+3 karma · a man-eater: ending it is a good deed", "−6 karma · a guardian
+  beast: its death weighs on you", "+1 karma · mercy"…, and at 0 / 100 what actually applies. The user reported the card
+  and the result disagreeing; not reproducible (card = result for every nature). The only real divergence was the
+  0 / 100 clamp, now shown. checks/combat.js pins card = result for all natures at 50 / 0 / 100.
+
+---
+
+## 42c part 1 as built (task 1.14a, 2026-09-30): people on moves
+User pick (2026-09-30): split 1.14 → **1.14a** every fight kind on moves (this) and **1.14b** the rival/library layer (rival
+counters, raise → taught / finish → manual, sect + clan libraries, duelist arts as Arena prizes).
+- **Every fight is on moves.** `_startFight(kind, opp, lethal, extra)` builds a person's battle (`fi.m = _mbNewPerson(opp,
+  lethal)`); beasts pass theirs in `extra`. The live calls are generic: `fightMoves()` / `fightMove(id)` / `fightParry(hits)`
+  (`beastMoves` / `beastMove` / `beastParry` stay as aliases). `fightExchange` only ends a fight now: a beast's Retreat, a
+  person's Yield (refused mid-parry; a refused yield is a line in the turn log). `_mbLive` → `_mbLivePerson` for people: a
+  win waits for the unchanged end choice (`fi.over = 'won'`), a loss / death runs `_finishFight` (every kind's own outcome).
+- **Stances.** A lethal fight = `'slay'` (0 Health kills you). "Until one yields" = `'yield'`: full damage, you are beaten at
+  `PERSON_FIGHT.yieldThrownHp` (30) and never go below 1; they yield at `yieldFoeFrac` (30%) of their HP — the loss stays a
+  wound (was ~90 Health when only you stopped early). **Wounds carry**: an Arena run or a step-down bracket wears you down
+  bout to bout (the Arena's `ARENA_MIN_HEALTH` lock still applies).
+- **A person's arts** `personArts(p)` → `p.arts = { moves, passives, element, realm, champ }`: rolled with `_mbRng` seeded by
+  id + realm (never Math.random), kept on the record, re-rolled when they cross a realm (`_personRealm` = the
+  ART_PASSIVE_SLOTS thresholds). Moves: `PERSON_MOVE_COUNT` (2 / 3 / 4 by stage), their first element's starter + one real
+  attack + temper picks (`PERSON_TEMPER_ARTS` × rarity `PERSON_ART_WEIGHTS` — a notch below your offers — × 4 for their own
+  elements), all within their realm, never a signature; passives = half your slots at their realm (`PERSON_PASSIVE_SHARE`).
+  An Arena **champion** carries their ring's signature art (`_arenaChampionRing`). Root elements: `_personElements` sets
+  `p.root.elements` (Persons.rootElements, hashed by id). In a fight they also have Palm Strike.
+- **Their side** `_mbFoePerson(p)`: HP `PERSON_FIGHT.hpBase` 100 (like your Health; `hpPerRealm` 0), power = the A6-3a
+  person power (realm, root, temper, a grudge's +30), their root's first element, Swift/Qi from passives, a parry roll from
+  their FIGHT_STYLE guard (`parryPerGuard`, max 30%), `dmgMult` 1.15 (the same compensation beasts got for fewer parry
+  prompts) × `grudgeDmgMult` 1.2 against you when they hold a grudge. **Power spread**: people use `PERSON_FIGHT.powerSpread`
+  700 (`fighter.spread`, read by `_mbDamage`) instead of a beast's 333, so one stage ≈ ±25% like the old logistic.
+- **Temper AI** (`_mbAi`): FIGHT_STYLE press/guard/feint weights as for beasts, × `PERSON_TEMPER_AI` by move type (the
+  hothead's strikes, the arrogant's charges, a stoic's wards and a coward's heals once hurt, the schemer's hexes, the lazy
+  one's Circulate); Palm Strike ×0.5 like a beast's Rake. Text: `fighter.the` ("the Spirit Fox" / "Wei"), `fighter.person`.
+- **Scouting** `personScouting(p)`: their root (always), which of their arts you have seen (`p.vsYou.movesSeen`, filled from
+  the arts they use on you, even a telegraphed one you parry), habits + a parry word once you have fought them
+  (`record.fought > 0`). `fightInfo()` for a person: `m`, `scout`, `record`, `feud`, `bracket`, `habitsKnown`, `hint`.
+- **Odds everywhere are the estimate.** `personFightOdds(opp, kind, lethal?)` = `_personEstimate` (the same `_mbEstimate`
+  Monte Carlo as beasts, `PERSON_FIGHT.estimateRuns` 150, your Health rounded to 5 so regen keeps the cache; up to 120
+  cached) + the power parts: family cards, Challenge-the-Head, Arena rows (a cold six-ring roster ≈ 80 ms in Electron,
+  cached 0.2 ms), `duelChance()` (was 0.5 ± 0.08 per stage). `_mbArt` is memoized and `_mbClone` replaces the JSON copy per run.
+- **Removed**: FIGHT_TACTICS, FIGHT_TO, FIGHT_EDGE, FIGHT_EXCHANGE_RANGE, FIGHT_WOUND, DUEL_TO, BATTLE_TO, DUEL_BASE_WIN /
+  PER_STAGE / RANGE, `_exchangeChance`, `_tacticEdge`, `_clampExchange`, `_beastAfterExchange`, the tactics UI + CSS, the
+  exchange pips. **Migration** (`_ensurePhase42Fields`): a person fight saved without `m` restarts on moves at your Health; the
+  race fields (p / to / you / them) are dropped. Also fixed: `_ensure` no longer drops a road (slaughter) fight on load (its
+  stranger lives on the fight, not in the registry).
+- **Battle page** (combat.js): one `_plates()` and one `_fight()` for both; a person's panel adds `_scout()` ("What you know":
+  root, arts seen as dashed ? chips, how they fight), the feud + record lines, the parry window on turn 1 (people have no
+  prepare step), the stakes chip + the Arena purse / bracket line + "they yield at N". Keys 1–4 / C / Space in every fight.
+  The why card (`personfight`) is the estimate, both powers, the blow ratio, what it can cost, root / arts seen / grudge notes.
+- **Dev presets** (`buildDevSave`) get a realm kit (rolled like a person's arts, mastery 3) so late-game test lives can fight.
+- **Balance (first pass, probe `scripts/sim/probe-person-fights.js`)**: a strong kit at an even stage ≈ 50–65% (up to ~80% with
+  the best arts of your realm), one stage up ≈ 25–45%, a realm up rarely; starter-only characters are weak. The sim bot
+  still fights on starter arts (it lost its 6 head challenges in sim:quick) — it learns study/loadout in 1.15.
+- **Tests**: checks/people-moves.js (29: seeded arts, champion signature, temper leanings, scouting, stances, wounds carry,
+  Yield, estimate vs a 2,000-run MC, grudge, migration) + every fight check ported to `scripts/sim/fight-helpers.js`
+  (`playFight(gs, 'win'|'lose')`); smoke duels / arena / fights / succession play fights through the real buttons with
+  `scripts/smoke/fight-ui.js`. UI review **7.75 PASS**.
+
+---
+
+## 42c part 2 as built (task 1.14b, 2026-09-30): rivals, libraries, study desks
+User request with it (2026-09-30): "the higher your realm the more arts you can learn at once" → **study desks**; the user
+picked the slower curve.
+- **Study desks** `ART_STUDY_SLOTS` (Mortal / Qi Condensation 1 · Foundation / Core 2 · Nascent Soul + 3; `studySlots(stage)`).
+  `s.arts.study` → `s.arts.studies = [{ artId, startedAt, endsAt, src: 'manual'|'clan' }]` (migration: an old study becomes
+  the first desk). `artStudyLock` → `'busy'` (every desk taken) / `'studying'` (that art is already on a desk);
+  `cancelStudy(artId?)` stops one desk (a manual goes back; a clan study just ends); `_finishStudies()` in tick finishes
+  each desk on its own time (timestamps, closed or open). A desk already running is never cut short. Path → Arts: busy desks
+  with countdowns, one free-desk card listing ready manuals, locked desks naming their realm; the header counts desks and
+  names the next realm. Attention "manuals to study" fires while a desk is free. Also fixed: the stale "Battles still use
+  Press / Guard / Feint" note under the loadout.
+- **Rival counters.** `_mbLivePerson` counts your landed blows by element on the person (`p.vsYou.els`). After a fight they
+  survive (`_finishFight` → `_rivalTrain`), one who holds a grudge and was struck ≥ `RIVAL_COUNTER_MIN_BLOWS` (3) times with
+  one element sets `p.counter = { vs, el, year }` (`el` overcomes `vs`) and the log says "…now trains in Water arts, against
+  your Fire". `personArts` then swaps their last pick for an attack art of `el` (seeded) and `_mbFoePerson` fights as `el`,
+  so your arts of `vs` show "resisted" (×0.75). Their root is unchanged. Scouting (`personScouting().counter`) marks the
+  counter art as known (word travels); "What you know" says "Fire root, trained in Water against your Fire" (or "honed" when
+  their root already is it); the Why card names it; the result card of a grudge-making choice warns of it. This replaced the
+  retired 1.13a "vengeful beast counter-art" idea for people: it works because it changes *their* defensive element (your
+  defence stays element-neutral).
+- **Raise → taught, finish → their manual.** `personFightChoices()` gains `teach` (the raise reaction is a debt and they know
+  an art you don't) and `finishManual` (`PERSON_FINISH_MANUAL` 0.6, when they have a non-signature art).
+  `personFightFinish` grants the manual (`_teachableArts` / `_lootableArts`; never a signature) and returns `art`; the end
+  cards say "in thanks, they teach you one of their arts" / "their manual: 60% chance"; the result card names it.
+- **Sect library** (joined sects; a founded sect has none yet): `SECT_ART_ELEMENTS` per sect + neutral, grades opened by
+  rank (`SECT_LIBRARY_GRADE_BY_RANK`: Outer yellow · Inner/Core profound · Elder/Peak earth · Grand heaven), priced in
+  Contribution (`SECT_LIBRARY_PRICE` 40 / 120 / 350 / 900). `sectLibrary()`, `buySectArt(id)` (reasons no_sect / rank /
+  contribution); spending Contribution never lowers the rank you hold. UI: **Sect → Library** sub-view (grade sections, a
+  sealed grade names the rank, "Take the manual" + shortfall, known/held tags) + a Library tile in Overview → Duties.
+- **Clan library** (`clan.library = [{ artId, by, gen, year }]`, on the clan record, so it outlives you; migration in
+  `_ensurePhase34Fields`). `writeClanArt(id)` (Spirit Stones by grade, `CLAN_LIBRARY_WRITE_COST` 60 … 4000; not the basics;
+  once per art; a chronicle line), `studyFromClan(id)` (a desk, no manual, `CLAN_LIBRARY_STUDY_FRAC` ½ the time; only arts
+  you don't know; reasons known / stage / busy / studying), `clanLibraryInfo()`. UI: **Kin → Hall → Clan library** (the
+  shelf with who wrote each and in which generation, Study or why not, a fold to write one of yours in with a confirm).
+- **Tests**: checks/rivals-libraries.js (34) · checks/arts.js desks · smoke scenarios/libraries.js (desks / sect library /
+  clan library in 4 modes, buy, clan study, write, the rival's counter + Why, raise → taught) · arts smoke on desks.
+  UI review **7.6 PASS** (+ polish). Not done: the sim bot doesn't study, buy or write (1.15); founded sects have no library.
+
+### Giving manuals to your sect (user 2026-09-30, after 1.14b)
+"Contribute your extra art books for the sect to learn." User pick: Contribution + war strength, and founders get a library.
+- **Shelf**: a joined sect's `s.sect.shelf` (stays with the sect when you leave; a log line says so) · a founded sect's
+  `s.ownSect.library`. Entries `{ artId, by, year }`; one copy of an art per shelf.
+- `sectDonateInfo()` (the manuals in your pack: Contribution `SECT_DONATE_CONTRIB` by grade for a joined sect, 0 for your own;
+  the war strength it would add; "a spare" = an art you know; "shelved") · `donateManualToSect(id)` (the manual leaves your
+  pack) · `sectShelfWar()` = Σ `SECT_SHELF_WAR` by grade (1 / 2 / 4 / 7 / 12%), capped `SECT_SHELF_WAR_CAP` 25%.
+- **War**: a multiplier on your side of the roll, in the shown odds *and* the real roll: `memberWarPower().power` ×(1 + shelf)
+  (`bonus` untouched, so the shelf alone never counts as taking part) and `_resolveSectWar` playerPower ×(1 + shelf);
+  `sectWarOdds().parts` gains "Arts you gave the library" / "Arts in your sect library" (×).
+- **Founders** study a shelved art they don't know at `SECT_SHELF_STUDY_FRAC` ½ the time with no manual (`studyFromSect`, a
+  desk with `src: 'sect'`). A member can't take a book back down.
+- **UI**: Sect → Library (member): "Given to the library" + "Give a manual" above the grades. A founder's library sits at the
+  bottom of **Sect → Halls** (a fifth Sect sub-tab overflows Overlay), the give list folded, one compact line when empty.
+  Pack manual rows: "Give to the sect · +N Contribution" (confirm for an art you haven't learned). Attention (idle): "A spare
+  manual: …" → the library. Path → Arts desks say "From your sect library".
+- **Tests**: checks/rivals-libraries.js (+15: pay, shelf, one copy, war by grade + cap, not "taking part", member + own odds vs a
+  4,000-war Monte Carlo of the real roll, founder study, leaving) · smoke scenarios/libraries.js (give, Pack button, nudge,
+  founder library in 4 modes, Halls sub-tabs still fit) · sect.js smoke (member tabs + Halls ≤ 3 screens).
+
+### Library grade filter + loadout unlocked mid-fight (user 2026-09-30, after 1.14b)
+Two small fixes from a play session ("cannot queue things to study while a fight message is up, though I wasn't in a fight").
+- **Grade filter**: the Path → Arts library gains a third chip row — `Any grade` + the five grades, each chip tinted with
+  its grade's colour (`renderer/game/arts-view.js` `gradeChip`; CSS `.rar-chip` / `.g-<grade>`). The heading appends
+  "· N shown" while a filter narrows the list. Hidden while picking a slot (the kind row already did this), which keeps
+  the list viewport in Overlay.
+- **The loadout is never locked mid-fight.** The old rule refused `setArtSlot` (and slot-picking) while `s.family.fight`
+  was set — which bit whenever a fight was pending but you had stepped back to another tab, and read as a bug. It was
+  never needed: `_mbYou` now snapshots the whole move-slot array (`you.slots`), and `fightMoves()` shows **that** deck, so
+  a change to your loadout only ever affects your *next* fight. Studying was never gated (a probe confirmed it).
+- **Tests**: `checks/arts.js` + `checks/combat.js` now assert the loadout change is allowed mid-fight **and** that the
+  live battle's grid stays on the deck it began with; smoke `scenarios/arts.js` gains the grade-filter loop and resets to
+  Overlay after the mode loop. `npm test` · checks **767 ok** · arts smoke (4 modes + phone) zero console errors.
+- Review: fresh reviewer agent **7.7 PASS** (three `[polish]` → UX Debt: "Earth" is both a grade and an element with no
+  row caption; the third filter row crowds the narrow panes; the count's tooltip).

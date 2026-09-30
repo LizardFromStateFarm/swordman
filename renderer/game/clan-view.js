@@ -214,7 +214,7 @@ class HallView extends KinViewBase {
     const own = clan === this._clan(s)
     this.el.innerHTML = `<div class="fam-view kin-view">
       <div class="fam-col">${this._records(s, clan)}${this._soul()}${own ? this._thisLife(s) + this._firsts(clan) : ''}${this._tree(s, clan)}${this._chronicle(clan)}</div>
-      <div class="fam-col">${own ? this._legacies(clan) : ''}</div></div>`
+      <div class="fam-col">${own ? this._library(s) + this._legacies(clan) : ''}</div></div>`
     this._paint()
   }
 
@@ -268,6 +268,29 @@ class HallView extends KinViewBase {
 
   // 'First to reach Nascent Soul' → 'Reach Nascent Soul', 'First war won' → 'War won'
   _firstLabel(l) { const t = l.replace(/^First (to )?/, ''); return t.charAt(0).toUpperCase() + t.slice(1) }
+
+  // 1.14b (arts.md → "42c part 2"): the clan library — arts written in by the clan's lives, studied at half the time with no
+  // manual by anyone of the clan who doesn't know them; below, the arts you could write in (Spirit Stones by grade).
+  _library(s) {
+    const L = this.gs.clanLibraryInfo?.(), h = this.h
+    if (!L) return ''
+    const lockText = { known: 'You know it', stage: null, busy: 'Every study desk is in use', studying: 'On a study desk now' }
+    const shelf = L.shelf.map(x => {
+      const a = ARTS[x.artId]
+      const act = !x.lock ? `<button class="lg-buy" data-libstudy="${h.esc(x.artId)}">Study<span>${h.fmtTime(x.seconds)}</span></button>`
+        : `<span class="lib-lock">${x.lock === 'known' ? Icon('check') : Icon('lock')}${h.esc(x.lock === 'stage' ? `Opens at ${stageShortName(a.minStage)}` : lockText[x.lock] || '')}</span>`
+      return `<div class="lib-row el-${a.element}"><span class="lib-g">${Icon(ART_ELEMENTS[a.element].icon)}</span>
+        <span class="lib-t"><span class="art-n r-${a.rarity}">${h.esc(a.name)}</span><span class="lib-m">${h.esc(ArtsView.meta(this.gs, a.id))}</span><span class="lib-m lib-by">written by ${h.esc(x.by)}, generation ${x.gen}</span></span>${act}</div>`
+    }).join('') || '<div class="fam-empty">Nothing is written yet. An art you write in here outlives you: every heir of the clan can study it, at half the time, without a manual.</div>'
+    const open = this.libOpen
+    const write = L.writable.length ? `<details class="lib-write"${open ? ' open' : ''}><summary class="fa-quiet"><span class="lib-fold">${Icon('play')}</span>Write one of your arts into the library <span class="fam-count">${L.writable.length} you know · you hold ${h.fmt(Math.floor(L.stones))} stones</span></summary>
+      ${L.writable.map(x => { const a = ARTS[x.id], short = x.cost - L.stones
+        return `<div class="lib-row el-${a.element}"><span class="lib-g">${Icon(ART_ELEMENTS[a.element].icon)}</span>
+          <span class="lib-t"><span class="art-n r-${a.rarity}">${h.esc(a.name)}</span><span class="lib-m">${h.esc(ART_RARITY[a.rarity].name)} grade${short > 0 ? ` · <span class="down">${h.fmt(short)} stones short</span>` : ''}</span></span>
+          <button class="lg-buy" data-libwrite="${h.esc(x.id)}" ${short > 0 ? 'disabled' : ''}>Write<span>${h.fmt(x.cost)} stones</span></button></div>` }).join('')}</details>` : ''
+    return `<section class="fam-sec clan-lib"><div class="fam-sec-title"><span>Clan library</span><span class="fam-count">${L.shelf.length} art${L.shelf.length === 1 ? '' : 's'}</span></div>
+      ${shelf}${write}</section>`
+  }
 
   _legacyValue(id, v) {
     switch (id) {
@@ -338,6 +361,19 @@ class HallView extends KinViewBase {
   _click(e) {
     const buy = e.target.closest('[data-buy]'), man = e.target.closest('[data-manual]')
     if (e.target.closest('[data-ca="soul"]')) return this.h.openSoul()
+    const ls = e.target.closest('[data-libstudy]'), lw = e.target.closest('[data-libwrite]'), sum = e.target.closest('.lib-write > summary')
+    if (sum) { this.libOpen = !sum.parentElement.open; return }                      // keep the fold open across re-renders
+    if (ls && !ls.disabled) {
+      const r = this.gs.studyFromClan(ls.dataset.libstudy)
+      return this.h.flash(r.ok ? `You take ${ARTS[ls.dataset.libstudy].name} down from the clan library.` : ({ busy: 'Every study desk is in use', known: 'You know it already', stage: 'Too profound for your realm' }[r.reason] || 'Not now'), r.ok ? 'positive' : 'negative')
+    }
+    if (lw && !lw.disabled) {
+      const id = lw.dataset.libwrite, cost = CLAN_LIBRARY_WRITE_COST[ARTS[id].rarity]
+      return this.h.confirm(`Write ${ARTS[id].name} into the clan library?`, `It costs ${cost} Spirit Stones. It stays with the clan after you are gone: every heir can study it at half the time, without a manual.`, () => {
+        const r = this.gs.writeClanArt(id)
+        this.h.flash(r.ok ? `${ARTS[id].name} is written into the clan library.` : ({ stones: 'Not enough Spirit Stones' }[r.reason] || 'Not now'), r.ok ? 'special' : 'negative')
+      }, 'Write it')
+    }
     if (buy && !buy.disabled) {
       const r = this.gs.buyLegacy(buy.dataset.buy)
       if (r.ok) this.h.flash(`${CLAN_LEGACIES[buy.dataset.buy].name} rises to level ${r.level}.`, 'special')

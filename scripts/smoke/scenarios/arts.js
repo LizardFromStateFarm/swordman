@@ -31,15 +31,19 @@ module.exports = async ({ ev, click, wait, assert, sleep, shot, emulate, clearEm
     assert(await ev('document.documentElement.scrollWidth <= innerWidth + 1 && (() => { const p = document.getElementById("tab-arts").getBoundingClientRect(); return [...document.querySelectorAll("#tab-arts .art-slot, #tab-arts .art-row")].every(n => n.getBoundingClientRect().right <= p.right + 1) })()'), `${mode}: slots and library rows fit the panel`)
     await shot(`arts-${mode}`)
   }
+  // back to Overlay (the default active-play mode) for the interaction shots below (2026-09-30: they were landing in Desktop)
+  await ev('document.getElementById("btn-layout").click()'); await sleep(150)
+  await ev('document.querySelector(\'.layout-opt[data-layout="overlay"]\').click()'); await sleep(600)
+  await goArts()
   // keep an offered art
   await ev('document.querySelector("#tab-arts [data-offer]").click()'); await sleep(300)
   assert(await ev('!gameState.get().arts.offers.length && !!gameState.get().arts.known.north_sea_sovereign'), 'Keep this art learns it and clears the offer')
   // study from the desk, then stop
   await ev('document.querySelector("#tab-arts [data-study]").click()'); await sleep(300)
-  assert(await ev('!!gameState.get().arts.study && !!document.querySelector("#tab-arts .art-study.on [data-arts-left]")'), 'studying shows the countdown')
+  assert(await ev('gameState.get().arts.studies.length === 1 && !!document.querySelector("#tab-arts .art-study.on [data-arts-left]")'), 'studying shows the countdown')
   await shot('arts-studying')
   await ev('document.querySelector("#tab-arts [data-cancel-study]").click()'); await sleep(300)
-  assert(await ev('!gameState.get().arts.study'), 'Stop puts the manual back')
+  assert(await ev("!gameState.get().arts.studies.length"), "Stop puts the manual back")
   // equip: click a slot → pick → Equip here
   await ev('document.querySelector("#tab-arts .art-moves [data-slot=\\"move:3\\"]").click()'); await sleep(300)
   assert(await ev('!!document.querySelector("#tab-arts .art-picking") && [...document.querySelectorAll("#tab-arts .art-list .art-row")].every(r => !/Passive ·/.test(r.textContent))'), 'choosing a move slot filters the library to moves')
@@ -52,6 +56,19 @@ module.exports = async ({ ev, click, wait, assert, sleep, shot, emulate, clearEm
   await ev('document.querySelector("#tab-arts [data-f=\\"el:water\\"]").click()'); await sleep(250)
   assert(await ev('[...document.querySelectorAll("#tab-arts .art-list .art-row")].every(r => r.classList.contains("el-water"))'), 'the element filter narrows the library')
   await ev('document.querySelector("#tab-arts [data-f=\\"el:all\\"]").click()'); await sleep(250)
+  // grade filter (2026-09-30): each grade chip shows only that grade; "Any grade" restores the library
+  for (const g of ['yellow', 'profound', 'earth', 'heaven', 'immortal']) {
+    await ev(`document.querySelector('#tab-arts [data-f="rar:${g}"]').click()`); await sleep(140)
+    assert(await ev(`[...document.querySelectorAll("#tab-arts .art-list .art-row")].every(r => !!r.querySelector(".art-n.r-${g}"))`), `the ${g} grade filter shows only ${g} arts`)
+  }
+  await ev('document.querySelector("#tab-arts [data-f=\\"rar:all\\"]").click()'); await sleep(200)
+  assert(await ev('document.querySelectorAll("#tab-arts .art-list .art-row").length > 0'), 'Any grade restores the full library')
+  // a close-up of the grade row (filtered to the top row's grade so the list has something in it)
+  const g0 = await ev('document.querySelector("#tab-arts .art-list .art-n").className.match(/r-(\\w+)/)[1]')
+  await ev(`document.querySelector('#tab-arts [data-f="rar:${g0}"]').click()`); await sleep(180)
+  await ev('document.querySelector("#tab-arts .art-filters")?.scrollIntoView({ block: "start" })'); await sleep(180)
+  await shot('arts-grade-filter')
+  await ev('document.querySelector("#tab-arts [data-f=\\"rar:all\\"]").click()'); await sleep(180)
   await ev('document.querySelector("#tab-arts [data-open=\\"frost_lotus_palm\\"]").click()'); await sleep(250)
   assert(await ev('!!document.querySelector("#tab-arts .art-row.open .art-lore")'), 'a library row opens to its lore and slot buttons')
   await ev('document.querySelector("#tab-arts .art-row.open")?.scrollIntoView({ block: "center" })'); await sleep(250)
@@ -63,7 +80,7 @@ module.exports = async ({ ev, click, wait, assert, sleep, shot, emulate, clearEm
   await ev('document.querySelector("#tab-pack .pack-item-main").click()'); await sleep(300)
   await shot('arts-pack')
   await ev('document.querySelector("#tab-pack [data-studyart]")?.click()'); await sleep(300)
-  assert(await ev('!!gameState.get().arts.study'), 'Study from Pack starts the timer')
+  assert(await ev("gameState.get().arts.studies.length > 0"), "Study from Pack starts the timer")
   // phone
   await emulate(390, 844); await sleep(600)
   await goArts()

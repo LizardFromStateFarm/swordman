@@ -81,7 +81,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   // ── Joined sect ──
   await load('member_elder')
   await click('#tabs [data-group="sect"]'); await sleep(250)
-  assert(await subs() === 'sect,sect-missions,sect-war', `member sub-tabs: ${await subs()}`)
+  assert(await subs() === 'sect,sect-missions,sect-library,sect-war', `member sub-tabs: ${await subs()}`)   // 1.14b: + Library
   await ev('(() => { const s = gameState.get(), w = s.sectWar; w.phase = "scouting"; w.answered = false; w.enemyName = "Iron Serpent Pavilion"; w.enemyTier = 2; w.scoutEndsAt = Date.now() + 600e3; gameState._notify() })()')
   const memberViews = ['sect', 'sect-missions', 'sect-war']
   await allViews('member-overlay', memberViews)

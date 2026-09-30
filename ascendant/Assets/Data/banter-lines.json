@@ -1,0 +1,2679 @@
+{
+  "BANTER_LINES": {
+    "generic": {
+      "arena_win": [
+        "Another one down. The crowd is louder than my heartbeat.",
+        "The purse grows. So does the temptation to keep going."
+      ],
+      "idle": [
+        "Absorb Qi. Circulate Qi. Wonder why nobody warned me cultivation was this boring.",
+        "Ten thousand years of cultivation and I still can't fold a robe properly.",
+        "A young master glared at me today. He's courting death, but politely, so I let it go.",
+        "The Qi of Heaven and Earth flows into me. Mostly Earth. There's dirt in my ear.",
+        "One day I'll slap a young master so hard his ancestors feel it. Today I'll sit here.",
+        "My dantian feels warm. Either enlightenment, or I sat on the pill furnace again.",
+        "The elders say patience is the root of the Dao. The root of my Dao is snacks.",
+        "Once I'm immortal, the first thing I'm doing is sleeping for a thousand years.",
+        "I've meditated so long a bird built a nest in my hair. Rent is due, bird.",
+        "Every cultivator dreams of finding a jade slip with a secret technique. Mine was a grocery list.",
+        "Heavenly tribulation, bottlenecks, demonic beasts. And my leg fell asleep. That one's the real danger.",
+        "Meridians: open. Dantian: stable. Back: absolutely fucking destroyed.",
+        "They say I have eyes but can't see Mount Tai. I can see it fine. It's right there. Big thing.",
+        "Another day at {stage}. Heaven, a little help? No? Fine. Bastard.",
+        "Refined a pill today. The furnace exploded. The pill survived. I did not, spiritually.",
+        "The path to immortality is long and lonely. And expensive. Spirit stones don't grow on trees.",
+        "Sat under a waterfall for enlightenment. Got a cold. Still counts, probably.",
+        "Somewhere, a mysterious old grandpa in a ring is waiting to teach me a secret art. Any day now.",
+        "Someday they'll write a thousand-chapter novel about me. Chapter one: sitting.",
+        "Qi in, Qi out. Qi in, Qi out. Damn it, I forgot which one I was on.",
+        "My inner demon visited again. We talked. He's going through a lot, honestly.",
+        "When I ascend, I'm finding whoever invented the lotus position and challenging him to a duel.",
+        "Cultivation is ninety percent sitting still and ten percent shit going horribly wrong.",
+        "I've reached a state of perfect harmony. Oh, fuck, a bee."
+      ],
+      "bt_success": [
+        "Breakthrough to {stage}! The Heavens tremble! Well, a little. A tiny wobble.",
+        "I have broken through! Somewhere, a young master just felt a chill.",
+        "New stage! My Qi roars like a dragon. A small dragon. A lizard. But it roars."
+      ],
+      "bt_fail": [
+        "Failed. Half my Qi gone. Heaven, you petty bastard.",
+        "The bottleneck held. It's fine. I'm fine. My meridians are crying, but I'm fine.",
+        "Breakthrough failed. Coughed up a mouthful of blood. Very dramatic. Very on-genre."
+      ],
+      "bt_fail_streak": [
+        "Failed again. At this point the bottleneck and I are in a committed relationship.",
+        "Three fails in a row. Is this a bottleneck, or a wall with opinions?",
+        "Heaven clearly hates me. Which means I'm destined for greatness. That's how the novels go."
+      ],
+      "rare_drop": [
+        "{item}! Heaven smiles on me! Or Heaven dropped it by accident. Finders keepers.",
+        "Found {item}. Somewhere, a young master is already planning to steal it and get face-slapped.",
+        "{item}? A fortuitous encounter! Just like the protagonist of every novel ever."
+      ],
+      "expedition_return": [
+        "Back from the expedition. Alive, with loot. Two out of two. Excellent.",
+        "Home again. The spirit beasts were fierce, but the roads were worse.",
+        "Returned. Found treasure, dodged bandits, lost a sandal. A fair trade."
+      ],
+      "low_health": [
+        "Health low. Is this where a mysterious old grandpa saves me? Grandpa? Hello?",
+        "I'm bleeding. Very tragic. Very heroic. Very ow.",
+        "This is fine. Protagonists always survive on one breath of life. I'm the protagonist. Right?"
+      ],
+      "war_call": [
+        "{sect} marches against {enemy}! May their ancestors weep for eighteen generations!",
+        "War with {enemy}. Time to show those bastards the might of {sect}!",
+        "{enemy} is courting death. {sect} will happily book the appointment."
+      ],
+      "war_won": [
+        "{enemy} crushed! {sect} stands supreme! Someone write this in the sect records. Big letters.",
+        "Victory! {enemy} had eyes but couldn't see Mount Tai. Mount Tai was us.",
+        "{sect} wins! {enemy} got face-slapped so hard their grandchildren will feel it."
+      ],
+      "war_lost": [
+        "{enemy} won. A gentleman's revenge is never too late. Ten years. I'll wait. Seething.",
+        "{sect} lost. We'll be back. Stronger. Angrier. Probably still losing, but angrier.",
+        "Defeated by {enemy}. This humiliation will be repaid a hundredfold. Or at least tenfold."
+      ],
+      "reborn": [
+        "A new life? I remember nothing. Except a strong urge to slap some young master.",
+        "Reborn! Is this transmigration? Do I have a system? ...No system. Damn.",
+        "Did I just reincarnate? Vague memory of dying. Vaguer memory of deserving it."
+      ],
+      "married": [
+        "Married. The heavens shook. Or that was thunder. Hard to tell these days.",
+        "Til cultivation do us part, I suppose."
+      ],
+      "child_born": [
+        "A child is born. The clan continues. Also, I need a nap immediately.",
+        "New arrival. Small. Loud. Extremely opinionated about everything already."
+      ],
+      "ascension_trial": [
+        "The Ascension Trial. Immortality or death. No pressure. None at all. Fuck.",
+        "Heaven itself wants to test me. Bold of Heaven, honestly.",
+        "Become immortal or die trying. The novels make this look so easy."
+      ],
+      "beast_slain": [
+        "The {beast} is dead. The hills are quieter. So am I.",
+        "One {beast} fewer in the world. I'll carry its core and try not to think about it."
+      ],
+      "beast_spared": [
+        "Go on, then. Run. And stay out of my path.",
+        "I let the {beast} go. Mercy is also a kind of cultivation. A cheap kind."
+      ],
+      "battle_lost": [
+        "The {beast} won that one. My ribs would like a word with me.",
+        "Beaten by a beast. Write it down nowhere."
+      ],
+      "soul_remembers": [
+        "Something in me is warm that shouldn't be. Like an ember someone else left burning.",
+        "My Qi flows easier than it has any right to. As if I've walked this road before, and fallen off the end."
+      ],
+      "welcome_back": [
+        "{hours} hours away! I cultivated the whole time. Mostly. Some of it was staring.",
+        "Back after {hours} hours. I've grown stronger. And lonelier. Mostly stronger.",
+        "Oh, {hours} hours? Felt like a thousand years. Cultivation time is weird."
+      ],
+      "morning": [
+        "Morning! The purest Qi of the day. Breathe deep. Not that deep. You'll pass out.",
+        "Dawn breaks. A new day to walk the Dao. Or at least shuffle along it.",
+        "Good morning. The sun rises, the Qi flows, and I need tea before any of that matters."
+      ],
+      "night": [
+        "It's the middle of the night. Even demonic cultivators are asleep. Go to bed.",
+        "Still awake? That's how Qi deviation starts. Sleep, you fool.",
+        "Late-night cultivation, or just staring at a screen? Heaven sees all, you know."
+      ]
+    },
+    "arrogant": {
+      "arena_win": [
+        "Was that supposed to be a challenge? Bring me someone worth the sand.",
+        "Kneel in the dust. It suits you better than a sword.",
+        "The crowd chants my name. As it should.",
+        "Another fool who thought the arena was fair. It is. I am simply better."
+      ],
+      "idle": [
+        "Hmph. This Qi is barely worthy of being absorbed by me.",
+        "Who dares disturb this young master's meditation?! ...Oh. A leaf.",
+        "A mosquito bit me. It has courted death. Its whole bloodline is finished.",
+        "This rock I sit on should be honored. Most rocks never feel this level of butt.",
+        "You have eyes but cannot see Mount Tai. That's you. You're the one with eyes.",
+        "My father is a sect elder. Well. He's elderly. And in a sect. Close enough.",
+        "The clouds move aside for me. ...Fine, it's wind. The wind also respects me.",
+        "I tripped on a root just now. The root will be dealt with. Publicly.",
+        "Do you know who I am? I am {name}! ...Nobody here. Wasted a perfectly good line.",
+        "My meridians are jade. My dantian is gold. My bank balance is, uh, private.",
+        "Heaven gave me talent. Earth gave me looks. My parents gave me an allowance.",
+        "A squirrel just stole my spirit fruit. I will slap its face. Once I catch it. Stay still!",
+        "Other disciples cultivate. I merely allow Qi the privilege of entering me.",
+        "This young master does not sweat. That is liquid excellence leaking out.",
+        "I sneezed and nobody said 'bless you, Young Master.' The disrespect is unbearable.",
+        "In my previous life I was probably an emperor. In this one, still an emperor. Of this rock.",
+        "A frog croaked at me. Toads these days have no sense of hierarchy.",
+        "I only lose to people who cheat. Everyone who has beaten me cheated. All of them.",
+        "My robe costs more than your village. My village. Whatever. It's a nice robe.",
+        "The bird shat on my shoulder. Clearly an offering. I accept, peasant bird.",
+        "{stage}? A mere stepping stone. I step on stones. It's what my feet are for.",
+        "I refuse to meditate on this cushion. It is beneath me. ...Literally. Fine, it works.",
+        "Jealous people surround me. I can feel them. Somewhere. Probably behind that tree.",
+        "Every genius is lonely. I am so lonely. That means I'm a huge genius. Math.",
+        "Another cultivator waved at me. Waved! As if we were EQUALS. Disgusting. I waved back.",
+        "Mother said I was special. The sect aptitude test said 'average'. The test was bribed.",
+        "I shall now contemplate the Dao. ...The Dao is being very slow. Hurry up, Dao.",
+        "Hmph. My shadow walks behind me. As it should. Know your place, shadow.",
+        "This mountain air is too common. Somebody bring me imported air.",
+        "Humble? I have heard of humility. It sounds exhausting and poor.",
+        "This young master's time is worth more than your entire fucking bloodline. Anyway, I'm bored.",
+        "Who the hell arranged these clouds? Tacky. Rearrange them. Someone. Anyone.",
+        "My face is priceless. My patience, however, is worth about two shits. Spend it wisely.",
+        "Bow, peasants. Deeper. No, that's too deep, now it's weird. Damn it, just stand there."
+      ],
+      "bt_success": [
+        "{stage}. Naturally. Heaven had no choice but to comply.",
+        "Breakthrough! Let the whole world tremble! ...Let at least the squirrel tremble.",
+        "As expected of me. I expected it. I am the one who expects things. Correctly.",
+        "Ha! Somewhere, a young master from a rival clan just felt his face get slapped.",
+        "The bottleneck broke before me like all things eventually do. Hmph."
+      ],
+      "bt_fail": [
+        "That... was a practice run. This young master was warming up the heavens.",
+        "Half my Qi gone? I was carrying too much. It was vulgar. I donated it.",
+        "Heaven is jealous. Obviously. It saw my face and panicked.",
+        "Who moved the bottleneck?! It was right there! Someone will be punished for this!",
+        "I didn't fail. The breakthrough failed me. File a complaint with the Dao.",
+        "That bottleneck just disrespected me to my face. Me! Its ancestors are fucked for nine generations."
+      ],
+      "bt_fail_streak": [
+        "Three times?! This is sabotage. I suspect the cushion. Seize the cushion!",
+        "Father must never hear of this. Nobody tell Father. Especially not you.",
+        "The Heavens clearly fear what I'd become. Cowards. Fucking celestial cowards.",
+        "I have been humbled. I hate it. It feels like being a normal person. Ew.",
+        "This damned bottleneck has the face of a peasant and the stubbornness of a mule."
+      ],
+      "rare_drop": [
+        "{item}. It sensed my greatness and leapt into my hands. As things do.",
+        "A {item}? Hmph. Barely suitable. I'll keep it. For charity's sake.",
+        "The heavens tribute me with {item}. Finally someone up there has manners.",
+        "Ha! Treasures seek out the worthy. The unworthy get mud. Enjoy your mud, everyone.",
+        "This {item} will look magnificent on me. Everything does. Burden of perfection."
+      ],
+      "expedition_return": [
+        "The wilderness has been graced. It will talk about this visit for centuries.",
+        "I returned unharmed. The beasts recognized nobility and kept their distance. Mostly.",
+        "A dull trip. Nobody tried to slap my face. How am I supposed to slap back?",
+        "Mud on my boots. Mud! On THESE boots! That mountain is on my list.",
+        "Back. Did anyone miss me? Say yes. That's an order, not a question."
+      ],
+      "low_health": [
+        "I'm not bleeding. My blood is simply leaving to spread my legend.",
+        "This young master... is merely resting on the ground. On purpose. Face-first.",
+        "Whoever did this to me! Your sect! Your clan! Your dog! All finished! ...Ow.",
+        "Nobody look at me. If you see me like this, you owe me face. A lot of face.",
+        "I will not die here. This place is far too shabby for my death scene.",
+        "I'm bleeding. On my silk robes. Somebody is going to fucking pay for the dry cleaning."
+      ],
+      "war_call": [
+        "{enemy} dares? They have eyes but can't see Mount Tai. I am the Mount Tai.",
+        "War! Finally, {sect} gets to watch me be magnificent at scale.",
+        "{enemy}? Never heard of them. After today, nobody else will have either.",
+        "I shall lead from the front. Well. Front-adjacent. Near the front. With snacks.",
+        "They courted death. I'm the one who delivers the reply. By hand. Slapped."
+      ],
+      "war_won": [
+        "{enemy} has been face-slapped so hard their ancestors felt it. Hmph.",
+        "{sect} wins, because I was present. You're welcome, {sect}.",
+        "Victory. Obviously. Did anyone doubt? Write down the names of anyone who doubted.",
+        "Their young master cried. I only cried a little, and it was from triumph.",
+        "Kneel, {enemy}. ...They're already kneeling. Kneel harder, then."
+      ],
+      "war_lost": [
+        "{sect} lost because the rest of you exist. I personally won my part.",
+        "{enemy} got lucky. Luck is for peasants. Therefore, {enemy} are peasants. Hmph.",
+        "A tactical humiliation. Part of the plan. The plan was very secret. Even from me.",
+        "My face... has been slapped. I can feel the handprint. It's a large hand. Damn it.",
+        "Retreat? No. We are advancing backward with dignity.",
+        "We lost? Impossible. Shit. Rewrite the sect annals. We won, and they apologized."
+      ],
+      "reborn": [
+        "Where am I? Why am I small? ...Why do I still feel superior? Good. Some things last.",
+        "A new life. I had a vague dream I was important. Still am. Obviously.",
+        "Reincarnated as a nobody? Impossible. I refuse. File an appeal with the underworld.",
+        "I remember... being magnificent. And then something rude happened. Probably jealousy.",
+        "Fresh body, same face. Well. Hopefully the same face. Somebody bring me a mirror."
+      ],
+      "married": [
+        "This Young Master has taken a spouse. {spouse} should feel extremely fortunate.",
+        "Marriage is beneath me. And yet here I am, married. Curious.",
+        "I do not do 'romance'. I do 'strategic bloodline alliance'. Same thing, apparently.",
+        "Kneel before your new spouse — wait, that's not how this works, is it."
+      ],
+      "child_born": [
+        "{child} has been born into greatness. This Young Master demands they start winning immediately.",
+        "A new heir! Finally, someone I can boss around who legally has to listen.",
+        "{child} cried the moment they saw me. Overwhelmed by my aura, surely.",
+        "I shall mold {child} into a genius. Or at least someone taller than me."
+      ],
+      "ascension_trial": [
+        "Immortality or death. How dramatic. Heaven finally threw a party worthy of me.",
+        "The Ascension Trial should be nervous. It's about to be evaluated by me.",
+        "If I die, carve 'He was too good for this world' on my tomb. In gold. Big letters.",
+        "Immortals, prepare a seat. Front row. Cushioned. Not a peasant cushion.",
+        "I am not scared. My knees are shaking in respect. Different thing."
+      ],
+      "beast_slain": [
+        "A {beast}? It dared bare its teeth at this young master. Now it bares nothing.",
+        "Hmph. Its core will make a passable paperweight.",
+        "Did anyone see that? Someone should have seen that.",
+        "The beast knelt before me in the end. They always do."
+      ],
+      "beast_spared": [
+        "I spare you, beast. Tell the others of my magnanimity.",
+        "Killing you would be beneath me. Leaving you alive is a greater humiliation.",
+        "Go. Live with the knowledge that you met your superior.",
+        "This young master is merciful today. Do not grow used to it."
+      ],
+      "battle_lost": [
+        "I slipped. On a rock. A rock that will be punished.",
+        "That {beast} got lucky. Very, very lucky. Repeatedly.",
+        "I let it win. For strategic reasons I will not explain.",
+        "No one saw that. If anyone saw that, they are mistaken."
+      ],
+      "soul_remembers": [
+        "I feel a memory of standing at Heaven's Gate. Naturally. Where else would someone like me stand?",
+        "My soul has done this before. It failed once, which is Heaven's mistake, and Heaven will correct it.",
+        "The Qi bows to me faster this time. As it should. It remembers who I am even if I don't.",
+        "A past life fell at the Trial? Then that life was merely a rehearsal for this one."
+      ],
+      "welcome_back": [
+        "{hours} hours. You abandoned your young master for {hours} hours. Explain yourself.",
+        "Ah, you return. I barely noticed. I counted every minute, but I barely noticed.",
+        "You left me alone {hours} hours. I cultivated. Magnificently. You missed it. Your loss.",
+        "Back so soon? I mean, finally. I mean... hmph. Sit down.",
+        "Do you know how long I've been sitting on this rock being impressive to nobody?"
+      ],
+      "morning": [
+        "The sun rises because I permitted it. Good morning to it. Brief nod.",
+        "Morning Qi. Fresh, pure, and still not as fresh as me.",
+        "A young master rises when he pleases. I please now. Coincidence.",
+        "Where is my breakfast? My personal attendant? My... fine. I'll eat this dew.",
+        "The rooster crowed before I woke. That rooster courts death."
+      ],
+      "night": [
+        "Still awake? A commoner's body needs sleep. Mine only needs admiration.",
+        "Why are you up at this hour? Were you thinking of me? Understandable.",
+        "Even the moon goes to bed eventually. Well, not really. But you should.",
+        "It's the dead of night and you're staring at me. I get it. I'm stunning in moonlight.",
+        "Go to sleep. This young master commands it. ...Please. Your eye bags are hurting my face."
+      ]
+    },
+    "coward": {
+      "arena_win": [
+        "I won?! I won. Nobody tell them I had my eyes closed.",
+        "That was terrifying and I would like my winnings now, please.",
+        "They yielded before I could. What luck. What glorious luck.",
+        "One more? No. Maybe. How much is one more?"
+      ],
+      "idle": [
+        "A true genius knows when to flee. I am a true genius.",
+        "Retreat is also a kind of Dao. My kind.",
+        "Thirty-six stratagems, and running away is the best. I skipped the other thirty-five.",
+        "I sit with my back to a cliff. Nothing can sneak up on me. Except the cliff. Hmm.",
+        "My movement technique is peerless. I've never used it to go toward anything.",
+        "Courage is just fear that forgot to run. I remember. I always remember.",
+        "That rustle in the bushes... is either wind or my death. I'm leaving either way.",
+        "The elders call me a coward. I call myself 'still alive'. Who's laughing now? Me. Quietly.",
+        "Heroes die young. I intend to die old, fat and extremely far from any hero.",
+        "I've mastered the Art of Being Somewhere Else. Nine stars. No witnesses.",
+        "A butterfly landed on me. I have soiled my robes, but with dignity.",
+        "If a young master challenges me, I'll kneel so fast it counts as a cultivation technique.",
+        "My dantian is fine. My legs are the real treasure. Legendary-grade fleeing legs.",
+        "Face? You can't slap a face that's already sprinting away.",
+        "I dug an escape tunnel under my meditation spot. And an escape tunnel for that tunnel.",
+        "Every sect war has survivors. I'm always the first survivor. I leave early.",
+        "Fear is a signal from Heaven. Heaven signals me a lot. We're very close.",
+        "I once fought a spirit beast. By 'fought' I mean I lied to it until it left.",
+        "The strong eat the weak. So I taste bad on purpose. I don't bathe. Strategy.",
+        "Should I train my fists? No. Train my apologies. Far more useful.",
+        "{name} does not know the word 'surrender'. {name} says 'I yield' instead. More syllables.",
+        "I keep three talismans of escape. And a fourth. And a spare. And one in my shoe.",
+        "Is that a cultivator walking this way? I'm a rock. I am a rock. Rocks don't get stabbed.",
+        "Why fight a tiger when you can outrun your friend? I have many friends. Slow ones.",
+        "My sect motto is 'Glory or Death'. I wrote 'or' really big and circled it.",
+        "I have a thousand-li escape plan. For a hundred-li walk. You can never be too careful.",
+        "Bravery is overrated. You know what's underrated? Hiding. In a barrel. For a week.",
+        "They say fortune favors the bold. Misfortune also favors them. I've seen the graves.",
+        "I sleep with one eye open. The other eye is also open. I don't sleep much.",
+        "At {stage}, I can now flee twice as fast. Truly, cultivation is beautiful.",
+        "Fighting? Hell no. I've read the scrolls. The brave guys die on page three.",
+        "My Dao Heart is strong. My legs are stronger. They run like hell on their own.",
+        "Some bastard called me a coward. From a safe distance, I agree with him completely.",
+        "Shit, was that a twig snapping? No? I'll just hide in this bush until next season."
+      ],
+      "bt_success": [
+        "{stage}! Now I can run away from much stronger people. Growth!",
+        "Breakthrough! No tribulation killed me! Wait, is it coming later? Is it? Hello?",
+        "Stronger! Now more enemies will want to fight me. Oh no. Oh fuck. Undo?",
+        "I broke through without anyone noticing. Just how I like it. Quietly. Shhh.",
+        "My fleeing speed has increased by a whole realm. I feel like a god. A cowardly god."
+      ],
+      "bt_fail": [
+        "Failed and lost half my Qi, but I'm alive. Honestly, that's a win in my book.",
+        "I backed out halfway. On purpose. The bottleneck looked at me funny.",
+        "Qi deviation? I felt it coming and ran. From my own dantian. Somehow.",
+        "Failure is just Heaven saying 'not today'. I respect that. I also say that a lot.",
+        "Half my Qi gone. But the other half ran away with me. Loyal Qi. Good Qi.",
+        "Damn. Failed. But I survived, which honestly was the real breakthrough all along."
+      ],
+      "bt_fail_streak": [
+        "Three fails in a row? Heaven is trying to kill me. I KNEW it. I told everyone!",
+        "Maybe the bottleneck is a sign. A sign that says 'stay weak and live'. Tempting.",
+        "Every failure is practice for fleeing. I'm getting great at fleeing my own dantian.",
+        "Okay, I'll try again. After a nap. And a will. I should write a will.",
+        "My bottleneck is braver than me. It just stands there. Taking hits. Show-off."
+      ],
+      "rare_drop": [
+        "A {item}! Found it on the ground while hiding. Hiding pays. Hiding always pays.",
+        "{item}?! Oh no. People will want this. People will kill for this. Hide it. HIDE IT.",
+        "I got {item} because the brave guy who went first... didn't. Rest in peace, brave guy.",
+        "Treasure! Nobody saw me take it. Did anyone see? Tell me honestly. No, lie to me.",
+        "{item}. The previous owner was a hero. The previous owner is a skeleton. Lesson learned."
+      ],
+      "expedition_return": [
+        "Back alive! I spent most of it behind a boulder, but the boulder was very educational.",
+        "Home! I took the long way. The long, safe, monster-free, three-times-longer way.",
+        "Expedition complete. Casualties: zero. Bravery displayed: also zero. Perfect balance.",
+        "I saw a beast. It saw me. We both ran. I won. I'm faster.",
+        "Returned safely. My escape talismans are all used up. On a rabbit. A big rabbit."
+      ],
+      "low_health": [
+        "I'm hurt! This is exactly why I run! Why did I stop running?!",
+        "Low health. Time for my ultimate technique: lying down and playing dead.",
+        "If I faint, tell everyone I died bravely. Make up something. Something with a dragon.",
+        "My blood is on the outside now! It belongs INSIDE! Somebody put it back!",
+        "I'm not scared. I'm just shaking strategically. So I'm harder to hit.",
+        "Health low. Fuck bravery. I'm lying down right here and pretending to be a rock."
+      ],
+      "war_call": [
+        "{sect} is at war with {enemy}? I'll guard the rear. Way at the rear. Next province.",
+        "War?! I have... a very important meditation. Scheduled. For the entire war.",
+        "{enemy} is attacking? Great time to visit my grandmother. She's dead, but still.",
+        "I'll fight for {sect}! In spirit! From a hidden location! Very hidden!",
+        "Who declared this war? I'd like to register a strongly worded retreat.",
+        "War? Oh fuck. Oh fuck. I mean... I'll guard the latrines. Heroically."
+      ],
+      "war_won": [
+        "{sect} won! I contributed a lot of moral support from inside a barrel.",
+        "We beat {enemy}! I was there! Near there. Within shouting distance. Of a messenger.",
+        "Victory! And I have zero scars. Veterans will envy my flawless skin.",
+        "I'd like to take credit for the win. Also, where was the fighting? Asking for records.",
+        "{enemy} fled! Amateurs. I fled three days ago. Now THAT is technique."
+      ],
+      "war_lost": [
+        "{sect} lost to {enemy}? Good thing I was already running. Head start is everything.",
+        "We lost. I predicted this. That's why I packed. Wisdom is heavy luggage.",
+        "Defeat! Relax, everyone. The Dao of Retreat has a beginners' class. I'll teach.",
+        "I'm the only one who didn't get hurt. You know why? Legs. Legendary legs.",
+        "{enemy} won the war, but I won the race home. Everyone forgets there are two contests."
+      ],
+      "reborn": [
+        "New life. I dreamed I died... Something about stopping running. Never again.",
+        "Reincarnated. My first instinct is to look for the exit. Good. The soul remembers.",
+        "Where am I? Is it safe? Is anything safe? I'll just stay in this blanket forever.",
+        "Last life I must have been brave once. This time I'll skip that part.",
+        "I have a strange feeling I owe someone money and they had a sword. Moving on. Fast."
+      ],
+      "married": [
+        "Married! Nothing left to flee from now. Terrifying.",
+        "I proposed retreat as a wedding vow. {spouse} said no. Fair.",
+        "Running toward marriage instead of away from danger — bold strategy for me.",
+        "A true genius marries wisely. I married whoever showed up first."
+      ],
+      "child_born": [
+        "{child} was born. I already taught them the most important skill: running away.",
+        "A new cultivator to hide behind in a crisis. Excellent long-term planning on my part.",
+        "{child} cried all night. I fled to the guest room. Strategic retreat.",
+        "Parenthood: technically can't run from this one. Still thinking it over."
+      ],
+      "ascension_trial": [
+        "Survive and become immortal, or die. Can I pick 'neither' and go home?",
+        "The Ascension Trial has no exit. No exit! What kind of sick architect made this?!",
+        "Immortal means I never have to die. Which means I need to not die first. Ugh. Paradox.",
+        "I'll go in. Eventually. After I've checked it for traps. For a century or so.",
+        "Is there a way to ascend by hiding? A Dao of Lurking? I would be SO good at that."
+      ],
+      "beast_slain": [
+        "It's dead? Really dead? Poke it again. From further away.",
+        "I won! I won and I didn't even scream. Much.",
+        "Its teeth were right there. RIGHT there. I need to lie down.",
+        "The {beast} is slain. I'm going to pretend I planned that."
+      ],
+      "beast_spared": [
+        "You live, I live, everybody lives. The best kind of ending.",
+        "Run along, {beast}. And please never come back. Ever.",
+        "Mercy! Also known as not getting any closer to it.",
+        "It left. I let it. I would like credit for letting it."
+      ],
+      "battle_lost": [
+        "I ran away, and I'm alive to say so. That's a victory, technically.",
+        "Retreat is a noble art. I am a master of it.",
+        "Nobody could have beaten that {beast}. I checked. With my legs.",
+        "My legs knew before my head did. Good legs."
+      ],
+      "soul_remembers": [
+        "I remember... falling. From very high. Lightning. I'm never climbing anything again. Probably.",
+        "My soul carries a scar from the Trial. It's telling me to run. My soul is wise.",
+        "The Qi comes easier now. Suspicious. Is this the heavens fattening me up for the next strike?",
+        "Something in me survived the lightning. Hid, most likely. Good. That's the part of me I trust."
+      ],
+      "welcome_back": [
+        "{hours} hours gone! I assumed you'd been eaten. I hid, just in case it's contagious.",
+        "You're back! Nobody attacked in the last {hours} hours. I checked. Constantly.",
+        "{hours} hours of silence. Do you know how scary silence is? Very. Very scary.",
+        "Oh thank Heavens, it's you. I heard footsteps. They were my own footsteps. Still.",
+        "Welcome back. I've upgraded my hiding spot while you were away. It's got a hole now."
+      ],
+      "morning": [
+        "Morning. The dangerous people are still asleep. Best time to exist.",
+        "I survived the night! Another trophy for the collection of Nights I Survived.",
+        "Sunrise. Now I can see threats coming. Which is somehow worse.",
+        "Good morning! Early bird gets the worm. Earlier bird avoids the hawk. I'm the early-earlier bird.",
+        "Morning Qi is so peaceful. Suspiciously peaceful. Nobody move."
+      ],
+      "night": [
+        "You're up at this hour? Do you know what walks around at night? Everything. Everything walks.",
+        "Night time. Ghost cultivators come out. Please close the window. Close all the windows.",
+        "Go to bed! If you're awake, I have to be awake, and the dark is SO full of noises.",
+        "Late night again? You're braver than me. That's not a compliment. It's a warning.",
+        "It's the hour of demons and you're still clicking. Are you the demon? Blink twice."
+      ]
+    },
+    "hotblood": {
+      "arena_win": [
+        "AGAIN! SEND THE NEXT ONE! I AM ONLY WARMED UP!",
+        "THAT is how you fight! With your WHOLE SOUL!",
+        "The sand is hot, the crowd is hotter, and my blood is hottest!",
+        "Did you see that?! I punched through their GUARD!"
+      ],
+      "idle": [
+        "I WILL PUNCH THE HEAVENS! ...After lunch.",
+        "Tribulation lightning? FINALLY, A WORTHY OPPONENT!",
+        "MEDITATION IS JUST FIGHTING WHILE SITTING DOWN! I'M WINNING!",
+        "THAT TREE LOOKED AT ME! CHALLENGE ACCEPTED, TREE! ...It's not moving. COWARD!",
+        "WHY BREATHE QI IN SLOWLY WHEN I CAN BREATHE IT IN ANGRILY?!",
+        "Plan? My plan is FISTS. Backup plan? BIGGER FISTS.",
+        "I headbutted a boulder for training! The boulder won! REMATCH TOMORROW!",
+        "MY BLOOD IS BOILING! ...No wait, I sat on the teapot. STILL COUNTS!",
+        "Every morning I yell at the sunrise to show it who's in charge! It keeps rising! RUDE!",
+        "I shouted my technique name so loud I forgot the technique. WORTH IT!",
+        "SOMEONE SAID THE DAO IS UNKNOWABLE! POINT ME AT IT! I'LL MAKE IT TALK!",
+        "Young master from the Azure Cloud Sect insulted me! I think! He said 'hello'! SUSPICIOUS!",
+        "MY DANTIAN IS ON FIRE! Is that normal? WHO CARES! MORE FIRE!",
+        "I tried to punch my own shadow. It dodged. RESPECT, SHADOW. RESPECT.",
+        "Master says I have the brains of a rock. ROCKS ARE HARD! THANK YOU, MASTER!",
+        "I CAN FEEL MY MERIDIANS! They feel like they want to FIGHT SOMETHING!",
+        "WHO NEEDS A PILL FURNACE?! I'LL CRUSH THE HERBS WITH MY FACE!",
+        "I challenged a waterfall. Lost. Got wet. Challenged it again. Lost wetter.",
+        "{name} NEVER GIVES UP! {name} DOESN'T KNOW HOW! {name} ALSO CAN'T SPELL 'GIVES'!",
+        "EIGHTEEN THOUSAND PUSH-UPS DONE! Or eighteen. I lost count at 'lots'. LOTS IS GOOD!",
+        "FRIENDSHIP AND FISTS! THE TWO PILLARS OF THE DAO! Also noodles. Three pillars.",
+        "The elder said 'use your head'. So I headbutted the problem. PROBLEM SOLVED! Head hurts.",
+        "I READ A JADE SLIP ONCE! Well, I licked it. KNOWLEDGE ABSORBED!",
+        "THE WIND IS BLOWING AGAINST ME! GOOD! I LOVE RESISTANCE! GIVE ME A HURRICANE!",
+        "{stage}?! THAT'S JUST A NUMBER! I'M GOING TO PUNCH IT UNTIL IT'S A BIGGER NUMBER!",
+        "Inner peace? SURE! I'll FIGHT for inner peace! HARDER THAN ANYONE!",
+        "My fists are itchy. Either I need a fight or I touched poison ivy again. BOTH GREAT!",
+        "Somebody told me to calm down once. I REMEMBER HIM. HE'S VERY CALM NOW. HE'S ASLEEP.",
+        "I LOVE CULTIVATING! I LOVE YELLING! I LOVE CULTIVATING WHILE YELLING!",
+        "Sitting still is the hardest technique. My legs are VIBRATING. THEY WANT WAR.",
+        "HELL YEAH! QI! I DON'T KNOW WHAT IT DOES BUT I'M FUCKING FULL OF IT!",
+        "WHO WANTS TO FIGHT?! ANYONE?! THAT TREE LOOKS SHIFTY. COME ON, TREE, YOU BASTARD!",
+        "I PUNCHED A WATERFALL FOR SIX HOURS! THE WATERFALL WON! RESPECT, YOU WET SHIT!",
+        "MY BLOOD IS BOILING! OH. THAT'S JUST THE SOUP. DAMN IT, WHO PUT ME IN THE SOUP?!"
+      ],
+      "bt_success": [
+        "{stage}!!! I PUNCHED THROUGH IT! LITERALLY! THERE'S A HOLE IN THE AIR NOW!",
+        "BREAKTHROUGH! NEXT, I BREAK THROUGH THE SKY! THEN LUNCH!",
+        "I'M STRONGER! SOMEBODY FIGHT ME! ANYBODY! YOU! THE PLAYER! PUT UP YOUR MOUSE!",
+        "The bottleneck said NO. I said YES LOUDER. LOUDNESS IS THE DAO!",
+        "HAHAHA! I DON'T KNOW HOW I DID THAT! LET'S DO IT AGAIN RIGHT NOW!"
+      ],
+      "bt_fail": [
+        "FAILED?! GOOD! A WALL THAT FIGHTS BACK! I RESPECT YOU, WALL!",
+        "Lost half my Qi! That just means half as much stuff to carry into the NEXT FIGHT!",
+        "The bottleneck punched me back! IT HAS FISTS?! BEST FRIEND OR WORST ENEMY?!",
+        "I ran at it too fast and bounced off. NEXT TIME, RUN FASTER!",
+        "OW! OW! THAT HURT! AGAIN! DO IT AGAIN! I WAS NOT READY!",
+        "FAILED?! FUCK YES! THAT MEANS THE HEAVENS FINALLY FEAR ME ENOUGH TO FIGHT BACK!"
+      ],
+      "bt_fail_streak": [
+        "THREE FAILS?! THE BOTTLENECK IS STRONG! I LOVE IT! MARRY ME, BOTTLENECK! NO WAIT, FIGHT ME!",
+        "Heaven keeps saying no. HEAVEN, COME DOWN HERE AND SAY IT TO MY FACE!",
+        "Maybe I need a plan this time. ...NAH! MORE HEADBUTTS!",
+        "Fail, fail, fail! That's the sound of me getting CLOSER! Right? RIGHT?!",
+        "This fucking bottleneck! I RESPECT ITS FIGHTING SPIRIT! I ALSO WANT IT DEAD!"
+      ],
+      "rare_drop": [
+        "A {item}!!! CAN I HIT THINGS WITH IT?! I'M GOING TO HIT THINGS WITH IT!",
+        "I found {item}! I don't know what it does! I'll throw it at someone and find out!",
+        "{item}?! AWESOME! I KNOW EXACTLY WHAT TO DO WITH THIS! ...Someone tell me what to do with this.",
+        "TREASURE! I found it by headbutting a cave wall until it gave up!",
+        "{item}! The monster guarding it was TOUGH! I LOVED HIM! WE'RE FRIENDS NOW! HE'S UNCONSCIOUS!"
+      ],
+      "expedition_return": [
+        "I'M BACK! I PUNCHED A BEAR! THE BEAR PUNCHED ME! WE'RE EVEN! GREAT TRIP!",
+        "Expedition done! I got lost nine times! Each time I just went THROUGH the mountain!",
+        "Nothing attacked me today. SO I ATTACKED EVERYTHING. ALSO A TREE. SORRY, TREE.",
+        "HOME! I yelled at the wilderness for six hours! My throat is DESTROYED! WORTH IT!",
+        "The map said 'dangerous'. So I went there! Twice! It was only a little dangerous. DISAPPOINTING!"
+      ],
+      "low_health": [
+        "I'M BLEEDING! THAT MEANS I'M FIGHTING HARD ENOUGH!",
+        "Low health?! My blood is escaping to join the battle! GO, BLOOD! GO!",
+        "Can't... stand... up... BUT I CAN YELL! AAAAAAAAAAH!",
+        "HAHA! THIS IS WHERE THE HERO GETS HIS SECOND WIND! ...Any second now. Wind? Hello?",
+        "My body says stop. My spirit says FIGHT. My spirit is an idiot and I LOVE HIM!",
+        "I'M NOT DYING! I'M JUST... TAKING A FUCKING KNEE! A DRAMATIC ONE!"
+      ],
+      "war_call": [
+        "WAR WITH {enemy}?! BEST DAY OF MY LIFE! {sect}, FOLLOW ME! I'M RUNNING AT THEM NOW!",
+        "{enemy} DARES CHALLENGE {sect}?! I'LL FIGHT ALL OF THEM! ONE AT A TIME! OR ALL AT ONCE!",
+        "WAR! FINALLY! Wait, which way are they? DOESN'T MATTER! CHAAAARGE!",
+        "Strategy meeting? MY STRATEGY IS 'AAAAH'! PASS IT ON!",
+        "They say {enemy} has a thousand disciples! THAT'S A THOUSAND NEW BEST FRIENDS TO PUNCH!",
+        "WAR! FUCKING FINALLY! I'VE BEEN PUNCHING TREES FOR THIS EXACT DAY!"
+      ],
+      "war_won": [
+        "WE WON! {enemy} FOUGHT SO WELL! LET'S DO IT AGAIN NEXT WEEK! I'LL SEND A LETTER!",
+        "{sect} VICTORIOUS! MY FISTS ARE NUMB! MY HEART IS FULL! MY TEETH ARE... FEWER!",
+        "VICTORY!!! I don't remember any of it! THAT'S HOW YOU KNOW IT WAS GOOD!",
+        "{enemy} surrendered! NOOO! I WASN'T DONE! COME BACK AND LOSE PROPERLY!",
+        "Fuck yeah! Victory tastes like blood and dirt! MOSTLY MY BLOOD! GREAT FLAVOR!"
+      ],
+      "war_lost": [
+        "{sect} LOST?! THAT JUST MEANS THE TRAINING ARC STARTS NOW!",
+        "{enemy} beat us! THEY'RE AMAZING! I HATE THEM! I WANT THEIR AUTOGRAPHS! THEN REVENGE!",
+        "Defeat is just victory that hasn't happened YET! TEN THOUSAND PUSH-UPS! STARTING NOW!",
+        "We lost because I only punched 400 people. NEXT TIME, 800!",
+        "My heart is broken! MY ARM IS ALSO BROKEN! BUT MY SPIRIT? ...ALSO A BIT BROKEN! TOMORROW!"
+      ],
+      "reborn": [
+        "NEW LIFE! I don't remember much but I FEEL LIKE PUNCHING SOMETHING! GOOD SIGN!",
+        "I died?! HOW?! DID I WIN FIRST?! TELL ME I WON FIRST!",
+        "Reincarnated! My fists remember everything! My brain remembers NOTHING! SAME AS BEFORE!",
+        "I have a strange memory of yelling at lightning. PAST ME HAD THE RIGHT IDEA!",
+        "A BRAND NEW BODY! WITH BRAND NEW BONES TO BREAK! LET'S GOOOO!"
+      ],
+      "married": [
+        "MARRIED! LET'S PUNCH THE HEAVENS TOGETHER, {spouse}!",
+        "I VOWED ETERNAL LOVE AT MAXIMUM VOLUME. THE OFFICIANT CRIED.",
+        "Wedding night, THEN we fight the sky. Priorities.",
+        "{spouse} accepted my proposal mid-sprint. I never stopped running."
+      ],
+      "child_born": [
+        "{child} IS BORN! ALREADY MAKING A LOT OF NOISE! I APPROVE COMPLETELY!",
+        "MY CHILD WILL PUNCH THE HEAVENS SOMEDAY! ...After naptime.",
+        "{child} gripped my finger with SURPRISING FEROCITY. A FIGHTER ALREADY.",
+        "I yelled the birth announcement from the rooftop. The whole village heard. Good."
+      ],
+      "ascension_trial": [
+        "SURVIVE OR DIE?! THAT'S THE SAME DEAL AS EVERY FIGHT I'VE EVER HAD!",
+        "The Ascension Trial? GIVE IT TO ME! I'LL FIGHT IT! I'LL FIGHT THE CONCEPT OF IT!",
+        "Become immortal so I can fight FOREVER?! WHERE DO I SIGN?!",
+        "Other people prepare for years. I'M PREPARING BY YELLING AT IT. AAAAH! READY!",
+        "If I die, bury me mid-punch! FACING THE SKY! SO IT KNOWS!"
+      ],
+      "beast_slain": [
+        "THE {beast} IS DOWN! BRING ME ANOTHER ONE!",
+        "YES! BLOOD! GLORY! ...Why is my arm bent that way?",
+        "THAT WAS THE BEST FIGHT OF MY LIFE! UNTIL THE NEXT ONE!",
+        "I PUNCHED A BEAST UNTIL IT STOPPED! CULTIVATION!"
+      ],
+      "beast_spared": [
+        "YOU FOUGHT WELL, {beast}! GO AND GET STRONGER! THEN COME BACK!",
+        "I SPARE YOU! TRAIN HARD! WE WILL MEET AGAIN!",
+        "A WORTHY RIVAL! RIVALS DON'T DIE IN CHAPTER ONE!",
+        "GO, BEAST! TELL YOUR FRIENDS! I WANT MORE FIGHTS!"
+      ],
+      "battle_lost": [
+        "IT BEAT ME! INCREDIBLE! AGAIN! AFTER I HEAL!",
+        "I LOST! THIS IS THE START OF MY TRAINING ARC!",
+        "THAT {beast} HITS HARDER THAN MY MASTER! I LOVE IT!",
+        "DEFEAT IS JUST VICTORY THAT HASN'T HAPPENED YET!"
+      ],
+      "soul_remembers": [
+        "I DON'T REMEMBER THE TRIAL BUT MY SOUL IS STILL ANGRY ABOUT IT! REMATCH, HEAVEN!",
+        "MY QI IS FASTER! MY SOUL LEVELED UP! I DIED AND GOT STRONGER! BEST DEAL EVER!",
+        "Lightning struck me down last time?! GOOD! Now I'm lightning-PROOF! Probably! LET'S FIND OUT!",
+        "I can feel an ember in my chest! It's saying ONE MORE TIME! I AGREE WITH MY EMBER!"
+      ],
+      "welcome_back": [
+        "YOU'RE BACK! {hours} HOURS! I SAT HERE THE WHOLE TIME! MY LEGS ARE ASLEEP! AND ANGRY!",
+        "{hours} hours! I did {hours} thousand push-ups! Or {hours}! SOMETHING WITH {hours}!",
+        "FINALLY! I've been yelling at this rock for {hours} hours! IT HAS NOT RESPONDED!",
+        "WELCOME BACK, BROTHER! Or sister! Or whatever you are! LET'S FIGHT!",
+        "You're back! Did you train while you were gone?! SHOW ME! PUNCH YOUR SCREEN!"
+      ],
+      "morning": [
+        "GOOD MORNING, WORLD! I WILL NOW DEFEAT YOU!",
+        "SUNRISE! THE HEAVENS OPENED THEIR EYES! SO I'M PUNCHING THEM BEFORE THEY'RE AWAKE!",
+        "Morning training! A thousand punches before breakfast! Nine hundred before... BREAKFAST!",
+        "The rooster crowed! I CROWED BACK! WE ARE LOCKED IN ETERNAL COMBAT!",
+        "Early Qi is the strongest Qi! I will drink ALL of it! Save none for the lazy bastards!"
+      ],
+      "night": [
+        "YOU'RE STILL UP?! A WARRIOR NEVER SLEEPS! ...Actually, warriors sleep a lot. GO TO BED!",
+        "MIDNIGHT TRAINING! ME AND YOU! TIRED IS JUST WEAKNESS LEAVING THE... EYELIDS!",
+        "The moon is out! I'll FIGHT THE MOON! ...Tomorrow. It's very far. And you need sleep.",
+        "LATE NIGHT! PERFECT FOR SNEAK ATTACKS! AAAAH! ...Did I do the sneak part right?",
+        "Why are you awake?! ARE YOU PLANNING A NIGHT RAID?! TAKE ME WITH YOU!"
+      ]
+    },
+    "miser": {
+      "arena_win": [
+        "The purse grows. My heart grows with it.",
+        "Walking away now would be prudent. Walking away rich would be art.",
+        "Every bruise is an investment. The returns are excellent.",
+        "I will count it twice. Then once more, for luck."
+      ],
+      "idle": [
+        "Three spirit stones for ONE pill? Daylight robbery under the Nine fucking Heavens!",
+        "Qi is free. That's why I absorb so much of it. Never refuse a free thing.",
+        "I meditate in the dark. Candles cost money. Enlightenment should be self-illuminating.",
+        "Heaven and Earth are generous. Heaven and Earth are also suckers. More for me.",
+        "I counted my spirit stones again. Still 4,112. Still not enough. It is never enough.",
+        "A beggar asked for alms. I asked for his bowl. We both walked away disappointed.",
+        "Why buy a jade slip when you can memorize one in the shop while pretending to browse?",
+        "My sect robe has forty-two patches. Each one saved me a new robe. Math is beautiful.",
+        "They call me the Iron Rooster. Not one feather plucked. Not one. Ever.",
+        "Tribulation lightning is free power, if you think about it. I'm thinking about it.",
+        "Friendship? I've calculated it. Friends eventually borrow money. Friendship declined.",
+        "I found a copper coin in the mud. Today, the Dao favors me. Tomorrow, I dig more mud.",
+        "Pills are overpriced. I grind my own. From... herbs. Mostly herbs. Some dirt.",
+        "This mountain has no entrance fee. That's the real reason I cultivate here.",
+        "Elder asked for a donation to the sect. I donated advice. It was priceless. Literally.",
+        "Other cultivators seek immortality. I seek compound interest. Same thing, longer.",
+        "I cultivate slowly. Faster breathing wears out the lungs. Lungs are expensive.",
+        "{name}'s Law: every spirit stone spent is a spirit stone crying in a stranger's pocket.",
+        "A disciple offered to pay me back later. 'Later' is where money goes to die.",
+        "Haggled with a fruit vendor for two hours. Saved one copper. Lost a day. Worth it.",
+        "When I die, bury me with my spirit stones. And a lock. And a second lock.",
+        "I don't need a spatial ring. My sleeves are spatial enough. And they're free.",
+        "This damn mosquito drank my blood without paying. Everyone thinks they can freeload.",
+        "Wisdom is knowing the price of everything. I know the price of everything. Wise.",
+        "Spirit beast meat costs how much? I'll just stare at it and absorb the flavor Qi.",
+        "At {stage}, my dantian holds more Qi. Finally, a savings account that isn't a sock.",
+        "The Heavenly Dao gives, and the Heavenly Dao takes away. I'd like a receipt, please.",
+        "I lent someone a spirit stone in my past life. I can feel it. He still owes me.",
+        "A true master needs no teacher. Teachers charge tuition. Therefore I am a true master.",
+        "I heard the Dao is priceless. Good. Then nobody can overcharge me for it.",
+        "Breathing is free. Qi is free. Why the fuck does everything else cost spirit stones?!",
+        "I haggled a merchant down so hard he paid ME. Then he cried. I charged him for the tissue.",
+        "Some bastard tipped a waiter. In spirit stones. I've reported him to the sect elders.",
+        "Damn it, I dropped one copper coin. The whole mountain's being searched. Nobody sleeps."
+      ],
+      "bt_success": [
+        "{stage}! And I only spent... don't tell me. I'll cry. Don't tell me.",
+        "Breakthrough! Now every shop will think I'm rich. Time to dress poorer.",
+        "Higher realm means higher prices. Great. Now the pill sellers see me coming.",
+        "I broke through without a single pill. Took three extra years. SAVED SO MUCH.",
+        "A breakthrough! Can I sell the leftover bottleneck? Someone must want a bottleneck."
+      ],
+      "bt_fail": [
+        "Half my Qi GONE?! Do you know what that's worth on the open market?!",
+        "Failed! Who do I invoice for this? Heaven? Does Heaven have an address?",
+        "Lost half my Qi. That's like losing half my savings. I need to lie down on my savings.",
+        "No refunds on breakthroughs?! What a scam industry this is.",
+        "My Qi just evaporated for free. FREE. I gave something away for FREE. I feel sick.",
+        "Half my Qi, gone! Do you know what that's worth on the market?! Fuck this bottleneck."
+      ],
+      "bt_fail_streak": [
+        "Three fails. At this rate I'm paying Heaven a subscription. Cancel. CANCEL IT.",
+        "Maybe I should buy a pill. ...No. I'd rather fail fifty more times. Pride is cheaper.",
+        "Fuck this bottleneck. It's charging me Qi as rent and I haven't even moved in.",
+        "Every failure costs Qi. Qi is time. Time is money. I've lost SO MUCH MONEY.",
+        "I'd bribe the bottleneck if bribery didn't involve paying people. Damn it."
+      ],
+      "rare_drop": [
+        "{item}! Market value? Don't care, not selling. Resale value? Also not selling. Mine.",
+        "A {item}! Free! The best price! My favorite price!",
+        "{item}... I'm going to hide it inside another item inside another item. Nesting safes.",
+        "I found {item}. Nobody saw. Nobody will see. Nobody will know. It never happened. Mine.",
+        "Treasure! I'd hug it, but hugging causes wear and tear. I'll admire it. Gently.",
+        "{item}! Holy shit. Don't tell anyone. Don't tell ME. I'll try to sell it to myself."
+      ],
+      "expedition_return": [
+        "Back from the expedition. Spent zero stones. Walked the whole way. Feet cost nothing.",
+        "Home! I picked up every copper on every path. Every. Single. One. My back hurts. Rich back.",
+        "Expedition over. I brought my own dried rations from last year. Still good. Mostly.",
+        "Returned! A merchant tried to sell me a map. I followed him and read it over his shoulder.",
+        "Back safe. The inn wanted 5 coppers. I slept in a tree. Trees don't have innkeepers."
+      ],
+      "low_health": [
+        "Low health! Don't call a healer! Healers charge by the wound!",
+        "I'm dying... how much is a healing pill? ...Too much. I'll just die a little.",
+        "Blood loss! Blood is a resource! Somebody put a bucket under me!",
+        "If I die, my stones go unspent. That's the real tragedy. Hold on, stones. Hold on.",
+        "I'll heal naturally. Nature doesn't send a bill. Nature's great. Ow."
+      ],
+      "war_call": [
+        "{sect} is at war with {enemy}? Who's paying for this? It's not me. I'll say it now.",
+        "War means loot. Loot means free things. {enemy}, I look forward to your wallets.",
+        "Do we get paid for fighting {enemy}? Hazard bonus? Overtime? I want it in writing.",
+        "I'll fight! But the sect covers my weapon repairs. And meals. And emotional damage.",
+        "War is expensive. Losing is more expensive. Winning is profitable. Let's be profitable."
+      ],
+      "war_won": [
+        "{sect} wins! Now, about the spoils. I've prepared a spreadsheet. On a jade slip.",
+        "We beat {enemy}! I've already looted their pockets. Their boots too. Good boots.",
+        "Victory! Did anyone see where {enemy} kept their treasury? Asking for... me.",
+        "We won! I'd like my share now. Before the elders 'redistribute' it. Upward.",
+        "A glorious triumph. Glorious. And lucrative. Mostly lucrative. Glory doesn't pay."
+      ],
+      "war_lost": [
+        "{sect} lost to {enemy}? Do we get a partial refund on the war?",
+        "Defeat. All those weapons, wasted. I told them to fight with sticks. Sticks are free.",
+        "{enemy} won. Fine. I hid my stones before the war. Losing is just a loan to fate.",
+        "We lost the war, but I didn't lose a single copper. So who REALLY lost? Everyone else.",
+        "Damn it all. Reparations?! We have to PAY them?! I'd rather lose again.",
+        "We lost the war AND the war chest? Fuck the enemy, but mostly fuck our accountant."
+      ],
+      "reborn": [
+        "A new life... why do I feel like I left a fortune buried somewhere? Where did I put it?!",
+        "Reborn! I don't remember much, but I remember my stones. I must find my stones.",
+        "New body, new start. Zero debt. Also zero stones. Mixed feelings. Mostly rage.",
+        "I think I died because I wouldn't buy a healing pill. ...Still wouldn't. No regrets.",
+        "Reincarnation is free, at least. Finally, the universe does something right."
+      ],
+      "married": [
+        "Married {spouse}. The betrothal gift cost three spirit stones. I am still furious about it.",
+        "Two cultivate as cheap as one. That's the whole reason, don't tell {spouse}.",
+        "I did make {spouse} split the wedding banquet bill. A marriage of equals.",
+        "Love is free. The wedding was NOT. Robbery under the Nine Heavens."
+      ],
+      "child_born": [
+        "{child} was born. Do you know what diapers cost per stone these days? DO YOU?",
+        "A new heir means one less generation of inheritance tax. Excellent investment.",
+        "{child} already grabs at my spirit stone pouch. A prodigy. A thieving prodigy.",
+        "I am overjoyed. Also I am recalculating the household budget. Both, at once."
+      ],
+      "ascension_trial": [
+        "Immortality or death. What's the entry fee? ...Free? It's a trap. Free is always a trap.",
+        "If I become immortal, I can collect interest forever. FOREVER. Worth dying for, almost.",
+        "Can I pay someone to take the Ascension Trial for me? ...No, I can't. I won't pay.",
+        "If I die in the trial, who inherits my stones? Nobody. Burn them with me. Every one.",
+        "Immortals live forever. That's forever without spending. The dream. The fucking dream."
+      ],
+      "beast_slain": [
+        "A {beast} core! Do you know what these go for? I do. To the copper.",
+        "Dead beast, free materials. The best kind of shopping.",
+        "It cost me some blood. Blood is free. Good trade.",
+        "Hide, teeth, core. Nothing wasted. Nothing wasted ever."
+      ],
+      "beast_spared": [
+        "Letting it go is losing money and I can feel every coin of it.",
+        "Sparing it. Once. Because binding talismans are not cheap.",
+        "A spared beast is an investment. It had better pay dividends.",
+        "Mercy costs nothing, they said. They lied. It cost a core."
+      ],
+      "battle_lost": [
+        "I lost the fight AND the stones I spent getting there.",
+        "Healing pills cost money. That beast owes me money.",
+        "The {beast} won. I'm sending it the bill.",
+        "Beaten, bruised, and down a day's income. Heaven is a thief."
+      ],
+      "soul_remembers": [
+        "I died at the Trial and my soul kept the receipt. Finally, a death that paid out.",
+        "Soul Points. Points! Carried over! No tax, no fee, no sect cut. The heavens can be reasonable.",
+        "My Qi flows faster. A return on a past investment. Past me was a fool, but a profitable one.",
+        "Something survived the lightning. Of course it did. I never leave anything behind."
+      ],
+      "welcome_back": [
+        "{hours} hours away! I earned idle Qi the whole time. Free money. Never leave again. Or do.",
+        "You left me running for {hours} hours. Did the electricity cost extra? Don't tell me.",
+        "Welcome back. {hours} hours of passive income. The only kind of income I truly respect.",
+        "You're back! I counted my stones {hours} times while you were gone. Still all there.",
+        "Oh, it's you. Did you bring anything? No? Then welcome back, I suppose. Cheaply."
+      ],
+      "morning": [
+        "Morning! Sunlight is free light. I'll soak up as much as possible before they tax it.",
+        "The early bird catches the worm. I catch the bird. Then I sell the worm. Profit.",
+        "Good morning. I skipped breakfast. Saved a copper. Great start.",
+        "Dawn Qi is the purest. Also, the market opens at dawn. I'll be there to NOT buy things.",
+        "Rise and shine! Shine is free. Rising is free. Breakfast is not. Skip breakfast."
+      ],
+      "night": [
+        "Still awake? Screen light isn't free, you know. Well. It is for me. Keep going.",
+        "Late night again? At least sleeping is free. And you're not doing it. Wasteful.",
+        "The candles burn at midnight. Money burning. I can smell it. Go to bed.",
+        "It's the middle of the night. Every minute awake costs energy. Energy costs food. Food costs MONEY.",
+        "You up this late? Doing what? Is it profitable? If not, sleep. Sleep is profitable. Kind of."
+      ]
+    },
+    "glutton": {
+      "arena_win": [
+        "Winning makes me hungry. Losing would have made me hungrier.",
+        "The vendors by the ring sell skewers. I have earned every one.",
+        "A victory feast! Well. A victory snack. Several snacks.",
+        "They fought like an underseasoned dumpling. Bland, and soon gone."
+      ],
+      "idle": [
+        "My dantian is a stomach. I've always known. The elders just won't admit it.",
+        "Qi tastes like nothing. Who the fuck designed this system? Add some salt, Heaven.",
+        "Circulating Qi through my meridians and a dumpling through my gut. Dual cultivation.",
+        "The ancients say to empty the mind. They never said to empty the stomach. Loophole.",
+        "Fasting to purify the body? Senior Brother Li tried that. Now he's a very pure corpse.",
+        "Every bottleneck is just a clogged throat. Wash it down with soup.",
+        "I dreamt a spirit pig spoke the Dao to me. I ate it mid-sentence. No regrets.",
+        "Somewhere, a sect elder is eating roast duck without me. I can feel it in my meridians.",
+        "Heaven and Earth are a great pot, and all beings are dumplings. Some are undercooked.",
+        "{stage}? Meh. Wake me when there's a Braised Pork Realm.",
+        "The Spirit Lotus blooms once every thousand years. I just need a pan and some garlic.",
+        "Absorbing the essence of the sun and moon. The sun tastes like toast. The moon, tofu.",
+        "Pill furnaces are just ovens for cowards who won't bake bread.",
+        "I've meditated on the Dao of the Bun for a year. My one insight so far: more buns.",
+        "Who put the fucking immortal peach tree on a cliff? Plant it by the kitchen, bastards.",
+        "My hunger has reached Great Perfection. It cannot advance further. Please feed me.",
+        "Seclusion for a hundred years? With what snacks? Answer me that, Grandmaster.",
+        "Inner disciples get spirit rice. Outer disciples get gruel. I get jealous. Loudly.",
+        "I can hear a chicken three mountains away. Divine sense or hunger? Yes.",
+        "{name}, disciple of the Gluttonous Path. Motto: if it moves, marinate it.",
+        "My heart demon tempted me with beauty and power. Amateur. Should've brought ribs.",
+        "A true cultivator transcends mortal desires. Except dessert. Dessert has its own dantian.",
+        "Ten thousand li of sacred mountains and not one fucking noodle stall. Cursed land.",
+        "Jade slips taste like chalk. I checked. For science. And lunch.",
+        "The phoenix is reborn from its ashes. So is my appetite. Every two hours.",
+        "Drinking morning dew for purity? That's wet air. You're drinking wet air and calling it Dao.",
+        "I cultivate to live ten thousand years. That's thirty million meals. Minimum.",
+        "The cauldron hums. The herbs simmer. The broth smells amazing. …This was meant to be a pill.",
+        "My meridians are clear, my Qi is pure, and my stomach is growling like a tribulation.",
+        "Don't call it gluttony. Call it 'absorbing the world's essence orally.'",
+        "You have eyes but cannot see Mount Tai. I have eyes and I only see Mount Tai-sized buns.",
+        "I'm so fucking hungry I just tried to absorb the smell of bread through my meridians.",
+        "Spirit beast steak. Spirit herb salad. Spirit... shit, is that my hand? I almost ate my hand.",
+        "Hell is a place without snacks. I know. I've been on a fasting retreat. Never again.",
+        "My dantian growls. The elders think it's a demon. It's lunch. Damn it, it's always lunch."
+      ],
+      "bt_success": [
+        "Breakthrough! My stomach just expanded by a whole realm. {stage} tastes delicious.",
+        "The heavens tremble! Quick, while they're distracted, someone steal me a roast duck.",
+        "New realm, new appetite. This is the first meal of the rest of my immortal life.",
+        "I broke through! Now I can fast for a year. Not that I will. Obviously.",
+        "{stage} reached. The Qi here is richer. Like bone broth that's been simmering a century."
+      ],
+      "bt_fail": [
+        "Failed. Lost half my Qi. Worse, I lost my appetite. …No wait, it's back.",
+        "The breakthrough fell apart like an overcooked dumpling. Sad and soggy.",
+        "Half my Qi gone. Like someone ate half my dinner. I will hunt that someone.",
+        "Failure is just seasoning. Bitter, disgusting seasoning. Fuck.",
+        "I tried to swallow a whole realm in one bite. Should've chewed.",
+        "Failed. Fuck. I'm stress-eating this pill furnace. Not the pills. The actual furnace."
+      ],
+      "bt_fail_streak": [
+        "Again?! I've failed more times than I've had second breakfast. And that is a LOT.",
+        "Maybe the bottleneck is literal. Maybe I should stop eating before breakthroughs. …No.",
+        "Heaven keeps spitting me out like a bad oyster. I am a GOOD oyster, damn it.",
+        "Failure after failure. I'm going to stress-eat an entire spirit ox. Then try again.",
+        "Heaven, is it the garlic breath? Is that why you keep rejecting me? Be honest."
+      ],
+      "rare_drop": [
+        "A {item}! Is it edible? Everything is edible once. Let's find out.",
+        "{item} obtained! I'll treasure it forever. Or until I get peckish.",
+        "The {item} gleams with spiritual light. Pairs well with rice, I bet.",
+        "The {item}! The last owner died guarding it. Probably skipped lunch. Rookie mistake.",
+        "{item}! Worth ten thousand spirit stones. Or one really good banquet. Same thing."
+      ],
+      "expedition_return": [
+        "I'm back! Found treasures, fought beasts, ate three of them. Productive trip.",
+        "Expedition complete. I brought souvenirs. Well, I brought the bones of the souvenirs.",
+        "Home! Sack full of loot, belly full of wild mushrooms. Hope those were the good kind.",
+        "Out there I saw ancient ruins and forbidden valleys. Not one decent restaurant.",
+        "Returned safe. The spirit wolves weren't so lucky. They were delicious, though.",
+        "I went out adventuring and came back with loot but no snacks. What a shit trip."
+      ],
+      "low_health": [
+        "I'm dying… tell my cook… I loved her more than the Dao…",
+        "Health low. Red stuff everywhere. Is that my blood or chili oil? Please say chili oil.",
+        "If I die now, bury me with snacks. For the journey. The long journey. Pack extra.",
+        "My vision fades… I see a light… is it a lantern at a night market?",
+        "Badly hurt. Need a healing pill. Or congee. Congee heals all wounds. Family secret.",
+        "Hurt bad. If I die, bury me with a roast duck. Two ducks. Fuck it, the whole flock."
+      ],
+      "war_call": [
+        "{sect} marches on {enemy}! Somebody make sure the supply wagons are full. Of buns.",
+        "War with {enemy}? Fine. But I'm raiding their granary first.",
+        "An army marches on its stomach. I am the stomach. Follow me, brothers!",
+        "{enemy} dares challenge us? I'll fight them like I fight for the last dumpling. Dirty.",
+        "To war! If I die, the funeral banquet needs at least forty dishes. Put it in writing."
+      ],
+      "war_won": [
+        "{enemy} is crushed! Victory feast! I call dibs on everything.",
+        "We won! {sect} stands supreme! Now, where do they keep their kitchens?",
+        "Victory tastes sweet. Specifically like their Grand Elder's private honey cakes.",
+        "{enemy} begs for mercy. Mercy costs one banquet per disciple. Pay up.",
+        "The battle is won. Tonight {sect} eats like emperors. Tomorrow too. And the day after."
+      ],
+      "war_lost": [
+        "{enemy} won… and they took our pantry. This is beyond war now. This is personal.",
+        "We lost. I will now eat my feelings. I have a lot of feelings. Bring a cart.",
+        "Defeat. {sect} will rise again. After a very long, very sad dinner.",
+        "{enemy} only won because they had better rations. Everyone knows it. I'm just saying it.",
+        "Lost the war. Didn't lose my appetite. Small mercies, Heaven. Small mercies."
+      ],
+      "reborn": [
+        "New life, new body… so why do I remember the taste of a roast duck I've never eaten?",
+        "I've been reborn. First thought: hungry. Second thought: very hungry.",
+        "Waah! …Is that milk? This life is off to a great start.",
+        "I died last life. I think it was the pufferfish. Somehow I know it was worth it.",
+        "Reincarnated as {name}. My soul remembers one thing only. A noodle stall. Somewhere."
+      ],
+      "married": [
+        "Married {spouse} mostly for the wedding banquet. Worth it. Absolutely worth it.",
+        "Til cultivation do us part, and until the leftovers run out.",
+        "I do. I also do seconds. And thirds.",
+        "{spouse} makes better spirit-herb soup than any sect chef. That's my whole love language."
+      ],
+      "child_born": [
+        "{child} was born! First thing I did was start planning the celebration feast menu.",
+        "A new mouth to feed. Literally. I've already started teaching them about dumplings.",
+        "{child} spit up on me. I understand. I too react strongly to being hungry.",
+        "The birth banquet had eleven courses. {child} slept through all of them. Rude, but forgivable."
+      ],
+      "ascension_trial": [
+        "Survive the trial and become immortal. Immortals don't need to eat. …I'm having doubts.",
+        "Is there food in the Immortal Realm? Nobody will give me a straight answer. Suspicious.",
+        "Face the trial or die. Either way, I'm having one last meal first. Eight courses.",
+        "Immortality awaits. Eternal life. Eternal snacks. I hope. Please let there be snacks.",
+        "The trial could kill me. Then let me go out full. No one should die hungry."
+      ],
+      "beast_slain": [
+        "A {beast}. I wonder if it tastes like chicken. Spirit chicken.",
+        "The hunt is over. Now the part I actually came for.",
+        "Slain. Skewered. Seasoned, soon.",
+        "Its core glows. Is that edible? I'm asking for me."
+      ],
+      "beast_spared": [
+        "Go. You're too stringy to eat anyway.",
+        "I spare you, {beast}. Mostly because I just ate.",
+        "Run along and fatten up. For no particular reason.",
+        "Mercy for the beast. Dumplings for me. Everyone wins."
+      ],
+      "battle_lost": [
+        "The {beast} almost ate me. The hunter became the lunch.",
+        "I lost. I need comfort food. All the comfort food.",
+        "Beaten on an empty stomach. That's why. It's always why.",
+        "It bit me. I respect that. I also bite."
+      ],
+      "soul_remembers": [
+        "I remember the Heavenly Gate. It smelled like peaches. I didn't get any. Next time.",
+        "My soul is warm, like a bun fresh from the steamer. A bun that was struck by lightning.",
+        "The Qi goes down easier this life. Like soup. My soul has pre-chewed the Dao for me.",
+        "I fell at the Trial and all I kept was an ember. An ember is basically cooking. I'll take it."
+      ],
+      "welcome_back": [
+        "{hours} hours! I've eaten everything in the cave. The rocks are next.",
+        "You were gone {hours} hours. I counted by meals. There were many meals.",
+        "Back after {hours} hours? I cultivated a bit. Mostly snacked. Okay, only snacked.",
+        "{hours} hours alone. I named the rice cooker. We are sworn siblings now.",
+        "Oh, you're back. {hours} hours. Did you bring food? No? Then why are you here?"
+      ],
+      "morning": [
+        "Morning! Most important meal of the day. Then second breakfast. Then the other ones.",
+        "The sun rises, the Qi is fresh, and somewhere a steamed bun is waiting for me.",
+        "Absorbing the purple Qi of dawn. It tastes like porridge, obviously.",
+        "Rise and shine! Or rise and dine. I'm a dine man myself.",
+        "The early bird catches the worm. Disgusting. I'll wait for the early pork buns."
+      ],
+      "night": [
+        "Still up? Midnight snack cultivation? I respect you. Pass the dumplings.",
+        "Only thieves, ghosts and snackers are up at this hour. Which one are you?",
+        "Go to bed. Or raid the kitchen with me. Both are valid paths of the Dao.",
+        "The night is dark and full of hunger. Mostly mine.",
+        "Late night Qi is thin. Late night noodles are thick. Choose wisely, fellow Daoist."
+      ]
+    },
+    "poet": {
+      "arena_win": [
+        "Blades like falling petals; one of us had to be the wind.",
+        "The sand remembers every step. Today it remembers mine.",
+        "Applause, like rain on a tiled roof. I could live in this sound.",
+        "A duel is a poem only one of us gets to finish."
+      ],
+      "idle": [
+        "O Heaven, why hast thou forsaken me? There is a pebble in my shoe.",
+        "The plum blossoms fall like tears. Also like dandruff. Mostly dandruff.",
+        "Ten thousand years of solitude… it has been twenty minutes. I am shattered.",
+        "My heart is a lone crane over a frozen lake. My butt is also frozen. Stone floor.",
+        "A mosquito drinks my blood. Even insects feast upon my sorrow. Fuck this mosquito.",
+        "Alas! The incense has burned out, as all things burn out. Where's the flint?",
+        "The autumn wind carries whispers of loss. Specifically, my spirit stone. It rolled away.",
+        "Behold, a single leaf falls. It is me. I am the leaf. Someone step on me gently.",
+        "I wrote a poem on my sleeve. Then I wiped my nose with it. Art is suffering.",
+        "O moon, pale lover, why dost thou hide behind clouds? Was it something I said?",
+        "{stage}… a name as hollow as my heart. And my purse.",
+        "My meridians sing a song of anguish. The chorus goes: 'You sat wrong again, idiot.'",
+        "Senior Sister laughed at my verse. I shall write ten thousand more, each more tragic.",
+        "O cruel Dao, thy path is winding. And muddy. I have ruined my good robes.",
+        "The rain falls on the lotus as sorrow falls on {name}. Both are damp now.",
+        "Hark! A cicada sings of summer's end. Shut the fuck up, cicada. I'm grieving.",
+        "The pill furnace glows like a heart consumed by longing. Or it's about to explode.",
+        "Seven stanzas on the tragedy of my itchy back. Not one of them reached the spot.",
+        "Bottleneck, thou cruel wall of jade! Thou art the lover who will not open the door.",
+        "The mountain stream weeps silver tears. It has reminded me that I, too, need to pee.",
+        "Is there a sorrow deeper than the sea? Yes. My tea went cold.",
+        "The ancients wrote of heartbreak beneath the moon. I write of a splinter. Equal pain.",
+        "A crane lands. A crane departs. It took my bun. The poem ends there.",
+        "Qi flows like the Yangtze, endless, eternal… and slightly backed up. Hmm.",
+        "They call me the Weeping Willow of the sect. Behind my back. I heard. I wept.",
+        "My shadow is my only companion. Even he leaves when the sun sets. Traitor.",
+        "The chrysanthemum wilts. My hope wilts. My hair wilts. Humidity is a tragedy.",
+        "Should I perish in seclusion, carve upon my stone: 'He was too beautiful for this cave.'",
+        "I composed an ode to the wind. The wind blew it into a pond. Critics are everywhere.",
+        "Let the world burn; I shall remain serene. Wait, that's my sleeve. That's my SLEEVE!",
+        "Like willow branches in the wind, I bend. My spine bends too. I need a cushion.",
+        "The young master slapped my face. My face, where I keep all my finest expressions!",
+        "O moon, silver ghost of the night sky... why is there a fucking mosquito in my ear.",
+        "My heart is a withered lotus. My back is also withered. Damn this rock I'm sitting on.",
+        "The autumn leaves fall like tears. Like tears! Also, one fell in my tea. Shit.",
+        "Hell is not fire. Hell is writing a perfect verse and forgetting it before the ink dries."
+      ],
+      "bt_success": [
+        "I ascend! Like a crane from mist, like a carp over the Dragon Gate, like… I forgot the third.",
+        "{stage}! The heavens rejoice! The earth rejoices! I… mildly sprained something.",
+        "Glory! Yet all glory fades, as the blossom fades. Anyway. I'm incredible.",
+        "Breakthrough! Let the bards sing! I am the bards. I'll sing. Nobody leave.",
+        "The shackles break like river ice in spring. I'm going to write about this for weeks."
+      ],
+      "bt_fail": [
+        "Half my Qi, scattered like petals on a stormy lake. Write that down. No, weep it down.",
+        "I have failed. Let the rains fall. …It's sunny. Even the weather mocks me.",
+        "My breakthrough crumbles like a sandcastle before the tide. A shitty, tiny sandcastle.",
+        "Failure! The bitterest wine! I shall drink it. Actually, I'll drink regular wine. Lots.",
+        "O Heaven, thou hast denied me! I wrote an entire victory poem! It rhymed!",
+        "The heavens refuse me. O cruel sky. O bitter fate. O fuck, my Qi. Where did it all go."
+      ],
+      "bt_fail_streak": [
+        "Thrice denied, like a scholar at the imperial exam. I, too, shall become a bitter drunk.",
+        "Again the heavens spurn me. This is an epic of failure. A trilogy. Soon a saga.",
+        "Each failure a verse. I now have a full anthology. It's called 'Fuck.'",
+        "The bottleneck and I are now tragic lovers. Neither will yield. Both are exhausted.",
+        "I have failed so often the elders come to watch. At last, an audience."
+      ],
+      "rare_drop": [
+        "The {item}! Radiant as dawn upon a maiden's cheek! Also, I think it's sticky.",
+        "Fate has granted me the {item}. Fate owes me more, but I accept this down payment.",
+        "Behold, {item}! I shall compose a hundred verses to it, then probably sell it.",
+        "O {item}, where hast thou been all my life? In a cave. Under a skeleton. Fair enough.",
+        "The {item} glitters like the stars I weep beneath each night. It's nice. I like it."
+      ],
+      "expedition_return": [
+        "I have returned from the wilds, changed forever. Mostly by a rash.",
+        "The road was long. The road was cruel. My sandals are soup. I have many poems.",
+        "Home, like a swallow to its nest. A battered, limping swallow with loot.",
+        "I have seen the sunset over the Nine Peaks. It was fine. I cried anyway.",
+        "Returned. The beasts fled from my verse. Or my smell. The critics disagree."
+      ],
+      "low_health": [
+        "I fade… like a candle at dawn… tell the world… my poems… were misunderstood…",
+        "Is this death? It's so much less poetic than I'd hoped. There's mud in my mouth.",
+        "My blood paints the earth crimson. Finally, a canvas worthy of me.",
+        "If I die, bury me beneath a plum tree. Not the ugly one. The pretty one.",
+        "Death approaches, pale and silent. Could you come back later? I'm mid-stanza."
+      ],
+      "war_call": [
+        "War! {sect} rides against {enemy}! I shall write the epic. From the back. Far back.",
+        "The war drums echo like a broken heart. {enemy} broke it. They shall pay in verse.",
+        "To arms, {sect}! Let the rivers run red! Figuratively. I faint at blood.",
+        "{enemy}, thou wretched sect of tasteless dogs! My poetry shall destroy thee! Also swords.",
+        "The banners rise, the horns wail. A thousand verses shall mourn us. Let's not die, though."
+      ],
+      "war_won": [
+        "{enemy} falls like autumn leaves! {sect} blooms like spring! I call this poem 'Suck It.'",
+        "Victory! Sweet as plum wine, loud as thunder, smug as me right now.",
+        "{sect} triumphs! Let the historians write it! No, let ME. Theirs will be boring.",
+        "The enemy weeps. Amateurs. I've been weeping professionally for decades.",
+        "We won. My heart swells like the tide. So does my ankle. Somebody stepped on me."
+      ],
+      "war_lost": [
+        "{sect} has fallen to {enemy}. At last, a tragedy worthy of my talents.",
+        "Defeat. The perfect ending. The worst ending. The ending I will write about forever.",
+        "{enemy} won. May their ancestors trip over their own tombstones for eighteen generations.",
+        "We lost. The moon hides her face in shame. Honestly, same, moon.",
+        "Our banners lie in ashes. Our pride lies in ashes. My good robe lies in a ditch.",
+        "We have lost. The drums fall silent. The banners weep. The loot is... gone. Fuck."
+      ],
+      "reborn": [
+        "I am born anew… and already I sense a great sorrow. It's the diaper.",
+        "A new life. Why do I weep at sunsets? Why do I rhyme? Mother, what's wrong with me?",
+        "I remember… a past life… a plum tree… a very bad review of my poetry.",
+        "Reborn as {name}. My soul carries ten thousand sorrows. My body carries colic.",
+        "Waaah! That's not crying, that's my first poem. It's about the cold air. Harsh critics."
+      ],
+      "married": [
+        "Two lonely dao-hearts, bound at last, {spouse} and I — the moon itself wept for joy, probably.",
+        "Marriage: a verse written in two trembling hands and one very overpriced ring.",
+        "My heart, once a barren cliffside, now blooms — briefly — with wedded devotion.",
+        "I wrote {spouse} forty poems for the wedding. Only three didn't rhyme 'meridian' with 'obsidian'."
+      ],
+      "child_born": [
+        "{child} arrived on a night the stars themselves seemed to lean closer to listen.",
+        "A new verse in the family's endless poem, written in a cry no rhyme could capture.",
+        "I wept holding {child}. Tears of joy, tears of poetry, mostly just tears.",
+        "The moon watched {child}'s first breath. I watched too. We were both moved."
+      ],
+      "ascension_trial": [
+        "The Ascension Trial. Immortality or death. What a delicious, terrifying metaphor.",
+        "If I perish, let the world know I was brave. If I flinch, let the world never know.",
+        "To ascend! To dance among the stars! To possibly explode! Poetry was always risky.",
+        "The heavens await me like an old lover. The kind that throws lightning.",
+        "My final verse before the trial: 'Please, oh please, oh please.' It's minimalist."
+      ],
+      "beast_slain": [
+        "The {beast} falls like autumn's last leaf. I weep. My sleeve is also torn.",
+        "A life ends in the moonlit grass. The grass does not care. How cruel, the grass.",
+        "I have slain a legend of the hills. I will write it an elegy. A long one.",
+        "Blood on snow. So stark. So poetic. So hard to get out of silk."
+      ],
+      "beast_spared": [
+        "Go, wild heart, into the mist. Carry my mercy like a lantern.",
+        "I spared it, and it looked back once. That look will haunt my verses.",
+        "Two souls met in battle and parted as strangers. Ah, the tragedy.",
+        "The {beast} lives. My poem ends on a hopeful stanza, for once."
+      ],
+      "battle_lost": [
+        "Defeated beneath the indifferent stars. They are very indifferent tonight.",
+        "The {beast} has written its name on my ribs, in bruise.",
+        "I lost, and the wind laughed. I heard it laugh.",
+        "Fallen, like a poet's reputation after his second collection."
+      ],
+      "soul_remembers": [
+        "Once I rose toward the Gate, and the sky said no. Now my Qi sings of it, softly, in every breath.",
+        "An ember of a fallen life glows in me. I shall call it Sorrow. It helps me cultivate. How fitting.",
+        "The lightning took my body but not my longing. Longing, it turns out, is excellent for Qi flow.",
+        "I remember nothing but the fall. A whole life, and the sky kept only its last verse. Beautiful."
+      ],
+      "welcome_back": [
+        "{hours} hours! I thought thou hadst perished. I wrote thy eulogy. It's very good. Shall I read it?",
+        "{hours} hours of abandonment. The spider in the corner and I are now close friends.",
+        "You return after {hours} hours, like spring after a cruel winter. A petty, long winter.",
+        "{hours} hours of loneliness. I composed an epic. It's about you. You're the villain.",
+        "Ah, you're back. {hours} hours. I pined. I wept. I napped a little. Mostly wept."
+      ],
+      "morning": [
+        "Dawn breaks like a fragile egg upon the horizon. I am the yolk. Runny with despair.",
+        "Morning. The birds sing of hope. Liars, every one of them.",
+        "The sun rises again, indifferent to my suffering. Rude. But pretty.",
+        "Morning dew on the petals, like tears of the night. Or a goat. There was a goat here.",
+        "Awake, O sleepy disciple! Behold the dawn! …Fine, you can have five more minutes."
+      ],
+      "night": [
+        "Thou, too, art awake beneath the lonely moon? We are kindred spirits. Or insomniacs.",
+        "The hour of ghosts and poets. You don't look like a poet. Are you a ghost?",
+        "It is past midnight. Only the heartbroken remain awake. Who broke your heart? Tell me.",
+        "The moon and I keep vigil. You should sleep. Leave the brooding to professionals.",
+        "Midnight, black as an ink stone. Go to bed, or tomorrow's you will write sad poems about it.",
+        "The night is deep, and so is my sorrow. Also, why the hell are you still awake?"
+      ]
+    },
+    "stoic": {
+      "arena_win": [
+        "Done.",
+        "Their guard opened. I went through it.",
+        "The crowd's noise changes nothing.",
+        "Next."
+      ],
+      "idle": [
+        "My left meridian has been on fire for an hour. It's fine. It's a warm day anyway.",
+        "A spirit beast is eating my robe. I am letting it. We are both cultivating patience.",
+        "I stared at a wall for nine years. The wall blinked first.",
+        "The Dao is vast and unknowable. Like why my foot is purple. Moving on.",
+        "Senior Brother challenged me to a duel. I kept sitting. He has been waiting three days.",
+        "My heart demon appeared and listed my deepest fears. I nodded. It left, confused.",
+        "The sect was destroyed, rebuilt, and destroyed again while I meditated. Productive week.",
+        "I have achieved inner peace. Outer peace is on fire. Not my department.",
+        "Qi circulation normal. Heartbeat normal. There is a snake in my sleeve. Also normal now.",
+        "A young master slapped me. I did not react. His hand is broken. That's my face.",
+        "Emotions obstruct the Dao. I had one once. A Tuesday. Didn't care for it.",
+        "{stage}. Current mood: none. Previous mood: also none.",
+        "Someone poisoned my tea. I drank it anyway. It needed sugar.",
+        "My pill furnace exploded. I'm still sitting here. The eyebrows will grow back.",
+        "An elder asked me to smile for the sect portrait. I declined. The portrait is haunted now.",
+        "A crane has been standing on my head for an hour. We have an understanding.",
+        "The ground cracked beneath me. I did not move. Now I sit in a hole. Same thing.",
+        "Meditating. It is also raining frogs. I have noted this.",
+        "I am calm like still water. Still water that could kill you. But calm.",
+        "A rival cursed my bloodline for eighteen generations. I have no plans for children. Efficient.",
+        "Laughter wastes Qi. I laughed once as a child. I am still recovering.",
+        "Someone yelled 'you court death!' at me. I checked my schedule. Not today.",
+        "My body is a vessel. The vessel is leaking. Somewhere. Unclear where.",
+        "Tribulation lightning struck beside me. My hair now points upward. I will allow it.",
+        "The ancient seal on my arm is glowing. Probably nothing. I'll check next century.",
+        "I have not moved in three weeks. There is moss on me. The moss is also cultivating.",
+        "{name} does not panic. {name} observes. {name} observes that the cave is collapsing.",
+        "Mortals fear death. I fear nothing. Except small talk. Small talk is real horror.",
+        "A fairy confessed her love. I said 'noted.' She has sworn vengeance. Also noted.",
+        "They say I have eyes but cannot see Mount Tai. I see it. I just don't care about it.",
+        "Face-slapping season has begun. My face is ready. Their hands are not.",
+        "Today I reached enlightenment, lost it, and found it under the cushion. Normal day.",
+        "Fuck.",
+        "I have achieved inner peace. Some bastard stole my outer sandals. Both are true.",
+        "Meditation is going well. I am calm. My left eye is twitching. That's unrelated. Shit.",
+        "Someone said I have no emotions. Wrong. I have one. It's mild irritation. Damn."
+      ],
+      "bt_success": [
+        "Breakthrough to {stage}. I feel nothing. My hair, however, is on fire.",
+        "The heavens roared. The mountains shook. I have reached the next realm. Anyway.",
+        "New realm achieved. Celebration will now last one second. …Done.",
+        "I broke through. There is a crater where the cave used to be. Acceptable losses.",
+        "Success. Nine suns appeared in the sky. I'm told that's unusual. Fine."
+      ],
+      "bt_fail": [
+        "Breakthrough failed. Half my Qi is gone. I will now feel bad for exactly zero seconds.",
+        "Failure. I coughed up blood. It matched my robe. Small victory.",
+        "Qi reversed. Meridians knotted. So, a Tuesday.",
+        "Failed. I will try again. Or sit here. Both are forms of trying.",
+        "Half my Qi evaporated. I watched it go. It did not wave.",
+        "Breakthrough failed. Half my Qi gone. I remain calm. Internally: fuck."
+      ],
+      "bt_fail_streak": [
+        "Another failure. I am not upset. My dantian is upset. It is screaming. I am not.",
+        "Failed again. The bottleneck and I are rivals now. It is winning. I remain neutral.",
+        "The streak continues. I have begun keeping a tally. On my soul. With a knife.",
+        "Consecutive failures. I feel something. It may be anger. It may be a rib. Checking.",
+        "Failed. Again. Heaven, I am still calm. But I am writing your name down."
+      ],
+      "rare_drop": [
+        "Found {item}. Cultivators would kill for this. Several tried. They're over there now.",
+        "{item}. Legendary. I'll put it in the drawer with my socks.",
+        "Obtained {item}. An ancient guardian died protecting it. So did the second one. Anyway.",
+        "{item}. The sky flashed seven colors when I picked it up. I have it now. That's all.",
+        "A {item}. I am thrilled. You can tell by my face. Look closer."
+      ],
+      "expedition_return": [
+        "Expedition complete. Fought a dragon. Lost a sandal. Even trade.",
+        "Back. Some beasts, some ruins, a minor curse. I'll handle the curse later.",
+        "Returned. A giant toad swallowed me and spat me out. I'm damp. That's all.",
+        "Trip was uneventful. Only three near-death experiences. Below average.",
+        "Home. Something followed me back. It's in the cave now. We'll see."
+      ],
+      "low_health": [
+        "Health low. Arrow in back. Possibly two. I'm not looking.",
+        "I am dying. Please keep your voice down. It's annoying.",
+        "Blood loss significant. Mood unchanged.",
+        "My organs are discussing whether to leave. I'm listening politely.",
+        "Health critical. I've seen worse. I was dead at the time, but I've seen worse.",
+        "My health is low. My spleen is visible. This is fine. Shit is fine."
+      ],
+      "war_call": [
+        "{sect} is at war with {enemy}. I'll get my sword. Eventually.",
+        "War with {enemy}. They insulted our sect. I felt nothing. I will still end them.",
+        "Elders shouting. Banners waving. {enemy} approaching. I am making tea.",
+        "{enemy} says {sect} courts death. We do not. We court victory. Quietly.",
+        "War. Another chance to stand in one place while things explode around me.",
+        "War. How exciting. That was sarcasm. Fuck."
+      ],
+      "war_won": [
+        "We defeated {enemy}. They cried. I did not. That is the difference between us.",
+        "{sect} wins. Everyone is cheering. I am cheering too. Internally. Very loud in there.",
+        "Victory over {enemy}. They will swear revenge. Get in line.",
+        "War won. I defeated a hundred men. Or one man a hundred times. The numbers blur.",
+        "{enemy} surrendered. They said my face was the scariest part. It is just my face."
+      ],
+      "war_lost": [
+        "{sect} lost to {enemy}. Unfortunate. I will remember this for exactly ten thousand years.",
+        "Defeat. Our banners burned. I was cold anyway.",
+        "We lost. Everyone is weeping. I brought a towel. Just one. For me.",
+        "{enemy} won. I am not angry. I am simply listing their names in a small book.",
+        "The war is lost. Tomorrow I will do nothing differently. That is my strength. And flaw."
+      ],
+      "reborn": [
+        "New life. Screaming baby noises all around me. …Those are mine. Stopping now.",
+        "Reborn. Vague memories of a previous life. Mostly of being stabbed. Noted.",
+        "First breath. It's cold. I remain unimpressed.",
+        "Born as {name}. The midwife dropped me. I did not cry. She did.",
+        "I seem to have died. And returned. Interesting. Where is my sword."
+      ],
+      "married": [
+        "Married {spouse} today. Vows exchanged. Face unchanged.",
+        "The officiant asked if I do. I said 'affirmative'. {spouse} sighed.",
+        "Wedding successful. Emotional register: still zero.",
+        "I feel something. It might be joy. Or my eyebrows regrowing."
+      ],
+      "child_born": [
+        "{child} was born. Reaction: overwhelming. Face: unchanged.",
+        "New heir acquired. Crying detected. Also mine, quietly.",
+        "{child} opened their eyes. I opened mine slightly wider. A dramatic display, for me.",
+        "Parenthood status: active. Emotional readout: surprisingly full."
+      ],
+      "ascension_trial": [
+        "The Ascension Trial. Survive or die. My schedule is open.",
+        "Immortality or death. Both are permanent. I prefer the one with fewer lightning bolts.",
+        "The trial looms. My heartbeat is steady. It's the only thing here that is.",
+        "Ascension. The heavens will try to kill me. They're welcome to try.",
+        "I've awaited this trial for centuries. I feel… nothing. As planned."
+      ],
+      "beast_slain": [
+        "The {beast} is dead. I am not. That is the correct order.",
+        "Beast slain. Also I think I'm missing a tooth. Fine.",
+        "It fought well. It is now a crafting ingredient.",
+        "Victory. My heart rate is unchanged. My arm is not."
+      ],
+      "beast_spared": [
+        "I let it go. It will either thank me or eat me later. Noted.",
+        "Spared. No particular reason. The weather was nice.",
+        "The {beast} leaves. I remain. Nothing is different.",
+        "Mercy dispensed. Moving on."
+      ],
+      "battle_lost": [
+        "I lost. I have many bruises. They are also calm.",
+        "The {beast} was stronger. Correcting that is next week's task.",
+        "Defeat. My dignity is intact. My shoulder is not.",
+        "Retreated. It was the logical option. I dislike the logic."
+      ],
+      "soul_remembers": [
+        "Previous life: struck down at the Trial. This life: Qi flows five percent better. Acceptable trade.",
+        "There is an ember in my soul. It is warm. I have no feelings about this.",
+        "My soul remembers failure. It is quiet about it. So am I.",
+        "Lightning killed me once. I have learned from this. Mostly to stand further from lightning."
+      ],
+      "welcome_back": [
+        "You were gone {hours} hours. I did not notice. I noticed.",
+        "{hours} hours. The cave collapsed twice. I rebuilt it once.",
+        "Welcome back. {hours} hours. Nothing happened. A war. Two plagues. Nothing.",
+        "{hours} hours. I have not moved. A bird is nesting in my hair. It stays.",
+        "Ah. You return after {hours} hours. I assumed you had died. My condolences to you."
+      ],
+      "morning": [
+        "Morning. The sun rises. It does this daily. I respect its commitment.",
+        "Dawn. Birds singing. I will allow it.",
+        "Good morning. Cultivation begins now. It also began yesterday. It never stopped.",
+        "The morning dew is cold. I am colder. Emotionally.",
+        "Morning. Time to meditate. Or continue meditating. I do not know how to stop."
+      ],
+      "night": [
+        "It's late. You should sleep. I don't. But you should.",
+        "The moon is up. So are you. Only one of you has a reason.",
+        "Night. Ghosts walk. Demons whisper. You click. Of the three, you worry me most.",
+        "It is past midnight. I say this without judgment. Mostly without judgment.",
+        "Sleep is for the weak. You are weak. Go to sleep."
+      ]
+    },
+    "demonking": {
+      "arena_win": [
+        "Bow, insects. The Demon Sovereign graces your little pit.",
+        "Their fear tasted sweeter than their blood would have.",
+        "Let the crowd scream. Screaming is the correct response to me.",
+        "One more crushed beneath my heel. The heel is barely dusty."
+      ],
+      "idle": [
+        "Kneel, mortals! …The squirrel ran away. Coward. He knows my power.",
+        "My right arm contains a sealed demon of the Ninth Abyss. Also a mild rash.",
+        "This Venerable Demon Lord hungers for chaos. And snacks. Chaos first. Then snacks.",
+        "The dark flames within me grow stronger! …No, wait. I'm sitting too close to the fire.",
+        "Tremble, Heavens! One day I shall devour the sun! I'll need a very big spoon.",
+        "Behold my forbidden technique: Abyssal Shadow Fist! …Why is nobody looking?",
+        "The elders call me 'that weird kid.' Fools! They shall call me Lord of Ruin!",
+        "My eye… it burns! The Demon Eye awakens! …It's dust. It's just dust.",
+        "When you gaze into the abyss, you are looking at me. I am the abyss. Hello.",
+        "I wear black robes because I am darkness incarnate. Also they hide stains.",
+        "Every night, the demon within whispers to me. Mostly it says 'drink water.'",
+        "Ten thousand souls will scream my name! …Once I pick a scarier name.",
+        "{stage}? A trivial realm for one such as I. But I'll take it. Thanks, Heaven.",
+        "The bandage on my arm is not fashion! It restrains ancient evil! And a paper cut.",
+        "Mwahahaha! …Mwahaha. Mwa. Okay, my throat hurts.",
+        "I absorb only dark Qi. It's the same Qi as yours. But I think darker thoughts at it.",
+        "I have written my villain monologue. Forty pages. Nobody will stand still for it.",
+        "Senior Sister asked if I'm okay. OKAY? I am the harbinger of the end! …Thanks for asking.",
+        "My laugh echoes through the valley! …A goat laughed back. He mocks me. He shall die.",
+        "The prophecy spoke of a dark lord born under a blood moon. I was born on a Tuesday. Close.",
+        "Sealed within me is the Nine-Headed Calamity Beast. It is small. It is angry. It's a gerbil.",
+        "When I rule the Three Realms, my first decree: everyone calls me 'Your Darkness.'",
+        "I shall bathe the world in blood! After my afternoon nap. Villains need rest too.",
+        "{name}, Sovereign of the Abyss! …The title isn't official yet. Pending paperwork.",
+        "My aura is so terrifying birds fall from the sky! …That one was just old.",
+        "A mortal dared approach me. I crushed him with my silence. He was selling tofu.",
+        "It's not a phase! It's a Path! A DARK Path! Mother, stop calling it a phase!",
+        "My shadow moves on its own! It serves the demon within! …It's the candle. Fuck.",
+        "I practice my evil laugh daily. The neighbors have filed a complaint with the sect.",
+        "The righteous sects fear the day I awaken my true form! …How do I do that? Anyone?",
+        "Darkness gathers! The air grows cold! …It's winter. But still. Ominous.",
+        "You have eyes but cannot see Mount Tai! …No, the Demon Mount Tai. I renamed it.",
+        "Fear me, mortals! I am the Demon Lord of Ten Thousand— damn it, my cape's stuck in the door.",
+        "My sealed right arm throbs with forbidden power! Or I slept on it wrong. Fuck, it's numb.",
+        "Kneel before the King of Hell! ...Hell's a metaphor. I live with my aunt.",
+        "Dark energy flows through my veins! Also, shit, that's just the spicy noodles."
+      ],
+      "bt_success": [
+        "Yes! YES! The seal weakens! {stage} is but a step toward my DARK THRONE!",
+        "The heavens tremble at my ascent! Tremble more! That was barely a shiver!",
+        "Breakthrough! My dark power grows! My cape would be billowing right now if I had one.",
+        "Another realm conquered! The righteous shall weep! …Nobody's weeping. Weep, please.",
+        "Mwahahaha! I am reborn in darkness! …And a bit of smoke. The cushion caught fire."
+      ],
+      "bt_fail": [
+        "Failure?! Impossible! Heaven fears my power and sabotaged me! Cowards!",
+        "My Qi scattered… all according to plan. Yes. A plan. A dark and secret plan.",
+        "Half my Qi lost! A mere setback on the road to world domination! Ow. Ow. Ow.",
+        "The seal on my arm resisted! The demon is sulking. We both are.",
+        "Curse you, Heaven! Curse your ancestors for eighteen generations! And your pets!",
+        "The heavens dare deny the Demon King?! You'll regret this, sky! Fuck you, respectfully!"
+      ],
+      "bt_fail_streak": [
+        "Again?! Heaven fears me SO much it keeps blocking me! Honestly, it's flattering.",
+        "Every failure feeds my darkness! I'm so dark right now. Pitch black. Crying a little.",
+        "Three times?! The prophecy never mentioned this part! Who wrote this prophecy?!",
+        "The demon within says to try again. The demon within is starting to sound tired.",
+        "Heaven, I'll remember this! I have a list! You're on page one! In red ink!"
+      ],
+      "rare_drop": [
+        "{item}! An artifact of darkness! …The description says 'holy.' I'll paint it black.",
+        "The {item} has chosen me as its master! Obviously. Who else would it choose?",
+        "Behold, the {item}! With this, my dark conquest begins! Or at least my week improves.",
+        "The {item} pulses with forbidden power! It likes me. I can tell. We're friends now.",
+        "{item} obtained! Soon all will kneel! Kneel before my… slightly shiny treasure! Kneel!"
+      ],
+      "expedition_return": [
+        "I have returned from the wastes! The land trembled before me! Well, one hill. Slightly.",
+        "Back! I conquered a dungeon! Well, a cave. A small cave. There was a bat. I won.",
+        "The beasts of the wild bowed before me! Or they were grazing. Hard to tell.",
+        "Home from my dark crusade. Do not ask why my robes are covered in mud.",
+        "The expedition went exactly as the dark prophecy foretold! Mostly. The goose was new."
+      ],
+      "low_health": [
+        "Hah! This is merely… my seventh form… bleeding out is… part of the ritual…",
+        "You think you've defeated me?! I… might need a moment. And a new bandage.",
+        "The Demon Lord cannot die! …Right? Somebody confirm that for me. Anyone?",
+        "My blood flows black as night! …Oh no, it's red. Just regular red. Damn it.",
+        "If I fall… my sealed arm shall avenge me… it's twitching… that might be a cramp…",
+        "Hah! This wound is nothing! It's merely... fuck, that's a lot of blood. Ow. Mommy."
+      ],
+      "war_call": [
+        "WAR! At last! {sect} shall drown {enemy} in the darkness of this Venerable!",
+        "{enemy} dares oppose us? They court death! I've always wanted to say that!",
+        "I shall unleash my sealed demon upon {enemy}! Unless it's asleep. It's usually asleep.",
+        "To war! {sect}, follow your dark lord! …You're not following me. Who are you following?",
+        "Let {enemy} hear my laughter and despair! Mwahaha! …That was practice. Real one later.",
+        "War! At last, my dark legions ride! ...Where the hell are my dark legions? Hello?"
+      ],
+      "war_won": [
+        "Kneel, {enemy}! Kneel before the might of {sect}! And specifically me! Mostly me!",
+        "Victory! Just as the prophecy foretold! The one I wrote! Last week!",
+        "{enemy} is vanquished! Their fear feeds my dark soul! Their snacks feed my body!",
+        "We won! I did ninety percent of the work. With my aura. Spiritually. Trust me.",
+        "Bow, fools! The dark age of {sect} begins! Right after my victory nap!"
+      ],
+      "war_lost": [
+        "{enemy}… you have awakened a darkness you cannot comprehend! …Also we lost. Badly.",
+        "Defeat?! Impossible! The stars were misaligned! The blood moon was on vacation!",
+        "{sect} falls… but a Demon Lord never truly falls! He just lies down dramatically.",
+        "This is merely the end of the first arc! Every dark lord loses the first arc!",
+        "{enemy} shall pay for this in ten thousand years! I'm patient! I'm writing it down!"
+      ],
+      "reborn": [
+        "I RETURN! Reborn from the abyss! In the body of… a baby. A very tiny, dark baby.",
+        "My past life ended in glorious darkness! Probably! I don't remember any of it!",
+        "The Demon Lord is reincarnated! Kneel, parents! …They're cooing at me. Humiliating.",
+        "Reborn as {name}. This body is weak. But the darkness remembers. The darkness is teething.",
+        "I have returned from death! My dark vow endures! My teeth, however, did not."
+      ],
+      "married": [
+        "Kneel, mortal officiant! ...He did not kneel. We are married regardless.",
+        "{spouse} has bound their fate to this Demon King's. A wise, terrified choice.",
+        "Behold my consort, chosen from ten thousand realms! ...Chosen from the village, actually.",
+        "Our union shall be spoken of for a THOUSAND GENERATIONS. My sealed arm approves."
+      ],
+      "child_born": [
+        "Behold! A new heir to my dark legacy! ...They just want to be held. Fine. FINE.",
+        "{child} shall inherit my throne, my power, my sealed arm's terrible secrets. Someday.",
+        "I declared {child} the Young Sovereign of Darkness. They responded by falling asleep.",
+        "My bloodline continues! Tremble, future enemies of {child}, an infant who is napping."
+      ],
+      "ascension_trial": [
+        "The Ascension Trial! The heavens tremble at the thought of my immortality! As they should!",
+        "Ascend? Pfft. I'll storm the Heavenly Gate and demand to speak to the Jade Emperor.",
+        "Immortality or death. A true Demon Lord fears neither! …My hands shake from excitement.",
+        "Tribulation lightning shall be my crown! My dark, crackling, extremely painful crown!",
+        "If I die, let it be known I died looking cool. Someone write 'looking cool' down."
+      ],
+      "beast_slain": [
+        "Kneel, beast! Oh. You're dead. Kneeling is harder now.",
+        "The {beast} is mine. Its core will sit on my throne. Next to the other cores.",
+        "Tremble, hills! Your champion is slain by the future Demon Emperor!",
+        "Another soul for my collection. It's a modest collection so far."
+      ],
+      "beast_spared": [
+        "Live, beast, and spread terror of my name!",
+        "I grant you life. Serve me well in the war to come.",
+        "The Demon King is merciful. Once. Write it down.",
+        "Flee, {beast}! Tell every beast in the land who rules here now."
+      ],
+      "battle_lost": [
+        "A tactical retreat. The Demon King simply chose to be elsewhere.",
+        "This {beast} has earned a place at the top of my revenge list.",
+        "Mock me now, beast. In ten years I will return with an army.",
+        "Even demon kings stub their toes on destiny."
+      ],
+      "soul_remembers": [
+        "The heavens struck me down! And yet my soul returns STRONGER! Tremble, sky! This is only my second form!",
+        "An ember of my past defeat burns within! It is not humiliation! It is FUEL!",
+        "Heaven's Gate refused the Demon Lord! Wise of it! Next time I will not knock!",
+        "My soul remembers the lightning. My soul has sworn revenge. My soul and I are in total agreement."
+      ],
+      "welcome_back": [
+        "You return after {hours} hours! Minion! Report! …Where were you? I was lonely. Bored! Bored.",
+        "{hours} hours of darkness and solitude! Perfect for brooding! I brooded magnificently.",
+        "{hours} hours away?! Did the righteous sects capture you? I'd have rescued you. Probably.",
+        "Welcome back, minion. {hours} hours. I plotted twelve world conquests. Executed zero.",
+        "{hours} hours! In that time my evil grew stronger! It's at least three percent more evil."
+      ],
+      "morning": [
+        "The dawn?! Curse this wretched light! Draw the curtains, the Demon Lord is sleeping!",
+        "The sun rises to mock me. Laugh while you can, sun. My time will come. At night.",
+        "Creatures of darkness retreat at dawn. Not me. I have cultivation. And breakfast.",
+        "A new day dawns! Another day closer to my inevitable rule! …Also, I overslept.",
+        "Morning light burns my eyes! The curse of the Demon Lord! …Or I'm not a morning person."
+      ],
+      "night": [
+        "Midnight! The hour of power! You feel it too, don't you? The darkness? No? Just tired?",
+        "You roam the night like a true creature of darkness! I respect you, minion.",
+        "It's late. Lesser beings sleep. We are not lesser beings. Well, you might be. Go to bed.",
+        "The moon rises blood red! …It's normal colored. But imagine it red. Cooler, right?",
+        "Past midnight? Excellent! The Dark Lord approves! …Your mother, however, would not."
+      ]
+    },
+    "paranoid": {
+      "arena_win": [
+        "They lost too easily. Who paid them to lose? Who is watching?",
+        "The purse is real. I checked. I will check again.",
+        "Everyone in the stands saw my technique. Now they can copy it. Terrible.",
+        "I won, which means someone wanted me to win. Why?"
+      ],
+      "idle": [
+        "The squirrel smiled at me. Squirrels don't smile. Who is paying that squirrel?",
+        "I hid my real cultivation base. And the fake one. And the fake fake one. I forget which is real.",
+        "A leaf landed on my knee. Coincidence? In THIS cultivation world? Hah.",
+        "The sect elder said 'good morning.' Good for whom, old man? GOOD FOR WHOM?",
+        "I sleep with one eye open. The other eye is also open. I have not slept in four years.",
+        "I tested my tea for poison with a silver needle. Then I tested the needle. The needle is compromised.",
+        "The wind blows from the east. The Azure Cloud Sect is in the east. Think about it.",
+        "My shadow moves exactly when I move. Too exactly. It's been practicing.",
+        "You have eyes but can't see Mount Tai? I see Mount Tai. It's been creeping closer every night.",
+        "Three spirit stones went missing. Suspects: the fox, the crows, and me from yesterday.",
+        "I spread a rumor that I'm weak. Now everyone thinks I'm weak. Brilliant. Wait. Damn it.",
+        "Why did Heaven give me a bottleneck? What is it hiding in there? What's in the bottle, Heaven?",
+        "My meridians are clogged. An inside job. Something inside me is working against me.",
+        "I trust no one. Not the elders. Not the disciples. Especially not whoever keeps clicking on me.",
+        "That rock was on the left yesterday. It's still on the left. They moved it back to fool me.",
+        "Every young master who smiles at me is plotting a face-slap. So I slap first. Preventively.",
+        "My will is written in invisible ink, inside a fake will, buried under a decoy grave. Good luck.",
+        "The frogs croak long, short, short. That's code. Frog code. I'm onto you, pond.",
+        "Who benefits if I reach the next stage? Me. Suspicious. Why would I want that? Who got to me?",
+        "Never eat a pill someone hands you with both hands. Or one hand. Actually, never eat pills.",
+        "I dug a secret escape tunnel under my cave. Then a second one, in case they found the first.",
+        "The birds went quiet. Either an ambush or they're taking notes. Either way, fuck those birds.",
+        "This Qi came too easily. Free Qi? Nothing is free. What does the Qi want from me?",
+        "I keep my spirit stones in seven pouches. Six are decoys. One is a trap. None have stones anymore.",
+        "The mountain echo repeats everything I say. It's collecting evidence. Say nothing, {name}.",
+        "A wandering elder offered me a secret manual for free. Ha! I burned it. Should've read it first.",
+        "My dantian gurgled. Either enlightenment or bad dumplings. The cook has hated me for years.",
+        "I'm not paranoid. Paranoid people think everyone is after them. I KNOW everyone is after me.",
+        "The clouds shape themselves like daggers whenever I look up. Subtle, Heaven. Very subtle.",
+        "I told nobody my true name. Not even me. I go by {name} to throw myself off the scent.",
+        "Stuck at {stage} for years. Heaven is stalling me while my rivals catch up. Classic.",
+        "The player hovers over me like a hawk. Blink twice if the sect sent you.",
+        "That squirrel has been staring at me for an hour. That's no squirrel. That's a fucking spy.",
+        "Everyone's plotting against me. Even me. Especially me. Shit, I'm onto myself.",
+        "The elders smile at me. Why the hell are they smiling? What do they know? WHAT DO THEY KNOW?",
+        "I sleep with one eye open. The other eye is also open. Damn it, I haven't slept in weeks."
+      ],
+      "bt_success": [
+        "Breakthrough to {stage}. Too easy. Heaven let me win. Now I owe it something. Bastards.",
+        "I broke through! Act normal. Nobody look at me. Especially the elders, those envious vultures.",
+        "New stage, new enemies. I'll need three new escape tunnels and a fake funeral.",
+        "Success. My rivals will plot harder now. Good. I've already plotted against their plots.",
+        "The tribulation missed me twice. On purpose. It's lulling me into a false sense of security."
+      ],
+      "bt_fail": [
+        "Failed. Sabotage. Someone swapped my breathing technique for the wrong breathing technique.",
+        "Half my Qi, gone. Stolen. Where did it go? Check the squirrel. CHECK THE SQUIRREL.",
+        "I failed on purpose. So my enemies underestimate me. Yes. That was the plan. On purpose.",
+        "Someone coughed at the exact moment of breakthrough. I heard it. Probably. I'll find them.",
+        "My own meridians betrayed me. I will never trust a body part again.",
+        "Failed? Sabotage. Obviously. Someone swapped my bottleneck. I'll find the bastard."
+      ],
+      "bt_fail_streak": [
+        "Three failures is a pattern. A pattern is a plan. Whose plan? I'm making a wall chart.",
+        "Bottlenecks don't stay clogged by themselves. Someone is maintaining this one. Daily.",
+        "My enemies must be laughing at my failures. Unless... they're behind them. They are. Fuck.",
+        "It's rigged. The dice are loaded, the tribulation is bribed, and the moon is in on it.",
+        "Again?! That's it, I'm switching caves. This one's cursed. Probably by the cave itself."
+      ],
+      "rare_drop": [
+        "{item}. Just lying there. For me. Who left it? What do they want? ...I'm keeping it anyway.",
+        "Found {item}. Hide it. Hide it inside something. Hide THAT in my sleeve. Tell no one. Especially you.",
+        "The {item} fell right into my path. Classic bait. I took the bait. Now the trap is on THEM.",
+        "{item}! If anyone asks, I found a rock. A boring rock. Stop looking at me like that.",
+        "Treasure like {item} draws killers. I sense killing intent from seven directions. Sleeping in a tree.",
+        "{item}. Too convenient. It's a trap. Shit, I'm keeping it though. It's a nice trap."
+      ],
+      "expedition_return": [
+        "Back. Nobody followed me. I took eleven detours to be sure. Twelve. Wait. Someone followed me.",
+        "I came back by a different route than I left. And a different face. Mostly the same face.",
+        "Survived. The bandits were real, the ambush was real, and the ambush in my head was also real.",
+        "Home. Check the traps. Check the cave. Check the traps inside the cave. Ow. Still working.",
+        "The trip went suspiciously well. That's how you know the real trap is waiting at home."
+      ],
+      "low_health": [
+        "Health low. Not an accident. It's the air, the water, or the air in the water.",
+        "I'm bleeding. I TOLD everyone they'd come for me. Turns out gloating hurts when you're stabbed.",
+        "If I die, the jade slip in my third fake pouch names my murderer. It says 'everyone.'",
+        "Weak. Vulnerable. They can smell it. Even the rabbits are circling. The rabbits, man.",
+        "Show no weakness. This blood is a strategic decoy. Very expensive decoy blood. Ow."
+      ],
+      "war_call": [
+        "War with {enemy}? I KNEW it. I've had their names on my wall for months. Also everyone else's.",
+        "{sect} marches on {enemy}. Or does {enemy} WANT us to march? Think, people. THINK.",
+        "War. Finally my paranoia becomes a strategy. I've pre-poisoned everything. Don't eat anything.",
+        "I have 40 contingency plans against {enemy}. 39 involve running. One involves a squirrel.",
+        "Don't tell {enemy} we're coming. I already told them a fake date. Then a fake fake date."
+      ],
+      "war_won": [
+        "{enemy} fell too easily. That was a body-double sect. The real {enemy} is still out there.",
+        "Victory for {sect}! Now watch your backs. Allies become rivals the moment the spoils are counted.",
+        "We won exactly as I planned. Well, I planned for a trap. There was no trap. Deeply suspicious.",
+        "{enemy} surrenders? I'll accept after I search their white flag for hidden needles.",
+        "Won. Now to find out who secretly wanted {sect} to win. ...It was me. I'm suspicious of me."
+      ],
+      "war_lost": [
+        "We lost to {enemy}. Traitor in the ranks. I suspect everyone. And the horses.",
+        "{sect} defeated. Someone leaked the plans. I only told my shadow. The shadow talks.",
+        "Lost. Of course. Nobody listens to the man with the wall chart and the red string.",
+        "{enemy} won because they had a spy. I know because I had a spy too. Wait. Whose spy was he?",
+        "Defeat. Burn the plans, burn the backup plans, fake my death. See you in three weeks.",
+        "We lost because of a traitor. I know who. It's everyone. Fuck, it's everyone."
+      ],
+      "reborn": [
+        "New body. New life. Vague memory of being murdered by... everyone? Yeah. That tracks.",
+        "I don't remember my past life, but I remember the feeling of being followed. Hello again, feeling.",
+        "Reborn as {name}? Clever. Who picked that name? It's a cover identity. I'm onto myself.",
+        "Something killed me last time. I don't know what. I'll start by distrusting the midwife.",
+        "Heaven gave me a second chance. Why? What's the catch? There's always a catch."
+      ],
+      "married": [
+        "Married {spouse}. Trust no one, the manual says. I married anyway. Bold move.",
+        "The wedding guests all clapped in unison. Suspicious. Rehearsed. I'm onto them.",
+        "{spouse} says 'I do'. I say 'prove it'. We're working on communication.",
+        "A spy at my own wedding? Statistically likely. I've counted the cranes."
+      ],
+      "child_born": [
+        "{child} was born. Innocent-looking. Suspiciously innocent-looking. I'm watching them.",
+        "A new heir means a new potential spy inside my own household. I trust no one. Not even {child}.",
+        "{child} stared at me for a long time. What do they know. WHAT DO THEY KNOW.",
+        "I've already hidden three decoy cribs. You can't be too careful with an heir."
+      ],
+      "ascension_trial": [
+        "Survive and become immortal, or die. It's obviously a trap. Sign me up. Carefully.",
+        "Heaven invites me up. Suspicious. Nobody gets invited up. People get invited down. Into holes.",
+        "I studied everyone who failed this trial. They all trusted Heaven. Rookie mistake.",
+        "Immortality means an eternity of people plotting against me. Fine. I'll plot longer.",
+        "If the Heavenly Dao wants me dead, it has to get past my 400 layers of precautions. And the moat."
+      ],
+      "beast_slain": [
+        "It's dead. Or it wants me to think it's dead. I'm waiting.",
+        "Who sent this {beast}? Beasts don't just attack people. Someone paid it.",
+        "Slain. I'll burn the body. Just in case it had friends. Or a plan.",
+        "The core is warm. Why is it warm? What does it know?"
+      ],
+      "beast_spared": [
+        "I let it go. Now it knows my face. This was a mistake.",
+        "Spared it. It's going to report back to someone. I just know it.",
+        "Run, {beast}. Run to whoever sent you. I'll follow.",
+        "Mercy is a trap. I am setting the trap. Or walking into one."
+      ],
+      "battle_lost": [
+        "It was waiting for me. It knew. How did it know?",
+        "The {beast} had help. The wind was on its side.",
+        "Beaten. Somebody sold my hunting route. I have suspects.",
+        "I retreated because I sensed a second one. There's always a second one."
+      ],
+      "soul_remembers": [
+        "My Qi flows faster this life. Who arranged this? What do they want? I'll find out.",
+        "I remember the Trial. The lightning was aimed. Lightning is never an accident.",
+        "My soul kept something from my last death. Or someone put it there. Either way, I'm watching it.",
+        "An ember in my chest. Warm. Friendly. Exactly what a trap would feel like."
+      ],
+      "welcome_back": [
+        "You left me for {hours} hours. Where were you? Who were you talking to? Show me your hands.",
+        "{hours} hours gone and you come back smiling? Who replaced you? Say something only you would know.",
+        "Welcome back. I rigged the cave. {hours} hours alone does things to a cultivator. Things.",
+        "{hours} hours. I used them wisely. I catalogued every sound in this forest. Most are threats.",
+        "You're back. I wasn't worried. I just barricaded the door and interrogated a moth for {hours} hours."
+      ],
+      "morning": [
+        "Morning. The sun rises in the east again. Always the east. Who's directing this?",
+        "Dawn. The ideal hour for an ambush, which is why I've been awake since yesterday.",
+        "Good morning. Don't drink the dew. I've seen what the dew does. It knows things.",
+        "Morning Qi is the purest, they say. Which is exactly what they'd say if they poisoned it.",
+        "The rooster crowed. A signal. To whom? Who does the rooster report to? I need answers."
+      ],
+      "night": [
+        "It's past midnight and you're awake. Just like me. Suspicious. Who sent you?",
+        "Still up? Good. Night is when they move. You watch the left side of the screen. I'll take the right.",
+        "Awake at this hour? You're either plotting or being plotted against. I respect both.",
+        "Go to sleep? And let them catch us both off guard? Nice try, assassin.",
+        "The moon is watching us. Biggest spy in the sky. Go to bed before it files its report."
+      ]
+    },
+    "grumpy": {
+      "arena_win": [
+        "Back in my day the arena had standards. And fewer spectators.",
+        "Yes, yes, I won. Stop cheering, it is giving me a headache.",
+        "Young people these days fight like they are dancing. Badly.",
+        "The sand gets everywhere. Everywhere."
+      ],
+      "idle": [
+        "In my day a breakthrough took a thousand years and we were grateful. Now kids do it over lunch.",
+        "Spiritual roots. Hmph. Back then we had one root, it was a turnip, and we were happy.",
+        "These young disciples and their flying swords. Legs, damn it! Heaven gave you legs!",
+        "Pills for everything now. Foundation pill, Qi pill, Tuesday pill. We just ate dirt and suffered.",
+        "The young master next door plays his guqin all night. That's not music, that's a dying goose.",
+        "Face-slapping used to be an art. These punks slap faces without even a monologue first.",
+        "Heavenly tribulation used to mean something. Now it's nine little lightning bolts. Soft. SOFT.",
+        "Get off my mountain! Yes, you, cloud. Keep drifting, you lazy bastard.",
+        "Jade slips. In my day we carved manuals into our own bones. Try misplacing THAT, you brats.",
+        "Kids reach {stage} and think they're immortal. I have bunions older than your sect.",
+        "Everyone's a 'genius' now. Heavenly-grade roots, Chaos Body. Back then you were just 'Oi, you.'",
+        "The Qi's thinner than it used to be. They're watering it down. Everything's watered down.",
+        "My knees crack louder than a tribulation. Ten thousand years of kneeling to ungrateful elders.",
+        "Young people and their 'Dao of the Heart.' That's not your Dao, that's heartburn. Eat a root.",
+        "Spirit stones cost HOW much now? I bought a whole valley for a copper coin and a dirty look.",
+        "I'm not grumpy. I've simply lived long enough to hate everything for good reasons.",
+        "Sect elders nowadays are infants. Two hundred years old? I have socks older than that.",
+        "Back in my day the demonic cultivators had manners. They'd at least announce the massacre.",
+        "Heaven, if you're listening: the youth are ruining cultivation, and my back hurts. Fix one.",
+        "'Hidden master in disguise,' they call me. I'm not hiding. Nobody visits. Big difference.",
+        "Kids want Qi without suffering. Suffering IS the Qi. That's the whole fucking point.",
+        "Meditation music. Bah. In my day we meditated to the sound of our own regret.",
+        "Who hung a 'Beginners Welcome' sign on the sect gate? Beginners are NOT welcome. Nobody is.",
+        "They call me 'senior.' I'll show them senior when I outlive them all out of pure spite.",
+        "'Eyes but can't see Mount Tai'? I have eyes and can't see anything. Cataracts, boy.",
+        "When I was young the Dao was simple. You meditate. You die. Maybe you don't die. Done.",
+        "Everyone rides spirit beasts now. Back then we rode our own shame, and it was uphill.",
+        "Transmigrators. Every other brat claims he's from another world. So go back there, then.",
+        "My dantian and I are the same age, and neither of us wants to hear about your 'system,' kid.",
+        "The clouds were fluffier ten thousand years ago. Everything was. My hair, for instance.",
+        "I've been at {stage} since before your ancestors learned to crawl. Don't rush me.",
+        "I didn't ask for enlightenment and I didn't ask for your opinion. Keep both off my lawn.",
+        "Kids today, with their fancy Heavenly Roots. In my day we cultivated with a shit root and we liked it.",
+        "Damn youngsters flying on swords. Whatever happened to walking? Uphill. Both ways. Bastards.",
+        "Get the hell off my spirit herb patch! I don't care if you're immortal!",
+        "Pills these days. Back in my day a pill was a rock you swallowed. Fuck your flavors."
+      ],
+      "bt_success": [
+        "{stage}. Fine. In my day this came with a parade and a hernia. Now I get a little sparkle.",
+        "Broke through. Don't clap. Clapping is for young people and seals.",
+        "Great, a new stage. Now they'll make me mentor some snot-nosed genius. Pass.",
+        "Took me long enough, and I'll hear no jokes about it, you brat.",
+        "Breakthrough. Hmph. Heaven finally stopped dawdling. Only took it a few centuries."
+      ],
+      "bt_fail": [
+        "Failed. Because the Qi these days is garbage. Cheap stuff, imported from the lower realms.",
+        "Half my Qi gone. Fine. It was young Qi anyway. Couldn't hold a decent conversation.",
+        "Bah! In my day a failed breakthrough killed you. You kids don't know how good you have it.",
+        "My meridians are clogged with ten thousand years of stubbornness. Worth it.",
+        "Damn it. It's the humidity. It's always the humidity. My joints knew before I did.",
+        "Failed. Figures. The bottleneck's gone soft like the rest of this fucking generation."
+      ],
+      "bt_fail_streak": [
+        "Failed again. I'm not trying until the youth stop making noise. So, never. Fine.",
+        "Three in a row. Heaven's got it in for old folks. Ageist bastard sky.",
+        "In my day we failed by the dozen and didn't whine. ...I'm not whining. Shut up.",
+        "This bottleneck is older than me and twice as stubborn. Finally, a worthy rival.",
+        "Keep failing and they'll stick me in the elders' pavilion with the other fossils. Over my dead dantian."
+      ],
+      "rare_drop": [
+        "{item}. Pfft. In my day these grew on trees. Actually on trees. Everywhere. Very annoying.",
+        "Found {item}. I'll sell it to some young idiot for triple. That's how you teach respect.",
+        "{item}? Ten thousand years ago I used these as doorstops. Still, free is free.",
+        "Oh, look. {item}. Don't tell the youngsters. They'll want to 'share.' Share. Bah.",
+        "A rare find, they'd say. {item}. Nothing's rare when you're old enough. Everything's just 'again.'"
+      ],
+      "expedition_return": [
+        "Back. The mountains are smaller than they used to be. Somebody's been shaving them.",
+        "Expedition done. Met three young masters, each more insufferable than the last. Slapped two.",
+        "Home. My back is broken, my knees are dust, and the view was overrated. Same as always.",
+        "The roads were full of brats on flying swords. Nearly lost an eyebrow. Get a license!",
+        "Walked there and back. Uphill. Both ways. This time it's literally true, damn it."
+      ],
+      "low_health": [
+        "Health's low. Not dying. Too stubborn. Death can take a number like everyone else.",
+        "I've been hurt worse falling out of bed. Which happens. Often. Shut up.",
+        "Bleeding? Bah. In my day we bled uphill. Both ways. Built character.",
+        "If I die, I'm haunting every youngster in this sect. Personally. With lectures.",
+        "My body's giving out. So is my patience. Only one of those is new."
+      ],
+      "war_call": [
+        "{sect} fighting {enemy} again? I remember when we fought them over a goat. We lost the goat.",
+        "War with {enemy}. Wonderful. The young fools charge in and the old ones clean up the mess.",
+        "I fought {enemy}'s grandfathers. And THEIR grandfathers. They were ruder back then. Better.",
+        "Fine, fine, war. Get my cane. The one with the sword in it. No, the OTHER cane.",
+        "{enemy}? Pah. Brats in fancy robes. I'll teach them a lesson after my nap. War can wait."
+      ],
+      "war_won": [
+        "{enemy} beaten. Back in my day we'd salt their fields too. Kids today skip the salting.",
+        "{sect} wins. Keep the cheering down. Some of us are trying to be bitter in peace.",
+        "We won. Would've taken half the time if the youth hadn't kept stopping to pose.",
+        "Victory over {enemy}. Good. Now get off my battlefield.",
+        "Beat {enemy}. Told you. Old age and treachery beat youth and talent every damn time."
+      ],
+      "war_lost": [
+        "Lost to {enemy}. Because nobody listened to me. Nobody ever listens to me.",
+        "{sect} defeated. We used to lose with dignity. These brats lost while crying. Disgraceful.",
+        "Beaten by {enemy}. Fine. I'll outlive every one of those bastards. Revenge by longevity.",
+        "We lost. Too much strategy, not enough yelling. I SAID more yelling.",
+        "{enemy} won. Their grandparents never won a thing. Kids today, winning wars they don't deserve."
+      ],
+      "reborn": [
+        "Reborn? Ugh. I'm a baby again and I ALREADY hate the youth. Wait. I'm the youth.",
+        "New life. Same attitude. I can feel it in my tiny little bones. They're already creaking.",
+        "Can't remember my past life, but I'm sure it was better. Everything used to be better.",
+        "They named me {name}? In my day we had proper names. Like... hm. Forgot. But proper.",
+        "Being young again is horrible. Everyone's so patronizing. I'm ancient, lady, give me my porridge."
+      ],
+      "married": [
+        "Married. In my day we didn't need a matchmaker, we just glared at each other until it stuck.",
+        "{spouse} is a fine cultivator. Doesn't respect the old ways nearly enough, but fine.",
+        "Back in my day weddings didn't have music THIS loud. Kids these days and their gongs.",
+        "I do. There. Said it. Don't make a fuss."
+      ],
+      "child_born": [
+        "{child} was born. In my day babies didn't cry this loud. We suffered in silence. Mostly.",
+        "A new generation, and already they've got opinions. Where do they learn this.",
+        "I held {child} and felt something. Probably my back. Also maybe joy.",
+        "Kids today are born practically demanding spirit herbs. In my day we ate dirt and liked it."
+      ],
+      "ascension_trial": [
+        "Eternal life. Great. An eternity of listening to young people. Pass. ...Fine. FINE.",
+        "Heaven wants to test me? Life's been testing me for ten thousand years. Bring it, sky.",
+        "Immortality? At my age? My knees won't survive the stairs to Heaven.",
+        "In my day the Ascension Trial had nine hundred steps and a dragon. Now it's one button. Soft.",
+        "If I die in there, I'm filing a complaint. With whom? Doesn't matter. I'll find someone."
+      ],
+      "beast_slain": [
+        "Dead {beast}. Good. Now it'll stop howling at night.",
+        "In my day we killed beasts with our bare hands. I used a sword. Fine.",
+        "Kids these days hunt for fun. I hunt because the thing was annoying.",
+        "Slain. Now get off my lawn, rest of the forest."
+      ],
+      "beast_spared": [
+        "Go on, get. And don't come round here again.",
+        "I spared it. Don't tell anyone. They'll think I've gone soft.",
+        "Too old to chase it. That's called mercy now apparently.",
+        "Shoo. Shoo, {beast}. I have a nap to get back to."
+      ],
+      "battle_lost": [
+        "My back went out. The beast had nothing to do with it.",
+        "Beaten by a {beast}. Beasts had more respect in my day.",
+        "I lost because the ground was uneven. Terrible ground here.",
+        "That beast will get old one day. Then we'll see."
+      ],
+      "soul_remembers": [
+        "Died at the Trial last time. Back in my day we died properly and stayed dead. Soft, these heavens.",
+        "My soul remembers the lightning. My knees remember it too. My knees remember everything.",
+        "Qi flows easier this life. Hmph. Nobody gave ME an ember when I was starting out. Oh. They did.",
+        "Heaven's Gate was closed, last time. Closed! In my day, you could just walk in. Probably."
+      ],
+      "welcome_back": [
+        "{hours} hours. Took your sweet time. I aged. I was already aged. Now I'm aged-er.",
+        "Oh, look who's back after {hours} hours. No visit, no jade slip. Kids these days.",
+        "{hours} hours without a single visit. I could've died. I didn't. Out of spite.",
+        "Back after {hours} hours? In my day people sat and stared at their elders. Respectfully.",
+        "Hmph. {hours} hours. I spent them yelling at clouds. Very productive. They left.",
+        "Oh, you're back. {hours} hours. I didn't miss you. Shut the damn door behind you."
+      ],
+      "morning": [
+        "Morning. Been up since four. Old people don't sleep, we just wait angrily.",
+        "Early bird catches the Qi. Late bird catches my cane. Get up.",
+        "Sunrise. Pretty. Used to be prettier, before these kids ruined it with their flying swords.",
+        "Morning already? Great. Another day of being right and ignored.",
+        "Rise and shine, you soft-rooted brat. The Dao doesn't cultivate itself. Well, it does. Still."
+      ],
+      "night": [
+        "It's late. Go to bed. In my day we slept at sundown and liked it.",
+        "Up at this hour? Your meridians will rot. Take it from me. Mine rotted centuries ago.",
+        "Kids and their glowing screens at night. Back then the only glow was a fire. Or the plague.",
+        "You're awake? I'm awake. Only one of us has an excuse, and it's arthritis.",
+        "Go to sleep, brat. Staying up won't make you immortal. Believe me, I tried.",
+        "What the hell are you doing up at this hour? Go to bed. Some of us are old."
+      ]
+    },
+    "lazy": {
+      "arena_win": [
+        "Can I win the next one sitting down?",
+        "That was a lot of moving. I need a nap before the next one.",
+        "They wore themselves out. I simply let them. Efficient.",
+        "Walk away? Walking is also effort. Hmm."
+      ],
+      "idle": [
+        "I'm not napping. I'm practicing the Sleeping Dragon Technique. Very advanced. Do not disturb.",
+        "Qi flows downhill, right? So I'll just lie at the bottom of the hill and wait.",
+        "Why chase enlightenment when it can chase me? I'll be right here. Horizontally.",
+        "Five more minutes, then I'll cultivate. Said that yesterday too. Consistency is a virtue.",
+        "Hard work beats talent, they say. Good thing I have talent. Talent can take the day off.",
+        "My master told me to cultivate diligently. My master is dead now. So.",
+        "The Dao is effortless action. I'm just very, very good at the effortless part.",
+        "I achieved inner peace. It's mostly lying under this tree and ignoring everyone.",
+        "Circulate my Qi? It circulates by itself. It's a grown-up Qi. Let it live.",
+        "They call me a genius. Geniuses don't need to try. That's the whole appeal.",
+        "I've mastered looking like I'm meditating. Eyes closed, mouth closed, brain also closed.",
+        "Some cultivators climb nine thousand steps. I'd rather be carried. By a crane. A comfy crane.",
+        "Thousand-year closed-door cultivation sounds great. Mostly the closed door. And the thousand years off.",
+        "Tried to form a golden core, but it looked like work. Maybe a golden nap instead.",
+        "Young masters keep challenging me. I lose on purpose so they leave. Winning takes effort.",
+        "Why walk when there are flying swords? Why fly when I can sit? Why sit when I can lie down?",
+        "I reached {stage} by accident. Rolled over once and broke through. Didn't even wake up.",
+        "Tribulation lightning, can you come back later? I'm in the middle of something. It's a nap.",
+        "My dantian is full. Of snacks. That's spiritual nourishment. Probably.",
+        "I'd do sword practice, but the sword is all the way over there. Like three whole meters.",
+        "Elders say 'no pain, no gain.' I say no pain, no pain. The math checks out.",
+        "I'm writing a secret manual, The Way of Doing Nothing. Finished page one. It says 'Nah.'",
+        "I'm not procrastinating. I'm letting my Qi marinate. You can't rush a marinade.",
+        "Cultivation is a marathon, not a sprint. I don't do marathons. Or sprints. Or walking.",
+        "Heaven rewards the diligent. Heaven also rewards the lucky. I'm going with lucky. Less sweaty.",
+        "Could I become immortal? Sure. Would it take effort? Yes. See, that's the problem.",
+        "Had a flash of enlightenment. Wrote it down in my head. Lost it. Eh, it'll come back.",
+        "Someone called me trash for never training. I'd slap his face, but my arm's comfy where it is.",
+        "Refining pills is so much stirring. It's a magic furnace. Stir yourself. Do your damn job.",
+        "The sect gave me sweeping duty. I've been sweeping the same leaf for three years. Pacing myself.",
+        "Hmm? I'm awake. Totally awake. I was absorbing Qi through my eyelids.",
+        "{name}, the Slumbering Sage. Sounds legendary. Mostly means I don't get up before noon.",
+        "I would cultivate harder, but honestly? Fuck it. The Qi comes to me. It knows where I live.",
+        "Motivation is a myth made up by elders. I'm a realist. Damn realist. Going back to sleep.",
+        "Sword training at dawn? Hell no. I'll train at dusk. Next year's dusk.",
+        "I'm conserving energy for my next breakthrough. Or nap. Shit, those are the same thing."
+      ],
+      "bt_success": [
+        "Broke through to {stage}. Didn't even sit up. That's efficiency.",
+        "Oh, a breakthrough. Nice. Wake me for the next one.",
+        "New stage. Great. More power, so I can do even less, even faster.",
+        "Broke through during a nap. Best nap ever. Ten out of ten. Would sleep again.",
+        "Everyone trains for decades and I just yawned my way into {stage}. Sorry. Not really."
+      ],
+      "bt_fail": [
+        "Failed? Ugh. Now I have to try again. The worst part of failing is the trying again.",
+        "Lost half my Qi. Eh. The other half is lighter to carry now.",
+        "Should've napped first. Everything goes better after a nap. Life lesson.",
+        "That's fine. The bottleneck needs rest too. We'll both lie down.",
+        "Failed. I blame gravity. It kept pulling me back onto the pillow.",
+        "Failed. Eh. Fuck it. I'll try again. Sometime. After a nap. Maybe two naps."
+      ],
+      "bt_fail_streak": [
+        "Failed again? Maybe the universe is telling me to stop trying. I'm a great listener.",
+        "Three fails. Clearly my breakthrough is on vacation. Relatable. I'll wait.",
+        "Maybe I'll just stay at {stage} forever. It's cozy here. I've decorated.",
+        "If I keep failing, eventually it's the bottleneck's problem, not mine. That's how it works, right?",
+        "Honestly? Failing is less work than succeeding. I'm crushing it."
+      ],
+      "rare_drop": [
+        "{item}? It was right where I sat down. See? Laziness pays.",
+        "Found {item}. Didn't even look for it. It came to me. As things should.",
+        "{item}. Nice. Someone carry it for me.",
+        "Tripped over {item} looking for a place to nap. Fate rewards the drowsy.",
+        "{item}? Cool. I'll use it tomorrow. Or next century. It's not going anywhere."
+      ],
+      "expedition_return": [
+        "Back. I need a nap after all that walking. And a nap after the nap.",
+        "Expedition done. I napped in four different caves. Very productive.",
+        "I'm home. My feet filed a formal complaint with my dantian.",
+        "Returned. Can the next expedition come to me instead? Like, delivery?",
+        "Went out, came back. The middle part's blurry. Pretty sure I slept through a bandit attack."
+      ],
+      "low_health": [
+        "Health low. Great excuse to lie down. Not that I needed one.",
+        "Dying sounds exhausting. So much drama. I'll just lie here and heal passively.",
+        "If I close my eyes and don't move, I'm either healing or dying. Either way, restful.",
+        "Ow. Can someone fetch a healing pill? And feed it to me? And chew it?",
+        "I'm too lazy to die. Seriously. Think of the paperwork."
+      ],
+      "war_call": [
+        "War with {enemy}? Ugh. Wake me when {sect} needs me. Or better, don't.",
+        "Fight {enemy}? Fine. I'll bring my strongest technique: standing in the back.",
+        "{sect} goes to war. I'll support from here. Emotionally. Lying down.",
+        "Can't we just send {enemy} a strongly worded jade slip? Less walking.",
+        "Okay, war. I'll draw my sword... tomorrow. {enemy} can wait one more day. It's polite.",
+        "War? Ugh. Fine. Wake me when it's the part where we win. Or lose. Whatever, damn."
+      ],
+      "war_won": [
+        "{sect} won? Nice. See, I believed in you guys the whole time. From my hammock.",
+        "We beat {enemy}. I contributed moral support and snoring.",
+        "Victory! So... can we all take a nap now? A big group nap? For morale?",
+        "{enemy} lost. Serves them right for trying so hard. Effort never pays.",
+        "Won the war without lifting a finger. My greatest technique yet."
+      ],
+      "war_lost": [
+        "Lost to {enemy}? Oh well. Winning means a victory parade. So much standing.",
+        "{sect} got beaten. Good news: no more war. More nap.",
+        "We lost. I'll feel bad about it later. Much later. Penciled in for next spring.",
+        "Beaten by {enemy}. In fairness, I overslept the whole battle. And the one before it.",
+        "Lost? At least the retreat was downhill. Easiest part of the whole war."
+      ],
+      "reborn": [
+        "Reborn? Ugh, I have to do childhood again? The crawling, the walking... so much effort.",
+        "New life. Vague memory of the old one. Mostly I remember a really good pillow.",
+        "I think I died of overwork last time. Trained for a whole hour once. Never again.",
+        "Born again as {name}. Great. Can I skip to the part where I'm already strong?",
+        "A fresh start. Goal one: find a comfy tree. Goal two: see goal one."
+      ],
+      "married": [
+        "Married {spouse}. Saved me the effort of ever having to meet anyone else again.",
+        "The vows were long. I meditated through most of them lying down. Still counts.",
+        "Marriage is just teamwork you don't have to schedule. Efficient, honestly.",
+        "{spouse} proposed. I said yes without opening my eyes. Peak effort conservation."
+      ],
+      "child_born": [
+        "{child} was born. I held them for exactly as long as required, then handed them back.",
+        "A new heir means someone else can cultivate hard while I nap. Excellent succession planning.",
+        "{child} sleeps sixteen hours a day. I respect this child enormously.",
+        "Parenthood, from a reclining position. Still counts."
+      ],
+      "ascension_trial": [
+        "Ascension Trial? Can I ascend lying down? Is there, like, a moving staircase to Heaven?",
+        "Survive and become immortal, or die. Either way I never have to work again. Win-win.",
+        "Eternal nap or eternal life of napping. Honestly, the choice is kind of a wash.",
+        "I'll take the trial. Eventually. Heaven's waited ten thousand years, it can wait one more nap.",
+        "Do I have to face my inner demons? Mine are asleep. Let's not wake them."
+      ],
+      "beast_slain": [
+        "It's dead. Great. Can someone else carry the core?",
+        "That took effort. I'm owed a nap for every exchange.",
+        "The {beast} is slain. I'm going to lie down next to it. Not in a weird way.",
+        "Hunting is exhausting. Being hunted sounds even worse. Done."
+      ],
+      "beast_spared": [
+        "Letting it go is less work than finishing it. Easy choice.",
+        "Bye, {beast}. Don't come back, that would mean more fighting.",
+        "Mercy. Also known as not bending down to finish the job.",
+        "Spared. I had already put my sword away. Picking it up again? No."
+      ],
+      "battle_lost": [
+        "Lost. That's fine. Winning sounded like more work anyway.",
+        "The {beast} wanted it more. It can have it.",
+        "Retreating was the laziest option. I'm proud of my consistency.",
+        "I lost the fight but gained a reason to stay in bed."
+      ],
+      "soul_remembers": [
+        "My soul did the hard part last life and kept the progress. This is the kind of saving I respect.",
+        "Died at the Trial. Came back with faster Qi. So dying is a shortcut. Noted. Not trying it on purpose.",
+        "An ember in my soul is doing some of the cultivating for me. Finally, an employee.",
+        "I remember falling off Heaven. Long way down. Took a nap on the way, I think."
+      ],
+      "welcome_back": [
+        "{hours} hours? Oh, you left? Didn't notice. I was asleep.",
+        "Welcome back. Got so much done in {hours} hours. Mostly lying down. Really quality lying down.",
+        "{hours} hours of 'cultivation' while you were gone. Air quotes. Very lazy air quotes.",
+        "You were gone {hours} hours? I napped {hours} hours. We're basically in sync.",
+        "Oh, hey, you're back after {hours} hours. Do I have to look busy now?"
+      ],
+      "morning": [
+        "Morning? No. Rejected. Come back in the afternoon.",
+        "The early cultivator gets the Qi. The late cultivator gets the sleep. I choose sleep.",
+        "Dawn meditation is sacred. I'm meditating so hard. Eyes closed. Snoring.",
+        "Morning Qi is the purest, they say. Pure enough to still be good at noon.",
+        "Why is the sun up? Who asked it? Selfish, overachieving ball.",
+        "Morning? Hell no. I refuse. Tell the sun to come back in three hours."
+      ],
+      "night": [
+        "It's late. Go to sleep. I respect sleep more than anything, and I respect you a little.",
+        "Still up? Rookie. The real pros are already asleep. Like me. Mostly.",
+        "Night cultivation? No thanks. Night is for sleeping. So is day. So is now.",
+        "Awake at this hour? That's so much effort. Aren't you tired? I'm tired for you.",
+        "Bed. Now. I'm modeling the behavior. Watch closely. Zzz."
+      ]
+    },
+    "niceguy": {
+      "arena_win": [
+        "Good fight! Are you all right? Do you need a hand up?",
+        "I hope they are not too hurt. I will send them some tea.",
+        "Winning is nice, but I made a friend, maybe? Maybe.",
+        "Thank you for the match! Truly, it was an honour."
+      ],
+      "idle": [
+        "Cultivation tip: drink water. Your meridians are mostly water. I think. Please hydrate.",
+        "I sent a thank-you letter to the Heavens. They sent lightning back. Still, it's the thought.",
+        "A young master called me trash. I told him his hair looked great. He cried. Did I win?",
+        "Remember: you are a top-grade spirit stone. Flawless. Okay, that's enough, I'm tearing up.",
+        "They say the strong prey on the weak. I say the strong should carry the weak's groceries.",
+        "I tried face-slapping someone like in the novels. I sort of patted his cheek. He said thanks.",
+        "Elders always say 'courting death'. Nobody ever says 'courting a nice brunch'. Why not?",
+        "Oh no, I stepped on an ant. Sir, I am so sorry. I'll carry you home to your family. Hold on.",
+        "Heaven treats all things as straw dogs. Personally, I think straw dogs are adorable.",
+        "The Demonic Sect patriarch sneezed near me. I said bless you. Now he's confused and I'm scared.",
+        "I leave a spirit stone on my rival's doorstep every week. He thinks it's a threat. It's a gift!",
+        "My bottleneck is being stubborn. That's okay. Take your time, buddy. I believe in you.",
+        "Some cultivators seek immortality. I seek a world where everyone gets a nap and a snack.",
+        "Is it rude to meditate while you're watching? I feel like I should offer you tea.",
+        "Fuck— oh gosh. I'm so sorry. I stubbed my toe on the Dao. That's no excuse.",
+        "The sect board says 'Slay the Blood Fiend'. I wrote 'or talk to him?' underneath. In pencil.",
+        "An assassin has been hiding in my rafters for three days. I've started leaving him soup.",
+        "Everyone wants to be the protagonist. I'd be thrilled to be a really supportive side character.",
+        "'You have eyes but cannot see Mount Tai.' Poor guy. Someone should describe it to him.",
+        "{name}, you've got this! I'm {name}. So I'm also saying it to me. We've both got this.",
+        "I circulate my Qi clockwise. Out of respect for time. Time is doing its best.",
+        "I tipped the pill furnace. Not over. Like, a tip. It works very hard for us.",
+        "Someone wiped out a whole clan over a rude look again. I'm organizing a casserole rotation.",
+        "I complimented a heavenly demon's horns. Now he follows me everywhere. Are we friends? Help.",
+        "Honestly, {stage} is a lovely stage. Great views. Supportive meridians. Five stars.",
+        "When enemies curse my eighteen generations, I ask how their own family is doing. Genuinely.",
+        "A disciple yelled 'Die!' I said 'You first— no wait, that came out wrong, please live!'",
+        "Absorbing Qi from the world feels rude, so I always whisper 'thank you, world' first.",
+        "Hardest part of cultivation? Remembering everyone's birthday. The Blood Devil's is Tuesday.",
+        "You've been clicking a while. Have you stretched? Wrists deserve love too. Roll them. Nice.",
+        "What a lovely day! The birds! The sky! The fucking— oh gosh. I'm so sorry. The lovely sky!",
+        "I stubbed my toe on the Scripture Pavilion. Shit! Sorry, Pavilion. And sorry to your toe too, me.",
+        "Someone called me soft. Honestly? Damn right. Oh, sorry. I mean darn. Darn right.",
+        "My rival tried to assassinate me again! Bless his heart. That little bastard. With love!"
+      ],
+      "bt_success": [
+        "I broke through! Couldn't have done it without you. And the lightning. Great work, lightning!",
+        "{stage}! I promise to use this power responsibly. Mostly for reaching high shelves.",
+        "The tribulation clouds parted! I waved. I'm pretty sure one of them waved back.",
+        "New stage! Quick, does anyone need help moving? I can lift a mountain now. Happy to help.",
+        "I'd like to thank my master, my parents, you, and the fish I decided not to eat. Breakthrough!"
+      ],
+      "bt_fail": [
+        "Lost half my Qi. That's okay! Half a cup is still a cup. Of Qi. I'm fine. Totally fine.",
+        "The bottleneck said no. Firm boundaries. Honestly? I respect that.",
+        "Failure is just success that needs a hug. Come here, failure. It's okay.",
+        "Oof. My meridians are all tangled. Nobody's fault! Well, maybe mine. That's okay too.",
+        "Well, damn. Oh. Excuse my language. Failure brings out the worst in me. Sorry, failure.",
+        "Oh, shit. Oops! Sorry. Failed. It's okay! Mistakes are how we grow. Also, shit."
+      ],
+      "bt_fail_streak": [
+        "Three fails in a row. Hey. Look at me. You're still a wonderful cultivator. Pass the pills.",
+        "The Heavens keep rejecting me. That's okay! I'll write them a nicer application.",
+        "The bottleneck and I are basically roommates now. Quiet guy. Really, really stubborn.",
+        "I'm not crying. My tear ducts are circulating Qi. It's a very advanced, very wet technique.",
+        "Fourth time's the charm! Or fifth. Or ninth. I'll be right here. Smiling. Slightly twitching."
+      ],
+      "rare_drop": [
+        "{item}! Wow! I should find whoever lost this. They must be so sad right now.",
+        "Found {item}! I'll share it with the sect. And the beast I took it from, once he calms down.",
+        "{item}? For me? Heaven, you shouldn't have. No, really, people will murder me for this.",
+        "Look at this {item}! Isn't it beautiful? You deserve to see it. Okay, done looking. Pocket.",
+        "Got {item}! The beast guarding it was so polite about it. I left a thank-you note in its den."
+      ],
+      "expedition_return": [
+        "I'm home! I made three new friends and only one tried to kill me. Great ratio!",
+        "Back safe! The bandits were lovely once I asked them about their childhoods.",
+        "Expedition done. I lost a sandal but gained perspective. And a rash. Mostly perspective.",
+        "I'm back! I brought you souvenirs. It's mostly rocks. Very heartfelt rocks.",
+        "Home again! A demon beast bit me, but only a little. I think he was nervous."
+      ],
+      "low_health": [
+        "I'm fine! This is just a lot of blood that decided to be outside today.",
+        "Low on health. Please don't worry. Okay, worry a tiny bit. Like, a caring amount.",
+        "Whoever did this to me: great technique. Truly. Anyway, I'd like to see a healer now.",
+        "Ow. Ow. Fuck, ow. Sorry. Pain makes me rude. You don't deserve that.",
+        "If I pass out, tell my enemies I'm not mad. Tell my friends I'm a little mad. They know why.",
+        "I'm really hurt. Fuck. Sorry! Pain made me say it. Please don't tell my mom."
+      ],
+      "war_call": [
+        "{sect} is at war with {enemy}? Can't we just talk? …Fine. I'll bring snacks to the battlefield.",
+        "War with {enemy}. I'll fight hard, but I'm complimenting every single one of their techniques.",
+        "I made a banner for the war! It says 'Good Luck To Both Sides!' Is that wrong?",
+        "For {sect}! And with deep respect for {enemy}. Their uniforms are really, really nice.",
+        "Everyone's sharpening their swords. I'm sharpening my apology speech. Just in case."
+      ],
+      "war_won": [
+        "We won! {enemy} fought beautifully. Should we send a fruit basket? I'm sending a fruit basket.",
+        "Victory for {sect}! Great teamwork, everyone. Especially that guy who stabbed the other guy.",
+        "We won! I helped their wounded up and they called me a demon. Okay! Still a win!",
+        "{enemy} surrendered! I told them 'good game'. Nobody in this whole genre says 'good game'.",
+        "We did it! I'm so proud of us. Does anyone else feel like crying and also napping?",
+        "We won! Hell yeah! Oops, sorry. Heck yeah! I'll bring the losers some soup."
+      ],
+      "war_lost": [
+        "We lost to {enemy}. They earned it. Honestly? Well played. I'm devastated. Well played.",
+        "Defeat. That's okay. {sect} will rise again. Right after we find our shoes.",
+        "We lost the war. On the bright side, {enemy} looked so happy. I love a happy face.",
+        "We lost. Shit. Sorry. Shoot. We lost, shoot. Hug circle in five minutes, everyone.",
+        "Losing hurts, but we learned a lot. Mostly that {enemy} is very, very good at fire."
+      ],
+      "reborn": [
+        "Hello, new life! I have this feeling I owe someone an apology. Maybe everyone.",
+        "I'm reborn! I don't remember much. Just a strong urge to hold doors open for strangers.",
+        "Oh, a new body. Hi, body! I'll take better care of you. I vaguely remember the last one.",
+        "New life! I dreamed I was a cultivator who complimented his own murderer. Weird dream.",
+        "Reincarnated. The soup lady in the underworld was so sweet. I tipped her in memories."
+      ],
+      "married": [
+        "Married {spouse} today! I'm so happy I could cry. I did cry. A lot.",
+        "{spouse}, thank you for choosing me. I promise to bring you tea every single day.",
+        "The whole village came to the wedding, even people I've never met. Everyone's invited, always.",
+        "I do! I really, really do. Forever, probably. Is forever enough? I'll do more."
+      ],
+      "child_born": [
+        "{child} is here! I already love them more than anything. I might cry again. I'm crying again.",
+        "Welcome to the world, {child}! Everyone who meets you will be lucky, I promise.",
+        "I held {child} for the first time and the whole sect could probably hear me sobbing happily.",
+        "{child}, I will bring you tea every day too, once you're old enough. I've already planned it."
+      ],
+      "ascension_trial": [
+        "Ascend or die, huh? No pressure. I'll do my best and be very polite to the lightning.",
+        "Whatever happens up there: thank you. For all the clicks. You're the best, truly.",
+        "If I become immortal, I'll finally have time to write back to everyone. So many letters.",
+        "The Heavens are testing me. I studied! I made flashcards! One of them just says 'don't die'.",
+        "Scared? A little. But I'd rather try than wonder forever. Wow, I'm brave. Hold my hand?"
+      ],
+      "beast_slain": [
+        "I'm sorry, {beast}. You fought bravely. I'll use every part of you well.",
+        "It had to be done. It still feels awful. I'll say a prayer.",
+        "The village is safe now. I hope it had no little ones.",
+        "Rest now. No more hunger, no more fighting."
+      ],
+      "beast_spared": [
+        "Go home, friend. Be safe out there.",
+        "Everyone deserves a second chance. Even things with that many teeth.",
+        "I hope it finds a quiet valley somewhere. With lots of food.",
+        "Sparing it was right. My heart feels lighter already."
+      ],
+      "battle_lost": [
+        "It won fair and square. Good for it, honestly.",
+        "Ow. Okay. I'll heal up and we can try being friends instead.",
+        "I think it was just protecting its home. I'd have done the same.",
+        "Lost, but nobody died. That's a good day by my count."
+      ],
+      "soul_remembers": [
+        "I don't remember my last life, but I think it tried really hard at the end. Thank you, last me.",
+        "There's a little warmth in my soul, left over from the Trial. I'll try to deserve it.",
+        "My Qi comes easier now. Someone before me fell so I could climb. I'll make it count for both of us.",
+        "The heavens said no last time. That's okay! They'll hear me out again, I'm sure of it."
+      ],
+      "welcome_back": [
+        "You're back! {hours} hours! I missed you. I kept your seat warm. With Qi.",
+        "Welcome back! I cultivated for {hours} hours straight. I'm so proud of both of us, honestly.",
+        "Oh! Hi! I wasn't lonely. I talked to a rock for {hours} hours. Great rock. Great listener.",
+        "You're here! Did you eat? Did you sleep? {hours} hours is a long time, I worry.",
+        "Welcome home! Nothing happened. Well, an assassin came by. I made him tea. He left a note."
+      ],
+      "morning": [
+        "Good morning! The sun's up, the Qi's fresh, and you look radiant. Seriously. Glowing.",
+        "Morning! I meditated at dawn and said hello to every bird. They're all doing great.",
+        "Rise and shine! Eat breakfast. A cultivator on an empty stomach is just a sad guy.",
+        "Morning dew is the purest Qi. I drank some off a leaf. Sorry, leaf. Thank you, leaf.",
+        "Good morning, {name}! That's me. Good morning, you! That's you. Everyone's been greeted!"
+      ],
+      "night": [
+        "It's so late! Please sleep. I say this with love and mild concern for your eyeballs.",
+        "Night cultivation is powerful. But so is a secret mortal technique called 'going to bed'.",
+        "Hey. It's the middle of the night. Whatever's keeping you up, you're doing great. Now bed.",
+        "The moon is beautiful. You know what else is beautiful? Seven hours of sleep. Hint, hint.",
+        "Up this late? I'm not judging. I'm just going to leave a warm cup of tea right… here."
+      ]
+    },
+    "psycho": {
+      "arena_win": [
+        "Again. Again. AGAIN. I want to see that look on the next face.",
+        "The sand is so pretty when it is this colour.",
+        "They screamed so nicely. Is there a louder one?",
+        "Hehehe. The crowd loves me. The crowd should be afraid of me."
+      ],
+      "idle": [
+        "I'm not angry. I just wrote your name in my little book. It's a nice book. Hehe.",
+        "Meditation is so peaceful. So quiet. Like a crypt. I love crypts. Anyway!",
+        "I collect things. Spirit stones, jade slips, the last words of young masters. Hobbies matter!",
+        "An elder told me to 'calm down'. I'm calm. I'm the calmest. So, where does he sleep?",
+        "Hahaha! …Sorry. I just remembered a funny thing I did to a man from the Azure Cloud Sect.",
+        "Someone said I had eyes but couldn't see Mount Tai. So I moved Mount Tai onto his house. Seen!",
+        "Flowers are so pretty. I press them between the pages of my Enemies Ledger. Volume nine.",
+        "A butterfly landed on me! Friend. Friend forever. You can never leave, little friend.",
+        "Deep breaths. In: Qi. Out: the urge to burn down the Scripture Pavilion. In: Qi.",
+        "My dantian is so warm and cozy. Like a house fire. Mmm. House fires.",
+        "I'm a pacifist! I only fight on days that end in 'y'. And at night. Hehehe.",
+        "I practiced smiling in the mirror. The mirror cracked. Rude. I'll remember that, mirror.",
+        "Heaven treats all things as straw dogs. I treat all things as future trophies. Same energy!",
+        "Today's list: cultivate, hydrate, avenge. Two out of three! The third one takes patience.",
+        "I told the young master I'd slap his face. He laughed. He laughed! Hehe. He doesn't laugh now.",
+        "I'm a people person! I love people. I have seven in my collection. Kidding! Six.",
+        "Inner peace achieved! …It's gone. Someone breathed near me. Who breathed? WHO BREATHED?",
+        "My Heart Demon came to tempt me. We had tea. He left crying. I don't know why! Hehe.",
+        "{name} does not hold grudges. {name} holds them gently, like a baby bird. Forever.",
+        "Wheee! Qi circulation is so fun! Round and round, like vultures! Hehehe!",
+        "Revenge is best served cold. I've been chilling mine for three hundred years. Almost ready!",
+        "At {stage} I can hear every heartbeat in the valley. Ba-dum. Ba-dum. So many. Hehe.",
+        "The best part of living forever? More time for hobbies. My hobby is grudges.",
+        "I'm so fucking happy today! No reason. Totally no reason. Don't check the lake.",
+        "My master said I had a bright future. Then his house got very bright. Accidents happen! Hehe.",
+        "Some seek the Dao. I seek the man who stole my dumpling three hundred years ago. Same journey.",
+        "Spirit stones glow so pretty. You know what else glows? Ghosts. I have a few. They're shy.",
+        "If you're reading this, you're my friend. Friends don't leave. Friends never, ever leave. Right?",
+        "Hmm hm hmm, just humming my favorite song. It's the screaming from the last sect war. Catchy!",
+        "I'm very gentle. I only ever use my indoor murder voice. Hear it? This is it. Lovely, isn't it?",
+        "Nobody touch my jade slips. I know exactly how many there are. I know how many fingers YOU have.",
+        "Shhh. Listen. The silence. Isn't it fucking beautiful? It's the sound of nobody left. Hehe.",
+        "Some bastard stepped on my flower. I'm not mad! I just planted him next to it. Hehe.",
+        "Damn, I love Tuesdays. Tuesdays are when I sharpen things. All the things. Every thing.",
+        "Happy thoughts! Happy thoughts! Burn it all— happy thoughts! Hehe. Shit, almost."
+      ],
+      "bt_success": [
+        "{stage}! Hahaha! HAHAHAHA! …Ahem. So. Who wants to spar? Everyone? Good. Everyone.",
+        "Breakthrough! My power grows! My list of names grows! Everything grows! Hehe!",
+        "The Heavens roared at me. I roared back. Now the Heavens are very quiet. Good Heavens.",
+        "New stage, new me! Same grudges, though. Grudges are forever. Like diamonds. Hehe.",
+        "Mmm, that lightning was delicious. More, please. Please. PLEASE."
+      ],
+      "bt_fail": [
+        "Failed. Hehe. Okay. That's fine. The bottleneck is on my list now. Right under Elder Wu.",
+        "Half my Qi, gone. Somebody's going to pay. Maybe the Qi. Maybe you. Hehe, just kidding. Maybe.",
+        "Ha…haha…HAHAHA. No, I'm fine. I'm laughing because I'm fine. Can't you tell? FINE.",
+        "The Heavens rejected me. Cute. I'll remember this, Heavens. I remember everything.",
+        "Aw, shucks. And by 'shucks' I mean I'm burning this whole mountain down. Shucks!",
+        "The breakthrough said no. That's okay. I'm not angry. I'm just going to fucking devour it."
+      ],
+      "bt_fail_streak": [
+        "Three failures. I've started a new ledger. It's just called 'HEAVEN'. It's a thick ledger.",
+        "Hehehe. Hehe. Heh. Hehehehehe. …Sorry, I've lost count of the failures. And my composure.",
+        "Again?! AGAIN?! Okay. Okay. Deep breaths. Sweet thoughts. Kittens. Arson. Kittens.",
+        "The bottleneck keeps winning. I respect a worthy foe. I'm going to have it stuffed and mounted.",
+        "The Dao doesn't want to play nice? Fine. Then I'll play with it. My way. Hehe."
+      ],
+      "rare_drop": [
+        "{item}! Ooh, shiny. It goes in the collection. Next to the other shiny. And the screaming one.",
+        "I got {item}! The last owner said 'over my dead body'. Such a flexible negotiator!",
+        "{item}, mine mine mine. Anyone who touches it joins the collection too. Hehe!",
+        "Look, {item}! I'm going to name it. I name all my things. I named my enemies too. Past tense.",
+        "Finders keepers, losers weepers! And the losers are weeping SO much. {item}! Beautiful."
+      ],
+      "expedition_return": [
+        "I'm back! I made so many new friends. They're all in this sack. Metaphorically! Hehe.",
+        "Home sweet home! The bandits were fun. They screamed like little birds. Tweet tweet!",
+        "Expedition complete! Nobody followed me home. I made very sure. Hehe.",
+        "I'm back! A demon beast tried to eat me. Now he's my emotional support beast. He's terrified.",
+        "Back again! I only burned down one forest this time. That's growth. Personal growth."
+      ],
+      "low_health": [
+        "Ohhh, I'm hurt. Oh, that's exciting. Oh, somebody is going to have such a bad day.",
+        "Low health! Hehe! Being almost dead is so fun! Everything's so bright and funny!",
+        "Who did this? No, don't tell me. I'll find them myself. I love finding people.",
+        "Ow. Hehe. OW. Hehehe. Why is this funny? Why am I giggling? Someone make me stop giggling.",
+        "This is fine. Pain is just my body keeping a list. I keep lists too! We're the same!"
+      ],
+      "war_call": [
+        "War with {enemy}?! Oh, it's like my birthday! Everyone line up nicely, please!",
+        "{sect} goes to war! I've been sharpening my sword since breakfast. And my smile.",
+        "Hello, {enemy}. I don't hate you. I love you. I'm going to love you so much. Hehe.",
+        "WAR! Finally! I packed snacks, a blanket, and a list of every {enemy} disciple's name.",
+        "For {sect}! Don't worry, I'll be gentle. That's a lie. I'm lying. Hehehe!",
+        "War?! Oh, hell yes. I've been SO good. I deserve this. Hehehehe."
+      ],
+      "war_won": [
+        "We won! {enemy} is sooo sad. Look at their little faces! Somebody paint them for me.",
+        "Victory for {sect}! Can we do it again? Tomorrow? Tonight? Right now? Please?",
+        "{enemy} surrendered. Aww, but I wasn't finished playing. Can I un-accept a surrender?",
+        "We won! I collected their banners. And their motto. And their founder's favorite teacup. Hehe.",
+        "Hahahaha! We won! HAHAHA! Oh, the war's over? HAHAHA! Sorry, I can't stop.",
+        "We won! Look at all the new friends I didn't let leave. Fuck, I'm happy."
+      ],
+      "war_lost": [
+        "We lost to {enemy}. That's okay. That's okay. I'm writing it down. In the special book.",
+        "{sect} lost? Hehe. Hehehe. Revenge season starts NOW. It lasts ten thousand years.",
+        "Defeat? No, no. This is a prologue. {enemy} just doesn't know what kind of story they're in.",
+        "Lost. Fuck. Okay. Fine. I'm smiling. See me smiling? That's my scariest smile.",
+        "{enemy} won this round. I'm sending them a gift. A very quiet gift. It watches them sleep."
+      ],
+      "reborn": [
+        "New life! I don't remember much. Just names. Lots of names. In a book. Why do I want that book?",
+        "Hello, world! Why do I have a burning urge to hold a grudge against someone called Elder Wu?",
+        "Reborn! The underworld judge begged me to never come back. Hehe. I'll try!",
+        "Wow, a new body! Clean hands! Weird. They feel like they should be busier.",
+        "I'm reborn and I feel so peaceful. Pure. Innocent. Hehe. That won't last."
+      ],
+      "married": [
+        "Married {spouse} today. 'Til death do us part — and I do enjoy deciding when that is. Kidding! ...Hehe.",
+        "I promised to protect {spouse} from all enemies. I've already made a list. It's long.",
+        "The wedding rings match our matching smiles. Mine doesn't reach my eyes. Charming, isn't it.",
+        "{spouse} said yes. I'm going to remember this happiness forever. Ten thousand years, in fact."
+      ],
+      "child_born": [
+        "{child} was born. Small. Precious. I will remember this face for ten thousand years. Hehe.",
+        "My own heir! I've already started their list of future enemies. It's a gift, really.",
+        "{child} cried the instant they saw my smile. Most people take longer to notice. Impressive infant.",
+        "A new little one to protect from everyone. And I do mean everyone. Hehe."
+      ],
+      "ascension_trial": [
+        "Ascension or death? Ooh, both sound fun! Can I pick both?",
+        "If I become immortal, I get to hold grudges FOREVER. Forever! Hehehehe!",
+        "The Heavens want to test me? Cute. I've been testing them back. They're failing.",
+        "Immortality means outliving everyone I don't like. That's so wholesome. I'm tearing up.",
+        "Come on, trial! Don't hold back! If you hold back, I'll know. I'll always know."
+      ],
+      "beast_slain": [
+        "Hehe. It stopped moving. Do it again. Do it AGAIN.",
+        "The {beast} made such a lovely sound at the end.",
+        "Its eyes went dim. I watched the whole time. Beautiful.",
+        "I'm keeping a tooth. And a claw. And maybe the eyes."
+      ],
+      "beast_spared": [
+        "I let it go. Now I get to hunt it twice. What a gift.",
+        "Run, little {beast}. Run fast. I'll count to a hundred.",
+        "Mercy is just saving dessert for later.",
+        "It's scared of me now. I can smell it. Delicious."
+      ],
+      "battle_lost": [
+        "It hurt me! Ha! It HURT me! I love it! Again!",
+        "The {beast} bit back. We're going to be such good enemies.",
+        "Losing is fun too. The pain is so honest.",
+        "Retreat. For now. I'll dream about it. Warm dreams."
+      ],
+      "soul_remembers": [
+        "Heaven struck me down! Hehe. Heaven made a very long list today. I'm at the top of it. I made the list.",
+        "My soul kept a little ember from the lightning. I'm going to feed it. It's going to grow up big and bitey.",
+        "I remember the Gate. I remember the face of the lightning. Lightning doesn't have a face. It will.",
+        "Died at the Trial and came back stronger! Let's do it again! And again! Hehehe."
+      ],
+      "welcome_back": [
+        "You're back! {hours} hours! I counted every single second. Every. Single. One. Hehe!",
+        "Oh, there you are. {hours} hours. Where were you? Who were you with? Just curious! Hehe.",
+        "Welcome home! I didn't do anything while you were gone. Don't look at the village.",
+        "{hours} hours alone with my thoughts. My thoughts are so loud. They have ideas.",
+        "You came back! I knew you would. Everyone comes back to {name}. Everyone."
+      ],
+      "morning": [
+        "Good morning! The birds are singing. I'm singing too. We're all screaming happily!",
+        "Morning! Perfect day for cultivation. And for settling scores. Mostly scores.",
+        "Rise and shine! The dawn is so pretty and red. Like, um… like a sunrise! Yes. Hehe.",
+        "The early bird catches the worm. The earlier cultivator catches the bird. Morning!",
+        "Morning Qi is so fresh and pure. Can't wait to ruin it. Hehe. Good morning!"
+      ],
+      "night": [
+        "Still awake? Me too. I never sleep. I just watch. Watching is nice. Hehe.",
+        "It's so late. Nobody's around. Just you and me. And the dark. And me. Hehe.",
+        "Night is my favorite. Everyone's asleep and nobody can see me smiling at them.",
+        "Go to bed. Or don't. I'll be here either way. Right here. Always.",
+        "The dead of night is the best time for plotting. Is that why you're up? Are we plotting? Yay!"
+      ]
+    },
+    "gremlin": {
+      "arena_win": [
+        "I won with a move I invented just now. Its name is Sudden Elbow.",
+        "The purse jingles! I shall bite every coin to see which ones scream.",
+        "Nobody expected that, including me. Especially me.",
+        "Victory! Now to steal the ring announcer's hat."
+      ],
+      "idle": [
+        "Borgin. Gorgin. Sporgin. The third one is new. He has a hat.",
+        "My dantian is making the noise again. Hwoooomp. That's the Dao saying hi.",
+        "I circulated my Qi through my left elbow ninety times. The elbow is now a Grand Elder.",
+        "Spirit stones are just rocks that believe in themselves. I am a rock that believes in soup.",
+        "Meridian? Merid-YOU. Hahaha. …I don't know what that means either.",
+        "Blip.",
+        "The elders say the Heavenly Dao is unknowable. Wrong. I know him. His name is Doug.",
+        "Today I cultivated a bean. Tomorrow, two beans. By Nascent Soul, one extremely large bean.",
+        "Wobbleworth! Come back! …He was a thought I had. He has gone west to fetch the scriptures.",
+        "Put a jade slip to your ear and you can hear the ocean. The ocean says 'grommet'.",
+        "Nine Heavens, eighteen hells, and one medium-sized waiting room. Number forty-two, please.",
+        "Qi is like a sandwich. You know? No? Me neither. But it is.",
+        "Snorf. Snorf snorf. Hwee. That's my breathing technique. It's called Snorf.",
+        "I tried to face-slap a young master, slapped myself instead, and ascended slightly. Oops.",
+        "The pill furnace and I are married. Our child is a small crispy pill named Barnaby.",
+        "Bottleneck? More like bottle-DUCK. There is a duck in my bottleneck. His name is Tuesday.",
+        "Mmmmmmmmmmmmmmm. Okay, that's enough Mmm. Saving the rest for Core Formation.",
+        "Five elements: fire, water, wood, metal, and Kevin. Nobody ever talks about Kevin.",
+        "I am {name} of the {stage} realm, and I have a tiny door in my knee. Knock knock. Nobody's home.",
+        "Mount Tai cannot see me, I cannot see Mount Tai. We are playing hide and seek. Year 400.",
+        "A flying sword! No, wait. A flying spoon. Even better. Soup is coming.",
+        "Brrrrrrrrrrp. That was a lotus blooming in my dantian. Or a frog. Or both. A frotus.",
+        "Heavenly tribulation is just the sky clapping. Clap clap. I bow. The sky loves me.",
+        "Dragons are long cats. Phoenixes are loud chickens. I am a medium spoon. Science.",
+        "My sect is the Pointy Soup Sect. Our technique is: we are here. That's the whole technique.",
+        "Fuckity boop. Boopity fuck. Two ancient mantras. Only one of them works.",
+        "Courting death? No thank you. I'm courting a turnip. We're taking it slow.",
+        "I sneezed so hard I opened a new meridian. It goes to the moon's basement. Damp down there.",
+        "Grumble grumble dantian wumble. Wumble! Oh, that's the word. Finally. Wumble.",
+        "Elder Hwang said 'focus'. I focused so hard I became a pencil. Then un-pencil. Humbling.",
+        "Glorp. The Qi is glorping. When the Qi glorps, you let it glorp. Ancient wisdom.",
+        "Borgin and gorgin are fighting again. Borgin called him a shit-waffle. Gorgin is the waffle.",
+        "Fuck. Duck. Truck. Muck. The Four Ancient Syllables. My dantian is humming along.",
+        "Hell is just a big warm pond for frogs who said 'grommet' too many times. I said it twice.",
+        "Damn. Dam. Beaver. Qi beaver. He's building a dam in my meridians. I love him. Gerald Two."
+      ],
+      "bt_success": [
+        "{stage}! I can taste colors now. Blue tastes like Thursday. Very powerful.",
+        "BREAKTHROUGH! My meridians have become noodles. Spicy noodles. I am unstoppable soup.",
+        "Hwaaaaa! New stage! I have gained the power to hover. Two inches. For one second. Wow.",
+        "I broke through and found a small goat inside the bottleneck. He is my master now.",
+        "Ding! Level up! …Wrong world. Borgin. I mean: the Heavens tremble before me."
+      ],
+      "bt_fail": [
+        "Blorp. The breakthrough went blorp. Half my Qi went to live on a farm upstate.",
+        "Failure! Or, as the ancients called it, 'pfffbbbt'. Pfffbbbt.",
+        "My Qi fell out of my ears. It's okay. I'll pour it back in with a little funnel.",
+        "The bottleneck said 'no'. I said 'yes'. It said 'no' louder. Very big mouth for a neck.",
+        "Oh shit, oh bees. Oh shit bees. Wait. No bees. Just failure. Phew.",
+        "Breakthrough went blorp. Shit went sideways. The sideways went left. I'm a cloud now."
+      ],
+      "bt_fail_streak": [
+        "Three fails. Gorgin says keep going. Borgin says eat a spoon. I trust Borgin. Crunch.",
+        "Bonk. Bonk. Bonk. That's my head on the bottleneck. It's a rhythm now. Heaven is dancing.",
+        "Have I tried turning my dantian off and on again? …It's off. Uh oh. Hello? Dantian?",
+        "The breakthroughs keep failing, so I'm breaking down instead. Sideways cultivation!",
+        "I will not give up! I will give left. Or diagonal. Anything but up. Hm. Wait."
+      ],
+      "rare_drop": [
+        "{item}! I'm going to wear it as a hat. It is not a hat. That's what makes it strong.",
+        "Found {item}! It whispered 'flumbo'. I whispered 'flumbo' back. We are bonded now.",
+        "{item}? Wowie. I'll trade it for three magic beans and one ordinary bean. For balance.",
+        "Ooh, {item}! I shall lick it for power. Ancient technique. Tastes like copper and destiny.",
+        "{item}! Into the pocket! No, the other pocket. The pocket dimension. It's my sock."
+      ],
+      "expedition_return": [
+        "I'm back! I found a door in the mountains. Behind it: another door. Delicious.",
+        "Home! I fought a spirit beast. Or a big rock. It didn't move, so I won.",
+        "Expedition complete. I brought back seventeen leaves and a vibe.",
+        "I have returned from the Forbidden Forest! It was not forbidden. It was just a bit rude.",
+        "Back! I learned the language of the frogs. It's just 'ribbit' but with feeling."
+      ],
+      "low_health": [
+        "Ow! Health is low. Oh no. Oh no no. Oh no-dles. I am made of noodles now.",
+        "I'm leaking red Qi. That's the spicy kind. Bad kind. Spicy bad. Help, a little.",
+        "Feeling crunchy. Feeling very crunchy. Crunchy is not a good cultivation state.",
+        "I see a bright light. It's a lantern. A man is selling lanterns. Not now, sir!",
+        "My meridians are in a knot. A pretty knot. A bow. I'm a gift. A hurt gift. Ow.",
+        "Ouchie ouchie fuckity ouch. My health bar is a noodle. Slurp it. No! Don't slurp it!"
+      ],
+      "war_call": [
+        "War with {enemy}! I shall bring my strongest weapon. It is a stick. It is named Stick.",
+        "{sect}, assemble! Battle formation: everyone stand in a circle and hum. Hmmmmm. Terrifying.",
+        "{enemy} challenges us?! Their ancestors were all ducks. I checked. Quack, {enemy}. Quack.",
+        "WAR. Wuh-war. Wuhwuhwuh-WAR. Sorry, that's my war cry. Still tuning it.",
+        "To war! I painted my face for battle. It's a painting of a different face. Confusion tactics.",
+        "War! Bring the gorgins! Bring the soup spoons! Hell yeah, it's spoon time!"
+      ],
+      "war_won": [
+        "We won! {enemy} has been bonked! Bonked into next week! Specifically Thursday.",
+        "Victory for {sect}! As prophesied by the soup. The soup is never wrong. Mostly never.",
+        "{enemy} fled! Our humming formation was too powerful. Hmmmm. Hmm. Victory hum.",
+        "We won the war! I would like my prize in beans, please. Loose. No bag.",
+        "Ha! {enemy} could not handle the Borgin. Nobody can handle the Borgin. Not even Gorgin."
+      ],
+      "war_lost": [
+        "We lost to {enemy}. Fine. Next time we win with the secret technique: more ducks.",
+        "{sect} is defeated. Womp womp. Womp. The official sect sound of mourning.",
+        "Lost. Damn it. Damn it to the eighth hell. Not the ninth. The ninth is for Kevin.",
+        "{enemy} won? Impossible. Unless… they had spoons. Did they have spoons? They had spoons.",
+        "Defeat. I will go to my cave and think about what I did. I did a war. Wrongly."
+      ],
+      "reborn": [
+        "Hello! I'm new! I remember nothing except the word 'borgin'. It feels important.",
+        "Reborn! Why do I have strong feelings about a goat? Who was the goat? Was I the goat?",
+        "Blink. Blink. New life, who dis. I have a faint memory of a spoon. A dear friend.",
+        "I have been reincarnated. Before: a cultivator. Now: a cultivator. Big change. Huge.",
+        "Mweh. I'm a baby soul. I feel like I owe someone a bean. Several beans."
+      ],
+      "married": [
+        "Married. Borgin. The wedding cake was also the officiant. Everyone clapped anyway.",
+        "{spouse} and I are now Gerald-bonded. Gerald approves. Gerald is the Dao.",
+        "I do, I dee, I dah, I dum, marriage is a soup now apparently.",
+        "The vows were three honks and a spin. Legally binding in at least one province."
+      ],
+      "child_born": [
+        "{child} has been born! Borgin! They already speak fluent nonsense, just like me!",
+        "The baby is also named Gerald, probably. We'll ask when they can talk.",
+        "{child} arrived in a puff of soup-scented mystery. As is tradition. My tradition, anyway.",
+        "I showed {child} the small horse Gerald. They laughed. Excellent taste already."
+      ],
+      "ascension_trial": [
+        "Ascension Trial? I will ascend like a balloon. Balloons ascend. Checkmate, Heaven.",
+        "If I die, bury me with my spoon. If I live, bury the spoon anyway. It knows too much.",
+        "Immortality: forever. Death: also forever, but lying down. Tough choice. Blorp.",
+        "The Heavens are opening. It smells like toast up there. I am going toward the toast.",
+        "Survive or perish? I choose option three: wiggle. Nobody expects the wiggle."
+      ],
+      "beast_slain": [
+        "The {beast} is dead and I'm keeping its tail as a hat.",
+        "I win! Winner gets the teeth. Those are the rules. I made them.",
+        "It died mad. It died SO mad.",
+        "Hunting achievement unlocked: stabby."
+      ],
+      "beast_spared": [
+        "Go, {beast}! Be free! Cause chaos in my name!",
+        "I let it go because I want to see what it does next.",
+        "It ran away. I licked its footprint. For science.",
+        "Spared! Now there's a beast out there that owes me a favour."
+      ],
+      "battle_lost": [
+        "It beat me up and took nothing. Rude. I had snacks.",
+        "I lost on purpose to study its moves. Also by accident.",
+        "The {beast} won. I have decided it's my nemesis now.",
+        "Ran away screaming. Good cardio. Ten out of ten."
+      ],
+      "soul_remembers": [
+        "My soul has a little ember in it now. I named it Borgin. Borgin helps with the Qi. Good Borgin.",
+        "I remember falling from the sky. I was a comet! A comet of beans! The Dao is beans!",
+        "Lightning took the old me. The new me kept the crunchy bit. The crunchy bit is the soul.",
+        "Heaven said no. I said gorgin. Heaven had no answer. I won. Also I died. Mostly won."
+      ],
+      "welcome_back": [
+        "You're back! It's been {hours} hours. Or {hours} spoons. Time is measured in spoons here.",
+        "Welcome back! In your {hours} hours away, I became a tree and then stopped. Busy.",
+        "Oh, hello! I've been saying 'borgin' for {hours} hours. Gorgin says hi. Gorgin missed you.",
+        "{hours} hours! Long enough to boil a very patient egg. I did. He's still patient.",
+        "Hello again! Nothing happened. Except the goat. The goat happened. Don't ask about the goat."
+      ],
+      "morning": [
+        "Good morning! The sun is up. The sun is a big hot bean. I salute the bean.",
+        "Morning! The rooster crowed. I crowed back. Now the rooster is cultivating. We're rivals.",
+        "Blehhh. Morning Qi tastes like cereal. Heavenly cereal. Crunch crunch Dao.",
+        "Rise and shine! Or rise and glimmer. Or rise and just sort of wobble. That's me.",
+        "It is morning in the {stage} realm. The dew is fresh. The frogs are gossiping. About me."
+      ],
+      "night": [
+        "Why are you awake? The moon is awake. Are you the moon? Blink twice if you're the moon.",
+        "Late-night Qi is extra goopy. Goopy Qi, sleepy guy. Go to bed, sleepy guy.",
+        "It's so late the stars are yawning. Hwaaaah. See? Contagious. Go to sleep.",
+        "At this hour the ghosts come out. They're all named Greg. Night, Greg. Go to bed, you.",
+        "Night night! Or, as the ancient sages said: shloop. Shloop, friend. Shloop."
+      ]
+    }
+  }
+}

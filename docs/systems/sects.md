@@ -8,6 +8,12 @@ _Covers: sects.js (data) · renderer/game/sect.js · game-state.js · game.js (r
   - `contribution: number` — Sect Contribution Points (spent on nothing; only gate rank-ups)
   - `activeMissions: [{ uid, missionId, endsAt }]` — max `SECT_MAX_MISSIONS` (2) at once
 
+> **1.14b (arts.md → "42c part 2"):** Contribution is now also *spent*: Sect → **Library** sells the sect's martial art
+> manuals (its elements + neutral, `SECT_ART_ELEMENTS`), each grade opened by rank, priced in Contribution
+> (`sectLibrary()`, `buySectArt(id)`). Spending never lowers the rank you hold. **Giving** (user 2026-09-30): spare manuals go
+> onto the sect's shelf (`s.sect.shelf`) for Contribution + war strength (`donateManualToSect`, `sectShelfWar`; arts.md →
+> "Giving manuals to your sect"). A founded sect keeps its own shelf (`s.ownSect.library`) under Sect → Halls.
+
 ## API (game-state.js)
 - `joinSect(sectId)` → `{ ok, sect?, reason? }` — reasons: `unknown`, `in_sect`, `stage`
 - `leaveSect()` → `{ ok, reason? }` — wipes rank/contribution/missions + member war state, karma −5 (−10 if deserting a live war)

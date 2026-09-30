@@ -1,0 +1,162 @@
+{
+  "SECT_FOUNDING": {
+    "minStage": 19,
+    "stones": 500,
+    "items": {
+      "void_crystal": 50
+    },
+    "maxNameLen": 20
+  },
+  "SECT_HALL_LEVELS": [
+    {
+      "cap": 5,
+      "upgradeStones": 100
+    },
+    {
+      "cap": 10,
+      "upgradeStones": 250
+    },
+    {
+      "cap": 15,
+      "upgradeStones": 500
+    },
+    {
+      "cap": 20,
+      "upgradeStones": null
+    }
+  ],
+  "SECT_BUILDINGS": [
+    {
+      "id": "qi_library",
+      "name": "Qi Library",
+      "nameCN": "气功馆",
+      "desc": "Disciples contribute +20% more Qi to you.",
+      "stones": 50,
+      "items": {},
+      "effects": {
+        "disciple_qi_mult": 1.2
+      }
+    },
+    {
+      "id": "pill_hall",
+      "name": "Pill Hall",
+      "nameCN": "炼丹殿",
+      "desc": "Furnaces burn day and night: 40% chance crafts yield double.",
+      "stones": 100,
+      "items": {
+        "spirit_herb": 20
+      },
+      "effects": {
+        "craft_double_chance": 0.4
+      }
+    },
+    {
+      "id": "beast_pen",
+      "name": "Spirit Beast Pen",
+      "nameCN": "灵兽栏",
+      "desc": "+2 spiritual beast slots.",
+      "stones": 80,
+      "items": {},
+      "effects": {
+        "beast_slots": 2
+      }
+    },
+    {
+      "id": "training_ground",
+      "name": "Training Ground",
+      "nameCN": "修炼场",
+      "desc": "Disciples level up 30% faster.",
+      "stones": 60,
+      "items": {},
+      "effects": {
+        "disciple_xp_mult": 1.3
+      }
+    },
+    {
+      "id": "defensive_array",
+      "name": "Defensive Array",
+      "nameCN": "防御阵",
+      "desc": "Wards woven into the mountain itself: war defense +40%.",
+      "stones": 200,
+      "items": {
+        "void_crystal": 5
+      },
+      "effects": {
+        "war_defense": 0.4
+      }
+    },
+    {
+      "id": "treasury",
+      "name": "Treasury",
+      "nameCN": "宝库",
+      "desc": "Disciple resource income +30%.",
+      "stones": 150,
+      "items": {},
+      "effects": {
+        "income_mult": 1.3
+      }
+    }
+  ],
+  "DISCIPLE_MAX_LEVEL": 10,
+  "DISCIPLE_RECRUIT_COST": 15,
+  "RECRUIT_REROLL_COST": 10,
+  "RECRUIT_POOL_SIZE": 3,
+  "RECRUIT_REFRESH_SECONDS": 900,
+  "RECRUIT_TALENT_WEIGHTS": [
+    40,
+    30,
+    20,
+    8,
+    2
+  ],
+  "DISCIPLE_STONE_RATE": 0.0004,
+  "DISCIPLE_HERB_RATE": 0.0002,
+  "DISCIPLE_QI_FRAC": 0.004,
+  "DISCIPLE_XP_BASE": 0.5,
+  "DISCIPLE_XP_PER_TALENT": 0.25,
+  "DISCIPLE_XP_PER_LEVEL": 600,
+  "DISCIPLE_SURNAMES": [
+    "Li",
+    "Wang",
+    "Zhang",
+    "Liu",
+    "Chen",
+    "Yang",
+    "Zhao",
+    "Huang",
+    "Zhou",
+    "Wu",
+    "Xu",
+    "Sun",
+    "Ma",
+    "Zhu",
+    "Hu",
+    "Guo",
+    "Lin",
+    "He",
+    "Gao",
+    "Luo"
+  ],
+  "DISCIPLE_GIVEN": [
+    "Wei",
+    "Fang",
+    "Lei",
+    "Xiu",
+    "Jun",
+    "Yan",
+    "Ming",
+    "Hao",
+    "Ling",
+    "Tao",
+    "Qing",
+    "Yue",
+    "Rui",
+    "Shan",
+    "Bo",
+    "Xin",
+    "Chen",
+    "Ruo",
+    "Zhi",
+    "Han"
+  ]
+}

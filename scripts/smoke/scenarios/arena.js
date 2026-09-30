@@ -15,12 +15,8 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   const top = () => ev(`(() => { for (let n = document.getElementById('tab-arena'); n; n = n.parentElement) n.scrollTop = 0 })()`)
   const reset = () => ev(`(() => { const gs = gameState, s = gs.get(); s.family.fight = null; s.health = 100; s.spiritStones = Math.max(s.spiritStones, 5000)
     s.arena = gs._blankArena(); s.stageIndex = 13; s.maxStageThisLife = Math.max(s.maxStageThisLife, 13); gs._recalc(); gs._notify() })()`)
-  const winBout = async (end = 'raise') => {
-    await rng(0)
-    for (let i = 0; i < 6 && await ev('combatView.step === "fight"'); i++) { await ev('combatView.lockUntil = 0'); await click('#combat-panel [data-tac="guard"]'); await sleep(120) }
-    await unrng(); await sleep(200)
-    if (await ev('combatView.step === "end"')) { await click(`#combat-panel .cb-end.${end}`); await sleep(300) }
-  }
+  const F = require('../fight-ui.js')({ ev, click, sleep })
+  const winBout = async (end = 'raise') => { await F.win(end); await ev('(() => { gameState.get().health = 100 })()') }   // (1.14a: wounds carry; heal between checks)
 
   await ev(`(async () => { await window.electron.saveSlot(0, gameState.buildDevSave('member_elder')) })()`)
   await ev('location.reload()'); await sleep(1500)
@@ -82,4 +78,11 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   await ev('(() => { const s = gameState.get(); s.stageIndex = 1; gameState._recalc(); gameState._notify() })()'); await sleep(300); await top()
   assert(await ev('document.querySelectorAll("#tab-arena .ar-card.locked").length === ARENA_RINGS.filter(r => r.minStage > gameState.get().stageIndex).length && !!document.querySelector("#tab-arena .view-lede")'), 'an early player: the higher rings locked, the first-visit hint')
   await shot('arena-early-expanded')
+
+  // 1.14a: every roster row's odds are a move-fight estimate — a cold Arena (all six rings open) must stay quick
+  const ms = await ev(`(() => { const s = gameState.get(); s.stageIndex = 20; s.maxStageThisLife = 20; gameState._recalc(); gameState._arenaEnsureRosters(); gameState._mbCache = new Map()
+    const t0 = performance.now(); gameState.arenaInfo(); const cold = performance.now() - t0
+    const t1 = performance.now(); gameState.arenaInfo(); return [cold, performance.now() - t1] })()`)
+  console.log(`     arenaInfo: cold ${ms[0].toFixed(0)} ms, cached ${ms[1].toFixed(1)} ms`)
+  assert(ms[0] < 600 && ms[1] < 20, `a cold Arena roster (30 estimates) under 600 ms, cached under 20 ms (${ms[0].toFixed(0)} / ${ms[1].toFixed(1)})`)
 }

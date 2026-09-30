@@ -38,7 +38,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); A4-2 beasts ✅ (10 + variants); **A4-3 realm scenery + death moment ✅** (accepted by the user 2026-09-28); **A4-4 Ink default + sprite emoji lint ✅** (2026-09-28, 8.0) |
 | **Soul Points + Immortal cinematic + "you finished v1" screen** | ✅ Phase 40 (v1 finish) — 40a Soul Points core (UI 7.7) + **40b Immortal Ascension cinematic + finish screen** (2026-09-28; screen 7.75, cinematic accepted by the user) |
 | **Combat & Battles** (battle page, beast battles, bestiary) | ◐ Phase 35 — **A6-1 ✅** (2026-09-28): Fight a wild beast from Roam → Beasts on a full-window ink battle page (UI 7.75, effects 8.0). **A6-2 ✅** (2026-09-29): Roam → Hunt + Roam → Bestiary, battle banter, slayer reputation, sim bot hunts (UI 7.7). **A6-3a ✅** (2026-09-29): duels, head challenges, defending the seat + your step-down bouts on the battle page vs ink duelists, finish/spare · raise/humble, debts + grudges (UI 7.83, duelist 8.1). **A6-3b ✅** (2026-09-29): the Arena — Roam → Arena, six rings, purse × streak × renown, blood matches, titles, grudge call-outs (UI 7.75). Next A6-3c bosses (needs 23E/17) |
-| **Arts & Move Combat** (collectible combat arts, 4 moves + passives, parry QTE, no cooldowns; + Sell items) | ◐ Phase 42 — 1.11 Sell ✅ · 1.12 Arts core ✅ (79 arts, Path → Arts, study, loadout, offers, drops); next 1.13 move engine (docs/systems/arts.md) |
+| **Arts & Move Combat** (collectible combat arts, 4 moves + passives, parry QTE, no cooldowns; + Sell items) | ◐ Phase 42 — 1.11 Sell ✅ · 1.12 Arts core ✅ (79 arts, Path → Arts, study, loadout, offers, drops); 1.13a move engine ✅ · 1.13b element effects ✅ · **1.14a people on moves ✅** (every fight kind; p.arts, temper AI, scouting; Press/Guard/Feint removed; UI 7.75) · **1.14b ✅** rival counters, raise → taught / finish → manual, Sect → Library, clan library, **study desks by realm** (UI 7.6); next **1.15 QA & Balance** (docs/systems/arts.md) |
 | **Tame talisman grades & tame attempts** (驯兽符) | ✅ **Phase 41** (2026-09-29): four graded Beast Taming Talismans (Crude 40% → Fine 55% → Superior 70% → Pristine 90%, the old item = Crude), a real tame roll, a failed tame that fights or escapes (nature-weighted; the wounded flee), the bind roll; grade pickers on Roam → Beasts / details / battle end; checks/talismans.js (25) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
@@ -71,7 +71,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 > Sim/dist/build:web/smoke/new checks are batched into each feature's **QA & Balance** task (CLAUDE.md).
 > **UI/UX is first-class:** every player-facing task does the UX Pass (CLAUDE.md) and logs gaps under "UX Debt" below.
 
-> **Tools:** `npm test` (syntax) · `npm run checks` (421 scenario checks, ~6s) · `npm run sim` (bot playtest) ·
+> **Tools:** `npm test` (syntax) · `npm run checks` (767 scenario checks, ~30s: combat.js alone ~20s) · `npm run sim` (bot playtest) ·
 > `node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` (real-app smoke over CDP, throwaway profile). Any
 > useful check script you write goes in `scripts/sim/checks/` and gets documented — never left in a temp folder
 > (CLAUDE.md → "Test scripts are project assets").
@@ -138,9 +138,28 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   slots); no soul metrics in the sim report yet (2.8); the Soul screen is only reachable from Hall/charselect/attention,
   not the Qi/s breakdown popover (could link "Soul Resonance" to it).
 - **Beast details page (7.9):** the portrait VIEW tag is small/low-contrast.
+- **Move combat (1.13a, 7.8):** balance
+  is first-pass (parrying swings fights a lot; starter-only loadouts are weak vs high-tier beasts; tune in 1.15).
+- **Parry on the field (7.75):** in Overlay/phone the PARRY plaque can touch a big beast's tail; the Overlay Bind card sits
+  below the fold.
+- **Battle effects (1.13b, asset 8.3 / page 7.8):** the beast Rake on you reads as a blob + a whole-figure tint (want three
+  rake strokes, an outline flash); the charge aura is a single orb; the "too soon" press flash is faint; the earth ward reads
+  less like a guard than the others; burn embers over your own figure compete a little with the hit on the foe.
 - **Arts (1.12, UI 7.6 / icons 8.1):** el_fire vs el_water outlines are close at 12px; name colour = grade but borders =
   element is unexplained (add a legend or keep one meaning per channel); the Overlay offer card fills the whole pane; the
   Study toast covers the realm title (toast system); no first-visit hint yet; the sim bot doesn't study/equip (1.15).
+- **Arts grade filter (2026-09-30, 7.7):** "Earth" is both a grade and an element, and the two filter rows carry no row
+  caption (a leading "Grade"/"Element" label would fix it); the third filter row crowds the 300px Overlay / phone panes
+  (the grade row now hides while picking a slot); the library count's tooltip just got longer.
+- **Rivals + libraries + desks (1.14b, 7.6):** a founded sect has no library (only joined sects); the sim bot doesn't
+  study, buy or write arts (1.15); some states have no screenshot yet (a Contribution shortfall, a free desk listing manuals,
+  the too-profound clan reason, the Finish manual chance); toasts from the main window can float over the battle field;
+  Expanded "Study desks" header wraps; library prices / write costs / the 60% finish drop are first-pass (1.15).
+- **People on moves (1.14a, 7.75):** the "What you know" ? chips and the Normal/Wide/Off parry pills are small tap targets on
+  phone/Overlay; people have no prepare step, so the parry window sits in the fight panel on turn 1 only. **Balance is first
+  pass** (probe: scripts/sim/probe-person-fights.js): starter-only characters lose most even fights, and **the sim bot never
+  studies/equips arts, so it lost 6/6 head challenges in sim:quick** — teach it in 1.15. Wounds now carry from bout to bout
+  (an Arena run or a step-down bracket wears you down; watch the Arena min-Health lock in QA).
 - **Selling (1.11, 7.8):** the Sell confirm uses Discard's red danger styling (the generic confirm needs a neutral
   variant); phone wraps "Sell all" alone to a third row; sell prices are first-pass and the sim bot doesn't sell (1.15).
 - **Automation queueing (7.75):** Overlay Auto-Missions blurb wraps to 3 lines beside the switch; the currently-running
@@ -185,6 +204,129 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-09-30 (user present) — part 62
+Agent: **Two small fixes from a play session** (user: "cannot queue things to study while a fight message is up, though I
+  wasn't in a fight"; and the arts library needs filters for "a lot of arts"). Tiny, no roadmap task.
+  - **The loadout is never locked mid-fight (the real fix).** A probe proved studying was never gated — only `setArtSlot`
+    / slot-picking was, so a pending fight you had stepped back from refused arts changes and read as a bug. Fixed by
+    making the fight self-contained: `_mbYou` snapshots the whole move-slot array (`you.slots`) and `fightMoves()` shows
+    that deck, so the gate is gone and a loadout change only affects the *next* fight. checks/arts.js + combat.js assert
+    both (allowed mid-fight, and the live grid stays on the starting deck). arts.md "Loadout" updated.
+  - **Arts library grade filter.** A third chip row on Path → Arts: `Any grade` + the five grades, each chip in its
+    grade's colour (`.rar-chip` / `g-<grade>`); the heading appends "· N shown"; the row hides while picking. New smoke
+    coverage in scenarios/arts.js (which also now resets to Overlay after the mode loop, so its later shots aren't Desktop).
+  - Tests: npm test clean · checks **767 ok** · arts smoke (Overlay/Expanded/Desktop/phone) zero console errors.
+    Review: fresh reviewer agent **7.7 PASS** (three `[polish]` → UX Debt). Docs: arts.md, ui-review.md, START_HERE. Uncommitted.
+  - **Then, same session — partner affection now drifts much slower when you are not actively playing** (user). The 0.3/yr
+    drift toward 50 only runs at the full rate while you are present *and* in Active Mode; away (window hidden to the tray
+    / unfocused — new `gameState.setPresent()` fed from game.js's loop, the same test NotificationSystem uses) or in Idle
+    Mode it is `AFFECTION_DRIFT_AWAY_FRAC` 0.1 of that (0.03/yr). New `gameState.affectionDriftRate()` is the single source
+    (used by `_tickFamily` + the Affection breakdown card, which now names the slow rate). **Heads-up:** `PLAY_MODE_DEFAULT`
+    is `'idle'`, so this is the slow rate *by default* — say the word and it can key on away-only, or keep Idle at full rate.
+    checks/family-marriage.js +3 (full / away / idle); sim 48h×2: 0 errors, 0 violations (A/B vs `--set AFFECTION_DRIFT_AWAY_FRAC=1`:
+    casual crises 1 → 0, so marriage crises get rarer — a 1.15/2.8 tuning concern). family.md updated. The breakdown-card label
+    is a text-only tweak — screenshots (`scripts/smoke/out/fam-*-bd-affection.png`) handed to the user, no reviewer run.
+  Next: **1.15 QA & Balance** (unchanged: the sim bot never studies/equips/buys/gives).
+
+Date: 2026-09-30 (user present) — part 61
+Agent: **Giving manuals to your sect** (user: "contribute your extra art books for the sect to learn"; assessment approved;
+  user pick: Contribution + war strength, founders get a library). Spare manuals go onto the sect's shelf: a joined sect
+  pays Contribution by grade; every shelved art adds war strength (1–12% by grade, cap 25%) in the shown odds and the real
+  roll; a founded sect's library (bottom of Sect → Halls: a 5th Sect tab overflowed Overlay) is studied at half time with
+  no manual. Pack rows "Give to the sect", an idle "spare manual" nudge, the war why card counts the shelf; leaving says
+  the arts stay. As built: arts.md → "Giving manuals to your sect". checks **763 ok** (rivals-libraries.js +15, incl. a
+  Monte Carlo of both war rolls) · smoke libraries / sect / arts / sell pass, zero console errors. Docs: arts.md, sects.md,
+  own-sect.md, qa-sim.md, ui-review.md. Uncommitted. Next: **1.15 QA & Balance** (also: the sim bot never gives manuals).
+
+Date: 2026-09-30 (user present) — part 60
+Agent: **Task 1.14b ✅ rivals + libraries + study desks** (assessment approved; user asked with it: "the higher your realm
+  the more arts you can learn at once" → study desks, the user picked the slower curve 1 · Foundation 2 · Nascent Soul 3).
+  As built (arts.md → "42c part 2 as built"):
+  - **Study desks**: s.arts.study → s.arts.studies (a desk each, migration), studySlots(), cancelStudy(artId),
+    _finishStudies(); Path → Arts shows busy / free / locked desks; Pack + attention read free desks. Fixed the stale
+    "Battles still use Press / Guard / Feint" note on the Arts screen.
+  - **Rival counters**: people remember your landed blows' elements (p.vsYou.els); a grudge-holder struck ≥ 3× with one
+    element trains in its counter (p.counter): fights as that element (your arts of it are resisted), carries an art of it;
+    the log, "What you know", the Why card and the result card say so.
+  - **Raise → taught** (a debt → a manual of one of their arts) · **finish → their manual** (60%, never a signature); shown on
+    the end cards and named on the result card.
+  - **Sect → Library** (new sub-view, joined sects): the sect's elements + neutral, grades by rank, bought with
+    Contribution (rank kept). **Kin → Hall → Clan library**: write a known art in for stones (outlives you), study one at
+    half time with no manual.
+  - Tests: new checks/rivals-libraries.js (34), arts.js on desks → **checks 747 ok**; new smoke scenarios/libraries.js (4
+    modes) + arts / duels / combat / arena smoke pass, zero console errors; sim:quick healthy. Review **7.6 PASS** (+ polish).
+  - Docs: arts.md, sects.md, clan-succession.md, qa-sim.md, ui-review.md, index.md, PLAN (1.14b ✅). Uncommitted.
+  Next: **1.15 QA & Balance: Arts & Move Combat** (sim bot studies/equips/buys; multi-seed sim; tune person fights, library
+  prices, finish drop; smoke every mode; dist + build:web).
+
+Date: 2026-09-30 (user present) — part 59
+Agent: **Task 1.14a: people on moves ✅** (Phase 42c part 1; assessment approved; the user split 1.14 into a = every fight
+  kind on moves, b = rival counters + raise/finish arts + sect/clan libraries). Duels, head challenges, defending the seat,
+  step-down bouts, road fights and Arena bouts now run on the move engine (arts.md → "42c part 1 as built"):
+  - **Engine** (game-state.js): _startFight builds fi.m for a person (_mbNewPerson); generic fightMoves / fightMove /
+    fightParry (beast* = aliases); fightExchange only Retreat / Yield now. personArts(p) = seeded per person + realm (root
+    elements + temper picks, a notch below your offers, half the passive slots; Arena champions carry their ring's
+    signature). Temper AI (PERSON_TEMPER_AI). Scouting (p.vsYou.movesSeen, personScouting). Stances: lethal 'slay' ·
+    "until one yields" 'yield' (you beaten at 30 Health, they at 30%). A grudge hits ×1.2. People use their own power
+    spread (700) so a stage ≈ ±25%; dmgMult 1.15. personFightOdds / duelChance = the Monte Carlo estimate (cached; a cold
+    six-ring Arena roster ≈ 80 ms in Electron). Removed FIGHT_TACTICS / _exchangeChance / FIGHT_TO / DUEL_TO / BATTLE_TO
+    (+ UI + CSS). Old-engine saves restart the fight on moves. **Bug fixed:** _ensure dropped a road (slaughter) fight on
+    every recalc (its stranger isn't in the registry). Dev presets get a realm kit of arts.
+  - **UI** (combat.js): one plates + fight panel for beasts and people; a person's panel adds "What you know" (root, arts
+    seen as dashed ? chips, habits + parry tendency once fought), the parry window on turn 1, stakes / purse / bracket foot;
+    rewritten personfight why card (estimate, powers, blow ratio, what it can cost). Review **7.75 PASS** (+ polish applied).
+  - **Tests:** new checks/people-moves.js (29); every fight check ported to scripts/sim/fight-helpers.js (playFight);
+    smoke duels / arena / fights / succession play fights through the real buttons (scripts/smoke/fight-ui.js), all pass
+    with zero console errors (combat + battle-fx too). npm test · **checks 713 ok** · sim:quick healthy (no fight deaths;
+    the bot lost 6/6 challenges on starter arts → 1.15). Probe: scripts/sim/probe-person-fights.js.
+  - **Docs:** arts.md "42c part 1 as built", combat.md, qa-sim.md, clan-succession.md, ui-review.md, index.md, CLAUDE.md
+    tree, PLAN (1.14a ✅, 1.14b added). Uncommitted.
+  Next: **1.14b rivals + libraries** (rival counters, raise → taught / finish → manual, sect library, clan library in
+  Kin → Hall, duelist arts as Arena prizes), then 1.15 QA & Balance.
+
+Date: 2026-09-29 (user present) — part 58
+Agent: **Battle fixes (user):** (1) beast karma cards "flipped": not reproducible (card = result for every nature, pinned by a
+  new check at karma 50/0/100); the cards now say why (man-eater = a good deed, guardian = weighs on you, mercy) and show
+  the 0/100 clamp. (2) Fewer parry prompts (user pick): charges, finishers and a beast's strongest arts always telegraph,
+  other blows 35% (MOVE_COMBAT.parryPromptChance / parryBigShare, _mbTelegraphed, decided once per blow); unwarned blows
+  land with "Too quick to parry."; foeDmgMult 1 → 1.15; sim:quick healthy. (3) The parry prompt moved onto the field
+  (#combat-parry between the figures; the ring is on the canvas); moves stay visible, locked "parry first".
+  checks 682 ok (+6 in combat.js) · smoke combat + battle-fx pass, zero console errors. Docs: arts.md "Parry pacing".
+  Review **7.75 PASS** (polish applied: readable lock tag, plaque nudged, Bind "no karma change"). Uncommitted.
+  Next: 1.14 people + Arena on moves.
+
+Date: 2026-09-29 (user present) — part 57
+Agent: **Task 1.13b: per-element move effects on the battle scene ✅** (Phase 42b part 2; assessment approved).
+  BattleScene (renderer/engine/battle-scene.js "1.13b"): an `ex` event may carry `fx` (CombatView._sceneEv: element,
+  type, hits + parried mask, em, crit, status, heal, gather/release, claw) and is drawn by element, additively so Qi reads as
+  light: metal sword-light → crossing cuts · wood ground shoots → thorned vines · water wave → frost rings + ice crystals ·
+  fire ember comet → tall flame tongues · earth stamp → falling dotted boulders + dust ring · neutral gold crescent · beast
+  Rake = claws. Parried = jade hex ward, overcomes ring, resisted smaller/greyer, telling blow flare; wards by element;
+  heal/buff/Circulate/charge/hex moments; status auras (setStatus from _plates); the parry wind-up ring on you + the beast's
+  gather swirl (telegraph() fed the panel ring's exact k) and press flashes (parryFlash). Damage numbers get a cause caption.
+  Reduced motion: no projectiles/closing ring. Busy frame ≈ 2 ms. People fights keep the A6 art until 1.14.
+  New smoke scenarios/battle-fx.js (effect sheet pages 1–5 + 4 modes); combat smoke passes; npm test · checks 676 ok ·
+  zero console errors. Review: cycle 1 effects 7.8 FAIL / page UI 7.8 PASS → cycle 2 effects **8.3 PASS** (+ polish → UX Debt).
+  Docs: arts.md "42b part 2 as built", combat.md, art-engine.md, qa-sim.md, ui-review.md, PLAN (1.13b ✅). Uncommitted.
+  Next: **1.14 people + Arena on moves** (duels/challenges/step-down/Arena on the move engine, p.arts, rival counters).
+
+Date: 2026-09-29 (user present) — part 56
+Agent: **Task 1.13a: beast fights on moves ✅** (Phase 42b part 1; the user split 1.13 into a = engine + parry + UI, b =
+  per-element scene effects; parry window "fair ~300 ms"). New engine in game-state.js ("Phase 42b", `_mb*`): HP =
+  Health, combat Qi 100 (+15/turn), **no cooldowns**, Circulate (+35), Palm Strike always, elements ×1.4/×0.75 + root
+  affinity +20%, statuses, charge/ward/counter/heal/drain/hex, turn order by priority + Swift, habit-weighted beast AI,
+  mastery through use. **Parry QTE**: every beast attack pauses the turn (`b.pending`); `beastParry([hits])`; a parried
+  hit = 0 damage + 25 Qi; your rate (last 30) feeds the estimate. **Estimate** = 300 seeded Monte Carlo fights per stance
+  (own RNG, cached). Battle page: plates (Health + Qi + status chips + element), prepare (estimate, element, known arts,
+  Parry window Normal / Wide / Off), 2×2 move grid (keys 1–4, C), the parry prompt (ring, PARRY / Space / tap). Why card
+  rewritten. Data: MOVE_COMBAT, BEAST_MOVES, BEAST_HP_MULT, BEAST_BASIC (arts.js); Stone Fist became the earth starter.
+  **Diverged**: parry window on the battle page, not ⚙ (settings must stay presentation-only); your defence has no element
+  (starter-only characters vs a counter-element beast were ~0%), so the vengeful counter-art was retired. Sim bot on
+  moves (parry 60/25/10%); sim:quick clean. checks/combat.js rewritten (63 ok) + talismans winFight → **676 ok**; smoke
+  combat / duels / arena pass, zero console errors; frame 1.7 ms. Review **7.8 PASS** (+ polish). People fights keep the old
+  engine until 1.14. Docs: arts.md "42b part 1", combat.md, qa-sim, ui-review, PLAN (1.13a ✅, 1.13b added). Uncommitted.
+  Next: **1.13b per-element move effects on the scene**, then 1.14 people on moves.
+
 Date: 2026-09-29 (user present) — part 55
 Agent: **Task 1.12 Arts core ✅** (Phase 42a; assessment approved; study 1 min → 2 h). New assets/data/arts.js: **79 combat
   arts** (56 moves, 23 passives, 5 grades, Five Elements; a signature art for every beast type + Arena ring; a starter per

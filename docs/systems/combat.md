@@ -5,6 +5,10 @@ _Covers: game-state.js (fight engine: `f.fight`, beast battles, bestiary) · ass
 · game.js / beast-detail.js (Fight entry) · breakdowns.js (`beastfight` card) · attention.js · Phase: 35, 41 (roadmap A6) ·
 Updated: 2026-09-29_
 
+> **Replaced for every fight: beasts (1.13a, 2026-09-29) · people (1.14a, 2026-09-30).** Beast battles run on moves
+> (arts.md → "42b part 1"); duels, head challenges, defending the seat, step-down bouts, road fights and Arena bouts too
+> (arts.md → "42c part 1 as built"). Press / Guard / Feint, exchange pips, FIGHT_TO / DUEL_TO / BATTLE_TO are gone; the text
+> below about exchanges is history. Stances, Yield, end choices, feuds, the bracket and the Arena purse are unchanged.
 > **Being replaced (user 2026-09-29):** the Press/Guard/Feint exchange loop below gives way to **move combat on
 > collectible arts** (Phase 42, docs/systems/arts.md: 4 equipped move arts, combat Qi with no cooldowns, a parry QTE,
 > Five Elements, statuses). Stances, Retreat/Yield, end choices, the bestiary, feuds and the Arena carry over.
@@ -200,6 +204,7 @@ outcomes, the wounded→flee fallback, the nature weighting, the grateful free t
   Keys 1/2/3 = Press/Guard/Feint, Esc = step back. A death plays the fall on the field (~2.9 s), then the page closes and
   the normal death moment + card follow. Text size (⚙) zooms the panel (`--cz`).
 - **Scene** (renderer/engine/battle-scene.js `BattleScene`): two private `bare` InkRenderers (the cultivator's current
+  (1.13b: beast fights on moves draw each art by its element, with status auras and the parry wind-up on the field — arts.md → "42b part 2 as built".)
   realm state, the beast's INK_BEASTS art) cropped to their padded `figureBox` and set on a baked dotted field (stars,
   a dotted moon, two ridgelines, ground band, a trodden ring). Events queue and play in order (a backlog plays at 2×).
   Frame ≈ 3 ms (smoke). Classic Sprite art still gets the ink field (the beasts' Classic sprites are single-frame ASCII).

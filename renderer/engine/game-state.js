@@ -18,6 +18,7 @@ class GameState {
     this._subs    = []
     this._eventSubs = []   // Phase 29: onGameEvent listeners (banter). Not state.
     this._warLive = true
+    this._present = true   // 2026-09-30: is the player actually at the game? game.js sets it each frame (window hidden/unfocused = away)
     this._saveT   = 0
     this._slot    = 0
     this.SAVE_INT = 30
@@ -26,6 +27,9 @@ class GameState {
 
   get()         { return this._s    }
   activeSlot()  { return this._slot }
+  // 2026-09-30 (user): are you actively playing? The renderer calls this every frame — false while the window is hidden
+  // to the tray or unfocused. Used to make absence gentler (affection drifts much slower; see affectionDriftRate()).
+  setPresent(present) { this._present = !!present }
 
   // ── Slot-aware init ───────────────────────────────────────────────────────
 
@@ -453,6 +457,7 @@ class GameState {
       // a seceded or rival-rebirth clan starts its own ledger, never carries the old clan's ledger with it.
       merit: 0, meritEarned: 0, firsts: {}, legacies: {}, manualTechId: null, techniquesEver: [],
       bestStageIndex: 0, ascendedAncestors: 0, blessingStacks: 0,
+      library: [],   // 1.14b: the clan library — [{ artId, by, gen, year }], kept across lives (Kin → Hall)
     }
     w.clans[id] = clan
     return clan
@@ -465,7 +470,7 @@ class GameState {
   _ensurePhase34Fields() {
     const s = this._s
     const blank = { merit: 0, meritEarned: 0, firsts: {}, legacies: {}, manualTechId: null, techniquesEver: [],
-                     bestStageIndex: 0, ascendedAncestors: 0, blessingStacks: 0 }
+                     bestStageIndex: 0, ascendedAncestors: 0, blessingStacks: 0, library: [] }
     for (const clan of Object.values(s.world?.clans || {})) {
       for (const k of Object.keys(blank)) {
         if (clan[k] === undefined) clan[k] = Array.isArray(blank[k]) ? [] : (typeof blank[k] === 'object' && blank[k] !== null ? {} : blank[k])
@@ -789,6 +794,7 @@ class GameState {
     if (f.fight && (typeof f.fight !== 'object' || !f.fight.kind || (f.fight.kind === 'duel' ? !f.spouse
       : f.fight.kind === 'beast' ? !(typeof BEAST_TYPES !== 'undefined' && BEAST_TYPES.some(b => b.id === f.fight.beast?.typeId))
       : f.fight.kind === 'arena' ? !s.arena?.duelists?.[f.fight.oppId]            // A6-3b: the Arena's own duelists
+      : f.fight.kind === 'slaughter' ? !f.fight.foe                               // A6-3a: a road stranger lives on the fight itself
       : !this.person(f.fight.oppId)))) f.fight = null
     for (const c of f.children) {
       if (!c.cd || typeof c.cd !== 'object') c.cd = {}
@@ -1060,6 +1066,16 @@ class GameState {
     return (s.name !== 'Unnamed Cultivator' && parts.length >= 2) ? parts[0] : ''
   }
 
+  // 2026-09-30 (user): how fast a partner's affection drifts toward AFFECTION_REST this game year. The full rate only
+  // applies while you are actively playing (Active Mode with the window in front of you); while you are away (window
+  // hidden/unfocused) or in Idle Mode it is AFFECTION_DRIFT_AWAY_FRAC of that, so absence barely cools a relationship.
+  affectionDriftRate() {
+    const s = this._s
+    if (!s) return AFFECTION_DRIFT_PER_YEAR
+    const away = s.playMode === 'idle' || !this._present
+    return away ? AFFECTION_DRIFT_PER_YEAR * AFFECTION_DRIFT_AWAY_FRAC : AFFECTION_DRIFT_PER_YEAR
+  }
+
   // Phase 16-lite (M2 task 2.5): the family's game-clock step. Called from tick() only when
   // floor(gameYear) changes (so ~every 2 open minutes), never offline — families age with the player.
   _tickFamily() {
@@ -1087,9 +1103,9 @@ class GameState {
         f.spouseStageYear += need
       }
       if (sp.stageIndex >= SPOUSE_STAGE_CAP) f.spouseStageYear = y
-      // Affection drifts slowly back toward AFFECTION_REST.
+      // Affection drifts slowly back toward AFFECTION_REST — full rate only while you actively play (2026-09-30).
       const gap = AFFECTION_REST - f.affection
-      f.affection += Math.sign(gap) * Math.min(Math.abs(gap), AFFECTION_DRIFT_PER_YEAR)
+      f.affection += Math.sign(gap) * Math.min(Math.abs(gap), this.affectionDriftRate())
       f.affTrail.push([yr, Math.round(f.affection)])   // 1.8b-3a: the trend arrow
       if (f.affTrail.length > AFF_TRAIL_MAX) f.affTrail.splice(0, f.affTrail.length - AFF_TRAIL_MAX)
     }
@@ -1531,7 +1547,7 @@ class GameState {
     s.world.year += years
     if (Math.floor(s.world.year) !== prevYear) { this._tickFamily(); this._tickArena() }   // Phase 16-lite (M2 task 2.5) · A6-3b
     if (s.hunt && !s.hunt.found && Date.now() >= s.hunt.endsAt) this._resolveHunt()   // Phase 35 (A6-2)
-    if (s.arts?.study && Date.now() >= s.arts.study.endsAt) this._finishStudy()      // Phase 42 (arts.md): study runs on real time, closed or open
+    if (s.arts?.studies?.length) this._finishStudies()      // Phase 42 (arts.md): study runs on real time, closed or open (1.14b: desks)
 
     const gain = s.derived.qiPerSecondBoosted * dt
     s.qi = Math.min(s.qi + gain, s.derived.qiCap)
@@ -1786,7 +1802,7 @@ class GameState {
     const person = enc.person
     f.encounters.splice(i, 1)
     this.addEvent({ text: `You draw steel on ${Persons.fullName(person)} on the road at ${enc.place}.`, type: 'negative' })
-    this._startFight('slaughter', person, true, this.personFightOdds(person, 'slaughter').chance, { foe: person, place: enc.place })
+    this._startFight('slaughter', person, true, { foe: person, place: enc.place })
     return { ok: true, fight: true }
   }
 
@@ -2436,11 +2452,10 @@ class GameState {
     this._emit('tournament_end', { heir: winner.given, deaths })
   }
 
-  // Chance to win a duel against your spouse: 0.5 + 0.08 per stage you're ahead, clamped.
+  // Chance to win a duel against your spouse: the move-fight estimate (1.14a; was 0.5 ± 0.08 per stage).
   duelChance() {
-    const s = this._s, sp = s.family.spouse
-    if (!sp) return 0
-    return Math.max(DUEL_WIN_RANGE[0], Math.min(DUEL_WIN_RANGE[1], DUEL_BASE_WIN + DUEL_WIN_PER_STAGE * (s.stageIndex - sp.stageIndex)))
+    const sp = this._s.family.spouse
+    return sp ? this.personFightOdds(sp, 'duel', true).chance : 0
   }
 
   // 'flee' ends the marriage; 'fight' is to the death — yours (life ends) or theirs.
@@ -2455,9 +2470,9 @@ class GameState {
       this._recalc(); this._notify()
       return { ok: true, outcome: 'fled', chance: 0 }
     }
-    // 1.8b-3b: the duel is fought exchange by exchange on the fight card (fightExchange) — your moves, not a roll.
+    // 1.8b-3b: the duel is fought on the battle page — your moves, not a roll (on the move engine since 1.14a).
     const chance = this.duelChance()
-    this._startFight('duel', f.spouse, true, chance)
+    this._startFight('duel', f.spouse, true)
     return { ok: true, fight: true, chance }
   }
 
@@ -2482,27 +2497,16 @@ class GameState {
     return 'lost'
   }
 
-  // ── 1.8b-3b (family.md): your own fights, exchange by exchange ─────────────
-  // kind: 'duel' (your spouse) · 'challenge' (you called out the head) · 'defend' (you hold the seat).
-  // matchChance = the old one-roll odds; the exchange odds are derived so that neutral play keeps them.
-  // extra (Phase 35 beast battles): { to, beast, stance, power, over } — `to` = exchanges to win (default FIGHT_TO).
-  _startFight(kind, opp, lethal, matchChance, extra = null) {
+  // ── 1.8b-3b (family.md): your own fights, on the battle page ───────────────
+  // kind: 'duel' (your spouse) · 'challenge' (you called out the head) · 'defend' (you hold the seat) · 'stepdown' ·
+  // 'arena' · 'slaughter' · 'beast'. Every kind is fought on moves (fi.m, Phase 42b/c): a person's battle is built here;
+  // a beast's comes in `extra` ({ stance, beast, power, over, m }).
+  _startFight(kind, opp, lethal, extra = null) {
     const s = this._s, f = s.family
-    const to = extra?.to || DUEL_TO                  // A6-3a: people fight to DUEL_TO on the battle page (was FIGHT_TO)
-    f.fight = { kind, oppId: opp.id, lethal: !!lethal, p: this._exchangeChance(matchChance, to), to, you: 0, them: 0, round: 1,
-                log: [], year: Math.floor(s.world.year), ...(extra || {}) }
+    f.fight = { kind, oppId: opp.id, lethal: !!lethal, round: 1, log: [], year: Math.floor(s.world.year), ...(extra || {}) }
+    if (kind !== 'beast' && !f.fight.m) f.fight.m = this._mbNewPerson(opp, !!lethal)
     this._emit('fight_start', { kind, lethal: !!lethal })
     this._notify()
-  }
-
-  // Solves P(first to `to`) = matchChance for the single-exchange chance p (bisection; monotone in p).
-  _exchangeChance(P, to = FIGHT_TO) {
-    const race = p => { let sum = 0, c = 1
-      for (let k = 0; k < to; k++) { sum += c * Math.pow(p, to) * Math.pow(1 - p, k); c = c * (to + k) / (k + 1) }
-      return sum }
-    let lo = 0, hi = 1
-    for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (race(mid) < P) lo = mid; else hi = mid }
-    return (lo + hi) / 2
   }
 
   // Expected (luck-free) fight power — the odds you are shown; the old roll added ± TOURNAMENT_LUCK around it.
@@ -2530,19 +2534,19 @@ class GameState {
     return { parts, total: parts.reduce((a, x) => a + x.value, 0) }
   }
 
-  // The match odds of a fight with a person (what the battle page + the breakdown card show). The spouse duel keeps its
-  // own stage rule (duelChance); the rest are the logistic of the two powers.
-  personFightOdds(opp, kind) {
+  // The odds of a fight with a person (the family cards, Arena rows, the battle page + the breakdown card): since 1.14a a
+  // Monte Carlo of the move fight itself (your loadout + Health + parry rate vs their arts), like a beast's. `lethal`
+  // defaults to the live fight's, else the kind's usual stakes. The power parts are what sets how hard blows land.
+  personFightOdds(opp, kind, lethal = null) {
     if (!opp) return null
-    if (kind === 'duel') {
-      const gap = this._s.stageIndex - (opp.stageIndex || 0)
-      return { duel: true, chance: this.duelChance(), gap, base: DUEL_BASE_WIN, perStage: DUEL_WIN_PER_STAGE, range: DUEL_WIN_RANGE }
-    }
+    const fi = this._s.family?.fight
+    const L = lethal ?? (fi && fi.oppId === opp.id && fi.kind === kind ? fi.lethal : kind === 'duel' || kind === 'slaughter')
+    const est = this._personEstimate(opp, L)
     const you = this._personPowerParts(this._selfAsPerson(), true), them = this._personPowerParts(opp)
-    return { you, them, chance: 1 / (1 + Math.exp(-(you.total - them.total) / TOURNAMENT_SPREAD)) }
+    return { you, them, chance: est.chance, est, lethal: L, duel: kind === 'duel' }
   }
 
-  personRecord(p) { return { fought: 0, youWon: 0, theyWon: 0, spared: 0, raised: 0, humbled: 0, ...(p?.vsYou || {}) } }
+  personRecord(p) { return { fought: 0, youWon: 0, theyWon: 0, spared: 0, raised: 0, humbled: 0, movesSeen: [], els: {}, ...(p?.vsYou || {}) } }
   _noteVsYou(p, field) {
     if (!p) return
     p.vsYou = this.personRecord(p)
@@ -2551,8 +2555,6 @@ class GameState {
   }
 
   _fightStyle(opp) { return opp?.beast ? this._beastStyle(opp.typeId, opp.traits) : FIGHT_STYLE[opp?.personality] || FIGHT_STYLE.default }
-  _tacticEdge(mine, theirs) { return FIGHT_TACTICS[mine].beats === theirs ? FIGHT_EDGE : FIGHT_TACTICS[theirs].beats === mine ? -FIGHT_EDGE : 0 }
-  _clampExchange(q) { return Math.max(FIGHT_EXCHANGE_RANGE[0], Math.min(FIGHT_EXCHANGE_RANGE[1], q)) }
 
   // Chance they accept your yield in a lethal fight (always accepted when the fight isn't to the death).
   _yieldAccept(opp) {
@@ -2566,26 +2568,20 @@ class GameState {
     return Math.max(0.05, Math.min(0.95, a))
   }
 
-  // What the fight card shows: score, each tactic's chance this exchange (against their habits), the temper hint.
+  // What the battle page shows: the move battle (fi.m), how they fight once you know it, the stakes.
   fightInfo() {
     const f = this._s.family, fi = f.fight
     if (!fi) return null
     const opp = this._fightOpp(), style = this._fightStyle(opp)
-    // Phase 35: a beast's habits are unknown until you have fought one of its kind; the odds shown are then against
-    // even habits (all the player can know), and the true habits stay hidden.
-    const beast = fi.kind === 'beast', known = !beast || !!this._s.bestiary?.[fi.beast.typeId]?.habitsKnown
-    const w = known ? { press: style.press, guard: style.guard, feint: style.feint } : { press: 1, guard: 1, feint: 1 }
-    const W = w.press + w.guard + w.feint
-    const tactics = {}
-    for (const t of Object.keys(FIGHT_TACTICS))
-      tactics[t] = Object.keys(w).reduce((acc, o) => acc + (w[o] / W) * this._clampExchange(fi.p + this._tacticEdge(t, o)), 0)
-    const out = { kind: fi.kind, opp, lethal: fi.lethal, you: fi.you, them: fi.them, to: fi.to || FIGHT_TO, round: fi.round, base: fi.p,
-             tactics, habits: known ? { press: w.press / W, guard: w.guard / W, feint: w.feint / W } : null, hint: known ? style.hint : null,
-             habitsKnown: known, yieldAccept: beast ? 1 : this._yieldAccept(opp), log: [...fi.log] }
-    if (beast) Object.assign(out, { beast: { ...fi.beast }, stance: fi.stance, over: fi.over || null, health: this._s.health ?? 100,
+    const beast = fi.kind === 'beast'
+    if (!beast && !fi.m && !fi.over && opp) this._personFightM(fi)       // an old-engine fight restarts on moves
+    // A beast's habits are unknown until you have fought one of its kind; a person's until you have fought them.
+    const known = beast ? !!this._s.bestiary?.[fi.beast.typeId]?.habitsKnown : this.personRecord(opp).fought > 0
+    const out = { kind: fi.kind, opp, lethal: fi.lethal, round: fi.round, m: fi.m || null, over: fi.over || null, health: this._s.health ?? 100,
+             hint: known ? style.hint : null, habitsKnown: known, yieldAccept: beast ? 1 : this._yieldAccept(opp), log: [...fi.log] }
+    if (beast) Object.assign(out, { beast: { ...fi.beast }, stance: fi.stance,
       wound: this._beastWound(fi.beast, fi.stance), lossWound: this._beastLossWound(fi.beast, fi.stance), power: fi.power })
-    else Object.assign(out, { over: fi.over || null, health: this._s.health ?? 100, wound: FIGHT_WOUND, record: this.personRecord(opp),
-      feud: opp?.feud || null, odds: this.personFightOdds(opp, fi.kind), bracket: this._bracketInfo() })
+    else Object.assign(out, { record: this.personRecord(opp), feud: opp?.feud || null, bracket: this._bracketInfo(), scout: this.personScouting(opp) })
     if (fi.kind === 'arena') {                                     // A6-3b: the ring, the purse, what this win would add
       const A = this._s.arena, R = ARENA_RINGS.find(r => r.id === fi.arena?.ringId)
       out.arena = { ...fi.arena, ring: R, purse: A.run?.purse || 0, streak: A.run?.streak || 0,
@@ -2601,56 +2597,30 @@ class GameState {
     const opp = this._fightOpp()
     if (!opp) { f.fight = null; this._notify(); return { ok: false, reason: 'no_opponent' } }
     if (fi.over) return { ok: false, reason: 'decide' }         // a won fight waits for its end choice (beast or person)
-    if (fi.kind === 'beast') {                                   // Phase 35: a won battle waits for beastFightFinish()
+    // Phase 42b/c: every fight is on moves (fightMove / fightParry); this call only ends one — a beast's Retreat, a Yield.
+    if (fi.kind === 'beast') {
       if (tactic === 'retreat' || tactic === 'yield') return this._beastRetreat(fi, opp)
+      return { ok: false, reason: 'moves' }
     }
+    if (fi.m?.pending) return { ok: false, reason: 'parry' }
     if (tactic === 'yield') {
       if (Math.random() < this._yieldAccept(opp)) {
         f.fight = null
         return { ok: true, done: true, yielded: true, outcome: this._finishFight(fi, opp, false, true), ...this._afterBoutInfo() }
       }
-      fi.log.push({ round: fi.round, yieldRefused: true })
+      fi.log.push({ round: fi.m?.turn || fi.round, yieldRefused: true })
+      if (fi.m) fi.m.lines.push({ turn: fi.m.turn, who: 'you', text: `You offer to yield. ${opp.given} refuses: this ends with one of you.`, tone: 'down' })
       this.addEvent({ text: `You lower your blade — ${opp.given} does not. This ends with one of you.`, type: 'negative' })
       this._notify()
       return { ok: true, done: false, refused: true }
     }
-    if (!FIGHT_TACTICS[tactic]) return { ok: false, reason: 'bad_tactic' }
-    const style = this._fightStyle(opp)
-    let r = Math.random() * (style.press + style.guard + style.feint)
-    const theirs = (r -= style.press) < 0 ? 'press' : (r -= style.guard) < 0 ? 'guard' : 'feint'
-    const q = this._clampExchange(fi.p + this._tacticEdge(tactic, theirs))
-    const won = Math.random() < q
-    let dmg = 0
-    if (won) fi.you++
-    else if (fi.kind === 'beast') {                              // Phase 35: real wounds; the Slay stance can kill you
-      fi.them++
-      dmg = this._beastWound(fi.beast, fi.stance)
-      s.health = (s.health ?? 100) - dmg
-      if (fi.stance !== 'slay') s.health = Math.max(1, s.health)
-    }
-    else { fi.them++; s.health = Math.max(1, (s.health ?? 100) - FIGHT_WOUND) }
-    fi.log.push({ round: fi.round, you: tactic, them: theirs, won, ...(dmg ? { dmg } : {}) })
-    fi.round++
-    if (fi.kind === 'beast') return this._beastAfterExchange(fi, opp, { you: tactic, them: theirs, won, dmg })
-    const to = fi.to || FIGHT_TO, exchange = { you: tactic, them: theirs, won, dmg: won ? 0 : FIGHT_WOUND }
-    if (fi.you >= to) {                                          // A6-3a: you won — the end choice is yours (personFightFinish)
-      fi.over = 'won'
-      this.addEvent({ text: `${opp.given} is down. What happens now is your choice.`, type: 'positive' })
-      this._notify()
-      return { ok: true, done: false, over: 'won', exchange }
-    }
-    if (fi.them >= to) {
-      f.fight = null
-      const outcome = this._finishFight(fi, opp, false, false)
-      return { ok: true, done: true, exchange, outcome, ...this._afterBoutInfo() }
-    }
-    this._notify()
-    return { ok: true, done: false, exchange }
+    return { ok: false, reason: 'moves' }
   }
 
   // Applies the outcome of each fight kind. `died` = the loser does not rise: a lethal loss for you, or your Finish.
   _finishFight(fi, opp, won, yielded, died = !won && fi.lethal && !yielded) {
     this._noteVsYou(opp, won ? 'youWon' : 'theyWon')
+    if (opp && !died) this._rivalTrain(opp)                      // 1.14b: a grudge-holder trains against your favourite element
     if (fi.kind === 'duel') return this._duelOutcome(won, yielded)
     const me = this._selfAsPerson()
     const res = won ? { winner: me, loser: opp, died, yielded: false } : { winner: opp, loser: me, died, yielded }
@@ -2670,8 +2640,11 @@ class GameState {
     const react = T => T[pid] || T.default
     const ids = fi.lethal ? ['finish', 'spare'] : ['raise', 'humble']
     const karma = { finish: fi.kind === 'duel' ? 0 : fi.kind === 'arena' ? ARENA_KILL_KARMA : CHALLENGE_KARMA_DEATH, spare: SPARE_KARMA, raise: 0, humble: 0 }
-    return { kind: fi.kind, lethal: fi.lethal, ids, name: opp?.given, begs: fi.lethal && pid === 'coward',
-      reaction: { spare: react(SPARE_REACTION), raise: react(RAISE_REACTION), humble: react(HUMBLE_REACTION) }, karma,
+    // 1.14b: raising one who will owe you → they teach you one of their arts; finishing → their manual may drop
+    const reaction = { spare: react(SPARE_REACTION), raise: react(RAISE_REACTION), humble: react(HUMBLE_REACTION) }
+    const teachable = opp && !opp.beast ? this._teachableArts(opp) : []
+    return { kind: fi.kind, lethal: fi.lethal, ids, name: opp?.given, begs: fi.lethal && pid === 'coward', reaction, karma,
+      teach: reaction.raise === 'debt' && teachable.length > 0, finishManual: opp && !opp.beast && this._lootableArts(opp).length ? PERSON_FINISH_MANUAL : 0,
       quietYears: fi.kind === 'arena' ? null : HUMBLE_QUIET_YEARS, bracket: this._bracketInfo(),
       arena: fi.kind === 'arena' ? { ...fi.arena, renownHumble: ARENA_RENOWN.humble } : null }
   }
@@ -2700,6 +2673,15 @@ class GameState {
         humble: `You leave ${opp?.given} in the dust before the whole clan.` }[choice]
       this.addEvent({ text: `${said} ${feud === 'debt' ? 'They will remember they owe you.' : 'They will not forget it.'}`, type: feud === 'debt' ? 'positive' : 'negative' })
     }
+    // 1.14b: what the choice brings in arts (the world picks which art; taking it is the choice you just made)
+    let art = null
+    if (opp && choice === 'raise' && feud === 'debt') {
+      const t = this._teachableArts(opp)
+      if (t.length) { art = t[Math.floor(Math.random() * t.length)]; this._grantManual(art, `from ${opp.given}, who writes it out for you in thanks`) }
+    } else if (opp && choice === 'finish' && Math.random() < PERSON_FINISH_MANUAL) {
+      const l = this._lootableArts(opp)
+      if (l.length) { art = l[Math.floor(Math.random() * l.length)]; this._grantManual(art, `on ${opp.given}'s body`) }
+    }
     let outcome
     if (fi.kind === 'duel' && choice === 'spare') {              // the spouse duel, spared: they leave you, alive
       this._noteVsYou(opp, 'youWon')
@@ -2710,7 +2692,7 @@ class GameState {
       outcome = 'spared'
     } else outcome = this._finishFight(fi, opp, true, false, choice === 'finish')
     this._emit('fight_end', { kind: fi.kind, choice })
-    return { ok: true, choice, outcome, feud, ...this._afterBoutInfo() }
+    return { ok: true, choice, outcome, feud, art, ...this._afterBoutInfo() }
   }
 
   // ── A6-3b (docs/systems/combat.md → "A6-3b"): the Arena ────────────────────
@@ -2814,7 +2796,7 @@ class GameState {
       this.addEvent({ text: `You pay ${R.entry} Spirit Stones and step onto the ${R.name}.`, type: 'neutral' })
     }
     const opp = A.duelists[oppId]
-    this._startFight('arena', opp, !!blood, this.personFightOdds(opp, 'arena').chance,
+    this._startFight('arena', opp, !!blood,
       { arena: { ringId: R.id, blood: !!blood, champion: A.rings[R.id].championId === oppId, callout: false } })
     return { ok: true, fight: true }
   }
@@ -2918,7 +2900,7 @@ class GameState {
     }
     A.run = { ringId: R.id, purse: 0, streak: 0, wins: 0, beaten: [], startedYear: Math.floor(s.world.year), callout: true }
     A.record.runs++
-    this._startFight('arena', p, !!c.blood, this.personFightOdds(p, 'arena').chance,
+    this._startFight('arena', p, !!c.blood,
       { arena: { ringId: R.id, blood: !!c.blood, champion: A.rings[R.id]?.championId === p.id, callout: true } })
     return { ok: true, fight: true }
   }
@@ -2997,18 +2979,25 @@ class GameState {
     const enc = (s.beastEncounters || []).find(e => e.id === encId)
     if (!enc) return null
     const prof = this.beastProfile(enc), me = this._selfFightPower(), it = this._beastPower(enc)
-    const chance = 1 / (1 + Math.exp(-(me.total - it.total) / TOURNAMENT_SPREAD))
     const hp = s.health ?? 100, rec = this.bestiaryEntry(enc.typeId)
+    // Phase 42b: the odds are a Monte Carlo of the move fight itself (your loadout, its moves, your parry rate), per stance
     const stance = {}
     for (const st of ['slay', 'drive']) {
-      const wound = this._beastWound(enc, st), lossWound = this._beastLossWound(enc, st)
-      const worst = BATTLE_TO * wound + lossWound
-      stance[st] = { chance, wound, lossWound, worst, canDie: st === 'slay' && hp - worst <= 0 }
+      const b = this._mbNew(enc, st)
+      const key = JSON.stringify([encId, st, Math.round(hp), s.stageIndex, b.you.moves, b.you.mastery, b.you.P, s.arts?.parryMode, Math.round(this.parryRate() * 20)])
+      this._mbCache = this._mbCache || new Map()
+      let est = this._mbCache.get(key)
+      if (!est) { est = this._mbEstimate(b); this._mbCache.set(key, est); if (this._mbCache.size > 60) this._mbCache.delete(this._mbCache.keys().next().value) }
+      const hit = this._mbDamage({ ...b.foe, mastery: {} }, b.you, this._mbArt('beast_rake'), () => 0.5).dmg
+      const wound = st === 'drive' ? Math.max(1, Math.round(hit * MOVE_COMBAT.driveTakenMult)) : hit
+      stance[st] = { chance: est.chance, died: est.died, turns: est.turns, hurt: Math.round(est.hurt), parryRate: est.parryRate, wound, lossWound: 0,
+        worst: Math.round(est.hurt), canDie: st === 'slay' && est.died >= 0.02, foeHp: b.foe.max, foeElement: b.foe.element }
     }
+    const chance = stance.slay.chance
     const style = this._beastStyle(enc.typeId, enc.traits || []), W = style.press + style.guard + style.feint
     const nature = (typeof BEAST_NATURE !== 'undefined' && BEAST_NATURE[enc.typeId]) || 'wild'
-    return { encId, name: prof.name, prof, nature, mood: enc.mood || null, you: me, it, chance, stance, health: hp, to: BATTLE_TO,
-      habitsKnown: rec.habitsKnown, record: rec,
+    return { encId, name: prof.name, prof, nature, mood: enc.mood || null, you: me, it, chance, stance, health: hp,
+      habitsKnown: rec.habitsKnown, record: rec, element: BEAST_ELEMENT[enc.typeId] || 'neutral', moves: rec.habitsKnown ? this._mbFoe(enc, null).moves : null,
       habits: rec.habitsKnown ? { press: style.press / W, guard: style.guard / W, feint: style.feint / W } : null,
       hint: rec.habitsKnown ? style.hint : null, locked: this._beastFightLock(enc) }
   }
@@ -3020,27 +3009,582 @@ class GameState {
     if (!pv) return { ok: false, reason: 'not_found' }
     if (pv.locked) return { ok: false, reason: pv.locked }
     const enc = this._s.beastEncounters.find(e => e.id === encId)
-    this._startFight('beast', { id: 'beast:' + enc.id }, stance === 'slay', pv.chance, {
-      to: BATTLE_TO, stance, power: pv.it.total, over: null,
+    this._startFight('beast', { id: 'beast:' + enc.id }, stance === 'slay', {
+      stance, power: pv.it.total, over: null, m: this._mbNew(enc, stance),
       beast: { encId: enc.id, typeId: enc.typeId, ...(enc.variant ? { variant: enc.variant } : {}), traits: [...(enc.traits || [])], ...(enc.mood ? { mood: enc.mood } : {}) } })
-    return { ok: true, fight: true, chance: pv.chance }
+    return { ok: true, fight: true, chance: pv.stance[stance].chance }
   }
 
-  _beastAfterExchange(fi, opp, exchange) {
-    const s = this._s, f = s.family, to = fi.to || BATTLE_TO
-    if ((s.health ?? 100) <= 0) return { ok: true, done: true, exchange, outcome: this._beastFightDeath(fi, opp) }
-    if (fi.them >= to) {
-      f.fight = null
-      return { ok: true, done: true, exchange, outcome: this._beastFightLost(fi, opp) }
+  // ── Phase 42b (task 1.13a, arts.md → "Move combat" + "Parry"): beast battles on moves ──────────────────────────────
+  // A battle `b` (kept in fi.m) is plain data, so the same functions play the live fight, the Monte Carlo estimate and
+  // the sim bot: b = { stance, turn, you, foe, plan, planIdx, pending, over, lines, sim }. A fighter = { side, name, hp,
+  // max, qi, pool, regen, power, element, elements, swift, moves, mastery, P (passives), st (status → turns), burn, buffs,
+  // ward, reflect, counterPow, charging, circ, sealed, style? }. No cooldowns: Qi is the only limit (user 2026-09-29).
+  _mbRng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296 } }
+  _mbArt(id) {
+    const c = this._mbArtC || (this._mbArtC = new Map())            // hot in the estimate: look each id up once
+    let a = c.get(id)
+    if (a === undefined) { a = this._mbArtMake(id); c.set(id, a) }
+    return a
+  }
+  _mbArtMake(id) {
+    if (id === 'circulate') return { id, name: 'Circulate', element: null, kind: 'move', move: { type: 'circulate', power: 0, cost: 0, desc: `Gather ${MOVE_COMBAT.circulateQi} Qi instead of attacking.` } }
+    if (id === 'beast_rake') return { id, name: BEAST_BASIC.name, element: null, kind: 'move', move: BEAST_BASIC.move }
+    return ARTS[id] || null
+  }
+  _mbPassives() { return this._mbPassivesOf((this._s.arts?.loadout?.passives || []).slice(0, this.passiveSlots())) }
+  _mbPassivesOf(ids) {
+    const P = { might: 0, ward: 0, swift: 0, qiPool: 0, qiRegen: 0, crit: 0, statusResist: 0, lifesteal: 0, parry: 1, heal: 0, el: {}, parryChance: 0 }
+    for (const id of ids) {
+      const a = id && ARTS[id], p = a?.passive
+      if (!p) continue
+      if (p.stat === 'element') P.el[a.element] = (P.el[a.element] || 0) + p.value
+      else if (p.stat === 'parry') P.parry *= p.value
+      else P[p.stat] = (P[p.stat] || 0) + p.value
+      if (p.ward) P.ward += p.ward
     }
-    if (fi.you >= to) {
-      fi.over = 'won'
-      this.addEvent({ text: `The ${opp.name} goes down and does not rise. It is yours to decide what happens now.`, type: 'positive' })
-      this._notify()
-      return { ok: true, done: false, over: 'won', exchange }
+    return P
+  }
+  _mbYou(stance) {
+    const s = this._s, P = this._mbPassives(), els = this.rootElements(), MC = MOVE_COMBAT
+    const power = s.stageIndex * 100 + Math.round((s.root?.mult || 1) * 10) + (TOURNAMENT_PERSONALITY_POWER[s.personality?.id] || 0)
+    // (user 2026-09-30) A fight keeps the deck it began with: `slots` is a copy of the loadout at the first blow, so the
+    // loadout is never locked — you can rearrange Path → Arts whenever you like without changing a fight already underway.
+    const slots = (s.arts?.loadout?.moves || []).slice(0, ART_MOVE_SLOTS)
+    const moves = slots.filter(Boolean)
+    const mastery = Object.fromEntries(Object.entries(s.arts?.known || {}).map(([id, k]) => [id, k.mastery || 1]))
+    return { side: 'you', name: s.name, hp: Math.max(0, s.health ?? 100), max: 100, qi: MC.qiPool + P.qiPool, pool: MC.qiPool + P.qiPool, regen: MC.qiRegen + P.qiRegen,
+      power, element: null, elements: els, swift: MC.swiftBase + P.swift, moves, slots, mastery, P, st: {}, burn: 0, buffs: [], ward: 0, reflect: 0, counterPow: 0, charging: null, circ: false, sealed: null }
+  }
+  _mbFoe(rec, youEl) {
+    const MC = MOVE_COMBAT, prof = this.beastProfile(rec), style = this._beastStyle(rec.typeId, rec.traits || [])
+    const el = BEAST_ELEMENT[rec.typeId] || 'neutral', moves = [...(BEAST_MOVES[rec.typeId] || []), 'beast_rake']
+    if (false && rec.mood === 'vengeful' && youEl) {               // (retired in the 1.13a balance pass: your defence has no element)
+      const counterEl = Object.keys(ELEMENT_OVERCOMES).find(e => ELEMENT_OVERCOMES[e] === youEl)
+      const c = ARTS_LIST.find(a => a.kind === 'move' && !a.sig && a.element === counterEl && MOVE_ATTACKS.includes(a.move.type) && a.minStage <= (prof.type?.minStage || 0) + 3)
+      if (c && !moves.includes(c.id)) moves.unshift(c.id)
     }
-    this._notify()
-    return { ok: true, done: false, exchange }
+    const max = Math.max(20, Math.round(MC.beastHpBase * MC.foeHpMult * (BEAST_HP_MULT[rec.typeId] || 1) * (1 + (prof.might - 1) * MC.beastHpMight) * (rec.mood === 'cub' ? 0.6 : 1)))
+    const P = { might: 0, ward: 0, swift: 0, qiPool: 0, qiRegen: 0, crit: 0, statusResist: 0, lifesteal: 0, parry: 1, heal: 0, el: {},
+      parryChance: Math.min(MC.beastParryMax, style.guard * MC.beastParryPerGuard) }
+    return { side: 'foe', name: prof.name, the: `the ${prof.name}`, dmgMult: MC.foeDmgMult, hp: max, max, qi: MC.qiPool, pool: MC.qiPool, regen: MC.qiRegen, power: this._beastPower(rec).total,
+      element: el, elements: [el], swift: MC.swiftBase + ((rec.traits || []).includes('swift') ? MC.swiftTrait : 0), moves, mastery: {}, P,
+      style: { press: style.press, guard: style.guard, feint: style.feint }, st: {}, burn: 0, buffs: [], ward: 0, reflect: 0, counterPow: 0, charging: null, circ: false, sealed: null }
+  }
+  _mbNew(rec, stance) { const you = this._mbYou(stance); return { stance, turn: 1, you, foe: this._mbFoe(rec, you.element), plan: null, planIdx: 0, pending: null, over: null, lines: [] } }
+
+  // ── Phase 42c (task 1.14a, arts.md → "People on moves"): a person's arts + their side of a fight ──
+  // p.arts = { moves, passives, element, realm } — rolled once per realm from their root's elements + temper with a
+  // seeded RNG (their id + realm; never Math.random, so sim seeds stay put), then kept on the record. An Arena champion
+  // guards their ring's signature art. Crossing into a new realm re-rolls it (they grow; what you have seen stays seen).
+  _personRealm(stage) { let r = 0; ART_PASSIVE_SLOTS.forEach((x, i) => { if (stage >= x.stage) r = i }); return r }
+  _personElements(p) {
+    if (!p.root) return Persons.rootElements({ type: 'mixed', name: '' }, p.id)
+    if (!Array.isArray(p.root.elements)) p.root.elements = Persons.rootElements(p.root, p.id)
+    return p.root.elements
+  }
+  personArts(p) {
+    if (!p) return null
+    const stage = p.stageIndex || 0, realm = this._personRealm(stage)
+    const champ = this._arenaChampionRing(p), counterEl = p.counter?.el || null
+    if (p.arts?.moves && p.arts.realm === realm && p.arts.champ === champ && (p.arts.counterEl || null) === counterEl) return p.arts
+    const els = this._personElements(p), temper = PERSON_TEMPER_ARTS[p.personality] || {}
+    let h = 2166136261; for (const ch of `${p.id}|${realm}|arts`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
+    const rng = this._mbRng(h)
+    const rar = [...PERSON_ART_WEIGHTS].reverse().find(x => stage >= x.stage).w
+    const pick = (pool, n, taken) => {
+      const out = []
+      for (let k = 0; k < n; k++) {
+        const opts = pool.filter(a => !taken.includes(a.id) && !out.includes(a.id))
+        const w = opts.map(a => (rar[a.rarity] || 0) * (els.includes(a.element) ? PERSON_ART_OWN_ELEMENT : 1) * (a.move ? temper[a.move.type] || 1 : 1))
+        let r = rng() * w.reduce((t, x) => t + x, 0)
+        const i = w.findIndex(x => (r -= x) < 0)
+        if (i < 0) break
+        out.push(opts[i].id)
+      }
+      return out
+    }
+    const ok = a => !a.sig && !ART_BASICS.includes(a.id) && a.minStage <= stage && (a.element === 'neutral' || els.includes(a.element))
+    const nMoves = [...PERSON_MOVE_COUNT].reverse().find(x => stage >= x.stage).n
+    const moves = []
+    const sig = champ && ARTS_LIST.find(a => a.sig === 'arena:' + champ)
+    if (sig) moves.push(sig.id)
+    const starter = ARTS_LIST.find(a => a.starter && a.element === els[0])
+    if (starter && moves.length < nMoves) moves.push(starter.id)
+    // at least one real attack beyond the starter, then anything their temper reaches for
+    moves.push(...pick(ARTS_LIST.filter(a => a.kind === 'move' && ok(a) && MOVE_ATTACKS.includes(a.move.type)), Math.min(1, nMoves - moves.length), moves))
+    moves.push(...pick(ARTS_LIST.filter(a => a.kind === 'move' && ok(a)), nMoves - moves.length, moves))
+    const passives = pick(ARTS_LIST.filter(a => a.kind === 'passive' && ok(a)), Math.ceil(this.passiveSlots(stage) * PERSON_PASSIVE_SHARE), [])
+    // 1.14b: a rival's counter — an attack art of the element that overcomes yours (in place of their last pick)
+    let counterArt = null
+    if (counterEl) {
+      const pool = ARTS_LIST.filter(a => a.kind === 'move' && !a.sig && !ART_BASICS.includes(a.id) && a.element === counterEl && a.minStage <= stage && MOVE_ATTACKS.includes(a.move.type))
+      counterArt = pick(pool, 1, moves)[0] || null
+      if (counterArt) { if (moves.length >= nMoves) moves[moves.length - 1] = counterArt; else moves.push(counterArt) }
+    }
+    p.arts = { moves, passives, element: els[0], realm, champ, counterEl, counterArt }
+    return p.arts
+  }
+  _arenaChampionRing(p) {
+    if (!p?.arenaRing) return null
+    const ring = this._s.arena?.rings?.[p.arenaRing]
+    return ring?.championId === p.id ? p.arenaRing : null
+  }
+  // ── 1.14b (arts.md → "42c part 2"): rival counters ──
+  // The element your landed blows against them carried most (at least RIVAL_COUNTER_MIN_BLOWS times), or null.
+  _favouriteElement(p) {
+    const els = this.personRecord(p).els || {}
+    const [el, n] = Object.entries(els).sort((a, b) => b[1] - a[1])[0] || []
+    return n >= RIVAL_COUNTER_MIN_BLOWS ? el : null
+  }
+  // After a fight: one who holds a grudge trains against the element you lean on — they fight as the element that
+  // overcomes it (your arts of it are resisted) and learn an art of it (personArts). Said in the log once per change.
+  _rivalTrain(p) {
+    if (p.feud !== 'grudge' || p.alive === false) return
+    const fav = this._favouriteElement(p)
+    if (!fav) return
+    const el = Object.keys(ELEMENT_OVERCOMES).find(e => ELEMENT_OVERCOMES[e] === fav)
+    if (!el || p.counter?.el === el) return
+    p.counter = { vs: fav, el, year: Math.floor(this._s.world.year) }
+    this.addEvent({ text: `Word reaches you: ${Persons.fullName(p)} has not forgotten. They say ${p.given} now trains in ${ART_ELEMENTS[el].name} arts, against your ${ART_ELEMENTS[fav].name}.`, type: 'negative' })
+    this._emit('rival_counter', { id: p.id, vs: fav, el })
+  }
+
+  // Their side of the fight (the same fighter shape as a beast's). Power = the A6-3a person power (realm, root, temper, a grudge).
+  _mbFoePerson(p) {
+    const MC = MOVE_COMBAT, PF = PERSON_FIGHT, A = this.personArts(p), P = this._mbPassivesOf(A.passives)
+    const style = FIGHT_STYLE[p.personality] || FIGHT_STYLE.default
+    P.parryChance = Math.min(PF.parryMax, style.guard * PF.parryPerGuard)
+    const max = Math.round(PF.hpBase * (1 + PF.hpPerRealm * this._personRealm(p.stageIndex || 0)))
+    const pool = MC.qiPool + P.qiPool
+    // 1.14b: a rival who trained against you fights as the counter element (your arts of the element they studied resist)
+    const element = A.counterEl || A.element, elements = [...new Set([...this._personElements(p), ...(A.counterEl ? [A.counterEl] : [])])]
+    return { side: 'foe', person: true, id: p.id, name: p.given || Persons.fullName(p), the: p.given || Persons.fullName(p), dmgMult: PF.dmgMult * (p.feud === 'grudge' ? PF.grudgeDmgMult : 1),
+      hp: max, max, qi: pool, pool, regen: MC.qiRegen + P.qiRegen, power: this._personPowerParts(p).total,
+      element, elements, swift: MC.swiftBase + P.swift, moves: [...A.moves, 'palm_strike'], mastery: {}, P,
+      style: { press: style.press, guard: style.guard, feint: style.feint }, temper: p.personality,
+      st: {}, burn: 0, buffs: [], ward: 0, reflect: 0, counterPow: 0, charging: null, circ: false, sealed: null }
+  }
+  _mbNewPerson(p, lethal) {
+    const stance = lethal ? 'slay' : 'yield'
+    const you = this._mbYou(stance), foe = this._mbFoePerson(p)
+    you.spread = foe.spread = PERSON_FIGHT.powerSpread                   // gentler than a beast's: a stage ≈ ±25% (arts.md)
+    return { stance, turn: 1, you, foe, plan: null, planIdx: 0, pending: null, over: null, lines: [], person: true }
+  }
+  // The estimate for a fight with this person (cached: roster rows ask for many at once)
+  _personEstimate(p, lethal) {
+    const s = this._s, b = this._mbNewPerson(p, lethal)
+    b.you.hp = Math.max(1, Math.round(b.you.hp / 5) * 5)                  // 'about': Health to the nearest 5, so regen keeps the cache
+    const key = JSON.stringify(['p', p.id, p.stageIndex, p.feud || '', lethal, b.you.hp, s.stageIndex, b.you.moves, b.you.mastery, b.you.P, b.foe.moves, b.foe.power, s.arts?.parryMode, Math.round(this.parryRate() * 20)])
+    this._mbCache = this._mbCache || new Map()
+    let est = this._mbCache.get(key)
+    if (!est) { est = this._mbEstimate(b, PERSON_FIGHT.estimateRuns); this._mbCache.set(key, est); if (this._mbCache.size > 120) this._mbCache.delete(this._mbCache.keys().next().value) }
+    return { ...est, foeHp: b.foe.max, element: b.foe.element }
+  }
+  // Their arts you could be taught (raise → a debt) or loot (finish): never a signature, never a basic; taught = ones you
+  // don't know yet (a loot may deepen one you know)
+  _teachableArts(p) { const A = this.personArts(p); return [...A.moves, ...A.passives].filter(id => ARTS[id] && !ARTS[id].sig && !this._s.arts.known[id]) }
+  _lootableArts(p) { const A = this.personArts(p); return [...A.moves, ...A.passives].filter(id => ARTS[id] && !ARTS[id].sig) }
+  // Scouting: what you know of their arts (seen used against you) and how they fight (once you have fought them)
+  personScouting(p) {
+    if (!p) return null
+    const A = this.personArts(p), rec = this.personRecord(p), seen = rec.movesSeen || []
+    const style = FIGHT_STYLE[p.personality] || FIGHT_STYLE.default
+    const parry = Math.min(PERSON_FIGHT.parryMax, style.guard * PERSON_FIGHT.parryPerGuard)
+    // 1.14b: word of a rival's counter travels (the log said so), so their counter art counts as known
+    const counter = A.counterEl ? { vs: p.counter.vs, el: A.counterEl, art: A.counterArt } : null
+    return { element: A.counterEl || A.element, rootElement: A.element, counter, elements: this._personElements(p),
+      moves: A.moves.map(id => ({ id, seen: seen.includes(id) || id === A.counterArt })),
+      seen: A.moves.filter(id => seen.includes(id) || id === A.counterArt).length, total: A.moves.length, habitsKnown: rec.fought > 0, hint: style.hint,
+      parry, parryWord: parry >= 0.2 ? 'parries often' : parry >= 0.12 ? 'parries now and then' : 'rarely parries' }
+  }
+
+  _mbBuff(F, stat) { return F.buffs.reduce((t, b) => t + (b.stat === stat ? b.value : 0), 0) }
+  _mbCost(F, id) {
+    const a = this._mbArt(id)
+    if (!a || id === 'circulate' || F.charging === id) return 0
+    return Math.max(0, a.move.cost - ART_MASTERY_COST * ((F.mastery[id] || 1) - 1)) + (F.st.entangle ? MOVE_COMBAT.entangleCost : 0)
+  }
+  _mbElementMult(el, D) {
+    if (!el || el === 'neutral' || !D.element || D.element === 'neutral') return 1
+    return ELEMENT_OVERCOMES[el] === D.element ? MOVE_COMBAT.elementOver : ELEMENT_OVERCOMES[D.element] === el ? MOVE_COMBAT.elementUnder : 1
+  }
+  // One hit's damage (before a ward / parry): power × Might/Ward ratio × element × root affinity × passives × spread × crit
+  _mbDamage(A, D, art, rng, powOverride = null) {
+    const MC = MOVE_COMBAT, m = art.move
+    let pow = (powOverride ?? m.power) * (1 + ART_MASTERY_POWER * ((A.mastery[art.id] || 1) - 1))
+    if (m.type === 'finisher' && D.hp < D.max / 3) pow *= 1 + (m.finisher || 0)
+    const ratio = Math.max(MC.powerRatioClamp[0], Math.min(MC.powerRatioClamp[1], Math.exp((A.power - D.power) / (A.spread || MC.powerSpread))))   // 1.14a: people fights set their own spread
+    const el = art.element && art.element !== 'neutral' ? art.element : (art.id === 'beast_rake' ? A.element : null)
+    const em = this._mbElementMult(el, D)
+    const aff = el && A.elements.includes(el) ? 1 + MC.affinity : 1
+    const might = 1 + A.P.might + this._mbBuff(A, 'might') + (el ? (A.P.el[el] || 0) : 0)
+    const ward = Math.max(0.3, 1 + D.P.ward + this._mbBuff(D, 'ward'))
+    const crit = rng() < MC.critBase + A.P.crit + (m.crit || 0)
+    const sp = MC.spread[0] + rng() * (MC.spread[1] - MC.spread[0])
+    const dmg = pow * MC.dmgScale * ratio * em * aff * might / ward * (D.st.guardbreak ? MC.guardBreakMult : 1) * sp * (crit ? MC.critMult : 1) * (A.dmgMult || 1)
+    return { dmg: Math.max(1, Math.round(dmg)), crit, em }
+  }
+  _mbStatus(b, D, st, rng) {
+    if (!st || rng() >= st.chance * (1 - D.P.statusResist)) return null
+    if (st.id === 'burn') D.burn = Math.min(MOVE_COMBAT.burnStackMax, D.burn + 1)
+    if (st.id === 'seal') { const pool = D.moves.filter(id => id !== 'beast_rake' && id !== 'palm_strike'); D.sealed = pool.length ? pool[Math.floor(rng() * pool.length)] : null }
+    D.st[st.id] = Math.max(D.st[st.id] || 0, st.turns)
+    return st.id
+  }
+  _mbLine(b, who, text, tone = '') { b.lines.push({ turn: b.turn, who, text, tone }) }
+  // Stances: 'slay' (to the death: 0 Health kills you) · 'drive' (a beast driven off: half damage, thrown down at
+  // driveThrownHp) · 'yield' (1.14a, a person "until one yields": full damage; you are beaten at PERSON_FIGHT.yieldThrownHp
+  // Health, they yield at yieldFoeFrac of their HP).
+  // Only 'slay' can take you below 1.
+  _mbHurt(b, D, dmg) {
+    if (D.side === 'you' && b.stance === 'drive') dmg = Math.max(1, Math.round(dmg * MOVE_COMBAT.driveTakenMult))
+    D.hp -= dmg
+    if (D.side === 'you' && b.stance !== 'slay') D.hp = Math.max(1, D.hp)
+    return dmg
+  }
+  _mbThrownHp(b) { return b.stance === 'drive' ? MOVE_COMBAT.driveThrownHp : b.stance === 'yield' ? PERSON_FIGHT.yieldThrownHp : 0 }
+  // One side's action. `parry` = [bool per hit] for an attack on you (the parry QTE's results); beasts parry by a roll.
+  _mbAct(b, A, D, id, rng, parry = null) {
+    const MC = MOVE_COMBAT, art = this._mbArt(id), m = art.move, W = A.side === 'you' ? 'You' : A.the[0].toUpperCase() + A.the.slice(1)
+    const ev = { side: A.side, id, name: art.name, type: m.type, element: art.element || (id === 'beast_rake' ? A.element : null), hits: [] }
+    if (A.st.daze && rng() < MC.dazeSkip) { ev.dazed = true; A.charging = null; this._mbLine(b, A.side, `${W} ${A.side === 'you' ? 'are' : 'is'} dazed and lose${A.side === 'you' ? '' : 's'} the turn.`, 'down'); return ev }
+    if (id === 'circulate') { A.qi = Math.min(A.pool, A.qi + MC.circulateQi); A.circ = true; this._mbLine(b, A.side, `${W} draw${A.side === 'you' ? '' : 's'} in breath and Qi (+${MC.circulateQi} Qi).`, 'qi'); return ev }
+    const releasing = A.charging === id
+    A.qi = Math.max(0, A.qi - this._mbCost(A, id))
+    if (A.side === 'you' && !b.sim) this._artUse(id)
+    if (m.type === 'charge' && !releasing) { A.charging = id; ev.gather = true; this._mbLine(b, A.side, `${W} gather${A.side === 'you' ? '' : 's'} ${art.name}. It lands next turn.`, 'qi'); return ev }
+    if (releasing) { A.charging = null; ev.release = true }
+    if (m.type === 'ward') { A.ward = Math.max(A.ward, m.ward || 0.5); A.reflect = m.counter || 0; this._mbLine(b, A.side, `${W} brace${A.side === 'you' ? '' : 's'}: ${art.name}.`, 'qi'); return ev }
+    if (m.type === 'counter') { A.counterPow = m.power; A.ward = Math.max(A.ward, 1 - MC.counterTakenMult); this._mbLine(b, A.side, `${W} wait${A.side === 'you' ? '' : 's'} to turn the blow: ${art.name}.`, 'qi'); return ev }
+    if (m.type === 'buff') { A.buffs.push({ ...m.self }); this._mbLine(b, A.side, `${W} use${A.side === 'you' ? '' : 's'} ${art.name}.`, 'qi'); return ev }
+    if (m.type === 'heal') {
+      const before = A.hp; A.hp = Math.min(A.max, A.hp + m.heal); const cleared = Object.keys(A.st)[0]
+      if (cleared) { delete A.st[cleared]; if (cleared === 'burn') A.burn = 0; if (cleared === 'seal') A.sealed = null }
+      ev.heal = A.hp - before
+      this._mbLine(b, A.side, `${W} use${A.side === 'you' ? '' : 's'} ${art.name} (+${ev.heal} Health${cleared ? `, ${ART_STATUS[cleared].name} cleared` : ''}).`, 'up'); return ev
+    }
+    if (m.type === 'hex') {
+      if (m.power) { const h = this._mbDamage(A, D, art, rng); ev.hits.push({ dmg: this._mbHurt(b, D, h.dmg), em: h.em }) }
+      const got = this._mbStatus(b, D, m.status, rng)
+      ev.status = got
+      this._mbLine(b, A.side, `${W} use${A.side === 'you' ? '' : 's'} ${art.name}${got ? `: ${D.side === 'you' ? 'you are' : `${D.the} is`} ${ART_STATUS[got].name}` : ', but it does not take'}.`, got ? (A.side === 'you' ? 'up' : 'down') : '')
+      return ev
+    }
+    // attacks: strike / multi / charge (released) / finisher / drain
+    const hits = m.hits || 1
+    let total = 0, parried = 0, status = null
+    for (let h = 0; h < hits && D.hp > 0 && A.hp > 0; h++) {
+      const par = D.side === 'you' ? !!parry?.[h] : rng() < D.P.parryChance
+      if (par) {
+        D.qi = Math.min(D.pool, D.qi + MC.parryQi * (D.circ ? MC.parryCirculateMult : 1)); parried++
+        ev.hits.push({ parried: true }); continue
+      }
+      const r = this._mbDamage(A, D, art, rng)
+      let dmg = r.dmg
+      if (D.ward) { dmg = Math.max(1, Math.round(dmg * (1 - D.ward))); D.ward = 0 }
+      dmg = this._mbHurt(b, D, dmg); total += dmg
+      if (D.reflect) { const back = Math.max(1, Math.round(dmg * D.reflect)); this._mbHurt(b, A, back); ev.reflected = (ev.reflected || 0) + back; D.reflect = 0 }
+      if (D.counterPow) { const c = this._mbDamage(D, A, { id: 'counter', element: null, move: { type: 'strike', power: D.counterPow } }, rng); ev.countered = this._mbHurt(b, A, c.dmg); D.counterPow = 0 }
+      if (A.P.lifesteal) A.hp = Math.min(A.max, A.hp + Math.round(dmg * A.P.lifesteal))
+      if (m.drain) A.hp = Math.min(A.max, A.hp + Math.round(dmg * m.drain))
+      if (m.qiDrain) { const q = Math.min(D.qi, m.qiDrain); D.qi -= q; A.qi = Math.min(A.pool, A.qi + q) }
+      status = this._mbStatus(b, D, m.status, rng) || status
+      ev.hits.push({ dmg, crit: r.crit, em: r.em })
+    }
+    if (m.selfDamage) { A.hp -= m.selfDamage; ev.self = m.selfDamage }
+    if (m.heal && ev.release) A.hp = Math.min(A.max, A.hp + m.heal)
+    if (m.self) A.buffs.push({ ...m.self })
+    ev.total = total; ev.parried = parried; ev.status = status
+    const em = ev.hits.find(x => x.em)?.em
+    const tag = em > 1 ? ' It overcomes!' : em < 1 ? ' It is resisted.' : ''
+    const crit = ev.hits.some(x => x.crit) ? ' A telling blow.' : ''
+    const par = parried ? (D.side === 'you' ? ` You parry ${parried === hits ? (hits > 1 ? 'every hit' : 'it') : `${parried} of ${hits}`} (+${parried * MC.parryQi * (D.circ ? MC.parryCirculateMult : 1)} Qi).` : ` ${D.person ? D.name : 'It'} turns aside ${parried === hits ? 'your blow' : `${parried} of your hits`}.`) : ''
+    const st = status ? ` ${D.side === 'you' ? 'You are' : D.person ? `${D.name} is` : 'It is'} ${ART_STATUS[status].name}.` : ''
+    this._mbLine(b, A.side, `${W} use${A.side === 'you' ? '' : 's'} ${art.name}${total ? `: ${total} damage` : ''}.${tag}${crit}${par}${st}${ev.countered ? ` The counter strikes back for ${ev.countered}.` : ''}${ev.reflected ? ` The stance returns ${ev.reflected}.` : ''}`, A.side === 'you' ? (total ? 'up' : '') : (total ? 'down' : 'up'))
+    return ev
+  }
+  _mbCheck(b) {
+    if (b.foe.hp <= 0 || (b.stance === 'yield' && b.foe.hp <= b.foe.max * PERSON_FIGHT.yieldFoeFrac)) b.over = 'won'
+    else if (b.you.hp <= 0) b.over = b.stance === 'slay' ? 'died' : 'lost'
+    else if (b.stance !== 'slay' && b.you.hp <= this._mbThrownHp(b)) b.over = 'lost'
+    return b.over
+  }
+  _mbEndTurn(b) {
+    const MC = MOVE_COMBAT
+    for (const F of [b.you, b.foe]) {
+      if (F.st.bleed) { F.hp -= MC.bleedDmg; if (F.side === 'you' && b.stance !== 'slay') F.hp = Math.max(1, F.hp) }
+      if (F.st.burn) { F.hp -= MC.burnDmg * Math.max(1, F.burn); if (F.side === 'you' && b.stance !== 'slay') F.hp = Math.max(1, F.hp) }
+      for (const k of Object.keys(F.st)) if (--F.st[k] <= 0) { delete F.st[k]; if (k === 'burn') F.burn = 0; if (k === 'seal') F.sealed = null }
+      F.buffs = F.buffs.filter(x => --x.turns > 0)
+      F.qi = Math.min(F.pool, F.qi + F.regen)
+      F.ward = 0; F.reflect = 0; F.counterPow = 0; F.circ = false
+    }
+    b.turn++
+  }
+  // Who acts first: wards/counters, then priority, then Swift (Chilled acts last); ties go to you.
+  _mbOrder(b, youId, foeId) {
+    const pr = (F, id) => { const t = this._mbArt(id).move.type; return (['ward', 'counter'].includes(t) ? 3 : 0) + (this._mbArt(id).move.priority || 0) - (F.st.chill ? 5 : 0) }
+    const a = pr(b.you, youId) * 100 + b.you.swift, c = pr(b.foe, foeId) * 100 + b.foe.swift
+    return a >= c ? [['you', youId], ['foe', foeId]] : [['foe', foeId], ['you', youId]]
+  }
+  // The opponent's choice (the world's roll): its habits weight its move kinds, the board nudges them. A person's temper
+  // adds its own leanings (PERSON_TEMPER_AI: the hothead's strikes, the stoic's wards when hurt, the schemer's hexes).
+  _mbAi(b, rng) {
+    const F = b.foe, Y = b.you
+    if (F.charging) return F.charging
+    const T = F.temper ? PERSON_TEMPER_AI[F.temper] : null, hurt = F.hp < F.max * 0.5
+    const opts = F.moves.filter(id => id !== F.sealed && this._mbCost(F, id) <= F.qi)
+    if (T?.circulate && F.qi < 30) opts.push('circulate')
+    const w = opts.map(id => {
+      const m = this._mbArt(id).move, s = F.style
+      if (id === 'circulate') return s.guard * T.circulate * 0.5
+      let x = MOVE_ATTACKS.includes(m.type) ? s.press : ['ward', 'counter', 'buff', 'heal'].includes(m.type) ? s.guard : s.feint
+      x *= 0.6 + m.power / 60
+      if (m.type === 'heal') x *= F.hp < F.max * 0.3 ? 2.5 : F.hp < F.max * 0.5 ? 1 : 0.1
+      if (m.type === 'finisher' && Y.hp < Y.max * 0.35) x *= 2
+      if (m.type === 'hex' && m.status && Y.st[m.status.id]) x *= 0.25
+      if (id === 'beast_rake' || id === 'palm_strike') x *= 0.5
+      if (T) x *= (T[m.type] || 1) * (hurt && T.hurt ? T.hurt[m.type] || 1 : 1)
+      return Math.max(0.01, x)
+    })
+    let r = rng() * w.reduce((t, v) => t + v, 0)
+    for (let i = 0; i < opts.length; i++) { r -= w[i]; if (r <= 0) return opts[i] }
+    return opts[opts.length - 1] || 'beast_rake'
+  }
+  // A competent default for your side (the estimate, and the sim bot): heal when low, else the best expected damage.
+  _mbPolicy(b) {
+    const Y = b.you, D = b.foe
+    if (Y.charging) return Y.charging
+    const opts = [...new Set([...Y.moves, 'palm_strike'])].filter(id => id !== Y.sealed && this._mbArt(id) && this._mbCost(Y, id) <= Y.qi)
+    const heal = opts.find(id => this._mbArt(id).move.type === 'heal')
+    if (heal && Y.hp < Y.max * 0.3) return heal
+    let best = 'palm_strike', bv = -1
+    for (const id of opts) {
+      const a = this._mbArt(id), m = a.move
+      if (!MOVE_ATTACKS.includes(m.type) && m.type !== 'hex') continue
+      const el = a.element !== 'neutral' ? a.element : null
+      let v = (m.power || 4) * (m.hits || 1) * this._mbElementMult(el, D) * (el && Y.elements.includes(el) ? 1.2 : 1) * (m.type === 'charge' ? 0.6 : 1) * (m.type === 'finisher' && D.hp < D.max / 3 ? 1 + m.finisher : 1)
+      if (m.type === 'hex') v = D.st[m.status?.id] ? 0 : 18
+      if (v > bv) { bv = v; best = id }
+    }
+    if (best === 'palm_strike' && Y.qi < 25 && Y.moves.some(id => this._mbArt(id)?.move.cost > Y.qi)) return 'circulate'
+    return best
+  }
+  // Run the turn's actions from where it stopped. provider(act) → the parry results for an attack on you, or null to pause
+  // (the live QTE). Returns 'pending' | 'turn' | 'over'.
+  _mbStep(b, rng, provider, youId = null) {
+    if (!b.plan) { b.plan = this._mbOrder(b, youId, this._mbAi(b, rng)); b.planIdx = 0; b.events = [] }
+    while (b.planIdx < b.plan.length) {
+      const [side, id] = b.plan[b.planIdx]
+      const A = side === 'you' ? b.you : b.foe, D = side === 'you' ? b.foe : b.you
+      const art = this._mbArt(id), attack = MOVE_ATTACKS.includes(art.move.type) && !(art.move.type === 'charge' && A.charging !== id)
+      let parry = null
+      if (side === 'foe' && attack) {
+        // Parry pacing (user 2026-09-29: "parries happen a lot"): only some blows are telegraphed — decided once per blow
+        // (kept on the plan entry, so resuming after the QTE never re-rolls it). An untelegraphed blow simply lands.
+        const entry = b.plan[b.planIdx]
+        if (entry[2] === undefined) entry[2] = this._mbTelegraphed(b, art, rng)
+        if (!entry[2]) { parry = Array(art.move.hits || 1).fill(false); b.unwarned = true }
+        else parry = provider({ id, art, hits: art.move.hits || 1 })
+        if (parry === null) { b.pending = { id, name: art.name, type: art.move.type, hits: art.move.hits || 1, element: art.element || b.foe.element, priority: !!art.move.priority, windowMs: this._mbWindow(b, art) }; return 'pending' }
+      }
+      b.pending = null
+      const ev = this._mbAct(b, A, D, id, rng, parry)
+      if (b.unwarned) {
+        ev.unwarned = true; b.unwarned = false
+        const L = b.lines[b.lines.length - 1]                       // say why no prompt came (only when parrying is on)
+        if (!b.sim && L && ev.total && this._s?.arts?.parryMode !== 'off') L.text += ' Too quick to parry.'
+      }
+      b.events.push(ev)
+      b.planIdx++
+      if (this._mbCheck(b)) { b.plan = null; return 'over' }
+    }
+    this._mbEndTurn(b)
+    b.plan = null
+    return this._mbCheck(b) ? 'over' : 'turn'
+  }
+  // Does this blow open a parry window? Charges, finishers and its strongest arts always do; the rest by a roll (the world's
+  // pacing — the parry itself stays yours). MOVE_COMBAT.parryPromptChance / parryBigShare.
+  _mbTelegraphed(b, art, rng) {
+    const MC = MOVE_COMBAT, m = art.move
+    if (m.type === 'charge' || m.type === 'finisher') return true
+    const weight = x => MOVE_ATTACKS.includes(x.type) ? (x.power || 0) * (x.hits || 1) : 0
+    const top = Math.max(1, ...(b.foe.moves || []).map(id => weight(this._mbArt(id)?.move || {})))
+    if (weight(m) >= top * MC.parryBigShare) return true
+    return rng() < MC.parryPromptChance
+  }
+  // The parry window (ms) for this attack: base × Wide × its kind × your parry passives × Swift gap
+  _mbWindow(b, art) {
+    const MC = MOVE_COMBAT, m = art.move
+    let w = MC.parryWindowMs * (this._s?.arts?.parryMode === 'wide' ? MC.parryWideMult : 1) * b.you.P.parry
+    if (m.hits > 1) w *= MC.parryMult.multi
+    if (m.priority) w *= MC.parryMult.priority
+    if (m.type === 'charge') w *= MC.parryMult.charge
+    if (m.type === 'finisher') w *= MC.parryMult.finisher
+    w *= 1 + MC.parrySwift * (b.you.swift - b.foe.swift)
+    return Math.round(Math.max(MC.parryMinMs, Math.min(MC.parryMaxMs, w)))
+  }
+  parryRate() {
+    const log = this._s?.arts?.parryLog || []
+    return log.length >= 5 ? log.reduce((t, x) => t + x, 0) / log.length : MOVE_COMBAT.parryRateDefault
+  }
+  // Monte Carlo: `runs` fights from here with the default policy for you and your recent parry rate. Deterministic (its own
+  // seeded RNG), so it never disturbs Math.random and gives the same answer on every render.
+  _mbEstimate(b0, runs = MOVE_COMBAT.estimateRuns) {
+    const rate = this._s?.arts?.parryMode === 'off' ? 0 : this.parryRate()
+    let seed = 7; for (const ch of JSON.stringify([b0.stance, b0.you.hp, b0.you.moves, b0.you.P, b0.foe.max, b0.foe.moves, b0.you.power, b0.foe.power, rate])) seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619) >>> 0
+    const rng = this._mbRng(seed)
+    let won = 0, died = 0, turns = 0, lost = 0, hurt = 0
+    for (let i = 0; i < runs; i++) {
+      const b = this._mbClone(b0); b.sim = true
+      const prov = q => Array.from({ length: q.hits }, () => rng() < rate)
+      let guard = 0
+      while (!b.over && guard++ < MOVE_COMBAT.maxTurns * 3) {
+        const r = this._mbStep(b, rng, prov, this._mbPolicy(b))
+        if (r === 'turn' && b.turn > MOVE_COMBAT.maxTurns) break
+      }
+      if (b.over === 'won') won++; else if (b.over === 'died') died++; else lost++
+      turns += b.turn; hurt += b0.you.hp - Math.max(0, b.you.hp)
+    }
+    return { chance: won / runs, died: died / runs, lost: lost / runs, turns: turns / runs, hurt: hurt / runs, parryRate: rate }
+  }
+  // A fresh copy of a battle for one estimate run: only the parts a fight mutates are copied (P, moves, mastery and style
+  // are read-only), which is ~5× cheaper than a JSON round trip.
+  _mbClone(b0) {
+    const F = x => ({ ...x, st: { ...x.st }, buffs: x.buffs.map(y => ({ ...y })) })
+    return { ...b0, you: F(b0.you), foe: F(b0.foe), plan: b0.plan ? b0.plan.map(e => [...e]) : null, pending: b0.pending ? { ...b0.pending } : null, lines: [], events: [] }
+  }
+  // What each of your buttons does now (the battle page's 2×2 grid + Circulate + Palm Strike if it's not equipped).
+  // 1.14a: every fight is on moves; beastMoves / beastMove / beastParry stay as names for the same calls.
+  beastMoves() { return this.fightMoves() }
+  beastMove(id) { return this.fightMove(id) }
+  beastParry(results) { return this.fightParry(results) }
+  fightMoves() {
+    const fi = this._s.family?.fight, b = fi?.m
+    if (!b) return null
+    const Y = b.you, D = b.foe
+    const one = id => {
+      const a = this._mbArt(id), m = a.move, cost = this._mbCost(Y, id), el = a.element && a.element !== 'neutral' ? a.element : null
+      const power = m.power ? Math.round(m.power * (1 + ART_MASTERY_POWER * ((Y.mastery[id] || 1) - 1))) : 0
+      const em = this._mbElementMult(el, D)
+      const lock = Y.charging && Y.charging !== id ? 'charging' : id === Y.sealed ? 'sealed' : cost > Y.qi ? 'qi' : null
+      return { id, name: a.name, element: a.element || null, type: m.type, cost, power, hits: m.hits || 1, desc: m.desc, lock, matchup: em > 1 ? 'over' : em < 1 ? 'under' : null, affinity: !!(el && Y.elements.includes(el)), release: Y.charging === id }
+    }
+    // The grid shows the deck this battle began with (`b.you.slots`), not the live loadout — so rearranging your arts
+    // mid-fight never changes the fight in progress (an old save's battle predates `slots`: fall back to the loadout).
+    const raw = b.you.slots?.length ? b.you.slots : (this._s.arts?.loadout?.moves || [])
+    const slots = raw.map(id => id ? one(id) : null)
+    return { slots, circulate: one('circulate'), palm: slots.some(x => x?.id === 'palm_strike') ? null : one('palm_strike'), charging: Y.charging }
+  }
+  // Your move. Plays the turn until an attack on you opens a parry window (pending) or the turn ends.
+  fightMove(id) {
+    const s = this._s, fi = s.family?.fight
+    if (fi && !fi.m && !fi.over && fi.kind !== 'beast') this._personFightM(fi)
+    const b = fi?.m
+    if (!b) return { ok: false, reason: 'no_battle' }
+    if (fi.over || b.over) return { ok: false, reason: 'decide' }
+    if (b.pending) return { ok: false, reason: 'parry' }
+    const Y = b.you
+    const allowed = id === 'circulate' || id === 'palm_strike' || Y.moves.includes(id)
+    if (!allowed || !this._mbArt(id)) return { ok: false, reason: 'unknown' }
+    if (Y.charging && id !== Y.charging) return { ok: false, reason: 'charging' }
+    if (id === Y.sealed) return { ok: false, reason: 'sealed' }
+    if (this._mbCost(Y, id) > Y.qi) return { ok: false, reason: 'qi' }
+    return this._mbLive(b, fi, id)
+  }
+  // The parry QTE's results for the pending attack: one bool per hit (hit the timing = true)
+  fightParry(results) {
+    const s = this._s, fi = s.family?.fight, b = fi?.m
+    if (!b?.pending) return { ok: false, reason: 'none' }
+    const hits = b.pending.hits, res = Array.from({ length: hits }, (_, i) => !!results?.[i])
+    if (s.arts.parryMode !== 'off') {
+      s.arts.parryLog = [...(s.arts.parryLog || []), ...res.map(x => x ? 1 : 0)].slice(-MOVE_COMBAT.parryRateWindow)
+      if (!s.arts.parryTaught) s.arts.parryTaught = true
+    }
+    b.pendingAnswer = res
+    return this._mbLive(b, fi, null)
+  }
+  _mbLive(b, fi, youId) {
+    const s = this._s
+    b.you.hp = Math.max(0, Math.min(100, s.health ?? 100))
+    const n0 = b.lines.length
+    let answer = b.pendingAnswer; b.pendingAnswer = null
+    // the pending attack gets the QTE's answer; with parrying Off every hit lands; otherwise pause for the QTE
+    const prov = q => { if (answer) { const a = answer; answer = null; return a } return s.arts.parryMode === 'off' ? Array(q.hits).fill(false) : null }
+    const evStart = b.plan ? b.events.length : 0
+    const r = this._mbStep(b, Math.random, prov, youId)
+    s.health = Math.max(0, Math.min(100, b.you.hp))
+    if (b.stance !== 'slay') s.health = Math.max(1, s.health)
+    const events = (b.events || []).slice(evStart)
+    const out = { ok: true, events, lines: b.lines.slice(n0), pending: r === 'pending' ? b.pending : null, turn: b.turn }
+    if (fi.kind !== 'beast') return this._mbLivePerson(b, fi, r, out)
+    if (r === 'over') {
+      const opp = this._fightOpp()
+      if (b.over === 'won') {
+        fi.over = 'won'
+        if (b.you.P.heal) s.health = Math.min(100, s.health + b.you.P.heal)
+        this.addEvent({ text: `The ${opp.name} goes down and does not rise. It is yours to decide what happens now.`, type: 'positive' })
+        out.over = 'won'
+      } else if (b.over === 'died') { out.done = true; out.outcome = this._beastFightDeath(fi, opp) }
+      else { this._s.family.fight = null; out.done = true; out.outcome = this._beastFightLost(fi, opp, true) }
+    }
+    if (!out.done) { this._recalc(); this._notify() }
+    return out
+  }
+  // 1.14a: a fight with a person moved on. Scouting (the arts they used on you), then the same outcomes as before:
+  // a win waits for your end choice; a loss / death goes through _finishFight (every fight kind's own outcome).
+  _mbLivePerson(b, fi, r, out) {
+    const s = this._s, opp = this._fightOpp()
+    if (opp) {
+      const rec = this.personRecord(opp), seen = new Set(rec.movesSeen || []), els = { ...(rec.els || {}) }
+      for (const ev of out.events) {
+        if (ev.side === 'foe' && ev.id !== 'palm_strike' && ev.id !== 'circulate') seen.add(ev.id)
+        // 1.14b: they remember the elements your landed blows carried (a rival trains against the one you lean on)
+        if (ev.side === 'you' && ev.total > 0 && ev.element && ev.element !== 'neutral') els[ev.element] = (els[ev.element] || 0) + 1
+      }
+      if (out.pending?.id && out.pending.id !== 'palm_strike') seen.add(out.pending.id)
+      opp.vsYou = { ...rec, movesSeen: [...seen], els }
+    }
+    if (r === 'over') {
+      const f = s.family
+      if (b.over === 'won') {
+        fi.over = 'won'
+        if (b.you.P.heal) s.health = Math.min(100, s.health + b.you.P.heal)
+        this.addEvent({ text: `${opp?.given || 'They'} ${fi.lethal ? 'is down, and cannot rise' : 'yields'}. What happens now is your choice.`, type: 'positive' })
+        out.over = 'won'
+      } else {
+        f.fight = null
+        out.done = true
+        out.outcome = this._finishFight(fi, opp, false, false, b.over === 'died')
+        Object.assign(out, this._afterBoutInfo())
+        return out
+      }
+    }
+    this._recalc(); this._notify()
+    return out
+  }
+  // A person fight without a move battle (an old save paused mid-fight on Press/Guard/Feint): it restarts on moves, at
+  // your current Health.
+  _personFightM(fi) {
+    const opp = this._fightOpp()
+    if (opp) fi.m = this._mbNewPerson(opp, fi.lethal)
+    return fi.m
+  }
+
+  // Mastery through use: each use of a known art in a real battle is xp toward its next level
+  _artUse(id) {
+    const k = this._s.arts?.known?.[id]
+    if (!k) return
+    k.uses = (k.uses || 0) + 1
+    if (k.mastery >= ART_MASTERY_MAX) return
+    k.xp = (k.xp || 0) + MOVE_COMBAT.masteryXpPerUse
+    if (k.xp >= ART_MASTERY_XP[k.mastery + 1]) { k.mastery++; this.addEvent({ text: `${ARTS[id].name} deepens through use: mastery ${k.mastery} of ${ART_MASTERY_MAX}.`, type: 'positive' }) }
+  }
+  setParryMode(mode) {
+    if (!['normal', 'wide', 'off'].includes(mode)) return { ok: false, reason: 'invalid' }
+    this._s.arts.parryMode = mode; this._save(); this._notify()
+    return { ok: true }
   }
 
   _beastFightDeath(fi, opp) {
@@ -3052,14 +3596,14 @@ class GameState {
     return 'died'
   }
 
-  _beastFightLost(fi, opp) {
+  _beastFightLost(fi, opp, onField = false) {
     const s = this._s, b = this._bestiary(fi.beast.typeId)
     b.fought++; b.lost++; b.habitsKnown = true
-    const extra = this._beastLossWound(fi.beast, fi.stance)
+    const extra = onField ? 0 : this._beastLossWound(fi.beast, fi.stance)
     s.health = (s.health ?? 100) - extra
     if (fi.stance !== 'slay') s.health = Math.max(1, s.health)
     if (s.health <= 0) return this._beastFightDeath(fi, opp)
-    this.addEvent({ text: `The ${opp.name} throws you down (−${extra} Health). You crawl away; it still prowls Roam → Beasts.`, type: 'negative' })
+    this.addEvent({ text: `The ${opp.name} throws you down${extra ? ` (−${extra} Health)` : ''}. You crawl away; it still prowls Roam → Beasts.`, type: 'negative' })
     this._emit('battle_lost', { beast: opp.name })
     this._recalc(); this._notify()
     return 'lost'
@@ -3067,13 +3611,14 @@ class GameState {
 
   _beastRetreat(fi, opp) {
     const s = this._s, b = this._bestiary(fi.beast.typeId)
-    const dmg = this._beastWound(fi.beast, fi.stance)
+    const m = fi.m, hit = m ? this._mbDamage(m.foe, m.you, this._mbArt('beast_rake'), Math.random).dmg : this._beastWound(fi.beast, fi.stance)
+    const dmg = m && fi.stance === 'drive' ? Math.max(1, Math.round(hit * MOVE_COMBAT.driveTakenMult)) : hit
     s.health = (s.health ?? 100) - dmg
     if (fi.stance !== 'slay') s.health = Math.max(1, s.health)
     if (s.health <= 0) return { ok: true, done: true, retreated: true, outcome: this._beastFightDeath(fi, opp) }
     s.family.fight = null
     b.fought++
-    if (fi.round > 1) b.habitsKnown = true                       // you traded blows: you saw how it fights
+    if (fi.round > 1 || (fi.m?.turn || 1) > 1) b.habitsKnown = true   // you traded blows: you saw how it fights
     this.addEvent({ text: `You break away from the ${opp.name}. Its parting blow costs you ${dmg} Health; it still prowls Roam → Beasts.`, type: 'negative' })
     this._emit('battle_lost', { beast: opp.name, retreated: true })
     this._recalc(); this._notify()
@@ -4074,7 +4619,7 @@ class GameState {
     clan.tradition.challenges = (clan.tradition.challenges || 0) + 1
     this.addEvent({ text: `Year ${yr}: you call out ${Persons.fullName(head)} before the clan. ${lethal ? 'They answer: to the death.' : 'They answer: until one yields.'}`, type: 'special' })
     // 1.8b-3b: fought exchange by exchange on the fight card; the outcome lands in _challengeOutcome().
-    this._startFight('challenge', head, lethal, this.personFightOdds(head, 'challenge').chance)
+    this._startFight('challenge', head, lethal)
     return { ok: true, fight: true, lethal }
   }
 
@@ -4135,7 +4680,7 @@ class GameState {
     clan.tradition.challenges = (clan.tradition.challenges || 0) + 1
     lethal = !!lethal
     // 1.8b-3b: your call on lethality stays here; the fight itself is on the fight card (→ _defendOutcome).
-    this._startFight('defend', challenger, lethal, this.personFightOdds(challenger, 'defend').chance)
+    this._startFight('defend', challenger, lethal)
     return { ok: true, fight: true, lethal }
   }
 
@@ -4303,7 +4848,7 @@ class GameState {
       if (idA === self || idB === self) {
         const opp = get(idA === self ? idB : idA)
         br.oppId = opp.id
-        this._startFight('stepdown', opp, br.roundLethal, this.personFightOdds(opp, 'stepdown').chance)
+        this._startFight('stepdown', opp, br.roundLethal)
         return { outcome: 'bout', next: true }
       }
       const pa = get(idA), pb = get(idB)
@@ -4350,7 +4895,7 @@ class GameState {
   // After a person fight ends: a step-down bracket may already have started your next bout.
   _afterBoutInfo() {
     const fi = this._s.family?.fight
-    return fi?.kind === 'stepdown' && !fi.over && fi.you === 0 && fi.them === 0 ? { next: true } : {}
+    return fi?.kind === 'stepdown' && !fi.over && (!fi.m || (fi.m.turn === 1 && !fi.m.plan)) ? { next: true } : {}
   }
 
   // Settles the seat after a step-down bracket (yours, played; or the one you watched). `joined` = you were in it.
@@ -4921,7 +5466,8 @@ class GameState {
 
   // ── Phase 42 (task 1.12, docs/systems/arts.md): combat arts — library, manuals, study, loadout, offers ─────────
   // s.arts = { known: { [artId]: { mastery, xp, uses, how, at } }, loadout: { moves: [id|null ×4], passives: [id|null ×5] },
-  //            study: null | { artId, startedAt, endsAt }, offers: [{ id, realm, options: [artId ×3] }], found: { [artId]: true } }
+  //            studies: [{ artId, startedAt, endsAt, src: 'manual'|'clan' }] (1.14b: one desk each, ART_STUDY_SLOTS by realm),
+  //            offers: [{ id, realm, options: [artId ×3] }], found: { [artId]: true } }
   _blankArts() {
     const known = {}
     for (const id of ART_BASICS) known[id] = { mastery: 1, xp: 0, uses: 0, how: 'basic', at: Date.now() }
@@ -4930,7 +5476,7 @@ class GameState {
     if (starter) known[starter.id] = { mastery: 1, xp: 0, uses: 0, how: 'root', at: Date.now() }
     const moves = Object.keys(known).filter(id => ARTS[id].kind === 'move')
     return { known, loadout: { moves: [...moves, null, null, null, null].slice(0, ART_MOVE_SLOTS), passives: Array(ART_PASSIVE_SLOTS_MAX).fill(null) },
-      study: null, offers: [], found: Object.fromEntries(Object.keys(known).map(id => [id, true])) }
+      studies: [], offers: [], found: Object.fromEntries(Object.keys(known).map(id => [id, true])), parryMode: 'normal', parryLog: [], parryTaught: false }
   }
 
   _ensurePhase42Fields() {
@@ -4945,15 +5491,27 @@ class GameState {
     const clean = (arr, n, kind) => Array.from({ length: n }, (_, i) => { const id = arr?.[i]; return id && a.known[id] && ARTS[id]?.kind === kind ? id : null })
     a.loadout.moves = clean(a.loadout.moves, ART_MOVE_SLOTS, 'move')
     a.loadout.passives = clean(a.loadout.passives, ART_PASSIVE_SLOTS_MAX, 'passive')
-    if (a.study && !(ARTS[a.study.artId] && a.study.endsAt > 0)) a.study = null
+    // 1.14b: one study → a list of desks (an old save's study becomes the first desk; a desk beyond your realm's count keeps running)
+    if (!Array.isArray(a.studies)) a.studies = a.study ? [{ src: 'manual', ...a.study }] : []
+    delete a.study
+    a.studies = a.studies.filter(d => d && ARTS[d.artId] && d.endsAt > 0).map(d => ({ src: 'manual', ...d }))
     if (!Array.isArray(a.offers)) a.offers = []
     a.offers = a.offers.filter(o => Array.isArray(o.options) && o.options.every(id => ARTS[id]))
     if (!a.found || typeof a.found !== 'object') a.found = {}
     for (const id of Object.keys(a.known)) a.found[id] = true
+    if (!['normal', 'wide', 'off'].includes(a.parryMode)) a.parryMode = 'normal'
+    if (!Array.isArray(a.parryLog)) a.parryLog = []
+    if (typeof a.parryTaught !== 'boolean') a.parryTaught = false
+    const fi = s.family?.fight
+    if (fi?.kind === 'beast' && !fi.m && !fi.over) { const rec = fi.beast; if (rec && BEAST_TYPES.some(x => x.id === rec.typeId)) fi.m = this._mbNew(rec, fi.stance) }   // an old-engine fight restarts on moves
+    if (fi && fi.kind !== 'beast' && !fi.m && !fi.over) this._personFightM(fi)   // 1.14a: a person fight too (at your current Health)
+    if (fi) { for (const k of ['p', 'to', 'you', 'them']) delete fi[k] }        // the Press/Guard/Feint race is gone
   }
 
   rootElements() { const r = this._s?.root; return Array.isArray(r?.elements) ? r.elements : Persons.rootElements(r || {}, '') }
   passiveSlots(stage = this._s.stageIndex) { let n = 1; for (const x of ART_PASSIVE_SLOTS) if (stage >= x.stage) n = x.slots; return n }
+  // 1.14b (user): study desks — how many manuals you can study at once, by realm (ART_STUDY_SLOTS)
+  studySlots(stage = this._s.stageIndex) { let n = 1; for (const x of ART_STUDY_SLOTS) if (stage >= x.stage) n = x.slots; return n }
   artStudySeconds(artId) {
     const base = ART_RARITY[ARTS[artId]?.rarity]?.studySeconds || 60
     return Math.round(base * Math.max(ART_STUDY_MIN_FRAC, 1 / (1 + ART_STUDY_COMPREHENSION * (this._s.comprehension || 0))))
@@ -4973,8 +5531,18 @@ class GameState {
     if (!(s.inventory['manual_' + artId] > 0)) return 'no_manual'
     if (s.stageIndex < art.minStage) return 'stage'
     if (k && k.mastery >= ART_MASTERY_MAX) return 'maxed'
-    if (s.arts.study) return 'busy'
+    return this._deskLock(artId)
+  }
+  // A free desk for this art? 'studying' = already on a desk · 'busy' = every desk your realm allows is taken
+  _deskLock(artId) {
+    const st = this._s.arts.studies || []
+    if (st.some(d => d.artId === artId)) return 'studying'
+    if (st.length >= this.studySlots()) return 'busy'
     return null
+  }
+  _startDesk(artId, secs, src) {
+    const s = this._s, now = Date.now()
+    s.arts.studies.push({ artId, startedAt: now, endsAt: now + secs * 1000, src })
   }
   studyArt(artId) {
     const s = this._s, lock = this.artStudyLock(artId)
@@ -4982,24 +5550,28 @@ class GameState {
     s.inventory['manual_' + artId]--
     if (s.inventory['manual_' + artId] <= 0) delete s.inventory['manual_' + artId]
     const secs = this.artStudySeconds(artId)
-    s.arts.study = { artId, startedAt: Date.now(), endsAt: Date.now() + secs * 1000 }
+    this._startDesk(artId, secs, 'manual')
     this.addEvent({ text: `You sit down with the ${ARTS[artId].name} manual. (${fmtTime(secs)})`, type: 'neutral' })
     this._recalc(); this._notify()
     return { ok: true, seconds: secs }
   }
-  cancelStudy() {
-    const s = this._s, st = s.arts.study
-    if (!st) return { ok: false, reason: 'none' }
-    s.inventory['manual_' + st.artId] = (s.inventory['manual_' + st.artId] || 0) + 1   // the manual goes back in the pack
-    s.arts.study = null
+  // Stop a desk (default: the first). A manual goes back in the pack; a clan-library study just ends.
+  cancelStudy(artId = null) {
+    const s = this._s, st = s.arts.studies, i = artId ? st.findIndex(d => d.artId === artId) : 0
+    const d = st[i]
+    if (!d) return { ok: false, reason: 'none' }
+    if (d.src === 'manual') s.inventory['manual_' + d.artId] = (s.inventory['manual_' + d.artId] || 0) + 1
+    st.splice(i, 1)
     this._recalc(); this._notify()
     return { ok: true }
   }
-  _finishStudy() {
-    const s = this._s, st = s.arts.study
-    if (!st) return
-    s.arts.study = null
-    this._learnArt(st.artId, 'study')
+  // Every desk whose time is up (tick; timestamps, so it also completes after a closed game)
+  _finishStudies() {
+    const s = this._s, now = Date.now()
+    const done = (s.arts?.studies || []).filter(d => now >= d.endsAt)
+    if (!done.length) return
+    s.arts.studies = s.arts.studies.filter(d => now < d.endsAt)
+    for (const d of done) this._learnArt(d.artId, d.src === 'clan' || d.src === 'sect' ? d.src : 'study')
   }
   // Learn an art (or deepen it: a known art gains a mastery level). how: study | offer | grant | …
   _learnArt(artId, how) {
@@ -5062,9 +5634,10 @@ class GameState {
     return { ok: true }
   }
   // Put a known art in a slot (null clears it). An art already in another slot moves (slots never hold duplicates).
+  // (user 2026-09-30) Never refused mid-fight: a battle runs on the deck it began with (`_mbYou`'s `slots`), so changing
+  // your loadout now only affects your *next* fight.
   setArtSlot(kind, index, artId) {
     const s = this._s, a = s.arts
-    if (s.family?.fight) return { ok: false, reason: 'fighting' }
     const list = kind === 'move' ? a.loadout.moves : kind === 'passive' ? a.loadout.passives : null
     if (!list || !(index >= 0 && index < list.length)) return { ok: false, reason: 'bad_slot' }
     if (kind === 'passive' && index >= this.passiveSlots()) return { ok: false, reason: 'locked' }
@@ -5078,10 +5651,145 @@ class GameState {
     this._save(); this._notify()
     return { ok: true }
   }
+  // ── 1.14b (arts.md → "42c part 2"): the sect library + the clan library ──────────────────────────────────────────
+  // A joined sect's library: its elements' arts + neutral (never signatures, basics or the fixed grants), each grade opened
+  // by your rank (SECT_LIBRARY_GRADE_BY_RANK), bought for Contribution. Returns null when you are in no joined sect.
+  sectLibrary() {
+    const s = this._s, sect = s.sect?.id && SECTS.find(x => x.id === s.sect.id)
+    if (!sect) return null
+    const els = SECT_ART_ELEMENTS[sect.id] || [], R = ART_RARITY_ORDER
+    const topAt = rank => R.indexOf(SECT_LIBRARY_GRADE_BY_RANK[Math.min(rank, SECT_LIBRARY_GRADE_BY_RANK.length - 1)])
+    const rankFor = g => SECT_LIBRARY_GRADE_BY_RANK.findIndex(x => R.indexOf(x) >= R.indexOf(g))
+    const arts = ARTS_LIST.filter(a => !a.sig && !ART_BASICS.includes(a.id) && !Object.values(ART_STAGE_GRANTS).includes(a.id)
+        && SECT_LIBRARY_PRICE[a.rarity] != null && (els.includes(a.element) || a.element === 'neutral'))
+      .map(a => {
+        const price = SECT_LIBRARY_PRICE[a.rarity], needRank = rankFor(a.rarity)
+        const lock = R.indexOf(a.rarity) > topAt(s.sect.rank) ? 'rank' : s.sect.contribution < price ? 'contribution' : null
+        return { id: a.id, price, needRank, lock, known: !!s.arts.known[a.id], held: s.inventory['manual_' + a.id] || 0, tooProfound: s.stageIndex < a.minStage }
+      })
+      .sort((x, y) => R.indexOf(ARTS[x.id].rarity) - R.indexOf(ARTS[y.id].rarity) || (els.indexOf(ARTS[y.id].element) >= 0) - (els.indexOf(ARTS[x.id].element) >= 0) || ARTS[x.id].name.localeCompare(ARTS[y.id].name))
+    return { sect, elements: els, rank: s.sect.rank, contribution: s.sect.contribution, arts }
+  }
+  // Your choice: a manual from the library for its price in Contribution (your rank is kept).
+  buySectArt(artId) {
+    const lib = this.sectLibrary()
+    if (!lib) return { ok: false, reason: 'no_sect' }
+    const row = lib.arts.find(x => x.id === artId)
+    if (!row) return { ok: false, reason: 'unknown' }
+    if (row.lock) return { ok: false, reason: row.lock }
+    this._s.sect.contribution -= row.price
+    this._grantManual(artId, `in the ${lib.sect.name}'s library, for ${row.price} Contribution`)
+    this._recalc(); this._notify()
+    return { ok: true, price: row.price }
+  }
+
+  // ── Giving manuals to your sect (user 2026-09-30) ──
+  // The shelf of the sect you belong to (joined: s.sect.shelf, lost to you when you leave · founded: s.ownSect.library).
+  _sectShelf() {
+    const s = this._s
+    if (s.ownSect?.founded) return (s.ownSect.library ||= [])
+    if (s.sect?.id) return (s.sect.shelf ||= [])
+    return null
+  }
+  // War strength from the shelf: Σ SECT_SHELF_WAR by grade, capped (a multiplier on the sect's side of the roll)
+  sectShelfWar() {
+    const shelf = this._sectShelf()
+    if (!shelf?.length) return 0
+    return Math.min(SECT_SHELF_WAR_CAP, shelf.reduce((t, x) => t + (SECT_SHELF_WAR[ARTS[x.artId]?.rarity] || 0), 0))
+  }
+  // What the Library's giving section shows: each manual in your pack, what giving it pays, or why not (on the shelf already)
+  sectDonateInfo() {
+    const s = this._s, shelf = this._sectShelf()
+    if (!shelf) return null
+    const own = !!s.ownSect?.founded, on = new Set(shelf.map(x => x.artId)), war = this.sectShelfWar()
+    const manuals = Object.keys(s.inventory).filter(k => k.startsWith('manual_') && s.inventory[k] > 0 && ARTS[k.slice(7)]).map(k => {
+      const id = k.slice(7), a = ARTS[id], w = SECT_SHELF_WAR[a.rarity] || 0
+      return { id, n: s.inventory[k], contribution: own ? 0 : SECT_DONATE_CONTRIB[a.rarity] || 0, war: Math.max(0, Math.min(SECT_SHELF_WAR_CAP, war + w) - war),
+        known: !!s.arts.known[id], spare: !!s.arts.known[id], lock: on.has(id) ? 'shelved' : null }
+    }).sort((x, y) => (y.spare - x.spare) || ART_RARITY_ORDER.indexOf(ARTS[y.id].rarity) - ART_RARITY_ORDER.indexOf(ARTS[x.id].rarity))
+    const shelfRows = shelf.filter(x => ARTS[x.artId]).map(x => ({ ...x, seconds: Math.max(1, Math.round(this.artStudySeconds(x.artId) * SECT_SHELF_STUDY_FRAC)),
+      lock: !own ? 'member' : s.arts.known[x.artId] ? 'known' : s.stageIndex < ARTS[x.artId].minStage ? 'stage' : this._deskLock(x.artId) }))
+    return { own, manuals, shelf: shelfRows, war, cap: SECT_SHELF_WAR_CAP }
+  }
+  // Your choice: give one manual to your sect (it leaves your pack for good)
+  donateManualToSect(artId) {
+    const s = this._s, info = this.sectDonateInfo()
+    if (!info) return { ok: false, reason: 'no_sect' }
+    const row = info.manuals.find(x => x.id === artId)
+    if (!row) return { ok: false, reason: 'no_manual' }
+    if (row.lock) return { ok: false, reason: row.lock }
+    s.inventory['manual_' + artId]--
+    if (s.inventory['manual_' + artId] <= 0) delete s.inventory['manual_' + artId]
+    this._sectShelf().push({ artId, by: s.name, year: Math.floor(s.world.year) })
+    const name = info.own ? s.ownSect.name : this._sectDef()?.name
+    if (!info.own) s.sect.contribution += row.contribution
+    this.addEvent({ text: `You give the ${ARTS[artId].name} manual to the ${name || 'sect'} library.${row.contribution ? ` +${row.contribution} Contribution.` : ''} Its disciples will train in it${row.war ? ` (war strength +${Math.round(row.war * 100)}%)` : ''}.`, type: 'positive' })
+    this._emit('sect_donate', { artId })
+    this._recalc(); this._notify()
+    return { ok: true, contribution: row.contribution, war: row.war }
+  }
+  // A founder studies an art from their own sect's library (no manual, SECT_SHELF_STUDY_FRAC of the time; arts you don't know)
+  studyFromSect(artId) {
+    const info = this.sectDonateInfo()
+    if (!info) return { ok: false, reason: 'no_sect' }
+    const row = info.shelf.find(x => x.artId === artId)
+    if (!row) return { ok: false, reason: 'not_on_shelf' }
+    if (row.lock) return { ok: false, reason: row.lock }
+    this._startDesk(artId, row.seconds, 'sect')
+    this.addEvent({ text: `You take ${ARTS[artId].name} down from your sect's library. (${fmtTime(row.seconds)})`, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, seconds: row.seconds }
+  }
+
+  // The clan library: arts written in by anyone of the clan, kept across lives. Returns null without a clan.
+  clanLibraryInfo() {
+    const s = this._s, clan = this._playerClan()
+    if (!clan) return null
+    if (!Array.isArray(clan.library)) clan.library = []
+    const inLib = new Set(clan.library.map(x => x.artId))
+    const shelf = clan.library.filter(x => ARTS[x.artId]).map(x => {
+      const lock = s.arts.known[x.artId] ? 'known' : s.stageIndex < ARTS[x.artId].minStage ? 'stage' : this._deskLock(x.artId)
+      return { ...x, seconds: this._clanStudySeconds(x.artId), lock }
+    })
+    const writable = Object.keys(s.arts.known).filter(id => ARTS[id] && !ART_BASICS.includes(id) && !inLib.has(id))
+      .map(id => ({ id, cost: CLAN_LIBRARY_WRITE_COST[ARTS[id].rarity] || 0 }))
+      .sort((x, y) => y.cost - x.cost || ARTS[x.id].name.localeCompare(ARTS[y.id].name))
+    return { clan, shelf, writable, stones: s.spiritStones }
+  }
+  _clanStudySeconds(artId) { return Math.max(1, Math.round(this.artStudySeconds(artId) * CLAN_LIBRARY_STUDY_FRAC)) }
+  // Your choice: write an art you know into the clan library (Spirit Stones by grade). Every later life of the clan can study it.
+  writeClanArt(artId) {
+    const s = this._s, info = this.clanLibraryInfo()
+    if (!info) return { ok: false, reason: 'no_clan' }
+    const row = info.writable.find(x => x.id === artId)
+    if (!row) return { ok: false, reason: info.clan.library.some(x => x.artId === artId) ? 'already' : 'unknown' }
+    if (s.spiritStones < row.cost) return { ok: false, reason: 'stones' }
+    s.spiritStones -= row.cost
+    const yr = Math.floor(s.world.year)
+    info.clan.library.push({ artId, by: s.name, gen: s.generation || 1, year: yr })
+    info.clan.history.push({ year: yr, text: `Year ${yr}: ${s.name} writes ${ARTS[artId].name} into the clan library.` })
+    this.addEvent({ text: `You write ${ARTS[artId].name} into the ${info.clan.name || 'clan'} library. Those who come after you can study it.`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true, cost: row.cost }
+  }
+  // Your choice: study an art from the clan library (no manual; CLAN_LIBRARY_STUDY_FRAC of the time; only arts you don't know).
+  studyFromClan(artId) {
+    const info = this.clanLibraryInfo()
+    if (!info) return { ok: false, reason: 'no_clan' }
+    const row = info.shelf.find(x => x.artId === artId)
+    if (!row) return { ok: false, reason: 'not_in_library' }
+    if (row.lock) return { ok: false, reason: row.lock }
+    this._startDesk(artId, row.seconds, 'clan')
+    this.addEvent({ text: `You take ${ARTS[artId].name} down from the clan library, in ${row.by}'s hand. (${fmtTime(row.seconds)})`, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, seconds: row.seconds }
+  }
+
   // What Path → Arts shows. Passives beyond your realm's slots stay in the loadout but are inactive (shown locked).
   artsInfo() {
     const s = this._s, a = s.arts
-    return { known: a.known, loadout: a.loadout, passiveSlots: this.passiveSlots(), study: a.study, offers: a.offers,
+    return { known: a.known, loadout: a.loadout, passiveSlots: this.passiveSlots(), studies: a.studies, studySlots: this.studySlots(),
+      nextStudySlot: ART_STUDY_SLOTS.find(x => x.stage > s.stageIndex) || null, offers: a.offers,
       found: Object.keys(a.found).length, total: ARTS_LIST.length, elements: this.rootElements(),
       nextSlot: ART_PASSIVE_SLOTS.find(x => x.stage > s.stageIndex) || null }
   }
@@ -5511,6 +6219,8 @@ class GameState {
     const w = s.sectWar
     const deserter = w.side === 'member' && w.phase !== 'none'
     if (w.beastId) this._releaseWarBeast(0)
+    const gave = (s.sect.shelf || []).length
+    if (gave) this.addEvent({ text: `The ${gave === 1 ? 'manual' : `${gave} manuals`} you gave stay${gave === 1 ? 's' : ''} on the ${def.name}'s shelves.`, type: 'neutral' })
     s.sect  = { id: null, rank: 0, contribution: 0, activeMissions: [] }
     s.sectWar = this._blankSectWar()
     s.karma = Math.max(0, s.karma - 5 - (deserter ? MEMBER_WAR_DESERT_KARMA : 0))
@@ -5932,7 +6642,7 @@ class GameState {
   _resolveSectWar() {
     const s = this._s, w = s.sectWar, d = s.derived || {}
     const fame = d.sectFame || 0
-    let playerPower = (fame + 20) * (1 + (d.warDefense || 0))
+    let playerPower = (fame + 20) * (1 + (d.warDefense || 0)) * (1 + this.sectShelfWar())   // + the arts on your library's shelf
     if (w.reinforced) playerPower *= 1 + WAR_REINFORCE_POWER_BONUS
     if (w.allyId)     playerPower *= 1 + WAR_ALLY_POWER_BONUS
     const enemyPower = (fame + 20) * (0.6 + Math.random() * 0.8)
@@ -5990,7 +6700,8 @@ class GameState {
     const beast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
     if (beast) bonus += Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * beast.level)
     const rankMult = SECT_RANKS[s.sect.rank]?.rewardMult || 1
-    return { bonus, rankMult, power: 1 + bonus * rankMult }
+    const shelf = this.sectShelfWar()                        // (a multiplier: the shelf alone never counts as taking part)
+    return { bonus, rankMult, shelf, power: (1 + bonus * rankMult) * (1 + shelf) }
   }
 
   // ── 1.8b-5 (UI read helpers, no state changes) ─────────────────────────────
@@ -6002,7 +6713,7 @@ class GameState {
     const s = this._s, w = s.sectWar, d = s.derived || {}
     const odds = m => (m <= 0 ? 0 : (m / 0.8) * Math.log((m + 1.4) / (m + 0.6)))
     if (w?.side === 'member' && s.sect?.id) {
-      const { rankMult, power } = this.memberWarPower()
+      const { rankMult, power, shelf } = this.memberWarPower()
       const full = this.memberWarChestFull()
       const beast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
       const parts = [{ label: 'Your sect alone', op: 'base', value: 1 }]
@@ -6011,13 +6722,16 @@ class GameState {
       add(`War chest ${Math.min(w.chestStones, full)}/${full}`, MEMBER_WAR_CHEST_MAX_BONUS * Math.min(1, w.chestStones / full))
       add(`Pills offered ×${w.pillsGiven}`, MEMBER_WAR_PILL_BONUS * w.pillsGiven)
       if (beast) add(`${beast.name} at the front`, Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * beast.level))
+      if (shelf) parts.push({ label: `Arts you gave the library (${s.sect.shelf.length})`, op: 'x', value: 1 + shelf })
       return { side: 'member', mult: power, chance: odds(power), parts, rankMult,
-               ifAnswered: w.answered ? null : odds(power + MEMBER_WAR_ANSWER_BONUS * rankMult) }
+               ifAnswered: w.answered ? null : odds((power / (1 + shelf) + MEMBER_WAR_ANSWER_BONUS * rankMult) * (1 + shelf)) }
     }
     if (w?.side === 'own' && s.ownSect?.founded) {
       let m = 1 + (d.warDefense || 0)
       const parts = [{ label: 'Your sect alone', op: 'base', value: 1 }]
       if (d.warDefense) parts.push({ label: 'Defensive Array', op: '+', value: d.warDefense })
+      const shelf = this.sectShelfWar()
+      if (shelf) { m *= 1 + shelf; parts.push({ label: `Arts in your sect library (${s.ownSect.library.length})`, op: 'x', value: 1 + shelf }) }
       if (w.reinforced) { m *= 1 + WAR_REINFORCE_POWER_BONUS; parts.push({ label: 'Reinforced', op: 'x', value: 1 + WAR_REINFORCE_POWER_BONUS }) }
       if (w.allyId) { m *= 1 + WAR_ALLY_POWER_BONUS; parts.push({ label: `${SECTS.find(x => x.id === w.allyId)?.name || 'Ally'} fights with you`, op: 'x', value: 1 + WAR_ALLY_POWER_BONUS }) }
       return { side: 'own', mult: m, chance: odds(m), parts, arrayDamaged: !!d.arrayDamaged,
@@ -6456,7 +7170,17 @@ class GameState {
     // Qi as a fraction of the *effective* cap (techniques/artifacts multiply it) — run _recalc against the new save
     const live = this._s
     this._s = s
-    try { this._recalc() } finally { this._s = live }
+    try {
+      // 1.14a: a late-game test life fights people on moves, so it gets a kit for its realm (rolled like a person's arts, at
+      // mastery 3) instead of the starter-only loadout a fresh save has
+      this._ensurePhase42Fields()
+      const kit = this.personArts({ id: `dev|${p.id}`, stageIndex: p.stageIndex, root: s.root, personality: s.personality?.id })
+      for (const id of [...kit.moves, ...kit.passives]) s.arts.known[id] = { mastery: 3, xp: ART_MASTERY_XP[3], uses: 0, how: 'dev', at: now }
+      s.arts.loadout.moves = [...kit.moves, 'qi_shield', null, null, null].slice(0, ART_MOVE_SLOTS)
+      s.arts.loadout.passives = [...kit.passives, null, null, null, null, null].slice(0, ART_PASSIVE_SLOTS_MAX)
+      for (const id of Object.keys(s.arts.known)) s.arts.found[id] = true
+      this._recalc()
+    } finally { this._s = live }
     s.qi = s.derived.qiCap * p.qiFrac
     s.stats.breakthroughs = p.stageIndex
     s.lastSave = now

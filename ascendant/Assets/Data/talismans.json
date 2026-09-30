@@ -1,0 +1,46 @@
+{
+  "TALISMAN_GRADES": {
+    "crude": {
+      "id": "crude",
+      "name": "Crude",
+      "tameChance": 0.4,
+      "itemId": "beast_taming_talisman"
+    },
+    "fine": {
+      "id": "fine",
+      "name": "Fine",
+      "tameChance": 0.55,
+      "itemId": "beast_taming_talisman_fine"
+    },
+    "superior": {
+      "id": "superior",
+      "name": "Superior",
+      "tameChance": 0.7,
+      "itemId": "beast_taming_talisman_superior"
+    },
+    "pristine": {
+      "id": "pristine",
+      "name": "Pristine",
+      "tameChance": 0.9,
+      "itemId": "beast_taming_talisman_pristine"
+    }
+  },
+  "TALISMAN_GRADE_ORDER": [
+    "crude",
+    "fine",
+    "superior",
+    "pristine"
+  ],
+  "TAME_FIGHT_CHANCE_BASE": 0.5,
+  "TAME_NATURE_FIGHT_MULT": {
+    "benign": 0.5,
+    "wild": 1,
+    "fell": 1.6
+  },
+  "TAME_FIGHT_CHANCE_MIN": 0.2,
+  "TAME_FIGHT_CHANCE_MAX": 0.9,
+  "TAME_MOOD_FIGHT_MOD": {
+    "vengeful": 0.2,
+    "cub": -0.2
+  }
+}

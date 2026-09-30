@@ -1,0 +1,173 @@
+#!/usr/bin/env node
+// Exports the idle game's declarative data (assets/data/*.js) to language-neutral JSON for the
+// Unity/C# port of the sim. Plan: ascendant-unity-voxel-port.md phase P1.
+//
+// It reuses scripts/sim/loader.js so every file is evaluated exactly the way the game/sim loads it
+// (top-level `const` -> `var` rewrite, a fake `window`, seeded `Math.random`). It only READS the repo
+// and writes generated JSON to the output directory — never to assets/.
+//
+// One JSON per source file (a "domain"), each holding every top-level global that file declares:
+//   assets/data/stages.js  ->  <out>/stages.json  ({ "CULTIVATION_STAGES": [...] })
+//
+// Fidelity notes:
+//   * Non-finite numbers (the Ascension stage's `qiCap: Infinity`) are preserved as {"__number__":"Infinity"}
+//     because plain JSON turns them into `null`.
+//   * Function-valued entries (events.js `apply`, arts.js helper `A`) cannot be data. They are dropped from
+//     the JSON and listed in the report + manifest as logic that must be ported to C# by hand.
+//
+// Usage:
+//   node scripts/export-sim-data.js              # write JSON to ascendant/Assets/Data
+//   node scripts/export-sim-data.js --out=DIR    # write somewhere else
+//   node scripts/export-sim-data.js --check      # exit 1 if the on-disk JSON is stale (drift check)
+//   node scripts/export-sim-data.js --report     # print the logic-to-port list and fidelity notes
+
+const fs = require('fs')
+const path = require('path')
+const { createSim } = require('./sim/loader.js')
+
+const ROOT = path.join(__dirname, '..')
+const SRC_DIR = path.join(ROOT, 'assets', 'data')
+
+// Renderer-only data the sim never loads (mirrors scripts/sim/loader.js DATA_FILES).
+const SKIP = new Set(['dev-presets', 'duelists'])
+
+function parseArgs (argv) {
+  const out = { out: path.join(ROOT, 'ascendant', 'Assets', 'Data'), check: false, report: false }
+  for (const a of argv) {
+    if (a === '--check') out.check = true
+    else if (a === '--report') out.report = true
+    else if (a.startsWith('--out=')) out.out = path.resolve(ROOT, a.slice(6))
+  }
+  return out
+}
+
+// Top-level `const NAME =` / `var NAME =` declarations, in file order.
+function declaredNames (src) {
+  const names = []
+  const re = /^(?:const|var)\s+([A-Za-z_$][\w$]*)\s*=/gm
+  let m
+  while ((m = re.exec(src))) names.push(m[1])
+  return names
+}
+
+// Walk a real JS value, recording dotted paths whose value is a function, plus any `undefined` values.
+function scan (value, at, found, seen) {
+  if (typeof value === 'function') { found.logic.push(at); return }
+  if (value === undefined) { found.undefined.push(at); return }
+  if (value === null || typeof value !== 'object') return
+  if (seen.has(value)) return
+  seen.add(value)
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) scan(value[i], `${at}[${i}]`, found, seen)
+  } else {
+    for (const k of Object.keys(value)) scan(value[k], `${at}.${k}`, found, seen)
+  }
+}
+
+// Stable-stringify: 2-space indent, non-finite numbers as a tagged object, functions dropped.
+function serialize (value) {
+  return JSON.stringify(value, function (key, v) {
+    if (typeof v === 'number' && !Number.isFinite(v)) {
+      return { __number__: v === Infinity ? 'Infinity' : v === -Infinity ? '-Infinity' : 'NaN' }
+    }
+    if (typeof v === 'function') return undefined
+    return v
+  }, 2) + '\n'
+}
+
+function collect () {
+  // Discover every data global (auto-picks up new files; the drift check then nags if unexported).
+  const files = fs.readdirSync(SRC_DIR).filter(f => f.endsWith('.js') && !SKIP.has(f.replace(/\.js$/, ''))).sort()
+  const bySource = {}   // base -> [{ name }]
+  const owner = {}      // global name -> base
+  for (const f of files) {
+    const base = f.replace(/\.js$/, '')
+    for (const n of declaredNames(fs.readFileSync(path.join(SRC_DIR, f), 'utf8'))) {
+      if (owner[n]) continue
+      ;(bySource[base] || (bySource[base] = [])).push(n)
+      owner[n] = base
+    }
+  }
+
+  const sim = createSim({ seed: 1 })
+  const found = { logic: [], undefined: [] }
+  const outputs = {}    // "<base>.json" -> json text
+  const files_ = []
+  let nonFinite = 0
+
+  for (const base of Object.keys(bySource).sort()) {
+    const domain = {}
+    const counts = {}
+    for (const name of bySource[base]) {
+      let value
+      try { value = sim.ev(name) } catch { continue }   // e.g. a helper not defined at that point
+      if (typeof value === 'function') { found.logic.push(name); continue }
+      scan(value, name, found, new Set())
+      domain[name] = value
+      counts[name] = Array.isArray(value) ? value.length : (value && typeof value === 'object' ? Object.keys(value).length : 1)
+    }
+    const json = serialize(domain)
+    nonFinite += (json.match(/__number__/g) || []).length
+    outputs[`${base}.json`] = json
+    files_.push({ file: `${base}.json`, source: `${base}.js`, globals: Object.keys(domain), counts })
+  }
+
+  const manifest = {
+    note: 'Generated by scripts/export-sim-data.js — do not edit by hand. Source: assets/data/*.js.',
+    files: files_,
+    logicToPort: found.logic.slice().sort(),
+  }
+  return { outputs, manifestJson: JSON.stringify(manifest, null, 2) + '\n', found, fileCount: files_.length, nonFinite }
+}
+
+function main () {
+  const args = parseArgs(process.argv.slice(2))
+  const { outputs, manifestJson, found, fileCount, nonFinite } = collect()
+
+  if (args.report) {
+    console.log(`Discovered ${fileCount} data domains -> ${fileCount} JSON files\n`)
+    console.log(`Logic that must be ported to C# by hand (${found.logic.length}):`)
+    for (const p of found.logic) console.log(`  - ${p}`)
+    if (found.undefined.length) {
+      console.log(`\nWARNING: ${found.undefined.length} undefined value(s) (JSON cannot represent these):`)
+      for (const p of found.undefined.slice(0, 20)) console.log(`  - ${p}`)
+    }
+    if (nonFinite) console.log(`\nPreserved ${nonFinite} non-finite number(s) via {"__number__":…}`)
+    return 0
+  }
+
+  if (args.check) {
+    const stale = []
+    for (const [name, json] of Object.entries(outputs)) {
+      let disk = null
+      try { disk = fs.readFileSync(path.join(args.out, name), 'utf8') } catch {}
+      if (disk === null) stale.push(`missing: ${name}`)
+      else if (disk !== json) stale.push(`stale:   ${name}`)
+    }
+    let diskManifest = null
+    try { diskManifest = fs.readFileSync(path.join(args.out, 'manifest.json'), 'utf8') } catch {}
+    if (diskManifest !== manifestJson) stale.push('stale:   manifest.json')
+    try {
+      const known = new Set([...Object.keys(outputs), 'manifest.json'])
+      for (const f of fs.readdirSync(args.out)) if (f.endsWith('.json') && !known.has(f)) stale.push(`orphan:  ${f}`)
+    } catch {}
+    if (stale.length) {
+      console.error(`Data export is out of date (${stale.length}) — run: node scripts/export-sim-data.js`)
+      for (const s of stale) console.error(`  ${s}`)
+      return 1
+    }
+    console.log(`Data export is up to date (${Object.keys(outputs).length} files).`)
+    return 0
+  }
+
+  fs.mkdirSync(args.out, { recursive: true })
+  const known = new Set([...Object.keys(outputs), 'manifest.json'])
+  for (const f of fs.readdirSync(args.out)) if (f.endsWith('.json') && !known.has(f)) fs.rmSync(path.join(args.out, f))
+  for (const [name, json] of Object.entries(outputs)) fs.writeFileSync(path.join(args.out, name), json)
+  fs.writeFileSync(path.join(args.out, 'manifest.json'), manifestJson)
+  console.log(`Wrote ${Object.keys(outputs).length} JSON files + manifest.json to ${path.relative(ROOT, args.out)}`)
+  console.log(`${found.logic.length} function-valued entries dropped (listed in manifest.logicToPort) — port these to C# by hand.`)
+  return 0
+}
+
+process.exitCode = main()

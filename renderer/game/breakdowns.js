@@ -61,7 +61,9 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
     const rows = []
     if (f.lastAff) rows.push({ label: `Last: ${f.lastAff.why} (yr ${f.lastAff.year})`, val: f.lastAff.delta ? `${f.lastAff.delta > 0 ? '+' : '−'}${Math.abs(f.lastAff.delta)}` : '', tone: f.lastAff.delta > 0 ? 'up' : f.lastAff.delta < 0 ? 'down' : 'dim' })
     if (then) rows.push({ label: `Since year ${then[0]}`, val: `${then[1]} → ${Math.round(a)}`, tone: a > then[1] ? 'up' : a < then[1] ? 'down' : 'dim' })
-    rows.push({ label: `Drifts toward ${AFFECTION_REST} by itself`, val: `${AFFECTION_DRIFT_PER_YEAR}/yr`, tone: 'dim' })
+    const rate = gs?.affectionDriftRate ? gs.affectionDriftRate() : AFFECTION_DRIFT_PER_YEAR
+    const slow = rate < AFFECTION_DRIFT_PER_YEAR
+    rows.push({ label: `Drifts toward ${AFFECTION_REST} by itself${slow ? ' · slow: you are idle or away' : ''}`, val: `${rate}/yr`, tone: 'dim' })
     const tiers = [
       { label: `Devoted (${AFFECTION_DEVOTED}+): +${Math.round(DEVOTED_BT_BONUS * 100)}% breakthrough, forgives more`, val: a >= AFFECTION_DEVOTED ? 'now' : '', tone: a >= AFFECTION_DEVOTED ? 'up' : 'dim' },
       { label: `Cold (under ${AFFECTION_CRISIS}): crises, no wish for a child`, val: a < AFFECTION_CRISIS ? 'now' : '', tone: a < AFFECTION_CRISIS ? 'warn' : 'dim' },
@@ -108,14 +110,20 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
     const its = pv.it.parts.map((p, i) => ({ label: p.label, val: i ? num(p.value) : String(Math.round(p.value)), op: i ? '+' : 'base', tone: i ? (p.value < 0 ? 'up' : 'down') : '' }))
     its.push({ label: 'Its power', val: String(Math.round(pv.it.total)), tone: '' })
     const gap = pv.you.total - pv.it.total
-    const stakes = [{ label: 'Each blow you take', val: `−${st.wound} Health`, tone: 'down' },
-      { label: stance === 'slay' ? 'Losing the battle' : 'Losing (never below 1)', val: `−${st.lossWound} more`, tone: 'down' }]
-    if (st.canDie) stakes.push({ label: `A full loss (−${st.worst}) would kill you`, val: '', tone: 'warn' })
-    return { glyph: 'sword', title: 'Battle odds', total: st.chance < 0.01 ? '<1%' : `${Math.round(st.chance * 100)}%`, totalLabel: 'Your odds to win',
-      rows, sections: [{ title: 'The beast', rows: its }, { title: gap >= 0 ? `You lead by ${Math.round(gap)}` : `It leads by ${Math.round(-gap)}`, rows: [] },
+    // Phase 42b: the odds are a Monte Carlo of the move fight (your loadout vs its arts, your parry rate)
+    const MC = MOVE_COMBAT, ratio = Math.max(MC.powerRatioClamp[0], Math.min(MC.powerRatioClamp[1], Math.exp(gap / MC.powerSpread)))
+    const stakes = [{ label: 'Its blows (before parrying)', val: `about −${st.wound} Health`, tone: 'down' },
+      { label: 'Health lost, on average', val: `−${st.hurt}`, tone: 'down' },
+      { label: 'The fight lasts', val: `about ${Math.round(st.turns)} turns`, tone: '' },
+      { label: 'Your parries (assumed)', val: `${Math.round(st.parryRate * 100)}%`, tone: st.parryRate >= 0.3 ? 'up' : '' }]
+    if (st.canDie) stakes.push({ label: `Fights that end in your death`, val: `${Math.round(st.died * 100)}%`, tone: 'warn' })
+    return { glyph: 'sword', title: 'Battle odds', total: st.chance < 0.01 ? '<1%' : st.chance > 0.99 ? '>99%' : `${Math.round(st.chance * 100)}%`, totalLabel: 'Your odds to win (estimate)',
+      rows, sections: [{ title: 'The beast', rows: its },
+        { title: gap >= 0 ? `You lead by ${Math.round(gap)}: your blows ×${ratio.toFixed(2)}, its ×${(1 / ratio).toFixed(2)}` : `It leads by ${Math.round(-gap)}: its blows ×${(1 / ratio).toFixed(2)}, yours ×${ratio.toFixed(2)}`, rows: [] },
         { title: stance === 'slay' ? 'Slay: what it can cost' : 'Drive off: what it can cost', rows: stakes }],
-      notes: [`Odds follow the gap between the two powers: ${TOURNAMENT_SPREAD} points either way is about 73%. First to ${pv.to} exchanges wins.`,
-        `Each exchange, the move that beats its move adds ${Math.round(FIGHT_EDGE * 100)}% (Press beats Feint, Feint beats Guard, Guard beats Press). Read its habits to beat these odds.`] }
+      notes: [`The estimate plays this fight ${MC.estimateRuns} times with your equipped arts against its arts, at your recent parry rate.`,
+        `Power sets how hard each blow lands (${MC.powerSpread} points either way ≈ ×${Math.exp(1).toFixed(2)}). Elements: an art that overcomes its element hits ×${MC.elementOver}, one it resists ×${MC.elementUnder}; arts of your root's elements +${Math.round(MC.affinity * 100)}%.`,
+        `A parry on the mark takes no damage and gives +${MC.parryQi} Qi. Better arts, passives and parrying beat these odds.`] }
   }
 
   // A6-3b (combat.md): the Arena purse multiplier — streak × renown (× blood for a blood match)
@@ -135,33 +143,40 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
       notes: [`A blood match pays ×${ARENA_BLOOD_MULT} on top. Walk away to be paid; lose a bout and you keep ${Math.round(ARENA_LOSS_KEEP * 100)}%. A grudge match pays ×${ARENA_CALLOUT_MULT} the ring's prize, with no fee.`] }
   }
 
-  // A6-3a (combat.md): a fight with a person — kind 'personfight:<personId>:<kind>' (duel / challenge / defend /
-  // stepdown). Both powers term by term (a grudge adds to theirs), or the spouse duel's stage rule.
+  // A6-3a (combat.md) · 1.14a (arts.md): a fight with a person — kind 'personfight:<personId>:<kind>' (duel / challenge /
+  // defend / stepdown / arena / slaughter). The estimate of the move fight, both powers term by term (a grudge adds to
+  // theirs), the gap as a blow ratio, what it can cost, and what you know of their arts.
   if (kind.startsWith('personfight:')) {
     const [, pid, fk] = kind.split(':')
-    const sp = gs.get().family?.spouse
-    const p = fk === 'duel' && sp?.id === pid ? sp : fk === 'arena' ? gs.get().arena?.duelists?.[pid] : gs.person?.(pid)
+    const st = gs.get(), sp = st.family?.spouse, fi = st.family?.fight
+    const p = fk === 'duel' && sp?.id === pid ? sp : fk === 'arena' ? st.arena?.duelists?.[pid] : fk === 'slaughter' && fi?.foe?.id === pid ? fi.foe : gs.person?.(pid)
     const o = p && gs.personFightOdds?.(p, fk)
     if (!o) return null
-    const to = gs.get().family?.fight?.to || (typeof DUEL_TO !== 'undefined' ? DUEL_TO : 3)
-    const total = o.chance < 0.01 ? '<1%' : `${Math.round(o.chance * 100)}%`
-    const notes = [`Each exchange, the move that beats theirs adds ${Math.round(FIGHT_EDGE * 100)}% (Press beats Feint, Feint beats Guard, Guard beats Press). Their temper shows their habits. First to ${to} exchanges wins.`]
-    if (p.feud === 'debt') notes.push('They owe you: more likely to accept your yield.')
-    if (p.feud === 'grudge') notes.push('They hold a grudge: harder, and less likely to accept your yield.')
-    if (o.duel) {
-      const rows = [{ label: 'An even match', val: BD_PCT(o.base), op: 'base' },
-        { label: o.gap >= 0 ? `You are ${o.gap} stage${o.gap === 1 ? '' : 's'} ahead` : `They are ${-o.gap} stage${o.gap === -1 ? '' : 's'} ahead`, val: `${o.gap >= 0 ? '+' : '−'}${Math.round(Math.abs(o.gap) * o.perStage * 100)}%`, op: '+', tone: o.gap >= 0 ? 'up' : 'down' }]
-      notes.unshift(`A duel: ${Math.round(o.base * 100)}% ± ${Math.round(o.perStage * 100)}% per stage between you, held between ${Math.round(o.range[0] * 100)}% and ${Math.round(o.range[1] * 100)}%.`)
-      return { glyph: 'duel', title: 'Duel odds', total, totalLabel: 'Your odds to win', rows, notes }
-    }
+    const e = o.est, pct = v => v < 0.01 ? '<1%' : v > 0.99 ? '>99%' : `${Math.round(v * 100)}%`
     const num = v => (v > 0 ? '+' : '') + Math.round(v)
     const side = (parts, mineUp) => parts.map((x, i) => ({ label: x.label, val: i ? num(x.value) : String(Math.round(x.value)), op: i ? '+' : 'base', tone: i ? ((x.value < 0) === mineUp ? 'down' : 'up') : '' }))
     const rows = [...side(o.you.parts, true), { label: 'Your power', val: String(Math.round(o.you.total)), tone: '' }]
     const theirs = [...side(o.them.parts, false), { label: 'Their power', val: String(Math.round(o.them.total)), tone: '' }]
-    const gap = o.you.total - o.them.total
-    notes.unshift(`Odds follow the gap between the two powers: ${TOURNAMENT_SPREAD} points either way is about 73%.`)
-    return { glyph: 'sword', title: 'Fight odds', total, totalLabel: 'Your odds to win', rows,
-      sections: [{ title: p.given || 'Them', rows: theirs }, { title: gap >= 0 ? `You lead by ${Math.round(gap)}` : `They lead by ${Math.round(-gap)}`, rows: [] }], notes }
+    const gap = o.you.total - o.them.total, MC = MOVE_COMBAT, PF = PERSON_FIGHT
+    const ratio = Math.max(MC.powerRatioClamp[0], Math.min(MC.powerRatioClamp[1], Math.exp(gap / PF.powerSpread)))
+    const stakes = [{ label: o.lethal ? 'To the death' : `Until one yields (you at ${PF.yieldThrownHp} Health, they at ${Math.round(PF.yieldFoeFrac * 100)}%)`, val: '', tone: o.lethal ? 'warn' : '' },
+      { label: 'Health lost, on average', val: `−${Math.round(e.hurt)}`, tone: 'down' },
+      { label: 'The fight lasts', val: `about ${Math.round(e.turns)} turns`, tone: '' },
+      { label: 'Your parries (assumed)', val: pct(e.parryRate), tone: e.parryRate >= 0.3 ? 'up' : '' }]
+    if (o.lethal && e.died >= 0.005) stakes.push({ label: 'Fights that end in your death', val: pct(e.died), tone: 'warn' })
+    const sc = gs.personScouting?.(p)
+    const notes = [`The estimate plays this fight ${PF.estimateRuns} times: your equipped arts at your Health against their arts, at your recent parry rate.`,
+      `Power sets how hard each blow lands: every 100 points of lead ≈ ×${Math.exp(100 / PF.powerSpread).toFixed(2)} on each blow. Their root is ${ART_ELEMENTS[sc?.element]?.name || 'unknown'}: an art that overcomes it hits ×${MC.elementOver}, one it resists ×${MC.elementUnder}.`]
+    if (gap < 0 && o.chance >= 0.5) notes.unshift('You are favoured despite their lead in power: your arts, your Health and your parries outweigh it.')
+    else if (gap > 0 && o.chance < 0.5) notes.unshift('You lead in power, yet the odds are against you: their arts, your wounds or their parries outweigh it.')
+    if (sc) notes.push(`You have seen ${sc.seen} of their ${sc.total} arts; the rest show once they use them on you.${sc.habitsKnown ? ` They ${sc.parryWord}.` : ''}`)
+    if (p.feud === 'debt') notes.push('They owe you: more likely to accept your yield.')
+    if (p.feud === 'grudge') notes.push('They hold a grudge: they hit harder, and are less likely to accept your yield.')
+    if (sc?.counter) notes.unshift(`They trained against your ${ART_ELEMENTS[sc.counter.vs].name}: they fight as ${ART_ELEMENTS[sc.counter.el].name}, so your ${ART_ELEMENTS[sc.counter.vs].name} arts are resisted (×${MC.elementUnder}), and they carry ${ARTS[sc.counter.art]?.name || 'a new art'}.`)
+    return { glyph: o.duel ? 'duel' : 'sword', title: o.duel ? 'Duel odds' : 'Fight odds', total: pct(o.chance), totalLabel: 'Your odds to win (estimate)', rows,
+      sections: [{ title: p.given || 'Them', rows: theirs },
+        { title: gap >= 0 ? `You lead by ${Math.round(gap)}: your blows ×${ratio.toFixed(2)}, theirs ×${(1 / ratio).toFixed(2)}` : `They lead by ${Math.round(-gap)}: their blows ×${(1 / ratio).toFixed(2)}, yours ×${ratio.toFixed(2)}`, rows: [] },
+        { title: 'What it can cost', rows: stakes }], notes }
   }
 
   // 1.8b-5: sect war odds — the real roll (gs.sectWarOdds): your strength multiplier against a rival of ×0.6–1.4

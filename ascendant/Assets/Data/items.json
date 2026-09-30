@@ -1,0 +1,1217 @@
+{
+  "ITEMS": {
+    "spirit_stone": {
+      "id": "spirit_stone",
+      "name": "Spirit Stone",
+      "nameCN": "灵石",
+      "desc": "Dense stone saturated with earth Qi. The currency of cultivators.",
+      "type": "currency",
+      "stackable": true,
+      "category": "currency"
+    },
+    "spirit_herb": {
+      "id": "spirit_herb",
+      "name": "Spirit Herb",
+      "nameCN": "灵草",
+      "desc": "A common herb that hums with ambient Qi.",
+      "type": "resource",
+      "stackable": true,
+      "category": "mat"
+    },
+    "beast_core": {
+      "id": "beast_core",
+      "name": "Beast Core",
+      "nameCN": "兽核",
+      "desc": "Crystallized spiritual energy taken from a slain beast.",
+      "type": "resource",
+      "stackable": true,
+      "category": "mat"
+    },
+    "iron_ore": {
+      "id": "iron_ore",
+      "name": "Iron Ore",
+      "nameCN": "铁矿",
+      "desc": "Ore threaded with latent metal energy.",
+      "type": "resource",
+      "stackable": true,
+      "category": "mat"
+    },
+    "demon_essence": {
+      "id": "demon_essence",
+      "name": "Demon Essence",
+      "nameCN": "妖精",
+      "desc": "Distilled malice, taken from a slain demon.",
+      "type": "resource",
+      "stackable": true,
+      "category": "mat"
+    },
+    "poison_herb": {
+      "id": "poison_herb",
+      "name": "Poison Herb",
+      "nameCN": "毒草",
+      "desc": "A herb that kills as readily as it heals.",
+      "type": "resource",
+      "stackable": true,
+      "category": "mat"
+    },
+    "artifact_fragment": {
+      "id": "artifact_fragment",
+      "name": "Artifact Fragment",
+      "nameCN": "遗器碎片",
+      "desc": "A shard of an ancient artifact, still faintly resonant.",
+      "type": "resource",
+      "stackable": true,
+      "category": "mat"
+    },
+    "ancient_script": {
+      "id": "ancient_script",
+      "name": "Ancient Script",
+      "nameCN": "古籍",
+      "desc": "A parchment scribed in a forgotten celestial tongue.",
+      "type": "resource",
+      "stackable": true,
+      "category": "rare"
+    },
+    "celestial_herb": {
+      "id": "celestial_herb",
+      "name": "Celestial Herb",
+      "nameCN": "仙草",
+      "desc": "Grows only where heaven touches earth.",
+      "type": "resource",
+      "stackable": true,
+      "category": "mat"
+    },
+    "heavenly_ore": {
+      "id": "heavenly_ore",
+      "name": "Heavenly Ore",
+      "nameCN": "天铁",
+      "desc": "Forged in celestial furnaces. Sings in the presence of Qi.",
+      "type": "resource",
+      "stackable": true,
+      "category": "mat"
+    },
+    "void_crystal": {
+      "id": "void_crystal",
+      "name": "Void Crystal",
+      "nameCN": "虚晶",
+      "desc": "Holds nothing — and therefore holds everything.",
+      "type": "resource",
+      "stackable": true,
+      "category": "rare"
+    },
+    "chaos_essence": {
+      "id": "chaos_essence",
+      "name": "Chaos Essence",
+      "nameCN": "混元精",
+      "desc": "Formless matter from the void between realms.",
+      "type": "resource",
+      "stackable": true,
+      "category": "rare"
+    },
+    "pill_qi_refining": {
+      "id": "pill_qi_refining",
+      "name": "Qi Refining Pill",
+      "nameCN": "聚气丹",
+      "desc": "+10% breakthrough chance (1 use).",
+      "type": "pill",
+      "stackable": true,
+      "category": "pill",
+      "effect": {
+        "type": "bt_bonus",
+        "value": 0.1
+      }
+    },
+    "pill_foundation": {
+      "id": "pill_foundation",
+      "name": "Foundation Pill",
+      "nameCN": "筑基丹",
+      "desc": "+20% breakthrough chance (1 use).",
+      "type": "pill",
+      "stackable": true,
+      "category": "pill",
+      "effect": {
+        "type": "bt_bonus",
+        "value": 0.2
+      }
+    },
+    "pill_heart_calming": {
+      "id": "pill_heart_calming",
+      "name": "Heart Calming Pill",
+      "nameCN": "定心丹",
+      "desc": "-50% Qi lost on breakthrough failure; +30 Integrity restored (1 use).",
+      "type": "pill",
+      "stackable": true,
+      "category": "pill",
+      "effect": {
+        "type": "qi_loss_reduce",
+        "value": 0.5,
+        "integrity_restore": 30
+      }
+    },
+    "pill_golden_core": {
+      "id": "pill_golden_core",
+      "name": "Golden Core Pill",
+      "nameCN": "金丹",
+      "desc": "+30% BT chance, -80% Qi loss on failure (1 use).",
+      "type": "pill",
+      "stackable": true,
+      "category": "pill",
+      "effect": {
+        "type": "bt_bonus",
+        "value": 0.3,
+        "qi_loss_reduce": 0.8
+      }
+    },
+    "pill_heaven_defying": {
+      "id": "pill_heaven_defying",
+      "name": "Heaven Defying Pill",
+      "nameCN": "逆天丹",
+      "desc": "Breakthrough always succeeds (1 use).",
+      "type": "pill",
+      "stackable": true,
+      "category": "pill",
+      "effect": {
+        "type": "bt_guarantee"
+      }
+    },
+    "beast_taming_talisman": {
+      "id": "beast_taming_talisman",
+      "name": "Crude Beast Taming Talisman",
+      "nameCN": "粗制驯兽符",
+      "desc": "A rough charm. 40% to tame a wild beast. A failure may turn it on you, or lose it for good.",
+      "type": "talisman",
+      "stackable": true,
+      "category": "key",
+      "effect": {
+        "type": "tame_beast",
+        "grade": "crude"
+      }
+    },
+    "beast_taming_talisman_fine": {
+      "id": "beast_taming_talisman_fine",
+      "name": "Fine Beast Taming Talisman",
+      "nameCN": "精制驯兽符",
+      "desc": "Careful brushwork. 55% to tame a wild beast.",
+      "type": "talisman",
+      "stackable": true,
+      "category": "key",
+      "effect": {
+        "type": "tame_beast",
+        "grade": "fine"
+      }
+    },
+    "beast_taming_talisman_superior": {
+      "id": "beast_taming_talisman_superior",
+      "name": "Superior Beast Taming Talisman",
+      "nameCN": "上品驯兽符",
+      "desc": "Sealed in cinnabar. 70% to tame a wild beast.",
+      "type": "talisman",
+      "stackable": true,
+      "category": "key",
+      "effect": {
+        "type": "tame_beast",
+        "grade": "superior"
+      }
+    },
+    "beast_taming_talisman_pristine": {
+      "id": "beast_taming_talisman_pristine",
+      "name": "Pristine Beast Taming Talisman",
+      "nameCN": "极品驯兽符",
+      "desc": "Drawn on spirit silk. 90% to tame a wild beast.",
+      "type": "talisman",
+      "stackable": true,
+      "category": "key",
+      "effect": {
+        "type": "tame_beast",
+        "grade": "pristine"
+      }
+    },
+    "elixir_muddy_root": {
+      "id": "elixir_muddy_root",
+      "name": "Muddy Root Elixir",
+      "nameCN": "浊根液",
+      "desc": "Guarantees Mixed root on use.",
+      "type": "elixir",
+      "stackable": true,
+      "category": "pill",
+      "effect": {
+        "type": "root_reroll",
+        "outcomes": [
+          {
+            "type": "mixed",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "elixir_cleansing_root": {
+      "id": "elixir_cleansing_root",
+      "name": "Cleansing Root Elixir",
+      "nameCN": "洗筋液",
+      "desc": "50% Dual Root, 50% Mixed Root.",
+      "type": "elixir",
+      "stackable": true,
+      "category": "pill",
+      "effect": {
+        "type": "root_reroll",
+        "outcomes": [
+          {
+            "type": "dual",
+            "weight": 1
+          },
+          {
+            "type": "mixed",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "elixir_pure_root": {
+      "id": "elixir_pure_root",
+      "name": "Pure Root Elixir",
+      "nameCN": "纯根丹",
+      "desc": "60% Pure, 35% Dual, 5% Heavenly.",
+      "type": "elixir",
+      "stackable": true,
+      "category": "pill",
+      "effect": {
+        "type": "root_reroll",
+        "outcomes": [
+          {
+            "type": "pure",
+            "weight": 12
+          },
+          {
+            "type": "dual",
+            "weight": 7
+          },
+          {
+            "type": "heavenly",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "elixir_heavenly_root": {
+      "id": "elixir_heavenly_root",
+      "name": "Heavenly Root Elixir",
+      "nameCN": "天根丹",
+      "desc": "40% Pure, 40% Heavenly, 20% Dual.",
+      "type": "elixir",
+      "stackable": true,
+      "category": "pill",
+      "effect": {
+        "type": "root_reroll",
+        "outcomes": [
+          {
+            "type": "pure",
+            "weight": 2
+          },
+          {
+            "type": "heavenly",
+            "weight": 2
+          },
+          {
+            "type": "dual",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "weapon_spirit_sword": {
+      "id": "weapon_spirit_sword",
+      "name": "Spirit Sword",
+      "nameCN": "灵剑",
+      "desc": "+15% Qi/s.",
+      "type": "weapon",
+      "stackable": false,
+      "category": "equip",
+      "effect": {
+        "type": "qps_mult",
+        "value": 1.15
+      }
+    },
+    "weapon_soul_spear": {
+      "id": "weapon_soul_spear",
+      "name": "Soul Spear",
+      "nameCN": "魂枪",
+      "desc": "+25% expedition power.",
+      "type": "weapon",
+      "stackable": false,
+      "category": "equip",
+      "effect": {
+        "type": "expedition_power",
+        "value": 0.25
+      }
+    },
+    "weapon_thunder_staff": {
+      "id": "weapon_thunder_staff",
+      "name": "Thunder Staff",
+      "nameCN": "雷杖",
+      "desc": "Enemies −20% HP.",
+      "type": "weapon",
+      "stackable": false,
+      "category": "equip",
+      "effect": {
+        "type": "enemy_hp_reduce",
+        "value": 0.2
+      }
+    },
+    "weapon_void_blade": {
+      "id": "weapon_void_blade",
+      "name": "Void Blade",
+      "nameCN": "虚刃",
+      "desc": "+50% loot, +20% BT chance.",
+      "type": "weapon",
+      "stackable": false,
+      "category": "equip",
+      "effect": {
+        "type": "void_blade",
+        "loot_mult": 1.5,
+        "bt_bonus": 0.2
+      }
+    },
+    "artifact_jade_pendant": {
+      "id": "artifact_jade_pendant",
+      "name": "Jade Pendant",
+      "nameCN": "玉佩",
+      "desc": "Qi cap ×1.2.",
+      "type": "artifact",
+      "stackable": false,
+      "category": "equip",
+      "effect": {
+        "type": "qi_cap_mult",
+        "value": 1.2
+      }
+    },
+    "artifact_soul_ring": {
+      "id": "artifact_soul_ring",
+      "name": "Soul Ring",
+      "nameCN": "魂环",
+      "desc": "Qi/s ×1.3.",
+      "type": "artifact",
+      "stackable": false,
+      "category": "equip",
+      "effect": {
+        "type": "qps_mult",
+        "value": 1.3
+      }
+    },
+    "artifact_heaven_talisman": {
+      "id": "artifact_heaven_talisman",
+      "name": "Heaven Talisman",
+      "nameCN": "天符",
+      "desc": "BT chance +8% permanently.",
+      "type": "artifact",
+      "stackable": false,
+      "category": "equip",
+      "effect": {
+        "type": "bt_bonus",
+        "value": 0.08
+      }
+    },
+    "artifact_void_compass": {
+      "id": "artifact_void_compass",
+      "name": "Void Compass",
+      "nameCN": "虚空罗盘",
+      "desc": "Unlocks hidden expedition locations.",
+      "type": "artifact",
+      "stackable": false,
+      "category": "equip",
+      "effect": {
+        "type": "hidden_locations"
+      }
+    },
+    "manual_drifting_step_palm": {
+      "id": "manual_drifting_step_palm",
+      "name": "Drifting Step Palm Manual",
+      "nameCN": "游步掌",
+      "art": "drifting_step_palm",
+      "desc": "A martial art manual (Yellow grade, Neutral move). Study it to learn Drifting Step Palm.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_rising_qi_kick": {
+      "id": "manual_rising_qi_kick",
+      "name": "Rising Qi Kick Manual",
+      "nameCN": "升气腿",
+      "art": "rising_qi_kick",
+      "desc": "A martial art manual (Yellow grade, Neutral move). Study it to learn Rising Qi Kick.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_echoing_fist": {
+      "id": "manual_echoing_fist",
+      "name": "Echoing Fist Manual",
+      "nameCN": "回响拳",
+      "art": "echoing_fist",
+      "desc": "A martial art manual (Yellow grade, Neutral move). Study it to learn Echoing Fist.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_mind_piercing_shout": {
+      "id": "manual_mind_piercing_shout",
+      "name": "Mind-Piercing Shout Manual",
+      "nameCN": "破神喝",
+      "art": "mind_piercing_shout",
+      "desc": "A martial art manual (Profound grade, Neutral move). Study it to learn Mind-Piercing Shout.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_void_step": {
+      "id": "manual_void_step",
+      "name": "Void Step Manual",
+      "nameCN": "虚空步",
+      "art": "void_step",
+      "desc": "A martial art manual (Profound grade, Neutral move). Study it to learn Void Step.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_sutra_of_stillness": {
+      "id": "manual_sutra_of_stillness",
+      "name": "Sutra of Stillness Manual",
+      "nameCN": "静心经",
+      "art": "sutra_of_stillness",
+      "desc": "A martial art manual (Profound grade, Neutral move). Study it to learn Sutra of Stillness.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_shattering_palm_seal": {
+      "id": "manual_shattering_palm_seal",
+      "name": "Shattering Palm Seal Manual",
+      "nameCN": "碎印掌",
+      "art": "shattering_palm_seal",
+      "desc": "A martial art manual (Earth grade, Neutral move). Study it to learn Shattering Palm Seal.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_heart_of_the_blade": {
+      "id": "manual_heart_of_the_blade",
+      "name": "Heart of the Blade Manual",
+      "nameCN": "剑心",
+      "art": "heart_of_the_blade",
+      "desc": "A martial art manual (Yellow grade, Neutral passive). Study it to learn Heart of the Blade.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_unmoving_mind": {
+      "id": "manual_unmoving_mind",
+      "name": "Unmoving Mind Manual",
+      "nameCN": "不动心",
+      "art": "unmoving_mind",
+      "desc": "A martial art manual (Profound grade, Neutral passive). Study it to learn Unmoving Mind.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_myriad_forms_insight": {
+      "id": "manual_myriad_forms_insight",
+      "name": "Myriad Forms Insight Manual",
+      "nameCN": "万象悟",
+      "art": "myriad_forms_insight",
+      "desc": "A martial art manual (Heaven grade, Neutral passive). Study it to learn Myriad Forms Insight.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_golden_dragon_divine_fist": {
+      "id": "manual_golden_dragon_divine_fist",
+      "name": "Golden Dragon Divine Fist Manual",
+      "nameCN": "金龙神拳",
+      "art": "golden_dragon_divine_fist",
+      "desc": "A martial art manual (Immortal grade, Neutral move). Study it to learn Golden Dragon Divine Fist.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_heaven_severing_intent": {
+      "id": "manual_heaven_severing_intent",
+      "name": "Heaven-Severing Sword Intent Manual",
+      "nameCN": "断天剑意",
+      "art": "heaven_severing_intent",
+      "desc": "A martial art manual (Immortal grade, Neutral move). Study it to learn Heaven-Severing Sword Intent.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_autumn_blade_qi": {
+      "id": "manual_autumn_blade_qi",
+      "name": "Autumn Blade Qi Manual",
+      "nameCN": "秋刃气",
+      "art": "autumn_blade_qi",
+      "desc": "A martial art manual (Yellow grade, Metal move). Study it to learn Autumn Blade Qi.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_iron_needle_rain": {
+      "id": "manual_iron_needle_rain",
+      "name": "Iron Needle Rain Manual",
+      "nameCN": "铁针雨",
+      "art": "iron_needle_rain",
+      "desc": "A martial art manual (Yellow grade, Metal move). Study it to learn Iron Needle Rain.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_edge_seeking_thrust": {
+      "id": "manual_edge_seeking_thrust",
+      "name": "Edge-Seeking Thrust Manual",
+      "nameCN": "寻隙刺",
+      "art": "edge_seeking_thrust",
+      "desc": "A martial art manual (Yellow grade, Metal move). Study it to learn Edge-Seeking Thrust.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_armour_rending_slash": {
+      "id": "manual_armour_rending_slash",
+      "name": "Armour-Rending Slash Manual",
+      "nameCN": "裂甲斩",
+      "art": "armour_rending_slash",
+      "desc": "A martial art manual (Profound grade, Metal move). Study it to learn Armour-Rending Slash.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_thunder_talon_strike": {
+      "id": "manual_thunder_talon_strike",
+      "name": "Thunder Talon Strike Manual",
+      "nameCN": "雷爪击",
+      "art": "thunder_talon_strike",
+      "desc": "A martial art manual (Profound grade, Metal move). Study it to learn Thunder Talon Strike.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_white_tiger_rending_claw": {
+      "id": "manual_white_tiger_rending_claw",
+      "name": "White Tiger Rending Claw Manual",
+      "nameCN": "白虎裂爪",
+      "art": "white_tiger_rending_claw",
+      "desc": "A martial art manual (Earth grade, Metal move). Study it to learn White Tiger Rending Claw.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_severing_crescent": {
+      "id": "manual_severing_crescent",
+      "name": "Severing Crescent Manual",
+      "nameCN": "断月弧",
+      "art": "severing_crescent",
+      "desc": "A martial art manual (Earth grade, Metal move). Study it to learn Severing Crescent.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_ten_thousand_swords_rain": {
+      "id": "manual_ten_thousand_swords_rain",
+      "name": "Ten Thousand Swords Rain Manual",
+      "nameCN": "万剑雨",
+      "art": "ten_thousand_swords_rain",
+      "desc": "A martial art manual (Heaven grade, Metal move). Study it to learn Ten Thousand Swords Rain.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_unbreakable_edge": {
+      "id": "manual_unbreakable_edge",
+      "name": "Unbreakable Edge Manual",
+      "nameCN": "不折锋",
+      "art": "unbreakable_edge",
+      "desc": "A martial art manual (Yellow grade, Metal passive). Study it to learn Unbreakable Edge.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_metal_bone_tempering": {
+      "id": "manual_metal_bone_tempering",
+      "name": "Metal-Bone Tempering Manual",
+      "nameCN": "金骨淬",
+      "art": "metal_bone_tempering",
+      "desc": "A martial art manual (Profound grade, Metal passive). Study it to learn Metal-Bone Tempering.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_autumn_killing_intent": {
+      "id": "manual_autumn_killing_intent",
+      "name": "Autumn Killing Intent Manual",
+      "nameCN": "秋杀意",
+      "art": "autumn_killing_intent",
+      "desc": "A martial art manual (Earth grade, Metal passive). Study it to learn Autumn Killing Intent.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_sword_heart_clarity": {
+      "id": "manual_sword_heart_clarity",
+      "name": "Sword-Heart Clarity Manual",
+      "nameCN": "剑心通明",
+      "art": "sword_heart_clarity",
+      "desc": "A martial art manual (Heaven grade, Metal passive). Study it to learn Sword-Heart Clarity.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_spring_vine_binding": {
+      "id": "manual_spring_vine_binding",
+      "name": "Spring Vine Binding Manual",
+      "nameCN": "春藤缚",
+      "art": "spring_vine_binding",
+      "desc": "A martial art manual (Yellow grade, Wood move). Study it to learn Spring Vine Binding.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_life_stealing_thorn": {
+      "id": "manual_life_stealing_thorn",
+      "name": "Life-Stealing Thorn Manual",
+      "nameCN": "噬命棘",
+      "art": "life_stealing_thorn",
+      "desc": "A martial art manual (Yellow grade, Wood move). Study it to learn Life-Stealing Thorn.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_verdant_mending": {
+      "id": "manual_verdant_mending",
+      "name": "Verdant Mending Manual",
+      "nameCN": "青木回春",
+      "art": "verdant_mending",
+      "desc": "A martial art manual (Yellow grade, Wood move). Study it to learn Verdant Mending.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_coiling_venom_fang": {
+      "id": "manual_coiling_venom_fang",
+      "name": "Coiling Venom Fang Manual",
+      "nameCN": "缠毒牙",
+      "art": "coiling_venom_fang",
+      "desc": "A martial art manual (Profound grade, Wood move). Study it to learn Coiling Venom Fang.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_thousand_roots_prison": {
+      "id": "manual_thousand_roots_prison",
+      "name": "Thousand Roots Prison Manual",
+      "nameCN": "千根狱",
+      "art": "thousand_roots_prison",
+      "desc": "A martial art manual (Profound grade, Wood move). Study it to learn Thousand Roots Prison.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_azure_dragon_spring_tide": {
+      "id": "manual_azure_dragon_spring_tide",
+      "name": "Azure Dragon Spring Tide Manual",
+      "nameCN": "青龙春潮",
+      "art": "azure_dragon_spring_tide",
+      "desc": "A martial art manual (Heaven grade, Wood move). Study it to learn Azure Dragon Spring Tide.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_withering_blight": {
+      "id": "manual_withering_blight",
+      "name": "Withering Blight Manual",
+      "nameCN": "枯萎诀",
+      "art": "withering_blight",
+      "desc": "A martial art manual (Earth grade, Wood move). Study it to learn Withering Blight.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_world_tree_verdance": {
+      "id": "manual_world_tree_verdance",
+      "name": "World Tree Verdance Manual",
+      "nameCN": "建木长青",
+      "art": "world_tree_verdance",
+      "desc": "A martial art manual (Earth grade, Wood move). Study it to learn World Tree Verdance.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_evergreen_heart": {
+      "id": "manual_evergreen_heart",
+      "name": "Evergreen Heart Manual",
+      "nameCN": "长青心",
+      "art": "evergreen_heart",
+      "desc": "A martial art manual (Yellow grade, Wood passive). Study it to learn Evergreen Heart.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_sap_and_marrow": {
+      "id": "manual_sap_and_marrow",
+      "name": "Sap and Marrow Manual",
+      "nameCN": "液髓",
+      "art": "sap_and_marrow",
+      "desc": "A martial art manual (Profound grade, Wood passive). Study it to learn Sap and Marrow.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_spring_eternal": {
+      "id": "manual_spring_eternal",
+      "name": "Spring Eternal Manual",
+      "nameCN": "永春",
+      "art": "spring_eternal",
+      "desc": "A martial art manual (Earth grade, Wood passive). Study it to learn Spring Eternal.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_rootbound_body": {
+      "id": "manual_rootbound_body",
+      "name": "Rootbound Body Manual",
+      "nameCN": "根生体",
+      "art": "rootbound_body",
+      "desc": "A martial art manual (Heaven grade, Wood passive). Study it to learn Rootbound Body.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_frost_lotus_palm": {
+      "id": "manual_frost_lotus_palm",
+      "name": "Frost Lotus Palm Manual",
+      "nameCN": "霜莲掌",
+      "art": "frost_lotus_palm",
+      "desc": "A martial art manual (Yellow grade, Water move). Study it to learn Frost Lotus Palm.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_flowing_water_step": {
+      "id": "manual_flowing_water_step",
+      "name": "Flowing Water Step Manual",
+      "nameCN": "流水步",
+      "art": "flowing_water_step",
+      "desc": "A martial art manual (Yellow grade, Water move). Study it to learn Flowing Water Step.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_tide_drinking_palm": {
+      "id": "manual_tide_drinking_palm",
+      "name": "Tide-Drinking Palm Manual",
+      "nameCN": "吞潮掌",
+      "art": "tide_drinking_palm",
+      "desc": "A martial art manual (Yellow grade, Water move). Study it to learn Tide-Drinking Palm.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_tide_turning_current": {
+      "id": "manual_tide_turning_current",
+      "name": "Tide-Turning Current Manual",
+      "nameCN": "逆潮流",
+      "art": "tide_turning_current",
+      "desc": "A martial art manual (Profound grade, Water move). Study it to learn Tide-Turning Current.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_mirror_lake_mist": {
+      "id": "manual_mirror_lake_mist",
+      "name": "Mirror-Lake Mist Manual",
+      "nameCN": "镜湖雾",
+      "art": "mirror_lake_mist",
+      "desc": "A martial art manual (Profound grade, Water move). Study it to learn Mirror-Lake Mist.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_black_tortoise_shell": {
+      "id": "manual_black_tortoise_shell",
+      "name": "Black Tortoise Shell Manual",
+      "nameCN": "玄武甲",
+      "art": "black_tortoise_shell",
+      "desc": "A martial art manual (Heaven grade, Water move). Study it to learn Black Tortoise Shell.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_abyssal_current": {
+      "id": "manual_abyssal_current",
+      "name": "Abyssal Current Manual",
+      "nameCN": "渊流",
+      "art": "abyssal_current",
+      "desc": "A martial art manual (Earth grade, Water move). Study it to learn Abyssal Current.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_void_hound_fang": {
+      "id": "manual_void_hound_fang",
+      "name": "Void Hound Fang Manual",
+      "nameCN": "虚犬牙",
+      "art": "void_hound_fang",
+      "desc": "A martial art manual (Earth grade, Water move). Study it to learn Void Hound Fang.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_deep_pool_breath": {
+      "id": "manual_deep_pool_breath",
+      "name": "Deep Pool Breath Manual",
+      "nameCN": "深潭息",
+      "art": "deep_pool_breath",
+      "desc": "A martial art manual (Yellow grade, Water passive). Study it to learn Deep Pool Breath.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_still_water_mind": {
+      "id": "manual_still_water_mind",
+      "name": "Still Water Mind Manual",
+      "nameCN": "止水心",
+      "art": "still_water_mind",
+      "desc": "A martial art manual (Profound grade, Water passive). Study it to learn Still Water Mind.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_boundless_sea": {
+      "id": "manual_boundless_sea",
+      "name": "Boundless Sea Manual",
+      "nameCN": "无涯海",
+      "art": "boundless_sea",
+      "desc": "A martial art manual (Earth grade, Water passive). Study it to learn Boundless Sea.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_north_sea_sovereign": {
+      "id": "manual_north_sea_sovereign",
+      "name": "North Sea Sovereign Manual",
+      "nameCN": "北冥主",
+      "art": "north_sea_sovereign",
+      "desc": "A martial art manual (Heaven grade, Water passive). Study it to learn North Sea Sovereign.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_heart_flame_fist": {
+      "id": "manual_heart_flame_fist",
+      "name": "Heart Flame Fist Manual",
+      "nameCN": "心火拳",
+      "art": "heart_flame_fist",
+      "desc": "A martial art manual (Yellow grade, Fire move). Study it to learn Heart Flame Fist.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_ember_scatter": {
+      "id": "manual_ember_scatter",
+      "name": "Ember Scatter Manual",
+      "nameCN": "散烬",
+      "art": "ember_scatter",
+      "desc": "A martial art manual (Yellow grade, Fire move). Study it to learn Ember Scatter.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_blazing_charge": {
+      "id": "manual_blazing_charge",
+      "name": "Blazing Charge Manual",
+      "nameCN": "炎冲",
+      "art": "blazing_charge",
+      "desc": "A martial art manual (Yellow grade, Fire move). Study it to learn Blazing Charge.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_fox_fire_lantern": {
+      "id": "manual_fox_fire_lantern",
+      "name": "Fox-Fire Lantern Manual",
+      "nameCN": "狐火灯",
+      "art": "fox_fire_lantern",
+      "desc": "A martial art manual (Profound grade, Fire move). Study it to learn Fox-Fire Lantern.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_phoenix_rebirth_blaze": {
+      "id": "manual_phoenix_rebirth_blaze",
+      "name": "Phoenix Rebirth Blaze Manual",
+      "nameCN": "凤凰涅槃焰",
+      "art": "phoenix_rebirth_blaze",
+      "desc": "A martial art manual (Earth grade, Fire move). Study it to learn Phoenix Rebirth Blaze.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_qilin_flame_hoof": {
+      "id": "manual_qilin_flame_hoof",
+      "name": "Qilin Flame Hoof Manual",
+      "nameCN": "麒麟焰蹄",
+      "art": "qilin_flame_hoof",
+      "desc": "A martial art manual (Earth grade, Fire move). Study it to learn Qilin Flame Hoof.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_flame_lotus_storm": {
+      "id": "manual_flame_lotus_storm",
+      "name": "Flame Lotus Storm Manual",
+      "nameCN": "火莲风暴",
+      "art": "flame_lotus_storm",
+      "desc": "A martial art manual (Profound grade, Fire move). Study it to learn Flame Lotus Storm.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_sun_devouring_blaze": {
+      "id": "manual_sun_devouring_blaze",
+      "name": "Sun-Devouring Blaze Manual",
+      "nameCN": "吞日焰",
+      "art": "sun_devouring_blaze",
+      "desc": "A martial art manual (Heaven grade, Fire move). Study it to learn Sun-Devouring Blaze.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_kindled_meridians": {
+      "id": "manual_kindled_meridians",
+      "name": "Kindled Meridians Manual",
+      "nameCN": "燃脉",
+      "art": "kindled_meridians",
+      "desc": "A martial art manual (Yellow grade, Fire passive). Study it to learn Kindled Meridians.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_blazing_marrow": {
+      "id": "manual_blazing_marrow",
+      "name": "Blazing Marrow Manual",
+      "nameCN": "炎髓",
+      "art": "blazing_marrow",
+      "desc": "A martial art manual (Profound grade, Fire passive). Study it to learn Blazing Marrow.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_undying_ember": {
+      "id": "manual_undying_ember",
+      "name": "Undying Ember Manual",
+      "nameCN": "不灭烬",
+      "art": "undying_ember",
+      "desc": "A martial art manual (Earth grade, Fire passive). Study it to learn Undying Ember.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_vermilion_bird_plumage": {
+      "id": "manual_vermilion_bird_plumage",
+      "name": "Vermilion Bird Plumage Manual",
+      "nameCN": "朱雀羽",
+      "art": "vermilion_bird_plumage",
+      "desc": "A martial art manual (Heaven grade, Fire passive). Study it to learn Vermilion Bird Plumage.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_mountain_bearing_stance": {
+      "id": "manual_mountain_bearing_stance",
+      "name": "Mountain-Bearing Stance Manual",
+      "nameCN": "负山式",
+      "art": "mountain_bearing_stance",
+      "desc": "A martial art manual (Yellow grade, Earth move). Study it to learn Mountain-Bearing Stance.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_stone_fist": {
+      "id": "manual_stone_fist",
+      "name": "Stone Fist Manual",
+      "nameCN": "石拳",
+      "art": "stone_fist",
+      "desc": "A martial art manual (Yellow grade, Earth move). Study it to learn Stone Fist.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_quaking_stomp": {
+      "id": "manual_quaking_stomp",
+      "name": "Quaking Stomp Manual",
+      "nameCN": "震地踏",
+      "art": "quaking_stomp",
+      "desc": "A martial art manual (Yellow grade, Earth move). Study it to learn Quaking Stomp.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_mountain_bear_roar": {
+      "id": "manual_mountain_bear_roar",
+      "name": "Mountain Bear Roar Manual",
+      "nameCN": "山熊吼",
+      "art": "mountain_bear_roar",
+      "desc": "A martial art manual (Earth grade, Earth move). Study it to learn Mountain Bear Roar.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_iron_body": {
+      "id": "manual_iron_body",
+      "name": "Iron Body Manual",
+      "nameCN": "铁身",
+      "art": "iron_body",
+      "desc": "A martial art manual (Profound grade, Earth move). Study it to learn Iron Body.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_collapsing_peak": {
+      "id": "manual_collapsing_peak",
+      "name": "Collapsing Peak Manual",
+      "nameCN": "崩山",
+      "art": "collapsing_peak",
+      "desc": "A martial art manual (Earth grade, Earth move). Study it to learn Collapsing Peak.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_rampart_of_ten_li": {
+      "id": "manual_rampart_of_ten_li",
+      "name": "Rampart of Ten Li Manual",
+      "nameCN": "十里壁",
+      "art": "rampart_of_ten_li",
+      "desc": "A martial art manual (Profound grade, Earth move). Study it to learn Rampart of Ten Li.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_yellow_dragon_earth_sovereign": {
+      "id": "manual_yellow_dragon_earth_sovereign",
+      "name": "Yellow Dragon Earth Sovereign Manual",
+      "nameCN": "黄龙镇地",
+      "art": "yellow_dragon_earth_sovereign",
+      "desc": "A martial art manual (Heaven grade, Earth move). Study it to learn Yellow Dragon Earth Sovereign.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_grounded_stance": {
+      "id": "manual_grounded_stance",
+      "name": "Grounded Stance Manual",
+      "nameCN": "扎根桩",
+      "art": "grounded_stance",
+      "desc": "A martial art manual (Yellow grade, Earth passive). Study it to learn Grounded Stance.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_stone_skin": {
+      "id": "manual_stone_skin",
+      "name": "Stone Skin Manual",
+      "nameCN": "石肤",
+      "art": "stone_skin",
+      "desc": "A martial art manual (Profound grade, Earth passive). Study it to learn Stone Skin.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_bedrock_will": {
+      "id": "manual_bedrock_will",
+      "name": "Bedrock Will Manual",
+      "nameCN": "磐石意",
+      "art": "bedrock_will",
+      "desc": "A martial art manual (Earth grade, Earth passive). Study it to learn Bedrock Will.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_mountain_heart": {
+      "id": "manual_mountain_heart",
+      "name": "Mountain Heart Manual",
+      "nameCN": "山心",
+      "art": "mountain_heart",
+      "desc": "A martial art manual (Heaven grade, Earth passive). Study it to learn Mountain Heart.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_dust_ring_haymaker": {
+      "id": "manual_dust_ring_haymaker",
+      "name": "Dust Ring Haymaker Manual",
+      "nameCN": "尘台重拳",
+      "art": "dust_ring_haymaker",
+      "desc": "A martial art manual (Yellow grade, Neutral move). Study it to learn Dust Ring Haymaker.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_iron_bell_toll": {
+      "id": "manual_iron_bell_toll",
+      "name": "Iron Bell Toll Manual",
+      "nameCN": "铁钟鸣",
+      "art": "iron_bell_toll",
+      "desc": "A martial art manual (Profound grade, Metal move). Study it to learn Iron Bell Toll.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_jade_terrace_sweep": {
+      "id": "manual_jade_terrace_sweep",
+      "name": "Jade Terrace Sweep Manual",
+      "nameCN": "玉台横扫",
+      "art": "jade_terrace_sweep",
+      "desc": "A martial art manual (Earth grade, Earth move). Study it to learn Jade Terrace Sweep.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_golden_pit_fury": {
+      "id": "manual_golden_pit_fury",
+      "name": "Golden Pit Fury Manual",
+      "nameCN": "金坑怒",
+      "art": "golden_pit_fury",
+      "desc": "A martial art manual (Earth grade, Fire move). Study it to learn Golden Pit Fury.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    },
+    "manual_soul_lotus_bloom": {
+      "id": "manual_soul_lotus_bloom",
+      "name": "Soul Lotus Bloom Manual",
+      "nameCN": "魂莲绽",
+      "art": "soul_lotus_bloom",
+      "desc": "A martial art manual (Heaven grade, Wood move). Study it to learn Soul Lotus Bloom.",
+      "type": "manual",
+      "stackable": true,
+      "category": "manual"
+    }
+  },
+  "ITEM_SELL_VALUE": {
+    "spirit_herb": 1,
+    "beast_core": 1,
+    "iron_ore": 2,
+    "poison_herb": 2,
+    "demon_essence": 3,
+    "artifact_fragment": 4,
+    "ancient_script": 6,
+    "celestial_herb": 6,
+    "heavenly_ore": 8,
+    "void_crystal": 12,
+    "chaos_essence": 15
+  },
+  "SELL_CRAFTED_FRACTION": 0.6,
+  "SELL_DEFAULT_VALUE": {
+    "mat": 1,
+    "rare": 5,
+    "pill": 2,
+    "equip": 5,
+    "key": 2
+  }
+}

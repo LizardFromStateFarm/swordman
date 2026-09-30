@@ -152,7 +152,7 @@ docs/
     backpack.md         ← Pack tab: item category field, filters/sort, Use/Equip/Discard (Phase 21)
     automation.md       ← Active/Idle Mode + staged automation unlocks, Active Mode bonuses (Phase 22)
     combat.md           ← Phase 35 battles: A6-1 built (beast battles, battle page) · A6-2 built (Roam → Hunt, Bestiary view, battle banter, sim bot hunts) · A6-3a built (duels/challenges/step-down bouts on the battle page, ink duelists, end choices, feuds) · A6-3b built (the Arena: rings, purse, streak, renown, blood matches, call-outs) · A6-3c bosses spec
-    arts.md             ← Phase 42 (42-0 sell ✅ · 42a arts core ✅ · 42b–d next): collectible combat arts as study-able manuals, 4 move + realm passive slots, move combat (Qi pool, no cooldowns, parry QTE, Five Elements) replacing Press/Guard/Feint; selling items
+    arts.md             ← Phase 42 (42-0 sell ✅ · 42a arts core ✅ · 42b beasts on moves ✅ · 42c part 1 people on moves ✅ · 42c part 2 + 42d next): collectible combat arts as study-able manuals, 4 move + realm passive slots, move combat (Qi pool, no cooldowns, parry QTE, Five Elements) replacing Press/Guard/Feint; selling items
     auction.md          ← SPEC (Phase 36): themed crates, beast/person quality rolls, person `gender`
     scene-art.md        ← SPEC (Phase 38): large-area sect-base + island scenes (view-only, grow as you build)
     soul-points.md      ← Phase 40 (v1 finish): cross-save Soul Points + Soul Resonance + Soul screen (40a) · Immortal Ascension cinematic + finish screen (40b)
@@ -180,8 +180,10 @@ scripts/
   check-no-chrome-cjk.js ← Chrome-CJK lint for renderer/ (allow: nav marks, `cjk-ok` flavour lines); --strict runs in npm test (1.8d-2)
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt
+    fight-helpers.js    ← playFight(gs, 'win'|'lose') — forces a move fight to its end, for scenario checks (1.14a)
+    probe-person-fights.js ← tuning probe: move-fight estimate vs people by temper × stage gap (not a check)
     checks/             ← Scenario checks (`npm run checks`) — force exact situations, print ok/FAIL; run-all.js + one file per system
-  smoke/                ← Real-app smoke tests over CDP: cdp.js driver + scenarios/*.js (screenshots → smoke/out/, gitignored)
+  smoke/                ← Real-app smoke tests over CDP: cdp.js driver + scenarios/*.js (screenshots → smoke/out/, gitignored); fight-ui.js = play a fight through the real move buttons
 example_art/            ← The user's own source art for the bake pipeline (reference + bake input; not loaded by the game)
 renderer/
   index.html            ← All HTML — charselect + app, 7 tabs
@@ -193,7 +195,7 @@ renderer/
     game-state.js       ← ALL state mutations — _newGame(), _recalc(), tick()
     ascii-renderer.js   ← Canvas renderer — sprites + particles + aura rings (classic grid ASCII)
     ink-renderer.js     ← InkRenderer — hybrid ink art engine (A3-1): cached ink-dot layers + brush strokes + clean effects; `bare` = figure only (40b)
-    battle-scene.js     ← BattleScene — the battle page canvas: two bare ink figures on a dotted field + lunge/crescent/claw/ward/afterimage/stagger/dissolve/bind effects (Phase 35 / A6-1)
+    battle-scene.js     ← BattleScene — the battle page canvas: two bare ink figures on a dotted field + lunge/crescent/claw/ward/afterimage/stagger/dissolve/bind effects (Phase 35 / A6-1) + per-element move effects, status auras, parry wind-up (1.13b)
     ascension-cinematic.js ← AscensionCinematic — the ~9 s full-window Immortal Ascension (storm, bolts, rise, heavenly gate, flash) (Phase 40b)
     sprite-renderer.js  ← SpriteRenderer — picks Classic ASCII or Ink per the Sprite art setting + available INK_ART
     scene-renderer.js   ← SPEC (Phase 38): large-area scene layer (sect base / island) on the hybrid engine
@@ -222,7 +224,7 @@ renderer/
     arts-view.js        ← ArtsView — Path → Arts: breakthrough offer, study desk, 2×2 moves + passive slots, the library (Phase 42 / 42a)
     arena-view.js       ← ArenaView — Roam → Arena: rings, duelist rosters (odds, Fight / Blood), the run's purse + Walk away, grudge call-outs, the rest countdown (Phase 35 / A6-3b)
     hunt-view.js        ← HuntView + BestiaryView — Roam → Hunt (hunting grounds, track a beast, live countdown) and Roam → Bestiary (seen/unseen kinds, habits, record) (Phase 35 / A6-2)
-    combat.js           ← CombatView — the battle page: prepare (stance odds) → fight (Press/Guard/Feint, Retreat/Yield) → end choice (finish/spare/bind · raise/humble) → result; beasts (A6-1) + people: duels, challenges, step-down bouts (A6-3a)
+    combat.js           ← CombatView — the battle page: prepare (beasts: stance estimate) → fight (2×2 arts, Circulate, parry prompt, Retreat/Yield; people: "What you know") → end choice (finish/spare/bind · raise/humble) → result; beasts (A6-1) + people (A6-3a), all on moves (1.13a/1.14a)
     base-view.js        ← SPEC (Phase 38A): Sect Base view — the large sect-compound scene
 assets/
   icons/

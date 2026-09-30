@@ -32,12 +32,12 @@ function collectAttention(s, gs) {
   if (f.fight?.kind === 'beast') {                               // Phase 35: a beast battle (the battle page reopens it)
     const bn = gs.beastProfile ? gs.beastProfile(f.fight.beast).name : 'beast'
     add('urgent', 'fight', 'beast', f.fight.over ? `The ${bn} is down` : `Your battle with the ${bn}`,
-      f.fight.over ? 'Finish it, spare it, or bind it. It waits on you.' : `${f.fight.you}–${f.fight.them}, first to ${f.fight.to || 4}. Choose your next move.`, 'beasts', 'combat')
+      f.fight.over ? 'Finish it, spare it, or bind it. It waits on you.' : `Turn ${f.fight.m?.turn || 1}. Choose your next move.`, 'beasts', 'combat')
   } else if (f.fight) {
     const opp = f.fight.kind === 'duel' ? f.spouse : f.fight.kind === 'arena' ? s.arena?.duelists?.[f.fight.oppId] : gs.person?.(f.fight.oppId)
     add('urgent', 'fight', 'duel', f.fight.over ? `${opp?.given || 'Your rival'} is down` : `Your fight with ${opp?.given || 'your rival'}`,
       f.fight.over ? (f.fight.lethal ? 'Finish them, or spare them. They wait on you.' : 'Help them up, or humble them. They wait on you.')
-        : `${f.fight.you}–${f.fight.them}, first to ${f.fight.to || (typeof FIGHT_TO !== 'undefined' ? FIGHT_TO : 2)}. Choose your next move.`, f.fight.kind === 'duel' ? 'family' : f.fight.kind === 'arena' ? 'arena' : 'clan', 'combat')
+        : `Turn ${f.fight.m?.turn || 1}. Choose your next move.`, f.fight.kind === 'duel' ? 'family' : f.fight.kind === 'arena' ? 'arena' : 'clan', 'combat')
   }
   const ult = (f.lovers || []).find(l => l.ultimatum)
   if (ult) add('urgent', 'ultimatum', 'alert', `${ult.person.given} wants an answer`, f.spouse ? 'Leave your spouse, let them go, or one more season.' : 'Marry them, let them go, or one more season.', 'family')
@@ -96,8 +96,13 @@ function collectAttention(s, gs) {
   if (ar && typeof ARTS !== 'undefined') {
     if (ar.offers?.length) add('ready', 'arts-offer', 'breakthrough', 'A breakthrough insight', `${ar.offers.length > 1 ? `${ar.offers.length} choices wait` : `Three arts from ${ar.offers[0].realm}`}: keep one in Path → Arts.`, 'arts')
     const held = Object.keys(s.inventory || {}).filter(k => k.startsWith('manual_') && s.inventory[k] > 0 && ARTS[k.slice(7)])
-    const studyable = !ar.study && held.filter(k => { const a = ARTS[k.slice(7)], kn = ar.known[a.id]; return (s.stageIndex || 0) >= a.minStage && !(kn && kn.mastery >= ART_MASTERY_MAX) })
-    if (studyable?.length) add('ready', 'arts-study', 'scroll', studyable.length === 1 ? `${ARTS[studyable[0].slice(7)].name}: a manual to study` : `${studyable.length} martial art manuals to study`, 'Study one in Path → Arts or from your pack.', 'arts')
+    // 1.14b: while a study desk is free (more desks as your realm rises)
+    const desks = ar.studies || [], deskN = gs?.studySlots ? gs.studySlots() : 1
+    const studyable = desks.length < deskN && held.filter(k => { const a = ARTS[k.slice(7)], kn = ar.known[a.id]; return (s.stageIndex || 0) >= a.minStage && !(kn && kn.mastery >= ART_MASTERY_MAX) && !desks.some(d => d.artId === a.id) })
+    if (studyable?.length) add('ready', 'arts-study', 'scroll', studyable.length === 1 ? `${ARTS[studyable[0].slice(7)].name}: a manual to study` : `${studyable.length} martial art manuals to study`, `${deskN - desks.length === 1 ? 'A study desk is free' : `${deskN - desks.length} study desks are free`}: Path → Arts or your pack.`, 'arts')
+    // A spare manual (an art you know) your sect's library would take: Contribution + war strength (user 2026-09-30)
+    const give = gs?.sectDonateInfo?.()?.manuals.filter(x => x.spare && !x.lock)
+    if (give?.length) add('idle', 'sect-donate', 'scroll', give.length === 1 ? `A spare manual: ${ARTS[give[0].id].name}` : `${give.length} spare manuals`, `Your sect's library would take ${give.length === 1 ? 'it' : 'them'}${give[0].contribution ? ' for Contribution' : ''} and train for war on ${give.length === 1 ? 'it' : 'them'}.`, s.ownSect?.founded ? 'sect-halls' : 'sect-library')
     const kind = k => Object.keys(ar.known).filter(id => ARTS[id]?.kind === k)
     const freeMove = ar.loadout.moves.includes(null) && kind('move').some(id => !ar.loadout.moves.includes(id))
     const slots = gs?.passiveSlots ? gs.passiveSlots() : 1

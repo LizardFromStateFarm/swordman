@@ -2,6 +2,7 @@
 // let go), duel win / lose / flee, Devoted bonus + sabotage, uncapped children, partner Bloodline term.
 // Run: npm run checks (all) · node scripts/sim/checks/family-marriage.js (this file). Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
+const { playFight } = require('../fight-helpers.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
 async function married(seed) {
   const sim = await createSim({ seed }); await sim.boot(0)
@@ -56,11 +57,11 @@ const years = (sim, n) => { for (let i = 0; i < n * 120 + 5; i++) sim.step(1) }
     const m = await married(seed); const g = m.gs, st = g.get()
     st.family.duel = { year: 1, reason: 'test' }
     st.stageIndex = want === 'won' ? 21 : 1; st.family.spouse.stageIndex = want === 'won' ? 1 : 21; g._recalc()
-    m.sim.ev('globalThis.__r = Math.random; Math.random = () => ' + (want === 'won' ? 0.0 : 0.99))
-    let d = g.resolveDuel('fight')   // 1.8b-3b: exchange by exchange, under the forced RNG
-    for (let i = 0; i < 8 && g.get().family?.fight; i++)   // A6-3a: a won duel waits for the end choice — Finish (the old outcome)
-      d = { ...(g.get().family.fight.over ? g.personFightFinish('finish') : g.fightExchange('press')), chance: d.chance }
-    m.sim.ev('Math.random = globalThis.__r')
+    let d = g.resolveDuel('fight')   // 1.14a: fought on moves (fight-helpers.js decides it); a won duel waits for Finish
+    const chance = d.chance
+    d = playFight(g, want === 'won' ? 'win' : 'lose') || d
+    if (g.get().family?.fight?.over) d = g.personFightFinish('finish')
+    d = { ...d, chance: Math.round(chance * 100) / 100 }
     const after = g.get()
     if (want === 'won') assert(d.outcome === 'won' && after.family.formerSpouses.at(-1).alive === false && after.family.formerSpouses.at(-1).endCause === 'duel' && after.health >= 1, `duel won (chance ${d.chance}) → spouse dead, you wounded`)
     else assert(d.outcome === 'lost' && after.lastReincarnation?.cause === 'spouse_duel' && after.generation === 2, `duel lost (chance ${d.chance}) → life ends (spouse_duel)`)
@@ -81,4 +82,15 @@ const years = (sim, n) => { for (let i = 0; i < n * 120 + 5; i++) sim.step(1) }
   { const m = await married(31); const g = m.gs, st = g.get()
     st.family.event = { id: 'anniversary', crisis: false, year: 1 }; st.spiritStones = 0
     assert(g.resolveMarriageEvent(0).reason === 'cant_afford', 'unaffordable choice rejected') }
+  // Affection drifts much slower while you are away or in Idle Mode (2026-09-30)
+  { const m = await married(41); const g = m.gs, st = g.get()
+    const K = m.sim.ev('({ per: AFFECTION_DRIFT_PER_YEAR, frac: AFFECTION_DRIFT_AWAY_FRAC })')
+    const drift = () => { st.family.affection = 80; g._tickFamily(); return 80 - st.family.affection }   // above 50 → it drops
+    g.setPresent(true); st.playMode = 'active'
+    assert(Math.abs(drift() - K.per) < 1e-9, `actively playing: affection drifts the full ${K.per}/yr`)
+    g.setPresent(false)
+    assert(Math.abs(drift() - K.per * K.frac) < 1e-9, `away (window hidden/unfocused): drifts ×${K.frac} → ${(K.per * K.frac).toFixed(2)}/yr`)
+    g.setPresent(true); st.playMode = 'idle'
+    assert(Math.abs(drift() - K.per * K.frac) < 1e-9, `Idle Mode: drifts ×${K.frac} too`)
+    st.playMode = 'active' }
 })()

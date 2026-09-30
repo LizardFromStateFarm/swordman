@@ -9,7 +9,9 @@
 // ── Affection ────────────────────────────────────────────────────────────────
 const AFFECTION_START            = 60
 const AFFECTION_SAME_PERSONALITY = 10     // bonus at the wedding when you share a temperament
-const AFFECTION_DRIFT_PER_YEAR   = 0.3    // toward AFFECTION_REST, each game year
+const AFFECTION_DRIFT_PER_YEAR   = 0.3    // toward AFFECTION_REST, each game year — only when you are actively playing
+const AFFECTION_DRIFT_AWAY_FRAC  = 0.1    // 2026-09-30 (user): ×the drift while you are away (window hidden/unfocused) OR
+                                          // in Idle Mode — absence is not punished, so a partner's affection barely cools
 const AFFECTION_REST             = 50
 const AFFECTION_DEVOTED          = 75     // ≥ this: DEVOTED_BT_BONUS, discovery leans toward acceptance
 const AFFECTION_CRISIS           = 25     // < this: crisis events can fire
@@ -24,10 +26,7 @@ const FORGIVE_AFFECTION     = 15
 const BEG_STAY_CHANCE       = 0.4
 const BEG_STAY_AFFECTION    = 35
 
-// ── Duel to the death ────────────────────────────────────────────────────────
-const DUEL_BASE_WIN         = 0.5
-const DUEL_WIN_PER_STAGE    = 0.08        // per stage you're ahead of your spouse
-const DUEL_WIN_RANGE        = [0.1, 0.9]
+// ── Duel to the death (fought on moves since 1.14a: the odds are the move-fight estimate) ──
 const DUEL_WIN_HEALTH_COST  = 30
 
 // ── Affairs (commit B) ───────────────────────────────────────────────────────
@@ -606,18 +605,11 @@ const LOVER_SCORN = { default: 0.15, psycho: 0.6, demonking: 0.45, arrogant: 0.4
                       poet: 0.25, grumpy: 0.2, niceguy: 0.02, stoic: 0.05, lazy: 0.05, coward: 0.05 }
 
 // ── 1.8b-3b: your own fights (spouse duel, head challenges) ───────────────────
-// First to FIGHT_TO exchanges. Press beats Feint, Feint beats Guard, Guard beats Press (± FIGHT_EDGE on the exchange).
-const FIGHT_TO          = 2
-const FIGHT_EDGE        = 0.18
-const FIGHT_EXCHANGE_RANGE = [0.05, 0.95]
-const FIGHT_WOUND       = 4        // Health per exchange lost (never below 1 mid-fight)
+// Since Phase 42c (task 1.14a) every fight is on the move engine (assets/data/arts.js MOVE_COMBAT + PERSON_*); the
+// Press / Guard / Feint race (FIGHT_TO, FIGHT_EDGE, FIGHT_TACTICS, FIGHT_WOUND, DUEL_TO) is gone.
 const YIELD_ACCEPT_BASE = 0.5      // lethal fight: the opponent accepts your yield with this + morality/100 (+ bond for kin)
-const FIGHT_TACTICS = {
-  press: { name: 'Press', glyph: 'sword', beats: 'feint', blurb: 'All-out attack' },
-  guard: { name: 'Guard', glyph: 'shield', beats: 'press', blurb: 'Hold and counter' },
-  feint: { name: 'Feint', glyph: 'veil', beats: 'guard', blurb: 'Draw them open' },
-}
-// How each temper fights: weights for press / guard / feint, and the hint the player sees.
+// How each temper fights: how often they attack / guard / trick (weights the move they pick, with PERSON_TEMPER_AI), their
+// parry chance (guard × PERSON_FIGHT.parryPerGuard), and the hint the player sees once they have fought them.
 const FIGHT_STYLE = {
   default:   { press: 34, guard: 33, feint: 33, hint: 'fights without a clear habit' },
   hotblood:  { press: 60, guard: 15, feint: 25, hint: 'charges in, again and again' },
@@ -638,7 +630,7 @@ const FIGHT_STYLE = {
 const TOURNAMENT_SPARE_BOND = -20   // a spared loser leaves the house in disgrace
 
 // ── Phase 35 / A6-3a (combat.md): your fights with people, on the battle page ──
-const DUEL_TO = 3                   // exchanges to win a fight with a person (beasts: BATTLE_TO); odds keep the old match chance
+
 // A won fight waits for your end choice. What each temper makes of it: 'debt' (they owe you) or 'grudge' (they hate you).
 const SPARE_REACTION = { default: 'debt', arrogant: 'grudge', demonking: 'grudge', psycho: 'grudge', hotblood: 'grudge', grumpy: 'grudge' }
 const RAISE_REACTION = { default: 'debt', psycho: 'grudge', demonking: 'grudge' }

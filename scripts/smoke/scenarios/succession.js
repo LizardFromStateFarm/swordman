@@ -87,17 +87,18 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await click('#confirm-yes')
   await sleep(300)
   // A6-3a: the challenge is fought on the battle page, exchange by exchange; a win waits for the end choice
-  const playOut = async t => {
-    for (let i = 0; i < 12 && await ev('combatView.step === "fight" || combatView.step === "end"'); i++) {
+  const FU = require('../fight-ui.js')({ ev, click, sleep })
+  const playOut = async () => {                                   // 1.14a: on moves; the fight's own odds decide it
+    for (let i = 0; i < 40 && await ev('combatView.step === "fight" || combatView.step === "end"'); i++) {
       if (await ev('combatView.step === "end"')) { await click('#combat-panel .cb-end'); await sleep(200); continue }
-      await ev('combatView.lockUntil = 0'); await click(`#combat-panel [data-tac="${t}"]`); await sleep(150)
+      await FU.move()
     }
     await ev('combatView.isOpen() && combatView.step !== "died" && (combatView.step = "result", combatView.close())')
     if (await ev('combatView.step === "died"')) await sleep(3200)
   }
   assert(await ev('!!gameState.get().family.fight && combatView.isOpen() && combatView.mode === "person"'), 'the challenge opens the battle page')
   await shot('2.6e-2-fight-card')
-  await playOut('guard')
+  await playOut()
   await shot('2.6e-2-after-challenge')
   if (await ev('!!gameState.get().interlude')) { await ev('gameState.finishInterlude()'); await click('#death-ok') }   // walked back to a live game if you lost lethally
 
@@ -141,12 +142,10 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await click('#family-choices [data-sd="1"]'); await sleep(300)
   for (let b = 0; b < 4 && await ev('!!gameState.get().family.bracket'); b++) {   // A6-3a: your bouts are played
     if (!await ev('combatView.isOpen()')) await ev('combatView.resume()')
-    await ev('Math.__r = Math.random; Math.random = () => 0')
     for (let i = 0; i < 12 && await ev('combatView.step === "fight" || combatView.step === "end"'); i++) {
       if (await ev('combatView.step === "end"')) { await click('#combat-panel .cb-end'); await sleep(200); continue }
-      await ev('combatView.lockUntil = 0'); await click('#combat-panel [data-tac="press"]'); await sleep(150)
+      await FU.win()
     }
-    await ev('Math.random = Math.__r')
     if (await ev('!!document.querySelector("#combat-panel [data-nextbout]")')) { await click('#combat-panel [data-nextbout]'); await sleep(300) }
   }
   await ev('combatView.isOpen() && (combatView.step = "result", combatView.close())')

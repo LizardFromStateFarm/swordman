@@ -1,0 +1,220 @@
+{
+  "MERIT_STAGE": 40,
+  "MERIT_DEED_WAR_WON": 3,
+  "MERIT_DEED_BEAST": 2,
+  "MERIT_DEED_DISCIPLE": 1,
+  "MERIT_DEED_CAP": 30,
+  "CATCHUP_QPS_MULT": 2.5,
+  "CATCHUP_BT_BONUS": 0.1,
+  "CATCHUP_AUTO_BT": true,
+  "ANCESTOR_BLESSING_QPS": 0.05,
+  "ANCESTOR_BLESSING_QPS_MAX": 3,
+  "REALM_FIRST_ID": {
+    "Qi Condensation": "realm_qi",
+    "Foundation Building": "realm_fb",
+    "Core Formation": "realm_cf",
+    "Nascent Soul": "realm_ns",
+    "Spirit Severing": "realm_ss"
+  },
+  "CLAN_FIRSTS": {
+    "realm_qi": {
+      "label": "First to reach Qi Condensation",
+      "merit": 5
+    },
+    "realm_fb": {
+      "label": "First to reach Foundation Building",
+      "merit": 10
+    },
+    "realm_cf": {
+      "label": "First to reach Core Formation",
+      "merit": 20
+    },
+    "realm_ns": {
+      "label": "First to reach Nascent Soul",
+      "merit": 35
+    },
+    "realm_ss": {
+      "label": "First to reach Spirit Severing",
+      "merit": 50
+    },
+    "asc_attempt": {
+      "label": "First to attempt Ascension",
+      "merit": 40
+    },
+    "ascended": {
+      "label": "First to survive Ascension",
+      "merit": 150
+    },
+    "joined_sect": {
+      "label": "First to join a sect",
+      "merit": 5
+    },
+    "founded_sect": {
+      "label": "First to found a sect",
+      "merit": 20
+    },
+    "first_beast": {
+      "label": "First to tame a spirit beast",
+      "merit": 10
+    },
+    "war_won": {
+      "label": "First war won",
+      "merit": 15
+    },
+    "married": {
+      "label": "First marriage",
+      "merit": 10
+    },
+    "first_child": {
+      "label": "First child born",
+      "merit": 5
+    }
+  },
+  "CLAN_LEGACIES": {
+    "ancestral_stipend": {
+      "group": "Heritage",
+      "name": "Ancestral Stipend",
+      "nameCN": "祖产",
+      "desc": "The heir starts life with more spirit stones.",
+      "levels": [
+        {
+          "cost": 15,
+          "value": 50
+        },
+        {
+          "cost": 40,
+          "value": 150
+        },
+        {
+          "cost": 90,
+          "value": 400
+        }
+      ]
+    },
+    "heirloom": {
+      "group": "Heritage",
+      "name": "Heirloom",
+      "nameCN": "传家宝",
+      "desc": "Equipped items pass to the heir instead of being lost.",
+      "levels": [
+        {
+          "cost": 40,
+          "value": 1
+        },
+        {
+          "cost": 100,
+          "value": 2
+        }
+      ]
+    },
+    "family_manual": {
+      "group": "Heritage",
+      "name": "Family Manual",
+      "nameCN": "家传功法",
+      "desc": "Pick one technique the clan has learned; the heir learns it free once eligible.",
+      "levels": [
+        {
+          "cost": 30,
+          "value": 3
+        },
+        {
+          "cost": 60,
+          "value": 7
+        },
+        {
+          "cost": 120,
+          "value": 99
+        }
+      ]
+    },
+    "beast_lineage": {
+      "group": "Heritage",
+      "name": "Beast Lineage",
+      "nameCN": "灵兽血脉",
+      "desc": "The offspring of your strongest tamed beast joins the heir.",
+      "requires": "first_beast",
+      "levels": [
+        {
+          "cost": 60,
+          "value": 1
+        }
+      ]
+    },
+    "refined_meridians": {
+      "group": "Blood",
+      "name": "Refined Meridians",
+      "nameCN": "洗髓",
+      "desc": "Every generation cultivates a little faster, permanently.",
+      "levels": [
+        {
+          "cost": 30,
+          "value": 0.03
+        },
+        {
+          "cost": 70,
+          "value": 0.06
+        },
+        {
+          "cost": 150,
+          "value": 0.09
+        }
+      ]
+    }
+  },
+  "EPITAPHS": {
+    "expedition": [
+      "{name}, who fell far from home chasing one more vein of Qi.",
+      "{name}, who never returned from beyond the last marker on the map.",
+      "{name}, whose bones the mountain kept."
+    ],
+    "sect_war": [
+      "{name}, who died defending a mountain gate not their own to abandon.",
+      "{name}, fallen banner in hand, at {age}."
+    ],
+    "event": [
+      "{name}, claimed by a cultivation mishap at {realm}.",
+      "{name}, who reached too far, too fast."
+    ],
+    "ascension_failed": [
+      "{name}, who broke {realm} at {age} and reached for the heavens — and fell.",
+      "{name}, whose Ascension Trial the heavens refused."
+    ],
+    "passed_mantle": [
+      "{name}, who laid down the path at {realm}, {age} years old, and let the next generation walk it.",
+      "{name}, who chose to stop while still standing."
+    ],
+    "spouse_duel": [
+      "{name}, slain by the one they married.",
+      "{name}, who lost a duel no outsider ever heard of."
+    ],
+    "beast_hunt": [
+      "{name}, who went into the hills to kill a beast at {age}, and did not come down.",
+      "{name}, remembered by the clan as the one who hunted something stronger."
+    ],
+    "arena_blood": [
+      "{name}, who bet their life on the sand at {age}, and lost it there.",
+      "{name}, whose name the arena crowds still chant, though not for the reason they wanted."
+    ],
+    "challenge_lost": [
+      "{name}, who reached for the head seat and was cut down reaching.",
+      "{name}, buried the day they challenged for the clan."
+    ],
+    "challenged": [
+      "{name}, who held the head seat until someone younger wanted it more.",
+      "{name}, the clan head who did not see the blow coming."
+    ],
+    "stepdown_tournament": [
+      "{name}, who fell in the tournament that was meant to crown someone else.",
+      "{name}, one of the names the succession tournament did not spare."
+    ],
+    "branch_war": [
+      "{name}, who led their branch to war and did not lead it home.",
+      "{name}, fallen at the head of a branch that would not bend."
+    ],
+    "ascended": [
+      "{name}, who broke {realm} at {age} and rose to the Immortal Realms — an Ascended Ancestor now watches over the clan.",
+      "{name}, the {clan} clan’s first to leave the mortal world behind, and not by dying.",
+      "{name}, who walked the last mortal step at {age} and did not come back down the mountain."
+    ]
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "WAR_MIN_INTERVAL_HOURS": 2,
+  "WAR_MAX_INTERVAL_HOURS": 6,
+  "WAR_FAME_SOFTCAP": 500,
+  "WAR_SCOUT_SECONDS": 300,
+  "WAR_PREP_SECONDS": 600,
+  "WAR_REINFORCE_COST_PER_FAME": 2,
+  "WAR_REINFORCE_POWER_BONUS": 0.25,
+  "WAR_ALLY_COST_BASE": 100,
+  "WAR_ALLY_COST_PER_FAME": 1,
+  "WAR_ALLY_POWER_BONUS": 0.2,
+  "WAR_ARRAY_DAMAGE_HOURS": 3,
+  "WAR_LOSS_RESOURCE_FRAC": 0.08,
+  "WAR_SPOILS_STONE_BASE": 15,
+  "WAR_SPOILS_STONE_FRAC": 0.4,
+  "WAR_SPOILS_HERB_BASE": 3,
+  "WAR_SPOILS_HERB_FRAC": 0.05,
+  "RIVAL_SECT_PREFIXES": [
+    "Black",
+    "Crimson",
+    "Iron",
+    "Shadow",
+    "Golden",
+    "Silver",
+    "Jade",
+    "Thunder",
+    "Frost",
+    "Blood",
+    "Nine Heavens",
+    "Vermillion",
+    "Obsidian",
+    "Ember",
+    "Coiling"
+  ],
+  "RIVAL_SECT_SUFFIXES": [
+    "Fang Sect",
+    "Blade Hall",
+    "Serpent Pavilion",
+    "Fist Clan",
+    "Talon Sect",
+    "Storm Hall",
+    "Shadow League",
+    "Dragon Sect",
+    "Wolf Pack",
+    "Reaper Hall"
+  ],
+  "MEMBER_WAR_MIN_INTERVAL_HOURS": 4,
+  "MEMBER_WAR_MAX_INTERVAL_HOURS": 10,
+  "MEMBER_WAR_SCOUT_SECONDS": 1800,
+  "MEMBER_WAR_PREP_SECONDS": 5400,
+  "MEMBER_WAR_ANSWER_BONUS": 0.3,
+  "MEMBER_WAR_CHEST_MAX_BONUS": 0.3,
+  "MEMBER_WAR_CHEST_BASE": 150,
+  "MEMBER_WAR_CHEST_PER_RANK": 100,
+  "MEMBER_WAR_PILL_BONUS": 0.05,
+  "MEMBER_WAR_MAX_PILLS": 3,
+  "MEMBER_WAR_PILL_CONTRIB": 15,
+  "MEMBER_WAR_BEAST_BASE_BONUS": 0.05,
+  "MEMBER_WAR_BEAST_LVL_BONUS": 0.02,
+  "MEMBER_WAR_BEAST_MAX_BONUS": 0.25,
+  "MEMBER_WAR_BEAST_XP": 25,
+  "MEMBER_WAR_WIN_CONTRIB": 60,
+  "MEMBER_WAR_SPOILS_STONE_BASE": 20,
+  "MEMBER_WAR_SPOILS_STONE_PER_TIER": 12,
+  "MEMBER_WAR_RARE_CHANCE": 0.15,
+  "MEMBER_WAR_RARE_ITEMS": [
+    "demon_essence",
+    "artifact_fragment"
+  ],
+  "MEMBER_WAR_BUFF_SUPPRESS_HOURS": 3,
+  "MEMBER_WAR_LOSS_CONTRIB": 30,
+  "MEMBER_WAR_IGNORE_CONTRIB": 40,
+  "MEMBER_WAR_IGNORE_KARMA": 2,
+  "MEMBER_WAR_DESERT_KARMA": 5,
+  "WAR_ORDER_ANSWER_OPTIONS": [
+    "always",
+    "defensive",
+    "stay_out"
+  ],
+  "WAR_ORDER_LEND_BEAST_OPTIONS": [
+    "never",
+    "strongest"
+  ],
+  "WAR_ORDER_REINFORCE_OPTIONS": [
+    "never",
+    "if_affordable"
+  ],
+  "WAR_ORDER_ALLY_OPTIONS": [
+    "never",
+    "cheapest",
+    "best"
+  ],
+  "WAR_ORDERS_DEFAULT": {
+    "answer": "always",
+    "chestStones": 0,
+    "lendBeast": "never",
+    "reinforce": "never",
+    "reinforceKeep": 200,
+    "ally": "never"
+  }
+}

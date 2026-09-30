@@ -4,6 +4,10 @@ _Covers: assets/data/sect-buildings.js · game-state.js · game.js (renderOwnSec
 Phase 5B (Sect Wars) is now built — see [sect-war.md](sect-war.md). It reads `derived.warDefense`/`sectFame`
 computed here, and can zero out Defensive Array's `war_defense` contribution via `sectWar.arrayDamagedUntil`.
 
+> **Sect library (user 2026-09-30):** `ownSect.library` — manuals you give your own sect. Each adds war strength
+> (`sectShelfWar`, ×(1 + Σ by grade, cap 25%) in `_resolveSectWar`), and you study a shelved art at half time without a manual
+> (`studyFromSect`). Shown at the bottom of Sect → Halls. arts.md → "Giving manuals to your sect".
+
 ## State
 - `ownSect: { founded, name, foundedAt, hallLevel, buildings, disciples, recruitPool, poolRefreshAt, _incomeAcc }`
   - `founded: bool` · `name: string` (≤20 chars) · `hallLevel: 1–3` (Sect Hall; each level = +5 disciple cap, Lv1 = 5)

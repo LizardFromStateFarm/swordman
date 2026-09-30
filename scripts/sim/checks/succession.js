@@ -6,17 +6,15 @@
 // Run: npm run checks (all) · node scripts/sim/checks/succession.js (this file). Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
-// 1.8b-3b: your fights are played exchange by exchange. Plays one out with the best (want 'win') or worst tactic.
+// 1.8b-3b / 1.14a: your fights are played on moves; fight-helpers.js decides one (want 'win' / 'lose').
 // A6-3a: a won fight waits for the end choice — `end` picks it (default: finish a lethal fight, raise a non-lethal one,
 // which reproduce the old outcomes). A step-down bracket chains bouts until it is settled.
+const { playFight } = require('../fight-helpers.js')
 const fought = (sim, gs, start, want = 'win', end = null) => { let r = null
-  sim.ev(`globalThis.__fr = Math.random; Math.random = () => ${want === 'win' ? 0.001 : 0.999}`)   // decide it, not luck
   for (let i = 0; i < 60 && gs.get().family?.fight; i++) {
     const fi = gs.get().family.fight
     if (fi.over === 'won') { r = gs.personFightFinish(end || (fi.lethal ? 'finish' : 'raise')); continue }
-    const t = Object.entries(gs.fightInfo().tactics).sort((a, b) => want === 'win' ? b[1] - a[1] : a[1] - b[1])[0][0]
-    r = gs.fightExchange(t) }
-  sim.ev('Math.random = globalThis.__fr')
+    r = playFight(gs, want === 'win' ? 'win' : 'lose') }
   return { ...start, outcome: r?.outcome } }
 
 // A first-life head (stage 18) married with `nKids` adult children (stages 5…), optional named heir.

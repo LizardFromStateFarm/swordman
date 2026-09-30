@@ -52,15 +52,18 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
   s.comprehension = 0
   let r = gs.studyArt(pick.id)
   assert(r.ok && r.seconds === D.R.yellow.studySeconds && s.inventory['manual_' + pick.id] === 1, `studying takes the manual and ${r.seconds}s`)
-  assert(gs.studyArt(pick.id).reason === 'busy', 'one manual at a time')
+  assert(gs.studyArt(pick.id).reason === 'studying', 'the same art cannot sit on two desks')
+  const other = D.L.find(a => a.kind === 'move' && a.rarity === 'yellow' && !a.sig && !known.includes(a.id) && a.minStage === 0 && a.id !== pick.id)
+  s.inventory['manual_' + other.id] = 1
+  assert(gs.studySlots() === 1 && gs.studyArt(other.id).reason === 'busy', 'one desk below Foundation: a second manual waits (1.14b)')
   gs.cancelStudy()
-  assert(!s.arts.study && s.inventory['manual_' + pick.id] === 2, 'cancelling returns the manual')
+  assert(!s.arts.studies.length && s.inventory['manual_' + pick.id] === 2, 'cancelling returns the manual')
   s.comprehension = 10
   r = gs.studyArt(pick.id)
   assert(r.seconds === Math.round(D.R.yellow.studySeconds / 1.5), `Comprehension 10 studies faster (${r.seconds}s)`)
-  s.arts.study.endsAt = sim.ev('Date.now()') - 1; gs.tick(0.1)
-  assert(s.arts.known[pick.id]?.mastery === 1 && !s.arts.study, 'the timer ends → the art is learned')
-  gs.studyArt(pick.id); s.arts.study.endsAt = sim.ev('Date.now()') - 1; gs.tick(0.1)
+  s.arts.studies[0].endsAt = sim.ev('Date.now()') - 1; gs.tick(0.1)
+  assert(s.arts.known[pick.id]?.mastery === 1 && !s.arts.studies.length, 'the timer ends → the art is learned')
+  gs.studyArt(pick.id); s.arts.studies[0].endsAt = sim.ev('Date.now()') - 1; gs.tick(0.1)
   assert(s.arts.known[pick.id].mastery === 2, 'a duplicate manual deepens it: mastery 2')
   const st1 = gs.artStats(pick.id)
   assert(st1.power === Math.round(pick.move.power * 1.08) && st1.cost === Math.max(0, pick.move.cost - 1), 'mastery raises power, lowers cost')
@@ -76,8 +79,15 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
   assert(gs.setArtSlot('move', 1, pas.id).reason === 'wrong_kind', 'a passive cannot go in a move slot')
   assert(gs.passiveSlots(0) === 1 && gs.passiveSlots(10) === 2 && gs.passiveSlots(13) === 3 && gs.passiveSlots(16) === 4 && gs.passiveSlots(19) === 5, 'passive slots 1 · 2 · 3 · 4 · 5 by realm')
   assert(gs.setArtSlot('passive', 0, pas.id).ok && gs.setArtSlot('passive', 1, pas.id).reason === 'locked', 'the second passive slot is locked at Mortal')
-  s.family.fight = { kind: 'beast' }
-  assert(gs.setArtSlot('move', 2, null).reason === 'fighting', 'no loadout changes mid-fight')
+  // (user 2026-09-30) The loadout is never locked: a battle runs on the deck it began with (`you.slots`), so changing your
+  // arts mid-fight is allowed and never alters the fight already underway.
+  const foeRec = { typeId: D.B[0], traits: [], mood: 'wild' }
+  const b0 = gs._mbNew(foeRec, 'slay')
+  assert(Array.isArray(b0.you.slots) && b0.you.slots.length === 4, 'a battle snapshots your 4 move slots')
+  s.family.fight = { kind: 'beast', beast: { encId: 'x', ...foeRec }, stance: 'slay', round: 1, log: [], m: b0, over: null }
+  const deck0 = b0.you.slots.map(id => id || null)
+  assert(gs.setArtSlot('move', 2, null).ok, 'the loadout is not refused mid-fight (2026-09-30)')
+  assert(gs.fightMoves().slots.map(x => x?.id || null).join() === deck0.join(), 'the battle grid stays on the deck it began with')
   s.family.fight = null
 
   // ── breakthrough offers + grants ──

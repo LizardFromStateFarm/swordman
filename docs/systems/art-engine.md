@@ -228,3 +228,8 @@ No game state. One presentation setting: `settings.artStyle` — `'ink'` (defaul
 - Visual review (user 2026-09-28): one fresh reviewer agent first (fix its blockers), then the user decides — capture with
   `node scripts/smoke/cdp.js scripts/smoke/scenarios/ink-art.js` → `scripts/smoke/out/ink-*.png`
   (`ink-still-*.png` = 4× engine renders, `ink-still-face/hilt.png` = 12× close-ups; the rest are in-app captures per layout mode + phone).
+- **Battle effects (1.13b):** the battle page's move effects (BattleScene, renderer/engine/battle-scene.js) follow the same
+  dots-only rule: every element's projectile, impact, ward and status aura is built from dots (boulders = a hex grid of
+  dots inside an angular outline, lit from the moon side), blended additively so Qi reads as light. Sheet:
+  `node scripts/smoke/cdp.js scripts/smoke/scenarios/battle-fx.js` → `scripts/smoke/out/battle-fx-sheet-*.png`. Spec +
+  as-built: arts.md → "42b part 2".

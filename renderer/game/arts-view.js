@@ -1,13 +1,14 @@
 // ArtsView — Path → Arts (Phase 42, task 1.12; docs/systems/arts.md → "UX pass"). Left: the breakthrough offer (pick 1 of
-// 3), the study desk (the manual under study with a live countdown, or the manuals waiting in your pack) and the loadout
+// 3), the study desks (1.14b: one per ART_STUDY_SLOTS by realm — each with its manual + live countdown, a free desk lists
+// the manuals waiting in your pack, a locked desk names the realm that opens it) and the loadout
 // (4 move slots as a 2×2 grid + passive slots, locked ones naming the realm that opens them). Right: the library — every
-// art you know or hold a manual for, filterable by kind/element, "N of M found". Click a slot → the library filters to
+// art you know or hold a manual for, filterable by kind / grade / element, "N of M found". Click a slot → the library filters to
 // that kind and each art offers "Equip here". State comes from gameState.artsInfo() / artStats() / artStudyLock(); every
 // change goes through gameState (studyArt, cancelStudy, chooseArtOffer, setArtSlot). h: { esc, flash, fmtTime }.
 
 const ArtsView = {
   pick: null,                        // { kind: 'move' | 'passive', index } while choosing for a slot
-  filter: { kind: 'all', el: 'all' },
+  filter: { kind: 'all', el: 'all', rar: 'all' },
   open: null,                        // the library row expanded
   _wired: false,
 
@@ -25,15 +26,14 @@ const ArtsView = {
   },
   studyLockText(s, gs, id) {
     const lock = gs.artStudyLock(id), a = ARTS[id]
-    return lock === 'stage' ? `Too profound: opens at ${this.realm(a.minStage)}` : lock === 'busy' ? 'You are studying another manual'
-      : lock === 'maxed' ? 'Mastered: sell the spare manual' : ''
+    return lock === 'stage' ? `Too profound: opens at ${this.realm(a.minStage)}` : lock === 'busy' ? 'Every study desk is in use'
+      : lock === 'studying' ? 'Already on a study desk' : lock === 'maxed' ? 'Mastered: sell the spare manual' : ''
   },
 
   render(s, el, gs, h) {
     this.gs = gs; this.h = h; this.el = el
     if (!this._wired) { el.addEventListener('click', e => this._click(e)); this._wired = true }
     const esc = h.esc, info = gs.artsInfo()
-    if (this.pick && s.family?.fight) this.pick = null
 
     // ── the breakthrough offer ──
     const offers = info.offers.map(o => `<section class="art-offer">
@@ -45,24 +45,29 @@ const ArtsView = {
         <div class="art-desc">${esc(a.move?.desc || a.passive.desc)}</div>
         <button class="art-btn gold" data-offer="${o.id}" data-art="${id}">Keep this art</button></div>` }).join('')}</div></section>`).join('')
 
-    // ── the study desk ──
+    // ── the study desks (1.14b: more desks as your realm rises) ──
     const held = Object.keys(s.inventory).filter(k => k.startsWith('manual_') && s.inventory[k] > 0).map(k => k.slice(7)).filter(id => ARTS[id])
-    let desk
-    if (info.study) {
-      const a = ARTS[info.study.artId], total = (info.study.endsAt - info.study.startedAt) / 1000, left = Math.max(0, Math.ceil((info.study.endsAt - Date.now()) / 1000))
-      desk = `<div class="art-study on">${Icon('scroll')}<div class="art-study-t"><div class="art-k">Studying</div>
+    const busy = info.studies.map(d => {
+      const a = ARTS[d.artId], total = (d.endsAt - d.startedAt) / 1000, left = Math.max(0, Math.ceil((d.endsAt - Date.now()) / 1000))
+      return `<div class="art-study on">${Icon('scroll')}<div class="art-study-t"><div class="art-k">${d.src === 'clan' ? 'From the clan library' : d.src === 'sect' ? 'From your sect library' : 'Studying'}</div>
         <div class="art-study-n">${this.elIcon(a.element)}<span class="r-${a.rarity}">${esc(a.name)}</span>${info.known[a.id] ? ' <span class="art-dim">(to deepen it)</span>' : ''}</div>
-        <div class="art-bar"><b data-arts-bar="${info.study.startedAt}:${info.study.endsAt}" style="width:${Math.min(100, 100 * (1 - left / total)).toFixed(1)}%"></b></div>
-        <div class="art-dim"><span data-arts-left="${info.study.endsAt}">${h.fmtTime(left)}</span> left · study goes on while the game is closed</div></div>
-        <button class="art-btn quiet" data-cancel-study title="The manual goes back in your pack">Stop</button></div>`
-    } else {
-      const ready = held.filter(id => !gs.artStudyLock(id))
-      desk = `<div class="art-study">${Icon('scroll')}<div class="art-study-t"><div class="art-k">Study desk</div>
+        <div class="art-bar"><b data-arts-bar="${d.startedAt}:${d.endsAt}" style="width:${Math.min(100, 100 * (1 - left / total)).toFixed(1)}%"></b></div>
+        <div class="art-dim"><span data-arts-left="${d.endsAt}">${h.fmtTime(left)}</span> left · goes on while the game is closed</div></div>
+        <button class="art-btn quiet" data-cancel-study="${d.artId}" title="${d.src !== 'manual' ? 'Stop: the library keeps its copy' : 'Stop: the manual goes back in your pack'}">Stop</button></div>`
+    }).join('')
+    const free = info.studySlots - info.studies.length
+    const ready = held.filter(id => !gs.artStudyLock(id))
+    const freeDesk = free <= 0 ? '' : `<div class="art-study">${Icon('scroll')}<div class="art-study-t"><div class="art-k">${free === 1 ? 'A free desk' : `${free} free desks`}</div>
         ${ready.length ? `<div class="art-dim">${ready.length} manual${ready.length === 1 ? '' : 's'} ready to study:</div><div class="art-ready">${ready.slice(0, 4).map(id =>
           `<button class="art-btn" data-study="${id}">${this.elIcon(ARTS[id].element)}${esc(ARTS[id].name)} · ${h.fmtTime(gs.artStudySeconds(id))}</button>`).join('')}</div>`
-        : `<div class="art-dim">No manual to study. Manuals turn up on expeditions, on beasts you slay and as Arena prizes; each new realm offers an art of its own.</div>`}
+        : `<div class="art-dim">No manual to study. Manuals turn up on expeditions, on beasts and people you defeat, in your sect's library and as Arena prizes; each new realm offers an art of its own.</div>`}
         ${(s.comprehension || 0) > 0 ? `<div class="art-dim">Comprehension ${s.comprehension}: study is ${Math.round((1 - gs.artStudySeconds('autumn_blade_qi') / ART_RARITY.yellow.studySeconds) * 100)}% faster.</div>` : ''}</div></div>`
-    }
+    const lockedDesks = Array.from({ length: ART_STUDY_SLOTS_MAX - Math.max(info.studySlots, info.studies.length) }, (_, i) => {
+      const at = ART_STUDY_SLOTS.find(x => x.slots > info.studySlots + i)?.stage
+      return at == null ? '' : `<div class="art-study locked">${Icon('lock')}<span class="art-dim">Another desk opens at ${esc(this.realm(at))}</span></div>`
+    }).join('')
+    const desk = `<section class="art-desks"><div class="art-sec-h"><span>Study desks</span><span class="art-dim">${info.studies.length} of ${info.studySlots} in use${info.nextStudySlot ? ` · another at ${esc(this.realm(info.nextStudySlot.stage))}` : ''}</span></div>
+      ${busy}${freeDesk}${lockedDesks}</section>`
 
     // ── loadout ──
     const slot = (kind, i, id, locked) => {
@@ -84,11 +89,13 @@ const ArtsView = {
         <div class="art-moves">${info.loadout.moves.map((id, i) => slot('move', i, id)).join('')}</div>
         <div class="art-sec-h"><span>Passives</span><span class="art-dim">${info.passiveSlots} slot${info.passiveSlots === 1 ? '' : 's'} open${info.nextSlot ? ` · the next opens at ${esc(this.realm(info.nextSlot.stage))}` : ''}</span></div>
         <div class="art-passives">${pslots}</div>
-        <div class="art-note">${Icon('sword')}Battles still use Press / Guard / Feint for now. These moves take the field when combat learns the new arts.</div></section>`
+        <div class="art-note">${Icon('sword')}These four are your moves in every fight, against beasts and people. Palm Strike and Circulate are always there too.</div></section>`
 
     // ── library ──
-    const ids = [...new Set([...Object.keys(info.known), ...held])]
+    const all = [...new Set([...Object.keys(info.known), ...held])]
+    const ids = all
       .filter(id => this.filter.kind === 'all' || ARTS[id].kind === this.filter.kind)
+      .filter(id => this.filter.rar === 'all' || ARTS[id].rarity === this.filter.rar)
       .filter(id => this.filter.el === 'all' || ARTS[id].element === this.filter.el)
       .filter(id => !this.pick || (ARTS[id].kind === this.pick.kind && info.known[id]))   // picking: only arts you can equip
       .sort((x, y) => ART_RARITY_ORDER.indexOf(ARTS[y].rarity) - ART_RARITY_ORDER.indexOf(ARTS[x].rarity) || ARTS[x].name.localeCompare(ARTS[y].name))
@@ -110,9 +117,12 @@ const ArtsView = {
         <div class="art-row-a">${tags}${act}</div>${detail}</div>`
     }).join('') || `<div class="art-empty">${this.pick ? `You know no ${this.pick.kind === 'move' ? 'move' : 'passive art'} to put here yet.` : 'Nothing here yet.'}</div>`
     const chip = (key, val, label, cur) => `<button class="pack-chip${cur === val ? ' active' : ''}" data-f="${key}:${val}">${label}</button>`
-    const library = `<section class="art-sec"><div class="art-sec-h"><span>Library</span><span class="art-dim" title="Arts you have known, held or been offered">${info.found} of ${info.total} found</span></div>
+    // a grade chip carries its grade's colour (g-<grade>), so "Heaven" reads gold and "Profound" jade, as the art names do
+    const gradeChip = g => `<button class="pack-chip rar-chip g-${g}${this.filter.rar === g ? ' active' : ''}" data-f="rar:${g}">${ART_RARITY[g].name}</button>`
+    const library = `<section class="art-sec"><div class="art-sec-h"><span>Library</span><span class="art-dim" title="Arts you have known, held or been offered; the second number counts what the filters leave">${info.found} of ${info.total} found${ids.length !== all.length ? ` · ${ids.length} shown` : ''}</span></div>
       ${this.pick ? `<div class="art-picking">${Icon('play')}Choosing for ${this.pick.kind} slot ${this.pick.index + 1}<button class="art-btn quiet" data-pick-cancel>Cancel</button></div>` : ''}
       <div class="art-filters">${this.pick ? '' : chip('kind', 'all', 'All', this.filter.kind) + chip('kind', 'move', 'Moves', this.filter.kind) + chip('kind', 'passive', 'Passives', this.filter.kind)}</div>
+      <div class="art-filters">${this.pick ? '' : chip('rar', 'all', 'Any grade', this.filter.rar) + ART_RARITY_ORDER.map(gradeChip).join('')}</div>
       <div class="art-filters">${chip('el', 'all', 'Any element', this.filter.el)}${Object.keys(ART_ELEMENTS).map(e => `<button class="pack-chip el-chip el-${e}${this.filter.el === e ? ' active' : ''}" data-f="el:${e}" title="${ART_ELEMENTS[e].name}">${this.elIcon(e)}<span>${ART_ELEMENTS[e].name}</span></button>`).join('')}</div>
       <div class="art-list">${rows}</div></section>`
 
@@ -136,24 +146,23 @@ const ArtsView = {
     const gs = this.gs, h = this.h, s = gs.get(), d = t.dataset
     const say = (r, ok, msgs = {}) => r.ok ? (ok && h.flash(ok, 'positive')) : h.flash(msgs[r.reason] || 'Not now', 'negative')
     if (d.offer) { const r = gs.chooseArtOffer(d.offer, d.art); return say(r, `You keep ${ARTS[d.art].name}.`) }
-    if (d.study) return say(gs.studyArt(d.study), `You begin studying ${ARTS[d.study].name}.`, { stage: 'Too profound for your realm', busy: 'You are studying another manual', maxed: 'Already mastered' })
-    if (d.cancelStudy != null) return say(gs.cancelStudy(), 'You set the manual aside.')
+    if (d.study) return say(gs.studyArt(d.study), `You begin studying ${ARTS[d.study].name}.`, { stage: 'Too profound for your realm', busy: 'Every study desk is in use', studying: 'Already on a study desk', maxed: 'Already mastered' })
+    if (d.cancelStudy != null) return say(gs.cancelStudy(d.cancelStudy || null), 'You set it aside.')
     if (d.slot) {
       const [kind, i] = d.slot.split(':')
-      if (s.family?.fight) return h.flash('Not in the middle of a fight', 'negative')
       this.pick = this.pick?.kind === kind && this.pick.index === +i ? null : { kind, index: +i }
       this.open = null
       this.render(s, this.el, gs, h)
       if (this.pick) this.el.querySelector(".art-picking")?.scrollIntoView({ block: "start", behavior: "smooth" })   // the library may be below the fold
       return
     }
-    if (d.clear) { const [kind, i] = d.clear.split(':'); return say(gs.setArtSlot(kind, +i, null), '', { fighting: 'Not in the middle of a fight' }) }
+    if (d.clear) { const [kind, i] = d.clear.split(':'); return say(gs.setArtSlot(kind, +i, null), '') }
     if (d.equip && this.pick) {
       const r = gs.setArtSlot(this.pick.kind, this.pick.index, d.equip)
       if (r.ok) { this.pick = null; h.flash(`${ARTS[d.equip].name} equipped.`, 'positive'); return this.render(gs.get(), this.el, gs, h) }
-      return say(r, '', { fighting: 'Not in the middle of a fight', locked: 'That slot is still locked' })
+      return say(r, '', { locked: 'That slot is still locked' })
     }
-    if (d.put) { const [kind, i, id] = d.put.split(':'); return say(gs.setArtSlot(kind, +i, id), `${ARTS[id].name} equipped.`, { fighting: 'Not in the middle of a fight', locked: 'That slot is still locked' }) }
+    if (d.put) { const [kind, i, id] = d.put.split(':'); return say(gs.setArtSlot(kind, +i, id), `${ARTS[id].name} equipped.`, { locked: 'That slot is still locked' }) }
     if (d.pickCancel != null) { this.pick = null; return this.render(s, this.el, gs, h) }
     if (d.open) { this.open = this.open === d.open ? null : d.open; return this.render(s, this.el, gs, h) }
     if (d.f) { const [k, v] = d.f.split(':'); this.filter[k] = v; return this.render(s, this.el, gs, h) }

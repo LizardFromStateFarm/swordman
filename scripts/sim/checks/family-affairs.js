@@ -2,6 +2,7 @@
 // every spouse reaction branch (accept / sabotage / duel / suicide / murder-suicide), tolerant spouse, unmarried lovers.
 // Run: npm run checks (all) · node scripts/sim/checks/family-affairs.js (this file). Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
+const { playFight } = require('../fight-helpers.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
 async function setup(seed) {
   const sim = await createSim({ seed }); await sim.boot(0)
@@ -83,15 +84,15 @@ const unrng = sim => sim.ev('Math.random = globalThis.__r')
     s.health = 5
     assert(gs.slaughterEncounter(0).reason === 'wounded' && gs.get().family.encounters.length === 1, 'no slaughter while too wounded')
     s.health = 100
-    s.family.fight = { kind: 'challenge', oppId: 'x', lethal: false, p: .5, to: 3, you: 0, them: 0, round: 1, log: [], year: 1 }
+    s.family.fight = { kind: 'challenge', oppId: 'x', lethal: false, round: 1, log: [], year: 1 }
     assert(gs.slaughterEncounter(0).reason === 'busy' && gs.get().family.encounters.length === 1, 'no slaughter while a fight is underway')
     s.family.fight = null
     rng(sim, 0.0); const start = gs.slaughterEncounter(0); unrng(sim)
     const fi = gs.get().family.fight
     assert(start.ok && fi?.kind === 'slaughter' && fi.lethal && gs.get().family.encounters.length === 0, 'Slaughter starts a lethal road fight, consumes the encounter')
     s.karma = 50
-    fi.you = fi.to - 1
-    rng(sim, 0.0); gs.fightExchange('press'); unrng(sim)
+    assert(fi.m && fi.m.stance === 'slay' && fi.m.foe.person, 'the road fight is on moves, to the death')
+    playFight(gs, 'win')
     assert(gs.get().family.fight?.over === 'won', 'the road fight reaches the end step')
     rng(sim, 0.0); const fin = gs.personFightFinish('finish'); unrng(sim)
     assert(fin.ok && fin.outcome === 'won_lethal' && gs.get().karma === 45, `killing them costs karma (${fin.outcome}, karma ${gs.get().karma})`)
