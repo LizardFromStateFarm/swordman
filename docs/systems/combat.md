@@ -97,7 +97,8 @@ player's move (CLAUDE.md agency rule). There is no auto-fight.
 `to` is new: family fights keep `FIGHT_TO` (2), beast battles use `BATTLE_TO` (4). A save without `to` reads `FIGHT_TO`.
 The load guard (`_ensure…`) drops a beast fight whose snapshot is missing a known type.
 
-`s.bestiary`: `{ [typeId]: { fought, won, lost, slain, spared, bound, habitsKnown, returning: null|'grateful'|'vengeful' } }`.
+`s.bestiary`: `{ [typeId]: { seen, fought, won, lost, slain, spared, bound, habitsKnown, returning: null|'grateful'|'vengeful', variants: { <variantId>: true } } }`
+(`variants` = the rare colours met; see "Bestiary" below).
 
 `s.beastEncounters[i].mood`: optional `'grateful' | 'vengeful' | 'cub'` (set at sighting).
 
@@ -237,6 +238,12 @@ only their realm gate and where they can be hunted. Seen kinds show the portrait
 and your record (fought / won / slain / spared / bound). A pending return is hinted ("Something out there remembers
 you"). `bestiary[type].seen` is set at every sighting and tame, and migration marks your current companions and waiting
 encounters as seen.
+- **Rare colours (2026-09-30, user).** Every kind has one rare colour variant (12% of sightings). The bestiary remembers
+  which ones you have met: `bestiary[type].variants = { <variantId>: true }`, recorded by `_seeBeast(rec)` — called at a
+  sighting (`_spawnBeastEncounter`), a tame, and every beast-fight resolution (it also sets `seen`, and returns the entry
+  so a fight path can tally on it). Seen cards carry a full-width **Rare colour** footer: a colour dot + the variant's
+  name once met, else "Not yet seen"; the lede reads "Seen N of 10 kinds · rare colours M of 10 met · …". `bestiarySeenVer`
+  is now **2** — a v1 save re-scans its live companions / waiting beasts to backfill the variants still around.
 
 **Reputation.** A long slay record makes spared beasts come back vengeful more often: the grateful chance −0.02 per beast
 you have slain (all kinds, capped at −0.2).

@@ -47,9 +47,22 @@ function layoutCfg() {
   }
 }
 
-// The work area of whichever display the window is on (or the primary one before it exists).
+// Smoke/testing (scripts/smoke/cdp.js): a run that must not sit over your work. CULTIVATOR_SMOKE=1 opens the window on a
+// chosen display instead of the primary one — CULTIVATOR_SMOKE_DISPLAY (1-based, e.g. 2 = your second monitor), default the
+// first secondary monitor, else the primary — and shows without stealing your focus. Normal play is never affected (unset).
+const SMOKE = !!process.env.CULTIVATOR_SMOKE
+function smokeDisplay() {
+  const all = screen.getAllDisplays()
+  const n = Number(process.env.CULTIVATOR_SMOKE_DISPLAY)
+  if (Number.isInteger(n) && n >= 1 && n <= all.length) return all[n - 1]
+  const primary = screen.getPrimaryDisplay()
+  return all.find(d => d.id !== primary.id) || primary
+}
+
+// The work area of whichever display the window is on (or the smoke/primary one before it exists).
 function workArea() {
-  return (win ? screen.getDisplayMatching(win.getBounds()) : screen.getPrimaryDisplay()).workArea
+  if (win) return screen.getDisplayMatching(win.getBounds()).workArea
+  return (SMOKE ? smokeDisplay() : screen.getPrimaryDisplay()).workArea
 }
 
 function clampToArea(b, wa) {
@@ -133,7 +146,8 @@ function createWindow() {
   if (currentMode === 'desktop') win.setMinimumSize(DESKTOP_MIN.w, DESKTOP_MIN.h)
 
   win.loadFile('renderer/index.html')
-  win.once('ready-to-show', () => win.show())
+  // A smoke run shows without stealing your focus (it is off on its own monitor anyway, see SMOKE above).
+  win.once('ready-to-show', () => (SMOKE ? win.showInactive() : win.show()))
 
   // Each mode remembers where it was dragged (the banner is pinned to an edge and never moves).
   win.on('moved', () => {

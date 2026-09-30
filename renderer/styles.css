@@ -4485,8 +4485,8 @@ body:not([data-layout="overlay"]):not([data-layout="banner"]):not([data-narrow="
 .hunt-acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .hunt-found-art { flex: none; }
 
-.bst-card { flex-direction: row; gap: 10px; align-items: flex-start; }
-.bst-card.unseen { opacity: .62; border-style: dashed; }
+.bst-card { flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: flex-start; }   /* wrap: the rare-colour footer spans the card */
+.bst-card.unseen { opacity: .72; border-style: dashed; }   /* .72 = the house "locked" fade (hunt/sect/arena cards), still readable */
 .bst-art { flex: none; width: 108px; height: 78px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: rgba(4,2,8,0.45); overflow: hidden; }
 .bst-sil { font-size: 40px; color: color-mix(in srgb, var(--purple) 35%, transparent); }
 .bst-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -4502,9 +4502,26 @@ body:not([data-layout="overlay"]):not([data-layout="banner"]):not([data-narrow="
 .bst-hint.dim { color: var(--dim); }
 .bst-rec { font-size: 10.5px; color: var(--dim-hi); }
 .bst-back { font-size: 10.5px; color: var(--purple); }
+/* 2026-09-30 (user): the rare-colour row on a Bestiary card — the variant you have (or have not yet) run into.
+   It is a full-width footer (flex-basis:100% under the card's flex-wrap), so long variant names never overflow a narrow column. */
+.bst-vars { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 6px; margin-top: 0; padding-top: 7px; border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
+.bst-vars-k { flex: none; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim-hi); }
+.bst-var { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--dim-hi); }
+.bst-var.met { color: color-mix(in srgb, var(--gold) 82%, var(--text)); }
+.bst-var-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; --v: var(--purple);
+  background: color-mix(in srgb, var(--v) 40%, transparent); border: 1px solid color-mix(in srgb, var(--v) 70%, transparent); }
+.bst-var.met .bst-var-dot { background: var(--v); box-shadow: 0 0 6px color-mix(in srgb, var(--v) 60%, transparent); }
+.bst-var-dot.var-crimson { --v: var(--red); } .bst-var-dot.var-jade { --v: var(--jade); }
+.bst-var-dot.var-violet, .bst-var-dot.var-storm { --v: var(--purple); }
+.bst-var-dot.var-ember, .bst-var-dot.var-flame { --v: var(--el-fire); }
+.bst-var-dot.var-golden { --v: var(--gold); } .bst-var-dot.var-frost { --v: var(--el-water); }
 .bst-card.nature-benign { border-left: 2px solid color-mix(in srgb, var(--jade) 45%, transparent); }
 .bst-card.nature-fell { border-left: 2px solid color-mix(in srgb, var(--red) 45%, transparent); }
-@media (max-width: 380px) { .bst-art { width: 84px; height: 62px; } }
+@media (max-width: 380px) {
+  .bst-art { width: 84px; height: 62px; }
+  /* 2026-09-30: the ink portrait is a fixed 108×78 canvas — scale it into the smaller frame instead of clipping it */
+  .bst-art .beast-portrait { transform: scale(.77); transform-origin: center; }
+}
 
 /* ── Roam → Arena (Phase 35 / A6-3b, renderer/game/arena-view.js) ────────────────────────────────────────────────────
    Ring cards share the Hunt card surface; a roster row per duelist; the run panel shows the purse like a prize ledger.

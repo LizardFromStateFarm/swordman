@@ -151,8 +151,8 @@ class GameState {
       _intRegenAcc:     0,
       beasts:           [],
       beastEncounters:  [],
-      bestiary:         {},   // Phase 35 (combat.md): per beast type — seen, fought/won/lost/slain/spared/bound, habitsKnown, returning
-      bestiarySeenVer:  1,
+      bestiary:         {},   // Phase 35 (combat.md): per beast type — seen, fought/won/lost/slain/spared/bound, habitsKnown, returning, variants (rare colours met, 2026-09-30)
+      bestiarySeenVer:  2,
       arena:            this._blankArena(),   // A6-3b (combat.md): rings, duelists, the run, renown, titles, call-outs
       arts:             null, // Phase 42 (arts.md): known arts, loadout, study, breakthrough offers — filled by _ensurePhase42Fields (needs root elements)
       hunt:             null, // A6-2: { groundId, startedAt, endsAt, found: encId | null } while tracking on a hunting ground
@@ -227,10 +227,11 @@ class GameState {
     const s = this._s
     if (!s.bestiary || typeof s.bestiary !== 'object') s.bestiary = {}
     if (s.hunt === undefined || (s.hunt && (typeof s.hunt !== 'object' || !HUNT_GROUNDS.some(g => g.id === s.hunt.groundId)))) s.hunt = null
-    // A6-2: what you have already met counts as seen in the Bestiary (companions + beasts waiting), once
-    if (!s.bestiarySeenVer) {
-      s.bestiarySeenVer = 1
-      for (const b of [...(s.beasts || []), ...(s.beastEncounters || [])]) if (b?.typeId) this._bestiary(b.typeId).seen = true
+    // A6-2: what you have already met counts as seen in the Bestiary (companions + beasts waiting), once.
+    // 2026-09-30 (user): v2 also records which rare colour variants you have met (from the beasts still around).
+    if ((s.bestiarySeenVer || 0) < 2) {
+      s.bestiarySeenVer = 2
+      for (const b of [...(s.beasts || []), ...(s.beastEncounters || [])]) this._seeBeast(b)
     }
     // A6-3a: a paused step-down bracket (you are in it); a step-down bout without its bracket is dropped
     const f = s.family
@@ -2911,12 +2912,21 @@ class GameState {
 
   bestiaryEntry(typeId) {
     const b = this._s.bestiary?.[typeId]
-    return { seen: false, fought: 0, won: 0, lost: 0, slain: 0, spared: 0, bound: 0, habitsKnown: false, returning: null, ...(b || {}) }
+    return { seen: false, fought: 0, won: 0, lost: 0, slain: 0, spared: 0, bound: 0, habitsKnown: false, returning: null, variants: {}, ...(b || {}) }
   }
   _bestiary(typeId) {
     const s = this._s
     if (!s.bestiary) s.bestiary = {}
     return (s.bestiary[typeId] = this.bestiaryEntry(typeId))
+  }
+  // 2026-09-30 (user): record meeting a beast — seen, and (if it wears a rare colour) which variant, so the Bestiary can
+  // show the variants you have run into. Returns the entry, so a fight path can tally on it. Idempotent.
+  _seeBeast(rec) {
+    if (!rec?.typeId) return null
+    const b = this._bestiary(rec.typeId)
+    b.seen = true
+    if (rec.variant) b.variants[rec.variant] = true
+    return b
   }
 
   // What the fight engine sees as the opponent (a beast is not a world person).
@@ -3588,7 +3598,7 @@ class GameState {
   }
 
   _beastFightDeath(fi, opp) {
-    const s = this._s, b = this._bestiary(fi.beast.typeId)
+    const s = this._s, b = this._seeBeast(fi.beast)
     s.family.fight = null
     b.fought++; b.lost++; b.habitsKnown = true
     this.addEvent({ text: `Year ${Math.floor(s.world.year)}: the ${opp.name} was stronger. You went to kill it, and it killed you.`, type: 'negative' })
@@ -3597,7 +3607,7 @@ class GameState {
   }
 
   _beastFightLost(fi, opp, onField = false) {
-    const s = this._s, b = this._bestiary(fi.beast.typeId)
+    const s = this._s, b = this._seeBeast(fi.beast)
     b.fought++; b.lost++; b.habitsKnown = true
     const extra = onField ? 0 : this._beastLossWound(fi.beast, fi.stance)
     s.health = (s.health ?? 100) - extra
@@ -3610,7 +3620,7 @@ class GameState {
   }
 
   _beastRetreat(fi, opp) {
-    const s = this._s, b = this._bestiary(fi.beast.typeId)
+    const s = this._s, b = this._seeBeast(fi.beast)
     const m = fi.m, hit = m ? this._mbDamage(m.foe, m.you, this._mbArt('beast_rake'), Math.random).dmg : this._beastWound(fi.beast, fi.stance)
     const dmg = m && fi.stance === 'drive' ? Math.max(1, Math.round(hit * MOVE_COMBAT.driveTakenMult)) : hit
     s.health = (s.health ?? 100) - dmg
@@ -3658,7 +3668,7 @@ class GameState {
     if (!ch) return { ok: false, reason: 'no_battle' }
     if (!ch.ids.includes(choice)) return { ok: false, reason: 'bad_choice' }
     if (choice === 'bind' && ch.bindLock) return { ok: false, reason: ch.bindLock }
-    const rec = fi.beast, prof = this.beastProfile(rec), name = prof.name, b = this._bestiary(rec.typeId)
+    const rec = fi.beast, prof = this.beastProfile(rec), name = prof.name, b = this._seeBeast(rec)
     f.fight = null
     s.beastEncounters = (s.beastEncounters || []).filter(e => e.id !== rec.encId)
     b.fought++; b.won++; b.habitsKnown = true
@@ -5862,7 +5872,7 @@ class GameState {
       seenAt: Date.now(),
     }
     s.beastEncounters.push(enc)
-    this._bestiary(beastType.id).seen = true
+    this._seeBeast(enc)
     const seenName = variant ? V.name : beastType.name
     this.addEvent({
       text: back === 'grateful' ? `The ${beastType.name} you spared has found you again. It follows at a distance and asks for nothing. (Roam → Beasts: it would come without a talisman.)`
@@ -6035,7 +6045,7 @@ class GameState {
 
     const chance = free ? 1 : TALISMAN_GRADES[grade].tameChance
     const nature = (typeof BEAST_NATURE !== 'undefined' && BEAST_NATURE[enc.typeId]) || 'wild'
-    this._bestiary(enc.typeId).seen = true
+    this._seeBeast(enc)
     const name = this.beastProfile(enc).name
 
     if (!free && Math.random() >= chance) {

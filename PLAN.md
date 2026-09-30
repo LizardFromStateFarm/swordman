@@ -181,6 +181,11 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 > present *and* in Active Mode; away/unfocused or Idle Mode = ×0.1 (`AFFECTION_DRIFT_AWAY_FRAC`, `gameState.affectionDriftRate()`).
 > Since `PLAY_MODE_DEFAULT` is `'idle'`, this is the default rate — tune in **1.15/2.8** if marriage crises get too rare
 > (sim A/B 48h: casual crises 1 → 0). family.md updated.
+>
+> **Also part 62 (user): the Bestiary tracks rare-colour variants** — `bestiary[type].variants` recorded by `_seeBeast` at
+> every sighting / tame / fight, a "RARE COLOUR" footer on each seen card, `bestiarySeenVer` 2 (combat.md → Bestiary).
+> **Tooling (off-roadmap):** CDP smoke windows now open on a secondary display so a test run can't block the screen —
+> `CULTIVATOR_SMOKE=1` (set by scripts/smoke/cdp.js) + `CULTIVATOR_SMOKE_DISPLAY=<n>` in main.js (qa-sim.md, commands.html).
 
 
 #### Art track — Phase 34 (user 2026-09-26): plain grid ASCII will rarely clear the 8/10 gate

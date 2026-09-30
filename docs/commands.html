@@ -143,8 +143,12 @@
     <div class="cmd"><div class="cmd-head"><code>node scripts/smoke/cdp.js scripts/smoke/scenarios/layout-modes.js</code><button class="copy">Copy</button></div>
       <p>Launches the real Electron app with a throwaway profile, so your saves are never touched. It then drives the app
       through a scenario, fails on any console error, and saves screenshots to <code>scripts/smoke/out/</code>.
-      Swap in any file from <code>scripts/smoke/scenarios/</code>, for example <code>character</code>, <code>family</code>,
-      <code>sect</code>, <code>mobile</code>, <code>nav-attention</code> or <code>ux-audit</code>.</p></div>
+      The window opens <strong>on your second monitor, not the primary one</strong>, and without stealing focus, so a run
+      never covers your work. Swap in any file from <code>scripts/smoke/scenarios/</code>, for example <code>character</code>,
+      <code>family</code>, <code>sect</code>, <code>mobile</code>, <code>nav-attention</code> or <code>ux-audit</code>.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>$env:CULTIVATOR_SMOKE_DISPLAY=2; node scripts/smoke/cdp.js scripts/smoke/scenarios/layout-modes.js</code><button class="copy">Copy</button></div>
+      <p>Pins the smoke window to a chosen display (1-based: <code>1</code> = the primary, <code>2</code> = your second
+      monitor). Leave it off and the harness uses the first secondary display it finds.</p></div>
   </section>
 
   <section id="build">

@@ -18,8 +18,8 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   await ev('(() => { const s = gameState.get(); s.sectWar.nextWarAt = Date.now() + 3600e3; gameState.setSetting("artStyle", "ink") })()')
   // a mid-game hunter: stage 14, some kinds met (the fox fought + slain, the eagle bound, the tiger seen), others unseen
   const base = `s.stageIndex = 14; s.health = 100; s.spiritStones = 120; s.hunt = null; s.beastEncounters = []; s.family.fight = null
-    s.bestiary = { spirit_fox: { seen: true, fought: 4, won: 3, lost: 1, slain: 2, spared: 1, habitsKnown: true, returning: 'grateful' },
-      thunder_eagle: { seen: true, fought: 1, won: 1, bound: 1, habitsKnown: true }, white_tiger: { seen: true }, blood_python: { seen: true, fought: 1, lost: 1, habitsKnown: true } }`
+    s.bestiary = { spirit_fox: { seen: true, fought: 4, won: 3, lost: 1, slain: 2, spared: 1, habitsKnown: true, returning: 'grateful', variants: { crimson: true } },
+      thunder_eagle: { seen: true, fought: 1, won: 1, bound: 1, habitsKnown: true, variants: { violet: true } }, white_tiger: { seen: true }, blood_python: { seen: true, fought: 1, lost: 1, habitsKnown: true } }`
 
   for (const mode of ['overlay', 'expanded', 'desktop', 'phone']) {
     if (mode === 'phone') { await pick('desktop'); await emulate(390, 844); await ev('window.dispatchEvent(new Event("resize"))'); await sleep(500) }
@@ -41,8 +41,11 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
       assert(await ev('combatView.isOpen() && combatView.step === "prepare"'), 'Fight it opens the battle page')
       await ev('combatView.close()')
     }
+    await set(base)   // re-apply the fixture: the hunt may have found a rare colour and shifted the counts
     await view('bestiary')
     assert(await ev('document.querySelectorAll("#tab-bestiary .bst-card").length === 10 && [5, 6].includes(document.querySelectorAll("#tab-bestiary .bst-card.unseen").length)'), `${mode}: ten kinds, the unmet ones unseen`)
+    assert(await ev('document.querySelectorAll("#tab-bestiary .bst-var.met").length === 2 && document.querySelectorAll("#tab-bestiary .bst-var").length === 4'), `${mode}: the rare colours you met are named; the seen kinds without one say not yet seen`)
+    assert(await ev('document.querySelector("#tab-bestiary .view-lede").textContent.includes("rare colours 2 of 10 met")'), `${mode}: the lede counts the rare colours met`)
     await sleep(300); await ev('for (const P of BeastPortraits.pool.values()) P.ink.freeze(4)')
     await shot(`bestiary-${mode}`)
     if (mode === 'phone') { await clearEmulation(); await ev('window.dispatchEvent(new Event("resize"))'); await sleep(400) }

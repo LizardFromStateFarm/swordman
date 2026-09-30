@@ -200,6 +200,19 @@ function fight(sim, gs, how) {
     assert(gs.bestiaryEntry('thunder_eagle').seen && gs.bestiaryEntry('spirit_fox').seen && !gs.bestiaryEntry('qilin').seen && s.hunt === null,
       'A6-2 migration: companions + waiting beasts count as seen; no hunt') }
 
+  // ── 2026-09-30 (user): the Bestiary remembers the rare colour variants you have run into ──
+  { const { sim, gs, s } = await setup(14, 5, 'spirit_fox', { variant: 'crimson' })
+    gs._seeBeast({ typeId: 'spirit_fox', variant: 'crimson' })
+    assert(gs.bestiaryEntry('spirit_fox').variants.crimson === true, 'meeting a rare colour records its variant in the bestiary')
+    // a rare-colour sighting records it at the moment you meet it (the roll is random: force it)
+    const BT = sim.ev('BEAST_TYPES').find(b => b.id === 'qilin')
+    rng(sim, 0); const enc = gs._spawnBeastEncounter(BT); unrng(sim)
+    assert(enc.variant === 'crimson' && gs.bestiaryEntry('qilin').variants.crimson === true, `a rare-colour sighting records the variant (${enc.variant})`)
+    // a v1 save gains the variants its companions / waiting beasts still carry
+    s.bestiary = {}; s.bestiarySeenVer = 1; gs._recalc()
+    assert(s.bestiarySeenVer === 2 && gs.bestiaryEntry('spirit_fox').seen && gs.bestiaryEntry('spirit_fox').variants.crimson === true,
+      'bestiary migration v2 backfills the variants still around') }
+
   // ── A6-2: the Hunt ──
   { const { sim, gs, s } = await setup(20, 3, 'spirit_fox')
     s.beastEncounters = []; s.spiritStones = 3

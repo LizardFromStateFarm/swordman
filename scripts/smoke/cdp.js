@@ -21,7 +21,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 ;(async () => {
   const electron = require(path.join(root, 'node_modules', 'electron'))
-  const app = spawn(electron, ['.', `--user-data-dir=${userData}`, `--remote-debugging-port=${PORT}`], { cwd: root, stdio: 'ignore' })
+  // CULTIVATOR_SMOKE keeps the app window off your primary monitor (main.js → SMOKE): by default on the first secondary
+  // display, or on CULTIVATOR_SMOKE_DISPLAY (1-based) if you set it. It shows without stealing your focus.
+  const app = spawn(electron, ['.', `--user-data-dir=${userData}`, `--remote-debugging-port=${PORT}`],
+    { cwd: root, stdio: 'ignore', env: { ...process.env, CULTIVATOR_SMOKE: '1' } })
   let failed = 0
   const errors = []
   try {

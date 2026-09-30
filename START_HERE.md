@@ -71,7 +71,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 > Sim/dist/build:web/smoke/new checks are batched into each feature's **QA & Balance** task (CLAUDE.md).
 > **UI/UX is first-class:** every player-facing task does the UX Pass (CLAUDE.md) and logs gaps under "UX Debt" below.
 
-> **Tools:** `npm test` (syntax) · `npm run checks` (767 scenario checks, ~30s: combat.js alone ~20s) · `npm run sim` (bot playtest) ·
+> **Tools:** `npm test` (syntax) · `npm run checks` (773 scenario checks, ~30s: combat.js alone ~20s) · `npm run sim` (bot playtest) ·
 > `node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` (real-app smoke over CDP, throwaway profile). Any
 > useful check script you write goes in `scripts/sim/checks/` and gets documented — never left in a temp folder
 > (CLAUDE.md → "Test scripts are project assets").
@@ -226,6 +226,22 @@ Agent: **Two small fixes from a play session** (user: "cannot queue things to st
     checks/family-marriage.js +3 (full / away / idle); sim 48h×2: 0 errors, 0 violations (A/B vs `--set AFFECTION_DRIFT_AWAY_FRAC=1`:
     casual crises 1 → 0, so marriage crises get rarer — a 1.15/2.8 tuning concern). family.md updated. The breakdown-card label
     is a text-only tweak — screenshots (`scripts/smoke/out/fam-*-bd-affection.png`) handed to the user, no reviewer run.
+  - **Then, same session — Bestiary rare colours** (user: "you can track encountered beasts but not their variants").
+    Every *seen* card gets a full-width **RARE COLOUR** footer — a colour dot + the variant's name once met, else "Not yet
+    seen" — and the lede counts "rare colours M of 10 met". Engine: `_seeBeast(rec)` records `bestiary[type].variants` at
+    every sighting / tame / fight (it also sets `seen`, and returns the entry), and `bestiarySeenVer` **2** backfills the
+    variants a v1 save still holds. checks/combat.js +3 · hunt smoke +8 assertions (4 modes). Review: cycle 1 **7.2 FAIL**
+    (the variant name overflowed the card in Expanded) → the row became a full-width footer → cycle 2 **8.0**, no
+    criterion < 6, but a **pre-existing** blocker (Overlay / ≤380px clipped the fixed 108×78 portrait inside an 84×62
+    `.bst-art`). I fixed that too (scale the portrait into the frame; DOM-verified 83.2×60.1 in 84×62) and the unseen fade
+    `.62` → `.72`. Both reviewers' `vision` tools failed, so they measured the live DOM instead; **a cycle-3 confirmation
+    was not run — the measurements + screenshots are the evidence** (ask if you want another pass).
+  - **Then, same session — tooling: smoke windows open on your second monitor** (user: a test run shouldn't block the
+    screen). `scripts/smoke/cdp.js` sets `CULTIVATOR_SMOKE=1`; `main.js` places the window on the first *secondary*
+    display (`CULTIVATOR_SMOKE_DISPLAY=<n>`, 1-based, to pin one) and shows it with `showInactive()` so it never steals
+    focus. `npm start` and real builds are untouched (the flag is unset). qa-sim.md + commands.html documented. Verified:
+    layout-modes + hunt smokes pass; a probe read `window.screenX` / `screen.availLeft` (secondary by default, primary
+    with `=1`).
   Next: **1.15 QA & Balance** (unchanged: the sim bot never studies/equips/buys/gives).
 
 Date: 2026-09-30 (user present) — part 61

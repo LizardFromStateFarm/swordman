@@ -86,6 +86,10 @@ const BestiaryView = {
     const recs = types.map(t => ({ t, r: gs.bestiaryEntry(t.id) }))
     const seen = recs.filter(x => x.r.seen).length
     const tot = k => recs.reduce((a, x) => a + (x.r[k] || 0), 0)
+    // 2026-09-30 (user): the rare colour variant of a kind (one each) — whether you have run into it yet
+    const variantOf = t => (t.variants || [])[0] || null
+    const vTotal = recs.reduce((a, { t }) => a + (variantOf(t) ? 1 : 0), 0)
+    const vMet = recs.reduce((a, { t, r }) => a + (variantOf(t) && (r.variants || {})[variantOf(t).id] ? 1 : 0), 0)
     const where = t => HUNT_GROUNDS.filter(g => (g.types[t.id] || 0) >= 1).map(g => g.name)[0] || HUNT_GROUNDS.find(g => g.types[t.id])?.name || ''
     const pct = v => `${Math.round(v * 100)}%`
     const cards = recs.map(({ t, r }) => {
@@ -100,6 +104,10 @@ const BestiaryView = {
         ? `<div class="bst-habits" title="How often it presses, guards and feints"><span>Press <b style="--w:${pct(style.press / W)}"></b>${pct(style.press / W)}</span><span>Guard <b style="--w:${pct(style.guard / W)}"></b>${pct(style.guard / W)}</span><span>Feint <b style="--w:${pct(style.feint / W)}"></b>${pct(style.feint / W)}</span></div><div class="bst-hint">${esc(style.hint)}.</div>`
         : `<div class="bst-hint dim">Habits unknown: fight one to learn how it fights.</div>`
       const rec = r.fought ? `Fought ${r.fought} · won ${r.won} · slain ${r.slain}${r.spared ? ` · spared ${r.spared}` : ''}${r.bound ? ` · bound ${r.bound}` : ''}` : 'Never fought'
+      const v = variantOf(t), vMet = v && !!(r.variants || {})[v.id]
+      const vars = v ? `<div class="bst-vars"><span class="bst-vars-k">Rare colour</span>${vMet
+        ? `<span class="bst-var met"><i class="bst-var-dot var-${esc(v.id)}"></i>${esc(v.name)}</span>`
+        : `<span class="bst-var" title="A rare colour of this beast you have not met yet"><i class="bst-var-dot"></i>Not yet seen</span>`}</div>` : ''
       return `<div class="bst-card nature-${nature}">
           <div class="bst-art">${BeastPortraits.html('bst:' + t.id, prof.art)}</div>
           <div class="bst-body"><div class="bst-name">${esc(t.name)}<span class="tier-chip tier-${t.tier}">${esc(BEAST_TIERS[t.tier]?.name || t.tier)}</span></div>
@@ -108,9 +116,9 @@ const BestiaryView = {
           <div class="bst-lore">${esc(t.desc)}</div>
           ${habits}
           <div class="bst-rec">${rec}</div>
-          ${r.returning ? '<div class="bst-back">Something out there remembers you.</div>' : ''}</div></div>`
+          ${r.returning ? '<div class="bst-back">Something out there remembers you.</div>' : ''}</div>${vars}</div>`
     }).join('')
-    el.innerHTML = `<div class="view-lede">Seen <b>${seen}</b> of ${types.length} kinds · slain ${tot('slain')} · spared ${tot('spared')} · bound ${tot('bound')}</div>
+    el.innerHTML = `<div class="view-lede">Seen <b>${seen}</b> of ${types.length} kinds · rare colours <b>${vMet}</b> of ${vTotal} met · slain ${tot('slain')} · spared ${tot('spared')} · bound ${tot('bound')}</div>
       <div class="bst-grid">${cards}</div>`
     BeastPortraits.mount(el, gs.getSettings())
   },
