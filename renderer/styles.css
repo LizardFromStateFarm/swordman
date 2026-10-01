@@ -957,6 +957,8 @@ body[data-layout="banner"] #bt-why { width: 24px; font-size: 12px; }
   border-radius: 3px;
   cursor: pointer;
 }
+/* The irreversible-action dialog: never the smallest targets on the screen (review 2026-10-01) */
+#confirm-yes, #confirm-no { min-height: 38px; }
 #confirm-no:hover { border-color: var(--text); color: var(--text); }
 
 /* ── Ascension Trial overlay (Phase 23C) ──────────────────────────────────── */
@@ -3862,6 +3864,7 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 
   body[data-layout] .recipe-craft-btn, body[data-layout] .recipe-equip-btn,
   body[data-layout] .pill-queue-btn { min-height: 38px !important; }
   body[data-layout] .bm-row.can { min-height: 42px !important; }
+  body[data-layout] #confirm-yes, body[data-layout] #confirm-no { min-height: 44px !important; }
 
   /* iOS auto-zooms the WebView when a focused field's font-size is under 16px — and it can stay zoomed in until
      the app relaunches. Keep every text field at 16px on touch (the rename field, the name field at creation…). */

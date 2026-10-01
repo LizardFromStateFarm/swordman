@@ -91,6 +91,10 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
   app-level scroll with a sticky tab bar (2026-10-01).
 - **A father's hand** (2026-10-01): no custom art — the card reuses the family overlay (the upbringing card's sibling);
   the beating has no dedicated health/wound moment on the sprite.
+- **Your own child's raising row (7.5 PASS, 2026-10-01):** with four actions, the Overlay's ~236px tab body can never
+  show the child's head (name/age) and the four tiles together — reaching "Raise a hand" always costs you the child's
+  identity (the confirm does name them); the confirm's sub-line still wraps (`#confirm-box` is ~230px — shorten or widen);
+  `#layout-tip` (z 205) draws over the confirm's scrim (z 200) during first-launch.
 - **Overlay tab body shrank 305 → 236px** (1.8b-1: group row + sub-tabs + attention strip). Views are shorter now
   (Explore 1.4 screens, Craft 2.6), but the founder's Sect is 5.7 screens until 1.8b-5 splits it. Candidates: a 34px nav
   row, hide the strip when calm.
@@ -242,9 +246,12 @@ Agent: **iOS build/device fixes + a phone-minimizable attention center + a new f
      "Bad father" = cruel style OR cruel personality OR his trauma OR bond < 35. Young only (≤ AWAKENING_AGE+12), rare
      (year interval AND 0.30). −20 Health floors at 1 (never lethal); 2 hits scar you (trauma → heir Bloodline); enough
      defiance + grown + outranking him unlocks the reckoning (forgive / break). Checks
-     `scripts/sim/checks/family-beating.js` (25) · smoke `scenarios/beating.js` (7 ok). Sim 100h×2 healthy (0/0;
-     bot answers beatings + the reckoning). Docs: family.md "A father's hand", qa-sim.md, CLAUDE.md tree.
-  Tests: `npm test` clean (293 files) · `npm run checks` **822 ok** · sim 100h×2 healthy · mobile + beating + nav-attention
+     `scripts/sim/checks/family-beating.js` (36) · smoke `scenarios/beating.js` (12 ok). Sim 100h×2 healthy (0/0;
+     bot answers beatings + the reckoning). **The mirror (same session, user): you may raise a hand to your own child** —
+     a fourth action in the child's raising row (Kin → Family) behind the confirm; bond/karma cost keyed to the CHILD's
+     personality, a scar at 2 hits, and a grown child's reckoning (Let them strike / Put them down). Docs: family.md
+     "A father's hand" + "The mirror", qa-sim.md, CLAUDE.md tree. Checks now 832 (family-beating.js 36).
+  Tests: `npm test` clean (293 files) · `npm run checks` **832 ok** · sim 100h×2 healthy · mobile + beating + nav-attention
   smokes pass (nav-attention has 1 pre-existing FAIL — its `#mode-auto .auto-row` count says 4 but the panel has ≥5 since
   the Beast Auto-Expedition row landed in part 51; not touched). Uncommitted (the user handles commits).
   Next: finish the iOS cert/profile → re-run Codemagic; then **A6-3c bosses** (needs 23E/17) → A7 sect base scene → 2.8 QA.

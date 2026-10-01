@@ -80,6 +80,36 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
   assert(s.karma > k0 && s.abuse.avenged && !s.abuse.reckon, 'forgiving him raises karma and ends the beatings for good')
   assert(!gs.reckoningInfo(), 'a settled reckoning never returns')
 
+  // ── The mirror: you may lay a hand on your own child (family-events.js) ─────────────────────
+  {
+    const st = gs.get(), yr2 = Math.floor(st.world.year)
+    st.stageIndex = 5; st.health = 100
+    const kid = { id: 'kid1', given: 'Bao', family: 'Test', alive: true, bond: 80, personality: 'stoic',
+                  stageIndex: 12, bornYear: yr2 - 20, parents: [st.self.id], morality: 0 }
+    const young = { id: 'kid0', given: 'Tiny', alive: true, bond: 80, personality: 'lazy', stageIndex: 0, bornYear: yr2 - 2, parents: [st.self.id] }
+    st.family.children.push(kid, young)
+
+    assert(!gs.abuseChildPreview(young.id).ok && gs.abuseChildPreview(young.id).reason === 'young', 'a child under 4 cannot be struck')
+    const pv = gs.abuseChildPreview(kid.id)
+    assert(pv.ok && pv.bond === sim.ev('CHILD_ABUSE_BOND').stoic, `the preview reads the CHILD's own reaction (stoic ${pv.bond})`)
+
+    const k0 = st.karma, b0 = kid.bond, r1 = gs.abuseChild(kid.id)
+    assert(r1.ok && kid.bond === b0 + r1.delta && st.karma === k0 - Math.abs(sim.ev('CHILD_ABUSE_KARMA')), `striking costs bond (${b0} → ${kid.bond}) and karma (${k0} → ${st.karma})`)
+    assert(!gs.abuseChildPreview(kid.id).ok, 'the same child cannot be struck again immediately (a cooldown)')
+
+    kid.cd.harsh = 0; gs.abuseChild(kid.id)
+    assert(kid.abuse.hits === 2 && kid.trauma === true, 'a second beating scars the child (trauma → the heir Bloodline term)')
+    kid.cd.harsh = 0; gs.abuseChild(kid.id)
+    assert(kid.abuse.hits === 3 && kid.abuse.grudge > 0, `the beatings accumulate (hits ${kid.abuse.hits}, grudge ${kid.abuse.grudge})`)
+
+    assert(gs.childReckoningInfo()?.id === kid.id, 'a grown, beaten child comes back for you')
+    const bBefore = kid.bond
+    gs.resolveChildReckoning(kid.id, 'accept')
+    assert(st.health === 80, `letting them strike costs 20 Health (100 → ${st.health}) and never kills`)
+    assert(kid.bond === bBefore + 15 && kid.abuse.grudge === 0, 'it eases something between you')
+    assert(!gs.childReckoningInfo(), 'a settled child reckoning never returns')
+  }
+
   // Migration: an old save has no abuse record
   const save = JSON.parse(JSON.stringify(s)); delete save.abuse
   gs._s = save; gs._ensureBeatingFields()

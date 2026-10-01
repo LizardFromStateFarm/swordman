@@ -37,6 +37,9 @@ function collectAttention(s, gs) {
   if (s.abuse?.event) add('urgent', 'beating', 'child', 'A father’s hand', `${gs.beatingInfo?.()?.why || 'Your father'} · he will not stop on his own.`, 'family', 'family')
   const reck = s.abuse?.reckon ? gs.reckoningInfo?.() : null
   if (reck) add('ready', 'reckoning', 'sword', 'A reckoning waits', `${reck.headName} once beat you. You are grown now — and you stand above him.`, 'family', 'family')
+  // family-events.js: the mirror — a child you beat, now grown and stronger, has come back for you.
+  const kidReck = gs.childReckoningInfo?.()
+  if (kidReck) add('urgent', 'child-reckoning', 'child', 'A child’s reckoning', `${kidReck.given} has not forgotten. They are grown now — and stronger than you.`, 'family', 'family')
   // 1.8b-3b: a fight you're in (never resolves without you), and a lover's ultimatum
   if (f.fight?.kind === 'beast') {                               // Phase 35: a beast battle (the battle page reopens it)
     const bn = gs.beastProfile ? gs.beastProfile(f.fight.beast).name : 'beast'

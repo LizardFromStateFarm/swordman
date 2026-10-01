@@ -385,6 +385,14 @@ class Bot {
     // family-events.js: a bad father's hand, and the grown-up reckoning. 'active' takes the defiant line.
     if (this.s.abuse?.event) return this.do('beating', this.gs.resolveBeating(this.profile === 'active' ? 2 : Math.floor(this.rand() * 3)))
     if (this.s.abuse?.reckon) return this.do('reckoning', this.gs.resolveReckoning(this.profile === 'active' ? 'break' : 'forgive'))
+    // family-events.js: the mirror — always answer a grown child's reckoning; 'active' raises a hand sometimes
+    // (the child's trauma feeds the heir Bloodline term), everyone else stays their hand.
+    const kidReck = this.gs.childReckoningInfo?.()
+    if (kidReck) return this.do('child_reckoning', this.gs.resolveChildReckoning(kidReck.id, 'accept'))
+    if (this.profile === 'active' && this.rand() < 0.02) {
+      const kid = (this.s.family.children || []).find(c => this.gs.abuseChildPreview(c.id).ok)
+      if (kid) return this.do('child_abuse', this.gs.abuseChild(kid.id))
+    }
     // 2.6c heirs: a tournament in progress is fought to the end (strongest paired with weakest — the bot
     // protects its best). 'active' hosts one per life once it has 6+ adult children and reaches Nascent Soul;
     // everyone else (and 'active' until then) simply names the strongest adult child heir.

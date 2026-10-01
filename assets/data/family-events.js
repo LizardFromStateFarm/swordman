@@ -48,3 +48,44 @@ const RECKONING_CHOICES = [
   { id: 'forgive', label: 'Let it go', sub: 'karma up · the bond eases', result: 'You let it go. {head} does not meet your eyes — but something between you eases.' },
   { id: 'break',   label: 'Break him', sub: 'karma down · he never raises a hand again', result: 'You stand over {head}. He will never raise a hand to you again.' },
 ]
+
+// ── The mirror: YOU may lay a hand on your own child (user 2026-10-01) ────────────────────────────────
+// A deliberate raising action (Kin → Family, the child's raising row) — never automatic, behind a confirm.
+// The child remembers: their bond falls by CHILD_ABUSE_BOND (keyed by THEIR personality, so a `stoic` one
+// hardens and a `coward` breaks), a grudge builds, and CHILD_ABUSE_TRAUMA_AT hits scar them — which already
+// feeds the heir Bloodline term (2.6d). Hitting a child costs karma. A grown child you have hit enough, who
+// now outranks you, eventually calls you out (CHILD_RECKONING) — the mirror of "A father's hand".
+// Used by: game-state.js (abuseChildPreview/abuseChild, childReckoningInfo/resolveChildReckoning),
+// family-view.js (the action + confirm), game.js (the reckoning card), attention.js.
+const CHILD_ABUSE_CD_SECS    = 600        // real seconds between beatings of the same child
+const CHILD_ABUSE_MIN_AGE    = 4
+const CHILD_ABUSE_KARMA      = -6
+const CHILD_ABUSE_BOND       = { default: -22, stoic: -14, coward: -28, hotblood: -30, niceguy: -26, arrogant: -18, psycho: -12, demonking: -10 }
+const CHILD_ABUSE_GRUDGE_MAX = 3
+const CHILD_ABUSE_TRAUMA_AT  = 2          // hits before it leaves a scar on the child
+const CHILD_RECKON_MIN_HITS  = 3          // hits before a grown child calls you out (a child's stage is capped
+                                          // at yours and grows slowly, so grown + hit enough is the real gate)
+const CHILD_RECKON_HEALTH    = -20        // accepting their blow: Health −20 (never lethal, floors at 1)
+const CHILD_ABUSE_REACTIONS = {
+  default:   '{name} does not cry. {name} does not look away either.',
+  stoic:     '{name} takes it in silence, and files it away.',
+  coward:    '{name} promises anything, anything at all, to make it stop.',
+  hotblood:  '{name} spits blood and swears you will not always be stronger.',
+  niceguy:   '{name} asks what they did wrong. You do not answer.',
+  psycho:    '{name} smiles through it. That is worse than the crying.',
+  demonking: '{name} goes very still, and starts to plan.',
+  arrogant:  '{name} tells you that you will regret this. You probably will.',
+  poet:      '{name} will write about this one day.',
+  lazy:      '{name} simply endures, waiting for it to be over.',
+  grumpy:    '{name} glares, and says nothing at all.',
+  glutton:   '{name} curls around their bruises and thinks of dinner.',
+  gremlin:   '{name} only learns to be quieter about the things you hate.',
+  miser:     '{name} counts what this will cost you, some day.',
+  paranoid:  '{name} was right about you all along.',
+}
+const CHILD_RECKONING_TITLE = 'A Child’s Reckoning'
+const CHILD_RECKONING_TEXT  = '{name} is grown now — no longer a child you can simply strike. They have not forgotten. They stand in your doorway.'
+const CHILD_RECKONING_CHOICES = [
+  { id: 'accept', label: 'Let them strike', sub: 'take the blow · karma up · it eases', result: 'You do not raise a hand. {name} strikes you once — and something between you is paid.' },
+  { id: 'refuse', label: 'Put them down', sub: 'karma down · they will not forgive this', result: 'You put them on the ground. They get up, walk out of your house, and do not come back.' },
+]

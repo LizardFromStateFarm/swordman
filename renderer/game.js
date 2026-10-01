@@ -2170,6 +2170,8 @@
     if (s.abuse?.event) return `beat:${s.abuse.event.year}`   // family-events.js: a bad father's hand
     if (s.upbringing?.event) return `up:${s.upbringing.event.id}:${s.upbringing.event.year}`   // 2.6d
     if (s.abuse?.reckon) return `reckon:${s.abuse.hits}`      // family-events.js: the grown-up reckoning
+    const kidReck = gameState.childReckoningInfo?.()           // family-events.js: a grown child's reckoning (the mirror)
+    if (kidReck) return `kidreckon:${kidReck.id}:${kidReck.abuse.hits}`
     return null
   }
 
@@ -2241,6 +2243,17 @@
       choicesEl.querySelectorAll('[data-reckon]').forEach(btn => btn.addEventListener('click', () => {
         document.getElementById('family-overlay').classList.add('hidden')
         gameState.resolveReckoning(btn.dataset.reckon)
+      }))
+    } else if (gameState.childReckoningInfo()) {   // family-events.js: a grown child's reckoning (the mirror)
+      const kid = gameState.childReckoningInfo()
+      box.classList.add('crisis')
+      document.getElementById('family-title').textContent = CHILD_RECKONING_TITLE
+      document.getElementById('family-desc').textContent = String(CHILD_RECKONING_TEXT).replace(/\{name\}/g, kid.given)
+      choicesEl.innerHTML = CHILD_RECKONING_CHOICES.map(ch =>
+        `<button data-kidreckon="${ch.id}">${escHtml(ch.label)}<span class="family-sub">${escHtml(ch.sub)}</span></button>`).join('')
+      choicesEl.querySelectorAll('[data-kidreckon]').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('family-overlay').classList.add('hidden')
+        gameState.resolveChildReckoning(kid.id, btn.dataset.kidreckon)
       }))
     } else if (!(f.spouse && f.event) && !f.childEvent && s.upbringing?.event) {   // 2.6d upbringing (you are the child)
       const ev = s.upbringing.event, def = gameState.upbringingEventDef(ev)

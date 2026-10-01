@@ -28,6 +28,8 @@ newest first.
 |---|---|---|---|---|
 | Attention center, phone | 1 | **7.6** | **PASS** | Minimized default (one row), caret 42×36 css px, correct ▾/▴ direction, the count signals the hidden rows, the top item stays live, and the rule is correctly scoped so Overlay/Expanded/Desktop/Banner are untouched. 3 `[polish]` → UX Debt. |
 | "A father's hand" card | 1 | **7.6** | **PASS** | Crisis framing, reason named, a Health cost on every answer, no clipping (275×254px in the 300×700 Overlay); consistency 8 / layout 8. 3 `[polish]`, all applied same-day: the reason line promoted to 11.5px `--text` under `.crisis`, the cost moved first in every sub-label, and the attention item gained a separator. |
+| You may raise a hand to your own child (the 4th raising action + its confirm) | 1 | **7.3** | **FAIL** — 1 `[blocker]` | The blocker was **evidence, not design**: `child-raise-hand.png` did not contain the raising row (it sat below the fold; the smoke's `click` does not scroll). Also 3 `[polish]`, all applied: the grave action now uses the `.grave` idiom, the confirm buttons went 28 → 38px (44 on touch), and the sub-copy was shortened. |
+| ↳ same, cycle 2 (fresh reviewer) | 2 | **7.5** | **PASS** | Pixel-verified: the row is in frame, `.grave` reads distinctly (2px red edge + red `duel` glyph), the confirm is now 113×38 (44 on touch). Remaining 3 `[polish]` → UX Debt (the Overlay's 236px body can't show the child's head and the four tiles together; the confirm sub still wraps; `#layout-tip` z-orders over the confirm scrim). |
 
 ## Mobile / narrow layout pass (task 1.8e, 2026-09-27)
 `renderer/styles.css` → "MOBILE / narrow + touch"; `renderer/index.html` viewport meta; `renderer/game/layout.js`

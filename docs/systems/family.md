@@ -238,6 +238,28 @@ Health cost printed on every answer's sub-label, and the loss landing in the Hea
 family overlay, one tap per answer, the overlay's usual Later. Discover: urgent tier leads the attention strip, and the
 card auto-opens on a new key (the same watcher as every family matter). Feel: `.crisis` framing, xianxia wording.
 
-Checks: `scripts/sim/checks/family-beating.js` (25). Smoke: `scripts/smoke/scenarios/beating.js` (beating-*.png).
+Checks: `scripts/sim/checks/family-beating.js`. Smoke: `scripts/smoke/scenarios/beating.js` (beating-*.png).
 Sim (100h × 2 seeds): healthy, 0 errors / violations; the bot answers beatings and takes the reckoning (`beating`
 1–6 and `reckoning` 1–5 per profile; the `active` line picks "strike back" / "break him").
+
+### The mirror: you may raise a hand to your own child (user 2026-10-01)
+
+Same data file. A fourth action on the child's raising row in Kin → Family ("Raise a hand", `ch-harsh`), behind the
+generic confirm — deliberate, never automatic (the agency rule: the player's own choices are never simulated).
+
+- **Engine:** `abuseChildPreview(childId)` / `abuseChild(childId)` — a real-time cooldown (`CHILD_ABUSE_CD_SECS` 600),
+  `CHILD_ABUSE_MIN_AGE` 4, bond `CHILD_ABUSE_BOND[child.personality]` (a `stoic` child hardens at −14; a `hotblood` or
+  `coward` one takes −28/−30), `CHILD_ABUSE_KARMA` −6, a grudge up to `CHILD_ABUSE_GRUDGE_MAX`, and a scar at
+  `CHILD_ABUSE_TRAUMA_AT` (2) hits (`c.trauma` → the heir Bloodline term, the same chain as the upbringing). The
+  reaction line is keyed to the CHILD's personality (`CHILD_ABUSE_REACTIONS`), so the same act plays differently.
+- **The fallout (the cycle closes):** a grown child (`age ≥ ADULT_AGE`) hit `CHILD_RECKON_MIN_HITS` (3) times calls you
+  out — `childReckoningInfo()` → an urgent attention item → the family overlay's "A Child's Reckoning" card: **Let them
+  strike** (Health −20, karma +4, the bond eases) or **Put them down** (karma −4, bond −25, and they leave the house for
+  good if it reaches 0). The mirror of your own reckoning. **No stage requirement:** a child's cultivation is capped at
+  yours and grows slowly, so "outranks you" is unreachable — sim-verified (the first version required it and never fired).
+- **UX:** the action's cost line shows the bond + karma before you commit, the confirm names the child, and the
+  aftermath lands in the log and the child's card.
+- Checks (`family-beating.js`, 25 → 36): the age gate, the personality-keyed preview, the bond + karma cost, the
+  cooldown, the scar at 2 hits, the grown-child reckoning + `accept`, and the old-save path. Smoke `beating.js` (+5:
+  child-raise-hand / child-raise-confirm). Sim 100h × 2 healthy; `child_abuse` 464/424 and `child_reckoning` 61/62
+  (the bot always answers a reckoning; `active` sometimes raises a hand for the Bloodline trauma term).

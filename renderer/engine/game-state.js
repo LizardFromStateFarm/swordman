@@ -2336,6 +2336,62 @@ class GameState {
     return { ok: true, bond: c.bond, delta: d }
   }
 
+  // ── family-events.js: you may lay a hand on your own child (the mirror of "A father's hand") ──────
+  _kidFill(str, name) { return String(str || '').replace(/\{name\}/g, name) }
+
+  abuseChildPreview(childId) {
+    const s = this._s, c = s.family.children.find(x => x.id === childId)
+    if (!c || !c.alive || c.estranged) return { ok: false, reason: 'gone' }
+    const age = this._childAge(c)
+    if (age < CHILD_ABUSE_MIN_AGE) return { ok: false, reason: 'young', minAge: CHILD_ABUSE_MIN_AGE }
+    if (this._cdLeft(c.cd?.harsh)) return { ok: false, reason: 'cooldown', secsLeft: this._cdLeft(c.cd.harsh) }
+    return { ok: true, bond: this._keyed(CHILD_ABUSE_BOND, c.personality), karma: CHILD_ABUSE_KARMA, hits: c.abuse?.hits || 0 }
+  }
+
+  // A deliberate act, never simulated. Bond falls by the child's personality; karma falls; 2 hits scar them.
+  abuseChild(childId) {
+    const p = this.abuseChildPreview(childId)
+    if (!p.ok) return p
+    const s = this._s, c = s.family.children.find(x => x.id === childId)
+    c.cd = c.cd || {}; c.cd.harsh = this._cdNow() + CHILD_ABUSE_CD_SECS
+    c.abuse = c.abuse || { hits: 0, grudge: 0, settled: false }
+    c.abuse.hits++
+    c.abuse.grudge = Math.min(CHILD_ABUSE_GRUDGE_MAX, (c.abuse.grudge || 0) + 1)
+    const delta = this._keyed(CHILD_ABUSE_BOND, c.personality)
+    c.bond = Math.max(0, Math.min(100, c.bond + delta))
+    if (c.abuse.hits >= CHILD_ABUSE_TRAUMA_AT) c.trauma = true
+    this._applyFamilyEffect({ karma: CHILD_ABUSE_KARMA })
+    const reaction = this._kidFill(CHILD_ABUSE_REACTIONS[c.personality] || CHILD_ABUSE_REACTIONS.default, c.given)
+    this.addEvent({ text: `Year ${this._yr()}: you raise a hand to ${c.given}. (${c.given}: bond ${delta >= 0 ? '+' : ''}${delta}) ${reaction}`, type: 'negative' })
+    this._recalc(); this._notify()
+    return { ok: true, bond: c.bond, delta, hits: c.abuse.hits, trauma: !!c.trauma }
+  }
+
+  // The grown child's reckoning — the mirror of yours. Grown, and hit enough times.
+  childReckoningInfo() {
+    const s = this._s
+    return (s.family.children || []).find(c => c.alive && !c.estranged && c.abuse && c.abuse.hits >= CHILD_RECKON_MIN_HITS &&
+      !c.abuse.settled && this._childAge(c) >= ADULT_AGE) || null
+  }
+
+  resolveChildReckoning(childId, kind) {
+    const s = this._s, c = s.family.children.find(x => x.id === childId)
+    if (!c || !c.abuse) return { ok: false, reason: 'none' }
+    c.abuse.settled = true
+    if (kind === 'accept') {
+      this._applyFamilyEffect({ health: CHILD_RECKON_HEALTH, karma: 4 })   // you take the blow; never lethal
+      c.bond = Math.max(0, Math.min(100, c.bond + 15)); c.abuse.grudge = 0
+    } else {
+      this._applyFamilyEffect({ karma: -4 })
+      c.bond = Math.max(0, c.bond - 25)
+      if (c.bond <= 0) c.estranged = true     // they leave the house for good
+    }
+    const choice = CHILD_RECKONING_CHOICES.find(x => x.id === kind) || CHILD_RECKONING_CHOICES[0]
+    this.addEvent({ text: `Year ${this._yr()}: ${this._kidFill(choice.result, c.given)}`, type: kind === 'accept' ? 'special' : 'negative' })
+    this._recalc(); this._notify()
+    return { ok: true, bond: c.bond }
+  }
+
   // ── 2.6c (clan-succession.md): heirs + the Tournament of Heirs ─────────────
 
   // Children who could be named heir / enter a tournament.

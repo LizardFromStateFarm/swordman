@@ -36,4 +36,33 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   assert(await ev('document.getElementById("family-overlay").classList.contains("hidden")'), 'answering closes the card')
   assert(await ev('!gameState.get().abuse.event'), 'the pending beating is cleared')
   await shot('beating-after')
+
+  // ── The mirror: you may raise a hand to your own child ──────────────────────────────────────
+  await ev(`(() => {
+    const s = gameState.get()
+    s.family.children.push({ id: 'smokekid', given: 'Bao', family: 'Smoke', alive: true, bond: 80,
+      personality: 'stoic', stageIndex: 5, bornYear: Math.floor(s.world.year) - 20, parents: [s.self.id], morality: 0 })
+    gameState._notify()
+  })()`)
+  await sleep(400)
+  await ev('document.querySelector(\'[data-tab="family"]\').click()')
+  await sleep(500)
+  await click('[data-fa="ch-open"][data-id="smokekid"]')
+  await sleep(300)
+  assert(await ev('!!document.querySelector(\'[data-fa="ch-harsh"][data-id="smokekid"]\')'), 'the raising row offers "Raise a hand"')
+  await ev('document.querySelector(\'[data-fa="ch-harsh"][data-id="smokekid"]\').scrollIntoView({ block: "center" })')
+  await sleep(250)
+  await shot('child-raise-hand')
+
+  const kb0 = await ev('gameState.get().family.children.find(c => c.id === "smokekid").bond')
+  await click('[data-fa="ch-harsh"][data-id="smokekid"]')
+  await sleep(300)
+  assert(await ev('!document.getElementById("confirm-overlay").classList.contains("hidden")'), 'it asks for confirmation first')
+  assert(await ev('/Raise a hand/.test(document.getElementById("confirm-msg").textContent)'), 'the confirm names the act')
+  await shot('child-raise-confirm')
+  await click('#confirm-yes')
+  await sleep(400)
+  const kb1 = await ev('gameState.get().family.children.find(c => c.id === "smokekid").bond')
+  assert(kb1 < kb0, `confirming costs the child's bond (${kb0} → ${kb1})`)
+  assert(await ev('gameState.get().family.children.find(c => c.id === "smokekid").abuse.hits === 1'), 'the child remembers (1 hit)')
 }

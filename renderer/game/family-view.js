@@ -292,11 +292,13 @@ class FamilyView {
     let acts = ''
     if (open) {
       const t = gs.childActionPreview(c.id, 'time'), te = gs.childActionPreview(c.id, 'teach'), g = gs.childActionPreview(c.id, 'gift')
+      const ap = gs.abuseChildPreview(c.id)   // family-events.js: the mirror — you may raise a hand too
       const mor = n => n ? [`morality ${this._signed(n)}`, n > 0 ? 'up' : 'down'] : null
       acts = `<div class="kid-acts">
         ${this._act('ch-time', 'heart', 'Spend time', t, this._eff([[`bond ${this._signed(t.bond)}`, t.bond >= 0 ? 'up' : 'down'], this._qiBit(t.qi)]), ` data-id="${h.esc(c.id)}"`)}
         ${this._act('ch-teach', 'scroll', 'Teach your art', te, this._eff([['progress', 'up'], te.bond ? [`bond ${this._signed(te.bond)}`, te.bond >= 0 ? 'up' : 'down'] : null, mor(te.morality), this._qiBit(te.qi)]), ` data-id="${h.esc(c.id)}"`)}
         ${this._act('ch-gift', 'stone', 'Give resources', g, this._eff([['progress', 'up'], [`bond ${this._signed(g.bond)}`, 'up'], mor(g.morality), this._stoneBit(g.stones)]), ` data-id="${h.esc(c.id)}"`)}
+        ${this._act('ch-harsh', 'duel', 'Raise a hand', ap, this._eff([[`bond ${this._signed(ap.bond || 0)}`, 'down'], [`karma ${this._signed(ap.karma || 0)}`, 'down']]), ` data-id="${h.esc(c.id)}"`, 'grave')}
       </div>
       ${pers ? `<div class="kid-note">${h.esc(pers.blurb)}</div>` : ''}
       <div class="kid-meta">${parent ? `by ${h.esc(parent.given)} · ` : ''}${this._plural(c.raised?.time || 0, 'season')} together · ${this._plural(c.raised?.teach || 0, 'lesson')}</div>`
@@ -422,6 +424,14 @@ class FamilyView {
       case 'ch-time':  gs.childAction(id, 'time'); break
       case 'ch-teach': gs.childAction(id, 'teach'); break
       case 'ch-gift':  gs.childAction(id, 'gift'); break
+      case 'ch-harsh': {   // family-events.js: the mirror of "A father's hand" — a deliberate act, confirmed
+        const kid = gs.get().family.children.find(x => x.id === id)
+        h.confirm(`Raise a hand to ${kid?.given || 'your child'}?`, 'They will remember it. Your karma will too.', () => {
+          const r = gs.abuseChild(id)
+          if (r.ok) h.flash(`${kid?.given || 'Your child'} will remember this.`, 'negative')
+        }, 'Strike')
+        break
+      }
       // 1.8b-3b: affairs
       case 'lv-cover':   gs.coverTracks(id); break
       case 'lv-marry':   gs.marryLover(id); break
