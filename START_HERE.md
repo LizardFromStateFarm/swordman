@@ -40,6 +40,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | **Combat & Battles** (battle page, beast battles, bestiary) | ◐ Phase 35 — **A6-1 ✅** (2026-09-28): Fight a wild beast from Roam → Beasts on a full-window ink battle page (UI 7.75, effects 8.0). **A6-2 ✅** (2026-09-29): Roam → Hunt + Roam → Bestiary, battle banter, slayer reputation, sim bot hunts (UI 7.7). **A6-3a ✅** (2026-09-29): duels, head challenges, defending the seat + your step-down bouts on the battle page vs ink duelists, finish/spare · raise/humble, debts + grudges (UI 7.83, duelist 8.1). **A6-3b ✅** (2026-09-29): the Arena — Roam → Arena, six rings, purse × streak × renown, blood matches, titles, grudge call-outs (UI 7.75). Next A6-3c bosses (needs 23E/17) |
 | **Arts & Move Combat** (collectible combat arts, 4 moves + passives, parry QTE, no cooldowns; + Sell items) | ◐ Phase 42 — 1.11 Sell ✅ · 1.12 Arts core ✅ (79 arts, Path → Arts, study, loadout, offers, drops); 1.13a move engine ✅ · 1.13b element effects ✅ · **1.14a people on moves ✅** (every fight kind; p.arts, temper AI, scouting; Press/Guard/Feint removed; UI 7.75) · **1.14b ✅** rival counters, raise → taught / finish → manual, Sect → Library, clan library, **study desks by realm** (UI 7.6) · **1.15 QA & Balance ✅** (2026-09-30: the sim bot plays the arts — offers, study desks, loadout, sect + clan library, selling; 27-run sim healthy; checks 790) · **1.16 four saved loadouts ✅** (2026-10-01: 4 free decks you set + switch on Path → Arts, not tied to Hunt/Duel; checks 797) (docs/systems/arts.md) |
 | **Tame talisman grades & tame attempts** (驯兽符) | ✅ **Phase 41** (2026-09-29): four graded Beast Taming Talismans (Crude 40% → Fine 55% → Superior 70% → Pristine 90%, the old item = Crude), a real tame roll, a failed tame that fights or escapes (nature-weighted; the wounded flee), the bind roll; grade pickers on Roam → Beasts / details / battle end; checks/talismans.js (25) |
+| **A father's hand** (a bad father's rare beating + the grown-up reckoning) | ✅ 2026-10-01 (user; not a roadmap phase) — docs/systems/family.md → "A father's hand"; checks/family-beating.js (25), smoke scenarios/beating.js |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
@@ -84,6 +85,12 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ## UX Debt — known gaps in what the player can see / do (add here; remove when fixed)
 
+- **Phone attention minimize** (7.6 PASS, 2026-10-01; ui-review.md): the head's divider line shows through the caret
+  button's box (give `.att-min` a background or drop its negative vertical margins); the caret glyph is small for its
+  box; the caret is a no-op when only one item exists. The still-short phone content window is now relieved by the
+  app-level scroll with a sticky tab bar (2026-10-01).
+- **A father's hand** (2026-10-01): no custom art — the card reuses the family overlay (the upbringing card's sibling);
+  the beating has no dedicated health/wound moment on the sprite.
 - **Overlay tab body shrank 305 → 236px** (1.8b-1: group row + sub-tabs + attention strip). Views are shorter now
   (Explore 1.4 screens, Craft 2.6), but the founder's Sect is 5.7 screens until 1.8b-5 splits it. Candidates: a 34px nav
   row, hide the strip when calm.
@@ -207,6 +214,41 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-10-01 (user present) — part 65
+Agent: **iOS build/device fixes + a phone-minimizable attention center + a new family event.** Three pieces:
+  1. **Codemagic iOS signing** (the user's build failed: "No matching profiles found for bundle identifier
+     com.cultivator.idle and distribution type app_store"). Root cause: `codemagic.yaml` referenced an App Store
+     Connect integration named `cultivator_idle_asc`, but the integration in Codemagic is named `idlekey`. Fixed
+     `codemagic.yaml` (+ the header comment) and `docs/systems/ios-port.md` → `idlekey`. Also added
+     `ITSAppUsesNonExemptEncryption = false` to `ios/App/App/Info.plist` (the app implements no encryption — no
+     fetch/XHR/WebSocket/HTTP anywhere in `renderer/` or `main.js`) so TestFlight stops asking export compliance.
+     No rebuild logic touched; the user finishes the cert/profile + re-runs.
+  2. **Three real-device iOS issues** (user, from an iPhone): (a) tapping the rename field zoomed the WebView in and
+     never zoomed back → the viewport meta gained `maximum-scale=1, user-scalable=no` and touch fields are now 16px
+     (`styles.css`, the coarse-pointer block) — iOS only auto-zooms a focused field under 16px. (b) the app couldn't be
+     scrolled to the bottom — only the small panel scrolled → on the phone layout (≤599px) `#app` is now the scroller
+     with the bottom tab bar `position: sticky; bottom: 0` (the documented UX-debt fix). (c) landscape clipped at the
+     rounded corners and the camera/notch covered the side rail → a new touch-only landscape block pads `#app` by the
+     horizontal safe-area insets (a thin dark bar) — note the ≤599px block never applied in landscape (844px wide).
+     Smoke `scenarios/mobile.js` +7 (32 ok, zero console errors).
+  3. **Attention center minimizable on a phone** (user): the strip now collapses to its head (count + caret) + the
+     top item by default on the phone layout, tap the caret to expand; remembered per device (`cultivator-idle:att-min`).
+     Scoped to `body[data-layout="desktop"][data-narrow="1"]`, so Overlay keeps its own "+N" fold and
+     Expanded/Desktop/Banner are untouched. `attention.js` (`_isPhone`/`_minOn`) + `styles.css`. **Visual Review Gate:
+     7.6 PASS** (cycle 1; 3 [polish] → UX Debt). Checks 797 · mobile smoke 29 → 32 ok.
+  4. **New family event — "A father's hand"** (user: a bad father can beat his child for 20% HP; rare; "full depth",
+     never lethal). New `assets/data/family-events.js` + engine in `game-state.js` (`s.abuse`, the `_tickFamily` roll,
+     `isBadFather`, `resolveBeating`, `reckoningInfo`/`resolveReckoning`) + attention items + a family-overlay card.
+     "Bad father" = cruel style OR cruel personality OR his trauma OR bond < 35. Young only (≤ AWAKENING_AGE+12), rare
+     (year interval AND 0.30). −20 Health floors at 1 (never lethal); 2 hits scar you (trauma → heir Bloodline); enough
+     defiance + grown + outranking him unlocks the reckoning (forgive / break). Checks
+     `scripts/sim/checks/family-beating.js` (25) · smoke `scenarios/beating.js` (7 ok). Sim 100h×2 healthy (0/0;
+     bot answers beatings + the reckoning). Docs: family.md "A father's hand", qa-sim.md, CLAUDE.md tree.
+  Tests: `npm test` clean (293 files) · `npm run checks` **822 ok** · sim 100h×2 healthy · mobile + beating + nav-attention
+  smokes pass (nav-attention has 1 pre-existing FAIL — its `#mode-auto .auto-row` count says 4 but the panel has ≥5 since
+  the Beast Auto-Expedition row landed in part 51; not touched). Uncommitted (the user handles commits).
+  Next: finish the iOS cert/profile → re-run Codemagic; then **A6-3c bosses** (needs 23E/17) → A7 sect base scene → 2.8 QA.
+
 Date: 2026-10-01 (user present) — part 64
 Agent: **Task 1.16 — four saved loadouts** (the 42d polish; user: "read START_HERE and build the loadouts, i dont want it
   to be seperated from hunt and fight i just want the user to be able to set 4 different loadouts"). The planned two

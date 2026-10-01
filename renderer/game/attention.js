@@ -1,11 +1,16 @@
 // Attention — the "needs you" layer (roadmap 1.8b-1, Phase 33). collectAttention() is DOM-free: it turns the save
 // into a ranked list of things waiting on the player (a pending decision, an opportunity, an idle slot), each with
 // the reason it's there and where it leads. AttentionUI draws that list as the strip under the HUD (Overlay), a
-// card column (Expanded/Desktop) or a one-line summary (Banner), and NavUI turns the same list into tab badges.
+// card column (Expanded/Desktop), a one-line summary (Banner) or a collapsed one-line row on a phone, and NavUI
+// turns the same list into tab badges.
 // See docs/systems/ui-layout.md → "Navigation + attention".
 
 // tier: 'urgent' = a decision is waiting on you · 'ready' = something you can act on now · 'idle' = a quiet nudge
 const ATTENTION_TIER_ORDER = { urgent: 0, ready: 1, idle: 2 }
+
+// Phone: the attention center collapses to one line by default (the viewport is short) — the player's choice is
+// remembered per device. Only the phone layout (desktop mode at a narrow width) is affected; Overlay already folds.
+const ATT_MIN_KEY = 'cultivator-idle:att-min'
 
 // item: { id, tier, glyph, title, why, view, open?, left? }  view = the NAV view it lives in; open = a popup to
 // show; left = seconds on a countdown (war arrival)
@@ -28,6 +33,10 @@ function collectAttention(s, gs) {
     const c = (f.children || []).find(k => k.id === f.childEvent.childId)
     add('urgent', 'child-event', 'child', `${c?.given || 'Your child'} needs a parent`, 'A choice about raising them waits on you.', 'family', 'family')
   } else if (s.upbringing?.event) add('urgent', 'upbringing', 'child', 'A matter from your youth', 'How you answer shapes your bond with the clan head.', 'family', 'family')
+  // family-events.js: a bad father's hand — the beating waits on your answer; the grown-up reckoning, later.
+  if (s.abuse?.event) add('urgent', 'beating', 'child', 'A father’s hand', `${gs.beatingInfo?.()?.why || 'Your father'} · he will not stop on his own.`, 'family', 'family')
+  const reck = s.abuse?.reckon ? gs.reckoningInfo?.() : null
+  if (reck) add('ready', 'reckoning', 'sword', 'A reckoning waits', `${reck.headName} once beat you. You are grown now — and you stand above him.`, 'family', 'family')
   // 1.8b-3b: a fight you're in (never resolves without you), and a lover's ultimatum
   if (f.fight?.kind === 'beast') {                               // Phase 35: a beast battle (the battle page reopens it)
     const bn = gs.beastProfile ? gs.beastProfile(f.fight.beast).name : 'beast'
@@ -163,7 +172,13 @@ class AttentionUI {
     this.open = false   // Overlay: the "+N more" list is unfolded
     this._sig = ''
     this.items = []
+    try { this._minPref = localStorage.getItem(ATT_MIN_KEY) } catch { this._minPref = null }   // '0' = expanded, else minimized
     this.el.addEventListener('click', e => {
+      if (e.target.closest('[data-att-min]')) {   // phone: the head caret expands/minimizes the list (remembered)
+        this._minPref = this._minOn() ? '0' : '1'
+        try { localStorage.setItem(ATT_MIN_KEY, this._minPref) } catch {}
+        this._sig = ''; this.render(this.items); return
+      }
       const more = e.target.closest('[data-att-more]')
       if (e.target.closest('[data-att-fold]')) { this.open = false; this._sig = ''; this.render(this.items); return }
       if (more && document.body.dataset.layout === 'banner') { this.open = true; this._sig = ''; this.onBannerMore?.(); return }   // a 56px strip can't unfold: open the full window
@@ -180,10 +195,17 @@ class AttentionUI {
     })
   }
 
+  // A phone: the native shells report layout 'desktop' at a narrow width. Overlay is narrow too, but it already
+  // folds to one line + "+N", so it keeps its own behaviour and never gets the caret.
+  _isPhone() { const b = document.body.dataset; return b.layout === 'desktop' && b.narrow === '1' }
+  // Minimized by default on a phone until the player opens it (their choice remembered).
+  _minOn() { return this._isPhone() && this._minPref !== '0' }
+
   // Cheap to call every frame: only touches the DOM when the list (or a countdown) changed.
   render(items) {
     this.items = items
-    const sig = items.map(i => i.id + i.title + i.why + (i.left ?? '')).join('|') + this.open   // why too: its counts change (Merit, affection)
+    const min = this._minOn()
+    const sig = items.map(i => i.id + i.title + i.why + (i.left ?? '')).join('|') + this.open + min   // why too: its counts change (Merit, affection)
     if (sig === this._sig) return
     this._sig = sig
     const esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -198,13 +220,15 @@ class AttentionUI {
     const hiddenDots = ['urgent', 'ready', 'idle'].filter(t => items.slice(1).some(i => i.tier === t)).map(t => `<span class="att-dot ${t}"></span>`).join('')
     this.el.classList.toggle('calm', !items.length)
     this.el.classList.toggle('has-urgent', items.some(i => i.tier === 'urgent'))
+    this.el.classList.toggle('minimized', min)   // phone only: one line + a caret; no effect elsewhere (CSS-scoped)
     if (!items.length) {
       this.el.innerHTML = `<div class="att-head"><span class="att-head-title">Attention</span></div>
         <div class="att-calm"><span class="att-glyph">${Icon('idle')}</span><span>All is still. Nothing needs you.</span></div>`
       return
     }
     const more = items.length - 1
-    this.el.innerHTML = `<div class="att-head"><span class="att-head-title">Attention</span><span class="att-count">${kinds}</span></div>
+    const minBtn = `<button class="att-min" data-att-min aria-expanded="${min ? 'false' : 'true'}" title="${min ? 'Expand attention' : 'Minimize attention'}">${min ? '▾' : '▴'}</button>`
+    this.el.innerHTML = `<div class="att-head"><span class="att-head-title">Attention</span><span class="att-head-right"><span class="att-count">${kinds}</span>${minBtn}</span></div>
       <div class="att-list${this.open ? ' open' : ''}">${items.map((i, n) => row(i, n ? ' att-rest' : ' att-first')).join('')}${this.open ? '<button class="att-fold" data-att-fold>▴ fold away</button>' : ''}</div>
       ${more ? `<button class="att-more ${worstHidden}" data-att-more title="${more} more waiting"><span class="att-dots">${hiddenDots}</span>+${more} ▾</button>` : ''}`
   }

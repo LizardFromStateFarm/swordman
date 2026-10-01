@@ -247,6 +247,7 @@ assets/
     duelists.js         ← DUELIST_LOOK + DUELIST_ROLE_LOOK — a person you fight: temper/role → INK_PARTS slots on the battle page (A6-3a)
     family.js           ← Affection, MARRIAGE_EVENTS / crisis, duel + affairs, AFFAIR_REACTIONS, CHILD_EVENTS, PERSONALITY_MORALITY, COURT_BEATS + spouse/child actions (1.8b-3a)
     succession.js       ← M2 2.6d: parenting styles, heir bet, reign/rebirth weights, rival rebirth, chronicle text, UPBRINGING_EVENTS
+    family-events.js    ← A father's hand (2026-10-01): the rare beating by a bad father, its three answers + the grown-up reckoning
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)

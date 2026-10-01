@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..', '..')
 // Load order mirrors renderer/index.html (sprites, platform-storage, ascii-renderer, game.js skipped:
 // they're UI/Node-bridge only and the logic never references them).
 const DATA_FILES = ['stages', 'techniques', 'events', 'items', 'locations', 'enemies', 'recipes',
-                    'beasts', 'talismans', 'arena', 'arts', 'sects', 'sect-buildings', 'sect-war', 'bloodline', 'lifespan', 'family', 'succession', 'clan-legacies', 'automation', 'settings', 'personalities', 'banter-lines', 'names', 'soul']
+                    'beasts', 'talismans', 'arena', 'arts', 'sects', 'sect-buildings', 'sect-war', 'bloodline', 'lifespan', 'family', 'succession', 'family-events', 'clan-legacies', 'automation', 'settings', 'personalities', 'banter-lines', 'names', 'soul']
   .map(f => `assets/data/${f}.js`)
 const LOGIC_FILES = ['renderer/engine/persons.js', 'renderer/engine/game-state.js',
   ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war', 'banter', 'notifications'].map(f => `renderer/game/${f}.js`)]

@@ -2208,6 +2208,15 @@ body[data-layout="desktop"] #resize-grip:hover { color: var(--gold); }
   body[data-layout="desktop"] .tab.active::after { left: 18%; right: 18%; top: auto; bottom: -1px; width: auto; height: 2px; background: linear-gradient(to right, transparent, var(--gold), transparent); }
   body[data-layout="desktop"] #hud { border-right: none; overflow: visible; }
   body[data-layout="desktop"] #resize-grip { display: none; }
+
+  /* The whole game scrolls as one surface so the bottom is always reachable (user 2026-10-01): the app is the
+     scroller, its sections size to content, and the bottom tab bar stays put over the content. */
+  body[data-layout="desktop"] #app { height: 100dvh; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+  body[data-layout="desktop"] #main-pane,
+  body[data-layout="desktop"] #view { flex: none; }
+  body[data-layout="desktop"] #tab-body { flex: none; overflow: visible; }
+  body[data-layout="desktop"] .panel { height: auto; overflow: visible; }
+  body[data-layout="desktop"] #tabs { position: sticky; bottom: 0; z-index: 6; }
 }
 
 /* ── Banner: one strip, like a taskbar ──────────────────────────────────── */
@@ -2492,6 +2501,8 @@ body[data-layout="banner"][data-edge="bottom"] #_toast { top: auto !important; b
   -webkit-app-region: no-drag;
 }
 .att-head { display: none; }
+.att-head-right { display: flex; align-items: center; gap: 8px; }
+.att-min { display: none; }   /* the phone collapse caret — shown only on the phone layout (mobile section below) */
 .att-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .att-item {
   display: flex;
@@ -3372,6 +3383,7 @@ body[data-layout="overlay"] .warord-note { font-size: 10.5px; line-height: 1.4; 
 
 /* ── 1.8b-3b: the fight card (#family-box.fight), tournament mercy, lover cards, the lover's ultimatum ── */
 #family-box.fight #family-desc { color: var(--text); font-size: 11.5px; }
+#family-box.crisis #family-desc { color: var(--text); font-size: 11.5px; }   /* the reason outranks the cost sub-lines (review 2026-10-01) */
 #family-box.fight .fc-opp { color: color-mix(in srgb, var(--text) 85%, var(--dim)); margin-bottom: 8px; }
 #family-box.fight .fc-opp b { font-weight: normal; color: var(--gold); }
 #family-box.fight .fc-lethal { color: var(--red-text); }
@@ -3850,6 +3862,10 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 
   body[data-layout] .recipe-craft-btn, body[data-layout] .recipe-equip-btn,
   body[data-layout] .pill-queue-btn { min-height: 38px !important; }
   body[data-layout] .bm-row.can { min-height: 42px !important; }
+
+  /* iOS auto-zooms the WebView when a focused field's font-size is under 16px — and it can stay zoomed in until
+     the app relaunches. Keep every text field at 16px on touch (the rename field, the name field at creation…). */
+  input, select, textarea { font-size: 16px !important; }
 }
 
 /* ── Narrow screens: the phone layout ─────────────────────────────────────────────────────── */
@@ -3916,6 +3932,22 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 
   body[data-layout="desktop"] #actions { padding-top: 5px; padding-bottom: 5px; }
   body[data-layout="desktop"] #attention { padding-top: 3px; padding-bottom: 3px; }
 
+  /* UI review: 7.6 (2026-10-01, phone attention-minimize) */
+  /* Attention center on a phone (user 2026-10-01): the card column collapses to the head count + the top item, with
+     a caret in the head to expand. Scoped to desktop + narrow (the phone layout) — Overlay keeps its own "+N" fold. */
+  body[data-layout="desktop"][data-narrow="1"] .att-min {
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    min-width: 42px; min-height: 36px; margin: -8px -4px -8px 0;
+    background: none; border: 1px solid var(--border); border-radius: 3px;
+    color: var(--dim-hi); font-family: var(--font); font-size: 13px; cursor: pointer;
+  }
+  body[data-layout="desktop"][data-narrow="1"] .att-min:hover,
+  body[data-layout="desktop"][data-narrow="1"] .att-min:focus-visible { color: var(--gold); border-color: var(--gold); }
+  body[data-layout="desktop"][data-narrow="1"] #attention.minimized .att-list { gap: 0; }
+  body[data-layout="desktop"][data-narrow="1"] #attention.minimized .att-rest { display: none; }
+  body[data-layout="desktop"][data-narrow="1"] #attention.minimized .att-item { padding-top: 3px; padding-bottom: 3px; }
+  body[data-layout="desktop"][data-narrow="1"] #attention.minimized .att-why { -webkit-line-clamp: 1; }
+
   /* Readable secondary text at phone size (the viewport meta already un-shrinks everything; this lifts the
      9–10.5px meta lines). Suffixed classes are this codebase's consistent "secondary text" naming. */
   body[data-layout="desktop"] [class*="desc"], body[data-layout="desktop"] [class*="meta"],
@@ -3954,6 +3986,19 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 
   body[data-layout="desktop"] #titlebar { padding-top: calc(2px + env(safe-area-inset-top)); padding-bottom: 2px; }
   body[data-layout="desktop"] #titlebar .tb-btn { min-height: 32px !important; min-width: 36px !important; }
   body[data-layout="desktop"] #stage-desc { display: none; }
+}
+
+/* Landscape phone (user 2026-10-01): the device's camera/notch and rounded corners sit over the app and cover the
+   side rail. Keep the app clear of them with the side safe-area insets (a thin dark bar at each side) instead of
+   clipping the UI. Touch-only, so a short desktop window is unaffected. */
+@media (orientation: landscape) and (max-height: 520px) and (hover: none),
+       (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  body[data-layout="desktop"] { background: var(--bg); }
+  body[data-layout="desktop"] #app {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* No-sect founder preview (1.8b-6 review): fills the roomy right column under the founding card */

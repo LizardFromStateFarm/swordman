@@ -2167,7 +2167,9 @@
     if (f.stepDownOffer) return `sd:${f.stepDownOffer.headId}:${f.stepDownOffer.year}`          // 2.6e
     if (f.spouse && f.event) return `ev:${f.event.id}:${f.event.year}`
     if (f.childEvent) return `child:${f.childEvent.id}:${f.childEvent.childId}:${f.childEvent.year}`   // 2.6b
+    if (s.abuse?.event) return `beat:${s.abuse.event.year}`   // family-events.js: a bad father's hand
     if (s.upbringing?.event) return `up:${s.upbringing.event.id}:${s.upbringing.event.year}`   // 2.6d
+    if (s.abuse?.reckon) return `reckon:${s.abuse.hits}`      // family-events.js: the grown-up reckoning
     return null
   }
 
@@ -2218,6 +2220,27 @@
         if (res.next) return combatView.resume()                   // A6-3a: your first bout
         if (res.outcome === 'won') flashMessage('You took the head seat.', 'positive')
         else if (res.outcome === 'died') flashMessage('You fell in the tournament.', 'negative')
+      }))
+    } else if (s.abuse?.event) {   // family-events.js: a bad father's hand
+      const info = gameState.beatingInfo()
+      box.classList.add('crisis')
+      document.getElementById('family-title').textContent = BEATING_EVENT.title
+      document.getElementById('family-desc').textContent = `${info.why}. What do you do?`
+      choicesEl.innerHTML = BEATING_EVENT.choices.map((ch, i) =>
+        `<button data-beat="${i}">${escHtml(ch.label)}<span class="family-sub">${escHtml(ch.sub)}</span></button>`).join('')
+      choicesEl.querySelectorAll('[data-beat]').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('family-overlay').classList.add('hidden')
+        gameState.resolveBeating(+btn.dataset.beat)
+      }))
+    } else if (s.abuse?.reckon) {   // family-events.js: the grown-up reckoning
+      box.classList.remove('crisis')
+      document.getElementById('family-title').textContent = RECKONING_TITLE
+      document.getElementById('family-desc').textContent = gameState.upbringingText(RECKONING_TEXT)
+      choicesEl.innerHTML = RECKONING_CHOICES.map(ch =>
+        `<button data-reckon="${ch.id}">${escHtml(ch.label)}<span class="family-sub">${escHtml(ch.sub)}</span></button>`).join('')
+      choicesEl.querySelectorAll('[data-reckon]').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('family-overlay').classList.add('hidden')
+        gameState.resolveReckoning(btn.dataset.reckon)
       }))
     } else if (!(f.spouse && f.event) && !f.childEvent && s.upbringing?.event) {   // 2.6d upbringing (you are the child)
       const ev = s.upbringing.event, def = gameState.upbringingEventDef(ev)

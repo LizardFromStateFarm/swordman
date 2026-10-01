@@ -141,6 +141,9 @@ class GameState {
       age:              AWAKENING_AGE,
       // Phase 16-lite (M2 task 2.5): spouse/children/proposal. Advanced only by _tickFamily() (game clock).
       family:           this._blankFamily(),
+      // family-events.js: a bad father's hand — rare beatings while you are young, the defiance they build, and
+      // the grown-up reckoning. Filled for old saves by _ensureBeatingFields().
+      abuse:            { nextCheck: 0, hits: 0, defiance: 0, event: null, reckon: false, avenged: false },
       // Phase 2
       expedition:    { active: false, locationId: null, endsAt: null, pushed: false },
       inventory:     {},
@@ -1094,6 +1097,26 @@ class GameState {
       } else up.done = true
     }
 
+    // family-events.js: a bad father may beat you while you are still a child of the house. Rare — a year interval
+    // AND a flat chance gate it. Never lethal (_applyFamilyEffect floors Health at 1). Enough defiance, grown up
+    // and outranking him, later unlocks the reckoning.
+    const ab = s.abuse || (s.abuse = this._blankAbuse())
+    if (!ab.avenged && !ab.event) {
+      const head = this._father()
+      if (head && head.alive !== false && s.age <= AWAKENING_AGE + BEATING_MAX_YEARS && this.isBadFather()) {
+        if (!ab.nextCheck) ab.nextCheck = yr + this._randRange(BEATING_CHECK_YEARS)
+        if (yr >= ab.nextCheck) {
+          ab.nextCheck = yr + this._randRange(BEATING_CHECK_YEARS)
+          if (Math.random() < BEATING_CHANCE) {
+            ab.event = { year: yr, headId: head.id }
+            this.addEvent({ text: `Year ${yr}: ${this.beatingWhy()}.`, type: 'negative' })
+            this._emit('beating', { id: 'beating' })
+          }
+        }
+      }
+    }
+    if (!ab.reckon && this.reckoningInfo()) ab.reckon = true
+
     // Spouse: gains a stage every SPOUSE_YEARS_PER_STAGE married years (never ascends, never dies of age).
     const sp = f.spouse
     if (sp) {
@@ -1299,6 +1322,7 @@ class GameState {
     this._ensurePhase34Fields()   // Phase 31 (2.7a) — needs s.world.clans (33), reads maxStageThisLife/techniques
     this._ensurePhase35Fields()
     this._ensurePhase42Fields()
+    this._ensureBeatingFields()   // family-events.js — a bad father's hand + the grown-up reckoning
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -4479,6 +4503,98 @@ class GameState {
     const gone = new Set(drop)
     for (const id of drop) delete w.persons[id]
     for (const c of Object.values(w.clans)) for (const l of c.lines) l.memberIds = l.memberIds.filter(id => !gone.has(id))
+  }
+
+  // ── family-events.js: a bad father's hand (rare, while you are a child of the house) ────────────────
+  _blankAbuse() { return { nextCheck: 0, hits: 0, defiance: 0, event: null, reckon: false, avenged: false } }
+
+  _ensureBeatingFields() {
+    const s = this._s
+    if (!s.abuse || typeof s.abuse !== 'object') s.abuse = this._blankAbuse()
+    const a = s.abuse, b = this._blankAbuse()
+    for (const k of Object.keys(b)) if (a[k] === undefined) a[k] = b[k]
+  }
+
+  // The head who raised you this life — your father in the house. null for an orphan, a rival birth, or a first life.
+  _father() {
+    const s = this._s, id = s.birth?.headId
+    return (id && s.world?.persons?.[id]) || null
+  }
+
+  // "Bad" = a cruel style, a cruel personality, his own trauma, or a bond that has gone cold (family-events.js).
+  isBadFather() {
+    const s = this._s, head = this._father()
+    if (!head || head.alive === false) return false
+    const style = head.parentingStyle || s.birth?.headStyle
+    return BEATING_BAD_STYLES.includes(style) || BEATING_BAD_PERSONALITIES.includes(head.personality) ||
+           !!head.trauma || (s.birth?.headBond ?? 50) < BEATING_BOND_MAX
+  }
+
+  // A flavour line for WHY he is beating you — his trauma, his temper, or how little he thinks of you.
+  beatingWhy() {
+    const s = this._s, head = this._father()
+    if (!head) return 'A hard hand falls on you'
+    const who = head.given || 'Your father'
+    if (head.trauma) return `${who} is drunk, and the Tournament of Heirs is in his eyes again`
+    if (BEATING_BAD_PERSONALITIES.includes(head.personality)) return `${who} is in one of his black moods`
+    if ((s.birth?.headBond ?? 50) < BEATING_BOND_MAX) return `${who} looks at you like a stranger and raises his hand`
+    return `${who} has been drinking`
+  }
+
+  // The pending beating (game.js's family-overlay card) — null when none is waiting.
+  beatingInfo() {
+    const s = this._s, a = s.abuse
+    if (!a?.event) return null
+    const head = this._father()
+    return { headId: a.event.headId, headName: head?.given || 'your father', why: this.beatingWhy(),
+             bond: s.birth?.headBond ?? null, choices: BEATING_EVENT.choices }
+  }
+
+  // Answer a beating. Health floors at 1 (a childhood beating never kills you). Defiance is the memory.
+  resolveBeating(i) {
+    const s = this._s, a = s.abuse
+    if (!a?.event) return { ok: false, reason: 'no_event' }
+    const ch = BEATING_EVENT.choices[i]
+    if (!ch) return { ok: false, reason: 'bad_choice' }
+    this._applyFamilyEffect(ch.effect)   // never lethal: floors Health at 1
+    const delta = ch.bond ? (ch.bond[s.personality?.id] ?? ch.bond.default ?? 0) : 0
+    if (s.birth && s.birth.headBond != null) s.birth.headBond = Math.max(0, Math.min(100, s.birth.headBond + delta))
+    a.hits++
+    a.defiance = Math.min(BEATING_RECKONING_DEFIANCE, a.defiance + (ch.defiance || 0))
+    if (a.hits >= BEATING_SCAR_AT) s.self.trauma = true   // scarred (2.6d: feeds the heir Bloodline term)
+    a.event = null
+    const heart = delta ? ` (bond with him ${delta > 0 ? '+' : ''}${delta})` : ''
+    this.addEvent({ text: this.upbringingText(`${ch.result}${heart}`), type: delta < 0 ? 'negative' : 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, health: s.health }
+  }
+
+  // The grown-up reckoning: he beat you, you stood up to him enough, and now you outrank him.
+  reckoningInfo() {
+    const s = this._s, a = s.abuse, head = this._father()
+    if (!a || a.avenged || !head || head.alive === false) return null
+    if (a.defiance < BEATING_RECKONING_DEFIANCE) return null
+    if (s.age < AWAKENING_AGE + BEATING_MAX_YEARS) return null
+    if ((s.stageIndex || 0) <= (head.stageIndex || 0)) return null
+    return { headId: head.id, headName: head.given || 'him', hits: a.hits }
+  }
+
+  resolveReckoning(kind) {
+    const s = this._s, a = s.abuse, info = this.reckoningInfo()
+    if (!info) return { ok: false, reason: 'none' }
+    const head = this._father()
+    if (kind === 'break') {
+      this._applyFamilyEffect({ karma: BEATING_KARMA.break })
+      if (head) head.feud = 'grudge'
+    } else {
+      this._applyFamilyEffect({ karma: BEATING_KARMA.forgive })
+      if (s.birth) s.birth.headBond = Math.max(0, Math.min(100, (s.birth.headBond ?? 0) + 20))
+    }
+    const choice = RECKONING_CHOICES.find(c => c.id === kind) || RECKONING_CHOICES[0]
+    a.reckon = false; a.avenged = true
+    this.addEvent({ text: this.upbringingText(choice.result), type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true }
   }
 
   // ── 2.6d upbringing: one event from the head's style, early in a life born into a clan ─────────────

@@ -42,6 +42,40 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   assert(canvas && canvas.w >= 180 && canvas.w <= 390, `sprite canvas fits the width (${canvas?.w}px)`)
   await shot('mobile-hud')
 
+  // ── Attention center: minimized by default on a phone, expanded by the head caret (user 2026-10-01) ─────────
+  assert(await ev('document.getElementById("attention").classList.contains("minimized")'), 'attention starts minimized on a phone')
+  assert(await ev('!document.querySelector("#attention .att-rest") || getComputedStyle(document.querySelector("#attention .att-rest")).display === "none"'), 'the rest of the list is hidden while minimized')
+  const caret = await rect('#attention .att-min')
+  assert(caret && caret.h >= 30, `the attention caret is tap-sized (${caret?.h}px)`)
+  const collapsedH = (await rect('#attention'))?.h
+  await click('#attention [data-att-min]')
+  await sleep(250)
+  assert(await ev('!document.getElementById("attention").classList.contains("minimized")'), 'the caret expands the attention center')
+  assert(await ev('localStorage.getItem("cultivator-idle:att-min") === "0"'), 'expanding is remembered per device (att-min=0)')
+  const expandedH = (await rect('#attention'))?.h
+  assert(expandedH >= collapsedH, `expanded is not shorter than collapsed (${collapsedH} → ${expandedH})`)
+  await shot('mobile-attention-expanded')
+  await click('#attention [data-att-min]')
+  await sleep(200)
+  assert(await ev('document.getElementById("attention").classList.contains("minimized")'), 'the caret minimizes it again')
+  assert((await rect('#attention'))?.h <= collapsedH + 4, 'minimized returns to the compact height')
+  await shot('mobile-attention-minimized')
+
+  // ── The whole app scrolls as one surface; the tab bar stays put (user 2026-10-01) ──────────
+  assert(await ev('getComputedStyle(document.getElementById("app")).overflowY === "auto"'), 'the app itself is the scroller on a phone')
+  const scrolled = await ev('(() => { const a = document.getElementById("app"); a.scrollTop = 1e6; return a.scrollTop })()')
+  await sleep(250)
+  assert(scrolled > 0, `the whole app scrolls to the bottom (scrollTop ${scrolled})`)
+  const tabsStuck = await rect('#tabs')
+  assert(tabsStuck && tabsStuck.bottom >= 820 && tabsStuck.bottom <= 845, `the tab bar stays at the bottom when scrolled (bottom ${tabsStuck?.bottom})`)
+  await shot('mobile-scrolled-bottom')
+  await ev('document.getElementById("app").scrollTop = 0')
+  await sleep(200)
+
+  // ── iOS: fields are ≥16px and the viewport is locked so focusing one never zooms the WebView ─
+  assert(await ev('parseFloat(getComputedStyle(document.getElementById("rename-input")).fontSize) >= 16'), 'the rename field is ≥16px on touch (no iOS focus-zoom)')
+  assert(await ev('/maximum-scale=1/.test(document.querySelector(\'meta[name="viewport"]\').content)'), 'the viewport meta caps the zoom scale')
+
   // ── Every reachable view fits the width ────────────────────────────────────────────────────
   for (const v of ['stats', 'explore', 'pack', 'craft', 'events']) {
     await ev(`document.querySelector('[data-tab="${v}"]').click()`)
@@ -61,6 +95,8 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   // ── Landscape phone → back to the two-column layout (844 wide) ─────────────────────────────
   await emulate(844, 390)
   assert(await ev('document.body.dataset.narrow === "0"'), 'a landscape phone is not narrow (data-narrow="0")')
+  assert(await ev('!document.getElementById("attention").classList.contains("minimized")'), 'a wide screen is never minimized')
+  assert(await ev('getComputedStyle(document.querySelector("#attention .att-min")).display === "none"'), 'the minimize caret is phone-only')
   const tabL = await rect('#tabs')
   assert(tabL && tabL.top < 390 / 2, `landscape returns the tabs to the side rail (top ${tabL?.top})`)
   await shot('mobile-landscape')

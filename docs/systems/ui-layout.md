@@ -340,6 +340,17 @@ are `width: min(360px, 100vw − safe areas)` and `max-height: 88dvh`.
   tests share one signal) and, when narrow, sizes the sprite canvas to the HUD's width (`min(hudWidth, 340)`, height ×0.5)
   and sets `#sprite-wrap`'s height to match; it restores `LAYOUT_CANVAS[mode]` and clears the inline height otherwise.
   Re-fits on `resize` / `orientationchange` and when a slot starts (`enterGame`).
+- **The whole app scrolls on a phone (user 2026-10-01).** `#app` is the scroller (`overflow-y: auto`, `height: 100dvh`)
+  with the bottom tab bar `position: sticky; bottom: 0`; `#hud`/`#main-pane`/`#view`/`#tab-body`/`.panel` size to
+  content on the phone instead of each scrolling its own small box. This replaces the old "only the panel scrolls"
+  behaviour (the documented UX-debt fix) so the bottom is always reachable.
+- **Landscape phones (user 2026-10-01).** The ≤599px block never applies in landscape (~844px wide), so a new
+  touch-only block (`orientation: landscape and max-height: 520px and hover:none/pointer:coarse`) pads `#app` by the
+  horizontal safe-area insets + the bottom inset — otherwise the camera/notch covers the side rail and the device's
+  rounded corners clip the UI (a thin dark bar at each side).
+- **iOS text fields are 16px on touch (user 2026-10-01).** iOS zooms the WebView in on a focused field under 16px
+  (and can stay zoomed until relaunch), so the coarse-pointer block forces `input, select, textarea` to 16px and the
+  viewport meta carries `maximum-scale=1, user-scalable=no`.
 - A **desktop window dragged below 600px also gets the phone layout** (it *is* a narrow layout). Phone landscape
   (~844px) keeps the two-column desktop layout.
 - **Not verified on a real device** (no Mac for iOS; no Android device here) — checked via CDP device metrics.

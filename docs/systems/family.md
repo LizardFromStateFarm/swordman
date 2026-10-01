@@ -203,3 +203,41 @@ raising (`cdSecs` 300 each), Try for a child (`CHILD_TRY_GAP_SECS` 600). Stamps 
 `f.childTryAt`, `f.seekCooldownAt`, `court.nextMeetAt`) are `stats.timePlayed` ready-at values (`_cdNow()`/`_cdLeft()`);
 previews return `secsLeft`, and the view shows a live "Ready in 4:59" countdown. Pregnancy (`PREGNANCY_YEARS`), min
 ages, Cover-your-tracks and clan cooldowns stay on the game clock. Old saves: `cdSecsVer` migration clears cooldowns.
+
+## A father's hand (user 2026-10-01)
+
+Data: `assets/data/family-events.js`. Engine: `game-state.js` (`_tickFamily` roll, `isBadFather`, `beatingInfo` /
+`resolveBeating`, `reckoningInfo` / `resolveReckoning`, `_ensureBeatingFields`). UI: `attention.js` (urgent + ready
+items) and the `s.abuse?.event` / `s.abuse?.reckon` branches of `openFamilyOverlay` (game.js). State: `s.abuse`
+(`nextCheck, hits, defiance, event, reckon, avenged`).
+
+**"Your father"** is the head who raised you this life — the same `s.birth.headId` the upbringing event is keyed to
+(so it needs a life born into a clan; an orphan, a rival birth or a first life has none). He counts as **bad** when
+ANY ONE of these is true: a cruel parenting style (`ruthless` / `neglectful`), a cruel personality
+(`psycho demonking arrogant grumpy miser`), his own trauma flag, or a bond below `BEATING_BOND_MAX` (35).
+
+**Depth pass (as built).** Memory: `hits` scars you (2 beatings → `s.self.trauma`, which already feeds the heir
+Bloodline term) and `defiance` records how often you stood up to him. Choices: Endure it (Health −20, bond barely
+moves) / Run (Health −10, he remembers) / Strike back (Health −20, and the bond delta reads HIS personality — a
+`hotblood` head respects it, an `arrogant` or `psycho` one does not). Hooks: Health (Phase 23), the trauma → Bloodline
+chain (2.6d), `s.birth.headBond`, karma, the attention strip, and the clan head. Drama: a beating can leave you near
+death, and the fear follows you into the next life. Feedback: enough defiance, grown up (`age ≥ AWAKENING_AGE +
+BEATING_MAX_YEARS`) and outranking him, unlocks the **reckoning** — Let it go (karma up, bond eases) or Break him
+(karma down, a grudge — a man who never raises a hand again). Agency: the beating is the world acting; every answer is
+the player's.
+
+**Never lethal.** `_applyFamilyEffect` floors Health at 1, so even a −20 at 10 Health leaves you at 1 — a childhood
+beating never ends the life.
+
+**Rare on purpose.** A year interval (`BEATING_CHECK_YEARS` 6–14) AND a flat `BEATING_CHANCE` (0.30) gate it, and it
+only fires while `age ≤ AWAKENING_AGE + BEATING_MAX_YEARS` (12) — a once-a-childhood dramatic beat, not a recurring
+minigame (same shape as 2.6e's challenge checks). A warm head simply never triggers it.
+
+**UX pass.** Surface: an urgent attention card that *names the reason* ("Yunhao is in one of his black moods"), the
+Health cost printed on every answer's sub-label, and the loss landing in the Health breakdown. Interact: the existing
+family overlay, one tap per answer, the overlay's usual Later. Discover: urgent tier leads the attention strip, and the
+card auto-opens on a new key (the same watcher as every family matter). Feel: `.crisis` framing, xianxia wording.
+
+Checks: `scripts/sim/checks/family-beating.js` (25). Smoke: `scripts/smoke/scenarios/beating.js` (beating-*.png).
+Sim (100h × 2 seeds): healthy, 0 errors / violations; the bot answers beatings and takes the reckoning (`beating`
+1–6 and `reckoning` 1–5 per profile; the `active` line picks "strike back" / "break him").

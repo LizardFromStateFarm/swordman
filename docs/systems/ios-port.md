@@ -93,7 +93,7 @@ Xcode project hard-codes both, and TestFlight requires a build number that never
 
 **One-time setup (a human, once):** the header comment in `codemagic.yaml` is the checklist — Apple
 Developer Program membership, the App ID + TestFlight record for `com.cultivator.idle`, a Codemagic account
-with this repo connected, the `cultivator_idle_asc` App Store Connect integration, and the API token + app
+with this repo connected, the `idlekey` App Store Connect integration, and the API token + app
 ID exported as environment variables (`docs/systems/release.md` → "Credentials"). After that,
 `npm run release` ships iOS builds with no further code changes.
 

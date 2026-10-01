@@ -5,8 +5,9 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self'">
   <!-- Mobile (iOS/Android shells + browsers): without this the WebView uses a ~980px layout viewport and the
-       app renders as a small box. viewport-fit=cover lets the safe-area insets reach the CSS. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+       app renders as a small box. viewport-fit=cover lets the safe-area insets reach the CSS. maximum-scale=1 +
+       user-scalable=no stop iOS zooming in when a field is focused (it then stays zoomed until relaunch). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Cultivator Idle</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -392,6 +393,7 @@
 <script src="../assets/data/family.js"></script>
 <script src="../assets/data/duelists.js"></script>
 <script src="../assets/data/succession.js"></script>
+<script src="../assets/data/family-events.js"></script>
 <script src="../assets/data/clan-legacies.js"></script>
 <script src="../assets/data/automation.js"></script>
 <script src="../assets/data/settings.js"></script>

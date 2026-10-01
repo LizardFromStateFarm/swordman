@@ -382,6 +382,9 @@ class Bot {
       }
       return this.do('upbringing', this.gs.resolveUpbringingEvent(i))
     }
+    // family-events.js: a bad father's hand, and the grown-up reckoning. 'active' takes the defiant line.
+    if (this.s.abuse?.event) return this.do('beating', this.gs.resolveBeating(this.profile === 'active' ? 2 : Math.floor(this.rand() * 3)))
+    if (this.s.abuse?.reckon) return this.do('reckoning', this.gs.resolveReckoning(this.profile === 'active' ? 'break' : 'forgive'))
     // 2.6c heirs: a tournament in progress is fought to the end (strongest paired with weakest — the bot
     // protects its best). 'active' hosts one per life once it has 6+ adult children and reaches Nascent Soul;
     // everyone else (and 'active' until then) simply names the strongest adult child heir.

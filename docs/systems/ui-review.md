@@ -17,6 +17,18 @@ newest first.
 > invented its own standard. **Scores recorded before this date used the old bar** — treat them as roughly 0.5 lower
 > than they'd score now.
 
+## 2026-10-01 — phone attention-minimize + "A father's hand"
+`renderer/game/attention.js` (the phone collapse) + `renderer/styles.css`; the beating card reuses the family overlay
+(`renderer/game.js` → `openFamilyOverlay`). Screenshots: `scripts/smoke/scenarios/mobile.js` →
+`out/mobile-attention-{minimized,expanded}.png` + `mobile-scrolled-bottom.png`; `scenarios/beating.js` →
+`out/beating-card.png` + `beating-after.png`. Both reviewers' `vision` tools returned stale/invented descriptions
+(the recurring failure on this project), so each measured the PNG pixels + DOM geometry directly and said so.
+
+| Change | Cycle | Score | Result | Notes |
+|---|---|---|---|---|
+| Attention center, phone | 1 | **7.6** | **PASS** | Minimized default (one row), caret 42×36 css px, correct ▾/▴ direction, the count signals the hidden rows, the top item stays live, and the rule is correctly scoped so Overlay/Expanded/Desktop/Banner are untouched. 3 `[polish]` → UX Debt. |
+| "A father's hand" card | 1 | **7.6** | **PASS** | Crisis framing, reason named, a Health cost on every answer, no clipping (275×254px in the 300×700 Overlay); consistency 8 / layout 8. 3 `[polish]`, all applied same-day: the reason line promoted to 11.5px `--text` under `.crisis`, the cost moved first in every sub-label, and the attention item gained a separator. |
+
 ## Mobile / narrow layout pass (task 1.8e, 2026-09-27)
 `renderer/styles.css` → "MOBILE / narrow + touch"; `renderer/index.html` viewport meta; `renderer/game/layout.js`
 narrow canvas sizing. Screenshots: `scripts/smoke/scenarios/mobile.js` → `scripts/smoke/out/mobile-*.png`
