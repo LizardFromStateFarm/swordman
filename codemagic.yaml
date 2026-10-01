@@ -28,7 +28,7 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     integrations:
-      app_store_connect: cultivator_idle_asc
+      app_store_connect: idlekey
     environment:
       ios_signing:
         distribution_type: app_store
