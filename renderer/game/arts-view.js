@@ -85,11 +85,27 @@ const ArtsView = {
       const opensAt = open ? null : ART_PASSIVE_SLOTS.find(x => x.slots > i)?.stage
       return slot('passive', i, info.loadout.passives[i], opensAt)
     }).join('')
-    const loadout = `<section class="art-sec"><div class="art-sec-h"><span>Moves</span><span class="art-dim">${info.loadout.moves.filter(Boolean).length} of ${ART_MOVE_SLOTS}</span></div>
+    // 4 saved loadouts you set freely and switch between (user 2026-10-01): the lit one is the deck every fight uses.
+    const loTab = (d, i) => {
+      const nm = (d?.moves || []).filter(Boolean).length, np = (d?.passives || []).filter(Boolean).length
+      const els = [...new Set((d?.moves || []).filter(Boolean).map(id => ARTS[id]?.element).filter(e => e && e !== 'neutral'))].slice(0, 3).map(e => ART_ELEMENTS[e].name).join(' · ')
+      const parts = []
+      if (nm) parts.push(`${nm}/${ART_MOVE_SLOTS} moves`)
+      if (np) parts.push(`${np} passive${np === 1 ? '' : 's'}`)
+      if (!parts.length && !els) parts.push('Empty')
+      const sum = parts.concat(els ? [els] : []).join(' · ')
+      const on = i === info.activeLoadout
+      return `<button class="art-lo${on ? ' on' : ''}" data-lo="${i}" aria-current="${on ? 'true' : 'false'}" title="${on ? 'In use in every fight' : 'Switch to this loadout'} · ${esc(sum)}">
+        <span class="art-lo-n">${on ? Icon('sword') : ''}Loadout ${i + 1}</span>
+        <span class="art-lo-s">${esc(sum)}</span></button>`
+    }
+    const loadout = `<section class="art-sec art-loadouts"><div class="art-sec-h"><span>Loadouts</span><span class="art-dim">4 decks · the lit one fights</span></div>
+        <div class="art-lo-row">${info.loadouts.map((d, i) => loTab(d, i)).join('')}</div>
+        <div class="art-sec-h"><span>Moves</span><span class="art-dim">${info.loadout.moves.filter(Boolean).length} of ${ART_MOVE_SLOTS}</span></div>
         <div class="art-moves">${info.loadout.moves.map((id, i) => slot('move', i, id)).join('')}</div>
         <div class="art-sec-h"><span>Passives</span><span class="art-dim">${info.passiveSlots} slot${info.passiveSlots === 1 ? '' : 's'} open${info.nextSlot ? ` · the next opens at ${esc(this.realm(info.nextSlot.stage))}` : ''}</span></div>
         <div class="art-passives">${pslots}</div>
-        <div class="art-note">${Icon('sword')}These four are your moves in every fight, against beasts and people. Palm Strike and Circulate are always there too.</div></section>`
+        <div class="art-note">${Icon('sword')}The lit loadout's four moves are yours in every fight, against beasts and people. Keep four decks and switch between them. Palm Strike and Circulate are always there too.</div></section>`
 
     // ── library ──
     const all = [...new Set([...Object.keys(info.known), ...held])]
@@ -148,6 +164,12 @@ const ArtsView = {
     if (d.offer) { const r = gs.chooseArtOffer(d.offer, d.art); return say(r, `You keep ${ARTS[d.art].name}.`) }
     if (d.study) return say(gs.studyArt(d.study), `You begin studying ${ARTS[d.study].name}.`, { stage: 'Too profound for your realm', busy: 'Every study desk is in use', studying: 'Already on a study desk', maxed: 'Already mastered' })
     if (d.cancelStudy != null) return say(gs.cancelStudy(d.cancelStudy || null), 'You set it aside.')
+    if (d.lo != null) {   // switch which saved loadout fights (the grid below follows it)
+      if (+d.lo === s.arts.activeLoadout) return
+      const r = gs.setActiveLoadout(+d.lo)
+      if (r.ok) { this.pick = null; return this.render(gs.get(), this.el, gs, h) }
+      return say(r, '', { bad_loadout: 'That loadout is not there' })
+    }
     if (d.slot) {
       const [kind, i] = d.slot.split(':')
       this.pick = this.pick?.kind === kind && this.pick.index === +i ? null : { kind, index: +i }

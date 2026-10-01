@@ -46,6 +46,8 @@ const ART_RARITY = {
 }
 
 const ART_MOVE_SLOTS = 4
+// 4 saved loadouts you set freely and switch between (user 2026-10-01): each deck is its own 4 moves + passive slots.
+const ART_LOADOUT_COUNT = 4
 // Passive slots by realm (the stageIndex a realm starts at → slots). Mortal/QC 1 · Foundation 2 · Core 3 · Nascent 4 · Severing 5.
 const ART_PASSIVE_SLOTS = [{ stage: 0, slots: 1 }, { stage: 10, slots: 2 }, { stage: 13, slots: 3 }, { stage: 16, slots: 4 }, { stage: 19, slots: 5 }]
 const ART_PASSIVE_SLOTS_MAX = 5

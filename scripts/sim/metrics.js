@@ -39,6 +39,7 @@ class Recorder {
     this._lastDeathTs = null         // Phase 23A/B: dedupe s.lastReincarnation across ticks
     this.deathsByCause = {}
     this.lifeLengths = []            // Phase 30 (M2 task 2.3): [{cause, openHours, ageAtDeath, married, children, ...}]
+    this.fightTurns = { beast: { n: 0, sum: 0 }, person: { n: 0, sum: 0 } }   // arts.md fight-length target (4–8 turns)
   }
 
   // ── Hooks from the bot ───────────────────────────────────────────────────
@@ -49,6 +50,9 @@ class Recorder {
     if (meaningful) this.meaningful++
     this.milestone(`first_${name}`)
   }
+  // Fight length (arts.md → Move combat: "target 4–8 turns"): the live battle's turn count when a fight ends
+  // (fed by bot.js at the move that ends it — a win or a loss; a retreat/yield is not counted).
+  fightLen(kind, turns) { const t = this.fightTurns[kind]; if (t && turns > 0) { t.n++; t.sum += turns } }
   milestone(name) { if (!(name in this.milestones)) this.milestones[name] = this.t }
   warSeen(w) { if (!this.warsSeen.has(`${w.side}:${w.nextWarAt}`)) { this.warsSeen.add(`${w.side}:${w.nextWarAt}`); if (this.wars[w.side]) this.wars[w.side].seen++ } }
 
@@ -129,6 +133,12 @@ class Recorder {
     if (w.warVictories > 0) this.milestone('first_war_victory')
     if (s.beasts.some(b => b.level >= 10)) this.milestone('beast_level_10')
     if (s.techniques.length === this.D.TECHNIQUES.length) this.milestone('all_techniques')
+    // Phase 42 (arts.md): how far the arts library has grown (task 1.15)
+    if (s.arts) {
+      const n = Object.keys(s.arts.known).length
+      for (const t of [10, 20, 30, 45, 60]) if (n >= t) this.milestone(`arts_known_${t}`)
+      if (Object.values(s.arts.known).some(k => k.mastery >= (this.D.ART_MASTERY_MAX || 5))) this.milestone('first_art_mastered')
+    }
     for (const l of this.D.LOCATIONS) if (s.stageIndex >= l.minStage) this.milestone(`unlock_${l.id}`)
     this.checkInvariants(s)
   }
@@ -305,6 +315,19 @@ class Recorder {
         this.violate('automation_invalid', `breakthroughThreshold=${auto.breakthroughThreshold}`)
     }
     if (!(s.karma >= 0 && s.karma <= 100)) this.violate('karma_out_of_range', s.karma)
+    // Phase 42 (arts.md, task 1.15): study desks never exceed the realm's allowance; every known art exists; a
+    // move slot never holds a passive or an unknown art (a passive slot may hold one beyond the realm — inactive,
+    // by design); a manual in the pack always names a real art.
+    if (s.arts) {
+      const A = this.D.ARTS
+      const cap = (this.D.ART_STUDY_SLOTS || []).reduce((n, x) => s.stageIndex >= x.stage ? x.slots : n, 1)
+      if ((s.arts.studies || []).length > cap) this.violate('arts_studies_over_cap', `${(s.arts.studies || []).length} > ${cap}`)
+      for (const id of Object.keys(s.arts.known)) if (!A[id]) this.violate('arts_known_invalid', id)
+      const moves = s.arts.loadout?.moves || [], pas = s.arts.loadout?.passives || []
+      if (moves.some(id => id && (!A[id] || A[id].kind !== 'move' || !s.arts.known[id]))) this.violate('arts_loadout_invalid', `moves ${moves.join(',')}`)
+      if (pas.some(id => id && (!A[id] || A[id].kind !== 'passive' || !s.arts.known[id]))) this.violate('arts_loadout_invalid', `passives ${pas.join(',')}`)
+      for (const k of Object.keys(s.inventory)) if (k.startsWith('manual_') && !A[k.slice(7)]) this.violate('arts_manual_invalid', k)
+    }
     if (d.breakthroughChance > 0.98 || d.breakthroughChanceDisplay > 0.98) this.violate('bt_chance_over_0.98', d.breakthroughChanceDisplay)
     if (s.stageIndex < 0 || s.stageIndex >= this.D.CULTIVATION_STAGES.length) this.violate('stage_out_of_range', s.stageIndex)
     if (s.beasts.length > d.maxBeasts) this.violate('beasts_over_cap', `${s.beasts.length}/${d.maxBeasts}`)
@@ -378,6 +401,14 @@ class Recorder {
       sect: { joined: s.sect.id, rank: s.sect.rank, founded: s.ownSect.founded, disciples: s.ownSect.disciples.length,
               buildings: Object.keys(s.ownSect.buildings).filter(k => s.ownSect.buildings[k]).length, hallLevel: s.ownSect.hallLevel,
               fame: Math.round(s.derived.sectFame || 0) },
+      // Phase 42 (arts.md, task 1.15): the arts library at the end of the run (a final snapshot, not cumulative)
+      arts: s.arts ? { known: Object.keys(s.arts.known).length,
+                       mastered: Object.values(s.arts.known).filter(k => k.mastery >= (this.D.ART_MASTERY_MAX || 5)).length,
+                       moves: s.arts.loadout.moves.filter(Boolean).length,
+                       studies: (s.arts.studies || []).length } : null,
+      // Phase 42 (arts.md, task 1.15): mean fight length in turns (target 4–8). A win or a loss at the ending move.
+      fightTurns: { beast: this.fightTurns.beast.n ? +(this.fightTurns.beast.sum / this.fightTurns.beast.n).toFixed(1) : null,
+                    person: this.fightTurns.person.n ? +(this.fightTurns.person.sum / this.fightTurns.person.n).toFixed(1) : null },
       wars: warSummary(this.wars.own),
       memberWars: { ...warSummary(this.wars.member), ignored: this.wars.member.ignored, unseen: this.wars.member.unseen, contribNet: this.wars.member.contribNet },
       // Cumulative across the whole run (not final s.stats, which is per-life and resets on reincarnation).

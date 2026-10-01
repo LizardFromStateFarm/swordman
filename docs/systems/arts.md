@@ -2,7 +2,7 @@
 _Covers (planned): assets/data/arts.js (ARTS, rarity, elements, movesets) · game-state.js (art library, study, loadout,
 the move-combat engine replacing Press/Guard/Feint, selling) · renderer/game/arts-view.js (Path → Arts) · combat.js
 (battle page moves) · battle-scene.js (move effects) · backpack (Sell) · Phase: 42 · Spec written 2026-09-29 (user
-request) · Status: **42-0 ✅ (selling) · 42a ✅ (arts core) · 42b ✅ (beasts on moves + scene effects, 2026-09-29) · 42c part 1 ✅ (people on moves, 2026-09-30) · 42c part 2 ✅ (rivals, libraries, study desks, 2026-09-30)** · 42d (QA & Balance, task 1.15) not built_
+request) · Status: **42-0 ✅ (selling) · 42a ✅ (arts core) · 42b ✅ (beasts on moves + scene effects, 2026-09-29) · 42c part 1 ✅ (people on moves, 2026-09-30) · 42c part 2 ✅ (rivals, libraries, study desks, 2026-09-30) · 42d ✅ (QA & Balance, task 1.15, 2026-09-30) · four saved loadouts ✅ (task 1.16, 2026-10-01)** — the sim bot now plays the arts systems end to end (as-built below)_
 
 **User request (2026-09-29):** "I hate that" (Press/Guard/Feint: a small ±18% lever, and useless against an opponent
 with no habit). Replace it with **Pokemon-like combat**: you equip moves from your **Arts**. There should be many, many arts
@@ -25,7 +25,7 @@ extra items**.
 | **42a** | **Arts core:** `ARTS` data (the combat library), manuals as items, study, library, loadout (4 moves + passive slots by realm), breakthrough grants, drop wiring, **Path → Arts** screen, `root.elements` | 42-0 (manual resale) |
 | **42b** | **Move combat engine + battle page**, beasts first: HP, combat Qi (no cooldowns), the parry QTE, elements, statuses, turn order, opponent AI, beast movesets, prepare-panel estimate, "why" card, move effects on the scene | 42a |
 | **42c** | **People on the new engine** (split 2026-09-30): **part 1 = task 1.14a** ✅ duels, head challenges, step-down bouts, road slaughter, the Arena on moves; person movesets (`p.arts`), temper AI, scouting · **part 2 = task 1.14b** rival counters, raise → taught / finish → manual, sect + clan libraries, arts as Arena prizes | 42b |
-| **42d** | **QA & Balance** (CLAUDE.md): sim bot policy, multi-seed sim, checks, smoke in all modes, UX walkthrough, dist + build:web | 42c |
+| **42d** ✅ | **QA & Balance** (CLAUDE.md): sim bot policy, multi-seed sim, checks, smoke in all modes, UX walkthrough, dist + build:web — **built 2026-09-30** (as-built below). The two saved loadouts (Hunt/Duel) are **deferred to the next task** | 42c |
 | later (23E) | **Non-combat arts** (Solitary Lineage, Tortoise Breath, Heaven-Evading, Blood Refinement…) as content on the 42a library. No new infrastructure | 42a |
 
 Existing **Techniques** (bought with stones: Qi/s, Qi cap, BT chance) stay as they are. They are cultivation methods, not
@@ -103,12 +103,15 @@ flavour line each, no emoji, the effect in plain words.
   Frost Lotus Palm 5: Chill lasts a turn longer).
 
 ### Loadout
-- **4 active move slots** and **N passive slots** (ART_PASSIVE_SLOTS by realm). Locked slots show "opens at <realm>".
+- **4 saved loadouts** (user 2026-10-01), each with **4 active move slots** and **N passive slots** (ART_PASSIVE_SLOTS by
+  realm). You set each deck freely and switch between them on Path → Arts; the **active** one is what every fight uses.
+  Locked passive slots show "opens at <realm>".
 - **Swap freely, even mid-fight.** A battle runs on the deck it began with (`_mbYou` snapshots your slots), so a change
-  to your loadout never alters a fight already underway — it only applies to your next one. (2026-09-30: the old
-  "loadout locked mid-fight" rule was removed as confusing; it was never needed.)
+  to your loadout (or switching which deck is active) never alters a fight already underway — it only applies to your
+  next one. (2026-09-30: the old "loadout locked mid-fight" rule was removed as confusing; it was never needed.)
 - An empty move slot falls back to Palm Strike, so you can never enter a fight with no move.
-- (Polish, 42d) two saved loadouts ("Hunt" / "Duel").
+- (Original 2026-09-30 polish was **two activity-tied loadouts "Hunt" / "Duel"**; the user 2026-10-01 replaced that with
+  **4 free loadouts** — built as task **1.16**, see "Four saved loadouts" below.)
 
 ---
 
@@ -502,3 +505,78 @@ Two small fixes from a play session ("cannot queue things to study while a fight
   Overlay after the mode loop. `npm test` · checks **767 ok** · arts smoke (4 modes + phone) zero console errors.
 - Review: fresh reviewer agent **7.7 PASS** (three `[polish]` → UX Debt: "Earth" is both a grade and an element with no
   row caption; the third filter row crowds the narrow panes; the count's tooltip).
+
+---
+
+## 42d as built (task 1.15, 2026-09-30): QA & Balance — the sim bot plays the arts
+The one real gap after 1.14b (arts.md → "People on moves": *"the sim bot still fights on starter arts (it lost its 6 head
+challenges in sim:quick) — it learns study/loadout in 1.15"*). No game-logic or balance value changed: the sim is healthy
+and the doc's targets are met within tolerance, so the pass taught the bot and hardened the harness instead.
+- **The bot's arts policy** (`scripts/sim/bot.js` `arts()`, first in the check-in chain so a life answers its offers and
+  studies before it fights): answer a waiting **breakthrough offer** (`choose_art`; 'active' keeps the top grade — its
+  own element breaks ties — casual/afk pick at random) → **give a spare manual to the sect** (an art it already knows at
+  mastery ≥ 2, or a 2nd copy) → work a free **study desk** on its highest-grade ready manual → **wear its best known
+  loadout** (`artMoveRank()`: power × hits × mastery × root affinity, a fresh element a little extra; `artPassiveRank()`:
+  by grade; a slot is written only when it would actually change) → **buy a missing art** from a joined sect's library for
+  Contribution (cheapest grade; 'active' only) → **clan library** (study from the shelf on a free desk; 'active' writes a
+  mastered art in with stones to spare) → **sell surplus** (a manual for an art already at max mastery, gear it has
+  outgrown). One action per call, like the rest of the bot; casual/afk act at random or not at all (the established split).
+- **loader.js** carries the Phase 42 arts tables (`ARTS`, `ARTS_LIST`, `ART_RARITY`, `ART_RARITY_ORDER`, `ART_BASICS`,
+  `ART_PASSIVE_SLOTS`, `ART_STUDY_SLOTS`, `ART_STAGE_GRANTS`, `ART_MASTERY_MAX`, `ART_MASTERY_POWER`) on `sim.data`.
+- **metrics.js**: milestones `arts_known_10/20/30/45/60` + `first_art_mastered`; invariants `arts_studies_over_cap`
+  (desks ≤ the realm's allowance), `arts_known_invalid`, `arts_loadout_invalid` (a move slot never holds a passive or an
+  unknown art; a passive slot may hold one beyond the realm — inactive, by design) and `arts_manual_invalid` (every
+  `manual_<id>` names a real art); an end-of-run `arts` snapshot (known / mastered / moves / studies).
+- **report.js**: two new sections — **"Arts — Phase 42"** (known end, mastered L5, kept offers, studies, loadouts, sold +
+  the stones selling earned, sect arts bought, clan written · studied) and **"People fights — duels, challenges, the
+  Arena"** (person moves, mean turns, parries, head challenges, Arena bouts, the end choices taken). `FEATURES` gains the
+  eight arts actions; the "never used" flag guards them (`buy_sect_art` is member-only — a founder leaves early; the
+  clan-library write/study + `donate_manual` are 'active'-only), so a real gap still shows but the intentional ones don't.
+  The beast table's dead **"Exchanges"** column (always 0 since 42b replaced the exchange loop) became **"Turns (avg)"** —
+  the mean turns a fight ran, from the live battle's own counter at the ending move (metrics.js `fightLen` / `fightTurns`,
+  fed by bot.js); a win or a loss is counted, a retreat / yield is not.
+- **checks/bot-arts.js** (17): the offer pick, the study-desk pick + the manual consumed, the loadout (strongest four,
+  this realm's passives, never a wrong kind), selling a mastered manual for its full payout, a sect-library buy for
+  Contribution, the clan study + the write with every desk busy, the spare-manual gift, and the two new invariants.
+- **Sim (27 runs: active/casual/afk × 50/100/200h × 3 seeds): ✅ healthy — 0 errors, 0 invariant violations, 135 save
+  round-trips.** All eight arts actions used by 'active' (no arts "never used" flag). Head challenges **0/6 → 131/343
+  (38%)**. Arts known at a run's end (median): active 20 · casual 21 · afk 16.
+- **Targets (probes + the new sim metric, no values changed)**: person fights at an even stage ≈ **56–71%** (target
+  50–65% — a touch high); beast fights **at their gate** average **~4.5 turns** (target 4–8; tail 2–9 — quick kills on
+  over-matched foes, a slog on the tanky bear). The sim now measures fight length directly (`fightTurns.beast|person`):
+  the bot's own fights average **2–3 turns**, which is **not** the "even fight" the target describes — the bot only takes
+  fights it is favoured in (estimate ≥ 60%). Selling earned only ~105 stones over a 200h active run, so sell prices don't
+  rival expeditions/Arena. The remaining first-pass knobs (library prices, write costs, the 60% finish drop, sell prices)
+  stay on the **2.8** list.
+- **Smoke (all four modes, zero console errors)**: arts · libraries · combat · battle-fx · duels · arena · fights · hunt ·
+  sell · succession. `npm test` clean · `npm run checks` **790 ok** · `npm run dist` + `npm run build:web` OK.
+- **Not built here:** two saved loadouts ("Hunt" / "Duel") — built instead as **1.16 "Four saved loadouts"** below; and the
+  bot's arts policy is reasonable, not optimal (it does not re-tune its deck per opponent).
+
+---
+
+## Four saved loadouts as built (task 1.16, 2026-10-01)
+The user's request: **"i dont want it to be separated from hunt and fight, i just want the user to be able to set 4
+different loadouts."** So the planned two activity-tied decks ("Hunt" / "Duel") were dropped for **4 free loadouts** —
+each its own full deck (4 moves + passive slots), set and switched by the player, not tied to any activity.
+- **State** `s.arts.loadouts = [{ moves[4], passives[5] } × 4]` + `s.arts.activeLoadout` (index). **`s.arts.loadout` is kept
+  as the live pointer to the active deck**, so every reader of it is unchanged: `_mbYou` / `_mbPassives` (the fight),
+  `fightMoves` (the fallback deck), the match hint (combat.js), the attention "empty slot" nudge, and the sim
+  (bot.js `setLoadout`, metrics `arts_loadout_invalid`). `_blankArts` starts deck 1 with your starters and 3 empty decks.
+- **API** `setActiveLoadout(i)` → validates the index, repoints `loadout`, saves + notifies (`bad_loadout` on a bad index);
+  `setArtSlot` is unchanged — it edits whichever deck is active. Switching is **never refused mid-fight** (a battle keeps
+  the deck it began with), same rule as editing a slot.
+- **Migration** `_ensurePhase42Fields`: an old save's single `loadout` becomes deck 1, decks are padded to 4 and each is
+  cleaned (unknown / wrong-kind entries dropped), the index is clamped, then `loadout` is re-pointed. Works whether the
+  save pre-dates 42a (no `arts`), is a single-loadout 42a–42d save, or already has `loadouts`.
+- **UI** (arts-view.js): a **switcher row** above the Moves grid — 4 tabs, each `Loadout 1–4` + a one-line summary ("3 of 4
+  moves · Water" / "Empty"); the lit tab carries a sword mark + gold border and is `aria-current`. Clicking one switches
+  the active deck and the grid below follows it. 2×2 on phones (≤420px). The note now reads "The lit loadout's four moves
+  are yours in every fight … Keep four decks and switch between them."
+- **Tests** `checks/arts.js` +8 (four decks exist, `loadout` is the pointer, spare decks empty, switching repoints, an edit
+  lands on the active deck only, decks are independent, a bad index is refused) → **checks 797 ok**. Smoke
+  `scenarios/arts.js` +4 (four tabs, tab 1 lit, clicking switches active, the empty deck shows empty slots; the loadout
+  close-up scrolls the section into view first) and the mode-fit assert now covers `.art-lo` → **31 ok, zero console
+  errors**. `npm run sim:quick` healthy (no errors / violations; the bot still sets its loadout — 162 changes / 24h active).
+- **Not done:** no per-deck naming (the user picked plain numbered decks); decks are per-life (part of `s.arts`, like the
+  old loadout).

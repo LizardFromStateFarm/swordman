@@ -28,8 +28,14 @@ module.exports = async ({ ev, click, wait, assert, sleep, shot, emulate, clearEm
     await ev('document.getElementById("btn-layout").click()'); await sleep(150)
     await ev(`document.querySelector('.layout-opt[data-layout="${mode}"]').click()`); await sleep(700)
     await goArts()
-    assert(await ev('document.documentElement.scrollWidth <= innerWidth + 1 && (() => { const p = document.getElementById("tab-arts").getBoundingClientRect(); return [...document.querySelectorAll("#tab-arts .art-slot, #tab-arts .art-row")].every(n => n.getBoundingClientRect().right <= p.right + 1) })()'), `${mode}: slots and library rows fit the panel`)
+    assert(await ev('document.documentElement.scrollWidth <= innerWidth + 1 && (() => { const p = document.getElementById("tab-arts").getBoundingClientRect(); return [...document.querySelectorAll("#tab-arts .art-slot, #tab-arts .art-row, #tab-arts .art-lo")].every(n => n.getBoundingClientRect().right <= p.right + 1) })()'), `${mode}: slots, loadout tabs and library rows fit the panel`)
+    // the loadout tabs must never overlap each other or paint their text past the card (reviewer cycle 1, Expanded)
+    assert(await ev('(() => { const cs = [...document.querySelectorAll("#tab-arts .art-lo")]; const hit = (a, b) => { const r = a.getBoundingClientRect(), s = b.getBoundingClientRect(); return r.left < s.right - 1 && r.right > s.left + 1 && r.top < s.bottom - 1 && r.bottom > s.top + 1 }; return cs.every(n => n.scrollWidth <= n.clientWidth + 1) && cs.every((a, i) => cs.every((b, j) => i === j || !hit(a, b))) })()'), `${mode}: loadout tabs don't overflow or overlap`)
     await shot(`arts-${mode}`)
+    if (mode === 'expanded') {   // the reviewer found the overflow here (cycle 1): capture the row itself
+      await ev('document.querySelector("#tab-arts .art-loadouts")?.scrollIntoView({ block: "start" })'); await sleep(220)
+      await shot('arts-loadouts-expanded')
+    }
   }
   // back to Overlay (the default active-play mode) for the interaction shots below (2026-09-30: they were landing in Desktop)
   await ev('document.getElementById("btn-layout").click()'); await sleep(150)
@@ -52,6 +58,16 @@ module.exports = async ({ ev, click, wait, assert, sleep, shot, emulate, clearEm
   assert(await ev('gameState.get().arts.loadout.moves[3] === "severing_crescent"'), 'Equip here fills the slot')
   await ev('document.querySelector("#tab-arts [data-clear=\\"move:3\\"]").click()'); await sleep(300)
   assert(await ev('gameState.get().arts.loadout.moves[3] === null'), 'the × empties it')
+  // saved loadouts (2026-10-01): four decks; click a tab to switch, the grid follows
+  assert(await ev('document.querySelectorAll("#tab-arts .art-lo-row .art-lo").length === 4'), 'four loadout tabs')
+  assert(await ev('document.querySelector("#tab-arts .art-lo-row .art-lo.on").dataset.lo === "0"'), 'loadout 1 is lit by default')
+  await ev('document.querySelector("#tab-arts .art-lo-row .art-lo[data-lo=\\"1\\"]").click()'); await sleep(250)
+  assert(await ev('gameState.get().arts.activeLoadout === 1 && document.querySelector("#tab-arts .art-lo-row .art-lo.on").dataset.lo === "1"'), 'clicking a tab switches the active loadout')
+  assert(await ev('[...document.querySelectorAll("#tab-arts .art-moves .art-slot")].every(n => n.classList.contains("empty"))'), 'the empty deck shows empty move slots')
+  await ev('document.querySelector("#tab-arts .art-loadouts")?.scrollIntoView({ block: "start" })'); await sleep(200)
+  await shot('arts-loadouts')
+  await ev('document.querySelector("#tab-arts .art-lo-row .art-lo[data-lo=\\"0\\"]").click()'); await sleep(200)
+  assert(await ev('gameState.get().arts.activeLoadout === 0'), 'switching back to loadout 1')
   // library filters + expanded row
   await ev('document.querySelector("#tab-arts [data-f=\\"el:water\\"]").click()'); await sleep(250)
   assert(await ev('[...document.querySelectorAll("#tab-arts .art-list .art-row")].every(r => r.classList.contains("el-water"))'), 'the element filter narrows the library')

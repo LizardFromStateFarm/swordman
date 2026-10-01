@@ -5485,7 +5485,12 @@ class GameState {
     const starter = ARTS_LIST.find(a => a.starter && a.element === els[0])
     if (starter) known[starter.id] = { mastery: 1, xp: 0, uses: 0, how: 'root', at: Date.now() }
     const moves = Object.keys(known).filter(id => ARTS[id].kind === 'move')
-    return { known, loadout: { moves: [...moves, null, null, null, null].slice(0, ART_MOVE_SLOTS), passives: Array(ART_PASSIVE_SLOTS_MAX).fill(null) },
+    // Phase 42 (user 2026-10-01): 4 saved loadouts you set freely and switch between. `loadout` stays the live pointer to
+    // the active deck, so every reader of s.arts.loadout (fights, the sim bot, the sim checks) is unchanged.
+    const deck = () => ({ moves: Array(ART_MOVE_SLOTS).fill(null), passives: Array(ART_PASSIVE_SLOTS_MAX).fill(null) })
+    const loadouts = Array.from({ length: ART_LOADOUT_COUNT }, deck)
+    loadouts[0].moves = [...moves, ...Array(ART_MOVE_SLOTS).fill(null)].slice(0, ART_MOVE_SLOTS)
+    return { known, loadouts, activeLoadout: 0, loadout: loadouts[0],
       studies: [], offers: [], found: Object.fromEntries(Object.keys(known).map(id => [id, true])), parryMode: 'normal', parryLog: [], parryTaught: false }
   }
 
@@ -5497,10 +5502,17 @@ class GameState {
     if (!a.known || typeof a.known !== 'object') a.known = {}
     for (const id of Object.keys(a.known)) if (!ARTS[id]) delete a.known[id]
     for (const id of ART_BASICS) if (!a.known[id]) a.known[id] = { mastery: 1, xp: 0, uses: 0, how: 'basic', at: Date.now() }
-    if (!a.loadout) a.loadout = { moves: [], passives: [] }
+    if (!a.loadout || typeof a.loadout !== 'object') a.loadout = { moves: [], passives: [] }
+    // Phase 42 (user 2026-10-01): 4 saved loadouts. An old save's single `loadout` becomes deck 1; `loadout` stays the
+    // live pointer to the active deck, so every reader of s.arts.loadout is unchanged.
+    if (!Array.isArray(a.loadouts)) a.loadouts = [a.loadout]
+    a.loadouts = a.loadouts.slice(0, ART_LOADOUT_COUNT)
+    while (a.loadouts.length < ART_LOADOUT_COUNT) a.loadouts.push({ moves: [], passives: [] })
+    if (!(Number.isInteger(a.activeLoadout) && a.activeLoadout >= 0 && a.activeLoadout < ART_LOADOUT_COUNT)) a.activeLoadout = 0
     const clean = (arr, n, kind) => Array.from({ length: n }, (_, i) => { const id = arr?.[i]; return id && a.known[id] && ARTS[id]?.kind === kind ? id : null })
-    a.loadout.moves = clean(a.loadout.moves, ART_MOVE_SLOTS, 'move')
-    a.loadout.passives = clean(a.loadout.passives, ART_PASSIVE_SLOTS_MAX, 'passive')
+    a.loadouts = a.loadouts.map(d => { const o = d && typeof d === 'object' ? d : {}
+      return { moves: clean(o.moves, ART_MOVE_SLOTS, 'move'), passives: clean(o.passives, ART_PASSIVE_SLOTS_MAX, 'passive') } })
+    a.loadout = a.loadouts[a.activeLoadout]
     // 1.14b: one study → a list of desks (an old save's study becomes the first desk; a desk beyond your realm's count keeps running)
     if (!Array.isArray(a.studies)) a.studies = a.study ? [{ src: 'manual', ...a.study }] : []
     delete a.study
@@ -5643,9 +5655,9 @@ class GameState {
     this._learnArt(artId, 'offer')
     return { ok: true }
   }
-  // Put a known art in a slot (null clears it). An art already in another slot moves (slots never hold duplicates).
-  // (user 2026-09-30) Never refused mid-fight: a battle runs on the deck it began with (`_mbYou`'s `slots`), so changing
-  // your loadout now only affects your *next* fight.
+  // Put a known art in a slot of the ACTIVE loadout (null clears it). An art already in another slot moves (slots never
+  // hold duplicates). (user 2026-09-30) Never refused mid-fight: a battle runs on the deck it began with (`_mbYou`'s
+  // `slots`), so changing your loadout now only affects your *next* fight.
   setArtSlot(kind, index, artId) {
     const s = this._s, a = s.arts
     const list = kind === 'move' ? a.loadout.moves : kind === 'passive' ? a.loadout.passives : null
@@ -5659,6 +5671,14 @@ class GameState {
     }
     list[index] = artId ?? null
     this._save(); this._notify()
+    return { ok: true }
+  }
+  // Switch which saved loadout fights (user 2026-10-01). The active deck is what `s.arts.loadout` points at, so fights,
+  // estimates and the sim all read it. A battle keeps the deck it began with, so switching only affects the next fight.
+  setActiveLoadout(i) {
+    const a = this._s.arts
+    if (!a || !Array.isArray(a.loadouts) || !(Number.isInteger(i) && i >= 0 && i < a.loadouts.length)) return { ok: false, reason: 'bad_loadout' }
+    if (a.activeLoadout !== i) { a.activeLoadout = i; a.loadout = a.loadouts[i]; this._save(); this._notify() }
     return { ok: true }
   }
   // ── 1.14b (arts.md → "42c part 2"): the sect library + the clan library ──────────────────────────────────────────
@@ -5798,7 +5818,7 @@ class GameState {
   // What Path → Arts shows. Passives beyond your realm's slots stay in the loadout but are inactive (shown locked).
   artsInfo() {
     const s = this._s, a = s.arts
-    return { known: a.known, loadout: a.loadout, passiveSlots: this.passiveSlots(), studies: a.studies, studySlots: this.studySlots(),
+    return { known: a.known, loadout: a.loadout, loadouts: a.loadouts, activeLoadout: a.activeLoadout, passiveSlots: this.passiveSlots(), studies: a.studies, studySlots: this.studySlots(),
       nextStudySlot: ART_STUDY_SLOTS.find(x => x.stage > s.stageIndex) || null, offers: a.offers,
       found: Object.keys(a.found).length, total: ARTS_LIST.length, elements: this.rootElements(),
       nextSlot: ART_PASSIVE_SLOTS.find(x => x.stage > s.stageIndex) || null }

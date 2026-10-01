@@ -12,7 +12,9 @@ const fmtH = h => h == null ? '—' : h < 1 ? `${Math.round(h * 60)}m` : `${h.to
 // Features a well-rounded player should touch; "never used" is a strong design signal.
 const FEATURES = ['expedition', 'craft_equipment', 'craft_pill', 'use_elixir', 'tame_beast', 'beast_expedition',
   'join_sect', 'sect_mission', 'sect_rank_up', 'found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce',
-  'war_answer_call', 'war_chest', 'war_beast', 'ascend', 'buy_legacy']
+  'war_answer_call', 'war_chest', 'war_beast', 'ascend', 'buy_legacy',
+  // Phase 42 (arts.md, task 1.15): the arts systems the bot now plays
+  'choose_art', 'study_art', 'set_loadout', 'sell', 'buy_sect_art', 'write_clan_art', 'study_clan_art', 'donate_manual']
 
 const KEY_MILESTONES = [
   ['Qi Condensation L1', r => r.stageTimes.find(x => x.stage === 1)?.atH],
@@ -112,8 +114,13 @@ function buildReport(runs, args) {
     // (Phase 32's bot.js warOrders()) — the sim bot itself never calls them for casual/afk by design,
     // so "never used" would be a false positive there. Only flag them for 'active', which still clicks manually.
     const orderDriven = ['war_answer_call', 'war_chest', 'war_beast', 'war_ally', 'war_reinforce']
+    // A bought sect-library art needs a joined sect (a founder leaves early); the clan-library write/study and the
+    // mastered-spare gift only ever happen for 'active' (see bot.js arts()). Both would be false "never used" flags.
+    const memberOnly = ['buy_sect_art']
+    const activeOnly = ['write_clan_art', 'study_clan_art', 'donate_manual']
     const unused = FEATURES.filter(ft => !(args.path === 'member' && founderOnly.includes(ft)) &&
-      !(p !== 'active' && orderDriven.includes(ft)) && g.every(r => !r.actions[ft]))
+      !(args.path === 'founder' && memberOnly.includes(ft)) &&
+      !(p !== 'active' && (orderDriven.includes(ft) || activeOnly.includes(ft))) && g.every(r => !r.actions[ft]))
     if (T.unusedFeature && unused.length) flags.push(`${tag} Never used: ${unused.join(', ')}`)
   }
 
@@ -258,12 +265,14 @@ function buildReport(runs, args) {
   L.push(``)
   // Phase 35 (A6-2, combat.md → "Sim bot"): beast battles + hunts (action counts summed over the run, median across seeds)
   L.push(`## Beast battles + hunts — Phase 35 (${longest}h runs; median per run)`)
-  L.push(`| Profile | Hunts | Battles | Exchanges | Won (finish · bind · flee) | Retreats | Deaths by beast_hunt |`)
+  L.push(`| Profile | Hunts | Battles | Turns (avg) | Won (finish · bind · flee) | Retreats | Deaths by beast_hunt |`)
   L.push(`|---|---|---|---|---|---|---|`)
   for (const p of profiles) {
     const g = group(p, longest), a = k => med(g.map(r => r.actions?.[k] || 0))
     const won = med(g.map(r => (r.actions?.beast_finish || 0) + (r.actions?.beast_bind || 0) + (r.actions?.beast_flee || 0)))
-    L.push(`| ${p} | ${f(a('hunt'))} | ${f(a('beast_fight'))} | ${f(a('beast_exchange'))} | ${f(won)} (${f(a('beast_finish'))} · ${f(a('beast_bind'))} · ${f(a('beast_flee'))}) | ${f(a('beast_retreat'))} | ${f(med(g.map(r => r.lineage?.deathsByCause?.beast_hunt || 0)))} |`)
+    // Fight length (arts.md target 4–8 turns): the mean turns a fight ran, from the battle's own counter at the ending
+    // move. Replaces the old "Exchanges" column, which went dead when 42b replaced the exchange loop.
+    L.push(`| ${p} | ${f(a('hunt'))} | ${f(a('beast_fight'))} | ${f(med(g.map(r => r.fightTurns?.beast ?? null)))} | ${f(won)} (${f(a('beast_finish'))} · ${f(a('beast_bind'))} · ${f(a('beast_flee'))}) | ${f(a('beast_retreat'))} | ${f(med(g.map(r => r.lineage?.deathsByCause?.beast_hunt || 0)))} |`)
   }
   L.push('')
   // A6-3b (combat.md): the Arena — bouts started, runs cashed out, call-outs, blood deaths
@@ -273,6 +282,25 @@ function buildReport(runs, args) {
   for (const p of profiles) {
     const g = group(p, longest), a = k => med(g.map(r => r.actions?.[k] || 0))
     L.push(`| ${p} | ${f(a('arena_bout'))} | ${f(a('arena_walk'))} | ${f(a('arena_callout_accept'))} · ${f(a('arena_callout_decline'))} | ${f(med(g.map(r => r.lineage?.deathsByCause?.arena_blood || 0)))} |`)
+  }
+  L.push('')
+  // Phase 42 (arts.md, task 1.15): the arts systems the bot now plays — how far the library grew, and which
+  // sources/actions it used (study, loadout, selling, the sect + clan libraries).
+  L.push(`## Arts — Phase 42 (task 1.15) (${longest}h runs; median per run)`)
+  L.push(`| Profile | Arts known (end) | Mastered L5 | Kept offers | Studies | Loadouts | Sold | Stones from selling | Sect arts bought | Clan written · studied |`)
+  L.push(`|---|---|---|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const g = group(p, longest), a = k => med(g.map(r => r.actions?.[k] || 0))
+    L.push(`| ${p} | ${f(med(g.map(r => r.arts?.known ?? 0)))} | ${f(med(g.map(r => r.arts?.mastered ?? 0)))} | ${f(a('choose_art'))} | ${f(a('study_art'))} | ${f(a('set_loadout'))} | ${f(a('sell'))} | ${f(med(g.map(r => r.economy.ledger.sell || 0)))} | ${f(a('buy_sect_art'))} | ${f(a('write_clan_art'))} · ${f(a('study_clan_art'))} |`)
+  }
+  L.push('')
+  // Phase 35 / A6-3a: person fights on the move engine (the bot's own duels, head challenges and Arena bouts).
+  L.push(`## People fights — duels, challenges, the Arena (move engine) (${longest}h runs; median per run)`)
+  L.push(`| Profile | Person moves | Turns (avg) | Parries | Head challenges | Arena bouts | Endings (finish · spare · raise · humble) |`)
+  L.push(`|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const g = group(p, longest), a = k => med(g.map(r => r.actions?.[k] || 0))
+    L.push(`| ${p} | ${f(a('fight_move'))} | ${f(med(g.map(r => r.fightTurns?.person ?? null)))} | ${f(a('fight_parry'))} | ${f(a('challenge_head'))} | ${f(a('arena_bout'))} | ${f(a('fight_end_finish'))} · ${f(a('fight_end_spare'))} · ${f(a('fight_end_raise'))} · ${f(a('fight_end_humble'))} |`)
   }
   L.push('')
   // family.md: what marriages and affairs did per life (totals across all lives, per-life means in brackets).

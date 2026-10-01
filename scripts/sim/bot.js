@@ -39,7 +39,7 @@ class Bot {
     for (let i = 0; i < 40; i++) {
       this.interlude()   // an action this check-in may have ended the life — never act on an unborn one
       const before = this.s.spiritStones
-      const acted = this.family() || this.legacies() || this.soul() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
+      const acted = this.family() || this.legacies() || this.soul() || this.arts() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
         this.elixirs() || this.memberWar() || this.beasts() || this.hunt() || this.arena() || this.sect() || this.ownSect() || this.war() ||
         this.pushExpedition() || this.expedition()
       if (!acted) break
@@ -139,6 +139,146 @@ class Bot {
     return this.do('spend_soul', this.gs.spendSoul(), false)
   }
 
+  // ── Phase 42 (arts.md): study, loadout, library + selling (task 1.15) ─────
+  // The bot plays the arts systems: it answers breakthrough offers, works its study desks, wears its best known
+  // loadout, buys from its sect's library, writes/studies the clan library, gives a spare manual to the sect and
+  // sells what it can never use. Kept "reasonable, not optimal" like the rest of the bot. A duplicate manual of a
+  // known art is given to the sect before it is studied, so the sect is fed and one copy is kept to study.
+  arts() {
+    return this.artOffers() || this.giveManuals() || this.studyManuals() || this.setLoadout() || this.sectLibraryBuy() ||
+      this.clanArts() || this.sellSurplus()
+  }
+
+  // The 4 moves it would wear right now, best-first: raw damage at its mastery, its root element worth +20%
+  // (an affinity bonus in `_mbDamage`) and a fresh element worth a little extra (the fight's element matchup).
+  // The `_mbPolicy` actually chooses each turn, so a deck of strong moves is what matters here.
+  artMoveRank() {
+    const A = this.D.ARTS, els = this.s.root.elements, known = this.s.arts.known
+    const pool = Object.keys(known).filter(id => A[id]?.kind === 'move')
+    const val = id => {
+      const a = A[id], m = a.move, lv = known[id]?.mastery || 1
+      let v = (m.power || 0) * (m.hits || 1) * (1 + this.D.ART_MASTERY_POWER * (lv - 1))
+      if (m.type === 'heal') v = Math.max(v, 30)                      // the policy heals under 30% Health
+      else if (!['strike', 'multi', 'finisher', 'drain', 'charge', 'hex'].includes(m.type)) v *= 0.5   // wards/buffs the policy never picks
+      if (m.type === 'charge') v *= 0.85
+      if (a.element !== 'neutral' && els.includes(a.element)) v *= 1.2
+      return v
+    }
+    const out = []
+    while (out.length < 4) {
+      let best = null, bv = -1
+      for (const id of pool) {
+        if (out.includes(id)) continue
+        const a = A[id], v = val(id) * (a.element !== 'neutral' && !out.some(x => A[x].element === a.element) ? 1.12 : 1)
+        if (v > bv) { bv = v; best = id }
+      }
+      if (!best) break
+      out.push(best)
+    }
+    return out
+  }
+  // Passives: the best grade it knows (the policy doesn't read them, so grade is the honest proxy).
+  artPassiveRank() {
+    const A = this.D.ARTS, R = this.D.ART_RARITY_ORDER, els = this.s.root.elements
+    return Object.keys(this.s.arts.known).filter(id => A[id]?.kind === 'passive')
+      .sort((x, y) => R.indexOf(A[y].rarity) - R.indexOf(A[x].rarity) || A[y].minStage - A[x].minStage ||
+        (els.includes(A[y].element) - els.includes(A[x].element)) || x.localeCompare(y))
+  }
+
+  // Answer a waiting breakthrough offer — 'active' takes the best art, casual/afk take one at random. The offer
+  // waits forever, so nothing is lost; this is just the player's pick (agency rule).
+  artOffers() {
+    const off = this.s.arts.offers[0]
+    if (!off) return false
+    let pick
+    if (this.profile === 'active') {
+      const A = this.D.ARTS, R = this.D.ART_RARITY_ORDER, els = this.s.root.elements
+      const score = id => R.indexOf(A[id].rarity) + (els.includes(A[id].element) ? 0.5 : 0)
+      pick = [...off.options].sort((x, y) => score(y) - score(x))[0]
+    } else pick = off.options[Math.floor(this.rand() * off.options.length)]
+    return this.do('choose_art', this.gs.chooseArtOffer(off.id, pick))
+  }
+
+  // Put a free desk to work: 'active' studies the best manual it holds, casual/afk any ready one.
+  studyManuals() {
+    const s = this.s, A = this.D.ARTS, R = this.D.ART_RARITY_ORDER
+    if ((s.arts.studies || []).length >= this.gs.studySlots()) return false
+    const ready = Object.keys(s.inventory).filter(k => k.startsWith('manual_') && s.inventory[k] > 0)
+      .map(k => k.slice(7)).filter(id => A[id] && this.gs.artStudyLock(id) === null)
+    if (!ready.length) return false
+    const pick = this.profile === 'active'
+      ? ready.sort((x, y) => R.indexOf(A[y].rarity) - R.indexOf(A[x].rarity) || A[y].minStage - A[x].minStage)[0]
+      : ready[Math.floor(this.rand() * ready.length)]
+    return this.do('study_art', this.gs.studyArt(pick))
+  }
+
+  // Wear the best known loadout — rewrites a slot only when it would actually change.
+  setLoadout() {
+    const s = this.s
+    const moves = [...this.artMoveRank(), null, null, null, null].slice(0, 4)
+    const slots = this.gs.passiveSlots()
+    const passives = [...this.artPassiveRank().slice(0, slots), ...Array(5 - slots).fill(null)]
+    let did = false
+    for (let i = 0; i < 4; i++)
+      if (s.arts.loadout.moves[i] !== moves[i] && (moves[i] || s.arts.loadout.moves[i] !== null)) { this.gs.setArtSlot('move', i, moves[i]); did = true }
+    for (let i = 0; i < 5; i++)
+      if (s.arts.loadout.passives[i] !== passives[i] && (passives[i] || s.arts.loadout.passives[i] !== null)) { this.gs.setArtSlot('passive', i, passives[i]); did = true }
+    return did ? this.do('set_loadout', true) : false
+  }
+
+  // Buy an art it lacks from a joined sect's library with Contribution (cheapest grade first). Members only,
+  // and it keeps enough Contribution back to feel like a member rather than a spendthrift.
+  sectLibraryBuy() {
+    const lib = this.gs.sectLibrary()
+    if (!lib) return false
+    const A = this.D.ARTS, R = this.D.ART_RARITY_ORDER
+    const cands = lib.arts.filter(a => !a.lock && !a.known && !a.held && !a.tooProfound && a.price <= lib.contribution)
+      .sort((x, y) => x.price - y.price || R.indexOf(A[y.id].rarity) - R.indexOf(A[x.id].rarity))
+    const want = cands.find(a => this.profile === 'active' || lib.contribution - a.price >= 200)
+    return want ? this.do('buy_sect_art', this.gs.buySectArt(want.id)) : false
+  }
+
+  // The clan library (outlives you): study what a past life wrote in when a desk is free, and — 'active' only,
+  // with stones to spare — write a mastered art in so later lives can learn it at half the time.
+  clanArts() {
+    const info = this.gs.clanLibraryInfo()
+    if (!info) return false
+    if ((this.s.arts.studies || []).length < this.gs.studySlots()) {
+      const row = info.shelf.find(x => !x.lock)
+      if (row) return this.do('study_clan_art', this.gs.studyFromClan(row.artId))
+    }
+    if (this.profile !== 'active') return false
+    const A = this.D.ARTS
+    const w = info.writable.find(x => (this.s.arts.known[x.id]?.mastery || 1) >= 2 && x.cost <= this.s.spiritStones * 0.2 && this.s.spiritStones - x.cost >= 300)
+    return w ? this.do('write_clan_art', this.gs.writeClanArt(w.id)) : false
+  }
+
+  // A spare manual for an art it already knows (a second copy, or one it has studied to mastery 2) is worth more
+  // to the sect (Contribution / war strength) than in the pack — the game's own Pack row calls this "a spare".
+  giveManuals() {
+    const info = this.gs.sectDonateInfo()
+    if (!info) return false
+    const spare = info.manuals.find(m => !m.lock && m.spare &&
+      ((this.s.arts.known[m.id]?.mastery || 1) >= 2 || m.n >= 2))
+    return spare ? this.do('donate_manual', this.gs.donateManualToSect(spare.id)) : false
+  }
+
+  // Sell what can never be used again: a manual for an art already mastered (no mastery left to gain) and gear
+  // it has outgrown (the craftAndEquip path leaves the old piece in the pack).
+  sellSurplus() {
+    const s = this.s, ITEMS = this.D.ITEMS
+    for (const [id, n] of Object.entries(s.inventory)) {
+      if (!id.startsWith('manual_') || n <= 0) continue
+      if ((s.arts.known[id.slice(7)]?.mastery || 0) >= this.D.ART_MASTERY_MAX) return this.do('sell', this.gs.sellItem(id, n))
+    }
+    for (const slot of ['weapon', 'artifact']) {
+      const outgrown = Object.keys(s.inventory).filter(id => ITEMS[id]?.type === slot && s.inventory[id] > 0 &&
+        itemScore(ITEMS, id) < itemScore(ITEMS, s.equipped[slot]))
+      if (outgrown.length) return this.do('sell', this.gs.sellItem(outgrown[0], s.inventory[outgrown[0]]))
+    }
+    return false
+  }
+
   // 1.8b-3a (family.md): the player's own family actions. 'active' courts, tends its spouse (time/gift below
   // Warm, dual cultivation only when nearly safe) and spends time with its most distant child; casual does each
   // now and then; afk only courts once in a while (so every path is exercised). One action per call.
@@ -202,7 +342,9 @@ class Bot {
         return this.do('fight_yield', this.gs.fightExchange('yield'))
       }
       this._yieldTried = false
-      return this.do('fight_move', this.gs.fightMove(this.gs._mbPolicy(m)))
+      const res = this.gs.fightMove(this.gs._mbPolicy(m))
+      if (res?.over || res?.done) this.rec.fightLen('person', res.turn)   // fight length (arts.md target 4–8 turns)
+      return this.do('fight_move', res)
     }
     // 1.8b-3b: a lover's ultimatum — 'active' keeps its marriage safe; casual/afk choose at random.
     const ult = (f.lovers || []).find(l => l.ultimatum)
@@ -547,7 +689,9 @@ class Bot {
     }
     if (m) {
       if (this.profile === 'active' && fi.stance === 'slay' && (s.health ?? 100) <= 20) return this.do('beast_retreat', this.gs.fightExchange('retreat'))
-      return this.do('beast_move', this.gs.beastMove(this.gs._mbPolicy(m)))
+      const res = this.gs.beastMove(this.gs._mbPolicy(m))
+      if (res?.over || res?.done) this.rec.fightLen('beast', res.turn)   // fight length (arts.md target 4–8 turns)
+      return this.do('beast_move', res)
     }
     return this.do('beast_retreat', this.gs.fightExchange('retreat'))
   }

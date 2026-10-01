@@ -4675,6 +4675,19 @@ body[data-layout="overlay"] .arts-view { display: flex; flex-direction: column; 
 .art-x { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--dim); cursor: pointer; border-radius: 3px; }
 .art-x:hover { color: var(--red-text); background: rgba(200,48,48,0.1); }
 .art-x .ic { width: 11px; height: 11px; }
+/* UI review: 7.8 (2026-10-01) — four saved loadouts */
+/* the 4 saved loadouts (user 2026-10-01): the lit deck is the one every fight uses. The arts panel is narrower than the
+   window in Expanded/Desktop, so 4-up vs 2×2 keys on the section's own width (container query), not the viewport. */
+.art-loadouts { container-type: inline-size; }
+.art-lo-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 8px; }
+.art-lo { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow: hidden; padding: 6px 7px; background: rgba(8,4,14,0.4); border: 1px solid var(--border); border-radius: 4px; color: var(--dim-hi); font-family: var(--font); text-align: left; cursor: pointer; }
+.art-lo:hover { border-color: var(--dim); color: var(--text); }
+.art-lo.on { border-color: var(--gold); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent) inset; }
+.art-lo-n { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11px; letter-spacing: .04em; white-space: nowrap; }
+.art-lo-n .ic { width: 11px; height: 11px; flex: none; }
+.art-lo-s { font-size: 10px; color: var(--dim-hi); line-height: 1.3; min-width: 0; max-width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }   /* 2 lines so the full deck summary survives the 2×2 modes (reviewer cycle 2) */
+.art-lo.on .art-lo-s { color: color-mix(in srgb, var(--gold) 60%, var(--dim-hi)); }
+@container (max-width: 340px) { .art-lo-row { grid-template-columns: 1fr 1fr; } }   /* the arts panel is narrow: 2×2 */
 /* library */
 .art-picking { display: flex; align-items: center; gap: 6px; padding: 5px 8px; margin-bottom: 6px; border: 1px solid var(--gold); border-radius: 3px; font-size: 10.5px; color: var(--gold); }
 .art-picking .art-btn { margin-left: auto; min-height: 24px; }
@@ -4706,7 +4719,7 @@ body[data-layout="overlay"] .el-chip span { display: none; }   /* icon-only in t
 .art-tag.on { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); }
 .art-lock { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--dim-hi); }
 .art-lock .ic { width: 11px; height: 11px; }
-@media (max-width: 420px) { .art-moves { grid-template-columns: 1fr; } }   /* phone: one move per row, the meta stays on one line */
+@media (max-width: 420px) { .art-moves { grid-template-columns: 1fr; } .art-lo-row { grid-template-columns: 1fr 1fr; } }   /* phone: one move per row, the meta stays on one line; loadout tabs 2×2 */
 .art-empty { font-size: 11px; color: var(--dim-hi); font-style: italic; padding: 10px 2px; }
 
 /* UI review: 7.8 (2026-09-29) */

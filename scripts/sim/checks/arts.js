@@ -90,6 +90,17 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
   assert(gs.fightMoves().slots.map(x => x?.id || null).join() === deck0.join(), 'the battle grid stays on the deck it began with')
   s.family.fight = null
 
+  // ── saved loadouts (user 2026-10-01): 4 free decks; the active one is what fights ──
+  assert(Array.isArray(s.arts.loadouts) && s.arts.loadouts.length === 4, 'four saved loadouts')
+  assert(s.arts.loadout === s.arts.loadouts[s.arts.activeLoadout], 's.arts.loadout is the live pointer to the active deck')
+  assert(s.arts.loadouts[1].moves.every(id => id === null), 'the spare decks start empty')
+  assert(gs.setActiveLoadout(2).ok && s.arts.activeLoadout === 2 && s.arts.loadout === s.arts.loadouts[2], 'switching to loadout 3 moves the pointer')
+  gs.setArtSlot('move', 3, pick.id)
+  assert(s.arts.loadouts[2].moves[3] === pick.id, 'an edit lands on the active deck')
+  gs.setActiveLoadout(0)
+  assert(s.arts.loadout.moves[3] === first && s.arts.loadouts[2].moves[3] === pick.id, 'decks are independent: the first keeps its own moves')
+  assert(gs.setActiveLoadout(99).reason === 'bad_loadout', 'an unknown loadout index is refused')
+
   // ── breakthrough offers + grants ──
   s.qi = s.derived.qiCap; s.stageIndex = 0
   const origRandom = Math.random; Math.random = () => 0.0001   // force the breakthrough (and pick the lightest weights)

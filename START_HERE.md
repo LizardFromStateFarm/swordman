@@ -38,7 +38,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Hybrid ink art engine (A3) + re-art (A4) | ◐ A3 ✅; **A4-1 every realm in ink ✅** (accepted 2026-09-27); A4-2 beasts ✅ (10 + variants); **A4-3 realm scenery + death moment ✅** (accepted by the user 2026-09-28); **A4-4 Ink default + sprite emoji lint ✅** (2026-09-28, 8.0) |
 | **Soul Points + Immortal cinematic + "you finished v1" screen** | ✅ Phase 40 (v1 finish) — 40a Soul Points core (UI 7.7) + **40b Immortal Ascension cinematic + finish screen** (2026-09-28; screen 7.75, cinematic accepted by the user) |
 | **Combat & Battles** (battle page, beast battles, bestiary) | ◐ Phase 35 — **A6-1 ✅** (2026-09-28): Fight a wild beast from Roam → Beasts on a full-window ink battle page (UI 7.75, effects 8.0). **A6-2 ✅** (2026-09-29): Roam → Hunt + Roam → Bestiary, battle banter, slayer reputation, sim bot hunts (UI 7.7). **A6-3a ✅** (2026-09-29): duels, head challenges, defending the seat + your step-down bouts on the battle page vs ink duelists, finish/spare · raise/humble, debts + grudges (UI 7.83, duelist 8.1). **A6-3b ✅** (2026-09-29): the Arena — Roam → Arena, six rings, purse × streak × renown, blood matches, titles, grudge call-outs (UI 7.75). Next A6-3c bosses (needs 23E/17) |
-| **Arts & Move Combat** (collectible combat arts, 4 moves + passives, parry QTE, no cooldowns; + Sell items) | ◐ Phase 42 — 1.11 Sell ✅ · 1.12 Arts core ✅ (79 arts, Path → Arts, study, loadout, offers, drops); 1.13a move engine ✅ · 1.13b element effects ✅ · **1.14a people on moves ✅** (every fight kind; p.arts, temper AI, scouting; Press/Guard/Feint removed; UI 7.75) · **1.14b ✅** rival counters, raise → taught / finish → manual, Sect → Library, clan library, **study desks by realm** (UI 7.6); next **1.15 QA & Balance** (docs/systems/arts.md) |
+| **Arts & Move Combat** (collectible combat arts, 4 moves + passives, parry QTE, no cooldowns; + Sell items) | ◐ Phase 42 — 1.11 Sell ✅ · 1.12 Arts core ✅ (79 arts, Path → Arts, study, loadout, offers, drops); 1.13a move engine ✅ · 1.13b element effects ✅ · **1.14a people on moves ✅** (every fight kind; p.arts, temper AI, scouting; Press/Guard/Feint removed; UI 7.75) · **1.14b ✅** rival counters, raise → taught / finish → manual, Sect → Library, clan library, **study desks by realm** (UI 7.6) · **1.15 QA & Balance ✅** (2026-09-30: the sim bot plays the arts — offers, study desks, loadout, sect + clan library, selling; 27-run sim healthy; checks 790) · **1.16 four saved loadouts ✅** (2026-10-01: 4 free decks you set + switch on Path → Arts, not tied to Hunt/Duel; checks 797) (docs/systems/arts.md) |
 | **Tame talisman grades & tame attempts** (驯兽符) | ✅ **Phase 41** (2026-09-29): four graded Beast Taming Talismans (Crude 40% → Fine 55% → Superior 70% → Pristine 90%, the old item = Crude), a real tame roll, a failed tame that fights or escapes (nature-weighted; the wounded flee), the bind roll; grade pickers on Roam → Beasts / details / battle end; checks/talismans.js (25) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
@@ -71,7 +71,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 > Sim/dist/build:web/smoke/new checks are batched into each feature's **QA & Balance** task (CLAUDE.md).
 > **UI/UX is first-class:** every player-facing task does the UX Pass (CLAUDE.md) and logs gaps under "UX Debt" below.
 
-> **Tools:** `npm test` (syntax) · `npm run checks` (773 scenario checks, ~30s: combat.js alone ~20s) · `npm run sim` (bot playtest) ·
+> **Tools:** `npm test` (syntax) · `npm run checks` (790 scenario checks, ~30s: combat.js alone ~16s) · `npm run sim` (bot playtest) ·
 > `node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` (real-app smoke over CDP, throwaway profile). Any
 > useful check script you write goes in `scripts/sim/checks/` and gets documented — never left in a temp folder
 > (CLAUDE.md → "Test scripts are project assets").
@@ -151,6 +151,9 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 - **Arts grade filter (2026-09-30, 7.7):** "Earth" is both a grade and an element, and the two filter rows carry no row
   caption (a leading "Grade"/"Element" label would fix it); the third filter row crowds the 300px Overlay / phone panes
   (the grade row now hides while picking a slot); the library count's tooltip just got longer.
+- **Four saved loadouts (1.16, 7.8, 2026-10-01):** the Arts screen's 9.5px `.art-k` kickers / `.art-tag` chips still sit
+  under the house's 10px readability floor (a repo-wide uppercase-kicker pattern, not just this component); a deck has no
+  custom name (plain "Loadout 1–4", the user's pick).
 - **Rivals + libraries + desks (1.14b, 7.6):** a founded sect has no library (only joined sects); the sim bot doesn't
   study, buy or write arts (1.15); some states have no screenshot yet (a Contribution shortfall, a free desk listing manuals,
   the too-profound clan reason, the Finish manual chance); toasts from the main window can float over the battle field;
@@ -204,6 +207,56 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-10-01 (user present) — part 64
+Agent: **Task 1.16 — four saved loadouts** (the 42d polish; user: "read START_HERE and build the loadouts, i dont want it
+  to be seperated from hunt and fight i just want the user to be able to set 4 different loadouts"). The planned two
+  activity-tied decks ("Hunt" / "Duel") were dropped for **4 free decks** the player sets and switches, not tied to any
+  activity. Assessment approved (user pick: 4 full decks, freely set & switchable).
+  - **Engine** `s.arts.loadouts = [{moves[4], passives[5]} × 4]` + `s.arts.activeLoadout`; **`s.arts.loadout` kept as the
+    live pointer to the active deck**, so every reader is unchanged (`_mbYou`/`_mbPassives`, `fightMoves`, combat.js match
+    hint, attention nudge, bot.js `setLoadout`, metrics `arts_loadout_invalid`). New `setActiveLoadout(i)`;
+    `_blankArts` starts deck 1 with your starters; `_ensurePhase42Fields` migrates an old single loadout → deck 1, pads +
+    cleans the decks, clamps the index, re-points. Switching is never refused mid-fight (a battle keeps its starting deck).
+  - **UI** (arts-view.js): a switcher row above the Moves grid — 4 tabs (`Loadout 1–4` + "3 of 4 moves · Water" / "Empty"),
+    the lit one carries a sword mark + gold border (aria-current); clicking switches the active deck and the grid follows.
+    2×2 on phones (≤420px). styles.css `.art-lo*`.
+  - **Tests**: npm test clean · checks **797 ok** (arts.js +8: four decks, the pointer, empty spares, switching repoints,
+    an edit lands on the active deck only, decks independent, bad index refused) · arts smoke **31 ok**, zero console
+    errors (Overlay/Expanded/Desktop + phone; a new `arts-loadouts` close-up + `.art-lo` in the mode-fit assert) ·
+    sim:quick healthy (0 errors / 0 violations). **Visual Review Gate: 7.8 PASS** — cycle 1 **6.9 FAIL** (in Expanded the
+    4-up row overflowed the narrower arts panel; fixed with a `@container` 2×2 fallback + clamping), cycle 2 clean; both
+    reviewers' vision tools failed so they measured the DOM (ui-review.md).
+  - Docs: arts.md → "Four saved loadouts as built", PLAN 1.16 (+ the 1.15 deferral note resolved), this file. Uncommitted
+    (the user handles commits).
+  Next: **A6-3c bosses** (needs 23E/17) → A7 sect base scene → 2.8 QA & Balance (tune arena purses, NPC pace, duel balance).
+
+Date: 2026-09-30 (user present) — part 63
+Agent: **Task 1.15 ✅ QA & Balance: Arts & Move Combat (42d)** — resumed a session the PC cut short mid-task (the sim-bot
+  teaching was written but never run). Assessment approved; the user chose "wrap up 1.15, do the saved loadouts next".
+  - **What was in flight + verified.** The previous session had already written the bot's arts policy (scripts/sim/bot.js
+    `arts()`: answer an offer, give a spare manual, work a study desk, wear the best loadout, buy from the sect library,
+    study/write the clan library, sell surplus), exposed the arts tables on `sim.data` (loader.js), added arts milestones +
+    4 invariants (metrics.js), two report sections (report.js), the qa-sim.md docs and a new checks/bot-arts.js (17).
+    This session: `npm test` clean · `npm run checks` **790 ok** (was 767).
+  - **Multi-seed sim (active/casual/afk × 50/100/200h × 3 seeds = 27 runs): ✅ healthy, 0 errors, 0 violations, 135 save
+    round-trips.** All eight arts actions used by 'active' (no arts "never used" flag). Head challenges **0/6 → 131/343
+    (38%)** — the 1.14a gap ("lost 6/6 on starter arts") is closed. See scripts/sim/out/arts-115/report.md.
+  - **Balance: no values changed** — the doc's targets are met within tolerance. Probes: even-stage person fights ≈ 56–71%
+    (target 50–65%, a touch high); beast fights at their gate average ~4.5 turns (target 4–8; tail 2–9). Also added a real
+    **fight-length metric** to the sim (metrics.js `fightLen` / `fightTurns`, fed by bot.js) and replaced the beast table's
+    dead **"Exchanges"** column (always 0 since 42b) with **"Turns (avg)"** — the bot's own fights run 2–3 turns because it
+    only takes fights it is favoured in (estimate ≥ 60%), so its average is not the "even fight" the target describes.
+    Selling earned only ~105 stones/200h, so sell prices don't rival expeditions/Arena. First-pass knobs (library prices,
+    write costs, the 60% finish drop, sell prices) stay on the 2.8 list.
+  - **Smoke (all four modes, zero console errors):** arts · libraries · combat · battle-fx · duels · arena · fights · hunt ·
+    sell · succession. `npm run dist` + `npm run build:web` OK (fresh dist/Cultivator Idle-win32-x64).
+  - Docs: arts.md → "42d as built" (+ header/table status), qa-sim.md (the arts bot + the new fight-length metric),
+    PLAN (1.15 ✅), this file. Uncommitted (the user handles commits).
+  - **Not done (the user's pick): two saved loadouts ("Hunt" / "Duel")** — the last 42d polish item. It is the **next task**,
+    ahead of A6-3c/A7.
+  Next: **two saved loadouts (Hunt / Duel)** (arts.md → Loadout; new UI → Visual Review Gate), then A6-3c bosses (needs
+    23E/17) → A7 sect base scene.
+
 Date: 2026-09-30 (user present) — part 62
 Agent: **Two small fixes from a play session** (user: "cannot queue things to study while a fight message is up, though I
   wasn't in a fight"; and the arts library needs filters for "a lot of arts"). Tiny, no roadmap task.

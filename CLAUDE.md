@@ -182,6 +182,7 @@ scripts/
     run.js · loader.js · bot.js · metrics.js · report.js · profiles.js · rng.js · USAGE.txt
     fight-helpers.js    ← playFight(gs, 'win'|'lose') — forces a move fight to its end, for scenario checks (1.14a)
     probe-person-fights.js ← tuning probe: move-fight estimate vs people by temper × stage gap (not a check)
+    probe-beast-fights.js ← tuning probe: move-fight estimate + mean turns vs every beast at its gate realm (not a check)
     checks/             ← Scenario checks (`npm run checks`) — force exact situations, print ok/FAIL; run-all.js + one file per system
   smoke/                ← Real-app smoke tests over CDP: cdp.js driver + scenarios/*.js (screenshots → smoke/out/, gitignored); fight-ui.js = play a fight through the real move buttons
 example_art/            ← The user's own source art for the bake pipeline (reference + bake input; not loaded by the game)
