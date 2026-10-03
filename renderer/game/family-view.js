@@ -14,8 +14,11 @@ function moralityLabel(m) {
   return               { word: 'Ruthless',  tone: 'red' }
 }
 
+// A spiritual root reads by type (potential): heavenly > pure > dual > mixed (root.mult is the growth speed).
+const ROOT_TONE = { heavenly: 'gold', pure: 'jade', dual: 'purple', mixed: 'dim' }
+
 class FamilyView {
-  // h: { esc, fmt, stageLabel, affectionLabel, bondLabel, latinOnly, confirm, flash, wire, endText, pendingKey }
+  // h: { esc, fmt, stageLabel, affectionLabel, bondLabel, latinOnly, rename, confirm, flash, wire, endText, pendingKey }
   constructor(gameState, h) {
     this.gs = gameState
     this.h = h
@@ -46,7 +49,7 @@ class FamilyView {
     const f = s.family || {}
     // Two columns in Expanded/Desktop (you + your partner · your children); Overlay stacks them in `order`.
     this.el.innerHTML = `<div class="fam-view">
-      <div class="fam-col">${this._ultimatum(s)}${this._wish(s)}${this._partner(s)}${this._plan(s)}${this._others(s)}${this._heir(s)}</div>
+      <div class="fam-col">${this._treeLink()}${this._ultimatum(s)}${this._wish(s)}${this._partner(s)}${this._plan(s)}${this._others(s)}${this._heir(s)}</div>
       <div class="fam-col">${(s.family.lovers || []).map(l => this._loverCard(s, l)).join('')}${this._children(s)}</div></div>`
     // Bar widths/colors through CSSOM (CSP blocks inline style attributes)
     this.el.querySelectorAll('[data-w]').forEach(b => { b.style.width = b.dataset.w + '%' })
@@ -81,6 +84,10 @@ class FamilyView {
         return cost ? `Costs ${this._num(cost)} stones · you have ${this._num(Math.floor(this.gs.get().spiritStones))}` : 'Not enough Spirit Stones'
       }
       case 'young':     return `From age ${p.minAge}`
+      case 'full':      return 'Every hall seat is taken'
+      case 'joined':    return 'Already in your sect'
+      case 'gone':      return 'They are gone from the house'
+      case 'no_sect':   return 'Found a sect first'
       case 'expecting': return 'A child is already on the way'
       case 'cold':      return 'They are too cold toward you'
       case 'stage':     return `Reach ${stageShortName(p.minStage)}`
@@ -89,6 +96,8 @@ class FamilyView {
       case 'pending':   return 'Answer the meeting first'
       case 'duel':      return 'Not while a duel is pending'
       case 'wish':      return 'They already ask: answer above'
+      case 'items':     return 'Needs a Beast Core'
+      case 'maxed':     return `Their body is a ${BODY_TIERS[p.bodyTier]?.name || 'peak'}: as far as you can drill it`
       default:          return 'Not now'
     }
   }
@@ -231,12 +240,30 @@ class FamilyView {
       ? `<button class="fa-btn wide" data-fa="court-seek"><span class="fa-g" data-icon="bond"></span><span class="fa-t"><span class="fa-n">Seek a match</span><span class="fa-e">${this._eff([['meet three candidates', 'dim'], this._stoneBit(sk.cost)])}</span></span></button>`
       : this._act('court-seek', 'bond', 'Seek a match', sk, '', '', 'wide')
     return `<section class="fam-card alone">
-      <div class="fc-head"><span class="fc-glyph dim" data-icon="person"></span><div class="fc-id"><div class="fc-name">You walk the path alone</div>
-        <div class="fc-sub">Pay a matchmaker to find someone worth courting, wait for their offer, or leave it to the road (Roam → Explore).</div></div></div>
+      <div class="fc-head"><span class="fc-glyph dim" data-icon="person"></span><div class="fc-id"><div class="fc-name">No partner at your side</div>
+        <div class="fc-sub">${this._kinLine()}Pay a matchmaker to find someone worth courting, wait for their offer, or leave it to the road (Roam → Explore).</div></div></div>
       ${f.proposal ? `<button class="fa-btn wide urgent" id="_matchmaker"><span class="fa-g" data-icon="bond"></span><span class="fa-t"><span class="fa-n">A matchmaker awaits</span><span class="fa-e">${f.proposal.suitors.length} offer${f.proposal.suitors.length === 1 ? '' : 's'} of marriage</span></span></button>` : ''}
       ${seekBtn}
       ${spurned ? `<div class="fc-hint">${spurned === 1 ? 'One suitor has' : `${spurned} suitors have`} refused you. The road is long; you may meet again.</div>` : ''}
     </section>`
+  }
+
+  // The family tree's door (user 2026-10-03): always on top of Family, with who is on it.
+  _treeLink() {
+    const c = this.gs.familyTreeInfo()?.counts
+    if (!c) return ''
+    const pl = (n, w, ws) => `${n} ${n === 1 ? w : ws}`
+    const bits = [c.parents ? pl(c.parents, 'parent', 'parents') : '', c.siblings ? pl(c.siblings, 'sibling', 'siblings') : '',
+      c.children ? pl(c.children, 'child', 'children') : ''].filter(Boolean)
+    return `<button class="fa-btn wide fam-tree-link" data-fa="tree"><span class="fa-g">${Icon.g('lineage')}</span><span class="fa-t"><span class="fa-n">Family tree</span>
+      <span class="fa-e">${bits.length ? bits.join(' · ') : 'your line, from your ancestors down'} · see it drawn</span></span></button>`
+  }
+  // The parents and siblings you do have, for the unwed card (it no longer says you walk alone).
+  _kinLine() {
+    const c = this.gs.familyTreeInfo()?.counts
+    if (!c || (!c.parents && !c.siblings)) return ''
+    const who = [c.parents ? (c.parents === 1 ? 'a parent' : 'your parents') : '', c.siblings ? `${c.siblings} sibling${c.siblings === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ')
+    return `You have ${who} (see the family tree), but no one of your own yet. `
   }
 
   _children(s) {
@@ -245,7 +272,8 @@ class FamilyView {
     const home = kids.filter(c => c.alive && !c.estranged).sort((a, b) => a.bornYear - b.bornYear)
     const gone = kids.filter(c => !c.alive || c.estranged)
     const living = home.length, lost = kids.filter(c => !c.alive).length
-    const cards = home.map(c => this._childCard(s, c)).join('')
+    const best = this._bestRootIds(home)
+    const cards = home.map(c => this._childCard(s, c, best.has(c.id))).join('')
     const empty = !kids.length ? `<div class="fam-empty">${f.spouse || f.lovers.length ? 'No children yet.' : 'No children. That begins with a partner.'}</div>` : ''
     return `<section class="fam-sec fam-kids">
       <div class="fam-sec-title"><span>Children</span><span class="fam-count">${living} at home${lost ? ` · ${lost} lost` : ''}${gone.length - lost ? ` · ${gone.length - lost} left` : ''}</span></div>
@@ -255,6 +283,16 @@ class FamilyView {
         return `<div class="fold-row">${this._name(c)} <span>${c.alive ? `left the clan in year ${c.leftYear}` : `died at ${age}`}</span></div>`
       }).join('')}</details>` : ''}
     </section>`
+  }
+
+  // The child(ren) at home with the highest spiritual root — "the kid with the highest potential". Only a
+  // clear best is marked: if every child shares one root multiplier there is no highest, so nobody is crowned.
+  _bestRootIds(home) {
+    if (home.length < 2) return new Set()
+    const mult = c => c.root?.mult ?? 1
+    const max = Math.max(...home.map(mult))
+    if (!home.some(c => mult(c) < max)) return new Set()
+    return new Set(home.filter(c => mult(c) === max).map(c => c.id))
   }
 
   // Family Planning + what's on the way. Left column: it's about you and your partners, not the children you have.
@@ -280,24 +318,31 @@ class FamilyView {
     </section>`
   }
 
-  _childCard(s, c) {
+  _childCard(s, c, best = false) {
     const h = this.h, gs = this.gs, f = s.family
     const age = this._age(s, c), bl = h.bondLabel(c.bond ?? 50), ml = moralityLabel(c.morality ?? 0)
     const pers = this._persona(c.personality)
     const open = this.openChild === c.id
     const stage = age >= AWAKENING_AGE ? h.stageLabel(c.stageIndex) : c.xp > 0 ? 'Not yet awakened · a head start' : 'Not yet awakened'
     const heir = f.heirId === c.id
+    const rootName = c.root ? h.latinOnly(c.root.name || '') : ''
+    const rootChip = rootName ? `<span class="kid-root tone-${ROOT_TONE[c.root.type] || 'dim'}${best ? ' best' : ''}" title="${best ? 'Highest potential of your children — ' : ''}spiritual root · Qi and stage growth ×${c.root.mult}"><b data-icon="${best ? 'crown' : 'root'}"></b>${h.esc(rootName)} ×${c.root.mult}</span>` : ''
     const other = c.parents?.find(id => id !== s.self.id)
     const parent = other ? [f.spouse, ...f.formerSpouses, ...f.lovers.map(l => l.person)].find(p => p?.id === other) : null
     let acts = ''
     if (open) {
-      const t = gs.childActionPreview(c.id, 'time'), te = gs.childActionPreview(c.id, 'teach'), g = gs.childActionPreview(c.id, 'gift')
+      const t = gs.childActionPreview(c.id, 'time'), te = gs.childActionPreview(c.id, 'teach'), g = gs.childActionPreview(c.id, 'gift'), tp = gs.childActionPreview(c.id, 'temper')   // Phase 14
       const ap = gs.abuseChildPreview(c.id)   // family-events.js: the mirror — you may raise a hand too
       const mor = n => n ? [`morality ${this._signed(n)}`, n > 0 ? 'up' : 'down'] : null
-      acts = `<div class="kid-acts">
+      // Phase 45 (sect-branches.md): a grown child may be taken into your sect for free, any time.
+      const rp = s.ownSect?.founded && age >= AWAKENING_AGE ? gs.childRecruitPreview(c.id) : null
+      const sectRow = rp ? `<div class="kid-sect-row"><button class="fa-quiet kid-sect${rp.ok ? '' : ' locked'}" data-fa="ch-sect" data-id="${h.esc(c.id)}" ${rp.ok ? '' : 'disabled'}>${Icon('disciple')}<span class="ks-txt"><span class="ks-t">${rp.ok ? 'Bring into the sect' : h.esc(this._lockText(rp))}</span>${rp.ok ? `<span class="ks-s">free · talent ${rp.talent}★</span>` : ''}</span></button></div>` : ''
+      acts = `<div class="kid-rename-row"><button class="fa-quiet kid-rename" data-fa="ch-rename" data-id="${h.esc(c.id)}" title="Give this child a name">Rename</button></div>${sectRow}
+      <div class="kid-acts">
         ${this._act('ch-time', 'heart', 'Spend time', t, this._eff([[`bond ${this._signed(t.bond)}`, t.bond >= 0 ? 'up' : 'down'], this._qiBit(t.qi)]), ` data-id="${h.esc(c.id)}"`)}
         ${this._act('ch-teach', 'scroll', 'Teach your art', te, this._eff([['progress', 'up'], te.bond ? [`bond ${this._signed(te.bond)}`, te.bond >= 0 ? 'up' : 'down'] : null, mor(te.morality), this._qiBit(te.qi)]), ` data-id="${h.esc(c.id)}"`)}
         ${this._act('ch-gift', 'stone', 'Give resources', g, this._eff([['progress', 'up'], [`bond ${this._signed(g.bond)}`, 'up'], mor(g.morality), this._stoneBit(g.stones)]), ` data-id="${h.esc(c.id)}"`)}
+        ${this._act('ch-temper', 'shield', 'Temper their body', tp, this._eff([[`${BODY_TIERS[tp.bodyTier || 0]?.id || 'F'} · ${(tp.bodyXp || 0) % (tp.perTier || 3)}/${tp.perTier || 3} to the next`, 'up'], tp.bond ? [`bond ${this._signed(tp.bond)}`, tp.bond >= 0 ? 'up' : 'down'] : null, ['1 Beast Core', 'cost']]), ` data-id="${h.esc(c.id)}" title="A harder body adds fight power in tournaments and challenges"`)}
         ${this._act('ch-harsh', 'duel', 'Raise a hand', ap, this._eff([[`bond ${this._signed(ap.bond || 0)}`, 'down'], [`karma ${this._signed(ap.karma || 0)}`, 'down']]), ` data-id="${h.esc(c.id)}"`, 'grave')}
       </div>
       ${pers ? `<div class="kid-note">${h.esc(pers.blurb)}</div>` : ''}
@@ -308,7 +353,7 @@ class FamilyView {
         <span class="kid-name">${heir ? '<b class="kid-star" title="Named heir" data-icon="heir"></b>' : ''}${this._name(c)}</span>
         <span class="kid-age">${age}</span>
         <span class="kid-sub">${stage}</span>
-        <span class="kid-foot"><span class="kid-tags">${pers ? `<span class="fam-tag"><b data-icon="mask"></b>${h.esc(pers.name)}</span>` : ''}<span class="fam-tag tone-${ml.tone}">${ml.word}</span>${c.trauma ? '<span class="fam-tag tone-red">Scarred</span>' : ''}</span>
+        <span class="kid-foot">${rootChip}<span class="kid-tags">${pers ? `<span class="fam-tag"><b data-icon="mask"></b>${h.esc(pers.name)}</span>` : ''}<span class="fam-tag tone-${ml.tone}">${ml.word}</span>${c.trauma ? '<span class="fam-tag tone-red">Scarred</span>' : ''}${c.bodyTier ? `<span class="fam-tag" title="Body tier: fight power in tournaments and challenges"><b data-icon="shield"></b>${BODY_TIERS[c.bodyTier].id} body</span>` : ''}</span>
         <span class="kid-bond" title="Bond ${Math.round(c.bond ?? 50)} / 100"><span class="kid-bw tone-${bl.tone}">${bl.word}</span><span class="fam-bar thin"><i class="tone-${bl.tone}" data-w="${Math.round(c.bond ?? 50)}"></i></span><span class="kid-bn">${Math.round(c.bond ?? 50)}</span></span></span>
         <span class="kid-chev">${open ? '▴' : '▾'}</span>
       </button>${acts}</div>`
@@ -396,6 +441,7 @@ class FamilyView {
     const gs = this.gs, h = this.h, id = b.dataset.id
     const s = gs.get(), f = s.family
     switch (b.dataset.fa) {
+      case 'tree': h.go?.('tree'); break   // the family tree (family-tree.js)
       case 'wish-yes': gs.answerChildWish(true); break
       case 'wish-no':  gs.answerChildWish(false); break
       case 'sp-time':  gs.spouseAction('time'); break
@@ -424,12 +470,27 @@ class FamilyView {
       case 'ch-time':  gs.childAction(id, 'time'); break
       case 'ch-teach': gs.childAction(id, 'teach'); break
       case 'ch-gift':  gs.childAction(id, 'gift'); break
+      case 'ch-temper': gs.childAction(id, 'temper'); break   // Phase 14
       case 'ch-harsh': {   // family-events.js: the mirror of "A father's hand" — a deliberate act, confirmed
         const kid = gs.get().family.children.find(x => x.id === id)
         h.confirm(`Raise a hand to ${kid?.given || 'your child'}?`, 'They will remember it. Your karma will too.', () => {
           const r = gs.abuseChild(id)
           if (r.ok) h.flash(`${kid?.given || 'Your child'} will remember this.`, 'negative')
         }, 'Strike')
+        break
+      }
+      case 'ch-sect': {   // Phase 45: bring a grown child into your sect — free and instant
+        const r = gs.recruitChild(id)
+        if (r.ok) h.flash(`${r.disciple.name} joins your sect as a disciple.`, 'special')
+        else h.flash({ full: 'Every hall seat is taken — raise the Sect Hall', joined: 'They are already a disciple', young: 'They are too young yet' }[r.reason] || 'Not now', 'negative')
+        break
+      }
+      case 'ch-rename': {   // name/rename your own child — the shared name box (same as the cultivator's own)
+        const kid = f.children.find(x => x.id === id)
+        h.rename(kid?.given || '', v => {
+          const r = gs.renameChild(id, v)
+          if (r.ok && !r.unchanged) h.flash(`Named ${r.given}.`, 'special')
+        }, 16)
         break
       }
       // 1.8b-3b: affairs

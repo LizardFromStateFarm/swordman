@@ -1,7 +1,8 @@
 // Clan succession after a death (clan-succession.md 2.6d): parenting styles, the heir bet, the reign sim, rebirth
 // position weights, the rare rival-family rebirth, chronicle text and upbringing events. Also 2.6e: challenging
 // the head, being challenged as head, and step-down mass tournaments — all resolved while you're still alive.
-// Also 2.6f: branch wars (push/declare) and secession into a new clan. Data only.
+// Also 2.6f: branch wars (push/declare) and secession into a new clan. Also the bequest (2026-10-02): the combat arts
+// and items a life passes down to the next, N of each on your Nth reincarnation. Data only.
 // Used by: game-state.js (_beginInterlude/_runSuccession/_beginLife/resolveUpbringingEvent, challengeHead/
 // resolveHeadChallenge/answerStepDown, pushBranchWar/declareBranchWar/secede), game.js, scripts/sim/*.
 // Personality ids: personalities.js. Tokens in text: {head} (head's given name), {name} (you), {clan} (clan name).
@@ -19,6 +20,16 @@ const NPC_STAGE_CAP          = 21        // NPCs never ascend (matches SPOUSE_ST
 // qiCap, per game year) ÷ this — a better-rooted NPC can still outpace you; you can always upgrade your root.
 const PLAYER_QI_EDGE         = 1.1
 const WORLD_PRUNE_YEARS      = 400       // dead persons older than this drop out of the registry (heads/past lives kept)
+
+// ── Bequest — what you carry into your next life (user 2026-10-02) ───────────
+// Separate from the clan legacies and free every life: on your Nth reincarnation you may pass down one combat art and
+// one item PER reincarnation you are on (your 1st rebirth carries 1 of each, your 3rd carries 3 of each). The player
+// picks at the interlude (game-state toggleBequest); it is personal, so it works for an orphan rebirth too. Caps keep
+// a deep lineage's picker sane (tune in 2.8).
+const BEQUEST_ARTS_PER_REINCARNATION  = 1
+const BEQUEST_ITEMS_PER_REINCARNATION = 1
+const BEQUEST_MAX_ARTS  = 12
+const BEQUEST_MAX_ITEMS = 12
 
 // ── Who takes the head seat when nobody was named (the clan's own pick) ──────
 // score = stage×100 (× SUCCESSION_BLOODY_STAGE_MULT if the clan's tradition is bloody) + root×10 + bond with the old

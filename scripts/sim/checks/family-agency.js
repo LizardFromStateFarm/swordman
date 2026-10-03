@@ -121,6 +121,17 @@ const tickYears = (gs, n) => { for (let i = 0; i < n; i++) { gs.get().world.year
     assert(c.stageIndex === 1, `after awakening, resources push a stage (stage ${c.stageIndex})`)
     c.estranged = true; assert(gs.childActionPreview(c.id, 'time').reason === 'gone', 'no actions for a child who left') }
 
+  // ── Naming your child (2026-10-02, user) ──
+  { const { gs } = await married(10); const f = gs.get().family
+    const c = gs._makeChild(f.spouse)
+    assert(gs.renameChild(c.id, '  Little   Tiger ').ok && c.given === 'Little Tiger', `rename trims + collapses spaces (→ "${c.given}")`)
+    assert(gs.renameChild(c.id, '   ').reason === 'empty' && c.given === 'Little Tiger', 'an empty name is refused, the old stays')
+    assert(gs.renameChild('p999', 'Ghost').reason === 'unknown', 'an unknown child id is refused')
+    assert(gs.renameChild(c.id, 'A'.repeat(40)).given.length === 16, 'the name is capped at 16 characters')
+    assert(gs.renameChild(c.id, c.given).unchanged === true, 'renaming to the same name is a no-op')
+    assert(!!c.root && typeof c.root.mult === 'number' && c.bond != null && c.stageIndex === gs.get().family.children.find(x => x.id === c.id).stageIndex,
+      'a rename is cosmetic: the child keeps root / potential / bond / stage') }
+
   // ── Save migration ──
   { const { gs } = await married(9); const f = gs.get().family
     delete f.planVer; f.planning = 'many'; delete f.expecting; delete f.spouseCd; delete f.court; gs._recalc()

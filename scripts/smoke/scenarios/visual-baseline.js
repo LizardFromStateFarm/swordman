@@ -100,8 +100,8 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
     }
   }
 
-  // Ascension Trial card: last mortal stage with a full Qi bar
-  await ev(`(() => { const gs = gameState, s = gs.get(); s.stageIndex = CULTIVATION_STAGES.length - 2; gs._recalc(); s.qi = gs.get().derived.qiCap; gs._recalc(); gs._notify() })()`)
+  // Ascension Trial card: last mortal stage with a full Qi bar and the full bloodline (Phase 47)
+  await ev(`(() => { const gs = gameState, s = gs.get(); s.stageIndex = CULTIVATION_STAGES.length - 2; s.bloodlineQuality = ASCENSION_MIN_BLOODLINE; gs._recalc(); s.qi = gs.get().derived.qiCap; gs._recalc(); gs._notify() })()`)
   await sleep(300)
   await click('#btn-breakthrough'); await sleep(400)
   if (await visible('ascension-overlay')) { await shot('vb-5-ascension'); await click('#ascend-wait') }

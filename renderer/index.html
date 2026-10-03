@@ -73,7 +73,7 @@
         <span id="qi-numbers" class="bd-link" data-bd="cap" title="What sets your Qi capacity">0 / 100</span>
       </div>
       <div id="qi-track"><div id="qi-fill"></div></div>
-      <div id="qi-rate-row"><span id="qi-rate" class="bd-link" data-bd="qps" title="Where your Qi comes from">+0.5 qi/s</span><span id="catchup-chip" class="bd-link hidden" data-bd="qps" title="Ancestral catch-up"><span data-icon="rise"></span>catch-up</span></div>
+      <div id="qi-rate-row"><span id="qi-rate" class="bd-link" data-bd="qps" title="Where your Qi comes from">+0.5 qi/s</span></div>
     </div>
 
     <!-- Integrity · Health · Age: one compact three-column row (Phase 6E) -->
@@ -118,11 +118,15 @@
     </div>
 
     <div id="actions">
-      <button id="btn-meditate" class="act-btn">
-        <span class="act-icon" data-icon="meditate"></span>
-        <span class="act-name">Meditate</span>
-        <span class="act-sub">3× Qi · 30s</span>
-      </button>
+      <!-- Meditate + a slim Meridian Flow segment (user 2026-10-03: "a button next to meditate"), the same split as Breakthrough + ? -->
+      <div id="med-split">
+        <button id="btn-meditate" class="act-btn">
+          <span class="act-icon" data-icon="meditate"></span>
+          <span class="act-name">Meditate</span>
+          <span class="act-sub">3× Qi · 30s</span>
+        </button>
+        <button id="btn-flow" data-mg-open="flow" title="Meridian Flow" aria-label="Meridian Flow puzzle"><span data-icon="vein"></span><b class="flow-n"></b></button>
+      </div>
       <!-- Breakthrough + its "why" as one split control: a thin divider and a plain ? segment (user 2026-09-27) -->
       <div id="bt-split">
         <button id="btn-breakthrough" class="act-btn" disabled>
@@ -159,22 +163,28 @@
         <div id="tab-stats"      class="panel active"></div>
         <div id="tab-techniques" class="panel"></div>
         <div id="tab-arts"       class="panel"></div>
+        <div id="tab-physique"   class="panel"></div>
         <div id="tab-explore"    class="panel"></div>
         <div id="tab-beasts"     class="panel"></div>
         <div id="tab-hunt"       class="panel"></div>
         <div id="tab-bestiary"   class="panel"></div>
         <div id="tab-arena"      class="panel"></div>
         <div id="tab-family"     class="panel"></div>
+        <div id="tab-tree"       class="panel"></div>
         <div id="tab-clan"       class="panel"></div>
         <div id="tab-hall"       class="panel"></div>
         <div id="tab-sect"       class="panel"></div>
         <div id="tab-sect-missions"  class="panel"></div>
         <div id="tab-sect-library"   class="panel"></div>
         <div id="tab-sect-halls"     class="panel"></div>
+        <div id="tab-sect-base"      class="panel"></div>
         <div id="tab-sect-disciples" class="panel"></div>
         <div id="tab-sect-war"       class="panel"></div>
         <div id="tab-pack"       class="panel"></div>
         <div id="tab-craft"      class="panel"></div>
+        <div id="tab-world"      class="panel"></div>
+        <div id="tab-class"      class="panel"></div>
+        <div id="tab-chronicle"  class="panel"></div>
         <div id="tab-events"     class="panel"></div>
         <div id="tab-banter"     class="panel"></div>
       </div>
@@ -207,7 +217,7 @@
 
 <!-- Rename overlay -->
 <div id="rename-overlay" class="hidden">
-  <input id="rename-input" maxlength="24" placeholder="Enter cultivator name…">
+  <input id="rename-input" maxlength="24" spellcheck="false" autocorrect="off" autocomplete="off" placeholder="Enter cultivator name…">
   <button id="rename-ok">OK</button>
 </div>
 
@@ -284,6 +294,7 @@
     <div class="ascension-row"><span>Bloodline Quality</span><span id="asc-bloodline">0 / 100</span></div>
     <div class="ascension-row"><span>Survival Chance</span><span id="asc-chance">0%</span></div>
     <div class="ascension-row asc-soul"><span>Should you fall</span><span id="asc-soul"></span></div>
+    <div id="asc-lock" class="ascension-lock hidden">The heavens take only a <b>full bloodline</b>. Yours is <b id="asc-lock-bq">0</b> / 100 — each life you end thickens it.</div>
     <div id="ascension-btns">
       <button id="ascend-now">Ascend Now</button>
       <button id="ascend-wait">Keep Cultivating</button>
@@ -361,6 +372,8 @@
 <!-- Proposal overlay (Phase 16-lite, M2 task 2.5) — a pending proposal never expires; Stats reopens it -->
 <!-- 1.8b-2: "why" popover for any [data-bd] number (renderer/game/breakdowns.js). An *-overlay so banner mode peeks for it. -->
 <div id="breakdown-overlay" class="hidden"></div>
+<!-- Phase 28 (4.2): the person card for any [data-pid] name (renderer/game/person-card.js). An *-overlay so banner mode peeks for it. -->
+<div id="person-overlay" class="hidden"></div>
 
 <div id="proposal-overlay" class="hidden">
   <div id="proposal-box">
@@ -388,7 +401,10 @@
 <script src="../assets/data/sects.js"></script>
 <script src="../assets/data/sect-buildings.js"></script>
 <script src="../assets/data/sect-war.js"></script>
+<script src="../assets/data/sect-branches.js"></script>
+<script src="../assets/data/npc-sects.js"></script>
 <script src="../assets/data/bloodline.js"></script>
+<script src="../assets/data/tempering.js"></script>
 <script src="../assets/data/lifespan.js"></script>
 <script src="../assets/data/family.js"></script>
 <script src="../assets/data/duelists.js"></script>
@@ -401,7 +417,10 @@
 <script src="../assets/data/banter-lines.js"></script>
 <script src="../assets/data/names.js"></script>
 <script src="../assets/data/soul.js"></script>
+<script src="../assets/data/world-population.js"></script>
+<script src="../assets/data/npc-lives.js"></script>
 <script src="../assets/data/dev-presets.js"></script>
+<script src="../assets/scenes/sect-base-scene.js"></script>
 <script src="../assets/icons/ui-icons.js"></script>
 <script src="../assets/sprites/cultivator-sprites.js"></script>
 <script src="../assets/sprites/ink-cultivator.js"></script>
@@ -413,6 +432,7 @@
 <script src="engine/game-state.js"></script>
 <script src="engine/ascii-renderer.js"></script>
 <script src="engine/ink-renderer.js"></script>
+<script src="engine/scene-renderer.js"></script>
 <script src="engine/sprite-renderer.js"></script>
 <script src="engine/ascension-cinematic.js"></script>
 <script src="engine/battle-scene.js"></script>
@@ -431,17 +451,26 @@
 <script src="game/attention.js"></script>
 <script src="game/nav.js"></script>
 <script src="game/breakdowns.js"></script>
+<script src="game/person-card.js"></script>
 <script src="game/beast-portrait.js"></script>
 <script src="game/beast-detail.js"></script>
 <script src="game/family-view.js"></script>
+<script src="game/family-tree.js"></script>
 <script src="game/clan-view.js"></script>
 <script src="game/sect-view.js"></script>
+<script src="game/sect-detail.js"></script>
+<script src="game/world-view.js"></script>
+<script src="game/class-view.js"></script>
+<script src="game/chronicle-view.js"></script>
+<script src="game/base-view.js"></script>
 <script src="game/soul-view.js"></script>
 <script src="game/immortal-view.js"></script>
 <script src="game/combat.js"></script>
 <script src="game/hunt-view.js"></script>
 <script src="game/arena-view.js"></script>
 <script src="game/arts-view.js"></script>
+<script src="game/minigames.js"></script>
+<script src="game/body-view.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

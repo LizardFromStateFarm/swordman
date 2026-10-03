@@ -21,6 +21,10 @@ const SETTINGS_DEFS = [
   { id: 'reducedMotion', label: 'Reduce motion', group: 'Motion', type: 'choice', default: false,
     options: [{ value: false, label: 'Off' }, { value: true, label: 'On' }],
     hint: 'Hides particles and aura rings' },
+  // Phase 14 (body-constitution.md): widens the Tempering Strikes seal (STRIKES.relaxedMult) — an accessibility aid
+  { id: 'relaxedTiming', label: 'Relaxed timing', group: 'Motion', type: 'choice', default: false,
+    options: [{ value: false, label: 'Off' }, { value: true, label: 'On' }],
+    hint: 'A wider strike window in Tempering Strikes' },
   { id: 'canvasBrightness', label: 'Sprite glow', group: 'Motion', type: 'choice', default: 1,
     options: [{ value: 0.7, label: '70%' }, { value: 1, label: '100%' }, { value: 1.3, label: '130%' }] },
   // A3-1 (Phase 34): the hybrid ink art (renderer/engine/sprite-renderer.js). Default since A4-4 (every realm, beast

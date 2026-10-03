@@ -17,7 +17,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   }
   const subs = () => ev('[...document.querySelectorAll("#subtabs .subtab[data-in=sect]")].filter(b => !b.classList.contains("hidden")).map(b => b.dataset.tab).join(",")')
   const screens = view => ev(`(() => { const p = document.getElementById('tab-${view}'); return +(p.scrollHeight / p.clientHeight).toFixed(2) })()`)
-  const war = () => ev('(() => { const s = gameState.get(), w = s.sectWar; w.phase = "preparing"; w.enemyName = "Crimson Talon Sect"; w.enemyTier = 3; w.prepEndsAt = Date.now() + 400e3; w.scoutEndsAt = Date.now(); gameState._recalc(); gameState._notify() })()')
+  const war = () => ev('(() => { const s = gameState.get(), w = s.sectWar; if (s.world?.sects) s.world.sects.event = null; w.phase = "preparing"; w.enemyName = "Crimson Talon Sect"; w.enemyTier = 3; w.prepEndsAt = Date.now() + 400e3; w.scoutEndsAt = Date.now(); gameState._recalc(); gameState._notify() })()')
   // Every offered sub-tab (and the automation chip) sits fully inside the row, untruncated (review 1: War hid in Expanded)
   const tabsFit = tag => ev(`(() => { const row = document.getElementById('subtabs').getBoundingClientRect()
     const els = [...document.querySelectorAll('#subtabs .subtab[data-in=sect]:not(.hidden), #auto-chip:not(.hidden)')]
@@ -34,7 +34,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   // ── Founder ──
   await load('founder')
   await click('#tabs [data-group="sect"]'); await sleep(250)
-  assert(await subs() === 'sect,sect-halls,sect-disciples,sect-war', `founder sub-tabs: ${await subs()}`)
+  assert(await subs() === 'sect,sect-halls,sect-base,sect-disciples,sect-war', `founder sub-tabs: ${await subs()}`)
   await war()
   const founderViews = ['sect', 'sect-halls', 'sect-disciples', 'sect-war']
   await allViews('founder-overlay', founderViews)
@@ -55,11 +55,56 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   const n0 = await ev('gameState.get().ownSect.disciples.length')
   await click('#tab-sect-disciples [data-sa="recruit"]:not([disabled])'); await sleep(200)
   assert(await ev('gameState.get().ownSect.disciples.length') === n0 + 1, 'Take them in: a disciple joins')
+  // Phase 45: branches (分舵) — appoint a sub-leader, then hold the Tournament of Branches
+  await ev(`(() => { const s = gameState.get(); s.spiritStones = 1e6
+    s.ownSect.disciples = [ { id:"bd1", name:"Li Wei", talent:4, level:3, xp:0 }, { id:"bd2", name:"Wang Fang", talent:3, level:2, xp:0 }, { id:"bd3", name:"Zhao Lei", talent:2, level:2, xp:0 } ]
+    s.ownSect.branches = []; gameState._recalc(); gameState._notify() })()`)
+  await click('[data-tab="sect-disciples"]'); await sleep(250)
+  assert(await ev('!!document.querySelector("#tab-sect-disciples [data-sa=branch-appoint]")'), 'a disciple row offers "branch" (appoint a sub-leader)')
+  await click('#tab-sect-disciples [data-sa="branch-appoint"]'); await sleep(250)
+  assert(await ev('gameState.get().ownSect.branches.length') === 1, 'appointing a disciple raises a branch (free, no gate)')
+  assert(await ev('!!document.querySelector("#tab-sect-disciples .sv-branch")'), 'the branch card renders')
+  await shot('sect-founder-overlay-branch')
+  await click('#tab-sect-disciples [data-sa="branch-appoint"]'); await sleep(250)
+  assert(await ev('gameState.get().ownSect.branches.length') === 2, 'a second branch stands')
+  assert(await ev('!!document.querySelector("#tab-sect-disciples .sv-tourney")'), 'with two branches the tournament tile appears')
+  await shot('sect-founder-overlay-branches')
+  await click('#tab-sect-disciples [data-sa="bt"][data-id="qi"]'); await sleep(250)
+  assert(await ev('!!gameState.get().ownSect.lastTourney'), 'the Tournament of Branches is held and recorded')
+  await shot('sect-founder-overlay-tourney')
+  // Phase 45: a grown child joins the sect for free (Kin → Family)
+  await ev(`(() => { const s = gameState.get()
+    s.family.children = [ { id:"kidS", given:"An", family:"Li", bornYear: s.world.year - 30, root:{type:"heavenly",name:"Heavenly Root",mult:3.0}, personality:"calm", alive:true, estranged:false, bond:60, morality:0, stageIndex:0, parents:[s.self.id] } ]
+    gameState._recalc(); gameState._notify() })()`)
+  await click('#tabs [data-group="kin"]'); await sleep(200)
+  await click('[data-tab="family"]'); await sleep(200)
+  await click('#tab-family .kid-head'); await sleep(200)
+  assert(await ev('!!document.querySelector("#tab-family .kid-sect")'), "a grown child's card offers \"Bring into the sect\"")
+  await ev("document.querySelector('#tab-family .kid-sect')?.scrollIntoView({ block: 'center' })"); await sleep(150)
+  assert(await ev(`(() => { const b = document.querySelector('#tab-family .kid-sect'); if (!b) return false
+    const r = b.getBoundingClientRect(), p = document.getElementById('tab-family').getBoundingClientRect()
+    return r.top >= p.top - 1 && r.bottom <= p.bottom + 1 })()`), 'the "Bring into the sect" row lands on screen')
+  await shot('sect-founder-overlay-child-sect')
+  const kd0 = await ev('gameState.get().ownSect.disciples.length')
+  await click('#tab-family .kid-sect'); await sleep(200)
+  assert(await ev('gameState.get().ownSect.disciples.length') === kd0 + 1, 'Bring into the sect takes the child in — free')
+  await shot('sect-founder-overlay-child-recruit')
+  await click('#tabs [data-group="sect"]'); await sleep(200)
   await click('[data-tab="sect-halls"]'); await sleep(200)
   const b0 = await ev('Object.keys(gameState.get().ownSect.buildings).length')
   const hasBuild = await ev('!!document.querySelector("#tab-sect-halls [data-sa=build]:not([disabled])")')
   if (hasBuild) { await click('#tab-sect-halls [data-sa="build"]:not([disabled])'); await sleep(200)
     assert(await ev('Object.keys(gameState.get().ownSect.buildings).length') === b0 + 1, 'Build: a building is raised') }
+  // Phase 43: a raised hall carries its level and can be deepened (it works for good, so depth is the long game)
+  const maxLevel = () => ev('Math.max(0, ...Object.values(gameState.get().ownSect.buildings))')
+  assert(await ev('!!document.querySelector("#tab-sect-halls .sv-card.built .sv-card-t")'), 'a raised hall shows its level')
+  if (await ev('!!document.querySelector(\'#tab-sect-halls [data-sa="upgrade"]:not([disabled])\')')) {
+    const lv0 = await maxLevel()
+    await click('#tab-sect-halls [data-sa="upgrade"]:not([disabled])'); await sleep(250)
+    assert(await maxLevel() === lv0 + 1, `Deepen: a hall rises to level ${lv0 + 1}`)
+    assert(await ev('!!document.querySelector("#tab-sect-halls .sv-now .up")'), 'the card previews what the next level gives')
+    await shot('sect-founder-overlay-halls-deepened')
+  }
   // attention → right sub-view
   await click('#tabs [data-group="cultivate"]'); await sleep(200)
   await ev('document.querySelector(\'#attention [data-att="own-war"]\')?.click()'); await sleep(250)

@@ -11,7 +11,8 @@ computed here, and can zero out Defensive Array's `war_defense` contribution via
 ## State
 - `ownSect: { founded, name, foundedAt, hallLevel, buildings, disciples, recruitPool, poolRefreshAt, _incomeAcc }`
   - `founded: bool` · `name: string` (≤20 chars) · `hallLevel: 1–3` (Sect Hall; each level = +5 disciple cap, Lv1 = 5)
-  - `buildings: { [buildingId]: true }` — non-hall buildings built so far
+  - `buildings: { [buildingId]: level }` — non-hall buildings, **levelled since Phase 43** (`0`/absent = not built, `1..3`;
+    see npc-sects.md). An old save's `true` migrates to `1`, and level 1 is exactly the old effect.
   - `disciples: [{ id, name, talent(1–5), level(1–10), xp }]` — max `discipleCap` (5/10/15/20)
   - `recruitPool: [{ id, name, talent }]` — 3 candidates; regenerated when `Date.now() ≥ poolRefreshAt` or on paid reroll
   - `_incomeAcc: { spirit_stone, spirit_herb }` — fractional income carried between ticks (internal)
@@ -20,6 +21,8 @@ computed here, and can zero out Defensive Array's `war_defense` contribution via
 - `foundOwnSect(name)` → `{ ok, reason? }` — reasons: `stage`(<19, Spirit Severing — where void_crystal first drops), `in_sect`, `founded`, `stones`, `crystals`. Costs 500 stones + 50 void crystals; builds Sect Hall Lv1.
 - `buildSectBuilding(id)` → `{ ok, building?, reason? }` — reasons: `no_sect`, `unknown`, `built`, `stones`, `items`
 - `upgradeSectHall()` → `{ ok, level?, reason? }` — reasons: `no_sect`, `max_level`, `stones`
+- `upgradeSectBuilding(id)` → `{ ok, level?, reason? }` — Phase 43: deepen a raised hall; reasons `no_sect`, `unknown`,
+  `not_built`, `max_level`, `stones`. `sectBuildingUpgradeCost(id)` → the next level's stones (or `null`).
 - `recruitDisciple(candidateId)` → `{ ok, disciple?, reason? }` — reasons: `no_sect`, `not_found`, `full`, `stones`. Cost `DISCIPLE_RECRUIT_COST × talent²`.
 - `rerollRecruitPool()` → `{ ok, reason? }` — costs `RECRUIT_REROLL_COST` stones
 - `dismissDisciple(id)` → `{ ok }` — free, no refund
@@ -45,6 +48,10 @@ computed here, and can zero out Defensive Array's `war_defense` contribution via
 - `initSlot()` offline catch-up applies `tickOwnSect(elapsed)` (elapsed capped at 8h like Qi).
 - UI: `renderer/game/sect-view.js` (1.8b-5) — Sect → Overview · Halls · Disciples · War for a founder; the no-sect
   Overview holds the founding card. See ui-layout.md → "Sect views".
+- **Sect → Base scene (A7 / Phase 38A):** a founder's 5th sub-tab draws the compound as a large view-only ink diorama
+  (`renderer/game/base-view.js` + `renderer/engine/scene-renderer.js` + `assets/scenes/sect-base-scene.js`), reading
+  `ownSect.hallLevel` / `buildings` / `disciples` and `derived.sectFame` / `derived.arrayDamaged`. It never writes
+  state and exposes no build control. See [scene-art.md](scene-art.md).
 
 ## Invariants
 1. `ownSect.founded` ⇒ `sect.id === null` (can't be in both; `joinSect` rejects `own_sect`).
@@ -62,4 +69,5 @@ computed here, and can zero out Defensive Array's `war_defense` contribution via
 - Re-rendering the Sect tab on any state change used to wipe the founding name input; since 1.8b-5 SectView keeps the
   typed name in `foundName` and restores it after each render.
 - Defensive Array's desc was dev-speak ("used by sect wars, Phase 5B"); reworded 1.8b-5.
-- Buildings have no levels: once all six are raised the Halls view has nothing left to do but the Sect Hall (UX debt).
+- ~~Buildings have no levels: once all six are raised the Halls view has nothing left to do but the Sect Hall.~~
+  **Fixed in Phase 43** — every hall is levelled (1→3) and can be deepened for a stronger effect.

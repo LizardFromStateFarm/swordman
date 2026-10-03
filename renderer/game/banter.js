@@ -23,6 +23,7 @@ class BanterSystem {
   }
 
   _onEvent(type, ctx) {
+    if (type === 'world_news') return   // Phase 28 (4.3): a toast for game.js, not a line
     let trigger = type
     if (type === 'bt_fail' && ctx.streak >= BANTER_FAIL_STREAK) trigger = 'bt_fail_streak'
     if (type === 'expedition_return' && ctx.rareItem) { trigger = 'rare_drop'; ctx = { item: ctx.rareItem } }
@@ -100,12 +101,14 @@ class BanterSystem {
       stage: st ? `${st.realm}${st.layer && st.realm !== 'Mortal' ? ' ' + st.layer : ''}` : 'mortal',
       item:  ctx.item, hours: ctx.hours, enemy: ctx.enemy, sect: ctx.sect,
       beast: ctx.beast,   // Phase 35 (A6-2): beast_slain / beast_spared / battle_lost
+      classmate: ctx.classmate,   // Phase 28 (4.3): classmate_fell / classmate_passed
+      master: ctx.master,         // Phase 28 (4.6): hidden_master
       // Phase 16-lite (M2 task 2.5): given names from the married/child_born events; fall back to the live
       // family (e.g. a queued line said after a reload) and then to a neutral phrase.
       spouse: ctx.spouse ?? s.family?.spouse?.given,
       child:  ctx.child ?? s.family?.children?.[s.family.children.length - 1]?.given,
     }
-    const FALLBACK = { item: 'something', spouse: 'my spouse', child: 'the little one', beast: 'beast' }
+    const FALLBACK = { item: 'something', spouse: 'my spouse', child: 'the little one', beast: 'beast', classmate: 'an old classmate', master: 'an old monster' }
     return line.replace(/\{(\w+)\}/g, (m, k) => vals[k] != null ? String(vals[k]) : (FALLBACK[k] || 'someone'))
   }
 

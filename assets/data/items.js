@@ -102,6 +102,46 @@ const ITEMS = {
     effect: { type: 'bt_guarantee' },
   },
 
+  // ── Healing pills (Phase 44) — used from the pack to restore Health / Realm Integrity ──
+  // effect.type 'heal' = consumed on use (not queued for a breakthrough). The three basic formulas are known from
+  // the start; the stronger ones are discovered (a stranger on the road / a ring champion — see recipes.js).
+  pill_mending: {
+    id: 'pill_mending', name: 'Mending Pill', nameCN: '疗伤丹',
+    desc: 'Restores 30 Health.',
+    type: 'pill', stackable: true, category: 'pill',
+    effect: { type: 'heal', health: 30 },
+  },
+  pill_blood_nourish: {
+    id: 'pill_blood_nourish', name: 'Blood-Nourishing Pill', nameCN: '养血丹',
+    desc: 'Restores 60 Health.',
+    type: 'pill', stackable: true, category: 'pill',
+    effect: { type: 'heal', health: 60 },
+  },
+  pill_spirit_stabilize: {
+    id: 'pill_spirit_stabilize', name: 'Spirit-Settling Pill', nameCN: '定神丹',
+    desc: 'Restores 45 Realm Integrity.',
+    type: 'pill', stackable: true, category: 'pill',
+    effect: { type: 'heal', integrity: 45 },
+  },
+  pill_soul_anchor: {
+    id: 'pill_soul_anchor', name: 'Soul-Anchoring Pill', nameCN: '定魂丹',
+    desc: 'Restores 45 Health and 25 Realm Integrity.',
+    type: 'pill', stackable: true, category: 'pill',
+    effect: { type: 'heal', health: 45, integrity: 25 },
+  },
+  pill_golden_marrow: {
+    id: 'pill_golden_marrow', name: 'Golden Marrow Pill', nameCN: '金髓丹',
+    desc: 'Restores 80 Health and 30 Realm Integrity.',
+    type: 'pill', stackable: true, category: 'pill',
+    effect: { type: 'heal', health: 80, integrity: 30 },
+  },
+  pill_nine_turn: {
+    id: 'pill_nine_turn', name: 'Nine-Turn Restoration Pill', nameCN: '九转还魂丹',
+    desc: 'Restores Health and Realm Integrity to their fullest.',
+    type: 'pill', stackable: true, category: 'pill',
+    effect: { type: 'heal', health: 999, integrity: 999 },
+  },
+
   // ── Talismans (consumed on use) ──────────────────────────────────────────────
   // Phase 41: four grades, each with its own tame chance (TALISMAN_GRADES in talismans.js). None is guaranteed.
   beast_taming_talisman: {
@@ -180,6 +220,31 @@ const ITEMS = {
     type: 'weapon', stackable: false, category: 'equip',
     effect: { type: 'void_blade', loot_mult: 1.50, bt_bonus: 0.20 },
   },
+  // Phase 44 — discovered weapons (a road encounter, or an Arena ring champion).
+  weapon_dust_cleaver: {
+    id: 'weapon_dust_cleaver', name: 'Dust Cleaver', nameCN: '尘刀',
+    desc: '+10% Qi/s.',
+    type: 'weapon', stackable: false, category: 'equip',
+    effect: { type: 'qps_mult', value: 1.10 },
+  },
+  weapon_whisper_dagger: {
+    id: 'weapon_whisper_dagger', name: 'Feather-Whisper Dagger', nameCN: '轻语刃',
+    desc: '+12% Qi/s.',
+    type: 'weapon', stackable: false, category: 'equip',
+    effect: { type: 'qps_mult', value: 1.12 },
+  },
+  weapon_iron_bell_hammer: {
+    id: 'weapon_iron_bell_hammer', name: 'Iron Bell Hammer', nameCN: '铁钟锤',
+    desc: '+18% Qi/s.',
+    type: 'weapon', stackable: false, category: 'equip',
+    effect: { type: 'qps_mult', value: 1.18 },
+  },
+  weapon_starfall_spear: {
+    id: 'weapon_starfall_spear', name: 'Starfall Spear', nameCN: '陨星枪',
+    desc: '+35% loot, +8% BT chance.',
+    type: 'weapon', stackable: false, category: 'equip',
+    effect: { type: 'void_blade', loot_mult: 1.35, bt_bonus: 0.08 },
+  },
 
   // ── Artifacts (equip slot — passive) ─────────────────────────────────────────
   artifact_jade_pendant: {
@@ -205,6 +270,25 @@ const ITEMS = {
     desc: 'Unlocks hidden expedition locations.',
     type: 'artifact', stackable: false, category: 'equip',
     effect: { type: 'hidden_locations' },
+  },
+  // Phase 44 — discovered artifacts (a road encounter, or an Arena ring champion).
+  artifact_beast_whistle: {
+    id: 'artifact_beast_whistle', name: 'Beast-Calling Whistle', nameCN: '唤兽哨',
+    desc: 'BT chance +10%.',
+    type: 'artifact', stackable: false, category: 'equip',
+    effect: { type: 'bt_bonus', value: 0.10 },
+  },
+  artifact_jade_cicada: {
+    id: 'artifact_jade_cicada', name: 'Jade Cicada', nameCN: '玉蝉',
+    desc: 'Qi cap ×1.35.',
+    type: 'artifact', stackable: false, category: 'equip',
+    effect: { type: 'qi_cap_mult', value: 1.35 },
+  },
+  artifact_lotus_seat: {
+    id: 'artifact_lotus_seat', name: 'Lotus Meditation Seat', nameCN: '莲台',
+    desc: 'Qi/s ×1.4.',
+    type: 'artifact', stackable: false, category: 'equip',
+    effect: { type: 'qps_mult', value: 1.4 },
   },
 }
 

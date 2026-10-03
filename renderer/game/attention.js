@@ -70,9 +70,27 @@ function collectAttention(s, gs) {
       add('urgent', 'own-war', 'flag', `${w.enemyName} marches on you`, w.phase === 'preparing' ? 'Reinforce or call an ally before they arrive.' : 'Their scouts are in your hills. Prepare.', 'sect-war', null, left)
   }
 
+  // Phase 43b: a matter from another sect waits on your answer (it never expires, nothing is chosen for you)
+  const wse = s.world?.sects?.event && gs.worldSectEventInfo?.()
+  if (wse) add('urgent', 'world-sect', wse.glyph, wse.title, `${wse.sect.stanceLabel} toward you. They wait on your answer.`, 'sect')
+  // Phase 43e: a taken sect's old guard waits on your word; a Grand Elder may go for the master's seat
+  const og = s.ownSect?.oldGuard && gs.oldGuardInfo?.()
+  if (og) add('urgent', 'old-guard', 'disciple', `The old guard of ${og.master}`, `${og.n} veterans wait on your word: win them over, let them choose, or purge them.`, 'sect')
+  if (s.sect?.id && gs.canChallengeSectMaster?.().ok) {   // (the engine checks Grand Elder, the cooldown and no fight)
+    const m = gs._sectMaster?.(false)
+    if (m) add('ready', 'sect-master', 'crown', 'The master’s seat', `As Grand Elder you may challenge ${m.given}, or ask them to step down.`, 'sect')
+  }
+  // Phase 46 (1.20d): at Core Formation the sect your own line founded offers you a place — join, or decline
+  const lr = gs.lineageRecruitInfo?.()
+  if (lr) add('urgent', 'lineage-recruit', 'gate', `The ${lr.name} sends for you`, `The sect your blood founded offers a place at the outer gate, under ${lr.leader}.`, 'sect')
+
   // ── Opportunities ──
   const road = f.encounters || []
-  if (road.length) add('ready', 'road', 'explore', road.length === 1 ? `${road[0].person?.given || 'A stranger'}, met on the road` : `${road.length} strangers on the road`, 'Seduce, slaughter, or leave them. They wait until you choose.', 'explore')
+  if (road.length) {
+    const hasRecipe = road.some(e => e.kind === 'recipe')   // Phase 44: a stranger carrying a formula
+    add('ready', 'road', 'explore', road.length === 1 ? `${road[0].person?.given || 'A stranger'}, met on the road` : `${road.length} strangers on the road`,
+      hasRecipe ? 'One carries a formula — help them to learn it, rob them, or leave them.' : 'Seduce, slaughter, or leave them. They wait until you choose.', 'explore')
+  }
   const wild = (s.beastEncounters || []).filter(e => e.id !== s.hunt?.found)   // A6-2: a hunt's find has its own item below
   if (wild.length) {
     // a legendary sighting leads the card (and names itself) even among other wild beasts
@@ -121,6 +139,12 @@ function collectAttention(s, gs) {
     const freePas = ar.loadout.passives.slice(0, slots).includes(null) && kind('passive').some(id => !ar.loadout.passives.includes(id))
     if (freeMove || freePas) add('idle', 'arts-slot', 'sword', freeMove ? 'An empty move slot' : 'An empty passive slot', 'You know an art that could fill it. Path → Arts.', 'arts')
   }
+  // Phase 14 (body-constitution.md): the ordeal's crisis waits on you; the tier trial is ready (both never expire)
+  if (s.body && gs?.bodyInfo) {
+    const b = s.body
+    if (b.active?.crisis) add('urgent', 'ordeal', 'lightning', 'The ordeal reaches its peak', 'Endure, ease off, or draw on your Qi. It waits for your answer.', 'physique')
+    else if (gs.tierTrialInfo?.().ready) add('ready', 'body-trial', 'rise', 'Your body is ready for its trial', `The ${BODY_TIERS[b.tier + 1]?.name} waits on how you break through.`, 'physique')
+  }
   // 1.8b-3a courtship: candidates to choose from, a meeting waiting on your answer, or one you can arrange
   const court = f.court
   if (court && !court.target && (court.candidates || []).length) add('ready', 'court', 'bond', 'The matchmaker waits', `${court.candidates.length} candidates. Choose whom to court.`, 'family')
@@ -143,6 +167,12 @@ function collectAttention(s, gs) {
 
   // ── Idle slots (quiet nudges; hidden while the matching automation is running) ──
   const autoOn = key => s.playMode === 'idle' && s.automation?.[key] && gs.automationUnlocked?.(key)
+  // Phase 14: an idle body (something affordable could run), and mini-games only once every charge is full (never nags)
+  if (s.body && !s.body.active && !autoOn('autoTemper') && gs?.temperingList?.().some(x => x.ok && (x.group === 'drill' || x.group === 'spirit') && x.id !== 'morning'))
+    add('idle', 'temper', 'shield', 'Your body rests', 'A tempering could be underway. Path → Body.', 'physique')
+  const mg = s.minigames
+  if (mg && typeof MINIGAME_CHARGES !== 'undefined' && mg.strikes.charges >= MINIGAME_CHARGES.max && mg.flow.charges >= MINIGAME_CHARGES.max && (s.stats?.timePlayed || 0) > 300)
+    add('idle', 'minigames', 'vein', 'Practice is ready', 'Tempering Strikes and Meridian Flow: every charge is full. Optional.', 'physique')
   if (!s.expedition?.active && !autoOn('autoExplore')) add('idle', 'expedition', 'explore', 'No expedition underway', 'Send one out: loot, stones and beast sightings.', 'explore')
   if (s.sect?.id && !autoOn('autoSectMissions') && typeof SECT_MAX_MISSIONS !== 'undefined' && (s.sect.activeMissions || []).length < SECT_MAX_MISSIONS)
     add('idle', 'missions', 'token', 'A mission slot is open', `${(s.sect.activeMissions || []).length} of ${SECT_MAX_MISSIONS} missions underway.`, 'sect-missions')
@@ -161,6 +191,12 @@ function collectAttention(s, gs) {
     const t = TECHNIQUES.find(t => !s.techniques.includes(t.id) && s.stageIndex >= t.minStage && (s.spiritStones >= t.cost || t.id === s.inheritedManual))
     if (t) add('idle', 'technique', 'scroll', `You can learn ${t.name}`, t.id === s.inheritedManual ? 'Your Family Manual: free to learn.' : `Costs ${t.cost} stones; you have ${Math.floor(s.spiritStones)}.`, 'techniques')
   }
+  // Phase 28 (4.3): classmates fell since you last looked at your class (cleared when World → Class opens)
+  const fell = gs.classNews?.() || 0
+  // Phase 28 (4.6): notable world news since you last opened the Chronicle (an old monster woke, a Nascent Soul fell)
+  const chron = gs.chronicleNews?.() || 0
+  if (chron) add('idle', 'chronicle-news', 'scroll', chron === 1 ? 'The world stirs' : `The world stirs: ${chron} notable events`, 'Old monsters wake, the great fall, a rare few Ascend. Read the chronicle.', 'chronicle')
+  if (fell) add('idle', 'class-news', 'lineage', fell === 1 ? 'A classmate has fallen' : `${fell} classmates have fallen`, 'Those who awakened the year you did. See how your class fares.', 'class')
 
   return out.sort((a, b) => ATTENTION_TIER_ORDER[a.tier] - ATTENTION_TIER_ORDER[b.tier])
 }

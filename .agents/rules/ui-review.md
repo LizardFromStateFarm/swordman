@@ -42,7 +42,7 @@ invents its own standard and they contradict each other. Paste this block into t
 > **Cultivator Idle** is a single-player wuxia/xianxia **idle** game (Electron desktop + iOS/Android). The look is
 > **dark ink and parchment-gold** — an ethereal xianxia-novel translation, not a SaaS dashboard. These are deliberate
 > and are **not** defects: monospace (Courier New) everywhere; monochrome line-art SVG icons (the custom set, `Icon()`) as marks; a narrow
-> ~300px Overlay mode by design; the six nav group marks (修 歷 家 宗 囊 錄); glyph art on a canvas. **Readability
+> ~300px Overlay mode by design; the six nav group marks (修 歷 家 宗 囊 世); glyph art on a canvas. **Readability
 > beats density** — a calm, legible screen beats a busy one. Judge consistency against the rest of the game and
 > against `GAMEDESIGN.md`, `docs/systems/ui-layout.md` (incl. "UX direction") and `docs/systems/ui-review.md`
 > (history + what is already known/accepted).

@@ -3,7 +3,8 @@
 // disciple adds from ownSectInfo(). This pins both to the real game rolls/ticks so the UI can't drift from them:
 // odds match a Monte Carlo of the real _resolveSectWar/_resolveMemberWar, the odds parts rebuild the multiplier,
 // per-disciple yields sum to derived.discipleQiFrac and to what tickOwnSect() actually pays, and the attention items
-// point at the new sub-views.
+// point at the new sub-views. Phase 43 pins the levelled buildings: an old save's `true` migrates to level 1, level 1
+// is exactly the old effect, each level scales it and costs more than the last, the cap refuses, and fame pays depth.
 // Run: npm run checks (all) · node scripts/sim/checks/sect-view.js (this file). Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
 const { collectAttention } = require('../../../renderer/game/attention.js')
@@ -85,6 +86,33 @@ function montecarlo(gs, resolve, reset, n = 4000) {
   const max = info.disciples.find(x => x.d.id === 'd2')
   assert(max.max && max.eta === 0 && max.xpFrac === 1, 'a max-level disciple shows as fully grown')
 
+  // ── Phase 43: levelled buildings ── (line 54 stored `true`; the migration above turned those into level 1)
+  assert(s.ownSect.buildings.qi_library === 1, "an old save's `true` building migrates to level 1")
+  const eff = (id, lvl) => sim.ev(`sectBuildingEffects('${id}', ${lvl})`)
+  assert(eff('qi_library', 1).disciple_qi_mult === 1.2, 'a level-1 Qi Library is exactly the old ×1.2 — an existing save is unchanged')
+  assert(Math.abs(eff('qi_library', 2).disciple_qi_mult - 1.8) < 1e-9, 'level 2 scales the effect ×1.5 (×1.2 → ×1.8)')
+  assert(eff('beast_pen', 2).beast_slots === 3 && eff('beast_pen', 3).beast_slots === 4, 'beast slots stay whole numbers as the pen deepens (2 → 3 → 4)')
+  s.spiritStones = 1e6
+  assert(gs.upgradeSectBuilding('beast_pen').reason === 'not_built', 'you cannot deepen a hall you have not raised')
+  assert(gs.buildSectBuilding('beast_pen').ok && s.ownSect.buildings.beast_pen === 1, 'raising a hall sets it to level 1')
+  const up1 = gs.sectBuildingUpgradeCost('beast_pen'), beasts0 = s.derived.maxBeasts
+  assert(up1 > 0 && gs.upgradeSectBuilding('beast_pen').ok && s.ownSect.buildings.beast_pen === 2, `a hall deepens to level 2 for ${up1} stones`)
+  assert(s.derived.maxBeasts > beasts0, `a deeper Spirit Beast Pen raises the beast cap (${beasts0} → ${s.derived.maxBeasts})`)
+  const up2 = gs.sectBuildingUpgradeCost('beast_pen')
+  assert(up2 > up1, `each level costs more than the last (${up1} → ${up2})`)
+  s.spiritStones = 1e6; gs.upgradeSectBuilding('beast_pen')
+  const CAP = sim.ev('SECT_BUILDING_MAX_LEVEL')
+  assert(s.ownSect.buildings.beast_pen === CAP && gs.sectBuildingUpgradeCost('beast_pen') === null, `a hall stops at the cap (Lv.${CAP}) and shows no further cost`)
+  const capped = gs.upgradeSectBuilding('beast_pen')
+  assert(!capped.ok && capped.reason === 'max_level', 'the cap refuses another level')
+  s.spiritStones = 0
+  const poor = gs.upgradeSectBuilding('qi_library')
+  assert(!poor.ok && poor.reason === 'stones' && s.ownSect.buildings.qi_library === 1, 'a deepening you cannot afford changes nothing')
+  s.spiritStones = 1e6; gs._recalc()
+  const info43 = gs.ownSectInfo()
+  assert(info43.totalLevels === info43.buildings.reduce((a, x) => a + x.level, 0) && info43.totalLevels > info43.builtN, `ownSectInfo reports levels (${info43.builtN} halls · ${info43.totalLevels} levels)`)
+  assert(info43.fame.buildings === 10 * info43.totalLevels, 'fame pays for depth, not just the count of halls')
+
   // Attention: an open seat you can afford → Disciples; a building you can afford → Buildings; the war → War
   s.spiritStones = 1e6
   s.ownSect.recruitPool = [{ id: 'c1', name: 'Hu Ming', talent: 2 }]
@@ -97,6 +125,23 @@ function montecarlo(gs, resolve, reset, n = 4000) {
   gs._recalc()
   att = collectAttention(s, gs)
   assert(!att.find(i => i.id === 'recruit'), `attention: no recruit nudge when all ${s.derived.discipleCap} seats are taken`)
+
+  // 2026-10-02 (user): a PLAYER-owned sect always reaches the GLOBAL cap. Raise every hall, deepen each to the
+  // global building cap, and take the Sect Hall to its own max — an NPC sect's per-entity cap (43b) must never
+  // hold the player's sect below the ceiling. (Last on the own side: it maxes everything.)
+  s.spiritStones = 1e9
+  s.inventory = { ...s.inventory, void_crystal: 9999, spirit_herb: 9999 }
+  const BIDS = sim.ev('SECT_BUILDINGS.map(b => b.id)')
+  for (const id of BIDS) {
+    if (!s.ownSect.buildings[id]) gs.buildSectBuilding(id)
+    while (s.ownSect.buildings[id] && s.ownSect.buildings[id] < CAP) gs.upgradeSectBuilding(id)
+  }
+  assert(BIDS.every(id => s.ownSect.buildings[id] === CAP), `every hall of a player-owned sect reaches the global cap (Lv.${CAP})`)
+  const HMAX = sim.ev('SECT_HALL_LEVELS.length')
+  s.ownSect.hallLevel = 1
+  while (s.ownSect.hallLevel < HMAX) gs.upgradeSectHall()
+  assert(s.ownSect.hallLevel === HMAX, `the player's Sect Hall reaches its own max (Lv.${HMAX})`)
+  assert(!gs.upgradeSectHall().ok && gs.upgradeSectHall().reason === 'max_level', 'the Sect Hall cap refuses another level (global cap is the ceiling)')
 
   // ── Member side ──
   const sim2 = await createSim({ seed: 12 }); await sim2.boot(0); const gs2 = sim2.gs

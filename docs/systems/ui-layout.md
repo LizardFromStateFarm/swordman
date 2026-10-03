@@ -52,10 +52,10 @@ button in `#tabs` holding 1+ views shown as sub-tabs:
 |---|---|---|
 | 修 Path | stats (Character) · techniques (Techniques) — Character first (user 2026-09-27) | — |
 | 歷 Roam | explore (Explore: expedition, locations, road encounters) · beasts (Beasts: wild + tamed) | Auto-Explore |
-| 家 Kin | family (Family) · clan (Clan: clan rows, Hall, Pass the Mantle) | — |
+| 家 Kin | family (Family) · tree (Tree: the family tree, family-tree.js, 2026-10-03) · clan (Clan: clan rows, Hall, Pass the Mantle) | — |
 | 宗 Sect | sect (Overview) · sect-missions (Missions, joined) · sect-halls (Halls, founded) · sect-disciples (Disciples, founded) · sect-war (War, either) — only the views your standing offers are shown (1.8b-5) | Auto-Missions |
 | 囊 Pack | craft (Craft) · pack (Items) — user asked for Craft and Pack together; Craft first (user 2026-09-27) | Auto-Craft (on Craft) |
-| 錄 Log | events (Events) · banter (Banter) | — |
+| 世 World (was 錄 Log until 43h, 2026-10-02; group id still `log`) | world (Sects: the sects of the world + a sect's page inline, world-view.js) · events (Events) · banter (Banter) | — |
 
 - `NavUI` builds every group button and every sub-tab button once; sub-tabs outside the open group are
   `.hidden` but stay in the DOM, so `[data-tab="<view>"]` always resolves (smoke scenarios click them).

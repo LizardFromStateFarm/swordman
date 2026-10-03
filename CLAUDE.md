@@ -63,6 +63,22 @@ building any gameplay feature, write a **"Depth pass"** into the spec/plan and s
    setting (like None/Some/Many) may stand in only for chores the player explicitly delegated, and it must stay
    overridable per case. List every player decision the feature makes on its own and turn each into a choice.
 
+**Full depth is the default, and the build is full too** (user rule, 2026-10-02). When you implement a system, assume
+the depth of the Phase 45 sect branches (`docs/systems/sect-branches.md`) as the baseline: branches have memory
+(loyalty, rivalry heat, tournament wins), player choices (appoint, dissolve, promote, hold a tournament and pick the
+prize), hooks into family/children, disciples, fame, the library and karma, drama on both ends (a child's branch
+thrives, or a wronged head secedes with the whole branch), a full UI and checks. Build **all of it**. Don't ship the
+minimal slice and park the rest as "later" unless the user asked for a slice. "Full" means: state + migration,
+engine rules, every player choice wired to a real control, the UI in every layout mode, attention nudges, log lines
+that name the cause, and docs + checks.
+
+**If the plan or spec is thin, say so before building.** When the task you've been given (a PLAN.md entry, a spec,
+or the user's request) is missing depth — no memory, no choices, fewer than 3 hooks, no failure drama, or a player
+decision left to a timer — don't quietly build the thin version. Ask the user targeted questions, or recommend
+concrete additions (name the systems it should hook and the 2–3 choices or events you'd add), with the trade-offs.
+Use AskUserQuestion when the answer changes what you build. Put the agreed depth in the spec's Depth pass before
+writing code.
+
 If the user asks for one mechanic, propose 2–3 connected ones alongside it. Example of the expected depth:
 marriage (Phase 16-lite) → spouse affection, personality-driven marriage events, affairs, discovery reactions
 ranging from acceptance to a duel to the death — see `docs/systems/family.md`.
@@ -135,13 +151,19 @@ docs/
     sects.md            ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
     sect-war.md         ← Sect wars: own-sect (5B) + member wars for joined sects (5C)
+    npc-sects.md        ← Phase 43 Living Sects (43a + 43b built: levelled halls; s.world.sects registry, growth sim, stance memory, world-sect events, the "Sects of the world" ledger; 43c wars read the real rival's Might + "Their mountain"; 43d the joined blessing scales with the sect: fund its halls, the levy, the court; 43e the sect master: challenge / petition, the takeover, the old guard, an exiled master's splinter; 43h sect relations: a sect's page + declare war, diplomacy, pressure, trade); next razing
+    living-world.md     ← Phase 28 (spec approved 2026-10-03; 4.2 built — the registry + person card; 4.3 built — the light world sim + World → Class; 4.6 built — the replacement controller + World → Chronicle): one person registry (family/sects/arena/strangers via pid write-through), heavy/light lives on game time, ~60 classmates per life, queued encounter cards, memory, Your Rival, slot-size budget, build order 4.2→4.8
+    sect-branches.md    ← Phase 45: sub-leaders (分舵) — appoint a Branch Head, their branch recruits its own; rivalry + promotion; the Tournament of Branches; recruit your children free
+    lineage-sect.md     ← Phase 46: a player-owned sect outlives the player (inherited by a branch head, lives on as a world sect); ancestral catch-up removed, Bloodline Quality → Qi/s; the next life is recruited back at Core Formation; the world sim ages/kills sect leaders
     qa-sim.md           ← QA sim harness: flags, metrics, profiles, how to extend
     dev-presets.md      ← Dev-only late-game test characters (npm start charselect)
     bloodline.md        ← Health & Death, Bloodline Quality, Ascension Trial (Phase 23A-C)
+    body-constitution.md ← Phase 14: Body tiers F→S (max Health, regen, failed-BT Qi kept, fight power), real-time tempering, ordeal crisis + tier trial choices, scars/taint, Blood Forging, Auto-Temper; the Tempering Strikes + Meridian Flow mini-games
     settings.md         ← ⚙ Settings panel, per-slot presentation prefs (Phase 20C)
     banter.md           ← Personalities + banter engine, bubble, log (Phase 29)
     banter-writing-guide.md ← Voice/tokens/triggers brief for writing banter lines
     art-engine.md       ← Hybrid ink art engine (A3-1): InkRenderer + SpriteRenderer switch, INK_ART format, Sprite art setting
+    scene-art.md        ← Sect Base scene (A7/38A): the view-only compound diorama — SceneRenderer, SECT_SCENE, the Base view
     icons.md            ← UI icon set (1.8d): Icon() helper, icon list, emoji/chrome-CJK replacement status
     ui-layout.md        ← Window layout + layout modes (6E), tab pattern, CSS vars, UX Audit (1.8a)
     ui-review.md        ← Visual Review Gate score history (every UI change + asset, 0–10; UI passes ≥ 7.5, assets ≥ 8.0)
@@ -183,6 +205,8 @@ scripts/
     fight-helpers.js    ← playFight(gs, 'win'|'lose') — forces a move fight to its end, for scenario checks (1.14a)
     probe-person-fights.js ← tuning probe: move-fight estimate vs people by temper × stage gap (not a check)
     probe-beast-fights.js ← tuning probe: move-fight estimate + mean turns vs every beast at its gate realm (not a check)
+    probe-npc-pace.js   ← tuning probe: years an NPC needs to reach each realm by root × talent (Phase 28 4.3 lifespans)
+    probe-world-lives.js ← tuning probe: runs the light world sim N years — living by realm, deaths by cause, births, save size
     checks/             ← Scenario checks (`npm run checks`) — force exact situations, print ok/FAIL; run-all.js + one file per system
   smoke/                ← Real-app smoke tests over CDP: cdp.js driver + scenarios/*.js (screenshots → smoke/out/, gitignored); fight-ui.js = play a fight through the real move buttons
 example_art/            ← The user's own source art for the bake pipeline (reference + bake input; not loaded by the game)
@@ -199,7 +223,7 @@ renderer/
     battle-scene.js     ← BattleScene — the battle page canvas: two bare ink figures on a dotted field + lunge/crescent/claw/ward/afterimage/stagger/dissolve/bind effects (Phase 35 / A6-1) + per-element move effects, status auras, parry wind-up (1.13b)
     ascension-cinematic.js ← AscensionCinematic — the ~9 s full-window Immortal Ascension (storm, bolts, rise, heavenly gate, flash) (Phase 40b)
     sprite-renderer.js  ← SpriteRenderer — picks Classic ASCII or Ink per the Sprite art setting + available INK_ART
-    scene-renderer.js   ← SPEC (Phase 38): large-area scene layer (sect base / island) on the hybrid engine
+    scene-renderer.js   ← SceneRenderer (A7/38A): the Sect Base compound on the hybrid engine — an InkRenderer subclass with its own scene kinds (hall/pagoda/pen/ward/banners…), a ≥2× render, and the build-growth burst
   game/
     cultivation.js      ← Random event scheduler (fires every 30–120s)
     expedition.js       ← ExpeditionSystem — tick-based expedition resolution
@@ -214,19 +238,27 @@ renderer/
     nav.js              ← NavUI + NAV_GROUPS — six nav groups → sub-tab views, badges, automation chip (1.8b-1)
     attention.js        ← collectAttention() (DOM-free) + AttentionUI — the "needs you" strip/cards (1.8b-1)
     breakdowns.js       ← buildBreakdown() (DOM-free) + BreakdownUI — "why" popovers for any [data-bd] number, stageShortName() (1.8b-2)
+    person-card.js      ← PersonCard — tap any [data-pid] name for that person's card: realm, root, temper, character, what they think of you, kin (tap through, Back), where to act (Phase 28 / 4.2)
     beast-portrait.js   ← BeastPortraits — pooled animated ink beast portraits for Roam → Beasts (ASCII fallback on Classic) (A4-2)
     beast-detail.js     ← BeastDetail — beast details page: click a portrait/name → large portrait, lore, stats, traits, Tame (A4-2)
-    family-view.js      ← FamilyView — Kin → Family: spouse/courtship card, child wishes, children + raising actions, heir (1.8b-3a)
+    sect-detail.js      ← SectDetail — a sect's own page (Phase 43h), drawn inline in 世 World → Sects: Might vs yours, its halls + memory, and every action (gift, alliance, declare war, tribute, spy, trade, poach · member: spar, urge)
+    chronicle-view.js   ← ChronicleView — 世 World → Chronicle (Phase 28 / 4.6): the merged world feed (people + sects, filters, names → card) + "The world by realm" (living per band vs the replacement controller's targets)
+    class-view.js       ← ClassView — 世 World → Class (Phase 28 / 4.3): your class (~60 who awakened with you) placed by realm, Chosen, the fallen + causes, earlier lives' classes
+    world-view.js       ← WorldView — 世 World → Sects (43h follow-up): the ranked list of every sect; a row opens its page inline (SectDetail), "All sects" back
+    family-view.js      ← FamilyView — Kin → Family: spouse/courtship card, child wishes, children + raising actions, heir (1.8b-3a); the "Family tree" door
+    family-tree.js      ← FamilyTreeView — Kin → Tree: the family tree (ancestors → grandchildren, drawn lines, tap a person for their card + actions) (2026-10-03)
     clan-view.js        ← ClanView + HallView — Kin → Clan (lines, head, relations, clan actions) and Kin → Hall (Merit, firsts, legacies, Family Manual picker) (1.8b-4)
     soul-view.js        ← SoulView — the cross-save Soul screen overlay (charselect button, Kin → Hall door, attention item, Relive) (Phase 40a)
     immortal-view.js    ← ImmortalView — plays the cinematic, then the finish screen ("your race to immortality") / later-Immortal card (Phase 40b)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
     icons.js            ← Icon(name) → inline SVG from assets/icons/ui-icons.js; Icon.g() for glyph slots; [data-icon] auto-filled (1.8d)
     arts-view.js        ← ArtsView — Path → Arts: breakthrough offer, study desk, 2×2 moves + passive slots, the library (Phase 42 / 42a)
+    body-view.js        ← BodyView — Path → Body (view id `physique`): the tier seal + XP bar, the ordeal crisis + tier trial cards, the running tempering, Practice (mini-games), scars/taint, Auto-Temper, every method (Phase 14)
+    minigames.js        ← FlowPuzzle (DOM-free, seeded — the engine verifies solutions) + MinigameUI: the Tempering Strikes + Meridian Flow overlay (Phase 14)
     arena-view.js       ← ArenaView — Roam → Arena: rings, duelist rosters (odds, Fight / Blood), the run's purse + Walk away, grudge call-outs, the rest countdown (Phase 35 / A6-3b)
     hunt-view.js        ← HuntView + BestiaryView — Roam → Hunt (hunting grounds, track a beast, live countdown) and Roam → Bestiary (seen/unseen kinds, habits, record) (Phase 35 / A6-2)
     combat.js           ← CombatView — the battle page: prepare (beasts: stance estimate) → fight (2×2 arts, Circulate, parry prompt, Retreat/Yield; people: "What you know") → end choice (finish/spare/bind · raise/humble) → result; beasts (A6-1) + people (A6-3a), all on moves (1.13a/1.14a)
-    base-view.js        ← SPEC (Phase 38A): Sect Base view — the large sect-compound scene
+    base-view.js        ← BaseView (A7/38A): Sect → Base — the large view-only compound canvas, its legend + "Raise a hall" link
 assets/
   icons/
     tray-icon.png       ← System tray icon (Phase 9A) — see scripts/gen-tray-icon.js
@@ -235,13 +267,17 @@ assets/
     stages.js           ← CULTIVATION_STAGES[23]
     techniques.js       ← TECHNIQUES
     events.js           ← RANDOM_EVENTS
-    items.js            ← ITEMS — all collectable/craftable item types + Pack tab `category` (Phase 21)
+    items.js            ← ITEMS — all collectable/craftable item types + Pack tab `category` (Phase 21; Phase 44 healing pills + discovered weapons/artifacts)
     locations.js        ← LOCATIONS — expedition destinations + drop tables
     enemies.js          ← ENEMIES — tier definitions
-    recipes.js          ← RECIPES — all crafting recipes
+    recipes.js          ← RECIPES — all crafting recipes (+ Phase 44 `hidden` discovery-gated ones + RECIPE_DISCOVERY)
     sects.js            ← SECTS, SECT_RANKS, SECT_MISSIONS (Phase 4)
     sect-buildings.js   ← Own-sect founding cost, Sect Hall levels, buildings, disciple constants (Phase 5A)
     sect-war.js         ← War timers, rival name pools, own-sect prep + member-war commitment/spoils constants (Phase 5B/5C)
+    npc-sects.js        ← WORLD_SECTS + WORLD_SECT_SEED/RIVAL_SEED + WORLD_SECT_EVENTS — the world's sect registry seed, growth/birth/clash tuning, Might + stance bands, world-sect events with choices (Phase 43b)
+    world-population.js ← WORLD_PEOPLE (registry budgets, elders by tier, age bands, succession split) + PERSON_LIFE_KEYS + the person card's role/cause/morality words (Phase 28 / 4.2)
+    npc-lives.js        ← NPC_LIVES + NPC_LIFE_TEXT — how the world's people live: lifespans, realm breakthroughs, hazards, weddings/births, NPC Ascension, the pre-existing seed, your class (Phase 28 / 4.3); NPC_WORLD + NPC_CHRON_TEXT — the replacement controller (realm-band targets, waves, wanderers, hidden masters, elder draft) + the Chronicle (4.6)
+    sect-branches.js    ← SECT_BRANCH — sub-leader branches (分舵): seats/yield/recruit tuning, loyalty-on-a-wrong, rivalry + the Tournament of Branches (Phase 45)
     bloodline.js        ← Health regen/damage, Bloodline Quality growth, Ascension survival curve (Phase 23A-C)
     lifespan.js         ← Game clock + family timing constants (Phase 30/16-lite; age is a stat only, no lifespan)
     duelists.js         ← DUELIST_LOOK + DUELIST_ROLE_LOOK — a person you fight: temper/role → INK_PARTS slots on the battle page (A6-3a)
@@ -251,7 +287,7 @@ assets/
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)
-    banter-lines.js     ← BANTER_LINES — 1,753 lines, personality × trigger + generic pool (Phase 29)
+    banter-lines.js     ← BANTER_LINES — 2,217 lines, personality × trigger + generic pool (Phase 29)
     names.js            ← SURNAMES (60) + GIVEN_NAMES (205) — pinyin, gender-neutral (Phase 30/31, M2 task 2.2)
     soul.js             ← SOUL_* — Soul Points grants + Soul Resonance rank cost/bonus/cap (Phase 40a)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
@@ -259,6 +295,7 @@ assets/
     arts.js             ← ARTS / ARTS_LIST — 79 combat arts (moves + passives, 5 grades, Five Elements, beast + arena signatures) + study/slot/offer/drop tuning (Phase 42)
     arena.js            ← ARENA_RINGS + ARENA_* — the Arena's six rings (fees, prizes, titles, bands) + purse/streak/renown/rest/call-out tuning (A6-3b)
     talismans.js        ← TALISMAN_GRADES + TAME_* — graded Beast Taming Talismans (tame chance, item id) + tame-attempt fight/flee tuning (Phase 41)
+    tempering.js        ← BODY_TIERS, TEMPERING_METHODS/GROUPS, ORDEAL_CRISIS, TIER_TRIAL, BODY_SCARS, BLOOD_FORGING, MINIGAME_CHARGES, STRIKES, FLOW (Phase 14)
   sprites/
     cultivator-sprites.js ← CULTIVATOR_SPRITES — animated ASCII frames + colors
     ink-cultivator.js   ← INK_ART — hybrid ink art base figure (body parts, strokes, effects, default slots); Qi Condensation so far
@@ -266,7 +303,7 @@ assets/
     ink-beasts.js       ← INK_BEASTS — spirit beasts (fox / eagle / hound): `raster` dot maps + motion regions + effects (A4-2)
     beasts/             ← Baked dot maps (<id>.png, 1 px = 1 dot) from scripts/art/ink-bake.js — hand-editable in a pixel editor
   scenes/
-    sect-base-scene.js   ← SPEC (Phase 38A): sect-compound building parts + layout (data only)
+    sect-base-scene.js   ← SECT_SCENE (A7/38A): the Sect Base compound — palette, the black starry-night sky (no hills), terrace ground line + each structure's slot (data only)
     island-scene.js      ← SPEC (Phase 38B): island landmass + building tiles (data only)
 ```
 
@@ -322,7 +359,7 @@ reviewer agent, never the creator.
 - **UI icons come from the custom SVG icon set**, not from CJK or box/line characters (user rule, 2026-09-27 — this
   is a US App Store release, and scattered Chinese glyphs read as clutter). Draw icons from
   `assets/icons/ui-icons.js` via `Icon()` in `renderer/game/icons.js`; the set is monochrome `currentColor` line-art
-  in the ink/gold palette. **CJK is reserved for exactly two things: the six nav group marks (修 歷 家 宗 囊 錄) and
+  in the ink/gold palette. **CJK is reserved for exactly two things: the six nav group marks (修 歷 家 宗 囊 世) and
   deliberate in-world flavour** (a cultivation term, a sect's `nameCN` shown as content) — never as UI chrome.
   (1.8d built the set and purged chrome CJK; `npm test` runs `check-no-chrome-cjk.js --strict`. Deliberate flavour in
   renderer/ code needs a `cjk-ok` comment on its line.)

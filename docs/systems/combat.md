@@ -87,7 +87,7 @@ player's move (CLAUDE.md agency rule). There is no auto-fight.
 
 `s.family.fight`: the one fight in progress (shared gate with duels and head challenges; `null` when none).
 ```
-{ kind: 'duel'|'challenge'|'defend'|'stepdown'|'arena'|'slaughter'|'beast', oppId, lethal, p, to, you, them, round, log: [...], year,
+{ kind: 'duel'|'challenge'|'defend'|'stepdown'|'arena'|'slaughter'|'sectmaster' (43e, npc-sects.md)|'beast', oppId, lethal, p, to, you, them, round, log: [...], year,
   // kind 'beast' only:
   beast: { encId, typeId, variant?, traits, mood? },   // snapshot: the fight does not need the encounter to exist
   stance: 'slay'|'drive', power, over: null|'won',      // over = won, waiting for the end choice

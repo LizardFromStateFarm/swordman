@@ -2,7 +2,7 @@
 _Covers: assets/icons/ui-icons.js · renderer/game/icons.js · styles.css (".ic" + "Where the icons sit") · scripts/smoke/scenarios/icons.js · Roadmap: 1.8d (Phase 33) · Updated: 2026-09-27_
 
 The game's own icon set. It replaces emoji and **chrome** CJK in the UI. User rules (CLAUDE.md → Game Design Rules):
-no emoji anywhere, and CJK only for **the six nav group marks (修 歷 家 宗 囊 錄)** and deliberate **in-world flavour**
+no emoji anywhere, and CJK only for **the six nav group marks (修 歷 家 宗 囊 世; 世 World replaced 錄 Log in 43h)** and deliberate **in-world flavour**
 (stage names like 凡人, a sect's `nameCN`, the 道 rail ornament).
 
 ## Data Shape

@@ -80,7 +80,6 @@ body {
 #stones-labels .lbl-ic { color: var(--gold); }
 #age-labels .lbl-ic { color: var(--dim-hi); }
 #meditate-badge { display: inline-flex; align-items: center; gap: 4px; }
-#catchup-chip { display: inline-flex; align-items: center; gap: 3px; }
 .act-icon .ic { font-size: 17px; }
 .tbm-glyph { display: inline-flex; justify-content: center; }
 #layout-title, #mode-title, #settings-title { display: inline-flex; align-items: center; gap: 6px; }
@@ -647,6 +646,25 @@ body[data-narrow="1"] #btn-back, body[data-narrow="1"] #btn-layout:not(.peek) { 
 /* Breakthrough split control (user 2026-09-27): the button and its "?" are one card — the ? is a slim right segment
    behind a hairline divider, same surface and height, so it reads as part of the button, not a floating badge.
    Disabled: fade the button's content, not its box, so both halves keep the same surface. */
+/* Meditate + the Meridian Flow segment (Phase 14 follow-up, 2026-10-03): the same split card as Breakthrough + ? */
+#med-split { display: flex; min-width: 0; border-radius: 4px; }
+#med-split > #btn-meditate { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none;
+  grid-template-columns: auto minmax(0, 1fr); column-gap: 5px; padding-left: 5px; padding-right: 4px; }
+#med-split .act-name, #med-split .act-sub { min-width: 0; white-space: normal; line-height: 1.2; }
+#btn-flow { flex: none; width: 30px; padding: 2px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  font-family: var(--font); color: color-mix(in srgb, var(--jade) 80%, var(--dim)); cursor: pointer;
+  background: rgba(24, 10, 4, 0.7); border: 1px solid var(--border); border-left: 1px solid color-mix(in srgb, var(--dim) 30%, transparent);
+  border-radius: 0 4px 4px 0; transition: color .12s, background .12s, border-color .12s; }
+#btn-flow svg { width: 15px; height: 15px; }
+#btn-flow .flow-n { font-size: 10px; font-weight: normal; line-height: 1; color: var(--dim-hi, var(--dim)); }
+#btn-flow:hover:not(:disabled), #btn-flow:focus-visible { color: var(--jade); background: rgba(10, 30, 20, 0.8); outline: none; }
+#btn-flow.full { color: var(--jade); }
+#btn-flow.full .flow-n, #btn-flow.waiting .flow-n { color: var(--jade); }
+#btn-flow.waiting { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); }
+#btn-flow:disabled { cursor: not-allowed; }
+#btn-flow:disabled > * { opacity: .38; }
+#med-split:has(#btn-meditate.meditating) #btn-flow { border-color: var(--jade); border-left-color: color-mix(in srgb, var(--jade) 35%, transparent); }
+body[data-layout="banner"] #btn-flow { width: 26px; }
 #bt-split { display: flex; min-width: 0; border-radius: 4px; }
 #bt-split > #btn-breakthrough { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none;
   grid-template-columns: auto minmax(0, 1fr); column-gap: 5px; padding-left: 5px; padding-right: 4px; }
@@ -1022,6 +1040,28 @@ body[data-layout="banner"] #bt-why { width: 24px; font-size: 12px; }
 }
 #ascend-now:hover { background: rgba(110,85,15,.9); }
 
+/* UI review: 7.7 (2026-10-03) — author-reviewed, reviewer agent blocked; user sign-off pending */
+/* Phase 47: the Trial is gated on a full bloodline (100) — the lock explains it and the button is refused. */
+.ascension-lock {
+  margin: 8px 0 0;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--border));
+  border-radius: 3px;
+  background: rgba(60,40,10,.35);
+  font-size: 11px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--text) 82%, var(--dim));
+}
+.ascension-lock b { color: var(--gold); }
+#ascend-now:disabled,
+#ascend-now:disabled:hover {
+  opacity: .45;
+  cursor: not-allowed;
+  border-color: var(--border);
+  color: var(--dim);
+  background: rgba(24,10,4,.9);
+}
+
 #ascend-wait {
   flex: 1;
   background: rgba(24,10,4,.9);
@@ -1095,6 +1135,26 @@ body[data-layout="banner"] #bt-why { width: 24px; font-size: 12px; }
 #interlude-body .chron-line { margin-bottom: 5px; }
 #interlude-body .chron-bet { color: var(--gold); margin-top: 6px; }
 #interlude-body .chron-bet.lost { color: var(--red); }
+/* 2026-10-02: the bequest picker in the interlude — carry N arts + N items into the next life */
+#interlude-body .beq { margin-top: 9px; border-top: 1px solid var(--border); padding-top: 7px; }
+#interlude-body .beq-head { color: var(--gold); font-size: 11px; margin-bottom: 6px; display: flex; flex-direction: column; gap: 1px; }
+#interlude-body .beq-meta { color: var(--dim); font-size: 10px; }
+#interlude-body .beq-sec { margin-bottom: 7px; }
+#interlude-body .beq-k { display: block; color: var(--dim-hi); font-size: 10px; margin-bottom: 3px; }
+#interlude-body .beq-k i { color: var(--dim); font-style: normal; }
+#interlude-body .beq-none { color: var(--dim); font-size: 10px; }
+#interlude-body .beq-chips { display: flex; flex-wrap: wrap; gap: 4px; max-height: 148px; overflow-y: auto; }
+#interlude-body .beq-chip {
+  background: rgba(24,10,4,.9); border: 1px dashed color-mix(in srgb, var(--dim) 55%, var(--border)); color: var(--text);
+  font-family: var(--font); font-size: 10.5px; padding: 4px 7px; border-radius: 3px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.25; min-height: 32px;
+}
+#interlude-body .beq-chip .beq-sub { color: var(--dim-hi); font-size: 9.5px; }
+#interlude-body .beq-chip.on { border-style: solid; border-color: var(--gold); color: var(--gold); background: rgba(237,208,80,.12); }
+#interlude-body .beq-chip.on .beq-sub { color: var(--gold); opacity: .85; }
+#interlude-body .beq-chip.maxed { opacity: .45; cursor: not-allowed; }
+/* touch: the bequest chips are small, dense targets — give them the 44px thumb minimum on phones */
+@media (hover: none), (pointer: coarse) { #interlude-body .beq-chip { min-height: 44px; padding: 6px 10px; } #interlude-body .beq-chips { gap: 6px; } }
 #interlude-choices { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 #interlude-choices button {
   background: rgba(24,10,4,.9);
@@ -1371,6 +1431,25 @@ body[data-layout="desktop"] .craft-subtab { font-size: 12px; padding: 5px 12px; 
 .recipe-name  { color: var(--text); font-size: 11px; }
 .recipe-namecn { color: var(--dim); font-size: 9px; margin-left: 4px; }
 .recipe-desc  { font-size: 10px; color: var(--dim); margin-bottom: 4px; }
+
+/* Phase 44: a formula you have not found yet (its product and ingredients stay hidden) */
+.recipe-row.recipe-unknown { border-style: dashed; background: rgba(255,255,255,.015); }
+.recipe-row.recipe-unknown .recipe-name { color: var(--dim); }
+
+.craft-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--dim);
+  margin: -2px 0 6px;
+}
+.craft-note .ic { color: var(--gold); }
+
+/* Phase 44: a healing pill's Use button reads jade (Health's colour) in both Craft and Pack; the encounter's
+   stakes line spells out what Robbing costs. */
+.recipe-row button[data-useheal], .pack-item-btns button[data-useheal] { color: var(--jade) !important; border-color: rgba(48,184,120,.5) !important; }
+.recipe-enc-note { font-size: 9.5px; color: var(--dim); margin-top: 4px; }
 
 .recipe-ings  { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 4px; }
 
@@ -2777,10 +2856,6 @@ body[data-layout="overlay"] #btn-layout:not(.peek) { display: none; }
 #qi-rate, #qi-numbers { text-decoration: underline dotted color-mix(in srgb, currentColor 65%, transparent); text-underline-offset: 3px; }
 #qi-rate:hover, #qi-numbers:hover { text-decoration-color: currentColor; text-shadow: 0 0 6px color-mix(in srgb, currentColor 45%, transparent); }
 #qi-rate { margin-top: 0; }
-#catchup-chip {
-  order: -1; font-size: 10px; color: var(--gold); padding: 0 5px; border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
-  border-radius: 8px; background: color-mix(in srgb, var(--gold) 7%, transparent); line-height: 14px;
-}
 #integrity-block, #health-block { border-radius: 3px; padding: 1px 2px; margin: -1px -2px; transition: background .12s; }
 #integrity-block:hover, #health-block:hover { background: color-mix(in srgb, var(--gold) 6%, transparent); }
 #integrity-labels .lbl, #health-labels .lbl { text-decoration: underline dotted color-mix(in srgb, currentColor 65%, transparent); text-underline-offset: 3px; }
@@ -2846,16 +2921,6 @@ body[data-layout="overlay"] #btn-layout:not(.peek) { display: none; }
 .ch-meta b { font-weight: normal; color: color-mix(in srgb, var(--gold) 75%, transparent); margin: 0 2px 0 6px; }
 .ch-persona { font-size: 10.5px; color: var(--dim-hi); font-style: italic; margin-top: 5px; line-height: 1.4; }
 body[data-layout="overlay"] .ch-persona { display: none; }   /* the 性 tag's tooltip carries it in the narrow window */
-.ch-catchup {
-  display: flex; gap: 8px; align-items: center; width: 100%; margin-bottom: 8px; padding: 5px 9px; text-align: left; cursor: pointer;
-  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); border-radius: 5px; font-family: var(--font); color: var(--text);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 10%, transparent), color-mix(in srgb, var(--gold) 2%, transparent));
-  white-space: nowrap;
-}
-.ch-catchup:hover { border-color: var(--gold); }
-.ch-cg { font-size: 15px; color: var(--gold); text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 50%, transparent); }
-.ch-ct { flex: 1; min-width: 0; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
-.ch-go { color: color-mix(in srgb, var(--gold) 70%, transparent); font-size: 11px; }
 .ch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 4px 16px; }
 .ch-sec-title { display: flex; justify-content: space-between; align-items: baseline; font-size: 10px; color: var(--dim-hi);
   letter-spacing: 1px; text-transform: uppercase; margin: 4px 0 5px; padding-bottom: 3px; border-bottom: 1px solid var(--border); }
@@ -2885,10 +2950,9 @@ body[data-layout="overlay"] .ch-persona { display: none; }   /* the 性 tag's to
 .ch-list .stat-row { font-size: 11px; padding: 3px 0; }
 .ch-none { color: var(--dim); font-style: italic; }
 .tech-cost.tech-lock { color: var(--dim-hi); font-size: 10px; }
-/* Overlay: numbers first (the HUD above already names the realm and shows the catch-up chip); identity card last */
+/* Overlay: numbers first (the HUD above already names the realm); identity card last */
 .ch-view { display: flex; flex-direction: column; }
 body[data-layout="overlay"] .ch-head { order: 2; margin: 6px 0 0; }
-body[data-layout="overlay"] .ch-catchup { display: none; }
 /* 1.8b-2 review cycle 2 fixes */
 .bd-tt { overflow: hidden; text-overflow: ellipsis; }
 .bd-run { color: var(--dim-hi); font-size: 10.5px; }
@@ -3075,6 +3139,38 @@ body[data-layout="overlay"] .fam-card.spouse .fc-hint { display: none; }   /* th
 body[data-layout="overlay"] .kid-tags { display: none; }
 body[data-layout="overlay"] .kid.open .kid-tags { display: flex; }
 
+/* Root / potential chip (2026-10-02, user): every child card carries their spiritual root — the multiplier is
+   their cultivation speed, i.e. potential. The best-rooted child at home is crowned. Kept OUTSIDE .kid-tags so
+   it stays visible when Overlay collapses the tag row to save space.
+   UI review: 7.75 (2026-10-02) */
+.kid-root { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; padding: 0 6px; border-radius: 9px;
+  border: 1px solid var(--border); background: rgba(0,0,0,0.25); line-height: 16px; white-space: nowrap; color: var(--dim-hi); }
+.kid-root b { font-weight: normal; color: inherit; margin-right: 1px; }
+.kid-root.tone-gold   { color: var(--gold);   border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
+.kid-root.tone-jade   { color: var(--jade);   border-color: color-mix(in srgb, var(--jade) 50%, transparent); }
+.kid-root.tone-purple { color: var(--purple); border-color: color-mix(in srgb, var(--purple) 50%, transparent); }
+.kid-root.best { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 75%, transparent); box-shadow: 0 0 7px color-mix(in srgb, var(--gold) 35%, transparent); }
+/* The crowned chip's meaning is hover-only; spell it out where there's room (Overlay keeps just the crown). */
+body:not([data-layout="overlay"]) .kid-root.best::after { content: ' · best'; color: var(--gold); }
+.kid-rename-row { display: flex; justify-content: flex-end; padding: 0 6px 4px; }
+.kid-rename { flex: none; }
+/* Phase 45: a grown child may be taken into your sect for free — a quiet full-width row under the head. */
+.kid-sect-row { padding: 0 6px 5px; }
+.kid-sect-row .kid-sect { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;
+  font-family: var(--font); font-size: 11px; color: var(--gold); background: none; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, var(--border)); border-radius: 4px; padding: 5px 10px; min-height: 30px; }
+.kid-sect .ks-txt { display: flex; flex-direction: column; min-width: 0; text-align: center; line-height: 1.3; overflow-wrap: anywhere; }
+.kid-sect .ks-s { font-size: 10px; }
+.kid-sect .ic { width: 13px; height: 13px; flex: none; }
+.kid-sect .ks-s { color: var(--dim-hi); }
+.kid-sect-row .kid-sect:hover { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 8%, transparent); }
+.kid-sect-row .kid-sect.locked, .kid-sect-row .kid-sect:disabled { color: var(--dim); border-style: dashed; cursor: default; background: none; }
+/* Overlay: a chip long enough to wrap would make the card heights ragged — give every card the same
+   two rows (root chip on line 1, bond on line 2) so the list scans evenly. A long stage label is clamped
+   to one line so an awakened child's card is exactly as tall as an unborn one's. */
+body[data-layout="overlay"] .kid-foot .kid-root { flex-basis: 100%; }
+body[data-layout="overlay"] .kid-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .fam-fold { font-size: 10.5px; color: var(--dim-hi); padding: 4px 2px; }
 .fam-fold summary { cursor: pointer; letter-spacing: .5px; padding: 3px 0; }
 .fam-fold summary:hover { color: var(--text); }
@@ -3097,6 +3193,7 @@ body[data-layout="overlay"] .fw-title { margin-bottom: 6px; }
 .fa-btn:disabled .fa-n { color: var(--dim-hi); }
 .fa-quiet { font-family: var(--font); font-size: 10.5px; color: var(--dim-hi); background: var(--fam-sunk); padding: 4px 9px; min-height: 26px; cursor: pointer;
   border: 1px solid var(--border); border-radius: 3px; }
+.fa-quiet:hover, .fa-quiet:focus-visible { border-color: color-mix(in srgb, var(--gold) 40%, var(--border)); color: var(--text); outline: none; }
 .fa-quiet.danger { border-color: color-mix(in srgb, var(--red) 35%, var(--border)); color: color-mix(in srgb, var(--red-text) 70%, var(--dim-hi)); }
 .fa-quiet.danger:hover { border-color: var(--red); color: var(--red-text); }
 .fa-split { display: flex; min-width: 0; }
@@ -3653,6 +3750,91 @@ body:not([data-layout="overlay"]) #family-box.fight .fc-first { display: none; }
 .sv-disc-y .up { color: var(--jade); } .sv-disc-y .dim { color: var(--dim-hi); }
 .sv-reroll { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-top: 8px; }
 
+/* ── Phase 45: Sect branches (分舵) + the Tournament of Branches (docs/systems/sect-branches.md). No new sub-tab:
+   branches live inside Sect → Disciples so the already-cramped subs-tab row is untouched. ── */
+.sv-tourney { margin: 2px 0 9px; padding: 8px 9px 9px; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--gold) 32%, var(--border));
+  background: radial-gradient(ellipse 90% 70% at 10% 0%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 70%), linear-gradient(180deg, rgba(36,27,14,0.5), rgba(14,11,6,0.5)); }
+.sv-tourney-h { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--gold); letter-spacing: .3px; }
+.sv-tourney-h .ic { width: 15px; height: 15px; }
+/* UI review: 7.6 (2026-10-02) — branches cap + prize medallions */
+.sv-tourney { min-width: 0; }
+.sv-tourney-n { font-size: 10.5px; color: var(--dim-hi); margin: 3px 0 6px; line-height: 1.4; }
+.sv-tourney-n.why { color: color-mix(in srgb, var(--gold) 70%, var(--dim-hi)); }
+.sv-tourney-k { font-size: 9.5px; letter-spacing: .6px; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+/* The three prizes: stacked medallions (glyph · name · prize) so no label is ever squeezed one word per line. */
+.sv-prizes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.sv-prize { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-width: 0; min-height: 52px;
+  padding: 6px 4px 5px; font-family: var(--font); color: var(--text); text-align: center; cursor: pointer; position: relative;
+  border: 1px solid color-mix(in srgb, var(--gold) 42%, var(--border)); border-radius: 5px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 9%, transparent), var(--fam-sunk));
+  transition: border-color .15s, box-shadow .15s, transform .15s; }
+.sv-prize-g { font-size: 15px; line-height: 1; color: var(--gold); text-shadow: 0 0 6px color-mix(in srgb, var(--gold) 35%, transparent); margin-bottom: 2px; }
+.sv-prize-g .ic { width: 16px; height: 16px; }
+.sv-prize-n { font-size: 11.5px; line-height: 1.2; }
+.sv-prize-e { font-size: 10px; line-height: 1.25; color: var(--jade); overflow-wrap: anywhere; }
+.sv-prize:hover:not(:disabled), .sv-prize:focus-visible { border-color: var(--gold); box-shadow: 0 0 9px color-mix(in srgb, var(--gold) 22%, transparent); transform: translateY(-1px); outline: none; }
+.sv-prize.locked, .sv-prize:disabled { cursor: default; border-color: var(--border); background: var(--fam-sunk); }
+.sv-prize:disabled .sv-prize-g { color: var(--dim); text-shadow: none; }
+.sv-prize:disabled .sv-prize-n { color: var(--dim-hi); }
+.sv-prize:disabled .sv-prize-e { color: var(--dim); }
+.sv-branch-cap { margin-top: 8px; font-style: italic; color: var(--dim-hi); }
+.sv-branch-btn:disabled { color: var(--dim); border-style: dashed; cursor: default; }
+/* A disciple row carries name · stars · Lv · branch · dismiss: never let the buttons crush the name to one letter —
+   the name keeps ~10 characters and the two buttons wrap together to a right-aligned second line when it's tight. */
+.sv-disc-h { flex-wrap: wrap; row-gap: 3px; }
+.sv-disc-h .sv-disc-n { min-width: min(10ch, 100%); flex: 0 1 auto; }
+.sv-disc-act { display: inline-flex; gap: 6px; align-items: center; align-self: center; margin-left: auto; }
+.sv-disc-act .sv-dismiss { margin-left: 0; }
+/* Overlay's full-width pane fits the row on one line (the name ellipsizes past ~7 chars) — keep it one line there so
+   the Disciples view stays within its 3-screen Overlay budget. */
+body[data-layout="overlay"] .sv-disc-h { flex-wrap: nowrap; }
+body[data-layout="overlay"] .sv-disc-h .sv-disc-n { min-width: 4ch; flex: 1 1 auto; }
+.sv-disc-act .ic { width: 11px; height: 11px; vertical-align: -1px; margin-right: 3px; }
+.sv-disc-act button { display: inline-flex; align-items: center; }
+/* Overlay: the two row actions go icon-only (the title + aria-label keep their names) so the name gets the room. */
+body[data-layout="overlay"] .sv-disc-act .sv-act-l { display: none; }
+body[data-layout="overlay"] .sv-disc-act .ic { margin-right: 0; width: 12px; height: 12px; }
+body[data-layout="overlay"] .sv-disc-act button { padding: 2px 6px; min-height: 0; line-height: 1; }
+.sv-branch-btn:disabled:hover { color: var(--dim); border-color: var(--border); }
+.sv-branch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 6px; }
+.sv-branch { min-width: 0; padding: 7px 9px 6px; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--purple) 24%, var(--border));
+  background: linear-gradient(180deg, rgba(28,18,36,0.5), rgba(12,7,18,0.5)); display: flex; flex-direction: column; gap: 5px; }
+.sv-branch.risk { border-color: color-mix(in srgb, var(--red) 46%, var(--border)); }
+.sv-branch-h { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sv-branch-n { font-size: 12.5px; color: var(--gold); letter-spacing: .3px; }
+.sv-branch-head { font-size: 10.5px; color: var(--dim-hi); }
+.sv-branch-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.sv-branch-tags .fam-tag { font-size: 10px; }
+.sv-branch-members { display: flex; flex-wrap: wrap; gap: 4px; font-size: 10.5px; }
+.sv-bm { display: inline-flex; align-items: center; gap: 2px; padding: 1px 3px 1px 7px; border-radius: 10px;
+  border: 1px solid var(--border); color: color-mix(in srgb, var(--text) 82%, var(--dim)); }
+.sv-bm-up { border: none; background: none; cursor: pointer; color: var(--jade); display: inline-flex; align-items: center; padding: 0 1px; }
+.sv-bm-up .ic { width: 12px; height: 12px; }
+.sv-bm-up:hover { color: var(--gold); }
+.sv-branch-foot { display: flex; justify-content: flex-end; }
+.sv-branch-btn { font-family: var(--font); font-size: 10px; color: var(--dim-hi); background: none; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 3px; padding: 2px 6px; min-height: 22px; }
+.sv-branch-btn:hover { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
+.sv-kin .ic { width: 11px; height: 11px; }
+.sv-kin { color: var(--gold); margin-right: 3px; }
+body[data-layout="overlay"] .sv-branch-grid { grid-template-columns: 1fr; }
+body[data-layout="overlay"] .sv-branch .sv-disc-y { display: none; }
+/* Overlay keeps the note (it wraps, so a disabled tournament still says why) and each prize's sub-text; only the
+   "choose the prize" kicker is dropped to save the short pane. */
+body[data-layout="overlay"] .sv-tourney-k { display: none; }
+body[data-layout="overlay"] .sv-prize { min-height: 46px; padding: 5px 3px 4px; }
+body[data-layout="overlay"] .sv-branch-btn { min-height: 0; padding: 1px 5px; }
+
+/* ── Phase 46: the Core-Formation recruitment offer from the sect your own line founded (docs/systems/lineage-sect.md).
+   Full-width stacked actions so the accept can never misalign against the decline on a phone.
+   UI review: 7.6 (2026-10-03) ── */
+.sv-lineage .fc-name { color: var(--gold); }
+.sv-lineage-acts { grid-template-columns: 1fr; gap: 6px; }
+.sv-lineage-acts .fa-btn { min-height: 44px; }   /* the pair stays flush even when one sub-label wraps */
+.sv-lineage-acts .sv-decline { opacity: .82; }
+.sv-lineage-acts .sv-decline:hover { opacity: 1; }
+
 /* War */
 .sv-odds .fa-v.odds-low { color: var(--red-text); } .sv-odds .fa-v.odds-mid { color: var(--gold); } .sv-odds .fa-v.odds-good { color: var(--jade); }
 .fa-e .odds-low { color: var(--red-text); } .fa-e .odds-mid { color: var(--gold); } .fa-e .odds-good { color: var(--jade); }
@@ -3664,6 +3846,84 @@ body:not([data-layout="overlay"]) #family-box.fight .fc-first { display: none; }
 .sv-stake { display: flex; gap: 8px; font-size: 11px; line-height: 1.4; padding: 3px 0; color: color-mix(in srgb, var(--text) 78%, var(--dim)); }
 .sv-stake b { flex: none; width: 62px; font-weight: normal; }
 .sv-stake b.up { color: var(--jade); } .sv-stake b.down { color: var(--red-text); }
+/* Phase 43c: their mountain — the bound foe's Might against yours, its halls, its master */
+/* UI review: 7.75 (2026-10-02) */
+.sv-foe { border-color: color-mix(in srgb, var(--red) 30%, var(--border)); }
+.sv-foe-band { margin-left: 4px; vertical-align: 1px; }
+.sv-vs { display: grid; gap: 4px; margin: 4px 0 8px; }
+.sv-vs-row { display: grid; grid-template-columns: minmax(0, 40%) 1fr auto; align-items: center; gap: 8px; font-size: 11px; color: var(--text); }
+.sv-vs-n { min-width: 0; overflow-wrap: anywhere; line-height: 1.25; }   /* the whole sect name, two lines if need be */
+.sv-vs-row b { font-weight: normal; color: var(--gold); min-width: 28px; text-align: right; }
+.sv-vs-row .fam-bar { margin: 0; }
+.sv-foe-deed { display: block; margin-top: 3px; font-style: italic; color: var(--dim-hi); }
+.sv-foe .ws-halls { margin-bottom: 6px; }
+.sv-foe .ws-hall.hall { flex-wrap: wrap; }
+.sv-foe .ws-hall.hall > span:first-child { flex: none; overflow: visible; }
+.sv-last .sv-gain { white-space: normal; max-width: 100%; }   /* "their Training Ground burned to Lv.1" fits a narrow column */
+
+/* Phase 43f: the vow to raze (War panel), a razed Last war card, the dread line + ashes in the World ledger */
+/* UI review: 7.7 (2026-10-02) */
+.sv-raze-grid { margin-top: 6px; }
+.sv-raze { border-style: dashed; border-color: color-mix(in srgb, var(--ember) 40%, var(--border)); }
+.sv-raze .fa-g { color: var(--ember-text); }
+.sv-raze .fa-e { white-space: normal; line-height: 1.45; }
+.sv-raze.vowed { border-style: solid; border-color: var(--ember); color: var(--ember-text);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ember) 14%, transparent), color-mix(in srgb, var(--red) 8%, transparent));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ember) 30%, transparent) inset; }
+.sv-raze.vowed .fa-n { color: var(--ember-text); }
+.sv-raze.vowed .fa-g { animation: razeFlicker 2.6s ease-in-out infinite; }
+@keyframes razeFlicker { 0%,100% { opacity: 1; filter: drop-shadow(0 0 2px var(--ember)) } 45% { opacity: .75; filter: drop-shadow(0 0 5px var(--ember)) } 60% { opacity: .95 } }
+:root[data-motion="reduced"] .sv-raze.vowed .fa-g { animation: none; }
+.sv-raze-chips { margin: 5px 0 2px; }
+.sv-raze-chips .sv-gain { white-space: normal; max-width: 100%; }
+.sv-last.razed { border-color: var(--ember); background: linear-gradient(180deg, color-mix(in srgb, var(--ember) 9%, transparent), transparent 70%); }
+.sv-last.razed .fam-sec-title span:first-child, .sv-last.razed .sv-last-t { color: var(--ember-text); }
+.ws-dread { display: inline-flex; align-items: center; gap: 4px; color: var(--ember-text); }
+.ws-dread svg, .ws-row .fam-tag svg { width: 11px; height: 11px; vertical-align: -1px; }
+.ws-ashes .ws-deed .warm { color: var(--ember-text); }
+
+/* UI review: 7.9 (2026-10-02) */
+/* Phase 43e: the sect master card (member) + the old guard card (founder, after a takeover) */
+.sv-master { border-color: color-mix(in srgb, var(--gold) 30%, var(--border)); }
+.sv-master-k { font-size: 9.5px; letter-spacing: .6px; text-transform: uppercase; color: var(--dim-hi); margin-left: 7px; vertical-align: 1px; white-space: nowrap; }
+.sv-master .odds-in { cursor: help; }
+.sv-oldguard .fa-e { line-height: 1.4; }
+.sv-dim { color: var(--dim-hi); }
+.sv-prize-box { margin-top: 8px; padding: 6px 8px 7px; border-radius: 5px; background: var(--fam-sunk); border: 1px solid var(--border); }
+.sv-prize-box .ws-k { margin-top: 0; }
+.sv-wait { margin-top: 6px; }
+
+/* UI review: 7.8 (2026-10-02) */
+/* Phase 43d: the blessing you draw (its halls × your rank) + the halls your stones can raise (Sect → Overview, member) */
+.sv-bless { margin-bottom: 4px; }
+.sv-bless .fa-v .sv-of { font-size: 10.5px; }
+.sv-fx-of { flex: none; font-style: normal; font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.sv-fx-key { font-size: 10px; color: var(--dim); font-style: italic; margin-top: -2px; }
+.sv-fund { margin-top: 6px; }
+.sv-fund > summary { list-style: none; display: flex; align-items: center; gap: 6px; }
+.sv-fund-lbl { flex: 1; min-width: 0; }
+.sv-fund > summary .lib-fold { flex: none; }
+.sv-fund > summary::-webkit-details-marker { display: none; }
+.sv-fund[open] > summary .lib-fold { transform: rotate(90deg); color: var(--gold); }
+.sv-fund > summary .fam-count { flex: none; white-space: nowrap; }
+.sv-fund-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin: 6px 0 4px; }
+.sv-fund-row { display: flex; flex-direction: column; gap: 4px; padding: 6px 7px; border-radius: 5px; background: var(--fam-sunk); border: 1px solid var(--border); min-width: 0; }
+.sv-fund-row.lost { border-color: color-mix(in srgb, var(--red) 45%, var(--border)); }
+.sv-fund-row.top { opacity: .75; }
+.sv-fund-h { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--text); }
+.sv-fund-n { min-width: 0; overflow-wrap: anywhere; }
+.sv-fund-n b { font-weight: normal; font-size: 10px; margin-left: 4px; }
+.sv-fund-top { font-size: 10.5px; color: var(--dim-hi); font-style: italic; }
+.sv-fund-t .fa-e { line-height: 1.4; }
+body[data-layout="overlay"] .sv-fund-list, body[data-narrow="1"] .sv-fund-list { grid-template-columns: 1fr; }
+.sv-bless .fa-k { white-space: nowrap; }
+.sv-why { font-size: 9.5px; letter-spacing: 0; text-transform: none; color: var(--gold); border-bottom: 1px dotted color-mix(in srgb, var(--gold) 60%, transparent); margin-left: 4px; }
+.sv-burned { color: var(--red-text); }
+.ws-choice .ws-fail { display: block; }   /* the failure outcomes get their own line */
+.sv-fund-t .nw { white-space: nowrap; }
+/* Overlay hides the war odds sub-line; the blessing keeps its "why" (its halls × your rank) and drops the long suffix */
+body[data-layout="overlay"] .sv-bless .fa-last { display: block; }
+body[data-layout="overlay"] .sv-bless .sv-of { display: none; }
 
 /* Sub-tabs carry the attention list's mark (NavUI.update): red = a decision, bright gold = a chance, soft gold = a nudge */
 .subtab { position: relative; }
@@ -3672,6 +3932,66 @@ body:not([data-layout="overlay"]) #family-box.fight .fc-first { display: none; }
 .subtab[data-att="urgent"]::after { background: var(--gold); box-shadow: 0 0 4px color-mix(in srgb, var(--gold) 60%, transparent); }   /* gold too: user 2026-09-27 */
 .subtab[data-att="ready"]::after  { background: var(--gold); box-shadow: 0 0 4px color-mix(in srgb, var(--gold) 60%, transparent); }
 .subtab[data-att="idle"]::after   { background: var(--gold); opacity: .7; }
+
+/* ── Phase 43b: Living Sects — the "Sects of the world" ledger + a world-sect event card (docs/systems/npc-sects.md).
+   Sect → Overview, every standing (none / joined / founded). No new sub-tab. ── */
+.ws-ledger .ws-row { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 6px 0 7px; }
+.ws-ledger .ws-row:last-of-type { border-bottom: 0; }
+.ws-row > summary { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 4px; outline: none; }
+.ws-row > summary::-webkit-details-marker { display: none; }
+.ws-row > summary:focus-visible { box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 45%, transparent); border-radius: 4px; }
+.ws-top { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.ws-top .lib-fold { flex: none; width: 10px; color: var(--dim); transition: transform .15s; }
+.ws-top .lib-fold .ic { width: 9px; height: 9px; }
+.ws-row[open] .ws-top .lib-fold { transform: rotate(90deg); color: var(--gold); }
+.ws-n { flex: 1; min-width: 0; font-size: 12px; color: var(--text); letter-spacing: .3px; overflow-wrap: anywhere; }
+.ws-row.you .ws-n { color: var(--gold); }
+.ws-might { flex: none; font-size: 10.5px; color: var(--dim-hi); white-space: nowrap; }
+.ws-might b { color: var(--text); font-weight: normal; margin-left: 2px; }
+.ws-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 5px; font-size: 10.5px; color: var(--dim-hi); }
+.ws-sum { overflow-wrap: anywhere; }
+.ws-body { margin: 7px 0 2px 16px; padding: 7px 9px 8px; border-radius: 5px; background: var(--fam-sunk); border: 1px solid var(--border); }
+.ws-lead { font-size: 11px; color: var(--dim-hi); margin-bottom: 6px; }
+.ws-lead b { color: var(--text); font-weight: normal; }
+.ws-halls { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 3px 12px; }
+.ws-hall { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 10.5px; color: var(--text); min-width: 0; }
+.ws-hall > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-hall.none > span:first-child { color: var(--dim); }
+.ws-hall.hall { grid-column: 1 / -1; margin-top: 3px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); }
+.ws-hlv { color: var(--gold); white-space: nowrap; }
+.ws-hlv i { font-style: normal; color: var(--dim-hi); }
+/* Level pips: lit = built, hollow = room to grow, a dash = past this sect's own cap (it can never build that high) */
+.ws-pips { display: inline-flex; gap: 3px; flex: none; }
+.ws-pips i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--border)); }
+.ws-pips i.on { background: var(--gold); box-shadow: 0 0 4px color-mix(in srgb, var(--gold) 50%, transparent); }
+.ws-pips i.cap { border: 0; border-radius: 1px; height: 1px; align-self: center; background: var(--dim); }
+.ws-grow { font-size: 10.5px; color: var(--dim-hi); font-style: italic; margin-top: 6px; }
+.ws-k { font-size: 9.5px; letter-spacing: .6px; text-transform: uppercase; color: var(--dim); margin: 8px 0 3px; }
+.ws-deed { display: flex; gap: 7px; align-items: baseline; font-size: 10.5px; color: var(--text); line-height: 1.4; padding: 1px 0; }
+.ws-deed.none { color: var(--dim-hi); font-style: italic; }
+.ws-deed > span:nth-child(2) { flex: 1; min-width: 0; }
+.ws-deed b { font-weight: normal; flex: none; }
+.ws-yr { flex: none; color: var(--dim); font-size: 10px; min-width: 38px; }
+.ws-more, .ws-chron { margin-top: 6px; }
+.ws-more > summary, .ws-chron > summary { list-style: none; display: flex; align-items: center; gap: 6px; }
+.ws-more > summary::-webkit-details-marker, .ws-chron > summary::-webkit-details-marker { display: none; }
+.ws-more[open] > summary .lib-fold, .ws-chron[open] > summary .lib-fold { transform: rotate(90deg); }
+.ws-chron .ws-deed { padding-left: 4px; }
+.ws-ledger .fk-note b.gold { color: var(--gold); font-weight: normal; }
+.ws-joinline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 10.5px; color: var(--dim-hi); margin: 4px 0 2px; }
+
+/* The event card: a gold-edged letter from another house, its choices stacked as wide tiles */
+.ws-event { border-color: color-mix(in srgb, var(--gold) 45%, var(--border));
+  background: radial-gradient(ellipse 90% 60% at 0% 0%, color-mix(in srgb, var(--gold) 9%, transparent), transparent 70%), var(--fam-ink-deep); }
+.ws-event .ws-ev-text { color: var(--text); line-height: 1.45; }
+.ws-choices { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.ws-choices .fa-btn { width: 100%; }
+.ws-choice .fa-e { line-height: 1.4; }
+.ws-why { color: var(--dim-hi); }
+/* Overlay hides card sub-lines in the sect views; the event's letter is the point, so it stays */
+body[data-layout="overlay"] .sect-view .fam-card.ws-event .fc-sub { display: block; font-size: 10.5px; }
+body[data-layout="overlay"] .ws-halls, body[data-narrow="1"] .ws-halls { grid-template-columns: 1fr; }
+body[data-layout="overlay"] .ws-body { margin-left: 0; }
 
 /* Overlay (300px): the sect sub-tab row holds four labels, so pills tighten; single-column cards */
 body[data-layout="overlay"] #subtabs .subtab[data-in="sect"] { padding: 2px 6px; }
@@ -3772,6 +4092,8 @@ body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .loc-
 body:not([data-layout="overlay"]):not([data-layout="banner"]) .card-grid > .loc-row .loc-btn { min-height: 28px; padding: 3px 12px; }
 /* Overlay: the alone card keeps its one line; the odds card drops its caption (its "why" card has it) */
 body[data-layout="overlay"] .sect-view .fam-card.alone .fc-sub { display: block; }
+/* Phase 46: the lineage offer keeps its line in Overlay too — it names the founder and the current master */
+body[data-layout="overlay"] .sect-view .fam-card.sv-lineage .fc-sub { display: block; }
 body[data-layout="overlay"] .sv-odds .fa-last { display: none; }
 @container (max-width: 300px) {
   #subtabs .subtab[data-in="sect"] { padding: 3px 6px; font-size: 11px; letter-spacing: 0; }
@@ -3834,6 +4156,57 @@ body[data-layout="overlay"] .sv-dismiss { min-height: 0; padding: 0 5px; }
 /* Overlay Disciples: your own roster first, then the candidates at the gate (user 2026-09-27) */
 body[data-layout="overlay"] .sv-disc-view .fam-col:first-child .fam-sec { order: 3; }
 body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 4; }
+/* .fam-view's align-items:start sizes a stacked section to its content's min width — a no-wrap name row or branch
+   tag line then pushed the section past the 300px pane (cropped "dismiss", seat tags, the 12 / 15 count). Stretch them. */
+body[data-layout="overlay"] .sect-view .fam-sec { align-self: stretch; }
+
+/* ── Sect → Base: the large view-only compound scene (A7 / Phase 38A, docs/systems/scene-art.md) ──
+   UI review: 7.5 (2026-10-01) · scene asset: 8.0 (both PASS; cycle 1) */
+.scene-view { display: flex; flex-direction: column; gap: 8px; }
+.scene-wrap { display: flex; justify-content: center; width: 100%; border-radius: 6px; overflow: hidden;
+  border: 1px solid var(--border); background: #07060d; }
+#scene-canvas { display: block; }
+.scene-cap { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; line-height: 1.5; color: var(--nudge); padding: 0 2px; }
+.scene-cap .scene-dim { color: var(--dim-hi); }
+.scene-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+/* Overlay / phone: the chip row scrolls sideways instead of wrapping, so the legend never pushes below the fold */
+body[data-layout="overlay"] .scene-legend, body[data-narrow="1"] .scene-legend { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 3px; }
+.scene-chip { font-size: 10.5px; line-height: 1.6; padding: 1px 8px; border-radius: 10px; color: var(--dim-hi);
+  background: var(--btn-bg); border: 1px solid var(--border); white-space: nowrap; }
+.scene-chip.gold { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 40%, var(--border)); }
+.scene-chip.warn { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 45%, var(--border)); }
+.scene-go { flex: 0 0 auto; }
+
+/* ── Phase 43: levelled halls ─────────────────────────────────────────────── */
+/* A founder's Sect row now has five sub-tabs (… · Base · …); tighten the pills so the row still fits without
+   scrolling (the 1.8b-5 bar: pills never ellipsize, the row only scrolls as a last resort). */
+@container (max-width: 300px) {
+  #subtabs .subtab[data-in="sect"] { padding: 2px 3px; font-size: 10.5px; letter-spacing: 0; }
+}
+body[data-layout="overlay"] #subtabs .subtab[data-in="sect"] { padding: 2px 3px; font-size: 10.5px; }
+/* Expanded's nav column is only ~274px — a founder's five sub-tabs (+ the auto chip) cannot sit on one line, so let
+   the row wrap onto a second line rather than clip the last tab behind a hidden scrollbar. */
+body[data-layout="expanded"] #subtabs { flex-wrap: wrap; row-gap: 4px; }
+/* Overlay: a levelled hall is one compact row — name + Lv and what it gives on the left, a fixed-width Deepen
+   button on the right (a 2-column grid: the text column flexes, the button column is a fixed 88px so it can never
+   claim the row). */
+body[data-layout="overlay"] #subtabs { gap: 3px; }
+body[data-layout="overlay"] .sv-card.built { display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: center; gap: 1px 8px; padding: 4px 8px; }
+body[data-layout="overlay"] .sv-card.built .sv-card-h { grid-column: 1; }
+body[data-layout="overlay"] .sv-card.built .sv-now { grid-column: 1; font-size: 10.5px; }
+body[data-layout="overlay"] .sv-card.built .sv-now { line-height: 1.35; }
+/* The Sect Hall card takes the same compact shape in Overlay */
+body[data-layout="overlay"] .sv-card.hall { display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: center; gap: 1px 8px; padding: 4px 8px; }
+body[data-layout="overlay"] .sv-card.hall .sv-card-h { grid-column: 1; }
+body[data-layout="overlay"] .sv-card.hall .sv-now { grid-column: 1; font-size: 10.5px; }
+body[data-layout="overlay"] .sv-card.hall .fa-btn { grid-column: 2; grid-row: 1 / span 2; width: 96px; margin: 0; min-height: 34px; padding: 2px 4px; }
+body[data-layout="overlay"] .sv-card.hall .fa-btn .fa-g { display: none; }
+body[data-layout="overlay"] .sv-card.hall .fa-btn .fa-n { font-size: 10.5px; }
+body[data-layout="overlay"] .sv-card.hall .fa-btn .fa-e { font-size: 9.5px; }
+body[data-layout="overlay"] .sv-card.built .fa-btn.sv-go { grid-column: 2; grid-row: 1 / span 2; width: 96px; margin: 0; min-height: 34px; padding: 2px 4px; }
+body[data-layout="overlay"] .sv-card.built .fa-btn.sv-go .fa-g { display: none; }
+body[data-layout="overlay"] .sv-card.built .fa-btn.sv-go .fa-n { font-size: 10.5px; }
+body[data-layout="overlay"] .sv-card.built .fa-btn.sv-go .fa-e { font-size: 9.5px; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    MOBILE / narrow + touch (Phase 6E mobile pass, 2026-09-27) — UI review: 7.6 (2026-09-27, 1.8b-6 cycle 2)
@@ -3862,6 +4235,7 @@ body[data-layout="overlay"] .sv-disc-view .fam-col:last-child .fam-sec { order: 
   body[data-layout] .pack-sort-btn, body[data-layout] .set-opt, body[data-layout] .cs-btn-new,
   body[data-layout] .cs-btn-play, body[data-layout] .cs-btn-del, body[data-layout] .cs-dev-select,
   body[data-layout] .recipe-craft-btn, body[data-layout] .recipe-equip-btn,
+  body[data-layout] .pack-item-btns button,
   body[data-layout] .pill-queue-btn { min-height: 38px !important; }
   body[data-layout] .bm-row.can { min-height: 42px !important; }
   body[data-layout] #confirm-yes, body[data-layout] #confirm-no { min-height: 44px !important; }
@@ -4911,3 +5285,472 @@ body[data-layout="overlay"] .el-chip span { display: none; }   /* icon-only in t
 .lib-write > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .lib-write > summary::-webkit-details-marker { display: none; }
 .lib-write[open] > summary { margin-bottom: 4px; }
+/* UI review: 7.7 (2026-10-02) — Phase 43b ledger + world-sect event card (cycle 1 PASS; polish: stance numbers, Might label, pip key) */
+.ws-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 9.5px; color: var(--dim); margin-top: 4px; }
+.ws-row > summary:hover .ws-n { color: var(--gold); }
+.ws-fold > summary { list-style: none; cursor: pointer; }
+.ws-fold > summary::-webkit-details-marker { display: none; }
+.ws-fold > summary .lib-fold { display: inline-block; width: 12px; transition: transform .15s; }
+.ws-fold[open] > summary .lib-fold { transform: rotate(90deg); color: var(--gold); }
+
+/* ── Phase 43h: a sect's own page (renderer/game/sect-detail.js) + the tappable "Sects of the world" rows ── */
+.sdx { display: flex; flex-direction: column; gap: 8px; }
+.sdx-hero .sv-vs { margin: 8px 0 2px; }
+.sdx-ratio { font-size: 10.5px; color: var(--dim-hi); }
+.sdx-ratio b { font-weight: normal; }
+.sdx-ratio b.up { color: var(--jade); } .sdx-ratio b.down { color: var(--red-text); }
+.sdx-acts { display: flex; flex-direction: column; gap: 4px; }
+.sdx-group .ws-choices { margin-top: 4px; }
+.sdx-act { display: flex; flex-direction: column; gap: 5px; }
+.sdx-war { border-color: color-mix(in srgb, var(--red) 45%, var(--border)); }
+.sdx-trade { padding: 0 2px; }
+.sdx-k { font-size: 9.5px; letter-spacing: .6px; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+.sdx-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.sdx-chip i { font-style: normal; color: var(--dim-hi); font-size: 9.5px; margin-left: 3px; }
+.sdx-chip:disabled { opacity: .45; cursor: not-allowed; }
+.fa-e .up { color: var(--jade); } .fa-e .down { color: var(--red-text); }
+/* the ledger's rows are now one tap each (no fold) */
+button.ws-row { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 7px 4px; font: inherit; color: inherit; cursor: pointer; border-radius: 4px; }
+button.ws-row:hover, button.ws-row:focus-visible { background: color-mix(in srgb, var(--gold) 6%, transparent); outline: none; }
+button.ws-row.foe { box-shadow: inset 2px 0 0 var(--red); }
+div.ws-row { display: flex; flex-direction: column; gap: 4px; padding: 7px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.ws-go { flex: none; width: 10px; color: var(--dim); }
+.ws-go .ic { width: 9px; height: 9px; }
+button.ws-row:hover .ws-go { color: var(--gold); }
+.ws-hint { font-size: 10.5px; color: var(--dim-hi); font-style: italic; margin: 2px 0 4px; }
+
+.fa-e .dim { color: var(--dim-hi); }
+.fa-btn.locked .fa-e .up, .fa-btn.locked .fa-e .down { opacity: .6; }
+.sdx-back { align-self: flex-start; }
+/* UI review: 7.8 (2026-10-02, 43h cycle 2) — the modal list drops its repeated header; a locked tile's odds go quiet */
+.fa-btn.locked .fa-e .odds-low, .fa-btn.locked .fa-e .odds-mid, .fa-btn.locked .fa-e .odds-good { opacity: .6; }
+
+/* ── 43h follow-up (user 2026-10-02): 世 World → Sects (world-view.js) with the sect page inline (sect-detail.js), the
+   War tab's "Declare war" picker and Disciples → "Poach recruits" (sect-view.js) ── */
+.world-view { display: flex; flex-direction: column; gap: 8px; }
+body[data-layout="overlay"] .world-view .fam-card { order: 0; }   /* the page's hero stays first in Overlay */
+.sdx-kind { font-size: 9.5px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+.sdx-hero[data-tone="war"] { border-color: var(--red); box-shadow: 0 0 18px rgba(200,48,48,0.16); }
+.sdx-hero[data-tone="war"] .sdx-kind { color: var(--red-text); }
+.sdx-hero[data-tone="ally"] { border-color: color-mix(in srgb, var(--jade) 60%, var(--border)); }
+.sdx-hero[data-tone="ally"] .sdx-kind { color: var(--jade); }
+.sv-declare { margin-top: 8px; }
+.sv-pick { display: flex; flex-direction: column; gap: 8px; }
+.sv-pick-row { display: flex; flex-direction: column; gap: 4px; }
+.sv-pick-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.sv-pick-n { font-size: 12px; color: var(--text); flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.sv-pick-m { font-size: 10.5px; color: var(--dim-hi); white-space: nowrap; }
+.sv-poach .ws-row .fa-lock { font-size: 10px; }
+.sv-poach-card .sv-gains { flex-wrap: wrap; }
+/* 43h follow-up: Overlay's Disciples stays ≤ 3 screens — the Poach recruits tile shows its title only */
+body[data-layout="overlay"] .sv-poach-open .fa-e { display: none; }
+.sv-gate-acts { grid-template-columns: 1fr 1fr; margin-top: 6px; }
+body[data-layout="overlay"] .sect-view .fa-grid.sv-gate-acts, body[data-narrow="1"] .sect-view .fa-grid.sv-gate-acts { grid-template-columns: 1fr 1fr; }
+.sv-poach-open { display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; min-height: 24px; padding: 2px 8px; text-transform: none; letter-spacing: 0; vertical-align: middle; color: var(--gold); }
+.sv-poach-open .ic { width: 12px; height: 12px; }
+body[data-layout="overlay"] .sv-cand .sv-gain.dim { display: none; }
+/* 43h follow-up review: back links read as navigation (a chevron, gold) */
+.sdx-back { display: inline-flex; align-items: center; gap: 4px; color: var(--gold); }
+.sdx-back .ic { width: 11px; height: 11px; }
+.sv-poach-card .fa-btn { width: 100%; }
+.sv-pick-m { flex-basis: 100%; }   /* review: every row puts tier · Might on its own line */
+
+
+/* UI review: 7.75 (2026-10-03) */
+/* ── Phase 14: Body Constitution (Path → Body, renderer/game/body-view.js) + the mini-games (renderer/game/minigames.js) ──
+   Reuses the shared fam-view / fam-card / fam-sec / fa-btn surfaces; bd-* adds the tier seal, the XP bar with its trial
+   mark + bank, effect chips and the method cards. Overlay keeps the natural order (body first, methods after). */
+/* (review cycle 1 blocker: must out-rank the shared .fam-col:first-child .fam-sec { order: 4 } rule) */
+body[data-layout="overlay"] .body-view .fam-col:first-child > .fam-card,
+body[data-layout="overlay"] .body-view .fam-col:first-child > .fam-sec,
+body[data-layout="overlay"] .body-view .fam-col:first-child > .bd-foot { order: 0; }
+body[data-layout="overlay"] .body-view .fam-col:last-child > .fam-sec { order: 1; }
+.bd-top { display: flex; align-items: center; gap: 10px; }
+.bd-seal { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent); color: var(--gold); font-size: 21px; letter-spacing: 0;
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--gold) 16%, transparent), rgba(10,5,14,0.7) 70%);
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.6); }
+.bd-seal.ready { border-color: var(--ember); color: var(--ember-text); animation: bdSealGlow 2.4s ease-in-out infinite; }
+@keyframes bdSealGlow { 0%,100% { box-shadow: inset 0 0 8px rgba(0,0,0,.6), 0 0 4px color-mix(in srgb, var(--ember) 30%, transparent) }
+  50% { box-shadow: inset 0 0 8px rgba(0,0,0,.6), 0 0 14px color-mix(in srgb, var(--ember) 60%, transparent) } }
+:root[data-motion="reduced"] .bd-seal.ready { animation: none; box-shadow: 0 0 10px color-mix(in srgb, var(--ember) 50%, transparent); }
+.bd-hero.tier-f .bd-seal { color: var(--dim-hi); border-color: var(--border); }
+.bd-hero.tier-s .bd-seal { color: #FFF1C2; text-shadow: 0 0 8px var(--gold); }
+.bd-tier { font-size: 14px; color: var(--gold); letter-spacing: .4px; }
+.bd-line { font-size: 10.5px; color: color-mix(in srgb, var(--text) 68%, var(--dim)); line-height: 1.35; margin-top: 2px; }
+.bd-xp { margin: 9px 0 6px; }
+.bd-xp-track { position: relative; height: 8px; border-radius: 4px; background: rgba(0,0,0,0.45); border: 1px solid var(--border); overflow: hidden; }
+.bd-xp-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 55%, transparent), var(--gold)); }
+.bd-xp-bank { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--ember) 0 3px, transparent 3px 6px); opacity: .85; }
+.bd-xp-mark { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--ember-text); }
+.bd-xp-nums { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--dim-hi); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.bd-xp-nums b { color: var(--gold); font-weight: normal; }
+.bd-xp-note { font-size: 10.5px; color: color-mix(in srgb, var(--text) 72%, var(--dim)); line-height: 1.35; margin-top: 3px; }
+.bd-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.bd-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 10px; font-size: 10.5px; color: var(--dim-hi);
+  border: 1px solid var(--border); background: var(--fam-sunk); white-space: nowrap; }
+.bd-chip b { color: var(--text); font-weight: normal; }
+.bd-chip .ic { width: 12px; height: 12px; color: color-mix(in srgb, var(--gold) 70%, transparent); }
+.bd-chip[data-bd] { cursor: pointer; } .bd-chip[data-bd]:hover { border-color: var(--gold); }
+.bd-card-title { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--gold); }
+.bd-card-title .ic { width: 15px; height: 15px; }
+.bd-crisis { border-color: color-mix(in srgb, var(--ember) 65%, var(--border)); }
+.bd-crisis .bd-card-title { color: var(--ember-text); }
+.bd-trial { border-color: color-mix(in srgb, var(--gold) 55%, var(--border)); }
+.bd-text { font-size: 11px; color: color-mix(in srgb, var(--text) 80%, var(--dim)); line-height: 1.45; margin: 4px 0 2px; }
+.bd-choices { grid-template-columns: 1fr; }
+.bd-choices .fa-e { white-space: normal; line-height: 1.4; }
+.bd-odds { color: var(--gold); }
+.bd-why { margin-top: 6px; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font); font-size: 10.5px; color: var(--dim-hi);
+  background: none; border: none; padding: 3px 0; cursor: pointer; min-height: 26px; }
+.bd-why:hover { color: var(--gold); } .bd-why .ic { width: 12px; height: 12px; }
+.bd-foot { font-size: 10.5px; color: color-mix(in srgb, var(--text) 62%, var(--dim)); line-height: 1.4; margin-top: 6px; }
+.bd-auto-lock { display: flex; align-items: center; gap: 5px; padding: 0 2px; } .bd-auto-lock .ic { width: 11px; height: 11px; }
+.bd-act-name { font-size: 12.5px; color: var(--text); }
+.bd-prog { height: 5px; border-radius: 3px; background: rgba(0,0,0,0.45); margin: 5px 0 4px; overflow: hidden; }
+.bd-prog > div { height: 100%; background: var(--jade); transition: width .9s linear; }
+.bd-act-meta { font-size: 10.5px; color: var(--dim-hi); line-height: 1.4; }
+.bd-act-meta .down, .bd-taint .down, .bd-crisis .down { color: var(--red-text); }
+.bd-games .fa-grid { grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); margin-top: 0; }
+.bd-game .fa-n { display: flex; align-items: center; gap: 6px; }
+.bd-game .fa-e { white-space: normal; line-height: 1.35; }
+.ch-charges { display: inline-flex; gap: 3px; }
+.ch-charges b { width: 7px; height: 7px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--jade) 60%, transparent); }
+.ch-charges b.on { background: var(--jade); box-shadow: 0 0 4px color-mix(in srgb, var(--jade) 60%, transparent); }
+.bd-scar { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.bd-scar-n { font-size: 11.5px; color: var(--red-text); } .bd-scar-e { grid-column: 1; font-size: 10.5px; color: var(--dim-hi); }
+.bd-scar .fa-quiet { grid-row: 1 / 3; grid-column: 2; }
+.bd-taint { display: flex; flex-direction: column; gap: 2px; font-size: 10.5px; color: var(--dim-hi); line-height: 1.4; padding-top: 5px; }
+.bd-auto-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bd-auto-pick { flex: 1 1 140px; min-width: 0; min-height: 28px; font-family: var(--font); font-size: 11px; color: var(--text);
+  background: var(--fam-sunk); border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px; }
+.bd-methods { display: flex; flex-direction: column; gap: 6px; }
+.bd-method { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 7px 8px; border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--purple) 22%, var(--border)); background: var(--fam-ink); }
+.bd-method > :not(.bd-begin):not(.bd-m-lock) { grid-column: 1; }
+.bd-method .bd-begin, .bd-method .bd-m-lock { grid-column: 2; grid-row: 1 / span 3; }
+.bd-method.locked { background: var(--fam-sunk); border-color: var(--border); }
+.bd-method.locked .bd-m-name { color: var(--dim-hi); }
+.bd-method.busy { opacity: .75; }
+.bd-m-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.bd-m-name { font-size: 12.5px; color: var(--text); }
+.bd-m-xp { font-size: 11px; color: var(--gold); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bd-m-desc { font-size: 10.5px; color: color-mix(in srgb, var(--text) 62%, var(--dim)); line-height: 1.35; }
+.bd-m-meta { font-size: 10.5px; color: var(--dim-hi); line-height: 1.45; }
+.bd-cost { color: var(--text); white-space: nowrap; } .bd-cost.short { color: var(--red-text); } .bd-cost.free { color: var(--jade); }
+.bd-time { color: var(--text); }
+.bd-begin { min-height: 34px; padding: 4px 10px; }
+.bd-begin .fa-n { color: var(--gold); }
+.bd-m-lock { display: flex; align-items: center; gap: 4px; max-width: 120px; font-size: 10.5px; color: var(--dim-hi); line-height: 1.3; text-align: right; }
+.bd-m-lock .ic { flex: 0 0 auto; width: 11px; height: 11px; }
+.bd-g-demonic .bd-method { border-left: 2px solid color-mix(in srgb, var(--red) 55%, transparent); }
+body[data-layout="overlay"] .bd-m-desc { display: none; }
+body[data-layout="overlay"] .bd-method { grid-template-columns: 1fr; }
+body[data-layout="overlay"] .bd-method .bd-begin, body[data-layout="overlay"] .bd-method .bd-m-lock { grid-column: 1; grid-row: auto; max-width: none; text-align: left; }
+body[data-layout="overlay"] .bd-begin { width: 100%; }
+
+/* Character view: the Meridian Flow quick-play button under the Cultivation tiles */
+.ch-play { display: flex; align-items: center; gap: 7px; width: 100%; margin-top: 6px; min-height: 34px; padding: 5px 9px; text-align: left;
+  font-family: var(--font); font-size: 11px; color: var(--dim-hi); cursor: pointer; border-radius: 4px;
+  border: 1px dashed color-mix(in srgb, var(--jade) 45%, var(--border)); background: rgba(10,6,14,0.4); }
+.ch-play b { color: var(--jade); font-weight: normal; }
+.ch-play > span:first-of-type { flex: 1; min-width: 0; }
+.ch-play .ic { width: 14px; height: 14px; color: var(--jade); }
+.ch-play em { font-style: normal; font-size: 10.5px; color: var(--dim); }
+.ch-play:hover:not(:disabled) { border-style: solid; border-color: var(--jade); color: var(--text); }
+.ch-play:disabled { cursor: default; opacity: .7; border-color: var(--border); }
+
+/* The mini-game overlay */
+.mg-overlay { position: fixed; inset: 0; z-index: 205; display: flex; align-items: center; justify-content: center; padding: 12px;
+  background: rgba(8,4,14,0.88); }
+.mg-overlay.hidden { display: none; }
+.mg-card { width: min(440px, 100%); max-height: 100%; overflow: auto; padding: 12px 14px 14px; border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, var(--border));
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in srgb, var(--gold) 7%, transparent), transparent 70%), var(--bg2); }
+.mg-head { display: flex; align-items: flex-start; gap: 9px; }
+.mg-glyph .ic { width: 22px; height: 22px; color: var(--gold); }
+.mg-titles { flex: 1; min-width: 0; }
+.mg-title { font-size: 15px; color: var(--gold); letter-spacing: .5px; }
+.mg-sub { font-size: 11px; color: color-mix(in srgb, var(--text) 72%, var(--dim)); line-height: 1.4; margin-top: 2px; }
+.mg-x { flex: 0 0 auto; width: 32px; height: 32px; display: grid; place-items: center; background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--dim-hi); cursor: pointer; }
+.mg-x:hover { color: var(--text); border-color: var(--dim); } .mg-x .ic { width: 14px; height: 14px; }
+.mg-body { margin: 12px 0 6px; }
+.mg-strikes .mg-body { margin-bottom: 4px; }
+.mg-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 11px; color: var(--dim-hi); }
+.mg-foot .btn-primary, .mg-strike { min-height: 40px; padding: 6px 16px; }
+.mg-strike { width: 100%; font-size: 14px; }
+.mg-strike kbd { font-family: var(--font); font-size: 10px; color: var(--dim); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 6px; }
+/* Strikes: the brush bar, the gold seal, the marker */
+.mg-bar { position: relative; height: 46px; border-radius: 6px; cursor: pointer; touch-action: manipulation;
+  background: linear-gradient(180deg, rgba(0,0,0,0.5), rgba(20,10,26,0.6)); border: 1px solid var(--border); overflow: hidden; }
+.mg-bar::before { content: ''; position: absolute; left: 4%; right: 4%; top: 50%; height: 2px; background: color-mix(in srgb, var(--text) 18%, transparent); }
+.mg-seal { position: absolute; top: 6px; bottom: 6px; border-radius: 4px; display: flex; justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--gold) 60%, transparent); background: color-mix(in srgb, var(--gold) 12%, transparent); transition: left .18s, width .18s; }
+.mg-perfect { display: block; height: 100%; background: color-mix(in srgb, var(--gold) 40%, transparent); border-left: 1px solid var(--gold); border-right: 1px solid var(--gold); }
+.mg-marker { position: absolute; top: 2px; bottom: 2px; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--text); box-shadow: 0 0 8px var(--text); }
+.mg-bar.calm .mg-marker { display: none; }
+.mg-bar.calm .mg-seal { background: color-mix(in srgb, var(--gold) calc(12% + var(--near, 0) * 55%), transparent); border-width: 2px; }
+.mg-bar.flash-perfect { box-shadow: 0 0 18px color-mix(in srgb, var(--gold) 70%, transparent); border-color: var(--gold); }
+.mg-bar.flash-good { box-shadow: 0 0 10px color-mix(in srgb, var(--jade) 50%, transparent); }
+.mg-bar.flash-miss { border-color: var(--red); }
+:root[data-motion="reduced"] .mg-seal { transition: none; }
+.mg-pips { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
+.mg-pips i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border); }
+.mg-pips i.perfect { background: var(--gold); border-color: var(--gold); }
+.mg-pips i.good { background: var(--jade); border-color: var(--jade); border-radius: 50%; }
+.mg-pips i.miss { border-color: var(--red); background: repeating-linear-gradient(45deg, transparent 0 3px, var(--red) 3px 4px); }
+.mg-call { text-align: center; font-size: 13px; min-height: 18px; margin-top: 4px; color: var(--dim-hi); }
+.mg-call.perfect { color: var(--gold); } .mg-call.good { color: var(--jade); } .mg-call.miss { color: var(--red-text); }
+.mg-result { text-align: center; }
+.mg-score { font-size: 13px; color: var(--dim-hi); } .mg-score b { font-size: 30px; color: var(--gold); font-weight: normal; }
+.mg-result.perfect .mg-score b { text-shadow: 0 0 12px var(--gold); }
+.mg-tally { font-size: 11px; color: var(--dim-hi); margin: 2px 0 10px; }
+.mg-choose { font-size: 11px; color: var(--text); margin-bottom: 6px; }
+.mg-pick { display: flex; flex-direction: column; gap: 6px; }
+.mg-pick button { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.mg-pick .ic { width: 14px; height: 14px; }
+/* Meridian Flow: the channel grid */
+.mg-grid { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 3px; width: min(100%, calc(var(--n) * 62px)); margin: 0 auto; }
+.mg-tile { aspect-ratio: 1; min-width: 44px; padding: 0; border-radius: 4px; cursor: pointer; touch-action: manipulation;
+  border: 1px solid color-mix(in srgb, var(--purple) 25%, var(--border)); background: rgba(10,5,16,0.7); }
+.mg-tile:hover, .mg-tile:focus-visible { border-color: var(--gold); outline: none; }
+.mg-tile svg { width: 100%; height: 100%; display: block; }
+.mg-tile .ch { fill: none; stroke: color-mix(in srgb, var(--text) 35%, transparent); stroke-width: 11; stroke-linecap: round; }
+.mg-tile .ch.lit { stroke: var(--jade); filter: drop-shadow(0 0 3px var(--jade)); }
+.mg-tile .knot { fill: color-mix(in srgb, var(--text) 30%, transparent); }
+.mg-tile.lit .knot { fill: var(--jade); }
+.mg-tile .acu { fill: rgba(10,5,16,0.9); stroke: color-mix(in srgb, var(--gold) 55%, transparent); stroke-width: 5; }
+.mg-tile.lit .acu { fill: var(--gold); stroke: var(--gold); }
+.mg-tile .dan { fill: var(--gold); stroke: #FFF1C2; stroke-width: 3; }
+.mg-tile.src { border-color: color-mix(in srgb, var(--gold) 60%, transparent); }
+.mg-grid.solved .mg-tile { border-color: color-mix(in srgb, var(--jade) 50%, transparent); }
+.mg-flowmeta { text-align: center; font-size: 11px; color: var(--dim-hi); margin-top: 8px; font-variant-numeric: tabular-nums; }
+.mg-reward .ic, .mg-done .ic { width: 13px; height: 13px; color: var(--jade); vertical-align: -2px; }
+.mg-done { color: var(--jade); }
+body[data-narrow="1"]:not([data-layout="overlay"]) .mg-overlay { padding: 0; }
+body[data-narrow="1"]:not([data-layout="overlay"]) .mg-card { width: 100%; height: 100%; max-height: none; border-radius: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+body[data-narrow="1"]:not([data-layout="overlay"]) .mg-grid { width: min(100%, calc(var(--n) * 64px)); }
+body[data-layout="overlay"] .mg-tile { min-width: 0; }
+.mg-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 6px 16px; border-radius: 5px; cursor: pointer;
+  font-family: var(--font); font-size: 13px; color: #1A0E04; background: linear-gradient(180deg, #F1D985, var(--gold)); border: 1px solid var(--gold);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 25%, transparent); }
+.mg-btn:hover { filter: brightness(1.08); } .mg-btn:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.mg-btn .ic { width: 14px; height: 14px; }
+.mg-btn.ghost { color: var(--gold); background: var(--fam-sunk, rgba(10,6,14,0.4)); box-shadow: none; border-color: color-mix(in srgb, var(--gold) 50%, var(--border)); }
+.mg-strike kbd { color: #5A4310; border-color: color-mix(in srgb, #1A0E04 30%, transparent); }
+
+/* UI review: 7.7 (2026-10-03, cycle 2) */
+/* ── Kin → Tree: the family tree (2026-10-03, renderer/game/family-tree.js) ─────────────────────────────────
+   Generation rows of person nodes; an SVG layer behind them draws the lines (partners' bar + an elbow to the
+   children). Wide trees scroll sideways inside .ft-scroll (Overlay / phone) and centre on you. */
+.ft-view { display: flex; flex-direction: column; gap: 8px; padding: 2px 0 10px; }
+.ft-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; padding: 0 2px; }
+.ft-title { font-size: 13px; color: var(--gold); letter-spacing: .5px; }
+.ft-sum { font-size: 10.5px; color: var(--dim); order: 3; flex-basis: 100%; }   /* its own line under the title (review cycle 1) */
+.ft-back { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
+.ft-back svg { width: 12px; height: 12px; }
+.ft-card .fc-head { align-items: center; flex-wrap: wrap; row-gap: 6px; }
+.ft-card .fc-id { flex: 1 1 150px; min-width: 0; }
+.ft-card.dead .fc-name { color: color-mix(in srgb, var(--text) 70%, var(--dim)); }
+.ft-card .ft-go { flex: none; width: auto; min-width: 128px; margin-left: auto; }
+.ft-scroll { overflow-x: auto; overflow-y: hidden; border: 1px solid var(--border); border-radius: 6px;
+  background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--gold) 5%, transparent), transparent 70%), rgba(10, 5, 16, 0.55); }
+.ft-canvas { position: relative; width: max-content; min-width: 100%; padding: 8px 12px 12px; box-sizing: border-box; }
+.ft-lines { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.ft-ln { fill: none; stroke: color-mix(in srgb, var(--gold) 45%, var(--dim)); stroke-width: 1.3; }
+.ft-ln.dash { stroke-dasharray: 3 3; stroke: var(--dim); }
+.ft-row { position: relative; }
+.ft-row + .ft-row { margin-top: 18px; }
+.ft-gen { position: sticky; left: 0; display: inline-block; margin-bottom: 3px; font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; color: color-mix(in srgb, var(--dim) 85%, transparent); }
+.ft-nodes { display: flex; justify-content: center; gap: 12px; }
+.ft-node { position: relative; z-index: 1; width: 118px; flex: none; display: flex; flex-direction: column; gap: 1px; text-align: left;
+  padding: 5px 7px 6px; font-family: var(--font); color: var(--text); cursor: pointer;
+  background: rgba(24, 10, 4, 0.92); border: 1px solid var(--border); border-radius: 5px; transition: border-color .12s, box-shadow .12s; }
+.ft-node:hover, .ft-node:focus-visible { border-color: color-mix(in srgb, var(--gold) 60%, var(--border)); outline: none; }
+.ft-node.sel { border-color: var(--gold); box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 25%, transparent); }
+.ft-node.you { border-color: color-mix(in srgb, var(--jade) 70%, var(--border)); background: rgba(8, 26, 18, 0.92); }
+.ft-node.you.sel { border-color: var(--jade); box-shadow: 0 0 10px color-mix(in srgb, var(--jade) 30%, transparent); }
+.ft-node.life { border-style: double; border-width: 3px; border-color: color-mix(in srgb, var(--gold) 55%, var(--border)); padding: 3px 5px 4px; }
+.ft-node.dead { background: rgba(14, 8, 10, 0.92); }
+.ft-node.dead .ft-name, .ft-node.dead .ft-sub { color: color-mix(in srgb, var(--text) 55%, var(--dim)); }
+.ft-node.former, .ft-node.estranged { border-style: dashed; }
+.ft-rel { display: flex; align-items: center; gap: 3px; font-size: 9.5px; color: var(--dim); letter-spacing: .4px; }
+.ft-node.life .ft-rel { color: var(--gold); }
+.ft-node.you .ft-rel { color: var(--jade); }
+.ft-mark { display: inline-flex; color: var(--gold); }
+.ft-mark svg { width: 13px; height: 13px; }
+.ft-name { font-size: 11.5px; line-height: 1.2; overflow-wrap: anywhere; }
+.ft-sub { font-size: 9.5px; color: var(--dim-hi, var(--dim)); line-height: 1.25; }
+.ft-key { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 10px; color: var(--dim); padding: 0 2px; }
+.ft-key span { display: inline-flex; align-items: center; gap: 4px; }
+.ft-key svg { width: 11px; height: 11px; color: var(--gold); }
+.ft-key i { display: inline-block; width: 12px; height: 9px; border-radius: 2px; border: 1px solid var(--border); background: rgba(24, 10, 4, 0.92); }
+.ft-key i.k-dead { background: rgba(14, 8, 10, 0.92); opacity: .6; }
+.ft-key i.k-life { border: 3px double color-mix(in srgb, var(--gold) 55%, var(--border)); width: 10px; height: 7px; }
+body[data-layout="overlay"] .ft-view > .ft-card { order: 0; }   /* the shared Overlay .fam-card { order: 2 } would push it below the tree */
+body[data-layout="overlay"] .ft-node, body[data-narrow="1"] .ft-node { width: 104px; }
+body[data-layout="overlay"] .ft-card .fc-head, body[data-narrow="1"] .ft-card .fc-head { flex-wrap: wrap; }
+body[data-layout="overlay"] .ft-card .ft-go, body[data-narrow="1"] .ft-card .ft-go { width: 100%; margin-left: 0; margin-top: 6px; }
+/* The door on Kin → Family */
+.fam-tree-link .fa-g { color: var(--gold); }
+
+/* The compact "You" line shown until you tap someone (review cycle 1: the full card pushed the tree below the fold) */
+.ft-you { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); padding: 0 2px; }
+.ft-you b { color: var(--jade); font-weight: normal; }
+.ft-you svg { width: 12px; height: 12px; color: var(--jade); }
+#btn-flow .flow-n svg { width: 9px; height: 9px; }
+
+/* ── Phase 28 (4.2): the person card + tappable names (renderer/game/person-card.js) ── */
+/* UI review: 7.7 (2026-10-03, cycle 1) */
+#person-overlay { position: fixed; inset: 0; z-index: 410; background: rgba(4,2,8,0.28); }
+.pc-link { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; text-align: inherit;
+  text-decoration: underline dotted color-mix(in srgb, var(--gold) 55%, transparent); text-underline-offset: 3px; }
+.pc-link:hover, .pc-link:focus-visible { color: var(--gold); text-decoration-color: var(--gold); outline: none; }
+.pc-pop { animation: bdIn .14s ease-out; }
+.pc-pop.dead { border-color: color-mix(in srgb, var(--dim-hi) 55%, transparent); }
+.pc-pop.dead .bd-glyph { color: var(--dim-hi); text-shadow: none; }
+.pc-name { font-size: 13px; color: var(--gold); letter-spacing: .6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-pop.dead .pc-name { color: var(--text); }
+.pc-sub { font-size: 10.5px; color: var(--dim-hi); letter-spacing: .3px; margin-top: 1px; white-space: normal; }
+.pc-you { color: var(--jade); font-weight: normal; text-transform: none; }
+.pc-back { margin-right: -2px; }
+.pc-tone-jade { color: var(--jade); }
+.pc-tone-red { color: var(--red-text); }
+.pc-tone-dim { color: var(--dim-hi); }
+.pc-think { display: flex; flex-direction: column; gap: 3px; padding: 5px 7px; border-radius: 4px;
+  background: color-mix(in srgb, var(--gold) 5%, transparent); border: 1px solid color-mix(in srgb, var(--gold) 14%, transparent); }
+.pc-rel { font-size: 11.5px; color: var(--text); letter-spacing: .4px; }
+.pc-rel b { font-variant-numeric: tabular-nums; margin-left: 3px; }
+.pc-mem { font-size: 10.5px; line-height: 1.45; color: var(--text); font-style: italic; }
+.pc-mem.dim { color: var(--dim-hi); }
+.pc-kin { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--text); }
+.pc-kin-i { display: inline-flex; align-items: baseline; gap: 4px; }
+.pc-kin-r { font-size: 9.5px; color: var(--dim); letter-spacing: .8px; text-transform: uppercase; }
+.pc-go { display: flex; flex-direction: column; gap: 5px; margin-top: 9px; }
+.pc-go-b { width: 100%; }
+/* A sect page's elders, under its name */
+.pc-people { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin-top: 5px; font-size: 11px; color: var(--text); }
+.pc-people-k { font-size: 9.5px; color: var(--dim); letter-spacing: .8px; text-transform: uppercase; margin-right: 2px; }
+.pc-sep { color: var(--dim); }
+@media (pointer: coarse) { .pc-link { padding: 4px 0; } .pc-go-b { min-height: 44px; } }
+.pc-pop .bd-row { flex-wrap: wrap; column-gap: 10px; row-gap: 0; }
+.pc-pop .bd-v { flex-shrink: 1; min-width: 0; margin-left: auto; }
+
+/* ── Phase 28 (4.3): World → Class (class-view.js) + the person card's life chips ── */
+/* UI review: 7.8 (2026-10-03) */
+.pc-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 1px; }
+.pc-chip { display: inline-block; font-size: 9.5px; letter-spacing: .6px; padding: 1px 6px; border-radius: 8px; white-space: nowrap;
+  border: 1px solid color-mix(in srgb, var(--dim) 60%, transparent); color: var(--dim-hi); }
+.pc-chip.gold { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, transparent); background: color-mix(in srgb, var(--gold) 8%, transparent); }
+.pc-chip.red { color: var(--red-text); border-color: color-mix(in srgb, var(--red) 55%, transparent); }
+.pc-chip.dim { color: var(--dim-hi); font-style: italic; }
+.bd-row.gold .bd-v { color: var(--gold); }
+
+.cls-view { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
+.cls-title { font-size: 13px; color: var(--gold); letter-spacing: .8px; }
+.cls-yr { font-size: 10px; color: var(--dim-hi); letter-spacing: .4px; margin-left: 6px; }
+.cls-lede { font-size: 10.5px; line-height: 1.5; color: var(--dim-hi); font-style: italic; }
+.cls-lives { display: flex; flex-wrap: wrap; gap: 4px; }
+.cls-life { font: inherit; font-size: 10.5px; padding: 3px 9px; border-radius: 10px; cursor: pointer; color: var(--dim-hi);
+  background: var(--btn-bg); border: 1px solid var(--border); }
+.cls-life.on { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 60%, transparent); }
+.cls-life:hover, .cls-life:focus-visible { color: var(--text); outline: none; border-color: var(--dim); }
+.cls-stats { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 10.5px; color: var(--dim-hi); padding: 4px 0 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--dim) 25%, transparent); }
+.cls-stat b { font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--text); font-weight: normal; }
+.cls-stat.jade b { color: var(--jade); } .cls-stat.red b { color: var(--red-text); } .cls-stat.gold b { color: var(--gold); }
+.cls-stat.warn b { color: var(--ember-text); }
+.cls-sec { margin-top: 6px; }
+.cls-sec.gold { color: var(--gold); }
+.cls-list { display: flex; flex-direction: column; gap: 2px; }
+.cls-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: start; gap: 6px; padding: 4px 6px;
+  border-radius: 4px; background: color-mix(in srgb, var(--text) 3%, transparent); font-size: 11px; color: var(--text); }
+.cls-row.chosen { box-shadow: inset 2px 0 0 color-mix(in srgb, var(--gold) 70%, transparent); }
+.cls-row.you { background: color-mix(in srgb, var(--jade) 12%, transparent); box-shadow: inset 2px 0 0 var(--jade); }
+.cls-row.you b { color: var(--jade); font-weight: normal; letter-spacing: .6px; }
+.cls-row.dead .pc-link { color: var(--dim-hi); }
+.cls-n { font-size: 10px; color: var(--dim); text-align: right; font-variant-numeric: tabular-nums; display: inline-flex; justify-content: flex-end; }
+.cls-n svg { width: 12px; height: 12px; }
+.cls-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cls-who { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 5px; min-width: 0; }
+.cls-meta { font-size: 10px; color: var(--dim-hi); line-height: 1.35; }
+.cls-row .cls-n { padding-top: 1px; }
+.cls-sect { font-size: 9.5px; color: var(--purple); letter-spacing: .3px; }
+.cls-cause { font-size: 10px; color: var(--dim-hi); font-style: italic; }
+.cls-realm { color: var(--text); white-space: nowrap; }
+.cls-sect, .cls-meta .cls-cause { white-space: nowrap; }
+.pc-sub + .pc-chips { margin-top: 4px; }
+.cls-fallen summary { cursor: pointer; list-style: none; }
+.cls-fallen summary::-webkit-details-marker { display: none; }
+.cls-fallen summary::before { content: '+ '; color: var(--dim); }
+.cls-fallen[open] summary::before { content: '\2212  '; }
+body[data-layout="expanded"] .cls-list, body[data-layout="desktop"] .cls-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 3px 8px; }
+@media (pointer: coarse) { .cls-row { min-height: 40px; } .cls-life { min-height: 36px; } }
+.cls-realm.dim { color: var(--dim-hi); }
+
+/* UI review: 7.8 (2026-10-03) */
+/* ── Phase 28 (4.6): 世 World → Chronicle (chronicle-view.js) — the merged world feed + "The world by realm" ── */
+.chr-view { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
+/* Side by side only when the pane is wide enough (the feed needs ~340px beside the strip); otherwise the strip stacks on top */
+.chr-cols { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 14px; }
+.chr-cols > .chr-bands { flex: 1 1 250px; min-width: 0; }
+.chr-cols > .chr-feed { flex: 999 1 340px; }
+.chr-bands { display: flex; flex-direction: column; gap: 5px; padding: 8px 9px; border: 1px solid color-mix(in srgb, var(--gold) 18%, transparent);
+  border-radius: 6px; background: color-mix(in srgb, var(--gold) 4%, transparent); }
+.chr-bands .bd-sec-title { margin: 0 0 2px; }
+.chr-band { display: grid; grid-template-columns: 58px minmax(0, 1fr) 46px 54px; align-items: center; gap: 6px; font-size: 10.5px; }
+.chr-bn { color: var(--text); white-space: nowrap; letter-spacing: .3px; }
+.chr-bar { position: relative; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.07); }
+.chr-bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; transition: width .35s ease; }
+.chr-bar > i.tone-jade { background: var(--jade); box-shadow: 0 0 6px color-mix(in srgb, var(--jade) 40%, transparent); }
+.chr-bar > i.tone-red { background: var(--red); }
+.chr-bar > i.tone-warm { background: var(--ember-text); }
+.chr-tick { position: absolute; top: -3px; width: 2px; height: 11px; margin-left: -1px; border-radius: 1px; background: var(--gold); opacity: .85; }
+.chr-bc { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.chr-bc .dim { color: var(--dim-hi); }
+.chr-bs { font-size: 9.5px; letter-spacing: .4px; text-align: right; white-space: nowrap; }
+.chr-bs.tone-warm { color: var(--ember-text); }
+.chr-bnote { font-size: 10px; line-height: 1.45; margin-top: 4px; }
+.chr-why > summary { list-style: none; display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 10px; margin-top: 2px; }
+.chr-why > summary::-webkit-details-marker { display: none; }
+.chr-why[open] > summary .lib-fold { transform: rotate(90deg); }
+.chr-routine { margin-top: 6px; }
+.chr-facts { display: flex; flex-direction: column; gap: 1px; font-size: 10px; color: var(--dim-hi); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 4px; }
+.chr-facts span::before { content: '\00B7  '; color: var(--gold); }
+.chr-feed { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 100%; }
+.chr-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chr-n { font-size: 9.5px; color: var(--dim); font-variant-numeric: tabular-nums; margin-left: 2px; }
+.chr-chip.on .chr-n { color: color-mix(in srgb, var(--gold) 70%, var(--dim)); }
+.chr-chip.fresh { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+.chr-chip.fresh::after { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); margin-left: 4px; vertical-align: middle; }
+.chr-list { display: flex; flex-direction: column; gap: 1px; }
+.chr-year { font-size: 10px; color: var(--gold); letter-spacing: .8px; margin: 7px 0 2px; padding-bottom: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 16%, transparent); font-variant-numeric: tabular-nums; }
+.chr-year:first-child { margin-top: 2px; }
+.chr-row { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; align-items: start; padding: 3px 4px; border-radius: 4px;
+  font-size: 11px; line-height: 1.45; color: var(--text); }
+.chr-row.notable { background: color-mix(in srgb, var(--gold) 7%, transparent); box-shadow: inset 2px 0 0 color-mix(in srgb, var(--gold) 70%, transparent); }
+.chr-ic { display: inline-flex; padding-top: 2px; color: var(--dim-hi); }
+.chr-ic svg { width: 12px; height: 12px; }
+.chr-row.k-hidden .chr-ic, .chr-row.k-ascended .chr-ic { color: var(--gold); }
+.chr-row.k-died .chr-ic { color: var(--red-text); }
+.chr-row.k-rise .chr-ic, .chr-row.k-wave .chr-ic { color: var(--jade); }
+.chr-row.k-sect .chr-ic { color: var(--purple); }
+.chr-t { min-width: 0; overflow-wrap: anywhere; }
+.chr-t .pc-chip { vertical-align: 1px; }
+.chr-more { align-self: flex-start; margin-top: 6px; }
+.chr-foot { margin-top: 6px; }
+@media (pointer: coarse) { .chr-chip { min-height: 36px; } .chr-row { padding: 6px 4px; } }
+/* The Sects ledger's link into the Chronicle (replaces the old folded chronicle) */
+.ws-chron-link { display: grid; grid-template-columns: 16px minmax(0, 1fr) 14px; align-items: center; gap: 7px; width: 100%; margin-top: 8px;
+  padding: 7px 9px; font: inherit; text-align: left; cursor: pointer; color: var(--text); background: transparent;
+  border: 1px solid color-mix(in srgb, var(--gold) 22%, transparent); border-radius: 6px; }
+.ws-chron-link:hover, .ws-chron-link:focus-visible { outline: none; border-color: color-mix(in srgb, var(--gold) 55%, transparent); background: color-mix(in srgb, var(--gold) 5%, transparent); }
+.ws-chron-ic { display: inline-flex; color: var(--gold); } .ws-chron-ic svg { width: 13px; height: 13px; }
+.ws-chron-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ws-chron-h { font-size: 11px; color: var(--gold); letter-spacing: .5px; }
+.ws-chron-last { font-size: 10px; color: var(--dim-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-chron-link .ws-go svg { width: 10px; height: 10px; }
+@media (pointer: coarse) { .ws-chron-link { min-height: 44px; } }

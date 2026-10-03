@@ -13,10 +13,12 @@ const ROOT = path.join(__dirname, '..', '..')
 // Load order mirrors renderer/index.html (sprites, platform-storage, ascii-renderer, game.js skipped:
 // they're UI/Node-bridge only and the logic never references them).
 const DATA_FILES = ['stages', 'techniques', 'events', 'items', 'locations', 'enemies', 'recipes',
-                    'beasts', 'talismans', 'arena', 'arts', 'sects', 'sect-buildings', 'sect-war', 'bloodline', 'lifespan', 'family', 'succession', 'family-events', 'clan-legacies', 'automation', 'settings', 'personalities', 'banter-lines', 'names', 'soul']
-  .map(f => `assets/data/${f}.js`)
+                    'beasts', 'talismans', 'arena', 'arts', 'sects', 'sect-buildings', 'sect-war', 'sect-branches', 'npc-sects', 'bloodline', 'tempering', 'lifespan', 'family', 'succession', 'family-events', 'clan-legacies', 'automation', 'settings', 'personalities', 'banter-lines', 'names', 'soul', 'world-population', 'npc-lives']
+  .map(f => `assets/data/${f}.js`).concat(['assets/scenes/sect-base-scene.js'])
 const LOGIC_FILES = ['renderer/engine/persons.js', 'renderer/engine/game-state.js',
-  ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war', 'banter', 'notifications'].map(f => `renderer/game/${f}.js`)]
+  ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war', 'banter', 'notifications', 'minigames'].map(f => `renderer/game/${f}.js`),
+  // The scene layer (A7) is UI-only, but loading it proves the module is safe in the headless harness (checks/scene.js).
+  'renderer/engine/ink-renderer.js', 'renderer/engine/scene-renderer.js']
 
 function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } = {}) {
   const clock = { now: startMs }
@@ -80,15 +82,16 @@ function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } 
     ctx, clock, gs, systems, saves, ev, seed,
     data: ev(`({ CULTIVATION_STAGES, TECHNIQUES, ITEMS, LOCATIONS, RECIPES, SECTS, SECT_RANKS,
       SECT_MISSIONS, SECT_MAX_MISSIONS, SECT_FOUNDING, SECT_BUILDINGS, SECT_HALL_LEVELS,
+      SECT_BUILDING_MAX_LEVEL, SECT_BUILDING_LEVEL_STEP, SECT_BUILDING_UPGRADE_MULT,
       DISCIPLE_RECRUIT_COST, BEAST_TYPES, TALISMAN_GRADES, TALISMAN_GRADE_ORDER, WAR_REINFORCE_COST_PER_FAME, WAR_ALLY_COST_BASE, WAR_ALLY_COST_PER_FAME, MEMBER_WAR_MAX_PILLS,
       MEMBER_WAR_CHEST_BASE, MEMBER_WAR_CHEST_PER_RANK,
       ARTS, ARTS_LIST, ART_RARITY, ART_RARITY_ORDER, ART_BASICS, ART_PASSIVE_SLOTS, ART_STUDY_SLOTS, ART_STAGE_GRANTS, ART_MASTERY_MAX, ART_MASTERY_POWER,
-      BLOODLINE_CAP, SETTINGS_DEFS, PERSONALITIES, BANTER_LINES, BANTER_TRIGGERS, BANTER_MIN_LINES,
+      BLOODLINE_CAP, BLOODLINE_QI_COEF, ASCENSION_MIN_BLOODLINE, SETTINGS_DEFS, PERSONALITIES, BANTER_LINES, BANTER_TRIGGERS, BANTER_MIN_LINES,
       BANTER_RECENT_MAX, BANTER_LOG_MAX,
-      WAR_ORDER_ANSWER_OPTIONS, WAR_ORDER_LEND_BEAST_OPTIONS, WAR_ORDER_REINFORCE_OPTIONS, WAR_ORDER_ALLY_OPTIONS,
+      WAR_ORDER_ANSWER_OPTIONS, WAR_ORDER_LEND_BEAST_OPTIONS, WAR_ORDER_REINFORCE_OPTIONS, WAR_ORDER_ALLY_OPTIONS, WAR_ORDER_RAZE_OPTIONS,
       AUTOMATION_UNLOCKS, AUTO_BREAKTHROUGH_THRESHOLD_MIN, AUTO_BREAKTHROUGH_THRESHOLD_MAX,
       GAME_YEARS_PER_OPEN_HOUR, AWAKENING_AGE, PROPOSAL_MIN_STAGE, ADULT_AGE, LOVER_ENCOUNTER_MAX, CHILD_INTERVAL_BY_PLAN, TOURNAMENT_TOP,
-      MERIT_STAGE, MERIT_DEED_CAP, CATCHUP_QPS_MULT, CATCHUP_BT_BONUS, CLAN_FIRSTS, CLAN_LEGACIES })`),
+      MERIT_STAGE, MERIT_DEED_CAP, CLAN_FIRSTS, CLAN_LEGACIES, NPC_WORLD })`),
     // One frame of the real game loop (renderer/game.js), minus rendering.
     // onStones(source, delta) — optional Spirit Stone ledger hook (who produced/consumed stones this frame).
     step(dt, onStones) {

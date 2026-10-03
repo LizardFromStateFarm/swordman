@@ -588,7 +588,12 @@ const CHILD_ACTIONS = {
   teach: { cdSecs: 300, qiFrac: 0.06, xp: 0.35, bond: { default: 3, hotblood: 6, stoic: 5, paranoid: 4, arrogant: -2, lazy: -3 } },
   gift:  { cdSecs: 300, stones: 50, xp: 0.2, bond: { default: 4, miser: 9, glutton: 8, arrogant: 6, stoic: 1 },
            spoil: { arrogant: -4, psycho: -4, demonking: -3, miser: -2 } },
+  // Phase 14 (body-constitution.md): drill the child's body. Each session adds CHILD_BODY.perSession body XP; every
+  // CHILD_BODY.perTier of it raises their body tier (BODY_TIERS, to CHILD_BODY.maxTier): fight power in tournaments + challenges.
+  temper: { cdSecs: 600, items: { beast_core: 1 }, bond: { default: 2, hotblood: 7, stoic: 5, glutton: 3, lazy: -4, poet: -2, coward: -3 } },
 }
+const TEMPER_MIN_AGE = 8
+const CHILD_BODY = { perSession: 1, perTier: 3, maxTier: 5 }
 
 // ── 1.8b-3b: affairs on your terms (family.md → "1.8b-3b") ────────────────────
 const COVER_TRACKS_COST        = 60        // stones, scaled like event costs

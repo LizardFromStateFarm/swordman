@@ -40,22 +40,26 @@ function sumParts(parts) { return parts.reduce((a, p) => a + p.value, 0) }
     assert(near(rebuild(b.bt), b.btRaw), `stage ${idx}: BT raw sum matches`)
   }
 
-  // Catch-up: below the clan's best stage the ×2.5 and +10% show up as named parts
-  const clan = gs._playerClan()
-  if (clan) {
-    s.stageIndex = 4; clan.bestStageIndex = 12; gs._recalc()
+  // Phase 46 (1.20a, lineage-sect.md): ancestral catch-up is gone; Bloodline Quality raises Qi/s instead, and
+  // the term is named in the Qi/s breakdown.
+  {
+    const bq0 = s.bloodlineQuality || 0
+    s.bloodlineQuality = 0; gs._recalc(); const low = s.derived.qiPerSecond
+    s.bloodlineQuality = 50; gs._recalc()
     const b = s.derived.breakdown
-    assert(b.qps.some(p => p.label === 'Ancestral catch-up') && b.bt.some(p => p.label === 'Ancestral catch-up'), 'catch-up is named in both Qi/s and BT breakdowns')
-    assert(s.derived.catchUpUntil === 12, 'derived.catchUpUntil = clan best stage')
-    assert(near(rebuild(b.qps), s.derived.qiPerSecond), 'catch-up: Qi/s parts still rebuild')
-    clan.bestStageIndex = 0; gs._recalc()
-  } else console.log('ok   (no clan on this boot — catch-up part skipped)')
+    assert(s.derived.catchUp === undefined && s.derived.catchUpUntil === undefined, 'no catch-up keys on derived')
+    assert(b.qps.some(p => p.label === 'Bloodline Quality'), 'Bloodline Quality is named in the Qi/s breakdown')
+    assert(near(rebuild(b.qps), s.derived.qiPerSecond), 'Bloodline: Qi/s parts still rebuild')
+    assert(s.derived.qiPerSecond > low, 'Bloodline Quality 50 raises Qi/s above BQ 0')
+    s.bloodlineQuality = bq0; gs._recalc()
+  }
 
   // Ascension Trial parts
   s.bloodlineQuality = 37; s.realmIntegrity = 100; s.health = 80
   const ab = gs.ascensionBreakdown()
   assert(near(Math.min(ab.cap, sumParts(ab.parts)), gs.ascensionChance()), 'Ascension parts sum to ascensionChance()')
-  assert(ab.parts.find(p => p.label === 'Health at 100').value === 0, 'Ascension: Health below 100 contributes 0 (shown as missed)')
+  assert(ab.parts.find(p => p.label === 'Health full').value === 0, 'Ascension: Health below full contributes 0 (shown as missed)')
+  assert(ab.req && ab.req.need === sim.data.ASCENSION_MIN_BLOODLINE && !ab.req.met, 'Ascension reports the Bloodline 100 requirement (unmet at 37)')
 
   // Failure preview vs. a real failure
   s.stageIndex = 5; s.techniques = []; s.equipped.weapon = null; s.equipped.artifact = null; s.beasts = []

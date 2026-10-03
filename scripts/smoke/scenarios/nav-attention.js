@@ -23,7 +23,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
 
   // ── Structure ──
   assert(await ev('document.querySelectorAll("#tabs .tab").length') === 6, 'six group buttons')
-  assert(await ev('[...document.querySelectorAll("#tabs .tab-glyph")].map(g => g.textContent).join("")') === '修歷家宗囊錄', 'group glyphs 修歷家宗囊錄')
+  assert(await ev('[...document.querySelectorAll("#tabs .tab-glyph")].map(g => g.textContent).join("")') === '修歷家宗囊世', 'group glyphs 修歷家宗囊世')
   for (const v of VIEWS) {
     await click(`[data-tab="${v}"]`); await sleep(120)
     const r = await ev(`(() => { const p = document.getElementById('tab-${v}'); return { active: p.classList.contains('active'), n: p.innerText.trim().length, others: document.querySelectorAll('#tab-body .panel.active').length } })()`)

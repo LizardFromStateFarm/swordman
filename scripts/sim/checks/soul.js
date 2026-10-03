@@ -8,10 +8,11 @@ const { createSim } = require('../loader.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
 const near = (a, b) => Math.abs(a - b) < 1e-9
 
-// Put the live life at the last mortal stage with a full Qi bar, ready for the Trial.
+// Put the live life at the last mortal stage with a full Qi bar and the full bloodline, ready for the Trial.
 function readyTrial(sim) {
   const gs = sim.gs, s = gs.get(), N = sim.data.CULTIVATION_STAGES.length
   s.stageIndex = N - 2; s.maxStageThisLife = s.stageIndex
+  s.bloodlineQuality = sim.data.ASCENSION_MIN_BLOODLINE   // Phase 47: the Trial is gated on the full bloodline
   gs._recalc(); s.qi = s.derived.qiCap; gs._recalc()
 }
 
@@ -22,6 +23,23 @@ function readyTrial(sim) {
   let so = gs.getSoul()
   assert(so.points === 0 && so.earned === 0 && so.resonance === 0 && !so.v1Finished, 'fresh install: blank soul record')
   assert(!('soul' in gs.get()) && !JSON.stringify(gs.get()).includes('failedAscensions'), 'soul state is not in the slot save')
+
+  // ── Phase 47 (1.21): the Ascension Trial requires Bloodline Quality 100 ──
+  {
+    readyTrial(sim)
+    const s = gs.get(), need = sim.data.ASCENSION_MIN_BLOODLINE
+    assert(need === sim.data.BLOODLINE_CAP, `the Trial requires the full bloodline (BQ ${need})`)
+    s.bloodlineQuality = need - 1; gs._recalc()
+    const denied = gs.attemptAscension()
+    assert(!denied.success && denied.reason === 'bloodline_too_low' && denied.need === need,
+      `below the full bloodline the Trial is refused (${denied.reason})`)
+    assert(!gs.get().interlude && gs.get().stats.ascensionAttempts === 0, 'a refused Trial neither ends the life nor counts as an attempt')
+    const ab = gs.ascensionBreakdown()
+    assert(ab.req && ab.req.need === need && !ab.req.met && ab.req.have === need - 1, 'ascensionBreakdown reports the unmet requirement')
+    s.bloodlineQuality = need; gs._recalc()
+    assert(gs.ascensionBreakdown().req.met, 'at the full bloodline the requirement is met')
+  }
+  await gs.initSlot(0)   // a clean slot for the failed-Trial section below
 
   // ── A failed Trial ──
   readyTrial(sim)
@@ -101,4 +119,24 @@ function readyTrial(sim) {
   await sim4.boot(0)
   so = sim4.gs.getSoul()
   assert(so.points === 0 && so.earned === 0 && so.resonance === C.SOUL_RESONANCE_MAX && Array.isArray(so.log), 'corrupt record is clamped (points ≥ 0, rank ≤ max)')
+
+  // ── Phase 47 (1.21): the bloodline climbs to the cap over many lives, in shrinking steps ──
+  // End a full-stage life at a time (orphan rebirth, so only the stage term counts) and watch BQ approach 100.
+  {
+    const sim5 = await createSim({ seed: 13 }); await sim5.boot(0); const g5 = sim5.gs
+    const N = sim5.data.CULTIVATION_STAGES.length, cap = sim5.data.BLOODLINE_CAP
+    const gains = []
+    let last = g5.get().bloodlineQuality || 0
+    for (let i = 0; i < 40 && (g5.get().bloodlineQuality || 0) < cap; i++) {
+      const s = g5.get()
+      s.stageIndex = N - 2; s.maxStageThisLife = s.stageIndex
+      g5.passTheMantle()
+      if (g5.get().interlude) g5.finishInterlude('orphan')
+      const now = g5.get().bloodlineQuality || 0
+      gains.push(+(now - last).toFixed(3)); last = now
+    }
+    assert(last >= cap, `the bloodline reaches the cap within 40 full lives (${gains.length} lives)`)
+    assert(gains.length >= 8, `reaching the cap takes many reincarnations, not a handful (${gains.length} lives)`)
+    assert(gains[0] > gains[gains.length - 1], `each life adds less as the bloodline thickens (${gains[0]} → ${gains[gains.length - 1]})`)
+  }
 })()

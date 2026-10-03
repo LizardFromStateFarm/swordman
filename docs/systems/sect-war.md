@@ -1,5 +1,5 @@
 # Sect Wars — Reference
-_Covers: sect-war.js (data) · renderer/game/sect-war.js · game-state.js (own-sect + member war API, _recalc) · game.js (renderSectWarPanel, renderMemberWarPanel, renderWarOrdersPanel) · styles.css · Phase: 5B + 5C + 32 · Updated: 2026-09-26_
+_Covers: sect-war.js (data) · renderer/game/sect-war.js · game-state.js (own-sect + member war API, _recalc) · game.js (renderSectWarPanel, renderMemberWarPanel, renderWarOrdersPanel) · styles.css · Phase: 5B + 5C + 32 + 43f · Updated: 2026-10-03_
 
 One `sectWar` state machine serves both sides: **own** (you lead a founded sect — 5B) and **member** (you belong to a
 Phase 4 sect that goes to war and calls on you — 5C). The two can't coexist: founding requires leaving any joined sect.
@@ -44,8 +44,9 @@ framing: `seen` is now presentation-only.
   - `memberWarPower()` → `{ bonus, power, rankMult }` — current commitment bonus (UI and resolution share it).
   - `memberWarChestFull()` → Spirit Stones that max the chest bonus at your rank.
 - `sectWarOdds()` → UI read helper (1.8b-5): `{ side, mult, chance, parts[], … }` — `chance` is the exact mean of the real
-  roll, `(m/0.8)·ln((m+1.4)/(m+0.6))` for your power multiplier m against a uniform ×0.6–1.4 rival (both sides resolve
-  that way). Member adds `rankMult`, `ifAnswered`; own adds `ifReinforced`, `ifAllied`, `reinforceCost`, `allyCost`,
+  roll, `(m/(0.8r))·ln((m+1.4r)/(m+0.6r))` for your power multiplier m against a rival of r × uniform(0.6–1.4) (both sides
+  resolve that way). **Phase 43c:** r = the Might ratio of the bound sect (`_warMightRatio`, npc-sects.md → 43c) — 1 when
+  no record is bound or at peace, so the pre-43c roll is the r = 1 case. Both sides also return `vs: { ratio, them, us, bound, foe }`. Member adds `rankMult`, `ifAnswered`; own adds `ifReinforced`, `ifAllied`, `reinforceCost`, `allyCost`,
   `arrayDamaged`. The old UI showed `power/(power+1)`, which was slightly off. Verified by checks/sect-view.js.
 - Internal: `_scheduleNextWar(baseTs?)` (own: fame-scaled; member: rank-scaled), `_advanceSectWarStep()` (one phase
   transition, returns bool), `_resolveSectWar()` (own) / `_resolveMemberWar()` (member), `_releaseWarBeast(xp)`, `_warSide()`, `_warEndsAt()`.
@@ -98,7 +99,7 @@ no longer depends on whether they were watching. See `PLAN.md` Phase 32 for the 
 the as-built reference.
 
 ### State
-- `s.warOrders: { answer, chestStones, lendBeast, reinforce, reinforceKeep, ally }` — one object per slot, applies
+- `s.warOrders: { answer, chestStones, lendBeast, reinforce, reinforceKeep, ally, raze }` — one object per slot, applies
   to both sides (only the fields relevant to your current side are read/shown).
 - UI (2026-09-27): number orders (`chestStones`, `reinforceKeep`) use themed −/+ steppers (native spin arrows are hidden
   app-wide), and the war-chest row carries a note with the player's own numbers: full chest at their rank, max bonus
@@ -110,6 +111,10 @@ the as-built reference.
   - `reinforce: 'never' | 'if_affordable'` — own side. Default `'never'`.
   - `reinforceKeep: number ≥ 0` — own side, only reinforce if this many stones remain banked afterward. Default `200`.
   - `ally: 'never' | 'cheapest' | 'best'` — own side. Default `'never'`.
+  - `raze: 'never' | 'theirs' | 'always'` — own side (Phase 43f). Sets the per-war vow to raze the foe if you win:
+    `theirs` = only wars a sect starts against you, `always` = every war, the ones you declare too. Applied by
+    `_applyRazeOrder()` when a war starts and when the order changes, **only on a war whose vow you never touched by
+    hand** (`sectWar.razeSet`). Default `'never'`. UI row: "Raze if we win". Rules: npc-sects.md → 43f.
   - **Defaults match the PLAN.md table exactly**: `answer` is the only order that doesn't cost stones, so it
     defaults on; every stone-costing order defaults off/never. A new player is never charged for a war they didn't
     explicitly opt into.

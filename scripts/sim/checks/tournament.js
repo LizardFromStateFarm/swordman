@@ -32,7 +32,7 @@ const pairUp = (gs, strongestVsWeakest = true) => {
     assert(JSON.stringify(lethalFights) === JSON.stringify(want) && info.n === 4 && !info.lethal, `n=${n}: lethal rounds ${JSON.stringify(lethalFights)} → Top 4 non-lethal`)
   }
   // Full run from 7: exactly 3 deaths (unless a coward yields), non-lethal Top 4, heir + 3 branch founders, trauma + bonds
-  { const { gs, f, kids } = await family(21, 7)
+  { const { sim, gs, f, kids } = await family(21, 7)
     const aff0 = f.affection
     gs.startTournament()
     assert(gs.chooseHeir(kids[0].id).reason === 'tournament', 'cannot name an heir mid-tournament')
@@ -61,8 +61,9 @@ const pairUp = (gs, strongestVsWeakest = true) => {
     gs.finishInterlude('clan')
     const lr = gs.get().lastReincarnation
     const heirNow = gs.get().world.persons[heir.id]
-    const expectTerm = 4 * (heirNow.stageIndex / 22) ** 2 + 2
-    assert(Math.abs(lr.heirTerm - expectTerm) < 1e-9 && lr.heirKind === 'tournament' && lr.heirTrauma, `BQ heir term ${lr.heirTerm.toFixed(3)} = 4×(${heirNow.stageIndex}/22)² + 2 (trauma; heir grew ${heirStage} → ${heirNow.stageIndex} before the seat)`) }
+    const G_HEIR = sim.ev('BLOODLINE_G_HEIR'), G_TRAUMA = sim.ev('BLOODLINE_G_TRAUMA_HEIR')
+    const expectTerm = G_HEIR * (heirNow.stageIndex / 22) ** 2 + G_TRAUMA
+    assert(Math.abs(lr.heirTerm - expectTerm) < 1e-9 && lr.heirKind === 'tournament' && lr.heirTrauma, `BQ heir term ${lr.heirTerm.toFixed(3)} = ${G_HEIR}×(${heirNow.stageIndex}/22)² + ${G_TRAUMA} (trauma; heir grew ${heirStage} → ${heirNow.stageIndex} before the seat)`) }
   // Coward yields in a lethal round
   { const { sim, gs, kids } = await family(31, 5, { pers: 'coward' })
     gs.startTournament()
@@ -84,7 +85,7 @@ const pairUp = (gs, strongestVsWeakest = true) => {
     gs.startTournament(); gs.fightTournamentRound(pairUp(gs))
     assert(gs.cancelTournament().reason === 'begun', 'cannot call off once blood is spilled') }
   // Too few / heir rules
-  { const { gs, kids } = await family(61, 1)
+  { const { sim, gs, kids } = await family(61, 1)
     assert(gs.startTournament().reason === 'too_few', 'one adult child → no tournament')
     const minor = gs._makeChild(gs.get().family.spouse)
     assert(gs.chooseHeir(minor.id).reason === 'not_eligible', 'a minor cannot be heir')
@@ -93,7 +94,8 @@ const pairUp = (gs, strongestVsWeakest = true) => {
     assert(gs.get().family.heirId === null, 'a runaway heir is cleared')
     gs.passTheMantle(); gs.finishInterlude('clan')
     const lr = gs.get().lastReincarnation, reg = gs.get().world.persons[minor.id]
-    assert(lr.heirKind === 'regency' && Math.abs(lr.heirTerm - 4 * (reg.stageIndex / 22) ** 2) < 1e-9, `no adult heir → the minor takes the seat under regency (grew to stage ${reg.stageIndex} over the reign; term ${lr.heirTerm.toFixed(3)})`) }
+    const G_HEIR = sim.ev('BLOODLINE_G_HEIR')
+    assert(lr.heirKind === 'regency' && Math.abs(lr.heirTerm - G_HEIR * (reg.stageIndex / 22) ** 2) < 1e-9, `no adult heir → the minor takes the seat under regency (grew to stage ${reg.stageIndex} over the reign; term ${lr.heirTerm.toFixed(3)})`) }
   // A tournament whose field shrinks to one ends with that child
   { const { gs, kids } = await family(71, 2)
     gs.startTournament(); kids[1].estranged = true; gs._recalc(); gs.get().world.year += 1; gs._tickFamily()

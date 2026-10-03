@@ -6,9 +6,37 @@
 const BANTER_LINES = {
   // ── generic ───────────────────────────────────────────────────────────────
   generic: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} awakened the same morning I did. The road is shorter for some.",
+      "Another name from my year, gone. I should burn incense, and then cultivate harder.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} stands above me now. We drank from the same spring once.",
+      "My classmate {classmate} has climbed past me. The gap is a whip, not a wall.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} has broken seclusion. The whole world just got a little heavier.",
+      "An old monster named {master} walks again. Keep your head down a while.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Another one down. The crowd is louder than my heartbeat.",
       "The purse grows. So does the temptation to keep going.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "My bones ring like a struck bell. The body has crossed a threshold.",
+      "Flesh that was clay is now something harder. I can feel the difference in every step.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "I came out of it. Changed, and still standing.",
+      "The ordeal asked everything. I had just enough to give.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "Some lessons leave a mark. This one left several.",
+      "The body remembers what it failed to endure. So will I.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Every strike landed true. Even the post looks impressed.",
+      "Not one wasted motion. The masters would nod, grudgingly.",
     ],
     idle: [
       "Absorb Qi. Circulate Qi. Wonder why nobody warned me cultivation was this boring.",
@@ -133,11 +161,53 @@ const BANTER_LINES = {
   },
   // ── arrogant ──────────────────────────────────────────────────────────────
   arrogant: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} is dead? I always said they lacked the fortune to walk this path.",
+      "One rival fewer. I find I am not as pleased as I expected.",
+      "Bury {classmate} somewhere with a view. They would have wanted to be looked at.",
+      "Heaven culls the weak. I merely hope it remembers which of us it favours.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is above me? A clerical error of Heaven. It will be corrected.",
+      "Let {classmate} enjoy the view from up there. I am coming to take it.",
+      "Ahead of me? Temporarily. Write that word down, {classmate}. Temporarily.",
+      "I let {classmate} pass so they would feel the shame of being overtaken later.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} crawls out of a cave and the world trembles? I tremble at nothing. Mostly.",
+      "Let this {master} enjoy their comeback. Every comeback needs someone to lose to.",
+      "Old {master} is out of seclusion. Good. I was running out of worthy opponents.",
+      "They say {master} can split a mountain. I say mountains are overrated.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Was that supposed to be a challenge? Bring me someone worth the sand.",
       "Kneel in the dust. It suits you better than a sword.",
       "The crowd chants my name. As it should.",
       "Another fool who thought the arena was fair. It is. I am simply better.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "Naturally my body ascends. It was always destined to outshine yours.",
+      "A new tier. Write it down somewhere the young masters can weep over it.",
+      "Behold this frame. Heaven itself took notes.",
+      "Others train for decades for this. I found it mildly inconvenient.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "The ordeal bowed first. Of course it did.",
+      "Lesser cultivators die in there. I found it bracing.",
+      "Let the waterfall remember who sat beneath it.",
+      "They call it an ordeal. I call it a warm-up.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "A scar. It merely makes me look more dangerous.",
+      "This proves nothing. The ordeal cheated.",
+      "No one will speak of this. No one.",
+      "Even my wounds are more handsome than your face.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Flawless. As expected of this young master.",
+      "Perfect strikes. Do try to keep up, everyone.",
+      "Was there ever a doubt? There was not.",
+      "Record this. Frame it. Hang it in the hall.",
     ],
     idle: [
       "Hmph. This Qi is barely worthy of being absorbed by me.",
@@ -315,11 +385,53 @@ const BANTER_LINES = {
   },
   // ── coward ────────────────────────────────────────────────────────────────
   coward: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} died? They were braver than me. That is exactly what killed them.",
+      "Note to self: whatever {classmate} did, do the opposite.",
+      "Another classmate gone. I am lighting incense and also checking the locks.",
+      "I liked {classmate}. I liked them alive. Being alive is a skill I intend to keep.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is stronger than me now. Good. Let them stand in front.",
+      "Being behind {classmate} means the arrows hit them first. I see no problem.",
+      "{classmate} climbed past me. I will be very polite to {classmate} from now on.",
+      "A strong classmate is a shield with legs. Hello, friend {classmate}.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} is out. I am going in. Seclusion. Right now. Goodbye.",
+      "An old monster called {master} walks the earth again. Which direction? I'll take the other one.",
+      "If anyone asks, I never heard the name {master}. Never. Not once.",
+      "{master} broke seclusion and the birds stopped singing. I would like to stop existing, briefly.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "I won?! I won. Nobody tell them I had my eyes closed.",
       "That was terrifying and I would like my winnings now, please.",
       "They yielded before I could. What luck. What glorious luck.",
       "One more? No. Maybe. How much is one more?",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "Tougher skin means more time to run away. Excellent.",
+      "I'm stronger now. I will use it to flee faster.",
+      "A harder body! Now the knives will have to try much harder.",
+      "Good, good. Every tier is another beating I might survive.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "I survived?! Nobody tell me how close it was.",
+      "I only stayed because the exit was too far.",
+      "Never again. Well. Probably again. But never happily.",
+      "My legs were shaking the whole time. They just shook in place.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "I knew it. I knew I should have eased off.",
+      "It hurts. Everything hurts. I want my mother.",
+      "This is why I prefer running. Running never leaves scars.",
+      "Next time I draw on my Qi. Next time I draw on everyone's Qi.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Perfect! Hitting things that can't hit back is my true Dao.",
+      "The post never once fought back. Ideal opponent.",
+      "Wow. Maybe I'm brave after all. No. Let's not test it.",
+      "All eight! Quick, before anyone challenges me to a real fight.",
     ],
     idle: [
       "A true genius knows when to flee. I am a true genius.",
@@ -497,11 +609,53 @@ const BANTER_LINES = {
   },
   // ── hotblood ──────────────────────────────────────────────────────────────
   hotblood: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate}! NO! Who did it?! Point me at them!",
+      "{classmate} fell, so I will climb twice as hard! For both of us!",
+      "We swore to reach the peak together, {classmate}! I am still going! LOUDER!",
+      "I am not crying! It is Qi! Leaking from my eyes! For {classmate}!",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is ahead of me?! EXCELLENT! A wall to run through!",
+      "Wait for me, {classmate}! I will catch you by dinner!",
+      "Being overtaken lights a fire in my belly! Or that was lunch. Either way, FIRE!",
+      "{classmate}, I challenge you to a race! To the next realm! Starting NOW!",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master}! OUT OF SECLUSION! I WANT TO FIGHT THEM! NOT YET! BUT SOON!",
+      "An old monster! {master}! My blood is boiling! In a good way! I think!",
+      "They say {master} sat in a cave for centuries. I can't sit still for one meal!",
+      "{master} is back! The world just got LOUDER! I approve!",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "AGAIN! SEND THE NEXT ONE! I AM ONLY WARMED UP!",
       "THAT is how you fight! With your WHOLE SOUL!",
       "The sand is hot, the crowd is hotter, and my blood is hottest!",
       "Did you see that?! I punched through their GUARD!",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "YES! MY BODY IS ON FIRE! IN THE GOOD WAY!",
+      "STRONGER! I could punch a mountain! Where is a mountain!",
+      "My muscles are screaming in TRIUMPH!",
+      "Another tier! Heaven, come fight me now!",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "THAT WAS AMAZING! AGAIN!",
+      "The lightning hit me and I HIT IT BACK!",
+      "Pain is just strength that hasn't arrived yet!",
+      "I didn't ease off! I NEVER EASE OFF!",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "A scar! A STORY! Totally worth it!",
+      "Ow! OW! ...Can I go back in?",
+      "It got me this time. Next time I get IT.",
+      "Scars are medals the body gives itself!",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "EIGHT FOR EIGHT! THE POST IS DEFEATED!",
+      "Every fist landed! My knuckles sing!",
+      "PERFECT! Bring me a bigger post!",
+      "Faster! Harder! Again! Again!",
     ],
     idle: [
       "I WILL PUNCH THE HEAVENS! ...After lunch.",
@@ -679,11 +833,53 @@ const BANTER_LINES = {
   },
   // ── miser ─────────────────────────────────────────────────────────────────
   miser: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} is dead, and they still owed me three spirit stones. Heaven owes me now.",
+      "A funeral means gifts. I will bring incense. The cheap kind. They would understand.",
+      "Who inherits {classmate}'s pouch? Purely asking out of grief.",
+      "All that cultivation, and you cannot take a single stone with you. Sobering. I am counting mine.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is above me. Someone that strong must be paying too much for pills.",
+      "I will ask {classmate} for their pill supplier. Then haggle it down.",
+      "Overtaken by {classmate}. Expensive. Every year behind costs interest.",
+      "A strong classmate is a good investment. I will lend {classmate} nothing, but befriend them.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} sat in a cave for centuries. Imagine the rent they saved.",
+      "An old monster like {master} must have a hoard. Old monsters always have a hoard.",
+      "{master} walks again. Prices on protection talismans will triple by morning. Buy now.",
+      "Centuries of seclusion and {master} comes out to the same economy. Tragic.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "The purse grows. My heart grows with it.",
       "Walking away now would be prudent. Walking away rich would be art.",
       "Every bruise is an investment. The returns are excellent.",
       "I will count it twice. Then once more, for luck.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "A stronger body means fewer Mending Pills. Savings!",
+      "This tier cost me beast cores. It had better pay dividends.",
+      "Healthier means fewer healers to pay. Wonderful.",
+      "Free regeneration. The best kind of income.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "Every herb I burned in there, accounted for and worth it.",
+      "I endured it so I'd never have to buy it twice.",
+      "Survived, and nothing wasted. A rare day.",
+      "The ordeal took my herbs. I took its rewards. Fair trade.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "A scar and the herbs are gone. A total loss.",
+      "Who do I bill for this?",
+      "A Golden Marrow Pill costs HOW much to fix this?",
+      "I should have eased off. Easing off is cheaper.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Perfect, and it cost me nothing. My favourite price.",
+      "Free XP. I'll take every last point.",
+      "No cores spent, all strikes landed. Profit.",
+      "Eight perfect strikes. Not one wasted coin of effort.",
     ],
     idle: [
       "Three spirit stones for ONE pill? Daylight robbery under the Nine fucking Heavens!",
@@ -861,11 +1057,53 @@ const BANTER_LINES = {
   },
   // ── glutton ───────────────────────────────────────────────────────────────
   glutton: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} never got to try the crab at the river inn. That is the real tragedy.",
+      "I will eat a bowl of noodles in their honour. Two bowls. They had a big appetite.",
+      "A funeral feast for {classmate}. I hate that it is the only good part.",
+      "Life is short and the soup gets cold. Rest well, {classmate}.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is ahead of me. I bet they skip meals. Monster.",
+      "Higher realm, bigger appetite. I should invite {classmate} to dinner and study them.",
+      "Overtaken while I was eating. Worth it, honestly.",
+      "{classmate} climbs; I simmer. Slow cooking is still cooking.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} sat in a cave for centuries. What did they EAT? I need to know.",
+      "An old monster named {master} broke seclusion. First thing I'd do is find noodles.",
+      "They say {master} went without food for three hundred years. Disgusting. Impressive. Disgusting.",
+      "{master} is out. I hope someone made them a welcome feast. I'd go.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Winning makes me hungry. Losing would have made me hungrier.",
       "The vendors by the ring sell skewers. I have earned every one.",
       "A victory feast! Well. A victory snack. Several snacks.",
       "They fought like an underseasoned dumpling. Bland, and soon gone.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "A bigger body needs a bigger dinner. I accept this burden.",
+      "Stronger bones! Now I can carry more food.",
+      "I've earned a banquet. Several.",
+      "This calls for roast beast. The whole beast.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "Survived! I'm starving. Is the lava edible?",
+      "All that cold and not one dumpling. Barbaric.",
+      "I endured it thinking about noodles the whole time.",
+      "After that, I deserve the entire kitchen.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "A scar, and I missed lunch. Worst day.",
+      "The only thing that heals this is soup. Lots of soup.",
+      "I'd trade this scar for a meat bun. Any meat bun.",
+      "Hurt and hungry. Mostly hungry.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Perfect! Now feed me.",
+      "All those strikes worked up an appetite.",
+      "Eight hits! Eight courses would be nicer.",
+      "The post is tenderised. Pity it's wood.",
     ],
     idle: [
       "My dantian is a stomach. I've always known. The elders just won't admit it.",
@@ -1044,11 +1282,53 @@ const BANTER_LINES = {
   },
   // ── poet ──────────────────────────────────────────────────────────────────
   poet: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "The willow by the gate has lost a leaf, and its name was {classmate}.",
+      "We awakened under one sky. Now the sky keeps only one of us. Weep, brush, weep.",
+      "Write it in the snow, so the spring may grieve it: {classmate} is gone.",
+      "Oh {classmate}, a candle blown out mid-verse. I shall finish the poem for you.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} rises like the moon over the ridge, and I am the ridge.",
+      "Ahead of me, {classmate} walks in light. Behind, I walk in metaphor.",
+      "To be overtaken is a sorrow worth three stanzas. I have written five.",
+      "The crane outflies the sparrow. The sparrow composes an ode about it.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "From the stone womb of the mountain, {master} is born again, and the wind forgets its song.",
+      "{master} walks. Centuries of silence, and the first footstep is a thunderclap.",
+      "Old {master}, older than the pines, has opened their eyes. I feel very young and very small.",
+      "A hermit wakes. A kingdom stirs. I, {name}, write a poem about it. Badly.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Blades like falling petals; one of us had to be the wind.",
       "The sand remembers every step. Today it remembers mine.",
       "Applause, like rain on a tiled roof. I could live in this sound.",
       "A duel is a poem only one of us gets to finish.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "The flesh, like iron in the forge, forgets it was ever soft.",
+      "A new body blooms, as the plum in late snow.",
+      "My bones are verses rewritten in harder ink.",
+      "What was frail is now a mountain's quiet answer.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "Beneath the falling water I became the stone it could not wear.",
+      "Fire asked, and I answered without a word.",
+      "The storm wrote its name on me, and I did not flinch.",
+      "I walked out of the ordeal as dawn walks out of night.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "The scar is a line the body could not finish.",
+      "Even jade cracks, and the crack becomes its poem.",
+      "I carry this mark as autumn carries its first frost.",
+      "A broken channel, a silent string on the zither.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Eight strikes, eight syllables of a perfect line.",
+      "The rhythm of the fists was a poem I did not write.",
+      "Each blow fell like rain on the same stone.",
+      "Perfection, brief as a struck bell's echo.",
     ],
     idle: [
       "O Heaven, why hast thou forsaken me? There is a pebble in my shoe.",
@@ -1228,11 +1508,53 @@ const BANTER_LINES = {
   },
   // ── stoic ─────────────────────────────────────────────────────────────────
   stoic: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} is dead. Noted.",
+      "The road takes who it takes. I will keep walking it.",
+      "I am not sad. My eyebrow is merely lower than usual.",
+      "Incense for {classmate}. Then breakfast. Then cultivation.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is ahead. Correct response: continue.",
+      "Overtaken. I have feelings about it. They are small and quiet.",
+      "Good for {classmate}. Bad for me. Nothing changes.",
+      "The gap is a number. Numbers can be closed.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} has broken seclusion. Noted.",
+      "An old monster is loose. {master}. I will continue.",
+      "They say {master} is terrifying. I will be terrified later. Maybe.",
+      "{master} walks again. The tea is still warm.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Done.",
       "Their guard opened. I went through it.",
       "The crowd's noise changes nothing.",
       "Next.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "Harder. Good.",
+      "The body rises. The mind stays where it is.",
+      "A new tier. Nothing changes but the numbers.",
+      "Stronger. Continue.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "Endured.",
+      "Pain is information. I have read it.",
+      "I sat. It passed. That is all.",
+      "The ordeal ended. I did not.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "A scar. It will teach.",
+      "The body failed. The will did not.",
+      "Noted.",
+      "This, too, will be carried.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Eight. Clean.",
+      "Precise. As it should be.",
+      "No wasted motion.",
+      "Acceptable.",
     ],
     idle: [
       "My left meridian has been on fire for an hour. It's fine. It's a warm day anyway.",
@@ -1412,11 +1734,53 @@ const BANTER_LINES = {
   },
   // ── demonking ─────────────────────────────────────────────────────────────
   demonking: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} has fallen before I could make them my general. Unforgivable, Heaven!",
+      "Death dares touch MY year? I will add it to my list of enemies.",
+      "Rest, {classmate}. In my empire, your statue will stand slightly behind mine.",
+      "Even the Demon King mourns. Briefly. Darkly. With a cape.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} believes they surpass the Demon King? An amusing delusion. Hahaha. Haha. Ha.",
+      "Let {classmate} climb. Every throne needs someone to kneel at its foot. Eventually.",
+      "Overtaken? No. I am luring them upward so the fall is longer. A scheme.",
+      "My sealed power holds back. If it did not, {classmate} would weep.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} dares to wake while I, the Demon Sovereign, reign? Bold. Kneel, old one.",
+      "An old monster named {master}? There can be only one monster. It is me.",
+      "{master} broke seclusion. Tell them the throne is taken. By me. Emotionally.",
+      "Let {master} come. I will greet them with my most menacing pose.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Bow, insects. The Demon Sovereign graces your little pit.",
       "Their fear tasted sweeter than their blood would have.",
       "Let the crowd scream. Screaming is the correct response to me.",
       "One more crushed beneath my heel. The heel is barely dusty.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "My flesh grows closer to the form of a true sovereign.",
+      "Tremble. My body is now a fortress for my ambition.",
+      "Each tier is a stair to my throne.",
+      "The heavens forged this body to bear a crown.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "The ordeal sought to break me and was broken instead.",
+      "I drank the lightning like wine.",
+      "Pain kneels before my will.",
+      "Let lesser beings fear the waterfall. It fears me.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "Even my wounds are signatures of power.",
+      "The mark makes me more terrible. Good.",
+      "Whoever made this chamber will answer for it.",
+      "A scar? A crown of thorns. Fitting.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Perfect. The world will soon receive these strikes.",
+      "Eight blows. Eight kingdoms, one day.",
+      "Flawless, as a sovereign's decree.",
+      "The post is merely practice for my enemies.",
     ],
     idle: [
       "Kneel, mortals! …The squirrel ran away. Coward. He knows my power.",
@@ -1596,11 +1960,53 @@ const BANTER_LINES = {
   },
   // ── paranoid ──────────────────────────────────────────────────────────────
   paranoid: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} died. Officially. I want to see the body.",
+      "Too convenient. {classmate} knew something. Now nobody can ask them.",
+      "First {classmate}. Who is next? I am sleeping with the lamp lit.",
+      "A breakthrough gone wrong, they say. Wrong for whom? Think about it.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} climbed suspiciously fast. Who is backing them? I will find out.",
+      "{classmate} ahead of me. Good. I prefer my threats where I can see them.",
+      "A classmate this strong is either an ally or an assassin. I have plans for both.",
+      "They passed me on purpose. To make me feel safe. It will not work.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} broke seclusion the very year I grew stronger. Coincidence? No such thing.",
+      "An old monster wakes. {master}. Who woke them? Who benefits? Think.",
+      "They say {master} slept for centuries. Sleeping is what a spy would call it.",
+      "{master} is out. Check the formations. Check them twice. Check the checker.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "They lost too easily. Who paid them to lose? Who is watching?",
       "The purse is real. I checked. I will check again.",
       "Everyone in the stands saw my technique. Now they can copy it. Terrible.",
       "I won, which means someone wanted me to win. Why?",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "Stronger. They'll need more poison now. Good.",
+      "My body hardens. Someone will notice. I must hide it.",
+      "A new tier. Is this a trap? It feels like a trap.",
+      "Tougher skin against the knives I know are coming.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "I survived. Which means someone wanted me to survive. Why?",
+      "Nobody sabotaged it. Suspicious.",
+      "I checked the waterfall for traps first. Twice.",
+      "It ended too cleanly. I'm watching you, mountain.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "I KNEW something was wrong in there!",
+      "This was sabotage. I have no proof. I am certain.",
+      "Who knew I'd be tempering today? Who?!",
+      "They got me. They always get me.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Perfect. Too perfect. Was the post tampered with?",
+      "Eight hits and nobody ambushed me. Unusual.",
+      "I struck true. Someone will want to know my secret.",
+      "Good. Now no one saw that. Right?",
     ],
     idle: [
       "The squirrel smiled at me. Squirrels don't smile. Who is paying that squirrel?",
@@ -1780,11 +2186,53 @@ const BANTER_LINES = {
   },
   // ── grumpy ────────────────────────────────────────────────────────────────
   grumpy: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} is dead. Young people, always in a hurry. Even to the grave.",
+      "In my day we died properly, of old age, after complaining for centuries.",
+      "Another one gone. Nobody listens when I say slow down.",
+      "Bah. Burn the incense. And somebody fix that draughty door while you're at it.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is above me? Back in my day, we waited our turn.",
+      "Let the youngsters run ahead. They trip on the same stones I did.",
+      "Overtaken. Fine. I'll be here when they come back down, saying I told them so.",
+      "Fast climbers, short lives. Mark my words about {classmate}.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master}? I remember when {master} was a snot-nosed brat. Probably.",
+      "Back in my day old monsters stayed in their caves. {master} has no manners.",
+      "{master} is out of seclusion and the youngsters are panicking. Good. Panic builds character.",
+      "An old monster called {master} walks again. Older than me. Barely.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Back in my day the arena had standards. And fewer spectators.",
       "Yes, yes, I won. Stop cheering, it is giving me a headache.",
       "Young people these days fight like they are dancing. Badly.",
       "The sand gets everywhere. Everywhere.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "Stronger. My back still hurts.",
+      "A new tier. In my day we did this without beast cores.",
+      "Fine. Harder bones. Now leave me alone.",
+      "Hmph. About time.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "Done. Don't expect me to smile about it.",
+      "Survived. Again. Bah.",
+      "Back in my day ordeals were longer. And colder.",
+      "That's over. Where's my tea.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "Of course. Of course it scarred.",
+      "Another ache to complain about. Lovely.",
+      "This is what I get for listening to the manuals.",
+      "Bah. The ordeal was rigged.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Eight. Don't make a fuss.",
+      "Perfect. Like I said it would be.",
+      "Easy. Kids today make it look hard.",
+      "There. Happy now?",
     ],
     idle: [
       "In my day a breakthrough took a thousand years and we were grateful. Now kids do it over lunch.",
@@ -1964,11 +2412,53 @@ const BANTER_LINES = {
   },
   // ── lazy ──────────────────────────────────────────────────────────────────
   lazy: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} worked so hard. And now they get to rest forever. Hm.",
+      "Rest well, {classmate}. You earned the nap I keep stealing.",
+      "This is why I pace myself. Also because I am lazy. Mostly the second.",
+      "I should feel something. Give me a minute. Lying down.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is ahead. Wonderful. They can carry the hard parts.",
+      "Overtaken while napping. Efficient use of time, actually.",
+      "Let {classmate} break the trail. I will stroll along it later.",
+      "I'll catch up. Eventually. After this nap.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} meditated for centuries? Finally, someone who understands me.",
+      "An old monster woke up. {master}. Why would anyone wake up on purpose?",
+      "{master} broke seclusion. Wake me when they do something.",
+      "Centuries in a cave, then {master} chooses to come out? Bad decision. I'd stay.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Can I win the next one sitting down?",
       "That was a lot of moving. I need a nap before the next one.",
       "They wore themselves out. I simply let them. Efficient.",
       "Walk away? Walking is also effort. Hmm.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "Stronger body. Means I can nap harder.",
+      "I leveled up mostly by lying in the waterfall. Efficient.",
+      "A new tier. Can I rest now?",
+      "Sturdier bones for sturdier naps.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "I endured it by falling asleep. Counts.",
+      "Done. Tell me nobody expects me to do that again soon.",
+      "Survived. Time for a very long rest.",
+      "I barely moved the whole time. Peak endurance.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "Should have eased off. Easing off is my whole Dao.",
+      "Ugh. Now healing takes effort too.",
+      "A scar. More reasons to lie down.",
+      "This is why I avoid trying.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Perfect. Can I stop now?",
+      "Eight good hits. Nap earned.",
+      "Huh. Didn't even try that hard.",
+      "Fine, I'm good at this. Don't tell anyone, they'll want more.",
     ],
     idle: [
       "I'm not napping. I'm practicing the Sleeping Dragon Technique. Very advanced. Do not disturb.",
@@ -2148,11 +2638,53 @@ const BANTER_LINES = {
   },
   // ── niceguy ───────────────────────────────────────────────────────────────
   niceguy: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} is gone. I hope someone held their hand at the end.",
+      "I will write to their family. They should know {classmate} was kind to me once.",
+      "Please let the road be gentler to the rest of us.",
+      "I am going to tell everyone one nice thing about {classmate} today.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} broke through! I'm so happy for them! Truly!",
+      "I should send {classmate} a gift. Climbing is lonely.",
+      "Being behind {classmate} is fine. Someone has to cheer from down here.",
+      "Look at {classmate} go! I'm proud of our year.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} is out of seclusion! I hope someone told them the news. It's been a while.",
+      "An old monster called {master}... I bet they're just lonely. Probably. Hopefully.",
+      "Welcome back to the world, {master}! Please don't destroy any of it.",
+      "{master} sat alone for centuries. Somebody should bring them a fruit basket.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Good fight! Are you all right? Do you need a hand up?",
       "I hope they are not too hurt. I will send them some tea.",
       "Winning is nice, but I made a friend, maybe? Maybe.",
       "Thank you for the match! Truly, it was an honour.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "A stronger body to protect everyone. I'm grateful.",
+      "I hope this helps me look after the family.",
+      "Thank you, body, for being patient with me.",
+      "Stronger! Now I can carry the groceries for the whole village.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "I made it through. Thank you all for worrying.",
+      "It was hard, but I thought of everyone and held on.",
+      "I'm alright! Really! Please don't cry.",
+      "I endured so I can keep others safe.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "It's just a little scar. Please don't fuss.",
+      "I'm okay. I'll be more careful next time.",
+      "A small price for a lesson learned.",
+      "It hurts, but I'm glad it was me and not someone else.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "All eight! I hope the post is okay.",
+      "Perfect! Sorry, post.",
+      "That felt good. Thank you, training post.",
+      "Wow, I did it! Thank you for cheering!",
     ],
     idle: [
       "Cultivation tip: drink water. Your meridians are mostly water. I think. Please hydrate.",
@@ -2330,11 +2862,53 @@ const BANTER_LINES = {
   },
   // ── psycho ────────────────────────────────────────────────────────────────
   psycho: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} died without me? Rude. Hehe.",
+      "Oh. Somebody else got to {classmate} first. I'm a little jealous.",
+      "Dead classmates don't grow. Only I get to grow now. Hehe.",
+      "I'll remember {classmate}'s face. I remember all the faces.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is stronger now. Stronger things break louder. Hehe.",
+      "Climb, {classmate}, climb. I like it when they're tall.",
+      "Ahead of me. For now. I've written their name down. Twice.",
+      "I'm so happy for {classmate}. Smiling. See? Smiling.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} is awake. Ooh. Old blood. I wonder how old blood smells. Hehe.",
+      "An old monster walks. {master}. I'd like to meet them. Up close. Very close.",
+      "Hehe. {master} broke seclusion. Hehehe. The world got more fun.",
+      "{master} sat in a cave for centuries, thinking. I wonder if they thought of me.",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "Again. Again. AGAIN. I want to see that look on the next face.",
       "The sand is so pretty when it is this colour.",
       "They screamed so nicely. Is there a louder one?",
       "Hehehe. The crowd loves me. The crowd should be afraid of me.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "Stronger. More fun for everyone. Mostly for me.",
+      "My bones are harder now. I wonder whose they'll break.",
+      "A new tier. I can take so much more pain. Delightful.",
+      "I like this body. It bleeds slower.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "The pain was wonderful. Can I keep some?",
+      "It tried to kill me. How sweet.",
+      "I laughed the whole way through. They looked worried.",
+      "More. I want more.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "A scar! A souvenir!",
+      "It cut me. I almost liked it.",
+      "Shattered meridians. They crackle when I move. Lovely.",
+      "I'll show this to my next opponent. Up close.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Eight perfect strikes. Imagine if the post screamed.",
+      "Perfect. Next time, a living target.",
+      "Every blow landed. Every single one. Hehe.",
+      "Such a quiet post. So obedient.",
     ],
     idle: [
       "I'm not angry. I just wrote your name in my little book. It's a nice book. Hehe.",
@@ -2513,11 +3087,53 @@ const BANTER_LINES = {
   },
   // ── gremlin ───────────────────────────────────────────────────────────────
   gremlin: {
+    classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
+      "{classmate} has gone to the big soup. Borgin.",
+      "Dead. Like a turnip. A wise turnip. Gorgin.",
+      "I buried a spoon for {classmate}. For the afterlife soup.",
+      "Classmate count minus one. Bean count plus zero. Sad.",
+    ],
+    classmate_passed: [   // Phase 28 (4.3): a classmate climbed past your realm
+      "{classmate} is up there. Like a cat on a roof. I am the roof.",
+      "Overtaken by {classmate}! Quick, eat their shadow!",
+      "Higher realm? Higher beans. The Dao is beans.",
+      "{classmate} goes zoom. I go blorp. Both valid.",
+    ],
+    hidden_master: [   // Phase 28 (4.6): an old monster broke seclusion ({master})
+      "{master} came out of the rock like a big angry bean. Borgin.",
+      "Old {master} woke up. Did they bring snacks from the past? Past snacks?",
+      "{master} is out. I am in. The cave is mine now. Finders keepers.",
+      "A monster named {master}! Gorgin! It's a monster festival! Where's my hat!",
+    ],
     arena_win: [   // A6-3b: you won a bout in the Arena
       "I won with a move I invented just now. Its name is Sudden Elbow.",
       "The purse jingles! I shall bite every coin to see which ones scream.",
       "Nobody expected that, including me. Especially me.",
       "Victory! Now to steal the ring announcer's hat.",
+    ],
+    body_tier_up: [   // Phase 14: your body rose a tier
+      "Body upgraded. Cannot explain how. Do not ask.",
+      "I am now 12% more rubbery. Or harder. One of those.",
+      "Level up! My elbows hum now.",
+      "Stronger! I licked the waterfall, maybe that helped.",
+    ],
+    ordeal_endure: [   // Phase 14: you endured an ordeal clean
+      "I sat in the lava and it was mostly fine?",
+      "Survived the ordeal by doing it wrong on purpose.",
+      "The storm hit me and I said 'boop' back.",
+      "Endured. Also I took a rock. It's mine now.",
+    ],
+    ordeal_scar: [   // Phase 14: an ordeal left a scar
+      "New scar! It looks like a duck if you squint.",
+      "My meridians crackle like popcorn. Neat.",
+      "Ow. Collecting scars now. Hobby.",
+      "This scar is going on my list of friends.",
+    ],
+    minigame_perfect: [   // Phase 14: a perfect Tempering Strikes run
+      "Perfect! Did the post just blink?",
+      "Eight bonks. Very good bonks.",
+      "I hit it perfectly with my eyes closed. Maybe.",
+      "Flawless! I'm keeping the post.",
     ],
     idle: [
       "Borgin. Gorgin. Sporgin. The third one is new. He has a hat.",

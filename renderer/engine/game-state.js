@@ -73,11 +73,12 @@ class GameState {
           this._s.realmIntegrity = Math.min(100, (this._s.realmIntegrity ?? 100) + intGain)
         }
         // Health regen while offline (Phase 23A)
-        const healthGain = Math.floor((elapsed / HEALTH_REGEN_SECONDS) * HEALTH_REGEN_AMOUNT)
+        const healthGain = Math.floor((elapsed / this.healthRegenSeconds()) * HEALTH_REGEN_AMOUNT)   // Phase 14: the body's rate
         if (healthGain > 0) {
           this._ensurePhase23Fields()
-          this._s.health = Math.min(100, (this._s.health ?? 100) + healthGain)
+          this._s.health = Math.min(this.maxHealth(), (this._s.health ?? 100) + healthGain)
         }
+        this._tickBody()   // Phase 14: tempering finished while closed pays out (an ordeal holds at its crisis)
         // Side-fix (Phase 22 task, flagged by Phase 32): resolve any pending Phase 4 sect missions BEFORE
         // the war fast-forward, so a Standing Orders chestStones donation during offline catch-up sees an
         // up-to-date Spirit Stone balance — missions used to only resolve on the next LIVE tick (SectSystem
@@ -158,6 +159,7 @@ class GameState {
       bestiarySeenVer:  2,
       arena:            this._blankArena(),   // A6-3b (combat.md): rings, duelists, the run, renown, titles, call-outs
       arts:             null, // Phase 42 (arts.md): known arts, loadout, study, breakthrough offers — filled by _ensurePhase42Fields (needs root elements)
+      recipes:          this._blankRecipes(), // Phase 44: which formulas the player knows (the basic ones at start; the rest are discovered)
       hunt:             null, // A6-2: { groundId, startedAt, endsAt, found: encId | null } while tracking on a hunting ground
       // Phase 4
       sect:             { id: null, rank: 0, contribution: 0, activeMissions: [] },
@@ -173,6 +175,9 @@ class GameState {
       // Phase 23A/B/C
       health:            100,
       _healthRegenAcc:   0,
+      // Phase 14 (body-constitution.md): the body (every life starts at F) + the mini-game charges (the player's)
+      body:              this._blankBody(),
+      minigames:         this._blankMinigames(),
       maxStageThisLife:  0,
       bloodlineQuality:  0,
       generation:        1,
@@ -256,11 +261,16 @@ class GameState {
     if (s.sect.rank === undefined)         s.sect.rank         = 0
     if (s.sect.contribution === undefined) s.sect.contribution = 0
     if (s.sect.id === undefined)           s.sect.id           = null
+    if (s.sect.masterId === undefined)     s.sect.masterId     = null   // Phase 43e: minted lazily by _sectMaster()
   }
 
   _blankOwnSect() {
     return { founded: false, name: '', foundedAt: 0, hallLevel: 1, buildings: {}, disciples: [],
-             recruitPool: [], poolRefreshAt: 0, _incomeAcc: { spirit_stone: 0, spirit_herb: 0 } }
+             recruitPool: [], poolRefreshAt: 0, _incomeAcc: { spirit_stone: 0, spirit_herb: 0 },
+             // Phase 45 (sect-branches.md): sub-leaders + their branches + the Tournament of Branches
+             branches: [], branchSeq: 1, tourneyAt: 0, lastTourney: null,
+             // Phase 43e (npc-sects.md): a sect taken from its master, and its old guard waiting on your word
+             takenOver: null, oldGuard: null, razed: [] }
   }
 
   _ensurePhase5Fields() {
@@ -273,15 +283,66 @@ class GameState {
     if (!o._incomeAcc)            o._incomeAcc = { spirit_stone: 0, spirit_herb: 0 }
     if (!o.hallLevel)             o.hallLevel = 1
     if (o.poolRefreshAt === undefined) o.poolRefreshAt = 0
+    if (o.takenOver === undefined) o.takenOver = null   // Phase 43e
+    if (!Array.isArray(o.razed)) o.razed = []            // Phase 43f: the sects you burned [{ name, year, tier }]
+    if (o.oldGuard === undefined)  o.oldGuard = null
+  }
+
+  // Phase 43: buildings gained levels. An old save stores `true` for a raised building — make it level 1 (the value
+  // it was balanced against); any falsy entry is dropped. A clan's stored sect (2.7d, spread into ownSect when you
+  // inherit one) is normalised too, since it is copied in after this runs.
+  _ensurePhase43Fields() {
+    const norm = bs => { if (!bs) return
+      for (const k of Object.keys(bs)) { if (bs[k] === true) bs[k] = 1; else if (!(bs[k] > 0)) delete bs[k] } }
+    norm(this._s.ownSect?.buildings)
+    const clan = this._playerClan?.()
+    if (clan?.sect?.buildings) norm(clan.sect.buildings)
+  }
+
+  // Phase 45 (docs/systems/sect-branches.md): sub-leaders, their branches and the Tournament of Branches.
+  // Gives every disciple its branch fields (branchId/role/kin/personality) and drops a branch whose head is gone.
+  // A disciple's personality is derived from its id (a hash — no new Math.random draws, so sim seeds stay put).
+  _ensurePhase45Fields() {
+    const o = this._s?.ownSect
+    if (!o) return
+    if (!Array.isArray(o.branches))   o.branches = []
+    if (!(o.branchSeq > 0))           o.branchSeq = 1
+    if (o.tourneyAt === undefined)    o.tourneyAt = 0
+    if (o.lastTourney === undefined)  o.lastTourney = null
+    for (const d of o.disciples || []) {
+      if (d.branchId === undefined)    d.branchId = null
+      if (d.role === undefined)        d.role = 'disciple'
+      if (d.kin === undefined)         d.kin = false
+      if (!d.personality)              d.personality = disciplePersonality(d.id)
+    }
+    // A head who is gone (dismissed, killed) dissolves their branch; ids are kept consistent for the rest.
+    const headIds = new Set((o.disciples || []).map(d => d.id))
+    o.branches = o.branches.filter(b => headIds.has(b.headId))
+    const ids = new Set(o.branches.map(b => b.id))
+    for (const b of o.branches) {
+      if (b.loyalty == null)                       b.loyalty = SECT_BRANCH.loyaltyStart
+      if (b.heat == null)                          b.heat = 0
+      if (b.wins == null)                          b.wins = 0
+      if (b.losses == null)                        b.losses = 0
+      if (b.tourneyWins == null)                   b.tourneyWins = 0
+      if (b.since == null)                         b.since = Math.floor(this._s.world?.year || 0)
+      if (b.lastRecruitYear == null)               b.lastRecruitYear = b.since
+      if (b.rivalId && !ids.has(b.rivalId))        b.rivalId = null
+    }
+    for (const d of o.disciples || []) {
+      if (d.branchId && !ids.has(d.branchId)) { d.branchId = null; if (d.role === 'head') d.role = 'disciple' }
+    }
   }
 
   _blankSectWar(side = null) {
     return { side, phase: 'none', nextWarAt: 0, scoutEndsAt: 0, prepEndsAt: 0,
-             enemyName: '', enemyTier: 0, allyId: null, reinforced: false,
+             enemyName: '', enemyId: null, enemyTier: 0, allyId: null, reinforced: false,
              arrayDamagedUntil: 0, warVictories: 0, warDefeats: 0, lastResult: null,
              // Phase 5C member wars
              answered: false, chestStones: 0, pillsGiven: 0, beastId: null, seen: false,
-             buffSuppressedUntil: 0, warsIgnored: 0, warsUnseen: 0, contribNet: 0 }
+             buffSuppressedUntil: 0, warsIgnored: 0, warsUnseen: 0, contribNet: 0,
+             declaredByYou: false,    // Phase 43h: you (not the world) started this war
+             razeVow: false, razeSet: false }   // Phase 43f: burn their mountain if you win · you set/lifted it by hand
   }
 
   // Which war the player takes part in: leading a founded sect, or a member of a joined one (never both).
@@ -324,6 +385,7 @@ class GameState {
     if (!WAR_ORDER_LEND_BEAST_OPTIONS.includes(o.lendBeast))    o.lendBeast     = WAR_ORDERS_DEFAULT.lendBeast
     if (!WAR_ORDER_REINFORCE_OPTIONS.includes(o.reinforce))     o.reinforce     = WAR_ORDERS_DEFAULT.reinforce
     if (!WAR_ORDER_ALLY_OPTIONS.includes(o.ally))               o.ally          = WAR_ORDERS_DEFAULT.ally
+    if (!WAR_ORDER_RAZE_OPTIONS.includes(o.raze))               o.raze          = WAR_ORDERS_DEFAULT.raze   // Phase 43f
     if (!(typeof o.chestStones === 'number' && isFinite(o.chestStones) && o.chestStones >= 0)) o.chestStones = WAR_ORDERS_DEFAULT.chestStones
     if (!(typeof o.reinforceKeep === 'number' && isFinite(o.reinforceKeep) && o.reinforceKeep >= 0)) o.reinforceKeep = WAR_ORDERS_DEFAULT.reinforceKeep
   }
@@ -334,6 +396,7 @@ class GameState {
       autoSectMissions: false, autoSectMissionIds: [],
       autoCraft: false, autoCraftRecipes: {},
       autoBreakthrough: false, breakthroughThreshold: AUTO_BREAKTHROUGH_THRESHOLD_DEFAULT,
+      autoTemper: false, autoTemperId: null,   // Phase 14: repeat a safe tempering (never an ordeal)
       _craftAcc: 0,
     }
   }
@@ -369,6 +432,8 @@ class GameState {
           a.breakthroughThreshold >= AUTO_BREAKTHROUGH_THRESHOLD_MIN && a.breakthroughThreshold <= AUTO_BREAKTHROUGH_THRESHOLD_MAX))
       a.breakthroughThreshold = AUTO_BREAKTHROUGH_THRESHOLD_DEFAULT
     if (!(a._craftAcc >= 0)) a._craftAcc = 0
+    if (typeof a.autoTemper !== 'boolean') a.autoTemper = false   // Phase 14
+    if (a.autoTemperId != null && !['drill', 'spirit'].includes(TEMPERING_METHODS.find(m => m.id === a.autoTemperId)?.group)) a.autoTemperId = null
     if (s.expedition && s.expedition.pushed === undefined) s.expedition.pushed = false
   }
 
@@ -438,7 +503,8 @@ class GameState {
     return { v: 1, year: 1, nextId: 1, nextClanId: 1, persons: {}, clans: {}, playerClanId: null,
              playerLineId: null, pastLives: [],
              // 2.6d: people/sects that wronged you (rare rival-family rebirth) + the clan an orphan life came from
-             enemies: [], lastClanId: null }
+             enemies: [], lastClanId: null,
+             chron: [], chronSeq: 0, chronSeen: 0 }   // Phase 28 (4.6): the merged world Chronicle
   }
 
   // A fresh slot: a new world with one founding clan (unnamed until a later task gives clans surnames).
@@ -526,13 +592,13 @@ class GameState {
     w.persons[me.id] = me
     const keep = (p, role) => {
       if (!p?.id) return
-      w.persons[p.id] = { ...p, role, grownYear: yr }   // 2.6d: NPC growth continues from here (_advancePersons)
+      this._regKeep(p, { role, grownYear: yr })   // 2.6d: NPC growth continues from here (_advancePersons); Phase 28 keeps rel/mem/sect
       if (clan && p.alive !== false) this._joinClan(w, clan, p.id, w.playerLineId)
     }
     if (f.spouse) keep(f.spouse, 'spouse')
-    for (const x of f.formerSpouses || []) w.persons[x.id] = { ...x, role: 'former_spouse' }
+    for (const x of f.formerSpouses || []) this._regKeep(x, { role: 'former_spouse' })
     for (const c of f.children || []) {
-      if (c.estranged) w.persons[c.id] = { ...c, role: 'estranged' }   // left the clan: in the world, off the roster
+      if (c.estranged) this._regKeep(c, { role: 'estranged' })   // left the clan: in the world, off the roster
       else keep(c, 'child')
     }
     if (clan) for (const line of clan.lines) if (line.headId === me.id) line.headId = null   // 2.6d fills it
@@ -551,6 +617,8 @@ class GameState {
           ? f.lastTournament.ranking.slice(1).filter(id => (f.children || []).some(c => c.id === id && c.alive && !c.estranged)) : [],
         equipped: { ...s.equipped },
         bestBeast: bestBeast ? { typeId: bestBeast.typeId, name: bestBeast.name, traits: [...(bestBeast.traits || [])] } : null }
+      // Phase 46 (1.20b): `clan.sect` stays the clan's light claim (the stipend + the "a sect took the clan's"
+      // note); the world record itself is minted just below, outside this clan block, so an orphan keeps theirs too.
       if (s.ownSect?.founded) clan.sect = { ...JSON.parse(JSON.stringify(s.ownSect)), inheritedYear: yr, heirId: heir ? heir.id : null }
       // Phase 31 (M2 task 2.7b): Ancestral Merit — stage term + this life's claimed firsts + capped deeds.
       clan.bestStageIndex = Math.max(clan.bestStageIndex, maxStage)
@@ -563,6 +631,12 @@ class GameState {
       const meritGained = Math.round(stageTerm + firstsMerit + deeds)
       clan.merit += meritGained
       clan.meritEarned += meritGained
+    }
+    // Phase 46 (1.20b, lineage-sect.md): a founded sect outlives the player — a branch head inherits it and it keeps
+    // living as a world sect. Runs for an orphan founder too (no clan needed), and points the clan's claim at it.
+    if (s.ownSect?.founded) {
+      const rec = this._wsFromOwnSect(s.ownSect, w)
+      if (clan?.sect) clan.sect.worldSectId = rec ? rec.id : null
     }
     w.pastLives.push({ personId: me.id, clanId: clan?.id || null, lineId: w.playerLineId, cause, year: yr,
                        maxStage, generation, openHours: +(s.stats.timePlayed / 3600).toFixed(2) })
@@ -648,11 +722,973 @@ class GameState {
     }
   }
 
+  // ── Bequest (user 2026-10-02): carry N arts + N items into your next life (N = the reincarnation you are on) ──
+  // Free every life and personal — not clan-gated, so it rides an orphan rebirth too (unlike the legacies above).
+  // The pool is snapshotted at death (_bequestPool), shown in the interlude, picked by the player (toggleBequest),
+  // then handed over in _applyBequest.
+
+  _bequestMax(reincarnation) {
+    const n = Math.max(0, reincarnation | 0)
+    return { arts: Math.min(BEQUEST_MAX_ARTS, n * BEQUEST_ARTS_PER_REINCARNATION),
+             items: Math.min(BEQUEST_MAX_ITEMS, n * BEQUEST_ITEMS_PER_REINCARNATION) }
+  }
+
+  // The dying life's pickable pool: known combat arts (never the basics everyone starts with) + pack items (never
+  // currency). Best first, so the UI and the sim bot lead with the strongest.
+  _bequestPool() {
+    const s = this._s, arts = [], items = []
+    for (const [id, rec] of Object.entries(s.arts?.known || {})) {
+      const a = ARTS[id]
+      if (!a || ART_BASICS.includes(id)) continue
+      arts.push({ id, name: a.name, rarity: a.rarity, element: a.element, kind: a.kind, mastery: rec?.mastery || 1 })
+    }
+    arts.sort((a, b) => (ART_RARITY_ORDER.indexOf(b.rarity) - ART_RARITY_ORDER.indexOf(a.rarity)) || a.name.localeCompare(b.name))
+    for (const [id, n] of Object.entries(s.inventory || {})) {
+      const it = ITEMS[id]
+      if (!(n > 0) || !it || it.type === 'currency' || it.category === 'currency') continue
+      items.push({ id, name: it.name, category: it.category, qty: n })
+    }
+    items.sort((a, b) => (b.qty - a.qty) || a.name.localeCompare(b.name))
+    return { arts, items }
+  }
+
+  // The interlude's bequest picker: toggle one art or item into (or out of) what you carry forward, bounded by the
+  // reincarnation count. An explicit player choice — never rolled, never simulated.
+  toggleBequest(kind, id) {
+    const it = this._s.interlude
+    if (!it || it.step !== 'chronicle') return { ok: false, reason: 'not_ready' }
+    if (kind !== 'arts' && kind !== 'items') return { ok: false, reason: 'bad_kind' }
+    if (!(it.bequestPool?.[kind] || []).some(x => x.id === id)) return { ok: false, reason: 'not_owned' }
+    it.bequest = it.bequest || { arts: [], items: [] }
+    const list = it.bequest[kind] = it.bequest[kind] || []
+    const i = list.indexOf(id)
+    if (i >= 0) list.splice(i, 1)
+    else {
+      const max = (it.bequestMax || {})[kind] || 0
+      if (list.length >= max) return { ok: false, reason: 'full' }
+      list.push(id)
+    }
+    this._notify()
+    return { ok: true, picked: [...list] }
+  }
+
+  // Hand the bequested arts + items to the new life at _beginLife(). Not clan-gated. Builds s.arts first — a fresh
+  // life's is null until the _ensure chain runs — then writes directly (one log line, not one per art).
+  _applyBequest(it) {
+    const arts = it?.bequest?.arts || [], items = it?.bequest?.items || []
+    if (!arts.length && !items.length) return
+    const s = this._s
+    if (arts.length) {
+      this._ensurePhase42Fields()
+      for (const id of arts) {
+        if (!ARTS[id] || s.arts.known[id]) continue
+        s.arts.known[id] = { mastery: 1, xp: 0, uses: 0, how: 'bequest', at: Date.now() }
+        s.arts.found[id] = true
+      }
+    }
+    const itemBits = []
+    for (const id of items) {
+      const pick = (it.bequestPool?.items || []).find(x => x.id === id)
+      if (!pick) continue
+      s.inventory[id] = (s.inventory[id] || 0) + (pick.qty || 1)
+      itemBits.push(`${pick.name}${pick.qty > 1 ? ` ×${pick.qty}` : ''}`)
+    }
+    if (s.lastReincarnation) s.lastReincarnation.bequest = { arts: [...arts], items: [...items] }
+    const bits = []
+    if (arts.length) bits.push(`${arts.length} art${arts.length === 1 ? '' : 's'} (${arts.map(id => ARTS[id]?.name).filter(Boolean).join(', ')})`)
+    if (itemBits.length) bits.push(itemBits.join(', '))
+    if (bits.length) this.addEvent({ text: `Your past life's bequest passes to you: ${bits.join(' · ')}.`, type: 'special' })
+  }
+
+  // Public (UI, read-only): the family tree (user 2026-10-03) — your blood around you, by generation: up to three
+  // generations of ancestors (gen −3..−1), you + siblings + partners (0), children and their partners (+1),
+  // grandchildren (+2). A past life of yours that sits in the line is marked; earlier lives outside it are listed.
+  // nodes: { id, name, rel, gen, parents[], alive, age, diedYear, cause, stage, personality, rootType, morality,
+  //          bond?, affection?, pastLife?, ascended?, head?, heir?, you?, open: 'child'|'spouse'|'lover'|null, former? }
+  familyTreeInfo() {
+    const s = this._s, w = s.world, f = s.family || {}, yr = Math.floor(w?.year || 0)
+    if (!w || !s.self) return null
+    const clan = this._playerClan(), heirId = f.heirId || null
+    const lives = new Map((w.pastLives || []).map((l, i) => [l.personId, { gen: l.generation || i + 1, year: l.year, cause: l.cause }]))
+    const nodes = new Map()
+    const add = (p, rel, gen, extra = {}) => {
+      if (!p?.id || nodes.has(p.id)) return nodes.get(p?.id) || null
+      const life = lives.get(p.id)
+      const n = { id: p.id, name: Persons.fullName(p) || 'Nameless', rel, gen, parents: (p.parents || []).filter(Boolean),
+        alive: p.alive !== false, age: Math.max(0, Math.floor(((p.alive === false ? p.diedYear : null) ?? yr) - (p.bornYear || yr))),
+        diedYear: p.diedYear ?? null, cause: p.cause || null, stage: p.stageIndex || 0,
+        personality: PERSONALITIES.find(x => x.id === (p.personality?.id || p.personality))?.name || '',
+        rootType: p.root?.type || null, rootName: p.root?.name || null, rootMult: p.root?.mult ?? null, morality: p.morality ?? null,
+        pastLife: life ? life.gen : null, ascended: !!p.ascendedAncestor, head: !!clan && clan.headId === p.id,
+        heir: p.id === heirId, estranged: !!p.estranged, open: null, ...extra }
+      nodes.set(p.id, n)
+      return n
+    }
+    const me = { ...this._selfAsPerson(), given: s.self.given || s.name, family: s.self.family }
+    add(me, 'You', 0, { you: true, name: s.name, stage: s.stageIndex, personality: s.personality?.name || '', rootType: s.root?.type || null, rootName: s.root?.name || null, rootMult: s.root?.mult ?? null })
+    // Ancestors: each parent's parents, three generations up
+    const relUp = ['Parent', 'Grandparent', 'Great-grandparent']
+    let wave = [me]
+    for (let d = 1; d <= 3; d++) {
+      const next = []
+      for (const c of wave) for (const pid of c.parents || []) { const p = this.person(pid); if (p && add(p, relUp[d - 1], -d)) next.push(p) }
+      wave = next
+    }
+    // Siblings: anyone who shares a parent with you (full or half), oldest first
+    const myParents = new Set(me.parents || [])
+    if (myParents.size) {
+      Object.values(w.persons).filter(p => p.id !== me.id && (p.parents || []).some(x => myParents.has(x)))
+        .sort((a, b) => (a.bornYear || 0) - (b.bornYear || 0))
+        .forEach(p => add(p, (p.parents || []).every(x => myParents.has(x)) && p.parents.length === myParents.size ? 'Sibling' : 'Half-sibling', 0))
+    }
+    // Partners: your spouse, former spouses, and any lover who is a parent of your child
+    if (f.spouse) add(f.spouse, 'Spouse', 0, { open: 'spouse', affection: f.affection ?? null })
+    for (const x of f.formerSpouses || []) add(x, 'Former spouse', 0, { former: true, endCause: x.endCause || null })
+    const kids = f.children || []
+    for (const l of f.lovers || []) if (kids.some(c => (c.parents || []).includes(l.person?.id))) add(l.person, 'Lover', 0, { open: 'lover', former: true })
+    // Children (with their partners) and grandchildren
+    for (const c of [...kids].sort((a, b) => (a.bornYear || 0) - (b.bornYear || 0))) {
+      add(c, 'Child', 1, { open: c.alive !== false && !c.estranged ? 'child' : null, bond: c.bond ?? null })
+      for (const sid of c.spouseIds || []) { const sp = this.person(sid); if (sp) add(sp, "Child's spouse", 1, { partnerOf: c.id }) }
+    }
+    const kidIds = new Set(kids.map(c => c.id))
+    Object.values(w.persons).filter(p => (p.parents || []).some(x => kidIds.has(x)))
+      .sort((a, b) => (a.bornYear || 0) - (b.bornYear || 0)).forEach(p => add(p, 'Grandchild', 2))
+    // Earlier lives of yours that are not in this line (an orphan rebirth, a branch birth, another clan)
+    const otherLives = [...lives.entries()].filter(([id]) => !nodes.has(id)).map(([id, l]) => {
+      const p = w.persons[id]
+      return { id, name: Persons.fullName(p) || 'Nameless', gen: l.gen, year: l.year, cause: l.cause, stage: p?.maxStage ?? p?.stageIndex ?? 0, ascended: !!p?.ascendedAncestor }
+    }).sort((a, b) => a.gen - b.gen)
+    return { nodes: [...nodes.values()], otherLives, year: yr, clanName: clan?.name || null, selfId: me.id,
+             counts: { parents: [...nodes.values()].filter(n => n.gen === -1).length,
+                       siblings: [...nodes.values()].filter(n => /sibling/i.test(n.rel)).length,
+                       children: kids.length } }
+  }
+
   // A person by id: the living player, or the world registry.
   person(id) {
     const s = this._s
     return id === s.self?.id ? s.self : (s.world.persons[id] || null)
   }
+
+  // ── Phase 28 (living-world.md §5, task 4.2): one registry of persons ──────────────────────────────────────────
+  // world.persons is the only home of a person's identity + life. Systems with richer relationship state keep their
+  // own object (family copies, arena duelists, own-sect disciples) and are mirrored here by _syncPersons(): the
+  // owner's copy wins for PERSON_LIFE_KEYS; the registry keeps the world's fields (rel, mem, ties, fam, sectId…).
+
+  // Copy an owner's life fields onto the registry record (creating it), then apply `extra`. Returns the record.
+  _regMerge(src, extra = {}) {
+    const w = this._s.world
+    const p = w.persons[src.id] || Persons.make({ id: src.id })
+    for (const k of PERSON_LIFE_KEYS) {
+      const v = src[k]
+      if (v === undefined) continue
+      p[k] = Array.isArray(v) ? [...v] : (v && typeof v === 'object') ? { ...v } : v
+    }
+    Object.assign(p, extra)
+    Persons.stampV2(p)
+    w.persons[src.id] = p
+    return p
+  }
+
+  // A whole owner object into the registry (end of a life: _recordLifeInWorld), keeping the world's own fields.
+  _regKeep(src, extra = {}) {
+    const w = this._s.world, old = w.persons[src.id], keep = {}
+    if (old) for (const k of Object.keys(Persons.v2Defaults())) if (k !== 'owner' && old[k] !== undefined) keep[k] = old[k]
+    if (old?.sectId === undefined && src.sectId) keep.sectId = src.sectId
+    const p = Persons.stampV2({ ...(old || {}), ...src, ...keep, owner: 'world', ...extra })
+    w.persons[src.id] = p
+    return p
+  }
+
+  // A new person, drawn from a seeded rng (never Math.random — minting must not shift the sim's seeds).
+  _mintPerson({ family = null, given = null, stage = 1, age = [20, 60], personality = null, root = null, role = 'wanderer',
+                sectId = null, sectRole = null } = {}, rng) {
+    const w = this._s.world, yr = Math.floor(w.year || 1)
+    const pick = a => a[Math.floor(rng() * a.length)]
+    const st = Math.max(0, Math.min(NPC_STAGE_CAP, Math.round(stage)))
+    const pers = personality && PERSONALITIES.some(x => x.id === personality) ? personality : pick(PERSONALITIES).id
+    // World-minted people take their own id series ('n…'), so minting never shifts the ids (and the id-seeded arts)
+    // of the family's people, which still count on w.nextId.
+    w.nextNpcId = w.nextNpcId || 1
+    // 4.3: a new person never takes a living or remembered name (living-world.md §12.5): a few tries, then accept.
+    if (this._namesFor !== w) { this._namesFor = w; this._names = new Set(Object.values(w.persons).map(x => Persons.fullName(x))) }
+    const fam = family ?? pick(SURNAMES)
+    let gv = given || pick(GIVEN_NAMES)
+    for (let i = 0; !given && i < 6 && this._names.has(fam ? `${fam} ${gv}` : gv); i++) gv = pick(GIVEN_NAMES)
+    this._names.add(fam ? `${fam} ${gv}` : gv)
+    const p = Persons.make({ id: 'n' + (w.nextNpcId++), given: gv, family: fam,
+      bornYear: yr - (age[0] + Math.floor(rng() * (age[1] - age[0] + 1))), root: root || this._rngRoot(rng),
+      personality: pers, stageIndex: st, maxStage: st, role, alive: true, sectId, sectRole })
+    p.morality = Math.max(-100, Math.min(100, Math.round((PERSONALITY_MORALITY[pers] ?? 0) + (rng() * 2 - 1) * MORALITY_NOISE)))
+    p.grownYear = yr
+    w.persons[p.id] = p
+    return p
+  }
+
+  // Persons.rollRoot's odds on a seeded rng.
+  _rngRoot(rng) {
+    const r = rng(), els = ['fire', 'water', 'earth', 'wood', 'metal'], el = els[Math.floor(rng() * els.length)]
+    return this._rootOfType(r < 0.01 ? 'heavenly' : r < 0.05 ? 'pure' : r < 0.25 ? 'dual' : 'mixed', el)
+  }
+  _rootOfType(type, el = 'water') {
+    switch (type) {
+      case 'heavenly': return { type: 'heavenly', name: '天灵根 Heavenly Root', mult: 3.0 }   // cjk-ok: root name data; UI strips it with latinOnly()
+      case 'pure':     return { type: 'pure',     name: `纯灵根 Pure ${el} Root`, mult: 1.8 }   // cjk-ok: root name data; UI strips it with latinOnly()
+      case 'dual':     return { type: 'dual',     name: '双灵根 Dual Root', mult: 1.4 }   // cjk-ok: root name data; UI strips it with latinOnly()
+      default:         return { type: 'mixed',    name: '杂灵根 Mixed Root', mult: 1.0 }   // cjk-ok: root name data; UI strips it with latinOnly()
+    }
+  }
+
+  // An own-sect disciple's person (minted the first time; a recruited child IS the child's person).
+  _disciplePerson(d) {
+    const w = this._s.world, P = WORLD_PEOPLE
+    if (!d) return null
+    let p = null
+    if (d.kin && d.childId) { d.pid = d.childId; p = w.persons[d.childId] || null }
+    else {
+      p = d.pid ? w.persons[d.pid] || null : null
+      if (!p) {
+        const rng = wsRng(`${d.id}|disciple`)
+        const parts = String(d.name || 'Nameless').split(' ')
+        const talent = d.talent || 1
+        p = this._mintPerson({ family: parts.length > 1 ? parts[0] : '', given: parts.length > 1 ? parts.slice(1).join(' ') : parts[0],
+          stage: 1, age: P.discipleAge, personality: d.personality, role: 'disciple',
+          root: this._rootOfType(talent >= 5 ? 'heavenly' : talent >= 4 ? 'pure' : talent >= 3 ? 'dual' : 'mixed', ['fire', 'water', 'earth', 'wood', 'metal'][Math.floor(rng() * 5)]) }, rng)
+        d.pid = p.id
+      }
+      p.owner = 'sect'
+      const st = Math.max(1, Math.min(NPC_STAGE_CAP, Math.round((d.level || 1) * P.discipleStagePerLevel)))
+      p.stageIndex = Math.max(p.stageIndex || 0, st); p.maxStage = Math.max(p.maxStage || 0, p.stageIndex)
+      if (d.personality) p.personality = d.personality
+      if (p.alive !== false) p.role = d.role === 'head' ? 'branch_head' : 'disciple'
+    }
+    if (p) { p.sectId = 'own'; p.sectRole = d.role === 'head' ? 'elder' : 'disciple' }
+    return p
+  }
+
+  // Mirror every owner's people into the registry and release the ones an owner let go (living-world.md §5).
+  // Cheap (owners hold < ~100 people); runs on every save and every game year.
+  _syncPersons() {
+    const s = this._s, w = s?.world
+    if (!w?.persons || !s.self) return
+    const owned = new Set(), f = s.family || {}, me = s.self.id
+    const fam = (p, role) => {
+      if (!p?.id || p.id === me || owned.has(p.id)) return
+      this._regMerge(p, { owner: 'family', role }); owned.add(p.id)
+    }
+    fam(f.spouse, 'spouse')
+    for (const x of f.formerSpouses || []) fam(x, 'former_spouse')
+    for (const l of f.lovers || []) fam(l.person, 'lover')
+    for (const c of f.children || []) fam(c, c.estranged ? 'estranged' : 'child')
+    for (const e of f.encounters || []) fam(e.person, 'stranger')
+    for (const x of f.proposal?.suitors || []) fam(x, 'suitor')
+    for (const x of f.court?.candidates || []) fam(x, 'suitor')
+    for (const x of f.spurned || []) fam(x.person, 'suitor')
+    for (const p of Object.values(s.arena?.duelists || {})) {
+      if (!p?.id || owned.has(p.id)) continue
+      this._regMerge(p, { owner: 'arena', role: 'duelist' }); owned.add(p.id)
+    }
+    const ownPids = new Set()
+    if (s.ownSect?.founded) for (const d of s.ownSect.disciples || []) {
+      const p = this._disciplePerson(d)
+      if (p) { ownPids.add(p.id); owned.add(p.id) }
+    }
+    const live = new Set(this._wsAll().filter(r => r.alive).map(r => r.id))
+    for (const p of Object.values(w.persons)) {
+      if (p.owner && p.owner !== 'world' && !owned.has(p.id)) p.owner = 'world'
+      const gone = p.sectId === 'own' ? !ownPids.has(p.id) : (p.sectId && !live.has(p.sectId))
+      if (gone) {
+        p.sectId = null; p.sectRole = null
+        if (p.alive !== false && ['disciple', 'branch_head', 'sect_master', 'sect_elder'].includes(p.role)) p.role = 'wanderer'
+      }
+    }
+  }
+
+  // Public (UI): the person card — who they are, what they are to you, where to act on them. Null if unknown.
+  personInfo(pid) {
+    const s = this._s, w = s.world
+    if (pid && pid !== s.self?.id && !w.persons[pid]) {   // shown before the next save mirrored them
+      this._syncPersons()
+      const d = (s.ownSect?.disciples || []).find(x => x.id === pid)   // a disciple row may carry its own id
+      if (d?.pid) pid = d.pid
+    }
+    const p = pid === s.self?.id ? null : w.persons[pid]
+    if (!p) return null
+    const yr = Math.floor(w.year), alive = p.alive !== false
+    const name = id => { const x = this.person(id); return x ? { pid: x.id, name: id === s.self.id ? 'You' : Persons.fullName(x) || 'Nameless' } : null }
+    const sect = p.sectId === 'own' ? { name: s.ownSect?.name || 'your sect', own: true }
+      : p.sectId ? (() => { const r = this._wsRec(p.sectId); return r ? { id: r.id, name: r.name } : null })() : null
+    const mor = typeof p.morality === 'number' ? MORALITY_WORDS.find(m => p.morality >= m.min) : null
+    const f = s.family || {}
+    const rel = f.spouse?.id === pid ? 'Your spouse' : (f.children || []).some(c => c.id === pid) ? 'Your child'
+      : (f.lovers || []).some(l => l.person?.id === pid) ? 'Your lover' : (f.formerSpouses || []).some(x => x.id === pid) ? 'Your former spouse'
+      : (s.self.parents || []).includes(pid) ? 'Your parent' : w.pastLives.some(l => l.personId === pid) ? 'A past life of yours' : null
+    const kin = []
+    for (const id of p.parents || []) { const n = name(id); if (n) kin.push({ ...n, rel: 'parent' }) }
+    for (const id of p.spouseIds || []) { const n = name(id); if (n) kin.push({ ...n, rel: 'spouse' }) }
+    for (const c of Object.values(w.persons)) if ((c.parents || []).includes(pid)) kin.push({ pid: c.id, name: Persons.fullName(c), rel: 'child' })
+    if ((p.parents || []).length === 0 && (f.children || []).some(c => (c.parents || []).includes(pid)))
+      for (const c of f.children) if ((c.parents || []).includes(pid) && !kin.some(k => k.pid === c.id)) kin.push({ pid: c.id, name: Persons.fullName(c), rel: 'child' })
+    // Where to act on them today (existing systems; the card's own actions arrive in 4.10).
+    const go = []
+    if (f.spouse?.id === pid || (f.lovers || []).some(l => l.person?.id === pid) || (f.children || []).some(c => c.id === pid)) go.push({ view: 'family', label: 'Kin → Family' })
+    if (p.owner === 'arena') go.push({ view: 'arena', label: 'Roam → Arena' })
+    if (p.sectId === 'own') go.push({ view: 'sect-disciples', label: 'Sect → Disciples' })
+    else if (sect?.id) go.push({ view: 'world', sectId: sect.id, label: `The ${sect.name}` })
+    if ((f.encounters || []).some(e => e.person?.id === pid)) go.push({ view: 'explore', label: 'Roam → Explore' })
+    return {
+      pid, name: Persons.fullName(p) || 'Nameless', alive, age: Math.max(0, yr - (p.bornYear ?? yr)),
+      stage: p.stageIndex || 0, maxStage: p.maxStage || p.stageIndex || 0, diedYear: p.diedYear ?? null,
+      cause: p.cause ? (PERSON_CAUSE_TEXT[p.cause] || 'Passed on') : null,
+      rootName: p.root?.name || null, rootMult: p.root?.mult || null,
+      temper: PERSONALITIES.find(x => x.id === p.personality)?.name || null,
+      morality: mor ? { word: mor.word, tone: mor.tone } : null,
+      body: BODY_TIER_LETTERS[p.bodyTier || 0] || 'F',
+      role: PERSON_ROLE_TEXT[p.role] || (p.role ? String(p.role).replace(/_/g, ' ') : 'Cultivator'),
+      sectRole: p.sectRole, sect, toYou: rel, relScore: p.rel || 0, memories: (p.mem || []).slice(-3),
+      // Family already keeps how they feel about you (bond / affection); the world's rel takes over for everyone else (4.10).
+      feel: f.spouse?.id === pid && typeof f.affection === 'number' ? { label: 'Affection', v: Math.round(f.affection) }
+        : (() => { const c = (f.children || []).find(x => x.id === pid); return c && typeof c.bond === 'number' ? { label: 'Bond', v: Math.round(c.bond) } : null })(),
+      bodyKnown: (p.bodyTier || 0) > 0,
+      kin: kin.slice(0, 8), go, pinned: !!p.pin, seen: p.fam || 0,
+      // 4.3: their life — the span they can hope for, the warning beats, their class.
+      span: alive && p.owner !== 'family' ? this._lifespan(p) : null, twilight: alive && !!p.twilight,
+      injured: alive && (p.injuredUntil || 0) > yr ? p.injuredUntil - yr : 0, ascended: !!p.ascended, chosen: !!p.chosen,
+      classmate: p.cohort == null ? null : p.cohort === this._lifeNo() ? 'Your classmate' : `Your classmate in life ${p.cohort}`,
+    }
+  }
+
+  // Public (UI): a name was shown to the player on a card — familiarity grows (living-world.md §6.4).
+  notePersonSeen(pid) {
+    const p = this._s.world?.persons?.[pid]
+    if (p) p.fam = (p.fam || 0) + 1
+  }
+
+  // Phase 28 migration: v2 fields on every registry person, every owner's people mirrored, and every world sect's
+  // master + elders made real people. The heavy pass runs once (w.peopleV); later people arrive through
+  // _syncPersons / _wsEnsurePeople as they appear.
+  _ensurePhase28Fields() {
+    const s = this._s, w = s?.world
+    if (w?.persons && s.self && w.peopleV >= 1 && this._syncedFor !== s) { this._syncedFor = s; this._syncPersons() }   // once per load
+    if (w?.persons && s.self && w.peopleV >= 1) {   // 4.3: the pre-existing world (once per slot) + this life's class
+      if (!w.worldSeedV) { this._seedWorldPeople(); w.worldSeedV = 1 }
+      if (!s.interlude && !w.cohorts?.[this._lifeNo()]) this._seedCohort()
+      if (w.livesYear == null) w.livesYear = Math.floor(w.year)
+      // 4.6: the merged Chronicle starts from the sects' own short chronicle (once).
+      if (!Array.isArray(w.chron)) {
+        w.chron = []; w.chronSeq = 0
+        for (const c of w.sects?.chronicle || []) this._chron({ k: 'sect', t: c.text, s: c.sectId, y: c.year })
+        w.chronSeen = w.chronSeq
+      }
+    }
+    if (!w?.persons || !s.self || w.peopleV >= 1) return
+    for (const p of Object.values(w.persons)) Persons.stampV2(p)
+    Persons.stampV2(s.self)
+    this._syncPersons()
+    for (const r of this._wsAll()) if (r.alive) this._wsEnsurePeople(r)
+    w.peopleV = 1
+    this._ensurePhase28Fields()   // 4.3: seed the world + the class now that the registry is stamped
+  }
+
+  // Public (QA + the sim report): how big the save has grown (living-world.md §10).
+  worldSizeInfo() {
+    const s = this._s, slot = JSON.stringify(s).length, world = JSON.stringify(s.world || {}).length
+    const ps = Object.values(s.world?.persons || {})
+    return { slotBytes: slot, worldBytes: world, persons: ps.length, living: ps.filter(p => p.alive !== false).length,
+             budgetSlot: WORLD_PEOPLE.slotBudgetBytes, budgetWorld: WORLD_PEOPLE.worldBudgetBytes }
+  }
+
+  // ── Phase 28 task 4.3 (living-world.md §6): the light world sim — the world's people live, wed, fall and Ascend ──
+  // Game time only (the yearly tick, plus the generation skipped between lives); the world is frozen while closed.
+  // Seeded per person + year (wsRng): the step never draws Math.random, so the sim's other seeds don't shift.
+
+  _lifeRealm(stage) { return CULTIVATION_STAGES[Math.max(0, Math.min(NPC_STAGE_CAP, stage || 0))]?.realm || 'Mortal' }
+  // A person's lifespan in years: the realm of their peak stage, ± a per-person jitter.
+  _lifespan(p) {
+    const L = NPC_LIVES, base = L.lifespanByRealm[this._lifeRealm(Math.max(p.maxStage || 0, p.stageIndex || 0))] || 150
+    return Math.round(base * (1 + (wsRng(`${p.id}|span`)() * 2 - 1) * L.lifespanJitter))
+  }
+  _lifeNo() { return (this._s.world.pastLives || []).length + 1 }
+  _playerBorn() { const s = this._s; return Math.round(s.world.year - (s.age ?? AWAKENING_AGE)) }
+
+  // Grows one person up to `year` (stage pace × talent, slowed while injured). With `rolls`, crossing into a new realm
+  // is a breakthrough that can fail: injured (back to half a stage, slowed) or, higher up, killed by the backlash.
+  // Returns { up: realm reached | null, injured, died }. `boost` (4.6): the replacement controller's pace × for the band
+  // just below a thin one (1 = none).
+  _growPerson(p, year, rolls = false, boost = 1) {
+    const out = { up: null, injured: false, died: false }
+    const from = Math.max(p.grownYear ?? year, (p.bornYear ?? 0) + AWAKENING_AGE)
+    p.grownYear = year
+    if (year <= from || (p.stageIndex || 0) >= NPC_STAGE_CAP) return out
+    let left = year - from, xp = p.npcXp || 0
+    p.stageIndex = p.stageIndex || 0
+    while (left > 0 && p.stageIndex < NPC_STAGE_CAP) {
+      const slow = p.injuredUntil && p.injuredUntil > year - left ? NPC_LIVES.injuredMult : 1
+      const rate = this._npcStageRate(p.stageIndex, p.root?.mult || 1, NPC_YEARS_PER_STAGE / (p.talent || 1)) * slow * boost
+      const need = (1 - xp) / rate
+      if (left < need) { xp += left * rate; left = 0; break }
+      left -= need; xp = 0
+      const next = p.stageIndex + 1, realm = this._lifeRealm(next)
+      if (rolls && p.stageIndex >= 1 && realm !== this._lifeRealm(p.stageIndex)) {
+        const L = NPC_LIVES, rng = wsRng(`${p.id}|bt|${next}|${year}`)
+        const ok = Math.min(L.btSuccessMax, (L.btSuccess[realm] ?? 0.6) + L.btRootBonus * ((p.root?.mult || 1) - 1))
+        if (rng() >= ok) {
+          if (rng() < (L.btDeathShare[realm] ?? 0.2)) { out.died = true; break }
+          out.injured = true
+          p.injuredUntil = year + L.injuredYears[0] + Math.floor(rng() * (L.injuredYears[1] - L.injuredYears[0] + 1))
+          xp = 0.5; left = 0; break
+        }
+        out.up = realm
+      }
+      p.stageIndex = next
+      p.stageYear = year
+    }
+    p.npcXp = p.stageIndex >= NPC_STAGE_CAP ? 0 : xp
+    p.maxStage = Math.max(p.maxStage || 0, p.stageIndex)
+    return out
+  }
+
+  // Years a person of root `mult` needs to climb from awakening to `stage` on the NPC pace (seeding ages).
+  _yearsToStage(stage, mult = 1, talent = 1) {
+    let y = 0
+    for (let st = 1; st < Math.min(stage, NPC_STAGE_CAP); st++) y += 1 / this._npcStageRate(st, mult, NPC_YEARS_PER_STAGE / talent)
+    return Math.round(y)
+  }
+
+  // A world person dies: the registry, the stats, any seat they held. `news` collects what the player hears.
+  _npcDies(p, yr, cause, news = null) {
+    this._killPerson(p.id, yr, cause)
+    delete p.twilight; delete p.injuredUntil
+    if (p.sectId && p.sectId !== 'own') {
+      const r = this._wsRec(p.sectId)
+      if (r?.alive && r.leaderId === p.id) this._wsSeatHeir(r, yr, `buries its master: ${Persons.fullName(p)} is gone (${(PERSON_CAUSE_TEXT[cause] || 'passed on').toLowerCase()})`, true, p.id)
+      else if (r?.alive && (r.elderIds || []).includes(p.id)) {
+        r.elderIds = r.elderIds.filter(id => id !== p.id)
+        this._wsChron(this._lifeText('elderFell', p, { sect: r.name, cause }), r.id, [p.id], (p.stageIndex || 0) >= NPC_WORLD.notableStage)
+      }
+    }
+    news?.push({ k: 'died', p, cause })
+  }
+
+  _lifeText(key, p, extra = {}) {
+    const vals = { name: Persons.fullName(p) || 'Someone', realm: this._lifeRealm(p.stageIndex), ...extra }
+    if (extra.cause) vals.cause = PERSON_CAUSE_TEXT[extra.cause] || 'They passed on'
+    return (NPC_LIFE_TEXT[key] || '').replace(/\{(\w+)\}/g, (m, k) => vals[k] ?? m)
+  }
+
+  // The game-year tick: every year since the last step (only while open — pillar 4).
+  _tickWorldLives() {
+    const w = this._s?.world
+    if (!w?.persons || this._s.interlude) return
+    const yr = Math.floor(w.year)
+    if (w.livesYear == null) w.livesYear = yr - 1
+    for (let y = Math.max(w.livesYear + 1, yr - 4); y <= yr; y++) this._lifeStep(y)
+    w.livesYear = Math.max(w.livesYear, yr)
+  }
+  // The years skipped between lives (2.6d's generation jump): the world lives them too, quietly.
+  _worldYears(fromYear, toYear) {
+    const w = this._s.world
+    for (let y = Math.max((w.livesYear ?? fromYear) + 1, fromYear + 1); y <= toYear; y++) this._lifeStep(y, true)
+    w.livesYear = Math.max(w.livesYear ?? toYear, toYear)
+  }
+
+  // One game year for every world-owned person. Family / arena / own-sect people live under their owners; clan people
+  // grow and may die of old age when they hold no seat (the clan systems run their heads, marriages and children).
+  _lifeStep(yr, quiet = false) {
+    const s = this._s, w = s.world, L = NPC_LIVES
+    const st = w.lifeStats ||= { deaths: {}, births: 0, marriages: 0, ascended: 0 }
+    const clanIds = new Set(), seats = new Set()
+    for (const c of Object.values(w.clans || {})) {
+      if (c.headId) seats.add(c.headId)
+      for (const l of c.lines || []) { if (l.headId) seats.add(l.headId); for (const id of l.memberIds || []) clanIds.add(id) }
+    }
+    const it = s.interlude
+    if (it) { if (it.successorId) seats.add(it.successorId); if (it.spouseId) seats.add(it.spouseId) }
+    for (const id of s.self?.parents || []) seats.add(id)   // your parents see you grown (the clan decides their fate)
+    const myClan = new Set(this._clanMemberIds(this._playerClan(w)))
+    const life = this._lifeNo(), news = []
+    const people = Object.values(w.persons).filter(p => p.alive !== false && (!p.owner || p.owner === 'world') && p.id !== s.self?.id && p.role !== 'ancestor')
+    const pool = [], seekers = []
+    const mine = this._wsMine(), sects = this._wsAll().filter(r => r.alive)
+    // 4.6: the replacement controller reads the bands at the start of the year: the band below a thin one cultivates
+    // faster, a crowded band grows dangerous.
+    const bands = this._worldBands(people), W6 = NPC_WORLD
+    const boostOf = bi => { const up = bands[bi + 1]; return up && up.deficit > 0 ? 1 + W6.thinBoost * up.deficit : 1 }
+    for (const p of people) {
+      if (p.alive === false) continue   // fell earlier this step (a master's death can't kill another, but stay safe)
+      const clan = clanIds.has(p.id), rng = wsRng(`${p.id}|${yr}|life`)
+      const bi = this._bandIndex(p.stageIndex)
+      const g = this._growPerson(p, yr, !clan, boostOf(bi))
+      if (g.died) { this._npcDies(p, yr, 'bt_backlash', news); continue }
+      if (g.injured) news.push({ k: 'injured', p })
+      if (g.up) news.push({ k: 'up', p, realm: g.up })
+      const age = yr - (p.bornYear ?? yr)
+      if (p.role === 'youth' && age >= AWAKENING_AGE) p.role = 'wanderer'
+      // NPC Ascension: long at the last mortal stage, they dare the Trial.
+      if (!clan && (p.stageIndex || 0) >= NPC_STAGE_CAP) {
+        if (p.stageYear == null) p.stageYear = yr
+        if (yr - p.stageYear >= L.ascendYearsAtPeak && rng() < L.ascendTryChance) {
+          if (rng() < L.ascendSuccess + L.ascendRootBonus * ((p.root?.mult || 1) - 1)) {
+            p.ascended = true; st.ascended++
+            this._npcDies(p, yr, 'ascended'); news.push({ k: 'ascended', p }); continue
+          }
+          this._npcDies(p, yr, 'ascension_failed', news); continue
+        }
+      }
+      // The perils of the road (clan people are the clan's to lose).
+      if (!clan) {
+        const role = age < AWAKENING_AGE ? 'youth' : p.sectRole === 'master' ? 'sect_master' : p.sectRole === 'elder' ? 'sect_elder'
+          : p.sectRole === 'disciple' ? 'disciple' : p.role
+        let h = L.hazard[role] ?? L.hazard.default
+        if ((p.stageIndex || 0) >= L.hazardHighStage) h *= L.hazardHighMult
+        if (p.chosen) h *= L.hazardChosenMult
+        if (bands[bi]?.state === 'crowded') h *= W6.crowdHazard   // 4.6: too many at one realm — feuds multiply
+        if (rng() < h) {
+          const tbl = L.hazardCauses[role === 'disciple' ? 'disciple' : p.sectId ? 'sect' : role === 'wanderer' ? 'wanderer' : 'default']
+          this._npcDies(p, yr, this._weightedRng(tbl, rng), news); continue
+        }
+      }
+      // Old age: a backstop, with a warning first (final seclusion).
+      if (!seats.has(p.id)) {
+        const span = this._lifespan(p)
+        if (age >= span) {
+          if (rng() < Math.min(L.oldAgeMax, L.oldAgeBase + L.oldAgePerYear * (age - span))) { this._npcDies(p, yr, 'old_age', news); continue }
+        } else if (age >= span - L.twilightYears && !p.twilight) { p.twilight = yr; news.push({ k: 'twilight', p }) }
+      }
+      // A classmate finds a sect (yours most likely).
+      if (p.cohort && !p.sectId && age >= AWAKENING_AGE && sects.length && rng() < L.cohortJoinSect) {
+        const wt = {}
+        for (const r of sects) wt[r.id] = r === mine ? L.cohortJoinYoursMult : 1
+        const r = this._wsRec(this._weightedRng(wt, rng))
+        if (r) { p.sectId = r.id; p.sectRole = 'disciple'; p.role = 'disciple' }
+      }
+      if (!clan && age >= L.marryAge && !(p.spouseIds || []).some(id => w.persons[id] && w.persons[id].alive !== false)) {
+        pool.push(p)
+        if (rng() < L.marryChance) seekers.push(p)
+      }
+    }
+    // Matches: each seeker looks at a few singles and weds the first who suits.
+    const taken = new Set()
+    for (const a of seekers) {
+      if (taken.has(a.id) || a.alive === false) continue
+      const rng = wsRng(`${a.id}|${yr}|wed`)
+      for (let i = 0; i < 6 && pool.length > 1; i++) {
+        const b = pool[Math.floor(rng() * pool.length)]
+        if (b === a || b.alive === false || taken.has(b.id) || Math.abs((a.bornYear || 0) - (b.bornYear || 0)) > L.marryAgeGap) continue
+        if (Math.abs((a.stageIndex || 0) - (b.stageIndex || 0)) > L.marryStageGap) continue
+        if ((a.parents || []).some(x => (b.parents || []).includes(x)) || (a.parents || []).includes(b.id) || (b.parents || []).includes(a.id)) continue
+        a.spouseIds = [...(a.spouseIds || []), b.id]; b.spouseIds = [...(b.spouseIds || []), a.id]
+        taken.add(a.id); taken.add(b.id); st.marriages++
+        news.push({ k: 'married', p: a, q: b }, { k: 'married', p: b, q: a })
+        break
+      }
+    }
+    // Children: living couples, while the low band has room (4.6: the controller's birth room; was 4.3's lightMax cap).
+    const low = this._worldBands(people)[0]
+    const room = Math.max(0, Math.min(1, (low.target * W6.birthRoomTop - low.count) / (low.target * W6.birthRoomSpan)))
+    if (room > 0) {
+      const kids = {}
+      for (const p of Object.values(w.persons)) for (const id of p.parents || []) kids[id] = (kids[id] || 0) + 1
+      for (const a of people) {
+        if (a.alive === false || clanIds.has(a.id)) continue
+        for (const bid of a.spouseIds || []) {
+          const b = w.persons[bid]
+          if (!b || b.alive === false || String(a.id) > String(b.id) || clanIds.has(b.id) || (b.owner && b.owner !== 'world')) continue
+          if (yr - (a.bornYear ?? yr) > L.birthMaxAge || yr - (b.bornYear ?? yr) > L.birthMaxAge) continue
+          if (Math.max(kids[a.id] || 0, kids[b.id] || 0) >= L.birthMaxChildren) continue
+          const rng = wsRng(`${a.id}|${b.id}|${yr}|birth`)
+          if (rng() >= L.birthChance * room) continue
+          const c = this._mintPerson({ family: a.family || b.family, stage: 0, age: [0, 0], role: 'youth',
+            root: this._rngBlendRoot(a.root, b.root, rng) }, rng)
+          c.parents = [a.id, b.id]; c.grownYear = yr
+          kids[a.id] = (kids[a.id] || 0) + 1; kids[b.id] = (kids[b.id] || 0) + 1; st.births++
+        }
+      }
+    }
+    this._replenishWorld(yr, quiet)   // 4.6: waves, wanderers, hidden masters (the world refills over years)
+    if (yr % L.pruneEvery === 0) this._pruneDead(yr)
+    this._chronLives(news, life, myClan, yr)   // 4.6: the merged Chronicle keeps the year (quiet years too)
+    if (!quiet) this._tellLives(news, life, myClan)
+  }
+
+  // ── Phase 28 task 4.6 (living-world.md §6.1): the replacement controller ──────────────────────────────────────
+  // The world's living (world-owned) people by realm band against NPC_WORLD targets. A thin band is refilled over
+  // years — awakening waves (low), wanderers (Foundation / Core), hidden masters (Nascent Soul / Spirit Severing) and
+  // the faster pace of the band below — never by an instant respawn. Seeded per slot + year (no Math.random).
+  _bandIndex(stage) {
+    const st = stage || 0, B = NPC_WORLD.bands
+    for (let i = 0; i < B.length; i++) if (st >= B[i].from && st <= B[i].to) return i
+    return B.length - 1
+  }
+  _worldPeople() {
+    const s = this._s
+    return Object.values(s.world.persons).filter(p => p.alive !== false && (!p.owner || p.owner === 'world') && p.id !== s.self?.id && p.role !== 'ancestor')
+  }
+  // [{ id, name, short, from, to, target, count, deficit (0..1 below target), state: 'thin'|'ok'|'crowded' }]
+  _worldBands(people = null) {
+    const W6 = NPC_WORLD, counts = W6.bands.map(() => 0)
+    for (const p of people || this._worldPeople()) if (p.alive !== false) counts[this._bandIndex(p.stageIndex)]++
+    return W6.bands.map((b, i) => {
+      const count = counts[i], deficit = Math.max(0, Math.min(1, (b.target - count) / b.target))
+      const state = count < b.target * (1 - W6.tolerance) ? 'thin' : count > b.target * (1 + W6.tolerance) ? 'crowded' : 'ok'
+      return { ...b, count, deficit, state }
+    })
+  }
+  _replenishWorld(yr, quiet = false) {
+    const s = this._s, w = s.world, W6 = NPC_WORLD, L = NPC_LIVES
+    const bands = this._worldBands(), at = id => bands.find(b => b.id === id)
+    const rng = wsRng(`${this._peopleSeed()}|${yr}|replenish`)
+    const st = w.lifeStats ||= { deaths: {}, births: 0, marriages: 0, ascended: 0 }
+    const placeAge = (p, stage, extra = 0) => {
+      const need = AWAKENING_AGE + this._yearsToStage(stage, p.root?.mult || 1, p.talent || 1)
+      p.bornYear = yr - Math.round(Math.min(this._lifespan(p) * 0.85, need * (0.9 + rng() * 0.3) + extra))
+      p.grownYear = yr; p.stageYear = yr
+    }
+    // Awakening waves: youths whose roots stir in the villages, sized to the low band's deficit.
+    const low = bands[0]
+    if (yr % W6.waveEvery === 0 && low.count < low.target) {
+      const n = Math.max(W6.waveSize[0], Math.min(W6.waveSize[1], Math.round((low.target - low.count) * W6.waveShare)))
+      const wave = []
+      for (let i = 0; i < n; i++) {
+        const p = this._mintPerson({ stage: 0, age: [0, 0], role: 'wanderer' }, rng)
+        p.bornYear = yr - AWAKENING_AGE - W6.waveAge[0] - Math.floor(rng() * (W6.waveAge[1] - W6.waveAge[0] + 1))
+        p.grownYear = p.bornYear + AWAKENING_AGE; p.wave = yr
+        this._growPerson(p, yr, false)
+        wave.push(p)
+      }
+      st.waves = (st.waves || 0) + 1; st.awakened = (st.awakened || 0) + n
+      const rank = { heavenly: 4, pure: 3, dual: 2, mixed: 1 }
+      const best = [...wave].sort((a, b) => (rank[b.root?.type] || 0) - (rank[a.root?.type] || 0))[0]
+      const rare = best && (rank[best.root?.type] || 0) >= 3
+      this._chron({ k: 'wave', t: this._chronText(rare ? 'waveBest' : 'wave', best, { n, best: Persons.fullName(best), root: this._rootWords(best.root) }),
+        p: rare ? [best.id] : null, n: best.root?.type === 'heavenly' })
+    }
+    // Wanderers: a short Foundation / Core band draws someone down from the far ranges.
+    for (const id of W6.wanderBands) {
+      const b = at(id)
+      if (!b || !(b.deficit > 0) || rng() >= W6.wanderChance * b.deficit) continue
+      const stage = b.from + Math.floor(rng() * (b.to - b.from + 1))
+      const p = this._mintPerson({ stage, role: 'wanderer' }, rng)
+      placeAge(p, stage)
+      st.wanderers = (st.wanderers || 0) + 1
+      this._chron({ k: 'arrival', t: this._chronText('wanderer', p), p: [p.id] })
+    }
+    // Hidden masters: a thin top band can wake an old monster from a long seclusion (rare; never two close together).
+    if (yr - (w.hiddenYear ?? -1e9) >= W6.hiddenGap) {
+      const thin = W6.hiddenBands.map(at).filter(b => b && b.deficit > 0).sort((a, b) => b.deficit - a.deficit)[0]
+      if (thin && rng() < W6.hiddenChance * thin.deficit) this._hiddenMaster(thin, yr, rng, quiet)
+    }
+  }
+  // An old monster breaks a long seclusion. Their own nature decides what they do with the world they wake to: take
+  // a weaker master's seat, raise a sect of their own, or walk alone. The player hears of it (a toast, a log line, banter).
+  _hiddenMaster(band, yr, rng, quiet = false) {
+    const s = this._s, w = s.world, W6 = NPC_WORLD, els = ['fire', 'water', 'earth', 'wood', 'metal']
+    const stage = band.from + Math.floor(rng() * (band.to - band.from + 1))
+    const p = this._mintPerson({ stage, role: 'old_monster', root: this._rootOfType(this._weightedRng(W6.hiddenRoots, rng), els[Math.floor(rng() * 5)]) }, rng)
+    const years = W6.hiddenSeclusion[0] + Math.floor(rng() * (W6.hiddenSeclusion[1] - W6.hiddenSeclusion[0] + 1))
+    const need = AWAKENING_AGE + this._yearsToStage(stage, p.root.mult)
+    p.bornYear = yr - Math.round(Math.min(this._lifespan(p) * 0.55, need + years * 0.3))
+    p.grownYear = yr; p.stageYear = yr; p.hidden = years
+    w.hiddenYear = yr
+    const st = w.lifeStats ||= { deaths: {}, births: 0, marriages: 0, ascended: 0 }
+    st.hidden = (st.hidden || 0) + 1
+    this._chron({ k: 'hidden', t: this._chronText('hidden', p, { years }), p: [p.id], n: true })
+    // What they do: an ambitious nature reaches for power.
+    const wt = { ...W6.hiddenFates }
+    if (W6.hiddenAmbitious.includes(p.personality)) { wt.seize *= 2; wt.found *= 2 }
+    const W = w.sects, foe = s.sectWar?.enemyId
+    const prey = this._wsAll().filter(r => r.alive && r.id !== W?.event?.sectId && r.id !== foe)
+      .map(r => ({ r, m: this._wsLeader(r) }))
+      .filter(x => x.m && (x.m.stageIndex || 0) <= stage - W6.seizeGap)
+      .sort((a, b) => (a.m.stageIndex || 0) - (b.m.stageIndex || 0) || String(a.r.id).localeCompare(String(b.r.id)))
+    if (!prey.length) delete wt.seize
+    if (!W || W.list.length >= WORLD_SECTS.maxAlive) delete wt.found
+    const fate = this._weightedRng(wt, rng)
+    let line = null, seized = null
+    if (fate === 'seize') {
+      const { r, m } = prey[Math.floor(rng() * Math.min(2, prey.length))]
+      const old = Persons.fullName(m), kills = rng() < W6.seizeKills
+      if (kills) this._killPerson(m.id, yr, 'seat_struggle')
+      else { m.role = 'retired_master'; m.sectRole = null }
+      if (WORLD_SECT_TEMPERS.includes(p.personality)) r.temper = p.personality
+      this._wsSeat(r, p)
+      r.elderIds = (r.elderIds || []).filter(id => id !== p.id)
+      r.leaderSince = yr
+      r.stance = Math.round((r.stance || 0) * W6.seizeStanceKeep)
+      this._wsChron(this._chronText(kills ? 'seizeKill' : 'seizeYield', p, { sect: r.name, old }), r.id, [p.id, m.id], true)
+      seized = { r, old, kills }
+      st.seized = (st.seized || 0) + 1
+    } else if (fate === 'found') {
+      const tier = W6.foundTier[0] + Math.floor(rng() * (W6.foundTier[1] - W6.foundTier[0] + 1))
+      const r = this._wsNewRival({ tier, origin: 'hidden_master', rng, leader: Persons.fullName(p) })
+      if (WORLD_SECT_TEMPERS.includes(p.personality)) r.temper = p.personality
+      this._wsSeat(r, p)
+      r.leaderSince = yr
+      this._wsChron(this._chronText('found', p, { sect: r.name }), r.id, [p.id], true)
+      st.founded = (st.founded || 0) + 1
+    } else this._chron({ k: 'hidden', t: this._chronText('hiddenWander', p), p: [p.id] })
+    if (quiet) return p
+    // The player hears of it: a log line + a toast + banter; louder when it is their own sect (or their line's).
+    const mineR = this._wsMine()
+    if (seized && (seized.r === mineR || seized.r.kind === 'lineage')) {
+      line = this._lifeText('hiddenSeizedYours', p, { sect: seized.r.name, old: seized.old, fate: seized.kills ? 'fell defending it' : 'bowed and withdrew' })
+      this.addEvent({ type: 'negative', text: line, pid: p.id })
+      this._emit('world_news', { text: line, type: 'negative' })
+    } else {
+      line = this._lifeText('hidden', p)
+      this.addEvent({ type: 'special', text: line, pid: p.id })
+      this._emit('world_news', { text: line, type: 'special' })
+    }
+    this._emit('hidden_master', { master: Persons.fullName(p) })
+    return p
+  }
+  _rootWords(root) { return String(root?.name || 'spirit root').replace(/[^\x00-\x7F]+/g, '').trim() || 'spirit root' }
+  _chronText(key, p, extra = {}) {
+    const vals = { name: p ? Persons.fullName(p) || 'Someone' : 'Someone', realm: p ? this._lifeRealm(p.stageIndex) : '', ...extra }
+    if (extra.cause) vals.cause = PERSON_CAUSE_TEXT[extra.cause] || 'They passed on'
+    return (NPC_CHRON_TEXT[key] || '').replace(/\{(\w+)\}/g, (m, k) => vals[k] ?? m)
+  }
+
+  // ── 4.6: the merged Chronicle (世 World → Chronicle) ─────────────────────────────────────────────────────────────
+  // w.chron: [{ i (seq), y, k (kind), t (text), p ([pid]), s (sect record id), n (notable) }], capped (NPC_WORLD.chronMax).
+  // q = routine (left out of the All filter). Kinds: sect (every sect line, via _wsChron) · wave · arrival · hidden · rise · died · ascended · twilight · wed.
+  _chron({ k, t, p = null, s = null, n = false, y = null, q = false }) {
+    const w = this._s?.world
+    if (!w || !t) return
+    if (!Array.isArray(w.chron)) w.chron = []
+    w.chronSeq = (w.chronSeq || 0) + 1
+    const e = { i: w.chronSeq, y: y ?? Math.floor(w.year || 0), k, t }
+    if (p?.length) e.p = p.filter(Boolean)
+    if (s) e.s = s
+    if (n) e.n = 1
+    if (q) e.q = 1   // routine (an elder raised, hopefuls take the oath): kept under Sects, left out of All
+    w.chron.push(e)
+    if (w.chron.length > NPC_WORLD.chronMax) w.chron.splice(0, w.chron.length - NPC_WORLD.chronMax)
+  }
+  // A year's news into the Chronicle: the high realms for anyone, plus this life's class and your clan.
+  _chronLives(news, life, myClan, yr) {
+    const W6 = NPC_WORLD
+    for (const n of news) {
+      const p = n.p, stg = p.stageIndex || 0, mine = p.cohort === life, kin = myClan.has(p.id)
+      if (n.k === 'died') {
+        if (p.sectRole === 'master' || p.sectRole === 'elder') continue   // the sect's line names them (_npcDies)
+        if (stg >= W6.chronDeathStage || mine || kin || p.chosen || (p.fam || 0) > 0)
+          this._chron({ k: 'died', t: this._chronText('died', p, { cause: n.cause }), p: [p.id], n: stg >= W6.notableStage || (mine && p.chosen), y: yr })
+      } else if (n.k === 'ascended') this._chron({ k: 'ascended', t: this._chronText('ascended', p), p: [p.id], n: true, y: yr })
+      else if (n.k === 'up' && (stg >= W6.chronRiseStage || (mine && stg >= NPC_LIVES.logFromStage)))
+        this._chron({ k: 'rise', t: this._chronText('rise', p), p: [p.id], n: stg >= W6.notableStage, y: yr })
+      else if (n.k === 'twilight' && (stg >= W6.notableStage || mine || kin)) this._chron({ k: 'twilight', t: this._chronText('twilight', p), p: [p.id], y: yr })
+      else if (n.k === 'married' && (mine || n.q.cohort === life) && String(p.id) < String(n.q.id))
+        this._chron({ k: 'wed', t: this._chronText('wed', p, { spouse: Persons.fullName(n.q) }), p: [p.id, n.q.id], y: yr })
+    }
+  }
+
+  // Public (UI): the merged Chronicle, newest first. filter: all | notable | class | clan | sects | people.
+  // Each entry: { i, y, k, text, who: [{ pid, name }], sectId, notable, tags: ['class'|'clan'|'yours'] }.
+  worldChronicle({ filter = 'all', limit = 80 } = {}) {
+    const s = this._s, w = s.world
+    if (!Array.isArray(w.chron)) w.chron = []
+    const life = this._lifeNo(), myClan = new Set(this._clanMemberIds(this._playerClan(w)))
+    const mine = this._wsMine()?.id || null
+    const counts = { all: 0, notable: 0, class: 0, clan: 0, sects: 0, people: 0, routine: 0 }
+    const out = []
+    for (let i = w.chron.length - 1; i >= 0; i--) {
+      const e = w.chron[i], ps = (e.p || []).map(id => w.persons[id]).filter(Boolean)
+      const tags = []
+      if (ps.some(p => p.cohort === life)) tags.push('class')
+      if (ps.some(p => myClan.has(p.id))) tags.push('clan')
+      if (e.s && e.s === mine) tags.push('yours')
+      const sect = e.k === 'sect' || !!e.s
+      const is = { all: !e.q, notable: !!e.n, class: tags.includes('class'), clan: tags.includes('clan'), sects: sect, people: !sect }
+      for (const k of Object.keys(counts)) if (is[k]) counts[k]++
+      if (e.q) counts.routine++
+      if (!is[filter] || out.length >= limit) continue
+      out.push({ i: e.i, y: e.y, k: e.k, text: e.t, sectId: e.s || null, notable: !!e.n, tags,
+                 who: ps.map(p => ({ pid: p.id, name: Persons.fullName(p) })) })
+    }
+    return { entries: out, counts, total: w.chron.length, unseen: this.chronicleNews(), bands: this._worldBands(),
+             year: Math.floor(w.year || 0), stats: { ...(w.lifeStats || {}) } }
+  }
+  // Public (attention): notable lines since you last opened the Chronicle.
+  chronicleNews() {
+    const w = this._s?.world
+    if (!Array.isArray(w?.chron)) return 0
+    const seen = w.chronSeen || 0
+    let n = 0
+    for (let i = w.chron.length - 1; i >= 0 && w.chron[i].i > seen; i--) if (w.chron[i].n) n++
+    return n
+  }
+  noteChronicleSeen() { const w = this._s?.world; if (w) w.chronSeen = w.chronSeq || 0 }
+  // Public (UI): the world's people by realm band against the controller's targets (World → Chronicle's strip).
+  worldBandsInfo() { return this._worldBands() }
+
+  _weightedRng(tbl, rng) {
+    const ks = Object.keys(tbl), tot = ks.reduce((a, k) => a + tbl[k], 0)
+    let r = rng() * tot
+    for (const k of ks) { r -= tbl[k]; if (r < 0) return k }
+    return ks[ks.length - 1]
+  }
+  // Persons.blendRoot's odds on a seeded rng.
+  _rngBlendRoot(a, b, rng) {
+    const r = rng(), el = ['fire', 'water', 'earth', 'wood', 'metal'][Math.floor(rng() * 5)]
+    if (r < 0.4 && a?.type) return this._rootOfType(a.type, el)
+    if (r < 0.8 && b?.type) return this._rootOfType(b.type, el)
+    return this._rngRoot(rng)
+  }
+
+  // What the player hears of a year in the world: their class, their clan, people they have met. Everyone else only
+  // reaches the sects' chronicle (masters, elders) or nothing at all (4.6 brings the merged Chronicle).
+  _tellLives(news, life, myClan) {
+    const s = this._s, out = [], youStage = s.stageIndex || 0
+    const told = s.world.classTold ||= { fell: 0, passed: [] }
+    for (const n of news) {
+      const p = n.p, mine = p.cohort === life, known = (p.fam || 0) > 0 || myClan.has(p.id)
+      if (n.k === 'died') {
+        if (mine) { out.push({ text: this._lifeText(p.chosen ? 'chosenFell' : 'classmateFell', p, { cause: n.cause }), type: 'negative', toast: !!p.chosen, banter: 'classmate_fell', who: p }); told.fell = (told.fell || 0) + 1 }
+        else if (myClan.has(p.id)) out.push({ text: this._lifeText('kinFell', p, { cause: n.cause }), type: 'negative', who: p })
+        else if (known && !p.sectRole) out.push({ text: this._lifeText('knownFell', p, { cause: n.cause }), type: 'neutral', who: p })
+      } else if (n.k === 'ascended') {
+        out.push({ text: this._lifeText('ascended', p), type: 'special', toast: true, who: p })
+      } else if (n.k === 'up' && mine && (p.stageIndex || 0) >= NPC_LIVES.logFromStage) {
+        const passed = (p.stageIndex || 0) > youStage && !(told.passed || []).includes(p.id)
+        if (passed) { told.passed = [...(told.passed || []), p.id].slice(-80); out.push({ text: this._lifeText('classmatePassed', p), type: 'neutral', banter: 'classmate_passed', who: p }) }
+        else out.push({ text: this._lifeText(p.chosen ? 'chosenRealm' : 'classmateRealm', p), type: 'neutral', who: p })
+      } else if (n.k === 'twilight' && (mine || known)) out.push({ text: this._lifeText('twilight', p), type: 'neutral', who: p })
+      else if (n.k === 'injured' && (mine || known)) out.push({ text: this._lifeText('injured', p), type: 'neutral', who: p })
+      else if (n.k === 'married' && mine) out.push({ text: this._lifeText('married', p, { spouse: Persons.fullName(n.q) }), type: 'positive', who: p })
+    }
+    for (const e of out.slice(0, 5)) this.addEvent({ type: e.type, text: e.text, pid: e.who?.id || null })
+    const b = out.find(e => e.banter)
+    if (b) this._emit(b.banter, { classmate: b.who.given })
+    const t = out.find(e => e.toast)
+    if (t) this._emit('world_news', { text: t.text, type: t.type })
+  }
+
+  // The long dead are forgotten unless something still needs them: past lives, clan kin, classmates (the Class board),
+  // strong feelings, pins, the parents + spouses of the living, the seats of sects.
+  _pruneDead(yr) {
+    const s = this._s, w = s.world, keep = new Set(), cut = yr - NPC_LIVES.pruneAfter
+    for (const l of w.pastLives || []) keep.add(l.personId)
+    for (const c of Object.values(w.clans || {})) { keep.add(c.headId); for (const l of c.lines || []) for (const id of l.memberIds || []) keep.add(id) }
+    for (const r of this._wsAll()) { keep.add(r.leaderId); for (const id of r.elderIds || []) keep.add(id) }
+    for (const id of s.self?.parents || []) keep.add(id)
+    for (const p of Object.values(w.persons)) if (p.alive !== false) { for (const id of p.parents || []) keep.add(id); for (const id of p.spouseIds || []) keep.add(id) }
+    for (const [id, p] of Object.entries(w.persons)) {
+      if (p.alive !== false || (p.owner && p.owner !== 'world')) continue
+      if (keep.has(id) || p.cohort != null || p.pin || Math.abs(p.rel || 0) >= 50 || p.ascended || (p.diedYear ?? yr) > cut) { this._compactDead(p); continue }
+      delete w.persons[id]
+    }
+  }
+  // The dead the world keeps shed what only the living use (readers default every one of these keys).
+  _compactDead(p) {
+    for (const k of ['npcXp', 'grownYear', 'injuredUntil', 'stageYear', 'twilight', 'talent', 'tier', 'arts']) delete p[k]
+    if (!p.fam) delete p.fam
+    if (!p.pin) delete p.pin
+    if (!p.rel) delete p.rel
+    if (p.ties && !Object.keys(p.ties).length) delete p.ties
+    if (p.gender == null) delete p.gender
+    if (p.sectRole == null) delete p.sectRole
+  }
+
+  // The pre-existing world (§6.1), once per slot: wanderers (some wed, with children) and a few old monsters, beside the
+  // world sects' masters + elders (_wsEnsurePeople). Ages fit the stages they reached; nobody starts past their span.
+  _seedWorldPeople() {
+    const w = this._s.world, L = NPC_LIVES, yr = Math.floor(w.year || 1)
+    const rng = wsRng(`${this._peopleSeed()}|world`)
+    const els = ['fire', 'water', 'earth', 'wood', 'metal']
+    const place = (p, stage) => {
+      const span = this._lifespan(p)
+      const need = AWAKENING_AGE + this._yearsToStage(stage, p.root?.mult || 1)
+      p.bornYear = yr - Math.round(Math.min(span * 0.9, need * (0.9 + rng() * 0.5)))
+      p.grownYear = yr
+    }
+    const wand = []
+    for (let i = 0; i < L.seedWanderers; i++) {
+      const stage = L.seedWandererStage[0] + Math.floor(Math.pow(rng(), 1.6) * (L.seedWandererStage[1] - L.seedWandererStage[0] + 1))
+      const p = this._mintPerson({ stage, role: 'wanderer' }, rng)
+      place(p, stage); wand.push(p)
+    }
+    for (let i = 0; i < L.seedOldMonsters; i++) {
+      const stage = L.seedMonsterStage[0] + Math.floor(rng() * (L.seedMonsterStage[1] - L.seedMonsterStage[0] + 1))
+      const p = this._mintPerson({ stage, role: 'old_monster', root: this._rootOfType(rng() < 0.3 ? 'heavenly' : 'pure', els[Math.floor(rng() * 5)]) }, rng)
+      place(p, stage)
+      if (stage >= NPC_STAGE_CAP) p.stageYear = yr - Math.floor(rng() * L.ascendYearsAtPeak)
+    }
+    for (let i = 0; i + 1 < wand.length; i += 2) {
+      if (rng() >= L.seedCouples) continue
+      const a = wand[i], b = wand[i + 1]
+      a.spouseIds = [b.id]; b.spouseIds = [a.id]
+      const n = L.seedChildren[0] + Math.floor(rng() * (L.seedChildren[1] - L.seedChildren[0] + 1))
+      const young = Math.max(a.bornYear, b.bornYear)
+      for (let k = 0; k < n; k++) {
+        const born = Math.min(yr, young + 20 + Math.floor(rng() * 40))
+        const c = this._mintPerson({ family: a.family, stage: 0, age: [0, 0], role: yr - born >= AWAKENING_AGE ? 'wanderer' : 'youth', root: this._rngBlendRoot(a.root, b.root, rng) }, rng)
+        c.bornYear = born; c.parents = [a.id, b.id]; c.grownYear = born + AWAKENING_AGE
+        this._growPerson(c, yr, false)
+      }
+    }
+  }
+  // A seed that differs per slot without a Math.random draw: the slot's own first rolls (its sects' masters).
+  _peopleSeed() {
+    const w = this._s.world
+    if (!w.peopleSeed) w.peopleSeed = String(wsRng(`${(w.sects?.list || []).map(r => r.leader + r.name).join('|')}|${this._s.name}`)() * 1e9 | 0)
+    return w.peopleSeed
+  }
+
+  // Your class (§6.1, 28H): ~60 youths who awaken the year you do. A mid-life save gets its class grown to today.
+  _seedCohort() {
+    const s = this._s, w = s.world, L = NPC_LIVES, life = this._lifeNo()
+    w.cohorts ||= {}
+    if (w.cohorts[life] || s.interlude) return
+    const born = this._playerBorn(), awake = born + AWAKENING_AGE, yr = Math.floor(w.year)
+    const rng = wsRng(`${this._peopleSeed()}|cohort|${life}|${born}`)
+    const ids = [], els = ['fire', 'water', 'earth', 'wood', 'metal']
+    for (let i = 0; i < L.cohortSize; i++) {
+      const chosen = i < L.cohortChosen
+      let band = L.cohortSpread[L.cohortSpread.length - 1]
+      if (!chosen) { let r = rng(); for (const b of L.cohortSpread) { r -= b.share; if (r < 0) { band = b; break } } }
+      const roots = chosen ? L.chosenRoots : band.roots, tal = chosen ? L.chosenTalent : band.talent
+      const p = this._mintPerson({ stage: 0, age: [0, 0], role: 'wanderer', root: this._rootOfType(this._weightedRng(roots, rng), els[Math.floor(rng() * 5)]) }, rng)
+      p.bornYear = born - L.cohortBornJitter[0] - Math.floor(rng() * (L.cohortBornJitter[1] - L.cohortBornJitter[0] + 1))
+      p.talent = Math.round((tal[0] + rng() * (tal[1] - tal[0])) * 100) / 100
+      p.cohort = life; p.grownYear = p.bornYear + AWAKENING_AGE
+      if (chosen) p.chosen = true
+      ids.push(p.id)
+      for (let y = p.grownYear + 1; y <= yr; y++) { if (this._growPerson(p, y, true).died) { this._npcDies(p, y, 'bt_backlash'); break } }
+    }
+    w.cohorts[life] = { year: awake, born, ids }
+    w.livesYear = Math.max(w.livesYear ?? yr, yr)
+  }
+
+  // Public (UI): a class — yours this life, or an earlier life's. The living by realm, then the ascended, then the fallen.
+  classInfo(life = null) {
+    const s = this._s, w = s.world, cur = this._lifeNo()
+    const lives = Object.keys(w.cohorts || {}).map(Number).sort((a, b) => b - a)
+    const n = life ?? cur, c = w.cohorts?.[n]
+    if (!c) return { life: n, current: n === cur, lives, members: [], counts: { living: 0, fallen: 0, ascended: 0 }, ahead: 0, youStage: null }
+    const yr = Math.floor(w.year), you = s.stageIndex || 0
+    const members = c.ids.map(id => w.persons[id]).filter(Boolean).map(p => {
+      const sect = p.sectId && p.sectId !== 'own' ? this._wsRec(p.sectId) : null
+      return { pid: p.id, name: Persons.fullName(p) || 'Nameless', alive: p.alive !== false, ascended: !!p.ascended,
+        stage: p.alive !== false ? (p.stageIndex || 0) : (p.maxStage || p.stageIndex || 0), chosen: !!p.chosen,
+        age: Math.max(0, (p.alive === false ? p.diedYear ?? yr : yr) - (p.bornYear ?? yr)), diedYear: p.diedYear ?? null,
+        cause: p.alive === false && !p.ascended ? (PERSON_CAUSE_TEXT[p.cause] || 'Passed on') : null,
+        twilight: !!p.twilight && p.alive !== false, injured: (p.injuredUntil || 0) > yr && p.alive !== false,
+        sect: sect ? sect.name : p.sectId === 'own' ? (s.ownSect?.name || 'your sect') : null }
+    })
+    const rank = m => m.alive ? 0 : m.ascended ? 1 : 2
+    members.sort((a, b) => rank(a) - rank(b) || b.stage - a.stage || (b.chosen - a.chosen) || a.name.localeCompare(b.name))
+    const counts = { living: members.filter(m => m.alive).length, ascended: members.filter(m => m.ascended).length }
+    counts.fallen = members.length - counts.living - counts.ascended
+    const past = n < cur ? w.pastLives?.[n - 1] : null
+    return { life: n, current: n === cur, lives, awakenYear: c.year, members, counts,
+      ahead: n === cur ? members.filter(m => m.alive && m.stage > you).length : 0, youStage: n === cur ? you : null,
+      pastName: past ? Persons.fullName(w.persons[past.personId]) || null : null }
+  }
+  // Public (UI): the class view was seen (clears the World group's class dot).
+  noteClassSeen() { const t = this._s.world?.classTold; if (t && t.fell) { t.fell = 0; this._notify() } }
+  classNews() { return this._s.world?.classTold?.fell || 0 }
 
   // Migration (2.6a): builds s.world from the old per-life `s.clan` skeleton (task 2.2) + `s.gameYear`, then
   // backfills the world's shape. Runs FIRST in the _recalc() ensure chain — _ensurePhase30Fields needs it.
@@ -798,7 +1834,7 @@ class GameState {
     if (f.fight && (typeof f.fight !== 'object' || !f.fight.kind || (f.fight.kind === 'duel' ? !f.spouse
       : f.fight.kind === 'beast' ? !(typeof BEAST_TYPES !== 'undefined' && BEAST_TYPES.some(b => b.id === f.fight.beast?.typeId))
       : f.fight.kind === 'arena' ? !s.arena?.duelists?.[f.fight.oppId]            // A6-3b: the Arena's own duelists
-      : f.fight.kind === 'slaughter' ? !f.fight.foe                               // A6-3a: a road stranger lives on the fight itself
+      : f.fight.kind === 'slaughter' || f.fight.kind === 'spar' ? !f.fight.foe   // A6-3a / 43h: the foe lives on the fight itself
       : !this.person(f.fight.oppId)))) f.fight = null
     for (const c of f.children) {
       if (!c.cd || typeof c.cd !== 'object') c.cd = {}
@@ -985,7 +2021,7 @@ class GameState {
     const s = this._s
     // Skipped once the cap is Infinity (post-Ascension stub stage) — a fraction of Infinity would poison qi.
     if (fx.qiFrac && isFinite(s.derived.qiCap)) s.qi = Math.max(0, Math.min(s.derived.qiCap, s.qi + fx.qiFrac * s.derived.qiCap))
-    if (fx.health)    s.health = Math.max(1, Math.min(100, (s.health ?? 100) + fx.health))
+    if (fx.health)    s.health = Math.max(1, Math.min(this.maxHealth(), (s.health ?? 100) + fx.health))
     if (fx.karma)     s.karma = Math.max(0, Math.min(100, s.karma + fx.karma))
     if (fx.integrity) s.realmIntegrity = Math.max(0, Math.min(100, (s.realmIntegrity ?? 100) + fx.integrity))
     if (fx.contribution && s.sect?.id) s.sect.contribution += fx.contribution
@@ -1291,7 +2327,20 @@ class GameState {
 
   _sectDef() {
     const id = this._s?.sect?.id
-    return id && typeof SECTS !== 'undefined' ? (SECTS.find(x => x.id === id) || null) : null
+    if (!id) return null
+    const def = typeof SECTS !== 'undefined' ? (SECTS.find(x => x.id === id) || null) : null
+    return def || this._lineageSectDef(id)   // Phase 46 (1.20d): a membership in a lineage world sect has no SECTS def
+  }
+
+  // Phase 46 (1.20d, lineage-sect.md): synthesise a SECTS-shaped def for a lineage world sect you are a member of,
+  // so rank, missions, the blessing and the master systems all keep working. Effects are neutral (a founded sect had
+  // no joined-sect blessing); the reward is the connection + the road back to owning it.
+  _lineageSectDef(id) {
+    const r = this._wsById(id)
+    if (!r || r.kind !== 'lineage') return null
+    const minStage = CULTIVATION_STAGES.findIndex(x => x.realm === 'Core Formation')
+    return { id: r.id, name: r.name, nameCN: '', minStage, effects: {}, lineage: true,
+             desc: `The sect your line founded, led now by ${r.leader}. Its halls lend what they can; rank, missions and its wars are as any other sect's.` }
   }
 
   // Phase 30 (M2 task 2.2): moved to renderer/engine/persons.js (Persons.rollRoot/specificRoot) so M4's
@@ -1310,19 +2359,26 @@ class GameState {
     this._ensurePhase3Fields()
     this._ensurePhase4Fields()
     this._ensurePhase5Fields()
+    this._ensurePhase43Fields()
+    this._ensurePhase45Fields()
     this._ensurePhase5BFields()
     this._ensurePhase32Fields()
     this._ensurePhase22Fields()
     this._ensurePhase23Fields()
+    this._ensurePhase14Fields()   // Phase 14: the body + mini-games (after 23: clamps Health to the body's max)
     this._ensurePhase20CFields()
     this._ensurePhase29Fields()
     this._ensurePhase33Fields()   // world first (2.6a) — self/clan roster below depend on it
     this._ensurePhase30Fields()
+    this._ensurePhase43bFields()  // Phase 43b: the world's sect registry (needs s.world + s.self)
     this._ensurePhase16Fields()
     this._ensurePhase34Fields()   // Phase 31 (2.7a) — needs s.world.clans (33), reads maxStageThisLife/techniques
+    this._ensurePhase46Fields()   // Phase 46 (1.20b) — needs world.sects (43b) + world.clans (33)
     this._ensurePhase35Fields()
     this._ensurePhase42Fields()
+    this._ensurePhase44Fields()   // Phase 44: known recipes (a new field, so old saves gain the basic formulas)
     this._ensureBeatingFields()   // family-events.js — a bad father's hand + the grown-up reckoning
+    this._ensurePhase28Fields()   // Phase 28 (4.2): one registry of persons — needs world.sects (43b), arena (35), family (16)
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -1393,8 +2449,11 @@ class GameState {
 
     // Sect bonuses (Phase 4) — suppressed for a while after the sect loses a member war (Phase 5C)
     const sectBuffSuppressed = s.sectWar.side === 'member' && Date.now() < (s.sectWar.buffSuppressedUntil || 0)
-    const sectFx = sectBuffSuppressed ? {} : (this._sectDef()?.effects || {})
-    const sectName = this._sectDef()?.name || 'Sect'
+    // Phase 43d: the blessing scales with the sect's halls × your rank's share (sectBlessing()). Only ever for a sect
+    // you joined (s.sect.id); a founder holds no s.sect, so it can never double-apply alongside ownSect.
+    const blessing = this.sectBlessing()
+    const sectFx = sectBuffSuppressed || !blessing ? {} : sectBlessingEffects(this._sectDef()?.effects, blessing.k)
+    const sectName = this._sectDef() ? `${this._sectDef().name} (blessing ×${blessing.k.toFixed(2)})` : 'Sect'
     if (sectFx.qps_mult)                 qMul(sectName, sectFx.qps_mult)
     if (sectFx.weapon_qps_mult && weapId) qMul(`${sectName} (weapon)`, sectFx.weapon_qps_mult)
     if (sectFx.artifact_qps_mult && artId) qMul(`${sectName} (artifact)`, sectFx.artifact_qps_mult)
@@ -1406,9 +2465,11 @@ class GameState {
     let ownCraft = 0, incomeMult = 1, xpMult = 1, libMult = 1
     const arrayDamaged = Date.now() < (s.sectWar?.arrayDamagedUntil || 0)
     if (own.founded) {
-      const bIds = Object.keys(own.buildings).filter(k => own.buildings[k])
+      const bIds = Object.keys(own.buildings).filter(k => own.buildings[k] > 0)
+      let totalLevels = 0
       for (const id of bIds) {
-        const e = SECT_BUILDINGS.find(b => b.id === id)?.effects || {}
+        const lvl = own.buildings[id], e = sectBuildingEffects(id, lvl)     // Phase 43: effects scale with the level
+        totalLevels += lvl
         libMult    *= e.disciple_qi_mult || 1
         ownCraft   += e.craft_double_chance || 0
         maxBeasts  += e.beast_slots || 0
@@ -1417,26 +2478,35 @@ class GameState {
         incomeMult *= e.income_mult || 1
       }
       for (const d of own.disciples) {
-        discQi += DISCIPLE_QI_FRAC * d.talent * (1 + 0.1 * (d.level - 1))
+        discQi += DISCIPLE_QI_FRAC * d.talent * (1 + 0.1 * (d.level - 1)) * this._discipleYieldMult(d)   // Phase 45: branch members feed a share
         fame   += d.talent * d.level
       }
       discQi *= libMult
       discCap = SECT_HALL_LEVELS[Math.min(own.hallLevel, SECT_HALL_LEVELS.length) - 1].cap
-      fame   += 10 * bIds.length + 25 * own.hallLevel + 5 * (s.sectWar?.warVictories || 0) + (s.arena?.sectFame || 0)   // A6-3b: arena wins
+      fame   += 10 * totalLevels + 25 * own.hallLevel + 5 * (s.sectWar?.warVictories || 0) + (s.arena?.sectFame || 0) + SECT_RAZE.fame * (own.razed?.length || 0)   // A6-3b · 43f: sects you razed: arena wins (Phase 43: deeper halls carry more fame)
     }
     qMul('Disciples’ offerings', 1 + discQi)
 
-    // Phase 31 (M2 tasks 2.7d/2.7e, clan-succession.md §2.7): Ancestral catch-up below the clan's best-reached
-    // stage, Refined Meridians (permanent, any stage) and the Ancestor Blessing (permanent, unconditional —
-    // not gated by catch-up). None of these apply to an orphan life (no clan).
+    // Phase 31 (M2 task 2.7d, clan-succession.md §2.7): clan legacies that scale Qi/s permanently — Refined
+    // Meridians and the Ancestor Blessing (both unconditional). None apply to an orphan life (no clan).
+    // Phase 46 (1.20a, lineage-sect.md): ancestral catch-up is REMOVED — Bloodline Quality is the head start now.
     const legacyClan = this._playerClan()
-    const inCatchUp = !!(legacyClan && s.stageIndex < legacyClan.bestStageIndex)
-    let catchUpBtBonus = 0
     if (legacyClan) {
-      if (inCatchUp) { qMul('Ancestral catch-up', CATCHUP_QPS_MULT); catchUpBtBonus = CATCHUP_BT_BONUS; btParts.push({ label: 'Ancestral catch-up', op: '+', value: CATCHUP_BT_BONUS }) }
       qMul('Refined Meridians', 1 + this._legacyValue(legacyClan, 'refined_meridians'))
       qMul('Ancestor Blessing', 1 + (legacyClan.blessingStacks || 0) * ANCESTOR_BLESSING_QPS)
     }
+    // Phase 46 (1.20a): a stronger bloodline cultivates faster (+0.4%/pt, cap +40% at BQ 100). 0 on a first life,
+    // so only a reincarnated life shows the term — the inherited advantage that replaced catch-up.
+    const bloodlineBq = s.bloodlineQuality || 0
+    if (bloodlineBq > 0) qMul('Bloodline Quality', 1 + bloodlineBq * BLOODLINE_QI_COEF)
+    // Phase 14 (body-constitution.md): spirit tempering halves Qi/s while it runs; an endured ordeal's root boost;
+    // Thunder Peak's breakthrough edge.
+    const body = s.body
+    const tempM = body.active && !body.active.crisis ? this._temperMethod(body.active.id) : null
+    if (tempM?.qiMult) qMul(`${tempM.name} (tempering)`, tempM.qiMult)
+    if (body.rootBoost && Date.now() < body.rootBoost.until && this.rootElements().includes(body.rootBoost.element))
+      qMul(`${ART_ELEMENTS[body.rootBoost.element].name}-tempered root`, body.rootBoost.mult)
+    bAdd('Thunder-tempered body', body.btBonus || 0)
     // Phase 40: Soul Resonance — cross-save, every slot and every life (docs/systems/soul-points.md)
     qMul(`Soul Resonance (rank ${this._soul.resonance})`, this.soulQiMult())
 
@@ -1455,7 +2525,7 @@ class GameState {
       if (pe.type === 'bt_guarantee') pillBtPreview = 1
     }
 
-    const baseChance = Math.min(0.98, Math.max(sectFx.bt_floor || 0, st.breakthroughChance + btBonus + catchUpBtBonus + s.karma / 1000))
+    const baseChance = Math.min(0.98, Math.max(sectFx.bt_floor || 0, st.breakthroughChance + btBonus + s.karma / 1000))
 
     s.derived = {
       qiPerSecond:              qps,
@@ -1482,20 +2552,26 @@ class GameState {
       realmIntegrity:   s.realmIntegrity ?? 100,
       arrayDamaged,
       sectBuffSuppressed,
-      catchUp:          inCatchUp,   // Phase 31 (2.7e): below the clan's best-reached stage
-      catchUpUntil:     inCatchUp ? legacyClan.bestStageIndex : null,
+      sectBlessingK:    blessing ? blessing.k : null,   // Phase 43d: factor × rank share (null when in no sect)
+      // Phase 14: the body
+      bodyTier:         body.tier,
+      maxHealth:        this.maxHealth(),
+      healthRegenSeconds: this.healthRegenSeconds(),
+      btKeepBody:       BODY_TIERS[body.tier].btKeep,
       // 1.8b-2: the terms behind qiPerSecond / breakthroughChance / qiCap (see top of _recalc)
       breakdown: {
         qps: qpsParts, bt: btParts, cap: capParts,
-        btFloor: sectFx.bt_floor || 0, btPill: pillBtPreview, btRaw: st.breakthroughChance + btBonus + catchUpBtBonus + s.karma / 1000,
+        btFloor: sectFx.bt_floor || 0, btPill: pillBtPreview, btRaw: st.breakthroughChance + btBonus + s.karma / 1000,
       },
     }
+    this._maybeLineageRecruit()   // Phase 46 (1.20d): the old line-sect offers you a place at Core Formation
   }
 
   _notify(fromTick = false) { this._subs.forEach(fn => fn(this._s, fromTick)) }
 
   _save() {
     const s = this._s
+    try { this._syncPersons() } catch (e) { console.error(e) }   // Phase 28: owners mirrored before every write
     s.lastSave = Date.now()
     window.electron.saveSlot(this._slot, s).catch(() => {})
   }
@@ -1570,9 +2646,10 @@ class GameState {
     const prevYear = Math.floor(s.world.year)
     s.age      += years
     s.world.year += years
-    if (Math.floor(s.world.year) !== prevYear) { this._tickFamily(); this._tickArena() }   // Phase 16-lite (M2 task 2.5) · A6-3b
+    if (Math.floor(s.world.year) !== prevYear) { this._tickFamily(); this._tickArena(); this._tickBranches(); this._tickWorldSects(); this._tickWorldLives(); this._syncPersons() }   // Phase 16-lite (M2 task 2.5) · A6-3b · Phase 45 · Phase 43b · Phase 28 (4.3: the world's people live)
     if (s.hunt && !s.hunt.found && Date.now() >= s.hunt.endsAt) this._resolveHunt()   // Phase 35 (A6-2)
     if (s.arts?.studies?.length) this._finishStudies()      // Phase 42 (arts.md): study runs on real time, closed or open (1.14b: desks)
+    this._tickBody()                                         // Phase 14: tempering + mini-game charges run on real time
 
     const gain = s.derived.qiPerSecondBoosted * dt
     s.qi = Math.min(s.qi + gain, s.derived.qiCap)
@@ -1591,10 +2668,12 @@ class GameState {
     }
 
     // Health passive regen (Phase 23A)
+    // Phase 14: the body sets the rate (+1 every healthRegenSeconds) and the ceiling (maxHealth)
     s._healthRegenAcc = (s._healthRegenAcc || 0) + dt
-    if (s._healthRegenAcc >= HEALTH_REGEN_SECONDS) {
-      s._healthRegenAcc -= HEALTH_REGEN_SECONDS
-      s.health = Math.min(100, (s.health ?? 100) + HEALTH_REGEN_AMOUNT)
+    const regenSec = this.healthRegenSeconds()
+    if (s._healthRegenAcc >= regenSec) {
+      s._healthRegenAcc -= regenSec
+      s.health = Math.min(this.maxHealth(), (s.health ?? 100) + HEALTH_REGEN_AMOUNT)
     }
 
     this.tickOwnSect(dt)
@@ -1647,6 +2726,7 @@ class GameState {
         if (pillEffect?.type === 'qi_loss_reduce') qiKeep = 0.5 + 0.5 * pillEffect.value
         if (pillEffect?.qi_loss_reduce != null)    qiKeep = 0.5 + 0.5 * pillEffect.qi_loss_reduce
         if (s.playMode === 'active') qiKeep = Math.min(1, qiKeep + ACTIVE_BT_QI_LOSS_BONUS)   // 22C: -10% extra loss kept in Active Mode
+        qiKeep = Math.min(1, qiKeep + (BODY_TIERS[s.body?.tier || 0]?.btKeep || 0))         // Phase 14: a stronger body holds more
         s.qi    *= qiKeep
         s.karma  = Math.max(0, s.karma - 8)
         s.stats.failed++
@@ -2296,10 +3376,12 @@ class GameState {
     if (!c.alive || c.estranged) return { ok: false, reason: 'gone' }
     const age = this._childAge(c)
     const out = { ok: true, kind, bond: this._keyed(def.bond, c.personality) }
-    const minAge = kind === 'teach' ? TEACH_MIN_AGE : kind === 'gift' ? GIFT_MIN_AGE : 0
+    const minAge = kind === 'teach' ? TEACH_MIN_AGE : kind === 'gift' ? GIFT_MIN_AGE : kind === 'temper' ? TEMPER_MIN_AGE : 0
     if (def.qiFrac) out.qi = this._qiSlice(def.qiFrac)
     if (def.stones) out.stones = this.familyCost({ cost: { stones: def.stones } })
     if (def.xp) out.xp = def.xp
+    if (def.items) out.items = Object.entries(def.items).map(([id, n]) => ({ id, n, name: ITEMS[id]?.name || id, have: s.inventory[id] || 0 }))   // Phase 14: temper
+    if (kind === 'temper') { out.bodyTier = c.bodyTier || 0; out.maxed = (c.bodyTier || 0) >= CHILD_BODY.maxTier; out.bodyXp = c.bodyXp || 0; out.perTier = CHILD_BODY.perTier }
     if (kind === 'teach') out.morality = Math.round((this._selfMorality() - (c.morality ?? 0)) * TEACH_MORALITY_PULL)
     if (kind === 'gift' && def.spoil?.[c.personality]) out.morality = def.spoil[c.personality]
     const ready = c.cd?.[kind]
@@ -2307,6 +3389,8 @@ class GameState {
     if (this._cdLeft(ready)) return { ...out, ok: false, reason: 'cooldown', secsLeft: this._cdLeft(ready) }
     if (out.qi && s.qi < out.qi) return { ...out, ok: false, reason: 'qi' }
     if (out.stones && s.spiritStones < out.stones) return { ...out, ok: false, reason: 'stones' }
+    if (out.maxed) return { ...out, ok: false, reason: 'maxed' }
+    if (out.items?.some(x => x.have < x.n)) return { ...out, ok: false, reason: 'items' }
     return out
   }
 
@@ -2319,6 +3403,13 @@ class GameState {
     c.raised[kind] = (c.raised[kind] || 0) + 1
     if (p.qi) s.qi = Math.max(0, s.qi - p.qi)
     if (p.stones) s.spiritStones -= p.stones
+    for (const x of p.items || []) { s.inventory[x.id] -= x.n; if (s.inventory[x.id] <= 0) delete s.inventory[x.id] }
+    let bodyUp = false
+    if (kind === 'temper') {   // Phase 14: their body hardens; every CHILD_BODY.perTier sessions, a tier
+      c.bodyXp = (c.bodyXp || 0) + CHILD_BODY.perSession
+      const t = Math.min(CHILD_BODY.maxTier, Math.floor(c.bodyXp / CHILD_BODY.perTier))
+      if (t > (c.bodyTier || 0)) { c.bodyTier = t; bodyUp = true }
+    }
     const before = c.bond
     c.bond = Math.max(0, Math.min(100, c.bond + p.bond))
     if (p.morality) c.morality = Math.max(-100, Math.min(100, (c.morality ?? 0) + p.morality))
@@ -2330,7 +3421,8 @@ class GameState {
     }
     const d = Math.round(c.bond - before)
     const text = { time: `you spend a season with ${c.given}`, teach: `you teach ${c.given} your art`,
-                   gift: `you give ${c.given} pills and spirit stones` }[kind]
+                   gift: `you give ${c.given} pills and spirit stones`,
+                   temper: `you drill ${c.given} until their arms shake${bodyUp ? `: their body hardens into a ${BODY_TIERS[c.bodyTier].name}` : ''}` }[kind]
     this.addEvent({ text: `Year ${this._yr()}: ${text}. (${c.given}: bond ${d >= 0 ? '+' : ''}${d})`, type: 'positive' })
     this._recalc(); this._notify()
     return { ok: true, bond: c.bond, delta: d }
@@ -2600,6 +3692,7 @@ class GameState {
     if (fi.kind === 'beast') return this._beastOpp(fi.beast, fi.oppId)
     if (fi.kind === 'arena') return this._s.arena?.duelists?.[fi.oppId] || null   // A6-3b: the Arena's own duelists
     if (fi.kind === 'slaughter') return fi.foe || null                            // A6-3a: a road stranger (never in the world registry)
+    if (fi.kind === 'spar') return fi.foe || null                                 // 43h: a disciple of another sect
     return fi.kind === 'duel' ? f.spouse : this.person(fi.oppId)
   }
 
@@ -2611,6 +3704,8 @@ class GameState {
       { label: `${self ? 'Your' : 'Their'} spirit root`, value: Math.round((p.root?.mult || 1) * 10) }]
     const temper = TOURNAMENT_PERSONALITY_POWER[p.personality] || 0
     if (temper) parts.push({ label: `${self ? 'Your' : 'Their'} temper (${PERSONALITIES.find(x => x.id === p.personality)?.name || p.personality})`, value: temper })
+    const bt = BODY_TIERS[Math.max(0, Math.min(BODY_TIERS.length - 1, self ? (this._s.body?.tier || 0) : (p.bodyTier || 0)))]   // Phase 14: the body
+    if (bt.power) parts.push({ label: `${self ? 'Your' : 'Their'} body (${bt.name})`, value: bt.power })
     if (!self && p.feud === 'grudge') parts.push({ label: 'Their grudge against you', value: FEUD_POWER })
     return { parts, total: parts.reduce((a, x) => a + x.value, 0) }
   }
@@ -2708,6 +3803,8 @@ class GameState {
     if (fi.kind === 'stepdown') return this._stepdownBoutEnd(fi, opp, res)
     if (fi.kind === 'arena') return this._arenaBoutEnd(fi, opp, res)
     if (fi.kind === 'slaughter') return this._slaughterOutcome(fi, opp, res)
+    if (fi.kind === 'sectmaster') return this._sectmasterOutcome(opp, fi.lethal, res)   // Phase 43e
+    if (fi.kind === 'spar') return this._sparOutcome(fi, opp, res)                         // Phase 43h
     const clan = this._playerClan()
     return fi.kind === 'challenge' ? this._challengeOutcome(clan, opp, fi.lethal, res) : this._defendOutcome(clan, opp, fi.lethal, res)
   }
@@ -2748,7 +3845,7 @@ class GameState {
       if (choice === 'humble') {
         if (opp) opp.vsYou = { ...this.personRecord(opp), humbled: this.personRecord(opp).humbled + 1 }
         if (fi.kind === 'arena') s.arena.renown += ARENA_RENOWN.humble   // the crowd loves it; the clan never saw it
-        else f.cowedUntilYear = yr + Math.round(this._randRange(HUMBLE_QUIET_YEARS))
+        else if (fi.kind !== 'spar' && fi.kind !== 'sectmaster') f.cowedUntilYear = yr + Math.round(this._randRange(HUMBLE_QUIET_YEARS))   // (43e/h: not a clan matter)
       }
       const said = { spare: `You lower your blade and let ${opp?.given} live.`, raise: `You offer ${opp?.given} your hand and help them up.`,
         humble: `You leave ${opp?.given} in the dust before the whole clan.` }[choice]
@@ -2916,11 +4013,17 @@ class GameState {
       const sigArt = title && ARTS_LIST.find(a => a.sig === 'arena:' + R.id)
       if (sigArt) this._grantManual(sigArt.id, `from the ${R.name}'s champion`)
       else if (Math.random() < ART_ARENA_BOUT_DROP) { const artId = this._rollArt(ART_ARENA_RING_WEIGHTS[R.id]); if (artId) this._grantManual(artId, `as a prize in the ${R.name}`) }
+      // Phase 44: the ring champion's formula comes with the title; any win may turn up an unknown one
+      let learnedRecipe = null
+      const champRecipe = title ? RECIPE_DISCOVERY.arena[R.id] : null
+      if (champRecipe && !s.recipes.known[champRecipe]) { this._learnRecipe(champRecipe, 'arena'); learnedRecipe = champRecipe }
+      else if (Math.random() < RECIPE_DISCOVERY.arenaWinChance) { const rid = this._rollHiddenRecipe(); if (rid) { this._learnRecipe(rid, 'arena'); learnedRecipe = rid } }
       if (res.died) { opp.alive = false; opp.diedYear = yr; opp.cause = 'arena_blood'; A.record.kills++; s.karma = Math.max(0, s.karma + ARENA_KILL_KARMA) }
       A.best = Math.max(A.best, run?.streak || 0)
       if (s.ownSect?.founded) A.sectFame += R.fame
       else if (s.sect?.id) s.sect.contribution += R.contribution
-      A.last = { won: true, gain, purse: run?.purse || 0, streak: run?.streak || 0, title, ringId: R.id, champLeft: Math.max(0, ARENA_CHAMP_AFTER - (run?.wins || 0)) }
+      A.last = { won: true, gain, purse: run?.purse || 0, streak: run?.streak || 0, title, ringId: R.id, champLeft: Math.max(0, ARENA_CHAMP_AFTER - (run?.wins || 0)),
+        recipe: learnedRecipe ? (ITEMS[RECIPES.find(r => r.id === learnedRecipe)?.productId]?.name || 'a formula') : null }
       this.addEvent({ text: `The ${R.name}: you beat ${Persons.fullName(opp)}${res.died ? ', and they do not rise' : ''}. +${gain} to the purse (${run?.purse || gain} now).${title ? ` The crowd names you ${title}.` : ''}`, type: title ? 'special' : 'positive' })
       this._emit('arena_win', { ring: R.id, streak: run?.streak || 0, blood, champion, title: !!title })
       this._recalc(); this._notify()
@@ -3042,6 +4145,8 @@ class GameState {
       { label: 'Your spirit root', value: Math.round((s.root?.mult || 1) * 10) }]
     const temper = TOURNAMENT_PERSONALITY_POWER[s.personality?.id] || 0
     if (temper) parts.push({ label: `Your temper (${s.personality?.name || s.personality?.id})`, value: temper })
+    const bodyPow = BODY_TIERS[s.body?.tier || 0]?.power || 0   // Phase 14
+    if (bodyPow) parts.push({ label: `Your body (${BODY_TIERS[s.body.tier].name})`, value: bodyPow })
     if (hp < BEAST_WOUNDED_BELOW) parts.push({ label: `Wounded (Health ${Math.ceil(hp)})`, value: -Math.round((BEAST_WOUNDED_BELOW - hp) * BEAST_WOUNDED_POWER) })
     return { parts, total: parts.reduce((a, p) => a + p.value, 0) }
   }
@@ -3143,7 +4248,7 @@ class GameState {
     const slots = (s.arts?.loadout?.moves || []).slice(0, ART_MOVE_SLOTS)
     const moves = slots.filter(Boolean)
     const mastery = Object.fromEntries(Object.entries(s.arts?.known || {}).map(([id, k]) => [id, k.mastery || 1]))
-    return { side: 'you', name: s.name, hp: Math.max(0, s.health ?? 100), max: 100, qi: MC.qiPool + P.qiPool, pool: MC.qiPool + P.qiPool, regen: MC.qiRegen + P.qiRegen,
+    return { side: 'you', name: s.name, hp: Math.max(0, s.health ?? 100), max: this.maxHealth(), qi: MC.qiPool + P.qiPool, pool: MC.qiPool + P.qiPool, regen: MC.qiRegen + P.qiRegen,
       power, element: null, elements: els, swift: MC.swiftBase + P.swift, moves, slots, mastery, P, st: {}, burn: 0, buffs: [], ward: 0, reflect: 0, counterPow: 0, charging: null, circ: false, sealed: null }
   }
   _mbFoe(rec, youEl) {
@@ -3597,14 +4702,14 @@ class GameState {
   }
   _mbLive(b, fi, youId) {
     const s = this._s
-    b.you.hp = Math.max(0, Math.min(100, s.health ?? 100))
+    b.you.hp = Math.max(0, Math.min(this.maxHealth(), s.health ?? 100))
     const n0 = b.lines.length
     let answer = b.pendingAnswer; b.pendingAnswer = null
     // the pending attack gets the QTE's answer; with parrying Off every hit lands; otherwise pause for the QTE
     const prov = q => { if (answer) { const a = answer; answer = null; return a } return s.arts.parryMode === 'off' ? Array(q.hits).fill(false) : null }
     const evStart = b.plan ? b.events.length : 0
     const r = this._mbStep(b, Math.random, prov, youId)
-    s.health = Math.max(0, Math.min(100, b.you.hp))
+    s.health = Math.max(0, Math.min(this.maxHealth(), b.you.hp))
     if (b.stance !== 'slay') s.health = Math.max(1, s.health)
     const events = (b.events || []).slice(evStart)
     const out = { ok: true, events, lines: b.lines.slice(n0), pending: r === 'pending' ? b.pending : null, turn: b.turn }
@@ -3613,7 +4718,7 @@ class GameState {
       const opp = this._fightOpp()
       if (b.over === 'won') {
         fi.over = 'won'
-        if (b.you.P.heal) s.health = Math.min(100, s.health + b.you.P.heal)
+        if (b.you.P.heal) s.health = Math.min(this.maxHealth(), s.health + b.you.P.heal)
         this.addEvent({ text: `The ${opp.name} goes down and does not rise. It is yours to decide what happens now.`, type: 'positive' })
         out.over = 'won'
       } else if (b.over === 'died') { out.done = true; out.outcome = this._beastFightDeath(fi, opp) }
@@ -3640,7 +4745,7 @@ class GameState {
       const f = s.family
       if (b.over === 'won') {
         fi.over = 'won'
-        if (b.you.P.heal) s.health = Math.min(100, s.health + b.you.P.heal)
+        if (b.you.P.heal) s.health = Math.min(this.maxHealth(), s.health + b.you.P.heal)
         this.addEvent({ text: `${opp?.given || 'They'} ${fi.lethal ? 'is down, and cannot rise' : 'yields'}. What happens now is your choice.`, type: 'positive' })
         out.over = 'won'
       } else {
@@ -3844,8 +4949,442 @@ class GameState {
     const parts = [{ label: 'Heaven’s mercy', op: 'base', value: ASCENSION_BASE_CHANCE },
                    { label: `Bloodline ${Math.round(bq)}`, op: '+', value: bq * ASCENSION_BQ_COEF }]
     parts.push({ label: 'Integrity at 100', op: '+', value: (s.realmIntegrity ?? 100) >= 100 ? ASCENSION_PREP_INTEGRITY : 0, want: ASCENSION_PREP_INTEGRITY })
-    parts.push({ label: 'Health at 100',    op: '+', value: (s.health ?? 100) >= 100 ? ASCENSION_PREP_HEALTH : 0, want: ASCENSION_PREP_HEALTH })
-    return { parts, cap: ASCENSION_CHANCE_CAP, total: this.ascensionChance() }
+    parts.push({ label: 'Health full',      op: '+', value: (s.health ?? 100) >= this.maxHealth() ? ASCENSION_PREP_HEALTH : 0, want: ASCENSION_PREP_HEALTH })
+    // Phase 47: the Trial is gated on the full bloodline — surface it so the UI can explain the lock.
+    return { parts, cap: ASCENSION_CHANCE_CAP, total: this.ascensionChance(),
+      req: { need: ASCENSION_MIN_BLOODLINE, have: bq, met: bq >= ASCENSION_MIN_BLOODLINE } }
+  }
+
+  // ── Phase 14 (docs/systems/body-constitution.md): Body Constitution & Tempering ─────────────────────────────
+  // The body is a second path beside Qi: every life starts at F (Frail Body) and trains up to S on real-time tempering.
+  // The tier sets max Health, Health regen, the Qi kept on a failed breakthrough and a share of fight power. Ordeals stop
+  // at a crisis the player answers; the tier only rises through a trial the player chooses. Data: tempering.js.
+  _blankBody() {
+    return { tier: 0, xp: 0, active: null, last: null, scars: [], taint: 0, cleanEndures: 0, ordealsDone: {}, btBonus: 0,
+             rootBoost: null, bloodForgings: 0, history: [] }
+  }
+  _blankMinigames() {
+    return { strikes: { charges: MINIGAME_CHARGES.max, nextAt: null, best: 0, plays: 0, session: null },
+             flow:    { charges: MINIGAME_CHARGES.max, nextAt: null, best: null, plays: 0, hour: [], session: null } }
+  }
+  _ensurePhase14Fields() {
+    const s = this._s
+    if (!s.body || typeof s.body !== 'object') s.body = this._blankBody()
+    const b = s.body, d = this._blankBody()
+    for (const k of Object.keys(d)) if (b[k] === undefined) b[k] = d[k]
+    b.tier = Math.max(0, Math.min(BODY_TIERS.length - 1, b.tier | 0))
+    if (!(b.xp >= 0)) b.xp = 0
+    if (b.active && !this._temperMethod(b.active.id)) b.active = null
+    if (!s.minigames || typeof s.minigames !== 'object') s.minigames = this._blankMinigames()
+    const m = s.minigames, dm = this._blankMinigames()
+    for (const k of ['strikes', 'flow']) {
+      if (!m[k] || typeof m[k] !== 'object') m[k] = dm[k]
+      for (const f of Object.keys(dm[k])) if (m[k][f] === undefined) m[k][f] = dm[k][f]
+      m[k].charges = Math.max(0, Math.min(MINIGAME_CHARGES.max, m[k].charges | 0))
+    }
+    if (s.health > this.maxHealth()) s.health = this.maxHealth()
+  }
+  _temperMethod(id) { return TEMPERING_METHODS.find(m => m.id === id) || null }
+
+  // Max Health: the tier's, less any scars. Safe before _recalc (reads s.body directly).
+  maxHealth() {
+    const b = this._s?.body
+    if (!b) return 100
+    const base = BODY_TIERS[b.tier || 0].maxHealth
+    const scar = (b.scars || []).reduce((a, x) => a + (BODY_SCARS[x.id]?.maxHealth || 0), 0)
+    return Math.max(1, Math.round(base * (1 + scar)))
+  }
+  healthRegenSeconds() {
+    const b = this._s?.body
+    if (!b) return HEALTH_REGEN_SECONDS
+    const scar = (b.scars || []).reduce((a, x) => a + (BODY_SCARS[x.id]?.regen || 0), 0)
+    return BODY_TIERS[b.tier || 0].regenSec / Math.max(0.1, 1 + scar)
+  }
+  bodyTier(i = this._s?.body?.tier || 0) { return BODY_TIERS[i] }
+
+  // XP past the next mark banks toward the trial, up to BODY_BANK_FRAC of the step after it. At S nothing more is gained.
+  _bodyXpCap() {
+    const i = this._s.body.tier, T = BODY_TIERS, next = T[i + 1]
+    if (!next) return T[i].xp
+    const after = T[i + 2] ? T[i + 2].xp - next.xp : next.xp - T[i].xp
+    return Math.round(next.xp + BODY_BANK_FRAC * after)
+  }
+  _gainBodyXp(n) {
+    const b = this._s.body, before = b.xp
+    b.xp = Math.min(this._bodyXpCap(), b.xp + Math.max(0, Math.round(n)))
+    return b.xp - before
+  }
+  // Every tempering's XP multiplier: a founder's Training Ground + Active Mode. Parts for the breakdown.
+  temperXpMult() {
+    const s = this._s, parts = [{ label: 'Base', op: 'base', value: 1 }]
+    let m = 1
+    const tg = s.ownSect?.founded ? (s.ownSect.buildings?.training_ground || 0) : 0
+    if (tg) { m += tg * TEMPERING_XP_TRAINING_GROUND; parts.push({ label: `Training Ground Lv.${tg}`, op: '+', value: tg * TEMPERING_XP_TRAINING_GROUND }) }
+    if (s.playMode === 'active') { m += TEMPERING_XP_ACTIVE; parts.push({ label: 'Active Mode', op: '+', value: TEMPERING_XP_ACTIVE }) }
+    return { mult: m, parts }
+  }
+  _strongestBeast() {
+    let best = null, bv = -1
+    for (const x of this._s.beasts || []) { const v = (x.level || 1) * this.beastProfile(x).might; if (v > bv) { bv = v; best = x } }
+    return best
+  }
+  _methodBaseXp(m) {
+    if (m.xp === 'beast') { const x = this._strongestBeast(); return x ? TEMPERING_BEAST_XP.base + TEMPERING_BEAST_XP.perLevelMight * (x.level || 1) * this.beastProfile(x).might : 0 }
+    if (m.xp === 'blood') return BLOOD_FORGING.xpMult * this._bestTemperRate() * m.secs / 3600
+    return m.xp
+  }
+  // The best XP per hour among the methods your realm has opened (numeric XP only): the yardstick for Blood Forging
+  // and the Tempering Strikes reward.
+  _bestTemperRate() {
+    const st = this._s.stageIndex
+    return Math.max(...TEMPERING_METHODS.filter(m => !m.locked && typeof m.xp === 'number' && st >= m.minStage).map(m => m.xp / (m.secs / 3600)))
+  }
+  methodXp(m) { return Math.round(this._methodBaseXp(m) * this.temperXpMult().mult) }
+  _bloodOpen() { const s = this._s; return s.body.bloodForgings > 0 || s.karma <= BLOOD_FORGING.unlockKarma }
+
+  // Public (UI): every method with its cost, XP, and why it can't start (reason) if it can't.
+  temperingList() {
+    const s = this._s, b = s.body
+    return TEMPERING_METHODS.filter(m => m.group !== 'demonic' || this._bloodOpen()).map(m => {
+      const cost = Object.entries(m.cost || {}).map(([id, n]) => ({ id, name: ITEMS[id]?.name || id, n, have: s.inventory[id] || 0 }))
+      const out = { id: m.id, group: m.group, name: m.name, desc: m.desc, secs: m.secs, cost, xp: m.locked ? m.xp : this.methodXp(m),
+                    qiMult: m.qiMult || 1, onEndure: m.onEndure || null, once: !!m.once, minStage: m.minStage, ok: true, reason: null }
+      if (m.group === 'demonic') out.blood = { health: BLOOD_FORGING.health, karma: BLOOD_FORGING.karma, taint: BLOOD_FORGING.taint }
+      if (m.needsBeast) { const x = this._strongestBeast(); out.beast = x ? (x.name || 'your beast') : null }
+      const lock = r => { if (out.ok) { out.ok = false; out.reason = r } }
+      if (m.locked) lock('locked')
+      if (s.stageIndex < m.minStage) lock('stage')
+      if (m.once && b.ordealsDone[m.id]) lock('once')
+      if (m.needsBeast && !this._strongestBeast()) lock('no_beast')
+      if (b.active) lock('busy')
+      if (cost.some(c => c.have < c.n)) lock('items')
+      if (m.group === 'demonic' && (s.health ?? 100) <= BLOOD_FORGING.health) lock('health')
+      if (out.reason === 'locked') out.lockText = m.locked
+      return out
+    })
+  }
+  startTempering(id) {
+    const s = this._s, b = s.body, m = this._temperMethod(id)
+    if (!m) return { ok: false, reason: 'unknown' }
+    const row = this.temperingList().find(x => x.id === id)
+    if (!row) return { ok: false, reason: 'karma' }
+    if (!row.ok) return { ok: false, reason: row.reason }
+    return this._beginTempering(m, Date.now())
+  }
+  _beginTempering(m, at) {
+    const s = this._s, b = s.body
+    for (const [id, n] of Object.entries(m.cost || {})) { s.inventory[id] -= n; if (s.inventory[id] <= 0) delete s.inventory[id] }
+    const xp = this.methodXp(m)
+    if (m.group === 'demonic') {
+      s.health = Math.max(1, (s.health ?? 100) - BLOOD_FORGING.health)
+      s.karma = Math.max(0, s.karma + BLOOD_FORGING.karma)
+      b.taint = Math.min(TAINT_MAX, b.taint + BLOOD_FORGING.taint)
+      b.bloodForgings++
+      // The righteous hear of it (43b deeds): each sect whose master leans good cools a little
+      for (const x of this._wsAll?.() || []) if (x.alive && (PERSONALITY_MORALITY[x.temper] ?? 0) > 0) this._wsDeed(x, BLOOD_FORGING.sectStance, 'you tempered your body in blood')
+    }
+    b.active = { id: m.id, startedAt: at, endsAt: at + m.secs * 1000, xp, crisis: false }
+    if (m.group === 'drill' || m.group === 'spirit') b.last = m.id
+    this.addEvent({ text: m.group === 'demonic'
+      ? `You open your veins and begin the Blood Forging (−${BLOOD_FORGING.health} Health, ${BLOOD_FORGING.karma} karma, +${BLOOD_FORGING.taint} taint).`
+      : `You begin ${m.name}. (${fmtTime(m.secs)}, about ${fmtQi(xp)} body XP)`, type: m.group === 'demonic' ? 'negative' : 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, xp, endsAt: b.active.endsAt }
+  }
+  cancelTempering() {
+    const b = this._s.body
+    if (!b.active) return { ok: false, reason: 'idle' }
+    const m = this._temperMethod(b.active.id)
+    b.active = null
+    this.addEvent({ text: `You break off ${m?.name || 'your tempering'}. What it cost is spent.`, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+  // Each tick (and on load): charges refill; a finished tempering pays out, or an ordeal reaches its crisis and holds.
+  _tickBody() {
+    const s = this._s, b = s.body
+    for (const k of ['strikes', 'flow']) this._refillCharges(s.minigames[k])
+    let guard = 0
+    while (b.active && !b.active.crisis && Date.now() >= b.active.endsAt && guard++ < 60) {
+      const m = this._temperMethod(b.active.id)
+      if (m?.group === 'ordeal') {
+        b.active.crisis = true
+        this.addEvent({ text: `${m.name} reaches its peak. Your body screams. Endure, ease off, or draw on your Qi?`, type: 'special' })
+        this._emit('ordeal_crisis', { id: m.id })
+        break
+      }
+      const end = b.active.endsAt
+      this._finishTempering(m)
+      this._autoTemper(end)
+    }
+  }
+  _finishTempering(m, mult = 1) {
+    const s = this._s, b = s.body, xp = this._gainBodyXp(b.active.xp * mult)
+    let note = ''
+    if (m.group === 'drill' && b.taint > 0) { b.taint = Math.max(0, b.taint - TAINT_CLEANSE_PER_DRILL); note = ' The quiet work draws a little taint from your blood.' }
+    b.history.unshift({ id: m.id, year: Math.floor(s.world.year), xp })
+    if (b.history.length > 20) b.history.length = 20
+    b.active = null
+    this.addEvent({ text: `${m.name} is done: +${fmtQi(xp)} body XP.${this.tierTrialInfo().ready ? ' Your body is ready for the tier trial.' : ''}${note}`, type: 'positive' })
+    return xp
+  }
+  // Auto-Temper (22D, delegated): repeats your last SAFE method from where the last one ended. Never an ordeal.
+  _autoTemper(from) {
+    const s = this._s, a = s.automation, b = s.body
+    if (s.playMode !== 'idle' || !a?.autoTemper || !this.automationUnlocked('autoTemper') || b.active) return
+    const id = a.autoTemperId || b.last, m = this._temperMethod(id)
+    if (!m || (m.group !== 'drill' && m.group !== 'spirit')) return
+    const row = this.temperingList().find(x => x.id === id)
+    if (!row?.ok) return
+    this._beginTempering(m, Math.max(from, Date.now() - m.secs * 1000 * 50))
+    this._emit('auto_fire', { system: 'temper' })
+  }
+
+  // The ordeal crisis: clean-endure odds and their parts (the breakdown card shows the same terms).
+  ordealOdds() {
+    const s = this._s, b = s.body, C = ORDEAL_CRISIS
+    const hpPct = Math.max(0, Math.min(1, (s.health ?? 100) / this.maxHealth()))
+    const temper = C.temper[s.personality?.id] || 0
+    const parts = [{ label: 'Base', value: C.base }, { label: `Health ${Math.round(hpPct * 100)}%`, value: Math.round(hpPct * C.perHealth) },
+      { label: `${BODY_TIERS[b.tier].name}`, value: b.tier * C.perTier }]
+    if (temper) parts.push({ label: `Your temper (${PERSONALITIES.find(p => p.id === s.personality?.id)?.name || s.personality?.id})`, value: temper })
+    const ends = Math.min(C.endureCap, b.cleanEndures * C.perEndure)
+    if (ends) parts.push({ label: 'Ordeals you have endured', value: ends })
+    if (b.taint) parts.push({ label: `Taint ${b.taint}`, value: -b.taint * C.perTaint })
+    const raw = parts.reduce((a, x) => a + x.value, 0)
+    return { chance: Math.max(C.min, Math.min(C.max, raw)) / 100, parts, raw }
+  }
+  crisisInfo() {
+    const s = this._s, b = s.body
+    if (!b.active?.crisis) return null
+    const m = this._temperMethod(b.active.id), C = ORDEAL_CRISIS, qiCost = Math.round((s.derived?.qiCap || 0) * C.qiFrac)
+    return { id: m.id, name: m.name, xp: b.active.xp, easeXp: Math.round(b.active.xp * C.easeXp), odds: this.ordealOdds(),
+             hurt: C.hurt, scarChance: C.scarChance, grave: b.taint >= C.graveTaint, qiCost, qiOk: s.qi >= qiCost,
+             bonus: this._endureBonusText(m) }
+  }
+  _endureBonusText(m) {
+    const e = m.onEndure || {}
+    if (e.rootBoost) { const has = this.rootElements().includes(e.rootBoost.element)
+      return `${ART_ELEMENTS[e.rootBoost.element].name}-root Qi/s ×${e.rootBoost.mult} for ${fmtTime(e.rootBoost.secs)}${has ? '' : ' (your root has no ' + ART_ELEMENTS[e.rootBoost.element].name + ' to drink it)'}` }
+    if (e.btBonus) return `+${Math.round(e.btBonus * 100)}% breakthrough chance for this life (now +${Math.round(this._s.body.btBonus * 100)}%, cap +${Math.round(ORDEAL_CRISIS.btBonusCap * 100)}%)`
+    if (e.first) return 'a clan first, if no one of your line has done it'
+    return ''
+  }
+  _applyEndureBonus(m) {
+    const s = this._s, b = s.body, e = m.onEndure || {}
+    if (e.rootBoost && this.rootElements().includes(e.rootBoost.element)) b.rootBoost = { element: e.rootBoost.element, mult: e.rootBoost.mult, until: Date.now() + e.rootBoost.secs * 1000 }
+    if (e.btBonus) b.btBonus = Math.min(ORDEAL_CRISIS.btBonusCap, Math.round((b.btBonus + e.btBonus) * 1000) / 1000)
+    if (e.first) this._claimFirst(e.first)
+  }
+  answerOrdeal(choice) {
+    const info = this.crisisInfo()
+    if (!info) return { ok: false, reason: 'no_crisis' }
+    const s = this._s, b = s.body, m = this._temperMethod(info.id), C = ORDEAL_CRISIS
+    let res = { ok: true, choice }
+    if (choice === 'qi') {
+      if (!info.qiOk) return { ok: false, reason: 'qi' }
+      s.qi -= info.qiCost
+      res.xp = this._finishTempering(m)
+      this._applyEndureBonus(m)
+      this.addEvent({ text: `You pour ${fmtQi(info.qiCost)} Qi into the strain and come through ${m.name} whole.`, type: 'positive' })
+    } else if (choice === 'ease') {
+      res.xp = this._finishTempering(m, C.easeXp)
+    } else if (choice === 'endure') {
+      const clean = Math.random() < info.odds.chance
+      res.clean = clean
+      res.xp = this._finishTempering(m)
+      if (clean) {
+        b.cleanEndures++
+        this._applyEndureBonus(m)
+        this.addEvent({ text: `You endure ${m.name} to its end and walk out of it changed. ${info.bonus ? '(' + info.bonus + ')' : ''}`, type: 'special' })
+        this._emit('ordeal_endure', { id: m.id })
+      } else {
+        const hurt = this._randInt(C.hurt)
+        s.health = Math.max(1, (s.health ?? 100) - hurt)
+        res.hurt = hurt
+        if (Math.random() < C.scarChance) res.scar = this._addScar(b.taint >= C.graveTaint ? 'shattered_meridians' : 'torn_sinews', m.name)
+        this.addEvent({ text: `${m.name} breaks you before you break it (−${hurt} Health${res.scar ? `, ${BODY_SCARS[res.scar].name}` : ''}). The XP is yours; the lesson cost more.`, type: 'negative' })
+        if (res.scar) this._emit('ordeal_scar', { id: res.scar })
+      }
+    } else return { ok: false, reason: 'unknown' }
+    if (m.once || m.group === 'ordeal') b.ordealsDone[m.id] = (b.ordealsDone[m.id] || 0) + 1
+    this._recalc(); this._notify()
+    return res
+  }
+  _addScar(id, cause) {
+    const b = this._s.body
+    b.scars.push({ id, cause, year: Math.floor(this._s.world.year) })
+    const max = this.maxHealth()
+    if (this._s.health > max) this._s.health = max
+    return id
+  }
+  mendScar(index) {
+    const s = this._s, b = s.body, sc = b.scars[index]
+    if (!sc) return { ok: false, reason: 'unknown' }
+    if (!(s.inventory[SCAR_MEND_ITEM] > 0)) return { ok: false, reason: 'items' }
+    s.inventory[SCAR_MEND_ITEM]--; if (s.inventory[SCAR_MEND_ITEM] <= 0) delete s.inventory[SCAR_MEND_ITEM]
+    b.scars.splice(index, 1)
+    this.addEvent({ text: `A ${ITEMS[SCAR_MEND_ITEM].name} seeps into the old wound. ${BODY_SCARS[sc.id].name} is mended.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  // The tier trial: the bar is full and the tier rises only through the player's choice.
+  tierTrialInfo() {
+    const s = this._s, b = s.body, T = TIER_TRIAL, next = BODY_TIERS[b.tier + 1]
+    if (!next) return { ready: false, max: true }
+    const ready = b.xp >= next.xp
+    const hpPct = Math.max(0, Math.min(1, (s.health ?? 100) / this.maxHealth()))
+    const stones = Math.round(T.marrow.stonesBase * Math.pow(T.marrow.stonesGrowth, b.tier)), cores = T.marrow.coresPerTier * (b.tier + 1)
+    const marrowChance = Math.min(T.marrow.max, T.marrow.base + hpPct * T.marrow.perHealth)
+    const bitterHealth = Math.round(this.maxHealth() * T.bitter.healthFrac)
+    const marrow = { stones, cores, chance: marrowChance, ok: ready && s.spiritStones >= stones && (s.inventory.beast_core || 0) >= cores,
+                     parts: [{ label: 'Base', value: T.marrow.base }, { label: `Health ${Math.round(hpPct * 100)}%`, value: hpPct * T.marrow.perHealth }] }
+    const bitter = { health: bitterHealth, chance: T.bitter.chance, scarChance: T.bitter.scarChance, ok: ready && (s.health ?? 100) > bitterHealth }
+    return { ready, next: { ...next, index: b.tier + 1 }, need: next.xp, have: b.xp, marrow, bitter, failKeep: T.failKeepXp, failHealth: T.failHealth }
+  }
+  attemptTierTrial(kind) {
+    const s = this._s, b = s.body, info = this.tierTrialInfo(), T = TIER_TRIAL
+    if (!info.ready) return { ok: false, reason: info.max ? 'max' : 'not_ready' }
+    const way = info[kind]
+    if (!way || (kind !== 'marrow' && kind !== 'bitter')) return { ok: false, reason: 'unknown' }
+    if (!way.ok) return { ok: false, reason: kind === 'marrow' ? 'cost' : 'health' }
+    if (kind === 'marrow') {
+      s.spiritStones -= way.stones
+      s.inventory.beast_core -= way.cores; if (s.inventory.beast_core <= 0) delete s.inventory.beast_core
+    } else s.health = Math.max(1, (s.health ?? 100) - way.health)
+    const win = Math.random() < way.chance
+    const res = { ok: true, kind, win }
+    if (kind === 'bitter' && Math.random() < way.scarChance) res.scar = this._addScar(b.taint >= ORDEAL_CRISIS.graveTaint ? 'shattered_meridians' : 'torn_sinews', 'the bitter way')
+    if (win) {
+      const oldMax = this.maxHealth()
+      b.tier++
+      const t = BODY_TIERS[b.tier]
+      s.health = Math.min(this.maxHealth(), (s.health ?? 100) + Math.max(0, this.maxHealth() - oldMax))
+      b.history.unshift({ tier: t.id, year: Math.floor(s.world.year), how: kind })
+      if (b.tier === BODY_TIERS.length - 1) this._claimFirst('body_s')
+      this.addEvent({ text: `Your body breaks through: ${t.id} · ${t.name}. Max Health ${this.maxHealth()}, +1 Health every ${Math.round(this.healthRegenSeconds())}s.${res.scar ? ` (${BODY_SCARS[res.scar].name})` : ''}`, type: 'special' })
+      this._emit('body_tier_up', { tier: t.id })
+    } else {
+      const mark = BODY_TIERS[b.tier].xp
+      b.xp = Math.round(mark + T.failKeepXp * (b.xp - mark))
+      s.health = Math.max(1, (s.health ?? 100) - T.failHealth)
+      this.addEvent({ text: `The trial fails: the marrow will not take the change (−${T.failHealth} Health, ${Math.round((1 - T.failKeepXp) * 100)}% of your progress lost).${res.scar ? ` (${BODY_SCARS[res.scar].name})` : ''}`, type: 'negative' })
+    }
+    this._recalc(); this._notify()
+    return res
+  }
+
+  // Public (UI): the whole body at a glance.
+  bodyInfo() {
+    const s = this._s, b = s.body, t = BODY_TIERS[b.tier], next = BODY_TIERS[b.tier + 1] || null
+    const a = b.active ? { ...b.active, method: this._temperMethod(b.active.id), left: Math.max(0, Math.ceil((b.active.endsAt - Date.now()) / 1000)) } : null
+    return { tier: b.tier, def: t, next, xp: b.xp, from: t.xp, to: next ? next.xp : t.xp, cap: this._bodyXpCap(),
+             maxHealth: this.maxHealth(), health: s.health ?? 100, regenSec: this.healthRegenSeconds(), btKeep: t.btKeep, btBonus: b.btBonus,
+             power: t.power, scars: b.scars.map(x => ({ ...x, def: BODY_SCARS[x.id] })), taint: b.taint, taintMax: TAINT_MAX,
+             cleanEndures: b.cleanEndures, active: a, crisis: this.crisisInfo(), trial: this.tierTrialInfo(), xpMult: this.temperXpMult(),
+             rootBoost: b.rootBoost && Date.now() < b.rootBoost.until ? { ...b.rootBoost, left: Math.ceil((b.rootBoost.until - Date.now()) / 1000) } : null,
+             bloodOpen: this._bloodOpen(), bloodForgings: b.bloodForgings, history: b.history.slice(0, 8),
+             mendHave: s.inventory[SCAR_MEND_ITEM] || 0 }
+  }
+
+  // ── Phase 14 mini-games: Tempering Strikes (body XP) + Meridian Flow (Qi). Charges refill on real time. ──
+  _refillCharges(g) {
+    const R = MINIGAME_CHARGES, now = Date.now()
+    if (g.charges >= R.max) { g.nextAt = null; return }
+    if (!g.nextAt) g.nextAt = now + R.refillSecs * 1000
+    while (g.charges < R.max && now >= g.nextAt) { g.charges++; g.nextAt += R.refillSecs * 1000 }
+    if (g.charges >= R.max) g.nextAt = null
+  }
+  _flowSize() { let z = FLOW.sizes[0]; for (const x of FLOW.sizes) if (this._s.stageIndex >= x.stage) z = x; return z }
+  strikesXp(points) {
+    const max = STRIKES.strikes * STRIKES.perfect
+    return Math.max(STRIKES.minXp, Math.round(points / max * STRIKES.xpHours * this._bestTemperRate() * this.temperXpMult().mult))
+  }
+  _flowHourCount() { const g = this._s.minigames.flow, now = Date.now(); g.hour = (g.hour || []).filter(t => now - t < 3600000); return g.hour.length }
+  flowQi() {
+    const cap = this._s.derived?.qiCap || 0
+    return Math.round(cap * FLOW.qiFrac * (this._flowHourCount() >= FLOW.hourFull ? FLOW.hourMult : 1))
+  }
+  minigameInfo() {
+    const s = this._s, M = s.minigames, b = s.body, z = this._flowSize()
+    for (const k of ['strikes', 'flow']) this._refillCharges(M[k])
+    const left = g => g.nextAt ? Math.max(0, Math.ceil((g.nextAt - Date.now()) / 1000)) : 0
+    const canCut = !!(b.active && !b.active.crisis)
+    return {
+      max: MINIGAME_CHARGES.max, refillSecs: MINIGAME_CHARGES.refillSecs,
+      strikes: { charges: M.strikes.charges, nextIn: left(M.strikes), best: M.strikes.best, plays: M.strikes.plays, perfectXp: this.strikesXp(STRIKES.strikes * STRIKES.perfect),
+                 canCut, cutMax: STRIKES.cutMax, cutTarget: canCut ? this._temperMethod(b.active.id)?.name : null, live: !!M.strikes.session },
+      flow: { charges: M.flow.charges, nextIn: left(M.flow), n: z.n, points: z.points, qi: this.flowQi(), waiting: !!M.flow.session,
+              tired: this._flowHourCount() >= FLOW.hourFull, best: M.flow.best, plays: M.flow.plays, live: !!M.flow.session },
+    }
+  }
+  // Starts a game: spends a charge (said on the button) and returns its session. Abandoning keeps the charge spent.
+  startMinigame(kind) {
+    const s = this._s, g = s.minigames?.[kind]
+    if (!g) return { ok: false, reason: 'unknown' }
+    this._refillCharges(g)
+    if (kind === 'flow' && g.session) return { ok: true, session: g.session, resumed: true }   // a puzzle set aside: it waits, no new charge
+    if (g.charges <= 0) return { ok: false, reason: 'charges' }
+    if (g.charges >= MINIGAME_CHARGES.max) g.nextAt = Date.now() + MINIGAME_CHARGES.refillSecs * 1000
+    g.charges--
+    const seed = Math.floor(Math.random() * 2 ** 31)
+    const relaxed = !!s.settings?.relaxedTiming
+    g.session = kind === 'flow' ? { seed, n: this._flowSize().n, points: this._flowSize().points, startedAt: Date.now() }
+                                : { seed, relaxed, startedAt: Date.now() }
+    this._notify()
+    return { ok: true, session: g.session }
+  }
+  // result — strikes: { hits: ['perfect'|'good'|'miss', …], use: 'xp'|'cut' } · flow: { rotations: [0..3 per cell] } or { abandon: true }
+  finishMinigame(kind, result = {}) {
+    const s = this._s, g = s.minigames?.[kind], ses = g?.session
+    if (!ses) return { ok: false, reason: 'no_session' }
+    // Meridian Flow has no clock: closing it sets the puzzle aside with your turns, to finish later (the charge stays spent)
+    if (kind === 'flow' && result.setAside) {
+      const n = ses.n * ses.n, t = Array.isArray(result.turns) ? result.turns : []
+      ses.turns = Array.from({ length: n }, (_, i) => ((t[i] | 0) % 4 + 4) % 4)
+      this._notify(); return { ok: true, setAside: true }
+    }
+    g.session = null
+    if (result.abandon) { this._notify(); return { ok: true, abandoned: true } }
+    g.plays++
+    const secs = (Date.now() - ses.startedAt) / 1000
+    if (kind === 'strikes') {
+      const hits = (Array.isArray(result.hits) ? result.hits : []).slice(0, STRIKES.strikes)
+      // The marker needs time to cross the bar: a run faster than this was not played (scores as misses)
+      const minSecs = STRIKES.strikes * STRIKES.sweepMs / 1000 * 0.25
+      const pts = secs < minSecs ? 0 : hits.reduce((a, h) => a + (h === 'perfect' ? STRIKES.perfect : h === 'good' ? STRIKES.good : 0), 0)
+      g.best = Math.max(g.best || 0, pts)
+      const perfect = pts === STRIKES.strikes * STRIKES.perfect
+      const b = s.body
+      let res
+      if (result.use === 'cut' && b.active && !b.active.crisis) {
+        const left = Math.max(0, b.active.endsAt - Date.now()), frac = Math.min(STRIKES.cutMax, pts * STRIKES.cutPerPoint)
+        const cut = Math.round(left * frac)
+        b.active.endsAt -= cut
+        res = { ok: true, points: pts, cutSecs: Math.round(cut / 1000), frac }
+        this.addEvent({ text: `Tempering Strikes: ${pts} points. You drive ${this._temperMethod(b.active.id)?.name} on, ${fmtTime(res.cutSecs)} sooner.`, type: 'positive' })
+      } else {
+        const xp = this._gainBodyXp(this.strikesXp(pts))
+        res = { ok: true, points: pts, xp }
+        this.addEvent({ text: `Tempering Strikes: ${pts} points, +${fmtQi(xp)} body XP.`, type: pts ? 'positive' : 'neutral' })
+      }
+      if (perfect) this._emit('minigame_perfect', { kind })
+      this._tickBody(); this._recalc(); this._notify()
+      return { ...res, perfect, max: STRIKES.strikes * STRIKES.perfect }
+    }
+    if (kind === 'flow') {
+      const solved = typeof FlowPuzzle !== 'undefined' && FlowPuzzle.check(ses.seed, ses.n, result.rotations)
+      if (!solved) { this.addEvent({ text: 'The Qi stalls in a broken channel and disperses.', type: 'neutral' }); this._notify(); return { ok: true, solved: false } }
+      const qi = this.flowQi(), cap = s.derived?.qiCap || 0
+      const gain = Math.max(0, Math.min(qi, cap - s.qi))
+      s.qi += gain; s.stats.totalQiGained += gain
+      g.hour.push(Date.now())
+      this.addEvent({ text: `Meridian Flow: the channels open. +${fmtQi(gain)} Qi.`, type: 'positive' })
+      this._recalc(); this._notify()
+      return { ok: true, solved: true, qi: gain }
+    }
+    return { ok: false, reason: 'unknown' }
   }
 
   // 1.8b-2: what a failed breakthrough would cost right now (mirrors attemptBreakthrough's failure branch).
@@ -3857,12 +5396,14 @@ class GameState {
     if (pe?.qi_loss_reduce != null)    qiKeep = 0.5 + 0.5 * pe.qi_loss_reduce
     const activeKeep = s.playMode === 'active'
     if (activeKeep) qiKeep = Math.min(1, qiKeep + ACTIVE_BT_QI_LOSS_BONUS)
+    const bodyKeep = BODY_TIERS[s.body?.tier || 0]?.btKeep || 0   // Phase 14
+    qiKeep = Math.min(1, qiKeep + bodyKeep)
     const integ = s.realmIntegrity ?? 100
     let after = Math.max(0, integ - 20)
     if (pe?.integrity_restore) after = Math.min(100, after + pe.integrity_restore)
     return {
       guaranteed: pe?.type === 'bt_guarantee',
-      qiLossFrac: 1 - qiKeep, activeKeep, pillSoftens: qiKeep > (activeKeep ? 0.5 + ACTIVE_BT_QI_LOSS_BONUS : 0.5),
+      qiLossFrac: 1 - qiKeep, activeKeep, bodyKeep, pillSoftens: qiKeep > (activeKeep ? 0.5 + ACTIVE_BT_QI_LOSS_BONUS : 0.5) + bodyKeep,
       karmaLoss: Math.min(8, s.karma), integrityLoss: integ - after, integrityAfter: after,
       demotes: after <= 0 && s.stageIndex > 0,
     }
@@ -3877,7 +5418,8 @@ class GameState {
     return {
       integrity: { value: s.realmIntegrity ?? 100, regenSeconds: 30 / (s.derived?.integrityRegenMult || 1), failLoss: 20, demoteResetTo: 60 },
       health: {
-        value: s.health ?? 100, regenSeconds: HEALTH_REGEN_SECONDS, regenAmount: HEALTH_REGEN_AMOUNT,
+        value: s.health ?? 100, max: this.maxHealth(), regenSeconds: this.healthRegenSeconds(), regenAmount: HEALTH_REGEN_AMOUNT,
+        body: BODY_TIERS[s.body?.tier || 0], scars: (s.body?.scars || []).map(x => BODY_SCARS[x.id]?.name),
         risky, warChance: WAR_INJURY_CHANCE, warDmg: WAR_INJURY_AMOUNT, duelCost: DUEL_WIN_HEALTH_COST,
       },
     }
@@ -3888,7 +5430,7 @@ class GameState {
     const bq = s.bloodlineQuality || 0
     let prep = 0
     if ((s.realmIntegrity ?? 100) >= 100) prep += ASCENSION_PREP_INTEGRITY
-    if ((s.health ?? 100) >= 100)         prep += ASCENSION_PREP_HEALTH
+    if ((s.health ?? 100) >= this.maxHealth()) prep += ASCENSION_PREP_HEALTH   // Phase 14: "full", not 100
     const chance = ASCENSION_BASE_CHANCE + bq * ASCENSION_BQ_COEF + prep
     return Math.max(0, Math.min(ASCENSION_CHANCE_CAP, chance))
   }
@@ -3898,6 +5440,9 @@ class GameState {
     const lastMortal = CULTIVATION_STAGES.length - 2
     if (s.stageIndex !== lastMortal)  return { success: false, reason: 'not_ready' }
     if (!s.derived.canBreakthrough)   return { success: false, reason: 'insufficient_qi' }
+    // Phase 47 (1.21): the Trial may only be attempted at the full bloodline — no roll, no death before then.
+    if ((s.bloodlineQuality || 0) < ASCENSION_MIN_BLOODLINE)
+      return { success: false, reason: 'bloodline_too_low', need: ASCENSION_MIN_BLOODLINE, have: s.bloodlineQuality || 0 }
 
     const chance = this.ascensionChance()
     s.stats.ascensionAttempts++
@@ -4076,6 +5621,7 @@ class GameState {
     const settings    = s.settings
     const warOrders   = s.warOrders   // standing orders belong to the player, not the life (Phase 32)
     const playMode    = s.playMode    // Active/Idle mode + automation belong to the player, not the life (Phase 22)
+    const minigames   = s.minigames   // Phase 14: mini-game charges belong to the player; the body is the life's (resets to F)
     const automation  = s.automation
     const devSave     = s.devSave
 
@@ -4110,6 +5656,9 @@ class GameState {
     // (living children and a living spouse stay on the clan roster — the succession below picks from them).
     const deadId = s.self.id
     const world = this._recordLifeInWorld(cause, maxStage, priorGen)
+    // 2026-10-02: snapshot the dying life's arts + pack for the interlude's bequest step (they are gone once
+    // _newGame() rebuilds this._s just below, the same reason the legacies snapshot onto pendingSuccession).
+    summary.bequest = this._bequestPool()
     const deathClan = this._playerClan(world)
     summary.wasHead = !!deathClan?.pendingSuccession?.wasHead
     this._s = this._newGame(world, true)
@@ -4121,6 +5670,7 @@ class GameState {
     if (settings) this._s.settings = settings   // presentation prefs belong to the player, not the life
     if (warOrders) this._s.warOrders = warOrders
     if (playMode) this._s.playMode = playMode
+    if (minigames) { this._s.minigames = minigames; minigames.strikes.session = minigames.flow.session = null }
     if (automation) this._s.automation = automation
     if (devSave) this._s.devSave = true
     this._beginInterlude(cause, deadId)
@@ -4146,19 +5696,8 @@ class GameState {
   _advancePersons(w, year) {
     for (const p of Object.values(w.persons)) {
       if (p.alive === false) continue
-      const from = Math.max(p.grownYear ?? year, (p.bornYear ?? 0) + AWAKENING_AGE)
-      p.grownYear = year
-      if (year <= from || (p.stageIndex || 0) >= NPC_STAGE_CAP) continue
-      let left = year - from, xp = p.npcXp || 0
-      p.stageIndex = p.stageIndex || 0
-      while (left > 0 && p.stageIndex < NPC_STAGE_CAP) {
-        const rate = this._npcStageRate(p.stageIndex, p.root?.mult || 1, NPC_YEARS_PER_STAGE)
-        const need = (1 - xp) / rate
-        if (left < need) { xp += left * rate; left = 0; break }
-        left -= need; xp = 0; p.stageIndex++
-      }
-      p.npcXp = p.stageIndex >= NPC_STAGE_CAP ? 0 : xp
-      p.maxStage = Math.max(p.maxStage || 0, p.stageIndex)
+      if (p.owner && p.owner !== 'world') continue   // Phase 28: family / arena / own-sect people grow under their owner
+      this._growPerson(p, year, false)                // 4.3: the same grower the yearly life step uses (no rolls here)
     }
   }
 
@@ -4192,7 +5731,10 @@ class GameState {
     const it = s.interlude = { step: 'bet', cause, year: yr, deadId, clanId: clan?.id || null, outgoingId: null,
       candidates: [], designatedId: null, heirKind: null, bet: null, betWon: null, successorId: null, spouseId: null,
       style: null, traumaPath: null, reignYears: 0, nChildren: 0, sectFate: null, extinct: false, chronicle: [],
-      orphanDeath: !this._playerClan(w) }
+      orphanDeath: !this._playerClan(w),
+      // 2026-10-02: the bequest step — the dying life's pool (captured in _die), your picks, and the per-life caps.
+      reincarnation: w.pastLives.length, bequestPool: s.lastReincarnation?.bequest || null,
+      bequestMax: this._bequestMax(w.pastLives.length), bequest: { arts: [], items: [] } }
     if (it.orphanDeath) it.chronicle.push(this._fillClan(CHRONICLE_ORPHAN_DEATH, { year: yr }))
     if (!clan) { it.extinct = true; it.step = 'chronicle'; return }   // never belonged anywhere, nowhere to return
     this._advancePersons(w, yr)
@@ -4213,10 +5755,16 @@ class GameState {
     const s = this._s, it = s.interlude
     if (!it) return null
     const w = s.world, clan = it.clanId ? w.clans[it.clanId] : null
+    // 2026-10-02: the bequest — defensively defaulted so an old mid-interlude save (no bequest fields) still renders.
+    const bqMax = it.bequestMax || this._bequestMax(it.reincarnation || w.pastLives.length)
+    const bq = it.bequest || { arts: [], items: [] }
     return { step: it.step, cause: it.cause, year: it.year, clanName: clan?.name || '', extinct: it.extinct,
              candidates: it.step === 'bet' ? it.candidates.slice(0, BET_MAX_CANDIDATES).map(id => w.persons[id]) : [],
              bet: it.bet, betWon: it.betWon, successor: it.successorId ? w.persons[it.successorId] : null,
              style: it.style, heirKind: it.heirKind, reignYears: it.reignYears, chronicle: [...it.chronicle],
+             reincarnation: it.reincarnation || w.pastLives.length,
+             bequest: { maxArts: bqMax.arts, maxItems: bqMax.items, arts: [...(bq.arts || [])], items: [...(bq.items || [])],
+                        pool: it.bequestPool || { arts: [], items: [] } },
              canJoinClan: !!clan && !it.extinct, summary: s.lastReincarnation }
   }
 
@@ -4345,14 +5893,24 @@ class GameState {
     it.spouseId = spouse.id
     lines.push(`${it.nChildren} children are born to the head’s household over the next ${it.reignYears} years.`)
     if (clan.sect) {
-      const fate = this._weighted(SECT_FORTUNE[style])
-      const sect = clan.sect, enemy = fate === 'lost' ? this._rivalSectName() : ''
-      if (fate === 'grow') sect.hallLevel = Math.min(SECT_HALL_LEVELS.length, (sect.hallLevel || 1) + 1)
-      if (fate === 'decline') { sect.hallLevel = Math.max(1, (sect.hallLevel || 1) - 1); (sect.disciples || []).pop() }
-      lines.push(this._fillClan(CHRONICLE_SECT[fate], fill({ sect: sect.name || 'clan sect', enemy })))
-      if (fate === 'lost') { this._noteEnemy({ kind: 'sect', name: `the ${enemy}`, why: `took the ${sect.name}` }); clan.sect = null }
-      else sect.heirId = succ.id
-      it.sectFate = fate
+      if (clan.sect.worldSectId) {
+        // Phase 46 (1.20b, lineage-sect.md): the sect lives in the world now — the world sim owns its fate, not a
+        // reign roll. The chronicle names it and its current master (who may not be who you left it to).
+        const rec = (w.sects?.list || []).find(r => r.id === clan.sect.worldSectId && r.alive)
+        if (rec) { clan.sect.hallLevel = rec.hallLevel
+          lines.push(`The ${rec.name}, the sect your line founded, still stands — led now by ${rec.leader}.`) }
+        else { lines.push(`The ${clan.sect.name}, the sect your line founded, is spoken of no more.`); clan.sect = null }
+        it.sectFate = 'lineage'
+      } else {
+        const fate = this._weighted(SECT_FORTUNE[style])
+        const sect = clan.sect, enemy = fate === 'lost' ? this._rivalSectName() : ''
+        if (fate === 'grow') sect.hallLevel = Math.min(SECT_HALL_LEVELS.length, (sect.hallLevel || 1) + 1)
+        if (fate === 'decline') { sect.hallLevel = Math.max(1, (sect.hallLevel || 1) - 1); (sect.disciples || []).pop() }
+        lines.push(this._fillClan(CHRONICLE_SECT[fate], fill({ sect: sect.name || 'clan sect', enemy })))
+        if (fate === 'lost') { this._noteEnemy({ kind: 'sect', name: `the ${enemy}`, why: `took the ${sect.name}` }); clan.sect = null }
+        else sect.heirId = succ.id
+        it.sectFate = fate
+      }
     }
     const pool = CHRONICLE_EVENTS[style]
     lines.push(this._fillClan(pool[Math.floor(Math.random() * pool.length)], fill()))
@@ -4454,6 +6012,7 @@ class GameState {
     const target = it.clanId ? w.clans[it.clanId] : null
     const newYear = it.year + (it.extinct ? this._randInt(REIGN_YEARS) : it.reignYears)
     w.year = newYear
+    this._worldYears(it.year, newYear)   // Phase 28 (4.3): the world lives the skipped years (backlash, the road, old age, births)
     this._advancePersons(w, newYear)
     const yourBorn = newYear - AWAKENING_AGE
     const succ = it.successorId ? w.persons[it.successorId] : null
@@ -4540,6 +6099,7 @@ class GameState {
       birth: { position, style: it.style, headStyle: style, betWon: it.betWon, rival, extinct: it.extinct, stipend,
                successorKind: succ ? it.heirKind : null, sectFate: it.sectFate, chronicle: [...it.chronicle] } })
     this._applyLegacies(clan, it.legacyCapture)   // Phase 31 (2.7c): the clan you're actually reborn into — null for an orphan
+    this._applyBequest(it)                        // 2026-10-02: the arts + items passed down (rides an orphan rebirth too)
     this._pruneWorld(w)
     s.interlude = null
     const pt = POSITION_TEXT[position]
@@ -4742,8 +6302,11 @@ class GameState {
   }
 
   _killPerson(id, yr, cause) {
-    const p = this._s.world.persons[id]
-    if (p) { p.alive = false; p.diedYear = yr; p.cause = cause }
+    const w = this._s.world, p = w.persons[id]
+    if (!p || p.alive === false) return
+    p.alive = false; p.diedYear = yr; p.cause = cause
+    const st = w.lifeStats ||= { deaths: {}, births: 0, marriages: 0, ascended: 0 }   // 4.3: how the world's people end (QA)
+    st.deaths[cause] = (st.deaths[cause] || 0) + 1
   }
 
   // Moves a still-living clan member (you, or an NPC) into the head seat. The outgoing head (if still alive)
@@ -4764,7 +6327,9 @@ class GameState {
     if (!main.memberIds.includes(personId)) main.memberIds.push(personId)
     clan.headId = personId; main.headId = personId
     if (personId === s.self.id) {
-      if (clan.sect && !s.ownSect.founded && !s.sect.id) {
+      // Phase 46 (1.20b): a sect that lives on as a world sect is not the clan head's to hand over — only a
+      // pre-46 dormant `clan.sect` snapshot still passes with the seat.
+      if (clan.sect && !clan.sect.worldSectId && !s.ownSect.founded && !s.sect.id) {
         s.ownSect = { ...this._blankOwnSect(), ...clan.sect, founded: true }
         delete s.ownSect.inheritedYear; delete s.ownSect.heirId
         clan.sect = null
@@ -5500,6 +7065,19 @@ class GameState {
       this._emit('lover_encounter', { name: Persons.fullName(person) })
     }
 
+    // Phase 44: a stranger on the road carries a formula — help them to learn it, or rob them (Roam → Explore).
+    if (fam && Array.isArray(fam.encounters) && s.world && s.recipes) {
+      const pool = RECIPE_DISCOVERY.encounter.filter(id => !s.recipes.known[id])
+      if (pool.length && fam.encounters.length < LOVER_ENCOUNTER_MAX && Math.random() < RECIPE_DISCOVERY.encounterChance) {
+        const recipeId = pool[Math.floor(Math.random() * pool.length)]
+        const person = this._rollStranger('stranger')
+        const flavor = RECIPE_ENCOUNTER_TEXT[Math.floor(Math.random() * RECIPE_ENCOUNTER_TEXT.length)]
+        fam.encounters.push({ kind: 'recipe', recipeId, person, place: loc.name, text: flavor, year: Math.floor(s.world.year) })
+        this.addEvent({ text: `At ${loc.name}, ${Persons.fullName(person)} ${flavor}. (Roam → Explore)`, type: 'special' })
+        this._emit('recipe_encounter', { name: Persons.fullName(person) })
+      }
+    }
+
     // Health risk: zones whose enemy tier outclasses the player's current stage (Phase 23A)
     const expectedTier = 1 + Math.floor(s.stageIndex / 5)
     const outclass = Math.max(0, loc.enemyTier - expectedTier)
@@ -5545,6 +7123,7 @@ class GameState {
     const s = this._s
     const recipe = RECIPES.find(r => r.id === recipeId)
     if (!recipe) return { ok: false, reason: 'unknown' }
+    if (recipe.hidden && !this.recipeKnown(recipeId)) return { ok: false, reason: 'locked' }   // Phase 44: not yet discovered
     for (const ing of recipe.ingredients) {
       if ((s.inventory[ing.itemId] || 0) < ing.qty) return { ok: false, reason: 'ingredients' }
     }
@@ -5602,6 +7181,7 @@ class GameState {
     }
     const item = ITEMS[itemId]
     if (!item || item.type !== 'pill') return { ok: false, reason: 'not_pill' }
+    if (item.effect?.type === 'heal') return { ok: false, reason: 'not_bt_pill' }   // Phase 44: a healing pill is used, not queued
     if ((s.inventory[itemId] || 0) < 1) return { ok: false, reason: 'not_owned' }
     s.activePill = itemId
     this._recalc(); this._notify()
@@ -5700,6 +7280,105 @@ class GameState {
     if (fi?.kind === 'beast' && !fi.m && !fi.over) { const rec = fi.beast; if (rec && BEAST_TYPES.some(x => x.id === rec.typeId)) fi.m = this._mbNew(rec, fi.stance) }   // an old-engine fight restarts on moves
     if (fi && fi.kind !== 'beast' && !fi.m && !fi.over) this._personFightM(fi)   // 1.14a: a person fight too (at your current Health)
     if (fi) { for (const k of ['p', 'to', 'you', 'them']) delete fi[k] }        // the Press/Guard/Feint race is gone
+  }
+
+  // ── Phase 44 (docs/systems/crafting.md): healing pills + discovery-gated recipes ──────────────────────────────
+  // s.recipes = { known: { [recipeId]: { how, at } } }. A RECIPES entry with `hidden: true` is unknown until found
+  // (a stranger on the road, or an Arena ring champion — RECIPE_DISCOVERY in recipes.js). Used by game.js (Craft,
+  // Pack), combat.js (the Arena result line), the expedition encounter roll and the sim.
+  _blankRecipes() {
+    const known = {}
+    for (const r of RECIPES) if (!r.hidden) known[r.id] = { how: 'basic', at: Date.now() }
+    return { known }
+  }
+  _ensurePhase44Fields() {
+    const s = this._s
+    if (!s.recipes || typeof s.recipes !== 'object') s.recipes = this._blankRecipes()
+    const r = s.recipes
+    if (!r.known || typeof r.known !== 'object') r.known = {}
+    for (const id of Object.keys(r.known)) if (!RECIPES.some(x => x.id === id)) delete r.known[id]   // a formula dropped from the game
+    for (const rec of RECIPES) if (!rec.hidden && !r.known[rec.id]) r.known[rec.id] = { how: 'basic', at: Date.now() }
+  }
+  recipeKnown(recipeId) { return !!this._s?.recipes?.known?.[recipeId] }
+  // Where an unknown formula comes from (null for a recipe that is never hidden).
+  recipeSource(recipeId) {
+    if (RECIPE_DISCOVERY.encounter.includes(recipeId)) return 'encounter'
+    for (const ring of Object.keys(RECIPE_DISCOVERY.arena)) if (RECIPE_DISCOVERY.arena[ring] === recipeId) return 'arena'
+    return null
+  }
+  // The lock line the Craft tab shows on an unknown-formula card.
+  recipeHint(recipeId) {
+    const src = this.recipeSource(recipeId)
+    return src === 'encounter' ? 'A stranger on the road (Roam → Explore) may teach this one.'
+      : src === 'arena' ? 'A ring champion (Roam → Arena) guards this formula.'
+      : 'Its formula is not yet known.'
+  }
+  _learnRecipe(recipeId, how) {
+    const s = this._s, rec = RECIPES.find(r => r.id === recipeId)
+    if (!rec || s.recipes.known[recipeId]) return false
+    s.recipes.known[recipeId] = { how, at: Date.now() }
+    const name = ITEMS[rec.productId]?.name || recipeId
+    this.addEvent({ text: `You learn the formula for ${name}. Craft it in Pack → Craft.`, type: 'special' })
+    this._emit('recipe_learned', { recipeId, how })
+    this._recalc(); this._notify()
+    return true
+  }
+  // A random still-unknown formula from a source group ('encounter' | 'arena' | null = any hidden one).
+  _rollHiddenRecipe(source = null) {
+    const s = this._s
+    let pool = RECIPES.filter(r => r.hidden && !s.recipes.known[r.id])
+    if (source) pool = pool.filter(r => this.recipeSource(r.id) === source)
+    if (!pool.length) return null
+    return pool[Math.floor(Math.random() * pool.length)].id
+  }
+  // A healing pill ('heal') — restore Health / Realm Integrity on use (not queued for a breakthrough). Clamped to 100.
+  // Refused when there is nothing to restore (no silent waste).
+  healLock(effect) {
+    const s = this._s
+    const hpFull = (s.health ?? 100) >= this.maxHealth(), igFull = (s.realmIntegrity ?? 100) >= 100
+    return ((!effect.health || hpFull) && (!effect.integrity || igFull)) ? 'full' : null
+  }
+  useHealPill(itemId) {
+    const s = this._s, item = ITEMS[itemId]
+    if (!item || item.type !== 'pill' || item.effect?.type !== 'heal') return { ok: false, reason: 'not_heal' }
+    if ((s.inventory[itemId] || 0) < 1) return { ok: false, reason: 'not_owned' }
+    if (this.healLock(item.effect)) return { ok: false, reason: 'full' }
+    s.inventory[itemId]--
+    if (s.inventory[itemId] <= 0) delete s.inventory[itemId]
+    const e = item.effect, hp0 = s.health ?? 100, ig0 = s.realmIntegrity ?? 100
+    s.health = Math.min(this.maxHealth(), hp0 + (e.health || 0))
+    s.realmIntegrity = Math.min(100, ig0 + (e.integrity || 0))
+    const healed = Math.round(s.health - hp0), igHealed = Math.round(s.realmIntegrity - ig0)
+    const parts = []
+    if (healed > 0) parts.push(`+${healed} Health`)
+    if (igHealed > 0) parts.push(`+${igHealed} Integrity`)
+    this.addEvent({ text: `You take the ${item.name}. ${parts.length ? parts.join(', ') + '.' : 'Nothing changes.'}`, type: (healed || igHealed) ? 'positive' : 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, health: s.health, integrity: s.realmIntegrity, healed, integrityHealed: igHealed }
+  }
+  // The i-th road encounter is a stranger carrying a formula. Help them — and learn it.
+  learnEncounterRecipe(i) {
+    const s = this._s, f = s.family, enc = f.encounters[i]
+    if (!enc || enc.kind !== 'recipe') return { ok: false, reason: 'unknown' }
+    f.encounters.splice(i, 1)
+    const rec = RECIPES.find(r => r.id === enc.recipeId)
+    const name = ITEMS[rec?.productId]?.name || 'a formula'
+    if (rec && !s.recipes.known[rec.id]) this._learnRecipe(rec.id, 'encounter')
+    else this.addEvent({ text: `You help ${Persons.fullName(enc.person)} — and trade formulas you both already know.`, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, recipeId: enc.recipeId, name }
+  }
+  // Or rob them — quick stones, no formula, and karma remembers.
+  robEncounterRecipe(i) {
+    const s = this._s, f = s.family, enc = f.encounters[i]
+    if (!enc || enc.kind !== 'recipe') return { ok: false, reason: 'unknown' }
+    f.encounters.splice(i, 1)
+    const stones = RECIPE_DISCOVERY.robStones
+    s.spiritStones += stones
+    s.karma = Math.max(0, s.karma + RECIPE_DISCOVERY.robKarma)
+    this.addEvent({ text: `You rob ${Persons.fullName(enc.person)} on the road for ${stones} Spirit Stones. The formula is lost with them.`, type: 'negative' })
+    this._recalc(); this._notify()
+    return { ok: true, stones }
   }
 
   rootElements() { const r = this._s?.root; return Array.isArray(r?.elements) ? r.elements : Persons.rootElements(r || {}, '') }
@@ -6406,10 +8085,13 @@ class GameState {
     if (s.sect.id)                return { ok: false, reason: 'in_sect' }
     if (s.ownSect?.founded)       return { ok: false, reason: 'own_sect' }
     if (s.stageIndex < def.minStage) return { ok: false, reason: 'stage' }
+    if (this.sectInAshes(def.id)) return { ok: false, reason: 'ashes' }   // Phase 43f: burned, not yet risen
     s.sect = { id: def.id, rank: 0, contribution: 0, activeMissions: [] }
     s.sectWar = this._blankSectWar('member')   // first call to arms is scheduled on the next tick
     this.addEvent({ text: `You joined the ${def.name} (${def.nameCN}) as an Outer Disciple.`, type: 'special' })
     this._claimFirst('joined_sect')
+    this._wsDeed(this._wsByDef(def.id), WORLD_SECTS.stanceJoin, 'took you in as a disciple')   // Phase 43b
+    this._sectMaster()   // Phase 43e: the master who sits above you
     this._recalc(); this._notify()
     return { ok: true, sect: def }
   }
@@ -6423,6 +8105,7 @@ class GameState {
     if (w.beastId) this._releaseWarBeast(0)
     const gave = (s.sect.shelf || []).length
     if (gave) this.addEvent({ text: `The ${gave === 1 ? 'manual' : `${gave} manuals`} you gave stay${gave === 1 ? 's' : ''} on the ${def.name}'s shelves.`, type: 'neutral' })
+    this._wsDeed(this._wsByDef(def.id), deserter ? WORLD_SECTS.stanceDesert : WORLD_SECTS.stanceLeave, deserter ? 'you deserted them on the eve of war' : 'you left them')   // Phase 43b
     s.sect  = { id: null, rank: 0, contribution: 0, activeMissions: [] }
     s.sectWar = this._blankSectWar()
     s.karma = Math.max(0, s.karma - 5 - (deserter ? MEMBER_WAR_DESERT_KARMA : 0))
@@ -6452,6 +8135,7 @@ class GameState {
     if (!next)                                   return { ok: false, reason: 'max_rank' }
     if (s.sect.contribution < next.minContribution) return { ok: false, reason: 'contribution' }
     s.sect.rank++
+    this._wsDeed(this._wsMine(), SECT_MASTER.regardRankUp)   // 43e
     this.addEvent({ text: `Promoted to ${next.name} (${next.nameCN}) in the ${this._sectDef().name}!`, type: 'special' })
     this._recalc(); this._notify()
     return { ok: true, rank: s.sect.rank }
@@ -6550,6 +8234,7 @@ class GameState {
     }
     const contrib = Math.round(m.contribution * mult)
     s.sect.contribution += contrib
+    this._wsDeed(this._wsMine(), SECT_MASTER.regardMission)   // 43e: service warms the master's regard (no deed line)
     parts.push(`${contrib} Contribution`)
 
     if (m.beastXp > 0) {
@@ -6610,7 +8295,7 @@ class GameState {
     if (!o.founded) return { ok: false, reason: 'no_sect' }
     const b = SECT_BUILDINGS.find(x => x.id === id)
     if (!b)            return { ok: false, reason: 'unknown' }
-    if (o.buildings[id]) return { ok: false, reason: 'built' }
+    if (o.buildings[id] > 0) return { ok: false, reason: 'built' }
     if (s.spiritStones < b.stones) return { ok: false, reason: 'stones' }
     for (const [iid, q] of Object.entries(b.items)) {
       if ((s.inventory[iid] || 0) < q) return { ok: false, reason: 'items' }
@@ -6620,10 +8305,31 @@ class GameState {
       s.inventory[iid] -= q
       if (s.inventory[iid] <= 0) delete s.inventory[iid]
     }
-    o.buildings[id] = true
+    o.buildings[id] = 1                                            // Phase 43: level 1 (upgradeSectBuilding deepens it)
     this.addEvent({ text: `${b.name} (${b.nameCN}) completed in ${o.name}.`, type: 'positive' })
     this._recalc(); this._notify()
     return { ok: true, building: b }
+  }
+
+  // Phase 43: deepen a hall you already raised. Effects scale with the level; every level costs more than the last.
+  // Returns null cost when the building is unbuilt or already at SECT_BUILDING_MAX_LEVEL.
+  sectBuildingUpgradeCost(id) { return sectBuildingUpgradeCost(id, this._s.ownSect?.buildings?.[id] || 0) }
+
+  upgradeSectBuilding(id) {
+    const s = this._s, o = s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const b = SECT_BUILDINGS.find(x => x.id === id)
+    if (!b)                  return { ok: false, reason: 'unknown' }
+    const level = o.buildings[id] || 0
+    if (level <= 0)          return { ok: false, reason: 'not_built' }
+    if (level >= SECT_BUILDING_MAX_LEVEL) return { ok: false, reason: 'max_level' }
+    const cost = sectBuildingUpgradeCost(id, level)
+    if (s.spiritStones < cost) return { ok: false, reason: 'stones' }
+    s.spiritStones -= cost
+    o.buildings[id] = level + 1
+    this.addEvent({ text: `The ${b.name} (${b.nameCN}) deepens to level ${level + 1} in ${o.name}.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true, level: level + 1 }
   }
 
   upgradeSectHall() {
@@ -6644,12 +8350,14 @@ class GameState {
     if (!o.founded) return { ok: false, reason: 'no_sect' }
     const c = o.recruitPool.find(x => x.id === candidateId)
     if (!c) return { ok: false, reason: 'not_found' }
-    if (o.disciples.length >= (s.derived?.discipleCap || 0)) return { ok: false, reason: 'full' }
+    // Phase 45: the Hall's cap seats YOUR OWN hall only — branch members live in their branch's seats.
+    if (this._mainRoster().length >= (s.derived?.discipleCap || 0)) return { ok: false, reason: 'full' }
     const cost = DISCIPLE_RECRUIT_COST * c.talent * c.talent
     if (s.spiritStones < cost) return { ok: false, reason: 'stones' }
     s.spiritStones -= cost
     o.recruitPool = o.recruitPool.filter(x => x.id !== candidateId)
-    const disciple = { id: c.id, name: c.name, talent: c.talent, level: 1, xp: 0 }
+    const disciple = { id: c.id, name: c.name, talent: c.talent, level: 1, xp: 0,
+                       branchId: null, role: 'disciple', kin: false, personality: disciplePersonality(c.id) }
     o.disciples.push(disciple)
     this.addEvent({ text: `${c.name} (${'★'.repeat(c.talent)}) joined ${o.name} as a disciple.`, type: 'positive' })
     this._recalc(); this._notify()
@@ -6687,6 +8395,260 @@ class GameState {
     return { ok: true }
   }
 
+  // ── Phase 45: Sect branches (分舵) — sub-leaders, rivalry, the Tournament of Branches ──────────────────────
+  // See docs/systems/sect-branches.md. Appointing a head is free and ungated (user 2026-10-02); a branch's members
+  // live in the branch's own seats, so branches are how a sect grows past its Hall. Loyalty never decays on its own
+  // — only a direct wrong (dissolve · promote/poach · being overlooked) can sour a head.
+
+  _mainRoster()      { return (this._s.ownSect?.disciples || []).filter(d => !d.branchId) }
+  _branchById(id)    { return this._s.ownSect.branches.find(b => b.id === id) || null }
+  _branchHead(b)     { return this._s.ownSect.disciples.find(d => d.id === b.headId) || null }
+  _branchMembers(b)  { return this._s.ownSect.disciples.filter(d => d.branchId === b.id && d.id !== b.headId) }
+  _branchTourneyCost() { const S = SECT_BRANCH.tourney; return Math.round(S.baseCost + S.costPerStage * this._s.stageIndex) }
+
+  // A disciple's output multiplier: 1 in your own hall, the branch's yield × loyalty inside a branch.
+  _discipleYieldMult(d) {
+    if (!d?.branchId) return 1
+    const b = this._branchById(d.branchId)
+    return b ? branchYieldMult(b) : 1
+  }
+
+  // Move a head's loyalty by `delta` (negative = a wrong); a drop to secedeAt makes them take the branch and go.
+  _adjustLoyalty(b, delta, why) {
+    if (!b) return false
+    b.loyalty = Math.max(0, Math.min(100, (b.loyalty ?? SECT_BRANCH.loyaltyStart) + delta))
+    if (delta < 0) b.wrongedYear = Math.floor(this._s.world?.year || 0)
+    if (b.loyalty <= SECT_BRANCH.secedeAt) return this._branchSecede(b, why)
+    return false
+  }
+  _wrongHead(b, amount, why) { return this._adjustLoyalty(b, -amount, why) }
+
+  // The head takes the branch and leaves: a rival born from your own house (a real NPC sect record lands in 43b).
+  _branchSecede(b, why) {
+    const o = this._s.ownSect
+    const head = this._branchHead(b)
+    const members = this._branchMembers(b)
+    o.disciples = o.disciples.filter(d => d.branchId !== b.id)
+    o.branches  = o.branches.filter(x => x.id !== b.id)
+    for (const x of o.branches) if (x.rivalId === b.id) x.rivalId = null
+    if (head) {
+      const rec = this._wsSplinter(head, members.length, why)   // Phase 43b: the branch becomes a real sect
+      // Phase 28 (4.2): the members who walked out are its people now.
+      if (rec) for (const m of members) {
+        const p = this._disciplePerson(m)
+        if (p && p.id !== rec.leaderId) { p.sectId = rec.id; p.sectRole = 'disciple'; p.owner = 'world' }
+      }
+      this._noteEnemy({ kind: 'sect', name: rec ? `the ${rec.name}` : `the ${head.name} faction`, why: 'left your sect in anger' })
+      this.addEvent({ text: `${head.name} took ${members.length ? `${members.length} disciple${members.length === 1 ? '' : 's'}` : 'their followers'} and left ${o.name}. "${why}"${rec ? ` They raise the ${rec.name} against you.` : ''}`, type: 'negative' })
+    }
+    this._s.karma = Math.max(0, this._s.karma - 3)
+    return head
+  }
+
+  // A brand-new branch, led by `head`. Free — no gate (the user's pick).
+  _makeBranch(head) {
+    const o = this._s.ownSect, yr = Math.floor(this._s.world?.year || 0)
+    const branch = { id: `bk${o.branchSeq++}`, name: `${String(head.name || 'A').split(' ')[0]} Branch`, headId: head.id,
+                     since: yr, lastRecruitYear: yr, wins: 0, losses: 0, loyalty: SECT_BRANCH.loyaltyStart,
+                     wrongedYear: 0, rivalId: null, heat: 0, tourneyWins: 0 }
+    o.branches.push(branch)
+    head.role = 'head'; head.branchId = branch.id
+    const others = o.branches.filter(x => x.id !== branch.id && !x.rivalId)
+    if (others.length) { const r = others[Math.floor(Math.random() * others.length)]; branch.rivalId = r.id; r.rivalId = branch.id }
+    return branch
+  }
+
+  appointBranchHead(discipleId) {
+    const s = this._s, o = s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const d = o.disciples.find(x => x.id === discipleId)
+    if (!d) return { ok: false, reason: 'not_found' }
+    if (o.branches.some(b => b.headId === discipleId)) return { ok: false, reason: 'already_head' }
+    if (o.branches.length >= SECT_BRANCH.maxBranches) return { ok: false, reason: 'max_branches' }
+    const old = d.branchId ? this._branchById(d.branchId) : null      // calling them out of a branch is a poach
+    if (old) this._wrongHead(old, SECT_BRANCH.wrong.poach, `${d.name} was called away from their branch`)
+    const branch = this._makeBranch(d)
+    this.addEvent({ text: `${d.name} is raised to Branch Head of the ${branch.name}. They will gather disciples of their own.`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true, branch }
+  }
+
+  // Dissolve a branch. The head is stripped of it (a direct wrong); if that breaks them they take the branch and
+  // leave. Otherwise the head + members return to your own hall while seats allow, and the rest slip away.
+  dismissBranch(branchId) {
+    const s = this._s, o = s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const b = this._branchById(branchId)
+    if (!b) return { ok: false, reason: 'not_found' }
+    const head = this._branchHead(b), members = this._branchMembers(b)
+    if (this._wrongHead(b, SECT_BRANCH.wrong.dissolve, 'You dissolved their branch')) { this._recalc(); this._notify(); return { ok: true, seceded: true } }
+    o.branches = o.branches.filter(x => x.id !== b.id)
+    for (const x of o.branches) if (x.rivalId === b.id) x.rivalId = null
+    const cap = s.derived?.discipleCap || 0
+    let kept = 0, left = 0
+    for (const d of [head, ...members].filter(Boolean)) {
+      if (this._mainRoster().length < cap) { d.branchId = null; d.role = 'disciple'; kept++ }
+      else { o.disciples = o.disciples.filter(x => x.id !== d.id); left++ }
+    }
+    this.addEvent({ text: `You dissolved the ${b.name}: ${kept} return to your hall${left ? `, and ${left} slip away` : ''}.`, type: 'negative' })
+    this._recalc(); this._notify()
+    return { ok: true, kept, left }
+  }
+
+  // Bring a branch member up into your own hall (needs a seat). A direct wrong to the head they leave behind.
+  promoteBranchMember(discipleId) {
+    const s = this._s, o = s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const d = o.disciples.find(x => x.id === discipleId)
+    if (!d) return { ok: false, reason: 'not_found' }
+    if (!d.branchId) return { ok: false, reason: 'not_in_branch' }
+    if (this._mainRoster().length >= (s.derived?.discipleCap || 0)) return { ok: false, reason: 'full' }
+    const b = this._branchById(d.branchId), head = b ? this._branchHead(b) : null
+    d.branchId = null; d.role = 'disciple'
+    const seceded = b ? this._wrongHead(b, SECT_BRANCH.wrong.poach, `${d.name} was brought up into your own hall`) : false
+    this.addEvent({ text: `${d.name} is brought up into your own hall${head && !seceded ? `; ${head.name}'s branch feels the loss` : ''}.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  // The sect leader holds a tournament between the branches and pays the winner's prize (user 2026-10-02).
+  holdBranchTournament(rewardKind) {
+    const s = this._s, o = s.ownSect, S = SECT_BRANCH.tourney
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    if (o.branches.length < 2) return { ok: false, reason: 'no_branches' }
+    if (!['qi', 'art', 'stones'].includes(rewardKind)) return { ok: false, reason: 'bad_reward' }
+    const left = (o.tourneyAt || 0) - this._cdNow()
+    if (left > 0) return { ok: false, reason: 'cooldown', secsLeft: left }
+    const cost = this._branchTourneyCost()
+    if (s.spiritStones < cost) return { ok: false, reason: 'stones', cost }
+    s.spiritStones -= cost
+    const rows = o.branches.map(b => {
+      const head = this._branchHead(b), members = this._branchMembers(b)
+      const base = (head ? head.talent * head.level * 2 : 0) + members.reduce((a, m) => a + m.talent * m.level, 0)
+      return { b, roll: base * (0.75 + Math.random() * 0.5) }
+    })
+    rows.sort((a, b) => b.roll - a.roll)
+    const win = rows[0], winHead = this._branchHead(win.b)
+    win.b.wins = (win.b.wins || 0) + 1; win.b.tourneyWins = (win.b.tourneyWins || 0) + 1
+    win.b.loyalty = Math.min(100, (win.b.loyalty ?? SECT_BRANCH.loyaltyStart) + S.winLoyalty)
+    for (const r of rows.slice(1)) this._adjustLoyalty(r.b, S.loseLoyalty, 'they were overlooked at your tournament')
+    let amount = 0, kind = rewardKind
+    if (rewardKind === 'qi') { amount = Math.round((s.derived?.qiCap || 0) * S.qiFrac); s.qi = Math.min(s.derived?.qiCap ?? s.qi, s.qi + amount) }
+    else if (rewardKind === 'stones') { amount = Math.round((S.stonesBase + S.stonesPerBranch * o.branches.length) * (1 + s.stageIndex * 0.1)); s.spiritStones += amount }
+    else { const artId = this._rollArt(ART_DROP_WEIGHTS_BY_TIER[Math.min(6, 1 + Math.floor(s.stageIndex / 4))]); if (artId) { this._grantManual(artId, 'as the prize of your Tournament of Branches'); amount = 1; kind = artId } }
+    o.tourneyAt = this._cdNow() + S.cooldownSecs
+    o.lastTourney = { year: Math.floor(s.world?.year || 0), winnerId: win.b.id, winnerName: win.b.name, head: winHead?.name || '', rewardKind: kind, amount }
+    const prize = kind === 'qi' ? `You grant them a share of your Qi.` : kind === 'stones' ? `You pay out ${amount} Spirit Stones.` : `You give up a manual (${ARTS[kind]?.name || 'an art'}) as the prize.`
+    this.addEvent({ text: `The Tournament of Branches: the ${win.b.name}${winHead ? ` under ${winHead.name}` : ''} takes the day. ${prize}`, type: 'special' })
+    this._emit('branch_tourney', { winner: win.b.name, reward: kind })
+    this._recalc(); this._notify()
+    return { ok: true, winner: win.b, reward: { kind, amount } }
+  }
+
+  // Take a grown child into the sect — free and instant (no pool, no cost). A child's root sets their talent.
+  recruitChild(childId) {
+    const s = this._s, o = s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const c = s.family?.children?.find(x => x.id === childId)
+    if (!c) return { ok: false, reason: 'unknown' }
+    if (!c.alive || c.estranged) return { ok: false, reason: 'gone' }
+    const age = Math.max(0, Math.floor(s.world.year - c.bornYear))
+    if (age < AWAKENING_AGE) return { ok: false, reason: 'young', minAge: AWAKENING_AGE }
+    if (o.disciples.some(d => d.childId === childId)) return { ok: false, reason: 'joined' }
+    if (this._mainRoster().length >= (s.derived?.discipleCap || 0)) return { ok: false, reason: 'full' }
+    const talent = Math.max(1, Math.min(5, Math.round((c.root?.mult || 1) * 1.6)))
+    const disciple = { id: 'k' + c.id, name: Persons.fullName(c), talent, level: 1, xp: 0,
+                       branchId: null, role: 'disciple', kin: true, childId, personality: c.personality || disciplePersonality(c.id) }
+    o.disciples.push(disciple)
+    this.addEvent({ text: `Your child ${disciple.name} joins ${o.name} as a disciple — blood of your blood.`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true, disciple }
+  }
+
+  childRecruitPreview(childId) {
+    const s = this._s, o = s.ownSect
+    const c = s.family?.children?.find(x => x.id === childId)
+    if (!c) return null
+    const age = Math.max(0, Math.floor(s.world.year - c.bornYear))
+    const talent = Math.max(1, Math.min(5, Math.round((c.root?.mult || 1) * 1.6)))
+    if (!o?.founded) return { ok: false, reason: 'no_sect', minAge: AWAKENING_AGE, talent, kin: true }
+    const taken = o.disciples.some(d => d.childId === childId)
+    const full = this._mainRoster().length >= (s.derived?.discipleCap || 0)
+    const reason = age < AWAKENING_AGE ? 'young' : taken ? 'joined' : full ? 'full' : null
+    return { ok: !reason, reason, minAge: AWAKENING_AGE, talent, kin: true }
+  }
+
+  // Children who could be taken in now (grown, at home, not already a disciple) — the UI read helper.
+  recruitableChildren() {
+    const s = this._s, o = s.ownSect
+    if (!o?.founded) return []
+    const taken = new Set(o.disciples.filter(d => d.childId).map(d => d.childId))
+    return (s.family?.children || []).filter(c => c.alive && !c.estranged && !taken.has(c.id) &&
+      Math.floor(s.world.year - c.bornYear) >= AWAKENING_AGE)
+  }
+
+  // Branch totals + the tournament's state, for the UI (mirrors _recalc/tickOwnSect exactly).
+  branchInfo() {
+    const s = this._s, o = s.ownSect, d = s.derived || {}
+    if (!o?.founded) return null
+    const inc = d.ownSectIncomeMult || 1
+    const branches = o.branches.map(b => {
+      const head = this._branchHead(b), members = this._branchMembers(b)
+      const cap = branchCap(head), ym = branchYieldMult(b)
+      const of = (t, l) => { const lm = 1 + 0.1 * (l - 1)
+        return { qi: DISCIPLE_QI_FRAC * t * lm * ym, stonesMin: DISCIPLE_STONE_RATE * t * lm * inc * 60 * ym, herbsMin: DISCIPLE_HERB_RATE * t * lm * inc * 60 * ym } }
+      let qi = 0, stonesMin = 0, herbsMin = 0, strength = 0
+      for (const m of [...(head ? [head] : []), ...members]) { const y = of(m.talent, m.level); qi += y.qi; stonesMin += y.stonesMin; herbsMin += y.herbsMin; strength += m.talent * m.level }
+      const rival = b.rivalId ? o.branches.find(x => x.id === b.rivalId) : null
+      return { b, head, members, cap, seats: Math.max(0, cap - 1 - members.length), ym,
+               loyalty: b.loyalty ?? SECT_BRANCH.loyaltyStart, rival, heat: b.heat || 0, seceding: (b.loyalty ?? 100) <= SECT_BRANCH.secedeAt,
+               totals: { qi, stonesMin, herbsMin }, strength }
+    })
+    const cost = this._branchTourneyCost(), left = Math.max(0, (o.tourneyAt || 0) - this._cdNow())
+    const S = SECT_BRANCH.tourney
+    return { branches, count: branches.length, max: SECT_BRANCH.maxBranches, full: branches.length >= SECT_BRANCH.maxBranches,
+      tourney: { cost, secsLeft: left, short: s.spiritStones < cost,
+                 ready: branches.length >= 2 && left <= 0 && s.spiritStones >= cost,
+                 qiFrac: S.qiFrac, stones: Math.round((S.stonesBase + S.stonesPerBranch * branches.length) * (1 + s.stageIndex * 0.1)) },
+      last: o.lastTourney }
+  }
+
+  // Phase 45: a game-year tick (with the family, so it only runs while you are present — pillar 4). A head may take
+  // on a member, a rivalry grows hot, and a hot rivalry may break into a brawl. Loyalty itself never decays.
+  _tickBranches() {
+    const s = this._s, o = s.ownSect
+    if (!o?.founded || !o.branches.length) return
+    const S = SECT_BRANCH, yr = Math.floor(s.world.year)
+    let changed = false
+    for (const b of [...o.branches]) {
+      const head = this._branchHead(b)
+      if (!head) continue
+      const members = this._branchMembers(b), cap = branchCap(head) - 1, gap = yr - (b.lastRecruitYear || yr)
+      if (members.length < cap && gap >= S.recruitYears[0] && (gap >= S.recruitYears[1] || Math.random() < S.recruitChance)) {
+        const rec = { ...this._genRecruit(), level: 1, xp: 0, branchId: b.id, role: 'disciple', kin: false }
+        rec.personality = Persons.rollPersonality()
+        o.disciples.push(rec)
+        b.lastRecruitYear = yr
+        changed = true
+        const rival = b.rivalId ? this._branchById(b.rivalId) : null
+        if (rival) { b.heat = Math.min(S.heatMax, (b.heat || 0) + S.heatPerRecruit); rival.heat = Math.min(S.heatMax, (rival.heat || 0) + S.heatPerRecruit) }
+        this.addEvent({ text: `${head.name}'s ${b.name} takes in ${rec.name}.`, type: 'positive' })
+      }
+      if ((b.heat || 0) >= S.brawlAt && Math.random() < S.brawlChance) {
+        const rival = b.rivalId ? this._branchById(b.rivalId) : null
+        const pick = ms => ms.length ? ms[Math.floor(Math.random() * ms.length)] : null
+        const a = pick(this._branchMembers(b)), c = rival ? pick(this._branchMembers(rival)) : null
+        for (const m of [a, c]) if (m) o.disciples = o.disciples.filter(x => x.id !== m.id)
+        b.heat = Math.max(0, (b.heat || 0) - S.brawlHeatDrop)
+        if (rival) rival.heat = Math.max(0, (rival.heat || 0) - S.brawlHeatDrop)
+        changed = true
+        const names = [a?.name, c?.name].filter(Boolean).join(' and ') || 'disciples'
+        this.addEvent({ text: `A brawl between the ${b.name}${rival ? ` and the ${rival.name}` : ''}: ${names} are driven out of ${o.name}.`, type: 'negative' })
+      }
+    }
+    if (changed) { this._recalc(); this._notify() }
+  }
+
   // Income, disciple XP and recruit-pool refresh. dt in seconds (also used for offline catch-up).
   tickOwnSect(dt) {
     const s = this._s
@@ -6698,8 +8660,9 @@ class GameState {
     let stones = 0, herbs = 0
     for (const dc of o.disciples) {
       const lm = 1 + 0.1 * (dc.level - 1)
-      stones += DISCIPLE_STONE_RATE * dc.talent * lm
-      herbs  += DISCIPLE_HERB_RATE  * dc.talent * lm
+      const ym = this._discipleYieldMult(dc)   // Phase 45: a branch member feeds a share (head keeps some back)
+      stones += DISCIPLE_STONE_RATE * dc.talent * lm * ym
+      herbs  += DISCIPLE_HERB_RATE  * dc.talent * lm * ym
       if (dc.level < DISCIPLE_MAX_LEVEL) {
         dc.xp += (DISCIPLE_XP_BASE + DISCIPLE_XP_PER_TALENT * dc.talent) * xpMult * dt
         while (dc.level < DISCIPLE_MAX_LEVEL && dc.xp >= DISCIPLE_XP_PER_LEVEL * dc.level) {
@@ -6721,6 +8684,1475 @@ class GameState {
       this._refreshRecruitPool()
       this._notify()   // non-tick notify so the Sect tab redraws with the new candidates
     }
+  }
+
+  // ── Phase 43b: Living Sects — the world's sect registry (docs/systems/npc-sects.md) ───────────────────────────
+  // s.world.sects survives every death (it is the world's). Each record: { id, name, defId, kind: 'joinable'|'rival'|
+  // 'splinter', tier, temper, leader, buildings: {id: level}, hallLevel, maxBuildingLevel, maxHall, disciples, stance,
+  // deeds, sworn, origin, bornYear, lastRaisedYear, alive }. Might is derived (worldSectMight), never stored.
+  // The sim steps once per game year (with the family), so it only runs while the game is open (pillar 4).
+
+  _blankWorldSects() { return { list: [], nextId: 1, born: 0, fallen: 0, chronicle: [], event: null, lastRaised: null,
+                               razed: 0, dread: 0, ashes: [] } }   // Phase 43f: sects razed, your dread, the ashes (remnants to come)
+
+  _ensurePhase43bFields() {
+    const w = this._s?.world
+    if (!w) return
+    if (!w.sects || !Array.isArray(w.sects.list)) w.sects = this._seedWorldSects(w)
+    const W = w.sects, blank = this._blankWorldSects()
+    for (const k of Object.keys(blank)) if (W[k] === undefined) W[k] = blank[k]
+    if (!Array.isArray(W.chronicle)) W.chronicle = []
+    for (const r of W.list) {
+      if (!r.buildings) r.buildings = {}
+      if (!Array.isArray(r.deeds)) r.deeds = []
+      if (typeof r.stance !== 'number') r.stance = 0
+      if (r.sworn === undefined) r.sworn = false
+      if (r.lastLost === undefined) r.lastLost = null   // 43d: the hall it lost last (the levy)
+      if (!r.acted) r.acted = {}                        // 43h: your actions' per-sect cooldowns (the year each may be used again)
+      if (!(r.hallLevel >= 1)) r.hallLevel = 1
+      if (!(r.disciples >= 0)) r.disciples = 10
+      if (r.leaderSince === undefined) r.leaderSince = r.bornYear || Math.floor(this._s?.world?.year || 1)   // 46c: leaders age out
+      if (r.kind === 'lineage') {                        // 46b: a sect founded by the player's line
+        if (r.founderName === undefined) r.founderName = ''
+        if (r.lineageOf === undefined) r.lineageOf = null
+      }
+    }
+    if (W.event && !W.list.some(r => r.id === W.event.sectId)) W.event = null
+  }
+
+  // Phase 46 (1.20b, lineage-sect.md): a pre-46 save kept its founded sect as a dormant `clan.sect` snapshot. Turn
+  // it into the living world sect it now should be, so it can be seen, fought over and rejoined. Runs once per clan
+  // (guarded by `worldSectId`).
+  _ensurePhase46Fields() {
+    const w = this._s?.world
+    if (!w?.sects || !w.clans) return
+    for (const clan of Object.values(w.clans)) {
+      const cs = clan?.sect
+      if (!cs || cs.worldSectId || !cs.name) continue
+      const rec = this._wsFromClanSect(cs, clan, w)
+      if (rec) cs.worldSectId = rec.id
+    }
+  }
+
+  // The world's first sects. A hash-seeded RNG (no Math.random draws, so existing sim seeds don't shift).
+  _seedWorldSects(w) {
+    const S = WORLD_SECTS, W = this._blankWorldSects(), s = this._s
+    const rng = wsRng(`${s.self?.id || ''}|${s.name || ''}|${Math.floor(w.year || 1)}`)
+    const yr = Math.floor(w.year || 1)
+    const cap = (hall) => S.discipleCaps[Math.max(0, Math.min(S.discipleCaps.length - 1, hall - 1))]
+    const add = (fields) => {
+      const r = { id: 'ws' + (W.nextId++), defId: null, kind: 'rival', stance: 0, deeds: [], sworn: false, origin: 'seed',
+                  bornYear: yr, lastRaisedYear: 0, alive: true, ...fields }
+      r.leader = r.leader || wsLeaderName(rng)
+      if (!(r.disciples >= 0)) r.disciples = Math.round(cap(r.hallLevel) * (0.45 + rng() * 0.35))
+      W.list.push(r)
+      return r
+    }
+    for (const sd of WORLD_SECT_SEED) {
+      const def = SECTS.find(d => d.id === sd.defId)
+      if (!def) continue
+      add({ name: def.name, defId: def.id, kind: 'joinable', tier: sd.tier, temper: sd.temper, buildings: { ...sd.levels },
+            hallLevel: sd.hallLevel, maxBuildingLevel: sd.maxBuildingLevel, maxHall: sd.maxHall })
+    }
+    const taken = new Set(W.list.map(r => r.name))
+    for (const rv of WORLD_RIVAL_SEED) {
+      const name = wsRivalName(rng, taken); taken.add(name)
+      add({ name, tier: rv.tier, temper: WORLD_SECT_TEMPERS[Math.floor(rng() * WORLD_SECT_TEMPERS.length)], buildings: { ...rv.levels },
+            hallLevel: rv.hallLevel, maxBuildingLevel: rv.maxBuildingLevel, maxHall: rv.maxHall })
+    }
+    // An old save: the sect you already belong to took you in; factions that seceded from you (Phase 45, before
+    // 43b) become the splinter sects they always meant to be.
+    if (s.sect?.id) {
+      const mine = W.list.find(r => r.defId === s.sect.id)
+      if (mine) { mine.stance = S.stanceJoin; mine.deeds.push({ year: yr, text: 'took you in as a disciple' }) }
+    }
+    for (const e of w.enemies || []) {
+      const m = e.kind === 'sect' && /^the (.+) faction$/.exec(e.name || '')
+      if (!m || W.list.length >= S.maxAlive + 4) continue
+      const surname = m[1].split(' ')[0]
+      add({ name: `${surname} ${WORLD_SECT_SPLINTER.suffixes[0]}`, kind: 'splinter', origin: 'seceded', tier: WORLD_SECT_SPLINTER.tier,
+            temper: 'grumpy', leader: m[1], buildings: {}, hallLevel: 1, maxBuildingLevel: WORLD_SECT_SPLINTER.maxBuildingLevel,
+            maxHall: WORLD_SECT_SPLINTER.maxHall, disciples: 4, stance: S.stanceSeceded,
+            deeds: [{ year: e.year || yr, text: e.why || 'left your sect in anger' }] })
+    }
+    return W
+  }
+
+  _wsAll()       { return this._s.world?.sects?.list || [] }
+  _wsRec(id)     { return id ? this._wsAll().find(r => r.id === id && r.alive) || null : null }
+  _wsById(id)    { return this._wsRec(id) }   // Phase 46: a lineage membership resolves by record id, not defId
+  _wsByDef(defId){ return this._wsAll().find(r => r.defId === defId && r.alive) || null }
+  _wsMine()      { const id = this._s.sect?.id; return id ? (this._wsByDef(id) || this._wsById(id)) : null }
+  _wsLevels(r)   { return Object.values(r.buildings || {}).reduce((a, v) => a + (v > 0 ? v : 0), 0) }
+
+  // The sects' short chronicle (kept for the sect page + old readers) and, since 4.6, the merged world Chronicle.
+  // `pids` name the people in the line (World → Chronicle links them); `notable` lights the 世 dot.
+  _wsChron(text, sectId = null, pids = null, notable = false, routine = false) {
+    const W = this._s.world.sects
+    W.chronicle.push({ year: Math.floor(this._s.world.year), text, sectId })
+    if (W.chronicle.length > WORLD_SECTS.chronicleMax) W.chronicle.splice(0, W.chronicle.length - WORLD_SECTS.chronicleMax)
+    this._chron({ k: 'sect', t: text, s: sectId, p: pids, n: notable, q: routine })
+  }
+  // A sect remembers what you did to it (newest last) and its stance moves with it.
+  _wsDeed(r, delta, text) {
+    if (!r) return
+    r.stance = Math.max(-100, Math.min(100, Math.round((r.stance || 0) + (delta || 0))))
+    if (text) {
+      r.deeds.push({ year: Math.floor(this._s.world.year), text, delta: Math.round(delta || 0) })
+      if (r.deeds.length > WORLD_SECTS.deedsMax) r.deeds.splice(0, r.deeds.length - WORLD_SECTS.deedsMax)
+    }
+  }
+
+  // Your own Might, the same scale as a sect's. A founder is their sect; a disciple borrows some of their sect's
+  // weight; a wanderer has only their realm.
+  playerMight() {
+    const s = this._s, personal = Math.round(10 + 6 * (s.stageIndex || 0))
+    const o = s.ownSect
+    if (o?.founded) {
+      const tier = Math.max(1, Math.min(5, Math.round((s.stageIndex || 0) / 5)))
+      return Math.max(personal, worldSectMight({ buildings: o.buildings, hallLevel: o.hallLevel, disciples: (o.disciples?.length || 0) * 10, tier }))
+    }
+    const mine = this._wsMine()
+    return mine ? Math.max(personal, Math.round(0.6 * worldSectMight(mine))) : personal
+  }
+
+  // `rng` (4.6): a hidden master founds a sect from the seeded life step, so it never draws Math.random.
+  _wsNewRival({ name, tier, kind = 'rival', origin = 'born', rng = Math.random, ...rest } = {}) {
+    const S = WORLD_SECTS, N = WORLD_SECT_NEWBORN, W = this._s.world.sects
+    const rnd = (a, b) => a + Math.floor(rng() * (b - a + 1))
+    const taken = new Set(this._wsAll().filter(r => r.alive).map(r => r.name))
+    const r = { id: 'ws' + (W.nextId++), defId: null, kind, origin,
+                name: name || wsRivalName(rng, taken),
+                tier: tier || N.tiers[Math.floor(rng() * N.tiers.length)],
+                temper: WORLD_SECT_TEMPERS[Math.floor(rng() * WORLD_SECT_TEMPERS.length)],
+                leader: wsLeaderName(rng), buildings: {}, hallLevel: 1,
+                maxBuildingLevel: rnd(N.maxBuildingLevel[0], N.maxBuildingLevel[1]), maxHall: rnd(N.maxHall[0], N.maxHall[1]),
+                disciples: rnd(N.discipleStart[0], N.discipleStart[1]), stance: 0, deeds: [], sworn: false,
+                bornYear: Math.floor(this._s.world.year), lastRaisedYear: 0, alive: true, ...rest }
+    W.list.push(r)
+    W.born++
+    return r
+  }
+
+  // Raise one thing: a building level (an unbuilt hall is level 0) or, with hallShare, the Sect Hall. Within its caps.
+  _wsGrow(r) {
+    const S = WORLD_SECTS
+    const open = SECT_BUILDINGS.filter(b => (r.buildings[b.id] || 0) < r.maxBuildingLevel)
+    const hallOk = r.hallLevel < r.maxHall
+    if (!open.length && !hallOk) return null
+    if (hallOk && (!open.length || Math.random() < S.hallShare)) {
+      r.hallLevel++
+      return { hall: true, level: r.hallLevel }
+    }
+    const b = open[Math.floor(Math.random() * open.length)]
+    r.buildings[b.id] = (r.buildings[b.id] || 0) + 1
+    return { buildingId: b.id, level: r.buildings[b.id] }
+  }
+  // Lose one level (a fire, a feud). A joinable sect always keeps at least one hall standing.
+  // 43d: the loss is remembered (r.lastLost, for the levy) and, when it is your own sect, named with what it did to your blessing.
+  _wsSetback(r, cause = '') {
+    const built = Object.keys(r.buildings).filter(k => r.buildings[k] > 0)
+    // A joinable sect (and, since Phase 46, a line founded by the player) always keeps at least one hall standing.
+    if (!built.length || ((r.kind === 'joinable' || r.kind === 'lineage') && this._wsLevels(r) <= 1)) return null
+    const id = built[Math.floor(Math.random() * built.length)]
+    r.buildings[id]--
+    if (r.buildings[id] <= 0) delete r.buildings[id]
+    r.lastLost = { buildingId: id, year: Math.floor(this._s.world?.year || 0) }
+    if (r === this._wsMine()) this._wsMineLost(r, id, cause)
+    return id
+  }
+  // Phase 43d: your own sect lost a hall level. The log names the cause and the new blessing; the sect calls a levy
+  // (the event waits on you; if another matter is waiting, the levy can still come on a later year).
+  _wsMineLost(r, id, cause) {
+    const W = this._s.world.sects, name = SECT_BUILDINGS.find(b => b.id === id)?.name || 'hall', lv = r.buildings[id] || 0
+    const k = this.sectBlessing()?.k
+    this.addEvent({ type: 'negative', text: `${cause ? `${cause}: t` : 'T'}he ${r.name}'s ${name} ${lv ? `falls to Lv.${lv}` : 'is lost'}. The blessing on you thins to ×${(k ?? 1).toFixed(2)}.` })
+    if (!W.event) {
+      W.event = { id: 'levy', sectId: r.id, year: Math.floor(this._s.world.year), buildingId: id }
+      this.addEvent({ text: `The ${r.name} calls a levy to rebuild its ${name}. It waits on you in Sect → Overview.`, type: 'neutral' })
+    }
+  }
+
+  // Phase 46 (1.20c, lineage-sect.md): a master who has held the seat long faces a rising chance of being succeeded
+  // — a death or a retirement. The world churns on; a master of your line's old sect earns a player log line.
+  // Phase 28 (4.2): who sits in the master's seat now (a registry person, or null when none was seated yet).
+  _wsLeader(r) {
+    const p = r?.leaderId ? this._s.world.persons[r.leaderId] : null
+    return p && p.alive !== false && Persons.fullName(p) === r.leader ? p : null
+  }
+  _wsSeat(r, p) {
+    r.leaderId = p.id
+    r.leader = Persons.fullName(p)
+    if (r.temper && PERSONALITIES.some(x => x.id === r.temper)) p.personality = r.temper   // the sect's temper IS its master's
+    p.role = 'sect_master'; p.sectId = r.id; p.sectRole = 'master'
+    if (p.owner === 'sect') p.owner = 'world'
+  }
+  _wsMasterStage(r, rng) {
+    const M = SECT_MASTER
+    return Math.min(NPC_STAGE_CAP, M.stageBase + M.stagePerTier * (r.tier || 1) + M.stageJitter[0] + Math.floor(rng() * (M.stageJitter[1] - M.stageJitter[0] + 1)))
+  }
+  // A world sect's named people: a real master (named r.leader) and its elders, by tier. Idempotent; seeded rng only.
+  // `draft` (4.6, the yearly tick + successions only, never a UI read): an empty elder's seat goes to a living person
+  // first — one of the sect's own disciples, else an unsworn wanderer of the right realm — before anyone is minted.
+  _wsEnsurePeople(r, draft = false) {
+    if (!r?.alive) return
+    const w = this._s.world, P = WORLD_PEOPLE, yr = Math.floor(w.year || 1)
+    const rng = wsRng(`${r.id}|${r.leader}|${yr}|people`)
+    if (!this._wsLeader(r)) {
+      const prev = r.leaderId ? w.persons[r.leaderId] : null
+      if (prev && prev.alive !== false && prev.sectId === r.id) { prev.role = 'retired_master'; prev.sectRole = null }
+      // Someone of that name already of this sect (an elder, the master you met in 43e) takes the seat; else mint them.
+      const named = Object.values(w.persons).find(p => p.alive !== false && Persons.fullName(p) === r.leader && (p.sectId === r.id || p.sectRecId === r.id))
+      const parts = String(r.leader || '').split(' ')
+      const p = named || this._mintPerson({ family: parts.length > 1 ? parts[0] : '', given: parts.length > 1 ? parts.slice(1).join(' ') : (parts[0] || null),
+        stage: this._wsMasterStage(r, rng), age: P.masterAge, personality: r.temper, role: 'sect_master' }, rng)
+      this._wsSeat(r, p)
+      r.elderIds = (r.elderIds || []).filter(id => id !== p.id)
+    }
+    const lead = this._wsLeader(r)
+    r.elderIds = (r.elderIds || []).filter(id => { const e = w.persons[id]; return e && e.alive !== false && e.sectId === r.id && id !== r.leaderId })
+    const want = P.eldersByTier[Math.max(0, Math.min(P.eldersByTier.length - 1, (r.tier || 1) - 1))]
+    while (r.elderIds.length < want) {
+      const drafted = draft && lead ? this._wsDraftElder(r, lead, rng) : null
+      if (drafted) { r.elderIds.push(drafted.id); continue }
+      const below = P.elderStageBelow[0] + Math.floor(rng() * (P.elderStageBelow[1] - P.elderStageBelow[0] + 1))
+      const e = this._mintPerson({ stage: Math.max(1, (lead?.stageIndex || 10) - below), age: P.elderAge, role: 'sect_elder', sectId: r.id, sectRole: 'elder' }, rng)
+      r.elderIds.push(e.id)
+    }
+  }
+  // 4.6: who the world offers for an empty elder's seat (null = nobody fits; the caller mints someone new).
+  _wsDraftElder(r, lead, rng) {
+    const s = this._s, w = s.world, P = WORLD_PEOPLE, yr = Math.floor(w.year || 1)
+    const lo = Math.max(1, (lead.stageIndex || 0) - P.elderStageBelow[1]), hi = (lead.stageIndex || 0) - P.elderStageBelow[0]
+    const ok = p => p.alive !== false && (!p.owner || p.owner === 'world') && p.id !== s.self?.id && p.id !== lead.id
+      && (p.role === 'wanderer' || p.role === 'disciple') && yr - (p.bornYear ?? yr) >= AWAKENING_AGE
+      && (p.stageIndex || 0) >= lo && (p.stageIndex || 0) <= hi
+    const byStage = (a, b) => (b.stageIndex || 0) - (a.stageIndex || 0) || String(a.id).localeCompare(String(b.id))
+    const all = Object.values(w.persons).filter(ok)
+    let pool = all.filter(p => p.sectId === r.id && p.sectRole === 'disciple').sort(byStage)
+    if (!pool.length) pool = all.filter(p => !p.sectId).sort(byStage)
+    if (!pool.length) return null
+    const e = pool[Math.floor(rng() * Math.min(NPC_WORLD.draftPool, pool.length))]
+    e.sectId = r.id; e.sectRole = 'elder'; e.role = 'sect_elder'
+    this._chron({ k: 'sect', t: this._chronText('drafted', e, { sect: r.name }), s: r.id, p: [e.id], q: true })
+    if (e.cohort === this._lifeNo()) this.addEvent({ type: 'neutral', text: this._lifeText('draftedClassmate', e, { sect: r.name }), pid: e.id })
+    return e
+  }
+  // Public (UI + checks): a sect's named people — master first, then elders.
+  sectPeople(recId) {
+    const r = this._wsRec(recId)
+    if (!r) return []
+    this._wsEnsurePeople(r)
+    return [r.leaderId, ...(r.elderIds || [])].map(id => this._s.world.persons[id]).filter(Boolean)
+      .map(p => ({ pid: p.id, name: Persons.fullName(p), role: p.id === r.leaderId ? 'Master' : 'Elder', stage: p.stageIndex || 0 }))
+  }
+
+  _wsCheckSuccession(r, yr) {
+    const L = WORLD_SECT_LEADERS
+    const seated = Math.max(0, yr - (r.leaderSince ?? r.bornYear ?? yr))
+    const chance = Math.min(L.changeMax, L.changeBase + L.changePerYear * seated)
+    if (Math.random() >= chance) return null
+    // Phase 28 (4.2): real people. The old master dies in the seat or retires into seclusion (a hash of the sect and
+    // year decides — no extra Math.random draws); the senior elder takes the seat, else someone new is raised.
+    this._wsEnsurePeople(r)
+    const old = r.leader, oldP = this._wsLeader(r)
+    // 4.3: deaths of age and backlash now come from the light life step. A change of seat here is a struggle (an elder
+    // forces the master out, and some masters die in it) or a retirement.
+    const dies = wsRng(`${r.id}|${yr}|succession`)() < WORLD_PEOPLE.masterDiesShare
+    if (oldP) {
+      if (dies) this._killPerson(oldP.id, yr, 'seat_struggle')
+      else { oldP.role = 'retired_master'; oldP.sectRole = null }
+    }
+    if (Math.random() < L.temperSwitchChance) r.temper = WORLD_SECT_TEMPERS[Math.floor(Math.random() * WORLD_SECT_TEMPERS.length)]
+    return this._wsSeatHeir(r, yr, dies ? `buries its master: ${old} fell in a struggle for the seat` : `bows as ${old} retires into seclusion`, dies)
+  }
+  // The senior elder takes the empty seat (else someone new is raised); the chronicle names how the old master left.
+  _wsSeatHeir(r, yr, how, died, oldPid = null) {
+    const w = this._s.world, old = r.leader
+    oldPid = oldPid || r.leaderId || null
+    const heir = (r.elderIds || []).map(id => w.persons[id]).filter(p => p && p.alive !== false)
+      .sort((a, b) => (b.stageIndex || 0) - (a.stageIndex || 0) || String(a.id).localeCompare(String(b.id)))[0]
+    if (heir) this._wsSeat(r, heir)
+    else this._wsSeat(r, this._mintPerson({ stage: this._wsMasterStage(r, wsRng(`${r.id}|${yr}|heir`)), age: WORLD_PEOPLE.masterAge, personality: r.temper, role: 'sect_master' }, wsRng(`${r.id}|${yr}|heir-p`)))
+    r.elderIds = (r.elderIds || []).filter(id => id !== r.leaderId)
+    r.leaderSince = yr
+    this._wsEnsurePeople(r, true)   // a new elder rises to fill the bench (4.6: drawn from the living first)
+    this._wsChron(`The ${r.name} ${how}, and ${heir ? 'its senior elder, ' : ''}${r.leader} takes the seat.`, r.id,
+      [oldPid, r.leaderId].filter(Boolean), (r.tier || 1) >= 4 || r === this._wsMine() || r.kind === 'lineage')
+    if (r.kind === 'lineage') this.addEvent({ type: 'neutral', text: `The ${r.name} — the sect your line founded — ${died ? `buries ${old}` : `sees ${old} retire`}. ${r.leader} leads it now.` })
+    return r.leader
+  }
+
+  // Phase 43b: the world's yearly step (rides the game-year tick — only while open, pillar 4).
+  _tickWorldSects() {
+    const s = this._s, W = s.world?.sects
+    if (!W) return
+    const S = WORLD_SECTS, yr = Math.floor(s.world.year)
+    const bName = id => SECT_BUILDINGS.find(b => b.id === id)?.name || 'hall'
+    const alive = () => W.list.filter(r => r.alive)
+    const mine = this._wsMine()
+    for (const r of alive()) this._wsEnsurePeople(r, true)   // Phase 28 (4.2): a newborn sect's master + elders become real people (4.6: the bench drafts the living)
+    for (const r of alive()) {
+      if (Math.random() < (S.growChance + S.growPerTier * (r.tier || 1)) * (r.grudge ? SECT_RAZE.remnant.growMult : 1)) {   // 43f: a remnant rebuilds in anger
+        const g = this._wsGrow(r)
+        if (g) {
+          r.lastRaisedYear = yr
+          if (g.buildingId && g.buildingId === r.lastLost?.buildingId) r.lastLost = null   // 43d: rebuilt on its own
+          if (r === mine) this.addEvent({ type: 'positive', text: `The ${r.name} raises its ${g.hall ? 'Sect Hall' : bName(g.buildingId)} to Lv.${g.level}. The blessing on you grows to ×${this.sectBlessing().k.toFixed(2)}.` })   // 43d
+          if (g.hall) this._wsChron(`The ${r.name} raises its Sect Hall to Lv.${g.level}.`, r.id)
+          else {
+            this._wsChron(g.level === 1 ? `The ${r.name} raises a ${bName(g.buildingId)}.` : `The ${r.name} deepens its ${bName(g.buildingId)} to Lv.${g.level}.`, r.id)
+            W.lastRaised = { sectId: r.id, buildingId: g.buildingId, year: yr }
+          }
+        }
+      }
+      const target = S.discipleCaps[Math.max(0, Math.min(S.discipleCaps.length - 1, r.hallLevel - 1))]
+      r.disciples = Math.max(0, Math.round(r.disciples + (target - r.disciples) * S.discipleDrift))
+      this._wsCheckSuccession(r, yr)   // Phase 46 (1.20c): masters age out over the generations
+      if (Math.random() < WORLD_SECT_LEADERS.disciplesJoinChance && r.disciples > 0 && r.disciples < target) {
+        const more = WORLD_SECT_LEADERS.joinMin + Math.floor(Math.random() * (WORLD_SECT_LEADERS.joinMax - WORLD_SECT_LEADERS.joinMin + 1))
+        this._wsChron(`${more} hopeful${more === 1 ? ' takes' : 's take'} the oath at the ${r.name}.`, r.id, null, false, true)
+      }
+      if (Math.random() < S.declineChance) {
+        const lost = this._wsSetback(r, 'Fire on the mountain')
+        if (lost) this._wsChron(`Fire takes the ${bName(lost)} of the ${r.name}.`, r.id)
+      }
+    }
+    // Two sects clash; the weaker (by Might, with a roll) loses a level and some disciples.
+    const live = alive()
+    if (live.length >= 2 && Math.random() < S.clashChance) {
+      const a = live[Math.floor(Math.random() * live.length)]
+      const others = live.filter(x => x !== a)
+      const b = others[Math.floor(Math.random() * others.length)]
+      const ma = worldSectMight(a), mb = worldSectMight(b)
+      const [win, lose] = Math.random() < ma / (ma + mb) ? [a, b] : [b, a]
+      this._wsSetback(lose, `A clash with the ${win.name}`)
+      lose.disciples = Math.round(lose.disciples * (1 - S.clashDiscipleLoss))
+      this._wsChron(`The ${win.name} and the ${lose.name} clash in the passes. The ${lose.name} comes off worse.`, lose.id)
+    }
+    // A broken sect disbands (never a joinable one); the world refills with births.
+    for (const r of alive()) {
+      if (r.kind === 'joinable' || r.kind === 'lineage' || r.id === W.event?.sectId) continue   // Phase 46: a player's line-sect never just vanishes
+      if (this._wsLevels(r) === 0 && r.hallLevel <= 1 && r.disciples < S.dissolveBelow) {
+        r.alive = false; W.fallen++
+        this._wsChron(`The ${r.name} breaks apart. Its last disciples scatter.`, r.id)
+        this.addEvent({ text: `The ${r.name} is no more: its last disciples scatter to the winds.`, type: 'neutral' })
+      }
+    }
+    W.list = W.list.filter(r => r.alive)
+    this._tickAshes(yr)   // Phase 43f: dread fades; the ashes may stir
+    const rivals = W.list.filter(r => r.kind !== 'joinable').length
+    if (rivals < S.rivalsTarget && W.list.length < S.maxAlive && Math.random() < S.birthChance) {
+      const r = this._wsNewRival()
+      this._wsChron(`A new sect raises its gate: the ${r.name}, led by ${r.leader}.`, r.id)
+      this.addEvent({ text: `A new sect raises its gate in the hills: the ${r.name}, led by ${r.leader}.`, type: 'neutral' })
+    }
+    if (!W.event && Math.random() < S.eventChance) this._wsRollEvent(yr)
+  }
+
+  // Which sects an event can fire for, given its `needs`.
+  _wsEligible(def, yr) {
+    const s = this._s, W = s.world.sects, n = def.needs || {}, mine = this._wsMine()
+    if (n.founder && !s.ownSect?.founded) return []
+    // 43d: the levy is your own sect's (a hall it lost lately, not yet rebuilt); a court needs you to be a member
+    if (n.mine) return mine && (!n.justLost || (mine.lastLost && yr - mine.lastLost.year <= SECT_BLESSING.lostYears)) ? [mine] : []
+    if (n.court && !mine) return []
+    return W.list.filter(r => r.alive && r !== mine
+      && (!n.court || this._wsCourts(r, mine))
+      && (!n.stance || (r.stance >= n.stance[0] && r.stance <= n.stance[1]))
+      && (!n.splinter || r.kind === 'splinter')
+      && (!n.remnant || r.grudge)   // 43f: a sect reborn from your ashes, still holding its feud
+      && (!n.justRaised || (W.lastRaised?.sectId === r.id && yr - W.lastRaised.year <= 2))
+      && !(def.id === 'alliance' && r.sworn))
+  }
+  _wsRollEvent(yr) {
+    const W = this._s.world.sects
+    const opts = WORLD_SECT_EVENTS.map(def => ({ def, sects: this._wsEligible(def, yr) })).filter(o => o.sects.length)
+    const total = opts.reduce((a, o) => a + o.def.weight, 0)
+    if (!total) return null
+    let roll = Math.random() * total, pick = opts[0]
+    for (const o of opts) { roll -= o.def.weight; if (roll <= 0) { pick = o; break } }
+    const r = pick.sects[Math.floor(Math.random() * pick.sects.length)]
+    const bId = pick.def.needs?.justRaised ? W.lastRaised.buildingId : pick.def.needs?.justLost ? r.lastLost.buildingId : null
+    W.event = { id: pick.def.id, sectId: r.id, year: yr, ...(bId ? { buildingId: bId } : {}) }
+    this.addEvent({ text: `Word comes from the ${r.name}. A matter waits on you in Sect → Overview.`, type: 'neutral' })
+    if (this._warLive) this._notify()
+    return W.event
+  }
+
+  _wsFill(text, r, ev, mineName = this._sectDef()?.name || 'your sect') {
+    const hall = ev?.buildingId ? (SECT_BUILDINGS.find(b => b.id === ev.buildingId)?.name || 'hall') : 'hall'
+    return String(text || '').replace(/\{sect\}/g, r?.name || 'sect').replace(/\{leader\}/g, r?.leader || 'their master').replace(/\{hall\}/g, hall)
+      .replace(/\{mine\}/g, mineName)
+  }
+  // The chance a choice succeeds (null = no roll), the same number the UI shows.
+  _wsOdds(c, r) {
+    const s = this._s
+    if (c.vsMight) { const me = this.playerMight(), them = worldSectMight(r); return Math.max(0.05, Math.min(0.95, me / (me + them))) }
+    if (!c.odds) return null
+    const gap = (s.stageIndex || 0) - (r.tier || 1) * 4
+    const you = c.odds.you?.[s.personality?.id] || 0
+    const loyal = c.odds.mineStanceDiv ? (this._wsMine()?.stance || 0) / c.odds.mineStanceDiv : 0   // 43d: your own sect's regard
+    return Math.max(0.1, Math.min(0.9, c.odds.base + (c.odds.perStageGap || 0) * gap + you + loyal))
+  }
+  // Phase 43d: a richer joinable sect that would take you (its blessing factor beats your sect's by courtGap).
+  _wsCourts(r, mine) {
+    const def = r.defId && SECTS.find(d => d.id === r.defId)
+    if (!def || !mine || r === mine || (this._s.stageIndex || 0) < def.minStage) return false
+    return wsBlessingFactor(r).factor >= wsBlessingFactor(mine).factor + SECT_BLESSING.courtGap
+  }
+  // 43d: ± Contribution in your own sect from a { base, perTier } (perTier × your sect's tier).
+  _wsContribOf(spec) {
+    if (!spec) return 0
+    return Math.round((spec.base || 0) + (spec.perTier || 0) * (this._wsMine()?.tier || 1))
+  }
+  // A choice with lockWar waits while any war of yours is underway (a member's call to arms, or your own sect's war).
+  _wsWarLock() { return this._wsMemberWar() || (!!this._s.ownSect?.founded && this._relWarOn()) }
+  _wsMemberWar() {
+    const w = this._s.sectWar
+    return w?.side === 'member' && (w.phase === 'scouting' || w.phase === 'preparing')
+  }
+  // 43d: a lost hall rises again a level (the levy). Returns its name, or null when nothing was lost.
+  _wsRestore(r) {
+    const id = r?.lastLost?.buildingId
+    if (!id) return null
+    r.buildings[id] = Math.min(r.maxBuildingLevel || SECT_BUILDING_MAX_LEVEL, (r.buildings[id] || 0) + 1)
+    r.lastLost = null
+    return SECT_BUILDINGS.find(b => b.id === id)?.name || 'hall'
+  }
+  // 43d: you go over to another sect. Your old sect remembers it; you enter one rank lower, your missions dropped.
+  _wsDefect(r) {
+    const s = this._s, old = this._sectDef(), oldRec = this._wsMine(), def = SECTS.find(d => d.id === r.defId)
+    if (!def || !old) return null
+    if (s.sectWar?.beastId) this._releaseWarBeast(0)
+    const rank = Math.max(0, (s.sect.rank || 0) - 1)
+    this._wsDeed(oldRec, SECT_BLESSING.stanceDefected, `you went over to the ${r.name}`)
+    this._wsChron(`${s.name} leaves the ${old.name} for the ${r.name}.`, r.id)
+    s.sect = { id: def.id, rank, contribution: SECT_RANKS[rank].minContribution, activeMissions: [] }
+    s.sectWar = this._blankSectWar('member')
+    return { from: old.name, to: def.name, rank: SECT_RANKS[rank].name }
+  }
+  _wsCost(c, r) {
+    const k = c.cost || {}
+    const o = this._s.ownSect
+    return Math.round((k.stones || 0) + (k.stonesPerTier || 0) * (r.tier || 1) + (k.stonesPerDisciple || 0) * (o?.founded ? o.disciples.length : 0))
+  }
+  _wsGain(c, r) {
+    const g = c.gain || {}
+    return { stones: Math.round((g.stones || 0) + (g.stonesPerTier || 0) * (r.tier || 1)), herbs: g.herbs || 0 }
+  }
+  _wsStanceOf(map, r) { return map ? (map[r.temper] ?? map.default ?? 0) : 0 }
+
+  // Public (UI): the waiting world-sect event, with every choice's cost, odds and lock reason.
+  worldSectEventInfo() {
+    const s = this._s, ev = s.world?.sects?.event
+    if (!ev) return null
+    const def = WORLD_SECT_EVENTS.find(d => d.id === ev.id), r = this._wsRec(ev.sectId)
+    if (!def || !r) return null
+    const temperName = PERSONALITIES.find(p => p.id === r.temper)?.name || ''
+    return { id: def.id, glyph: def.glyph, year: ev.year, sect: this._wsRow(r),
+      title: this._wsFill(def.title, r, ev), text: this._wsFill(def.text, r, ev), temper: temperName,
+      choices: def.choices.map((c, i) => {
+        const cost = this._wsCost(c, r), odds = this._wsOdds(c, r), gain = this._wsGain(c, r)
+        const lock = cost > s.spiritStones ? `Needs ${cost} stones`
+          : c.lockWar && this._wsWarLock() ? 'Not while your sect is at war' : ''
+        const mine = this._wsMine()
+        // 43d: going over — where you land and what the blessing would be there
+        let defect = null
+        if (c.defect && r.defId) {
+          const rank = Math.max(0, (s.sect?.rank || 0) - 1)
+          defect = { rank: SECT_RANKS[rank].name, k: Math.round(wsBlessingFactor(r).factor * SECT_BLESSING.rankShare[rank] * 100) / 100,
+                     nowK: this.sectBlessing()?.k ?? 0, missions: s.sect?.activeMissions?.length || 0 }
+        }
+        return { i, label: this._wsFill(c.label, r, ev), glyph: c.glyph || def.glyph, cost, odds, gain, lock, vsMight: !!c.vsMight,
+          stance: this._wsStanceOf(c.stance, r), failStance: c.failStance ? this._wsStanceOf(c.failStance, r) : null,
+          karma: c.karma || 0, health: c.failHealth || 0, healthNow: c.health || 0, disciples: c.disciples || 0, sworn: !!c.sworn, setback: !!c.setback,
+          contrib: this._wsContribOf(c.contrib), failContrib: c.failContrib ? this._wsContribOf(c.failContrib) : null,
+          mineStance: c.mineStance && mine ? this._wsStanceOf(c.mineStance, mine) : 0,
+          failMineStance: c.failMineStance && mine ? this._wsStanceOf(c.failMineStance, mine) : null,
+          restore: !!c.restore, defect, loyal: !!c.odds?.mineStanceDiv, clearGrudge: !!c.clearGrudge, march: !!c.march }
+      }), mine: ev.id === 'levy', mineName: this._sectDef()?.name || null, mineStance: this._wsMine()?.stance ?? null }
+  }
+
+  // Public (UI/sim): answer the waiting world-sect event with choice `i`. Every effect is named in the log line.
+  answerWorldSectEvent(i) {
+    const s = this._s, W = s.world?.sects, ev = W?.event
+    if (!ev) return { ok: false, reason: 'no_event' }
+    const def = WORLD_SECT_EVENTS.find(d => d.id === ev.id), r = this._wsRec(ev.sectId)
+    if (!def || !r) { W.event = null; return { ok: false, reason: 'gone' } }
+    const c = def.choices[i]
+    if (!c) return { ok: false, reason: 'bad_choice' }
+    const cost = this._wsCost(c, r)
+    if (cost > s.spiritStones) return { ok: false, reason: 'stones' }
+    if (c.lockWar && this._wsWarLock()) return { ok: false, reason: 'war' }
+    s.spiritStones -= cost
+    const odds = this._wsOdds(c, r)
+    const success = odds == null ? true : Math.random() < odds
+    const o = s.ownSect, parts = []
+    const mine = this._wsMine(), mineName = this._sectDef()?.name || 'your sect'   // 43d: before any defection
+    if (cost) parts.push(`−${cost} stones`)
+    const stance = success ? this._wsStanceOf(c.stance, r) : this._wsStanceOf(c.failStance || c.stance, r)
+    // 43d: your own sect — Contribution and how it regards you (the levy is your sect's own event: `r` is `mine` there)
+    const contrib = this._wsContribOf(success ? c.contrib : c.failContrib)
+    if (contrib && s.sect?.id) {
+      const before = s.sect.contribution
+      s.sect.contribution = Math.max(0, before + contrib)
+      const d = s.sect.contribution - before
+      if (d) parts.push(`${d > 0 ? '+' : '−'}${Math.abs(d)} Contribution`)
+    }
+    const mStance = mine && mine !== r ? this._wsStanceOf(success ? c.mineStance : (c.failMineStance || c.mineStance), mine) : 0
+    if (mStance) {
+      this._wsDeed(mine, mStance, `${def.short || def.id}: ${success ? 'you' : 'you tried to'} ${this._wsFill(c.label, r, ev, mineName).replace(/^./, ch => ch.toLowerCase())}`)
+      parts.push(`the ${mine.name} ${mStance > 0 ? 'warms' : 'cools'} (${mStance > 0 ? '+' : ''}${mStance})`)
+    }
+    if (success && c.health) { s.health = Math.max(1, (s.health ?? 100) + c.health); parts.push(`Health ${c.health}`) }
+    if (success) {
+      if (c.restore) { const h = this._wsRestore(r); if (h) parts.push(`the ${h} rises again`) }
+      if (c.defect) { const d = this._wsDefect(r); if (d) parts.push(`you join the ${d.to} as ${d.rank}`) }
+      const g = this._wsGain(c, r)
+      if (g.stones) { s.spiritStones += g.stones; parts.push(`+${g.stones} stones`) }
+      if (g.herbs)  { s.inventory.spirit_herb = (s.inventory.spirit_herb || 0) + g.herbs; parts.push(`+${g.herbs} Spirit Herbs`) }
+      if (c.karma)  { s.karma = Math.max(0, Math.min(100, s.karma + c.karma)); parts.push(`${c.karma > 0 ? '+' : ''}${c.karma} karma`) }
+      if (c.disciples > 0) {
+        if (o?.founded && this._mainRoster().length < (s.derived?.discipleCap || 0)) {
+          const rec = { ...this._genRecruit(), level: 1, xp: 0, branchId: null, role: 'disciple', kin: false }
+          rec.personality = disciplePersonality(rec.id)
+          o.disciples.push(rec)
+          parts.push(`${rec.name} joins your sect`)
+        }
+      } else if (c.disciples < 0) {
+        const n = this._wsTakeDisciples(-c.disciples, r)
+        if (n) parts.push(`${n} disciple${n === 1 ? '' : 's'} leave${n === 1 ? 's' : ''} for the ${r.name}`)
+      }
+      if (c.setback) this._wsSetback(r)
+      if (c.sworn) { r.sworn = true; this._wsChron(`You and the ${r.name} swear an alliance before Heaven.`, r.id) }
+      if (c.clearGrudge && r.grudge) { r.grudge = false; parts.push('the feud is set down'); this._wsChron(`The ${r.name} sets down its feud with ${o?.name || s.name}.`, r.id) }   // 43f
+      if (c.march && o?.founded && !this._relWarOn()) { this._openWarOn(r, false, false); parts.push('they march on your mountain') }   // 43f
+    } else {
+      if (c.failHealth) { s.health = Math.max(1, (s.health ?? 100) + c.failHealth); parts.push(`Health ${c.failHealth}`) }
+      if (c.failKarma)  { s.karma = Math.max(0, s.karma + c.failKarma); parts.push(`${c.failKarma} karma`) }
+      if (c.failDisciples) {
+        const n = this._wsTakeDisciples(-c.failDisciples, r)
+        if (n) parts.push(`${n} disciple${n === 1 ? '' : 's'} slip${n === 1 ? 's' : ''} away`)
+      }
+    }
+    const verb = this._wsFill(c.label, r, ev).replace(/^./, ch => ch.toLowerCase())
+    this._wsDeed(r, stance, `${def.short || def.id}: you chose to ${verb}${success ? '' : ' — and failed'}`)
+    if (stance) parts.push(`the ${r.name} ${stance > 0 ? 'warms' : 'cools'} (${stance > 0 ? '+' : ''}${stance})`)
+    const text = this._wsFill(success ? c.result : c.failResult, r, ev, mineName)
+    W.event = null
+    this._recalc()
+    const k = this.sectBlessing()?.k   // 43d: name what the answer did to your blessing (a levy paid, a sect left)
+    if ((c.restore && success) || (c.defect && success)) parts.push(`blessing now ×${(k ?? 0).toFixed(2)}`)
+    this.addEvent({ text: `${text}${parts.length ? ` (${parts.join(', ')})` : ''}`, type: success ? (stance < 0 && !cost ? 'neutral' : 'positive') : 'negative' })
+    this._notify()
+    return { ok: true, success, text, odds, parts }
+  }
+
+  // n disciples leave your sect for record `r` (main-hall members first, never a branch head or your own child).
+  _wsTakeDisciples(n, r) {
+    const o = this._s.ownSect
+    if (!o?.founded || n <= 0) return 0
+    const pool = o.disciples.filter(d => d.role !== 'head' && !d.kin).sort((a, b) => (a.branchId ? 1 : 0) - (b.branchId ? 1 : 0))
+    const gone = pool.slice(0, n)
+    if (!gone.length) return 0
+    const ids = new Set(gone.map(d => d.id))
+    o.disciples = o.disciples.filter(d => !ids.has(d.id))
+    if (r) r.disciples += gone.length
+    return gone.length
+  }
+
+  // Phase 45 → 43b: a branch that secedes becomes a real sect, led by the wronged head, with a grudge toward you.
+  _wsSplinter(head, memberCount, why) {
+    const W = this._s.world?.sects
+    if (!W || !head) return null
+    const P = WORLD_SECT_SPLINTER
+    const surname = String(head.name || 'Nameless').split(' ')[0]
+    const taken = new Set(W.list.filter(r => r.alive).map(r => r.name))
+    let name = `${surname} ${P.suffixes[0]}`
+    for (const suf of P.suffixes) { name = `${surname} ${suf}`; if (!taken.has(name)) break }
+    const r = this._wsNewRival({ name, kind: 'splinter', origin: 'seceded', tier: P.tier, maxBuildingLevel: P.maxBuildingLevel,
+                                 maxHall: P.maxHall, leader: head.name, temper: head.personality || 'grumpy',
+                                 disciples: memberCount + 1, stance: WORLD_SECTS.stanceSeceded })
+    r.deeds.push({ year: Math.floor(this._s.world.year), text: why ? `left your sect in anger: "${why}"` : 'left your sect in anger', delta: WORLD_SECTS.stanceSeceded })
+    // Phase 28 (4.2): the head who left is the splinter's master — the same person, not a namesake.
+    const hp = head.id ? this._disciplePerson(head) : null
+    if (hp && Persons.fullName(hp) === r.leader) this._wsSeat(r, hp)
+    this._wsChron(`${head.name} raises the ${r.name} from the branch that left ${this._s.ownSect?.name || 'your sect'}.`, r.id)
+    return r
+  }
+
+  // ── Phase 46 (1.20b, lineage-sect.md): a player-owned sect outlives the player ────────────────────────────────
+  // Who takes the master's seat when you die. DECIDED, never rolled (migration rule, no Math.random): the branch
+  // head with the highest loyalty (tie: the larger branch, then name order), else the strongest disciple, else a
+  // nameless steward keeps the gate.
+  _lineageInheritor(o) {
+    const ds = o?.disciples || [], bs = o?.branches || []
+    const heads = bs.map(b => {
+      const d = ds.find(x => x.id === b.headId)
+      if (!d) return null
+      return { name: d.name, personality: d.personality || null, d,
+               loyalty: typeof b.loyalty === 'number' ? b.loyalty : 60,
+               size: ds.filter(x => x.branchId === b.id).length }
+    }).filter(Boolean)
+    if (heads.length) {
+      heads.sort((a, b) => (b.loyalty - a.loyalty) || (b.size - a.size) || String(a.name).localeCompare(String(b.name)))
+      return heads[0]
+    }
+    const best = [...ds].sort((a, b) => ((b.level || 1) * 10 + (b.talent || 1)) - ((a.level || 1) * 10 + (a.talent || 1)))[0]
+    return best ? { name: best.name, personality: best.personality || null, d: best, loyalty: 60, size: ds.length } : null
+  }
+
+  // Build the lineage world-sect record from a dying founder's ownSect. Deterministic (no Math.random draws).
+  _wsFromOwnSect(o, w) {
+    const W = w?.sects
+    if (!W || !o?.founded) return null
+    const rec = this._lineageRecord(w, o.name, o.buildings, o.hallLevel, (o.disciples || []).length, this._s.stageIndex || 0)
+    const inh = this._lineageInheritor(o)
+    if (inh) {
+      rec.leader = inh.name
+      if (inh.personality && PERSONALITIES.some(p => p.id === inh.personality)) rec.temper = inh.personality
+      if (rec.deeds[0]) rec.deeds[0].text = `founded by ${rec.founderName}; passes to ${rec.leader}`
+    }
+    W.list.push(rec)
+    // Phase 28 (4.2): the sect's people go with it — the inheritor is seated, branch heads become its elders, the
+    // rest its disciples (living-world.md §5). The record keeps living as a world sect from here.
+    if (w.persons) {
+      const ds = o.disciples || []
+      for (const d of ds) {
+        const p = this._disciplePerson(d)
+        if (!p) continue
+        p.sectId = rec.id; p.sectRole = d.role === 'head' ? 'elder' : 'disciple'; if (p.owner === 'sect') p.owner = 'world'
+      }
+      const hp = inh?.d ? w.persons[inh.d.kin ? inh.d.childId : inh.d.pid] : null
+      if (hp && Persons.fullName(hp) === rec.leader) this._wsSeat(rec, hp)
+      rec.elderIds = ds.filter(d => d.role === 'head' && d !== inh?.d).map(d => d.kin ? d.childId : d.pid).filter(id => w.persons[id])
+    }
+    this._wsChron(`The ${rec.name} bows its head: ${rec.founderName} is gone, and ${rec.leader} takes the master's seat.`, rec.id)
+    return rec
+  }
+
+  // A pre-46 save kept the founded sect as a dormant `clan.sect` snapshot; turn it into the living record it now is.
+  _wsFromClanSect(cs, clan, w) {
+    const W = w?.sects
+    if (!W || !cs?.name) return null
+    const rec = this._lineageRecord(w, cs.name, cs.buildings, cs.hallLevel, (cs.disciples || []).length, 10)
+    const head = clan?.headId ? w.persons?.[clan.headId] : null
+    if (head?.given) rec.leader = head.given
+    rec.founderName = clan?.name ? `${clan.name} clan` : ''   // the current player isn't the founder here
+    rec.lineageOf = null
+    W.list.push(rec)
+    return rec
+  }
+
+  // ── Phase 46 (1.20d, lineage-sect.md): recruited into your old sect at Core Formation ─────────────────────────
+  // Fires once per life, the first time you reach Core Formation with no other sect, if a sect your line founded
+  // still lives. The offer waits on you (it never expires) — join as an Outer Disciple, or decline for this life.
+  _maybeLineageRecruit() {
+    const s = this._s
+    if (!s || s.interlude) return
+    if (s.lineageOffer && (s.lineageOffer.done || s.lineageOffer.offered)) return
+    const cf = CULTIVATION_STAGES.findIndex(x => x.realm === 'Core Formation')
+    if ((s.stageIndex || 0) < cf) return
+    if (s.sect?.id || s.ownSect?.founded) return
+    const rec = this._wsAll().filter(r => r.alive && r.kind === 'lineage')
+      .sort((a, b) => (b.bornYear || 0) - (a.bornYear || 0) || String(a.id).localeCompare(String(b.id)))[0]
+    if (!rec) return
+    s.lineageOffer = { recId: rec.id, year: Math.floor(s.world.year || 1), offered: true, done: false }
+    this.addEvent({ type: 'special', text: `Riders in your own line's colors come to the gate: the ${rec.name}, the sect your blood founded, offers you a place at the outer gate. (Sect → Overview)` })
+  }
+
+  // Public (UI): the waiting recruitment offer.
+  lineageRecruitInfo() {
+    const off = this._s?.lineageOffer
+    if (!off || off.done || !off.offered) return null
+    const r = this._wsById(off.recId)
+    if (!r) return null
+    return { rec: this._wsRow(r), name: r.name, leader: r.leader, founderName: r.founderName,
+             temper: PERSONALITIES.find(p => p.id === r.temper)?.name || '', disciples: r.disciples,
+             tier: r.tier, might: worldSectMight(r), year: off.year, rank: SECT_RANKS[0].name }
+  }
+
+  // Public: answer the offer. `join` = true takes the oath (as an Outer Disciple); false declines for this life.
+  answerLineageRecruit(join) {
+    const s = this._s, off = s?.lineageOffer
+    if (!off || off.done || !off.offered) return { ok: false, reason: 'no_offer' }
+    off.done = true
+    if (!join) { this.addEvent({ text: 'You send the riders away. You will not be asked again in this life.', type: 'neutral' }); this._recalc(); this._notify(); return { ok: true, joined: false } }
+    const r = this._wsById(off.recId)
+    if (!r) return { ok: false, reason: 'gone' }
+    if (s.sect?.id || s.ownSect?.founded) return { ok: false, reason: 'in_sect' }
+    s.sect = { id: r.id, rank: 0, contribution: 0, activeMissions: [] }
+    s.sectWar = this._blankSectWar('member')
+    this._wsDeed(r, WORLD_SECTS.stanceJoin, 'took you back as a disciple')
+    this.addEvent({ type: 'special', text: `You kneel at the ${r.name}'s gate and take the oath. Your own blood founded this sect, but they do not know your face: you enter as an Outer Disciple.` })
+    this._claimFirst('joined_sect')
+    this._sectMaster()   // 43e: the master who sits above you
+    this._recalc(); this._notify()
+    return { ok: true, joined: true, sect: this._sectDef() }
+  }
+
+  _lineageRecord(w, name, buildings, hallLevel, discipleCount, stageIndex) {
+    const W = w.sects, L = WORLD_SECT_LINEAGE, yr = Math.floor(w.year || 1)
+    const tier = Math.max(1, Math.min(5, 1 + Math.floor((stageIndex || 0) / L.realmTierStep)))
+    const rec = { id: 'ws' + (W.nextId++), defId: null, kind: 'lineage', origin: 'inherited',
+                  name: name || 'Nameless Sect', tier, temper: WORLD_SECT_TEMPERS[0], leader: L.steward,
+                  buildings: { ...(buildings || {}) }, hallLevel: hallLevel || 1,
+                  maxBuildingLevel: SECT_BUILDING_MAX_LEVEL, maxHall: SECT_HALL_LEVELS.length,
+                  disciples: Math.max(L.minDisciples, discipleCount || 0),
+                  stance: L.stance, deeds: [], sworn: false, bornYear: yr, lastRaisedYear: 0, alive: true,
+                  lineageOf: this._s.self?.id || null, founderName: this._s.name || '', leaderSince: yr, lastLost: null }
+    rec.deeds.push({ year: yr, text: `founded by ${rec.founderName}; passes to ${rec.leader}` })
+    return rec
+  }
+
+  // Phase 43b: who comes for you in a war — a real sect, weighted by how much it hates you. Sworn allies never; your
+  // own joined sect never. If no one is left, a new rival is born to do it.
+  _wsWarFoe(member) {
+    const S = WORLD_SECTS, mine = member ? this._wsMine() : null
+    const cands = this._wsAll().filter(r => r.alive && !r.sworn && r !== mine)
+    const wt = r => (1 + Math.max(0, -r.stance) / S.hostilityDiv) * (r.kind === 'joinable' ? 1 : S.rivalWeight) * (r.grudge && !member ? SECT_RAZE.remnant.warWeight : 1)   // 43f: a remnant's feud
+    const total = cands.reduce((a, r) => a + wt(r), 0)
+    if (!total) {
+      const r = this._wsNewRival()
+      this._wsChron(`A new sect raises its gate: the ${r.name}, led by ${r.leader}.`, r.id)
+      return r
+    }
+    let roll = Math.random() * total
+    for (const r of cands) { roll -= wt(r); if (roll <= 0) return r }
+    return cands[cands.length - 1]
+  }
+  // The sect a war is bound to: by id, else (a hand-set or pre-43b war) by name. null when none is found.
+  _wsWarEnemy() {
+    const w = this._s.sectWar
+    return this._wsRec(w?.enemyId) || (w?.enemyName ? this._wsAll().find(x => x.alive && x.name === w.enemyName) : null) || null
+  }
+  // Phase 43c: how much stronger the bound foe is than your side, as the enemy-strength multiplier both resolvers and
+  // sectWarOdds() read. Own war: your Might (playerMight) vs theirs. Member war: your joined sect's own Might vs theirs.
+  // ratio 1 = an even match (also the fallback when no record is bound — pre-43b wars, hand-set test wars).
+  _warMightRatio(member) {
+    const ph = this._s.sectWar?.phase
+    const foe = ph === 'scouting' || ph === 'preparing' ? this._wsWarEnemy() : null   // at peace: no foe yet → even
+    const mine = member ? this._wsMine() : null
+    const them = foe ? worldSectMight(foe) : 0
+    const us = member ? (mine ? worldSectMight(mine) : 0) : this.playerMight()
+    if (!foe || !us || !them) return { ratio: 1, foe, them, us }
+    const W = WORLD_SECTS.war
+    return { ratio: Math.max(W.ratioMin, Math.min(W.ratioMax, Math.pow(them / us, W.ratioExp))), foe, them, us }
+  }
+  // The sect remembers the war, and its mountain shows it (43c): a foe that loses burns one hall a level; a foe that
+  // wins raises one with the spoils (never past its own caps). Returns what changed, for the log + the Last war card.
+  _wsWarResult(win, member) {
+    const r = this._wsWarEnemy()
+    if (!r) return null
+    if (win && !member && this._s.sectWar?.razeVow) return this._wsRaze(r)   // Phase 43f: the vow is kept
+    const S = WORLD_SECTS
+    const where = member ? `the ${this._sectDef()?.name || 'your sect'}` : this._s.ownSect?.name || 'your mountain'
+    const nameOf = id => SECT_BUILDINGS.find(b => b.id === id)?.name || id
+    let hall = null
+    if (win) {
+      r.disciples = Math.round(r.disciples * (1 - S.warDiscipleLoss))
+      const id = this._wsSetback(r)
+      if (id) hall = { burned: true, name: nameOf(id), level: r.buildings[id] || 0 }
+      this._wsDeed(r, S.stanceWarWonAgainst, `${member ? 'lost a war to your sect' : 'lost a war against you'}${hall ? `; their ${hall.name} burned` : ''}`)
+      this._wsChron(`The ${r.name} is thrown back from ${where}${hall ? `, and its ${hall.name} burns behind it` : ''}.`, r.id)
+    } else {
+      const g = this._wsGrow(r)
+      if (g) hall = { raised: true, name: g.hall ? 'Sect Hall' : nameOf(g.buildingId), level: g.level }
+      this._wsDeed(r, S.stanceWarBeatYou, `${member ? 'beat your sect in war' : 'broke through your defenses'}${hall ? `; raised their ${hall.name} on the spoils` : ''}`)
+      this._wsChron(`The ${r.name} breaks ${where} in war${hall ? ` and raises its ${hall.name} on the spoils` : ''}.`, r.id)
+      // 43d: a member war lost — they raid your sect's mountain on the way out (a hall falls a level → the levy)
+      const mine = member ? this._wsMine() : null
+      if (mine) this._wsSetback(mine, `The ${r.name} raids the mountain`)
+    }
+    const might = worldSectMight(r)
+    if (hall) this.addEvent({ type: win ? 'positive' : 'negative', text: win
+      ? `The ${r.name}'s ${hall.name} burns as they flee${hall.level ? ` (now Lv.${hall.level})` : ' to its foundations'}. Their Might falls to ${might}.`
+      : `On your spoils the ${r.name} raises its ${hall.name} to Lv.${hall.level}. Their Might grows to ${might}.` })
+    return hall ? { ...hall, sect: r.name, might } : { sect: r.name, might }
+  }
+
+  // One ledger row: what the UI shows for a sect (also the player's own founded sect, as a pseudo-row).
+  _wsRow(r) {
+    const S = WORLD_SECTS, might = worldSectMight(r)
+    const band = S.mightBands.find(([max]) => might < max)[1]
+    const st = S.stanceBands.find(([max]) => r.stance < max)
+    const mine = this._wsMine()
+    return { id: r.id, name: r.name, defId: r.defId, kind: r.kind, origin: r.origin, tier: r.tier, leader: r.leader, leaderId: this._wsLeader(r)?.id || null,
+      temper: PERSONALITIES.find(p => p.id === r.temper)?.name || '', might, band,
+      stance: r.stance, stanceLabel: st[1], stanceTone: st[2], sworn: !!r.sworn, mine: r === mine,
+      hallLevel: r.hallLevel, maxHall: r.maxHall, maxBuildingLevel: r.maxBuildingLevel, disciples: r.disciples,
+      levels: this._wsLevels(r), built: Object.values(r.buildings).filter(v => v > 0).length,
+      buildings: SECT_BUILDINGS.map(b => ({ id: b.id, name: b.name, level: r.buildings[b.id] || 0 })),
+      deeds: [...r.deeds].reverse(), bornYear: r.bornYear,
+      grudge: !!r.grudge, ashOf: r.ashOf || null,   // 43f: reborn from ashes you made (and still feuding)
+      lineage: r.kind === 'lineage', founderName: r.founderName || null, leaderSince: r.leaderSince || null,   // 46b/c
+      blessing: r.defId ? wsBlessingFactor(r).factor : null,   // 43d: how much of its blessing it can give (joinable sects)
+      atCap: r.hallLevel >= r.maxHall && SECT_BUILDINGS.every(b => (r.buildings[b.id] || 0) >= r.maxBuildingLevel) }
+  }
+
+  // Public (UI): the ledger — every living sect ranked by Might, your own founded sect among them.
+  worldSectsInfo() {
+    const s = this._s, W = s.world?.sects
+    if (!W) return null
+    const rows = W.list.filter(r => r.alive).map(r => this._wsRow(r))
+    const o = s.ownSect
+    if (o?.founded) {
+      const might = this.playerMight()
+      rows.push({ id: 'own', name: o.name, kind: 'own', own: true, might, band: WORLD_SECTS.mightBands.find(([max]) => might < max)[1],
+        hallLevel: o.hallLevel, maxHall: SECT_HALL_LEVELS.length, maxBuildingLevel: SECT_BUILDING_MAX_LEVEL, disciples: o.disciples.length,
+        levels: Object.values(o.buildings).reduce((a, v) => a + (v > 0 ? v : 0), 0), built: Object.values(o.buildings).filter(v => v > 0).length,
+        buildings: SECT_BUILDINGS.map(b => ({ id: b.id, name: b.name, level: o.buildings[b.id] || 0 })), deeds: [] })
+    }
+    rows.sort((a, b) => b.might - a.might)
+    return { rows, chronicle: [...W.chronicle].reverse(), born: W.born, fallen: W.fallen, playerMight: this.playerMight(),
+             event: !!W.event, ...this.razeWorldInfo() }
+  }
+
+  // ── Phase 43d: the blessing scales with the sect (docs/systems/npc-sects.md → "43d") ──────────────────────────
+  // Public: what you draw from the sect you joined. k = factor (its halls) × share (your rank). null in no sect.
+  sectBlessing() {
+    const s = this._s, def = this._sectDef()
+    if (!def) return null
+    const r = this._wsMine(), B = SECT_BLESSING
+    const f = r ? wsBlessingFactor(r) : { factor: 1, raw: 1, levels: 0, hall: 0 }
+    const share = B.rankShare[Math.max(0, Math.min(B.rankShare.length - 1, s.sect.rank || 0))]
+    return { factor: f.factor, raw: f.raw, levels: f.levels, hall: f.hall, share, k: Math.round(f.factor * share * 100) / 100, recId: r?.id || null }
+  }
+
+  // Stones to raise one level of your sect's hall `id` ('hall' = its Sect Hall), or null at its cap.
+  _fundCost(r, id) {
+    const F = SECT_BLESSING.fund, mul = F.costMult * (1 + F.perTier * ((r.tier || 1) - 1))
+    if (id === 'hall') {
+      const up = r.hallLevel < r.maxHall ? SECT_HALL_LEVELS[r.hallLevel - 1]?.upgradeStones : null
+      return up ? Math.round(up * mul) : null
+    }
+    const b = SECT_BUILDINGS.find(x => x.id === id), lv = r.buildings[id] || 0
+    if (!b || lv >= r.maxBuildingLevel) return null
+    return Math.round(b.stones * Math.pow(SECT_BUILDING_UPGRADE_MULT, lv) * mul)
+  }
+  // What one more level of `id` would do to your blessing.
+  _fundAfter(r, id) {
+    const t = { ...r, buildings: { ...r.buildings }, hallLevel: r.hallLevel }
+    if (id === 'hall') t.hallLevel++; else t.buildings[id] = (t.buildings[id] || 0) + 1
+    return Math.round(wsBlessingFactor(t).factor * this.sectBlessing().share * 100) / 100
+  }
+
+  // Public (UI): the blessing card — the factor and its parts, your rank's share, the scaled effects, and every hall
+  // you could pay to raise (cost, what it does to the blessing, the lock reason).
+  sectBlessingInfo() {
+    const s = this._s, def = this._sectDef(), bl = this.sectBlessing()
+    if (!def || !bl) return null
+    const B = SECT_BLESSING, F = B.fund, r = this._wsMine(), rank = s.sect.rank || 0
+    const fund = id => {
+      const cost = this._fundCost(r, id), level = id === 'hall' ? r.hallLevel : (r.buildings[id] || 0)
+      const max = id === 'hall' ? r.maxHall : r.maxBuildingLevel
+      const lock = cost == null ? 'At the height this sect can bear'
+        : id === 'hall' && rank < F.hallMinRank ? `${SECT_RANKS[F.hallMinRank].name} and above`
+        : cost > s.spiritStones ? `${Math.ceil(cost - s.spiritStones)} stones short` : ''
+      return { id, name: id === 'hall' ? 'Sect Hall' : SECT_BUILDINGS.find(b => b.id === id).name, level, max, cost,
+               after: cost == null ? null : this._fundAfter(r, id), contrib: cost == null ? 0 : Math.max(1, Math.floor(cost * F.contribRate)),
+               lock, lost: r.lastLost?.buildingId === id }
+    }
+    const top = { ...r, buildings: Object.fromEntries(SECT_BUILDINGS.map(b => [b.id, r.maxBuildingLevel])), hallLevel: r.maxHall }
+    const nextRank = SECT_RANKS[rank + 1]
+    return { name: def.name, factor: bl.factor, share: bl.share, k: bl.k, levels: bl.levels, hallLevel: (bl.hall || 0) + 1,
+      parts: [{ label: 'Every sect blesses its own', val: B.base },
+              { label: `${bl.levels} hall level${bl.levels === 1 ? '' : 's'} × ${B.perLevel}`, val: B.perLevel * bl.levels },
+              { label: `Sect Hall Lv.${bl.hall + 1}`, val: B.perHall * bl.hall }],
+      capped: bl.raw > B.max ? 'max' : bl.raw < B.min ? 'min' : null, min: B.min, max: B.max,
+      rankName: SECT_RANKS[rank].name, nextRankName: nextRank?.name || null, nextShare: nextRank ? B.rankShare[rank + 1] : null,
+      reach: wsBlessingFactor(top).factor, effects: sectBlessingEffects(def.effects, bl.k), full: def.effects,
+      suppressed: !!s.derived?.sectBuffSuppressed,
+      halls: r ? [...SECT_BUILDINGS.map(b => fund(b.id)), fund('hall')] : [], stance: r ? this._wsRow(r) : null,
+      lost: r?.lastLost ? { name: SECT_BUILDINGS.find(b => b.id === r.lastLost.buildingId)?.name || 'hall', year: r.lastLost.year } : null }
+  }
+
+  // Public: pay to raise one level of your joined sect's hall `id` ('hall' = its Sect Hall). Its halls grow (never
+  // past its caps), so your blessing grows; you earn Contribution and the sect remembers it.
+  fundSectHall(id) {
+    const s = this._s, def = this._sectDef(), r = this._wsMine()
+    if (!def || !r) return { ok: false, reason: 'no_sect' }
+    if (id !== 'hall' && !SECT_BUILDINGS.some(b => b.id === id)) return { ok: false, reason: 'unknown' }
+    const F = SECT_BLESSING.fund
+    if (id === 'hall' && (s.sect.rank || 0) < F.hallMinRank) return { ok: false, reason: 'rank' }
+    const cost = this._fundCost(r, id)
+    if (cost == null)            return { ok: false, reason: 'max_level' }
+    if (s.spiritStones < cost)   return { ok: false, reason: 'stones' }
+    const before = this.sectBlessing().k
+    s.spiritStones -= cost
+    let name, level
+    if (id === 'hall') { r.hallLevel++; name = 'Sect Hall'; level = r.hallLevel }
+    else { r.buildings[id] = (r.buildings[id] || 0) + 1; name = SECT_BUILDINGS.find(b => b.id === id).name; level = r.buildings[id] }
+    r.lastRaisedYear = Math.floor(s.world.year)
+    const W = s.world.sects
+    let levy = ''
+    if (r.lastLost?.buildingId === id) {
+      r.lastLost = null
+      if (W.event?.id === 'levy' && W.event.sectId === r.id) { W.event = null; levy = ' The levy is settled.' }
+    }
+    const gained = Math.max(1, Math.floor(cost * F.contribRate))
+    s.sect.contribution += gained
+    this._wsDeed(r, F.stance, `you paid to raise their ${name} to Lv.${level}`)
+    this._wsChron(`With ${s.name}'s stones, the ${r.name} raises its ${name} to Lv.${level}.`, r.id)
+    this._recalc()
+    const after = this.sectBlessing().k
+    this.addEvent({ type: 'positive', text: `Your stones raise the ${def.name}'s ${name} to Lv.${level} (−${cost} stones, +${gained} Contribution). The blessing on you grows ×${before.toFixed(2)} → ×${after.toFixed(2)}.${levy}` })
+    this._notify()
+    return { ok: true, cost, gained, name, level, before, after }
+  }
+
+  // ── Phase 43e: the sect master + taking the sect over (docs/systems/npc-sects.md → "43e") ─────────────────────
+  // The master is a world person (s.sect.masterId), minted when you join (or lazily, the first time anything asks).
+  // Their regard for you is the sect record's stance (43b): your service and your answers move it.
+  _sectMaster(mint = true) {
+    const s = this._s, r = this._wsMine()
+    if (!s.sect?.id || !r) return null
+    // Phase 28 (4.2): the master is the sect's seated registry person (living-world.md §5).
+    let p = this._wsLeader(r)
+    if (!p) {
+      const had = s.sect.masterId ? this.person(s.sect.masterId) : null
+      if (had && had.alive !== false && Persons.fullName(had) === r.leader) { this._wsSeat(r, had); p = had }
+    }
+    if (!p && !mint) return null
+    if (!p) { this._wsEnsurePeople(r); p = this._wsLeader(r) }
+    if (!p) return null
+    p.sectRecId = r.id
+    s.sect.masterId = p.id
+    return p
+  }
+  _masterMight(p) { return Math.round(10 + 6 * (p?.stageIndex || 0)) }   // the same personal scale as playerMight()
+
+  // The master's own call on a fight to the death (a %), the number the card shows before you challenge.
+  _masterLethalPct(p, regard) {
+    const M = SECT_MASTER
+    const w = M.lethalBase + (LETHAL_PERSONALITY_BONUS[p.personality] || 0) + Math.max(0, M.regardPivot - regard) * M.regardWeight
+      + Math.max(0, -(p.morality ?? 0)) * LETHAL_MORALITY_WEIGHT
+    return Math.round(Math.max(LETHAL_CHANCE_RANGE[0], Math.min(LETHAL_CHANCE_RANGE[1], w)))
+  }
+  _petitionOdds(p, regard) {
+    const P = SECT_MASTER.petition, me = this.playerMight(), them = this._masterMight(p)
+    return Math.max(P.min, Math.min(P.max, P.base + P.perRegard * Math.max(0, regard) + P.mightWeight * me / (me + them)))
+  }
+
+  // Public (UI): can you challenge your sect's master now? A Grand Elder only, NO realm gate (user 2026-10-01).
+  canChallengeSectMaster() {
+    const s = this._s
+    if (!s.sect?.id) return { ok: false, reason: 'no_sect' }
+    if ((s.sect.rank || 0) < SECT_RANKS.length - 1) return { ok: false, reason: 'rank' }
+    if (s.family?.fight) return { ok: false, reason: 'busy' }
+    const ready = s.sect.challengeReadyYear
+    if (ready != null && s.world.year < ready) return { ok: false, reason: 'cooldown', readyYear: ready }
+    const master = this._sectMaster()
+    if (!master) return { ok: false, reason: 'no_master' }
+    return { ok: true, master }
+  }
+  canPetitionSectMaster() {
+    const s = this._s
+    if (!s.sect?.id) return { ok: false, reason: 'no_sect' }
+    if ((s.sect.rank || 0) < SECT_RANKS.length - 1) return { ok: false, reason: 'rank' }
+    if (s.family?.fight) return { ok: false, reason: 'busy' }
+    const ready = s.sect.petitionReadyYear
+    if (ready != null && s.world.year < ready) return { ok: false, reason: 'cooldown', readyYear: ready }
+    const master = this._sectMaster()
+    return master ? { ok: true, master } : { ok: false, reason: 'no_master' }
+  }
+
+  // Public (UI): the master card — who they are, their regard, the challenge (odds, the chance they make it lethal,
+  // what a loss costs) and the petition (odds), each with its lock reason.
+  sectMasterInfo() {
+    const s = this._s, r = this._wsMine(), p = this._sectMaster()
+    if (!p || !r) return null
+    const regard = r.stance || 0, st = WORLD_SECTS.stanceBands.find(([max]) => regard < max)
+    const ch = this.canChallengeSectMaster(), pe = this.canPetitionSectMaster(), yr = s.world.year
+    const lockOf = c => c.ok ? '' : c.reason === 'rank' ? `${SECT_RANKS[SECT_RANKS.length - 1].name} only`
+      : c.reason === 'cooldown' ? `Heal and wait: about ${Math.max(1, Math.ceil(c.readyYear - yr))} more year${Math.ceil(c.readyYear - yr) === 1 ? '' : 's'}`
+      : c.reason === 'busy' ? 'You are already in a fight' : 'Not now'
+    const odds = this.personFightOdds(p, 'sectmaster', false)
+    const M = SECT_MASTER, T = M.takeover, hallCap = SECT_HALL_LEVELS[0].cap
+    return { id: p.id, name: Persons.fullName(p), given: p.given, stage: p.stageIndex || 0, temper: PERSONALITIES.find(x => x.id === p.personality)?.name || '',
+      personality: p.personality, regard, regardLabel: st[1], regardTone: st[2], rank: s.sect.rank || 0, grand: (s.sect.rank || 0) >= SECT_RANKS.length - 1,
+      record: this.personRecord(p), myMight: this.playerMight(), masterMight: this._masterMight(p),
+      challenge: { ok: ch.ok, lock: lockOf(ch), odds: odds?.chance ?? 0, lethalPct: this._masterLethalPct(p, regard), lossRank: SECT_RANKS[M.lossRank].name },
+      petition: { ok: pe.ok, lock: lockOf(pe), odds: this._petitionOdds(p, regard) },
+      prize: { halls: Object.values(r.buildings).filter(v => v > 0).length, stay: Math.round(hallCap * T.stayFrac),
+               oldGuard: T.oldGuard, oldGuardPeaceful: T.oldGuardPeaceful, library: (s.sect.shelf || []).length } }
+  }
+
+  // You call out your master. They choose: to the death, or until one yields (their temper, cruelty, regard).
+  challengeSectMaster() {
+    const c = this.canChallengeSectMaster()
+    if (!c.ok) return c
+    const s = this._s, p = c.master, r = this._wsMine(), yr = Math.floor(s.world.year)
+    const lethal = Math.random() * 100 < this._masterLethalPct(p, r?.stance || 0)
+    s.sect.challenges = (s.sect.challenges || 0) + 1
+    this.addEvent({ type: 'special', text: `Year ${yr}: before the whole ${this._sectDef().name}, you call out ${Persons.fullName(p)} for the master's seat. ${lethal ? 'They answer: to the death.' : 'They answer: until one yields.'}` })
+    this._startFight('sectmaster', p, lethal)
+    return { ok: true, fight: true, lethal }
+  }
+
+  // You ask your master to step down. No blood: their regard and your Might against theirs decide it.
+  petitionSectMaster() {
+    const c = this.canPetitionSectMaster()
+    if (!c.ok) return c
+    const s = this._s, p = c.master, r = this._wsMine(), M = SECT_MASTER, yr = Math.floor(s.world.year)
+    const odds = this._petitionOdds(p, r?.stance || 0)
+    if (Math.random() < odds) {
+      this.addEvent({ type: 'special', text: `Year ${yr}: ${Persons.fullName(p)} hears you out in the Sect Hall, long and silent. Then they rise, and set the master's seal in your hands.` })
+      p.role = 'elder'
+      this._takeOverSect('peaceful', p, null)
+      return { ok: true, success: true, odds }
+    }
+    s.sect.petitionReadyYear = yr + this._randInt(M.petitionCooldownYears)
+    this._wsDeed(r, M.petition.failStance, 'you asked them to step down')
+    this.addEvent({ type: 'negative', text: `Year ${yr}: ${Persons.fullName(p)} hears you out, and laughs. "Ask me again when you are worth the seat." Their regard for you cools (${M.petition.failStance}).` })
+    this._recalc(); this._notify()
+    return { ok: true, success: false, odds }
+  }
+
+  // The fight's end (from _finishFight). Win: the sect is yours (an exiled master raises a splinter; a slain one does
+  // not). Lose: the master's call — death, or demoted to Elder with a cooldown and a colder regard.
+  _sectmasterOutcome(p, lethal, res) {
+    const s = this._s, yr = Math.floor(s.world.year), r = this._wsMine(), M = SECT_MASTER
+    this._applyLethalTrauma(res, lethal)
+    if (res.winner.id === s.self.id) {
+      let splinter = null
+      if (res.died) { this._killPerson(p.id, yr, 'sect_master'); s.karma = Math.max(0, s.karma + CHALLENGE_KARMA_DEATH) }
+      else splinter = this._exileMaster(p, r)
+      this.addEvent({ type: 'special', text: res.died
+        ? `Year ${yr}: ${Persons.fullName(p)} falls on the floor of their own Sect Hall. The seat is yours.`
+        : `Year ${yr}: you beat ${Persons.fullName(p)} to their knees and send them down the mountain. The seat is yours.` })
+      this._takeOverSect(res.died ? 'slain' : 'exiled', p, splinter)
+      return res.died ? 'won_lethal' : 'won_nonlethal'
+    }
+    if (res.died) {
+      this.addEvent({ type: 'negative', text: `Year ${yr}: ${Persons.fullName(p)}'s blade is faster. Your bid for the master's seat ends your life.` })
+      this._recalc(); this._notify()
+      this._die('sect_master')
+      return 'lost_lethal'
+    }
+    s.sect.rank = Math.min(s.sect.rank || 0, M.lossRank)
+    s.sect.contribution = Math.min(s.sect.contribution, SECT_RANKS[M.lossRank].minContribution)
+    s.sect.challengeReadyYear = yr + this._randInt(M.challengeCooldownYears)
+    this._wsDeed(r, M.lossStance, `you challenged ${p.given} for the seat, and lost`)
+    this.addEvent({ type: 'negative', text: `Year ${yr}: ${Persons.fullName(p)} beats you down and lets you live, and strips you to ${SECT_RANKS[M.lossRank].name} before the sect. Heal before you try again.` })
+    this._recalc(); this._notify()
+    return 'lost_nonlethal'
+  }
+
+  // A spared master is driven out and raises a splinter sect, its stance set by how you left them (raised → a debt).
+  _exileMaster(p, r) {
+    const E = SECT_MASTER.exile, W = this._s.world?.sects
+    if (!W) return null
+    const stance = E[p.feud] ?? E.default
+    const taken = new Set(W.list.filter(x => x.alive).map(x => x.name))
+    let name = `${p.family} ${WORLD_SECT_SPLINTER.suffixes[0]}`
+    for (const suf of WORLD_SECT_SPLINTER.suffixes) { name = `${p.family} ${suf}`; if (!taken.has(name)) break }
+    const sp = this._wsNewRival({ name, kind: 'splinter', origin: 'exiled', tier: WORLD_SECT_SPLINTER.tier, maxBuildingLevel: WORLD_SECT_SPLINTER.maxBuildingLevel,
+      maxHall: WORLD_SECT_SPLINTER.maxHall, leader: Persons.fullName(p), temper: p.personality || 'grumpy', disciples: 4, stance })
+    sp.deeds.push({ year: Math.floor(this._s.world.year), text: `you took ${r?.name || 'their sect'} from them`, delta: stance })
+    p.sectRecId = sp.id
+    this._wsSeat(sp, p); p.role = 'exile'   // Phase 28: the same person leads the splinter
+    this._wsChron(`${Persons.fullName(p)}, cast out of the ${r?.name || 'sect'}, raises the ${sp.name}.`, sp.id)
+    return sp
+  }
+
+  _newDisciple(level = 1) {
+    const rec = { ...this._genRecruit(), level, xp: 0, branchId: null, role: 'disciple', kin: false }
+    rec.personality = disciplePersonality(rec.id)
+    return rec
+  }
+
+  // The sect becomes yours: a founded sect named for it, every hall it had kept at Lv.1 (user 2026-10-01: "the sect
+  // buildings should be low level"), its Sect Hall Lv.1, the manuals on its shelf as your library, a share of its seats
+  // filled at once, and an old guard waiting on your word. Its world record ends (you lead it now), s.sect clears (so
+  // the joined blessing can never double-apply) and the war side becomes your own.
+  _takeOverSect(how, master, splinter) {
+    const s = this._s, def = this._sectDef(), r = this._wsMine(), yr = Math.floor(s.world.year), T = SECT_MASTER.takeover
+    if (s.sectWar?.beastId) this._releaseWarBeast(0)
+    const buildings = Object.fromEntries(Object.entries(r?.buildings || {}).filter(([, v]) => v > 0).map(([k]) => [k, 1]))
+    const o = { ...this._blankOwnSect(), founded: true, name: def.name, foundedAt: Date.now(), hallLevel: 1, buildings,
+                library: [...(s.sect.shelf || [])], takenOver: { defId: def.id, year: yr, how, from: Persons.fullName(master), tier: r?.tier || 1 } }
+    const stay = Math.max(1, Math.round(SECT_HALL_LEVELS[0].cap * T.stayFrac))
+    for (let i = 0; i < stay; i++) o.disciples.push(this._newDisciple(1))
+    const n = this._randInt(how === 'peaceful' ? T.oldGuardPeaceful : T.oldGuard)
+    o.oldGuard = { n, year: yr, how, splinterId: splinter?.id || null, master: Persons.fullName(master),
+                   members: Array.from({ length: n }, () => this._newDisciple(T.oldGuardLevel)) }
+    s.ownSect = o
+    if (r) {
+      r.alive = false; r.fate = 'taken'
+      const W = s.world.sects
+      if (W.event?.sectId === r.id) W.event = null
+      W.list = W.list.filter(x => x.alive)
+      this._wsChron(`${s.name} takes the ${r.name} from ${Persons.fullName(master)}${how === 'peaceful' ? ', who hands over the seal' : ''}.`, null)
+    }
+    s.sect = { id: null, rank: 0, contribution: 0, activeMissions: [] }
+    s.sectWar = this._blankSectWar('own')
+    this._claimFirst('took_sect')
+    this.addEvent({ type: 'special', text: `You are master of the ${def.name}. Its halls stand at Lv.1 under your hand; ${stay} disciples kneel at once, and ${n} of the old guard wait on your word in Sect → Overview.` })
+    this._recalc(); this._notify()
+  }
+
+  // Public (UI): the old guard's fate — 'win' (stones; they stay, as a branch under their eldest), 'go' (about half
+  // stay; the rest walk to the exiled master's splinter, if there is one), 'purge' (karma; none stay, none go to them).
+  oldGuardInfo() {
+    const s = this._s, o = s.ownSect, g = o?.oldGuard
+    if (!o?.founded || !g) return null
+    const T = SECT_MASTER.takeover, cost = T.winOverStones * (o.takenOver?.tier || 1) * g.n
+    const sp = g.splinterId ? this._wsRec(g.splinterId) : null
+    return { n: g.n, how: g.how, master: g.master, splinter: sp ? sp.name : null, branchOk: o.branches.length < SECT_BRANCH.maxBranches,
+      choices: [{ id: 'win', cost, lock: cost > s.spiritStones ? `Needs ${cost} stones` : '', karma: T.winOverKarma, loyalty: T.winOverLoyalty },
+                { id: 'go', stay: T.letGoStay },
+                { id: 'purge', karma: T.purgeKarma }] }
+  }
+  answerOldGuard(choice) {
+    const s = this._s, o = s.ownSect, info = this.oldGuardInfo()
+    if (!info) return { ok: false, reason: 'none' }
+    const c = info.choices.find(x => x.id === choice)
+    if (!c) return { ok: false, reason: 'bad_choice' }
+    if (c.lock) return { ok: false, reason: 'stones' }
+    const T = SECT_MASTER.takeover, g = o.oldGuard, sp = g.splinterId ? this._wsRec(g.splinterId) : null
+    let kept = [], gone = 0, text
+    if (choice === 'win') {
+      s.spiritStones -= c.cost
+      s.karma = Math.min(100, s.karma + T.winOverKarma)
+      kept = g.members
+      text = `You open the treasury to the old guard of ${g.master}. They bow, slowly, and stay`
+    } else if (choice === 'go') {
+      kept = g.members.filter(() => Math.random() < T.letGoStay)
+      gone = g.n - kept.length
+      if (sp && gone) sp.disciples += gone
+      text = `You tell the old guard they are free to go. ${kept.length} stay${gone ? `; ${gone} walk down the mountain${sp ? ` to ${g.master}'s ${sp.name}` : ''}` : ''}`
+    } else {
+      s.karma = Math.max(0, s.karma + T.purgeKarma)
+      gone = g.n
+      text = `You purge the old guard of ${g.master}. No one who knelt to them is left on the mountain`
+    }
+    // The ones who stay: a branch under their eldest (Phase 45 seats), else your own hall while seats allow
+    let branch = null
+    if (kept.length) {
+      for (const d of kept) o.disciples.push(d)
+      if (choice === 'win' && kept.length >= 2 && o.branches.length < SECT_BRANCH.maxBranches) {
+        branch = this._makeBranch(kept[0])
+        branch.loyalty = T.winOverLoyalty
+        for (const d of kept.slice(1)) d.branchId = branch.id
+      } else {
+        const cap = SECT_HALL_LEVELS[Math.min(o.hallLevel, SECT_HALL_LEVELS.length) - 1].cap
+        const over = this._mainRoster().length - cap
+        if (over > 0) {   // no seat for them: they walk too (to the exile, when there is one)
+          const ids = new Set(kept.slice(-over).map(d => d.id))
+          o.disciples = o.disciples.filter(d => !ids.has(d.id)); kept = kept.filter(d => !ids.has(d.id))
+          gone += ids.size; if (sp && choice !== 'purge') sp.disciples += ids.size
+        }
+      }
+    }
+    o.oldGuard = null
+    this.addEvent({ type: choice === 'purge' ? 'negative' : 'special', text: `${text}.${branch ? ` They keep together as the ${branch.name}, under ${kept[0].name} (loyalty ${T.winOverLoyalty}).` : ''}${c.karma ? ` (${c.karma > 0 ? '+' : ''}${c.karma} karma)` : ''}` })
+    this._recalc(); this._notify()
+    return { ok: true, kept: kept.length, gone, branch }
+  }
+
+  // ── Phase 43h: sect relations — what you can DO to another sect (docs/systems/npc-sects.md → "43h") ───────────
+  // Every action is a player button on the sect's detail page (SectDetail). Only the other sect's reply rolls, and its
+  // odds are shown first. Each action leaves a deed (stance ± with the reason) and a per-sect cooldown (r.acted).
+  _relRole() { const s = this._s; return s.ownSect?.founded ? 'leader' : s.sect?.id ? 'member' : 'none' }
+  _relYear() { return Math.floor(this._s.world?.year || 0) }
+  _relWait(r, id) { const until = r.acted?.[id] || 0; return Math.max(0, until - this._relYear()) }
+  _relDone(r, id) { (r.acted ||= {})[id] = this._relYear() + (SECT_RELATIONS[id]?.cooldown || 0) }
+  _relStance(spec, r) { return typeof spec === 'number' ? spec : this._wsStanceOf(spec, r) }
+  _relWarOn() { const p = this._s.sectWar?.phase; return p === 'scouting' || p === 'preparing' }
+
+  // A war that starts now against `r` — you declared it, your master took up your urging, or they answered an insult.
+  // It enters the same state machine (scouting → preparing → the resolver), so odds, orders and the resolvers all apply.
+  _openWarOn(r, member, byYou) {
+    const s = this._s, w = s.sectWar, now = Date.now()
+    w.phase = 'scouting'; w.nextWarAt = now
+    w.scoutEndsAt = now + (member ? MEMBER_WAR_SCOUT_SECONDS : WAR_SCOUT_SECONDS) * 1000
+    w.enemyId = r.id; w.enemyName = r.name; w.enemyTier = r.tier || 1
+    w.allyId = null; w.reinforced = false; w.answered = false; w.chestStones = 0; w.pillsGiven = 0; w.beastId = null; w.seen = true
+    w.declaredByYou = !!byYou
+    w.razeVow = false; w.razeSet = false   // Phase 43f
+    this._noteEnemy({ kind: 'sect', name: `the ${r.name}`, why: byYou ? 'you declared war on them' : 'went to war with your sect' })
+    this._applyWarOrders()
+  }
+  // The world watches an unprovoked blow: every other sect that thinks well of you thinks a little less of you.
+  _relOthersCool(r, delta) {
+    for (const x of this._wsAll()) if (x.alive && x !== r && x.stance > 0) x.stance = Math.max(-100, x.stance + delta)
+  }
+  // The manual a sect will trade this year (rolled once a year; its grade by the sect's tier).
+  _relOffer(r) {
+    const yr = this._relYear()
+    if (!r.offer || r.offer.year !== yr || !ARTS[r.offer.artId]) {
+      const W = SECT_RELATIONS.trade.offerWeights[Math.max(0, Math.min(4, (r.tier || 1) - 1))]
+      r.offer = { artId: this._rollArt(W), year: yr }
+    }
+    return r.offer.artId
+  }
+  // A disciple of theirs to spar with (a member's visit), kept for the year; your realm ± 1. Not a world person.
+  _relSparFoe(r) {
+    const s = this._s, yr = this._relYear()
+    if (!r.sparFoe || r.sparFoe.year !== yr) {
+      const stage = Math.max(0, Math.min(CULTIVATION_STAGES.length - 2, (s.stageIndex || 0) + this._randInt([-1, 1])))
+      const p = this._genPerson({ family: Persons.rollSurname(), bornYear: yr - this._randInt([18, 60]), stage, role: 'duelist' })
+      p.sectRecId = r.id
+      r.sparFoe = { year: yr, p }
+    }
+    return r.sparFoe.p
+  }
+  _relOdds(id, r) {
+    const s = this._s, A = SECT_RELATIONS[id], clamp = v => Math.max(0.05, Math.min(0.95, v))
+    if (id === 'alliance') return clamp(A.odds.base + A.odds.perStance * Math.max(0, r.stance - A.minStance) + (A.odds.temper[r.temper] || 0))
+    if (id === 'tribute') { const me = this.playerMight(), them = worldSectMight(r); return clamp(me / (me + them)) }
+    if (id === 'spy') {
+      const gap = (s.stageIndex || 0) - (r.tier || 1) * 4
+      return clamp(A.odds.base + A.odds.perStageGap * gap + A.odds.perArrayLevel * (r.buildings.defensive_array || 0) + (A.odds.you[s.personality?.id] || 0))
+    }
+    if (id === 'urge') {
+      const mine = this._wsMine(), m = this._sectMaster(false)
+      return clamp(A.odds.base + A.odds.perRegard * Math.max(0, mine?.stance || 0) + (r.stance <= -20 ? A.odds.hated : 0) + (A.odds.master[m?.personality] || 0))
+    }
+    return null
+  }
+
+  // Public (UI): one sect's page — the sect, you against it, and every action you may take, each with its cost, odds,
+  // effects and lock reason. Actions depend on who you are (a leader, a member, neither).
+  sectRelationsInfo(recId) {
+    const s = this._s, r = this._wsRec(recId)
+    if (!r) return null
+    this._wsEnsurePeople(r)   // Phase 28: a newborn sect's master + elders are real before the page names them
+    const role = this._relRole(), mine = this._wsMine(), isMine = r === mine, R = SECT_RELATIONS, yr = this._relYear()
+    const tier = r.tier || 1, sgn = n => (n > 0 ? '+' : '') + n
+    const warHere = this._relWarOn() && this._wsWarEnemy() === r
+    const acts = []
+    const add = (id, label, bits, extra = {}) => {
+      const A = R[id], wait = this._relWait(r, id)
+      let lock = extra.lock || ''
+      if (!lock && wait) lock = `Again in ${wait} year${wait === 1 ? '' : 's'}`
+      if (!lock && extra.cost > s.spiritStones) lock = `Needs ${extra.cost} stones`
+      acts.push({ id, glyph: A.glyph, label, bits, cost: extra.cost || 0, odds: extra.odds ?? null, lock, confirm: extra.confirm || null, group: extra.group || 'diplomacy', ...extra })
+    }
+    if (!isMine && role !== 'none') {
+      const g = R.gift, gc = g.stonesPerTier * tier
+      add('gift', 'Send a gift', [{ t: `+${this._relStance(g.stance, r)} with them`, tone: 'up' }], { cost: gc })
+    }
+    if (role === 'leader' && !isMine) {
+      const al = R.alliance
+      if (!r.sworn) add('alliance', 'Propose a sworn alliance', [{ t: 'they never march on you', tone: 'up' }, { t: `refused: ${sgn(al.failStance)}`, tone: 'down' }],
+        { odds: this._relOdds('alliance', r), lock: r.stance < al.minStance ? `They must think well of you first (${al.minStance}+, now ${sgn(r.stance)})` : '' })
+      else add('breakAlliance', 'Break the alliance', [{ t: `${sgn(R.breakAlliance.stance)} with them`, tone: 'down' }, { t: `${R.breakAlliance.karma} karma`, tone: 'down' }, { t: 'others cool toward you', tone: 'down' }],
+        { confirm: 'Break your sworn word? Every sect hears of it.' })
+      const wr = R.war, unprov = r.stance > wr.unprovokedAbove
+      const us = this.playerMight(), them = worldSectMight(r), W = WORLD_SECTS.war
+      const ratio = Math.max(W.ratioMin, Math.min(W.ratioMax, Math.pow(them / Math.max(1, us), W.ratioExp)))
+      add('war', 'Declare war', [{ t: `they fight at ×${ratio.toFixed(2)} of an even match (Might ${them} vs your ${us})`, tone: 'dim' },
+        { t: `${sgn(wr.stance)} with them`, tone: 'down' }, ...(unprov ? [{ t: `unprovoked: ${wr.unprovokedKarma} karma, others cool`, tone: 'down' }] : [{ t: 'they wronged you first: no karma', tone: 'up' }])],
+        { group: 'war', lock: r.sworn ? 'Your sworn ally: break the alliance first' : this._relWarOn() ? 'A war is already underway' : '',
+          confirm: `Declare war on the ${r.name}? Your scouts go out at once; battle comes after the preparing phase, as in any war.` })
+      const tb = R.tribute
+      add('tribute', 'Demand tribute', [{ t: `+${tb.stonesPerTier * tier} stones`, tone: 'up' }, { t: `${sgn(this._relStance(tb.stance, r))} with them`, tone: 'down' },
+        { t: `refused: ${sgn(tb.failStance)}, ${Math.round(tb.failWarChance * 100)}% they march on you`, tone: 'down' }],
+        { group: 'force', odds: this._relOdds('tribute', r), vsMight: true, lock: r.sworn ? 'Not from a sworn ally' : '' })
+      const sp = R.spy
+      add('spy', 'Send a spy', [{ t: `steal +${sp.stonesPerTier * tier} stones or a manual`, tone: 'up' }, { t: `${sp.karma} karma`, tone: 'down' },
+        { t: `caught: ${sgn(sp.failStance)}, Health ${sp.failHealth}, ${Math.round(sp.failWarChance * 100)}% they march on you`, tone: 'down' }],
+        { group: 'force', odds: this._relOdds('spy', r) })
+      const tr = R.trade, offer = this._relOffer(r), oa = ARTS[offer]
+      const rank = id => ART_RARITY_ORDER.indexOf(ARTS[id]?.rarity)
+      const yours = Object.keys(s.inventory).filter(k => k.startsWith('manual_') && s.inventory[k] > 0 && ARTS[k.slice(7)])
+        .map(k => k.slice(7)).map(id => ({ id, name: ARTS[id].name, rarity: ARTS[id].rarity, ok: rank(id) >= rank(offer) - tr.gradeSlack }))
+      add('trade', 'Trade manuals', [{ t: `they offer ${oa ? `${oa.name} (${ART_RARITY[oa.rarity].name})` : 'nothing'}`, tone: 'up' }, { t: `+${tr.stance} with them`, tone: 'up' }],
+        { group: 'trade', offer: oa ? { id: offer, name: oa.name, rarity: oa.rarity, element: oa.element, known: !!s.arts?.known?.[offer] } : null, yours,
+          lock: r.stance < tr.minStance ? `They will not trade with you (${sgn(r.stance)})` : !oa ? 'Nothing to offer' : !yours.some(y => y.ok) ? `Bring a manual of ${ART_RARITY[ART_RARITY_ORDER[Math.max(0, rank(offer) - tr.gradeSlack)]].name} grade or better` : '' })
+      const po = R.poach, cap = s.derived?.discipleCap || 0
+      add('poach', 'Poach a disciple', [{ t: `choose one of their ${this._relRoster(r).length} named disciples (Sect → Disciples)`, tone: '' }, { t: `${sgn(po.stance)} or worse with them`, tone: 'down' }],
+        { group: 'trade', nav: 'poach', lock: this._poachLock(r) })
+    }
+    if (role === 'member' && !isMine) {
+      const foe = this._relSparFoe(r), so = this.personFightOdds(foe, 'spar', false)
+      add('spar', `Spar with ${foe.given} of the ${r.name}`, [{ t: `${Math.round((so?.chance || 0) * 100)}% to win`, tone: '' }, { t: `win: +${R.spar.contribPerTier * (mine?.tier || 1)} Contribution, +${R.spar.stance} with them`, tone: 'up' }, { t: 'until one yields', tone: '' }],
+        { group: 'visit', odds: so?.chance ?? null, foeId: foe.id, lock: s.family?.fight ? 'You are already in a fight' : '' })
+      const m = this._sectMaster(false)
+      add('urge', `Urge ${m?.given || 'your master'} to war on them`, [{ t: `the ${this._sectDef()?.name || 'sect'} marches on them`, tone: 'up' }, { t: `refused: ${R.urge.failRegard} regard`, tone: 'down' }],
+        { group: 'war', odds: this._relOdds('urge', r), lock: this._relWarOn() ? 'Your sect is already at war' : !m ? 'Your sect has no master' : '' })
+    }
+    const row = this._wsRow(r)
+    const W = WORLD_SECTS.war, us = role === 'member' && mine ? worldSectMight(mine) : this.playerMight()
+    return { sect: row, people: this.sectPeople(r.id), role, isMine, warHere, sworn: !!r.sworn, myMight: us, offer: r.offer, actions: acts, year: yr,
+      ratio: Math.max(W.ratioMin, Math.min(W.ratioMax, Math.pow(row.might / Math.max(1, us), W.ratioExp))),
+      blessing: r.defId ? { factor: row.blessing, def: SECTS.find(d => d.id === r.defId) } : null,
+      master: isMine ? this.sectMasterInfo() : null }
+  }
+
+  // Public (UI): take action `id` toward sect `recId` (arg: the manual you give, for a trade). Every outcome is a log line
+  // naming the cause; the reply (accept / refuse / caught) is theirs.
+  sectAct(recId, id, arg = null) {
+    const s = this._s, info = this.sectRelationsInfo(recId)
+    if (!info) return { ok: false, reason: 'gone' }
+    const a = info.actions.find(x => x.id === id)
+    if (!a) return { ok: false, reason: 'unavailable' }
+    if (a.lock) return { ok: false, reason: 'locked', lock: a.lock }
+    const r = this._wsRec(recId), R = SECT_RELATIONS, A = R[id], tier = r.tier || 1, sgn = n => (n > 0 ? '+' : '') + n
+    const roll = a.odds == null ? true : Math.random() < a.odds
+    let text = '', ok = true, success = roll, extra = {}
+    const deed = (d, t) => this._wsDeed(r, d, t)
+    const answerWar = () => { if (!this._relWarOn() && s.ownSect?.founded && Math.random() < A.failWarChance) { this._openWarOn(r, false, false); return ` In answer, the ${r.name} marches on you.` } return '' }
+    if (a.cost) s.spiritStones -= a.cost
+    switch (id) {
+      case 'gift': { const d = this._relStance(A.stance, r); deed(d, `you sent them a gift`); text = `Your gift reaches the ${r.name}; ${r.leader} accepts it (${sgn(d)}, −${a.cost} stones).`; break }
+      case 'alliance':
+        if (roll) { r.sworn = true; deed(A.stance, 'you swore an alliance'); this._wsChron(`You and the ${r.name} swear an alliance before Heaven.`, r.id); text = `${r.leader} takes your hand: the ${r.name} is your sworn ally, and will never march on you.` }
+        else { deed(A.failStance, 'you proposed an alliance; they refused'); text = `${r.leader} declines your alliance, politely (${sgn(A.failStance)}).` }
+        break
+      case 'breakAlliance':
+        r.sworn = false; deed(A.stance, 'you broke your sworn alliance'); s.karma = Math.max(0, s.karma + A.karma); this._relOthersCool(r, A.othersStance)
+        this._wsChron(`${s.ownSect?.name || 'You'} breaks its sworn word to the ${r.name}.`, r.id)
+        text = `You break your oath to the ${r.name} (${sgn(A.stance)}, ${A.karma} karma). Every sect hears of it.`; break
+      case 'war': {
+        const unprov = r.stance > A.unprovokedAbove
+        deed(A.stance, 'you declared war on them')
+        if (unprov) { s.karma = Math.max(0, s.karma + A.unprovokedKarma); this._relOthersCool(r, A.othersStance) }
+        this._openWarOn(r, false, true)
+        this._wsChron(`${s.ownSect?.name || 'You'} declares war on the ${r.name}.`, r.id)
+        text = `You declare war on the ${r.name}. Your scouts ride out; battle comes when the preparing is done.${unprov ? ` An unprovoked war: ${A.unprovokedKarma} karma, and other sects take note.` : ''}`; break
+      }
+      case 'tribute':
+        if (roll) { const g = A.stonesPerTier * tier, d = this._relStance(A.stance, r); s.spiritStones += g; deed(d, 'you wrung tribute from them'); text = `The ${r.name} pays, white-faced: +${g} stones (${sgn(d)}).` }
+        else { deed(A.failStance, 'you demanded tribute; they laughed'); text = `The ${r.name} laughs at your demand (${sgn(A.failStance)}).${answerWar()}` }
+        break
+      case 'spy':
+        s.karma = Math.max(0, s.karma + A.karma)
+        if (roll) {
+          let manual = null
+          if (Math.random() < A.manualChance) { manual = this._rollArt(R.trade.offerWeights[Math.max(0, Math.min(4, tier - 1))]); if (manual) this._grantManual(manual, `stolen from the ${r.name}'s library by your spy`) }
+          if (!manual) { const g = A.stonesPerTier * tier; s.spiritStones += g; text = `Your spy slips out of the ${r.name} with +${g} stones. No one saw.` }
+          else text = `Your spy slips out of the ${r.name} with a manual: ${ARTS[manual].name}. No one saw.`
+          extra.manual = manual
+        } else {
+          deed(A.failStance, 'your spy was caught'); s.health = Math.max(1, (s.health ?? 100) + A.failHealth)
+          text = `Your spy is caught in the ${r.name}. They send back the body, and your name (${sgn(A.failStance)}, Health ${A.failHealth}).${answerWar()}`
+        }
+        break
+      case 'trade': {
+        const give = a.yours.find(y => y.id === arg)
+        if (!give) { ok = false; break }
+        if (!give.ok) { if (a.cost) s.spiritStones += a.cost; return { ok: false, reason: 'grade' } }
+        s.inventory['manual_' + give.id]--
+        if (s.inventory['manual_' + give.id] <= 0) delete s.inventory['manual_' + give.id]
+        const got = a.offer.id
+        this._grantManual(got, `from the ${r.name}, in trade for your ${give.name}`)
+        deed(A.stance, `you traded them ${give.name}`); r.offer = null
+        text = `The ${r.name} takes your ${give.name} and hands over ${ARTS[got].name}.`; extra.got = got; break
+      }
+      case 'poach': return this.poachDisciple(recId, arg)   // (the page's button leads to Sect → Disciples → Poach recruits)
+      case 'spar': {
+        const foe = this._relSparFoe(r)
+        this._startFight('spar', foe, false, { foe, sectId: r.id })
+        this._relDone(r, id)
+        this.addEvent({ type: 'neutral', text: `You call on the ${r.name} and cross palms with ${foe.given} in their courtyard.` })
+        return { ok: true, fight: true }
+      }
+      case 'urge': {
+        const mine = this._wsMine(), m = this._sectMaster(false)
+        if (roll) { this._wsDeed(mine, A.okRegard, `you urged war on the ${r.name}`); this._openWarOn(r, true, false); deed(WORLD_SECTS.stanceMemberWarFoe, 'your sect went to war with them at your urging')
+          text = `${m?.given || 'Your master'} hears you out, and the war drums sound: the ${this._sectDef().name} marches on the ${r.name}.` }
+        else { this._wsDeed(mine, A.failRegard, `you urged war on the ${r.name}; refused`); text = `${m?.given || 'Your master'} hears you out and refuses (${A.failRegard} regard).` }
+        break
+      }
+    }
+    if (!ok) { if (a.cost) s.spiritStones += a.cost; return { ok: false, reason: 'bad_arg' } }
+    this._relDone(r, id)
+    this.addEvent({ type: success ? 'positive' : 'negative', text })
+    this._recalc(); this._notify()
+    return { ok: true, success, text, odds: a.odds, ...extra }
+  }
+
+  // ── Poaching one named disciple (Sect → Disciples → Poach recruits) ──
+  // A sect's named disciples, rolled once a year (talent leans on its tier). Not world persons; a poached one joins you as is.
+  _relRoster(r) {
+    const yr = this._relYear(), P = SECT_RELATIONS.poach
+    if (!r.roster || r.roster.year !== yr) {
+      const n = Math.max(0, Math.min(P.roster, Math.floor(r.disciples || 0)))
+      const talent = () => Math.max(1, Math.min(5, 1 + Math.floor(Math.random() * (1.6 + 0.6 * (r.tier || 1)))))
+      r.roster = { year: yr, list: Array.from({ length: n }, () => ({ ...this._genRecruit(), talent: talent(), level: this._randInt(P.level), loyalty: this._randInt(P.loyalty) })) }
+    }
+    return r.roster.list
+  }
+  _poachLock(r) {
+    const s = this._s
+    if (this._relRole() !== 'leader') return 'Only a sect leader may poach'
+    if (r === this._wsMine()) return 'Your own sect'
+    const wait = this._relWait(r, 'poach')
+    if (wait) return `Again in ${wait} year${wait === 1 ? '' : 's'}`
+    if (this._mainRoster().length >= (s.derived?.discipleCap || 0)) return 'Every seat in your hall is taken'
+    if (!this._relRoster(r).length) return 'They have none to spare'
+    return ''
+  }
+  _poachTerms(r, d) {
+    const P = SECT_RELATIONS.poach, s = this._s
+    const cost = Math.round(P.stonesPerTier * (r.tier || 1) * (1 + P.talentCost * (d.talent - 1)))
+    const odds = Math.max(0.05, Math.min(0.95, P.odds.base + (this.playerMight() - worldSectMight(r)) / P.odds.mightDiv
+      - (d.loyalty - 50) / P.odds.loyaltyDiv + P.odds.perTalent * (d.talent - 2)))
+    return { cost, odds, stance: P.stance + P.stancePerTalent * Math.max(0, d.talent - 2), lock: cost > s.spiritStones ? `Needs ${cost} stones` : '' }
+  }
+  // Public (UI): the sects you may poach from (the picker) — each with its lock reason.
+  poachTargets() {
+    if (this._relRole() !== 'leader') return []
+    return this._wsAll().filter(r => r.alive).map(r => ({ id: r.id, name: r.name, stance: r.stance, stanceLabel: this._wsRow(r).stanceLabel,
+      stanceTone: this._wsRow(r).stanceTone, tier: r.tier, disciples: r.disciples, sworn: !!r.sworn, lock: this._poachLock(r) }))
+  }
+  // Public (UI): one sect's named disciples, each with what poaching them costs, the odds, and how the sect takes it.
+  poachRoster(recId) {
+    const r = this._wsRec(recId)
+    if (!r) return null
+    const lock = this._poachLock(r)
+    return { id: r.id, name: r.name, leader: r.leader, stance: r.stance, lock, myMight: this.playerMight(), theirMight: worldSectMight(r),
+      list: this._relRoster(r).map(d => ({ ...d, ...this._poachTerms(r, d) })) }
+  }
+  // Public: try to lure disciple `dId` away from sect `recId`. You pay either way; the reply is theirs.
+  poachDisciple(recId, dId) {
+    const s = this._s, r = this._wsRec(recId)
+    if (!r) return { ok: false, reason: 'gone' }
+    const lock = this._poachLock(r)
+    if (lock) return { ok: false, reason: 'locked', lock }
+    const d = this._relRoster(r).find(x => x.id === dId)
+    if (!d) return { ok: false, reason: 'not_found' }
+    const P = SECT_RELATIONS.poach, t = this._poachTerms(r, d), sgn = n => (n > 0 ? '+' : '') + n
+    if (t.lock) return { ok: false, reason: 'stones', lock: t.lock }
+    s.spiritStones -= t.cost
+    const success = Math.random() < t.odds
+    let text
+    if (success) {
+      const rec = { id: d.id, name: d.name, talent: d.talent, level: d.level, xp: 0, branchId: null, role: 'disciple', kin: false }
+      rec.personality = disciplePersonality(rec.id)
+      s.ownSect.disciples.push(rec)
+      r.roster.list = r.roster.list.filter(x => x !== d); r.disciples = Math.max(0, r.disciples - 1)
+      this._wsDeed(r, t.stance, `you lured ${d.name} away from them`)
+      text = `${d.name} (talent ${d.talent}, Lv.${d.level}) leaves the ${r.name} for your sect. The ${r.name} will remember it (${sgn(t.stance)}, −${t.cost} stones).`
+    } else {
+      d.loyalty = Math.min(100, d.loyalty + P.failLoyalty)
+      this._wsDeed(r, P.failStance, `you tried to lure ${d.name} away`)
+      text = `${d.name} hears you out, then reports you to ${r.leader} (${sgn(P.failStance)}, the −${t.cost} stones are lost; ${d.name} is warier now).`
+    }
+    this._relDone(r, 'poach')
+    this.addEvent({ type: success ? 'positive' : 'negative', text })
+    this._recalc(); this._notify()
+    return { ok: true, success, text, odds: t.odds, disciple: success ? d : null }
+  }
+
+  // A spar's end (from _finishFight): a member's courtesy bout. A win earns Contribution in your own sect and their respect.
+  _sparOutcome(fi, opp, res) {
+    const s = this._s, r = this._wsRec(fi.sectId), R = SECT_RELATIONS.spar
+    if (res.winner.id === s.self.id) {
+      const c = R.contribPerTier * (this._wsMine()?.tier || 1)
+      if (s.sect?.id) s.sect.contribution += c
+      if (r) this._wsDeed(r, R.stance, `you bested ${opp.given} in a spar`)
+      this.addEvent({ type: 'positive', text: `You best ${opp.given} of the ${r?.name || 'sect'} before their own disciples (+${c} Contribution${r ? `, +${R.stance} with them` : ''}).` })
+      this._recalc(); this._notify()
+      return 'won'
+    }
+    this.addEvent({ type: 'neutral', text: `${opp.given} of the ${r?.name || 'sect'} puts you on your back, and helps you up. You will do better next time.` })
+    this._recalc(); this._notify()
+    return 'lost_nonlethal'
   }
 
   // ── Phase 5B: Sect Wars (own sect) + Phase 5C: Member Wars (joined sect) ───────────────────────────────────
@@ -6759,12 +10191,27 @@ class GameState {
       if (!w.nextWarAt) { this._scheduleNextWar(); return false }
       if (now < w.nextWarAt) return false
       w.phase = 'scouting'
+      w.declaredByYou = false   // 43h: the world's war, not yours
+      w.razeVow = false; w.razeSet = false   // 43f: a new war, a new vow (the standing order may set it below)
       w.scoutEndsAt = w.nextWarAt + (member ? MEMBER_WAR_SCOUT_SECONDS : WAR_SCOUT_SECONDS) * 1000
-      const pick = a => a[Math.floor(Math.random() * a.length)]
-      w.enemyName = `${pick(RIVAL_SECT_PREFIXES)} ${pick(RIVAL_SECT_SUFFIXES)}`
+      // Phase 43b: a real sect comes for you — weighted by how much it hates you (sworn allies never)
+      const foe = this._wsWarFoe(member)
+      // Phase 43f: your dread — a weaker foe may remember the ashes and turn back (a remnant's grudge never does)
+      const W43 = s.world?.sects, D = SECT_RAZE.dread
+      if (!member && foe && !foe.grudge && W43?.dread > 0 && worldSectMight(foe) < this.playerMight()
+          && Math.random() < Math.min(D.skipMax, W43.dread * D.skipPer)) {
+        w.phase = 'none'
+        this._scheduleNextWar(w.nextWarAt)
+        const ash = [...(W43.ashes || [])].reverse()[0]
+        this.addEvent({ type: 'positive', text: `The ${foe.name} musters at your border, remembers the ashes of the ${ash?.name || 'sects you burned'}, and turns back.` })
+        return true
+      }
+      w.enemyId = foe?.id || null
+      w.enemyName = foe?.name || this._rivalSectName()
+      if (foe) this._wsDeed(foe, member ? WORLD_SECTS.stanceMemberWarFoe : WORLD_SECTS.stanceWarDeclared, member ? 'went to war with your sect' : 'marched on your mountain')
       this._noteEnemy({ kind: 'sect', name: `the ${w.enemyName}`, why: 'went to war with your sect' })   // 2.6d
       const baseTier = member ? this._sectTier() : Math.round((s.derived?.sectFame || 0) / 100)
-      w.enemyTier = Math.max(1, Math.min(5, baseTier + Math.floor(Math.random() * 3) - 1))
+      w.enemyTier = foe?.tier || Math.max(1, Math.min(5, baseTier + Math.floor(Math.random() * 3) - 1))   // 43c: the real sect's tier
       w.allyId = null
       w.reinforced = false
       w.answered = false; w.chestStones = 0; w.pillsGiven = 0; w.beastId = null; w.seen = false
@@ -6785,7 +10232,7 @@ class GameState {
       w.prepEndsAt = w.scoutEndsAt + (member ? MEMBER_WAR_PREP_SECONDS : WAR_PREP_SECONDS) * 1000
       this.addEvent({ text: member
         ? `The ${this._sectDef().name} musters its disciples at the mountain gate. Battle with the ${w.enemyName} draws near.`
-        : `The ${w.enemyName} will strike soon — prepare your defenses!`, type: 'negative' })
+        : w.declaredByYou ? `Your host gathers at the gate to march on the ${w.enemyName}. Battle is near.` : `The ${w.enemyName} will strike soon — prepare your defenses!`, type: 'negative' })
       this._applyWarOrders()   // Phase 32: re-applied here too (reinforce only allowed once 'preparing';
                                 // also catches a beast/chest order that couldn't fire at 'scouting')
       return true
@@ -6832,12 +10279,148 @@ class GameState {
       if (!w.allyId && o.ally !== 'never' && (w.phase === 'scouting' || w.phase === 'preparing')) {
         // Cost/power don't vary by which SECTS entry is asked yet (see sect-war.js comment), so
         // 'cheapest' and 'best' just pick opposite ends of the roster — flavor only for now.
-        const pick = o.ally === 'cheapest' ? SECTS[0] : SECTS[SECTS.length - 1]
+        const foeDef = this._wsWarEnemy()?.defId, pool = SECTS.filter(x => x.id !== foeDef)   // 43c: never the foe itself
+        const pick = o.ally === 'cheapest' ? pool[0] : pool[pool.length - 1]
         if (pick && s.spiritStones >= this._warAllyCost()) this.requestWarAlly(pick.id)
       }
       if (w.phase === 'preparing' && !w.reinforced && o.reinforce === 'if_affordable') {
         if (s.spiritStones - this._warReinforceCost() >= o.reinforceKeep) this.reinforceForWar()
       }
+      this._applyRazeOrder()
+    }
+  }
+
+  // ── Phase 43f: razing a sect (docs/systems/npc-sects.md → "43f") ───────────────────────────────────────────────
+  // The standing order sets the vow only on a war you never touched by hand (w.razeSet): your own call always wins.
+  _applyRazeOrder() {
+    const w = this._s.sectWar, o = this._s.warOrders
+    if (!w || w.side !== 'own' || w.razeSet || !this._relWarOn() || !this._wsWarEnemy()) return
+    w.razeVow = o?.raze === 'always' || (o?.raze === 'theirs' && !w.declaredByYou)
+  }
+  // Public (UI): can you vow to raze this war's foe, and what it would bring. null when no own-sect war is underway.
+  razeInfo() {
+    const s = this._s, w = s.sectWar
+    if (!s.ownSect?.founded || w?.side !== 'own' || !this._relWarOn()) return null
+    const r = this._wsWarEnemy(), R = SECT_RAZE
+    if (!r) return { ok: false, lock: 'This foe has no mountain to burn', vow: false }
+    const provoked = this._razeProvoked(r), levels = this._wsLevels(r)
+    const outrage = this._wsAll().filter(x => x.alive && x !== r).map(x => ({ name: x.name, delta: this._razeOutrage(x, provoked) }))
+    return { ok: true, vow: !!w.razeVow, byHand: !!w.razeSet, order: s.warOrders?.raze || 'never', provoked,
+      sect: r.name, tier: r.tier || 1, joinable: r.kind === 'joinable',
+      stones: R.spoilsPerTier * (r.tier || 1) + R.spoilsPerLevel * levels, herbs: R.herbsPerLevel * levels, manualChance: R.manualChance,
+      karma: provoked ? R.karmaProvoked : R.karma, fame: R.fame, dread: r.tier || 1,
+      cool: outrage.filter(x => x.delta < 0).length, warm: outrage.filter(x => x.delta > 0).length,
+      worst: outrage.sort((a, b) => a.delta - b.delta)[0] || null,
+      remnant: r.kind === 'joinable' ? 1 : this._remnantChance({ survivors: Math.round((r.disciples || 0) * (1 - WORLD_SECTS.warDiscipleLoss) * R.remnant.survivorFrac), provoked }) }
+  }
+  // Public (UI): the ashes and your dread, for the World ledger. dreadSkip = the chance a weaker foe turns back.
+  razeWorldInfo() {
+    const W = this._s.world?.sects, D = SECT_RAZE.dread
+    if (!W) return { ashes: [], dread: 0, dreadSkip: 0, razed: 0 }
+    const yr = Math.floor(this._s.world.year)
+    return { razed: W.razed || 0, dread: W.dread || 0, dreadSkip: Math.min(D.skipMax, (W.dread || 0) * D.skipPer),
+      ashes: [...(W.ashes || [])].reverse().map(a => ({ name: a.name, year: a.year, state: a.state, survivors: a.survivors,
+        joinable: a.kind === 'joinable', reborn: a.rebornId ? this._wsRec(a.rebornId)?.name || null : null,
+        stirs: a.state === 'smoking' ? (yr >= a.returnYear ? 'any year now' : 'quiet') : null })) }
+  }
+  // A joinable sect burned to the ground and not yet risen again: its gate cannot be joined.
+  sectInAshes(defId) {
+    const W = this._s.world?.sects
+    return !!W && !this._wsByDef(defId) && (W.ashes || []).some(a => a.defId === defId && a.state === 'smoking')
+  }
+  // Public (UI): vow (or lift the vow) to raze the foe if this war is won. Overrides the standing order for this war.
+  setRazeVow(on) {
+    const info = this.razeInfo()
+    if (!info) return { ok: false, reason: 'no_war' }
+    if (!info.ok) return { ok: false, reason: 'no_foe' }
+    const w = this._s.sectWar
+    w.razeVow = !!on; w.razeSet = true
+    this.addEvent({ type: on ? 'negative' : 'neutral', text: on
+      ? `You swear before your disciples: if the ${info.sect} falls, its mountain burns to the ground.`
+      : `You lift your vow. If the ${info.sect} falls, its mountain will stand.` })
+    this._notify()
+    return { ok: true, vow: w.razeVow }
+  }
+  // A war they started (or a remnant's feud) is answered, not begun: less karma, less outrage.
+  _razeProvoked(r) { return !this._s.sectWar?.declaredByYou || !!r?.grudge }
+  // How sect `x` takes a razing: its master's morality (righteous recoil, ruthless respect), halved when provoked.
+  _razeOutrage(x, provoked) {
+    const O = SECT_RAZE.outrage, m = PERSONALITY_MORALITY[x.temper] ?? 0
+    const d = -m * O.perMorality * (provoked ? O.provokedMult : 1)
+    return Math.round(Math.max(-O.cap, Math.min(O.cap, d)))
+  }
+  _remnantChance({ survivors, provoked }) {
+    const P = SECT_RAZE.remnant
+    return Math.max(P.min, Math.min(P.max, P.base + P.perSurvivor * (survivors || 0) + (provoked ? P.provoked : 0)))
+  }
+  // Your sect won a war it vowed to raze: the foe's record dies. Treasury + maybe a manual, karma, fame, dread, the world
+  // reacts, and the ashes wait to see whether anyone rises from them. Returns what happened (the Last war card + log).
+  _wsRaze(r) {
+    const s = this._s, W = s.world.sects, R = SECT_RAZE, yr = Math.floor(s.world.year)
+    const provoked = this._razeProvoked(r), levels = this._wsLevels(r), tier = r.tier || 1
+    const stones = R.spoilsPerTier * tier + R.spoilsPerLevel * levels, herbs = R.herbsPerLevel * levels
+    s.spiritStones += stones
+    if (herbs) s.inventory.spirit_herb = (s.inventory.spirit_herb || 0) + herbs
+    let manual = null
+    if (Math.random() < R.manualChance) {
+      manual = this._rollArt(SECT_RELATIONS.trade.offerWeights[Math.max(0, Math.min(4, tier - 1))])
+      if (manual) this._grantManual(manual, `in the ruins of the ${r.name}`)
+    }
+    const karma = provoked ? R.karmaProvoked : R.karma
+    s.karma = Math.max(0, Math.min(100, s.karma + karma))
+    const survivors = Math.round((r.disciples || 0) * (1 - WORLD_SECTS.warDiscipleLoss) * R.remnant.survivorFrac)
+    // The world reacts — each sect by its master's conscience
+    let cool = 0, warm = 0
+    for (const x of this._wsAll()) {
+      if (!x.alive || x === r) continue
+      const d = this._razeOutrage(x, provoked)
+      if (!d) continue
+      this._wsDeed(x, d, `you burned the ${r.name} to the ground`)
+      if (d < 0) cool++; else warm++
+    }
+    // The record dies; its ashes wait
+    r.alive = false; r.razedYear = yr
+    W.razed = (W.razed || 0) + 1
+    W.dread = Math.min(R.dread.max, (W.dread || 0) + tier)
+    const ash = { name: r.name, defId: r.defId || null, kind: r.kind, tier, temper: r.temper, leader: r.leader,
+                  maxBuildingLevel: r.maxBuildingLevel, maxHall: r.maxHall, year: yr, survivors, provoked, state: 'smoking',
+                  returnYear: yr + this._randInt(R.remnant.years), rebornId: null }
+    W.ashes.push(ash)
+    if (W.ashes.length > R.ashesMax) W.ashes.splice(0, W.ashes.length - R.ashesMax)
+    if (W.event?.sectId === r.id) W.event = null
+    W.list = W.list.filter(x => x.alive)
+    const o = s.ownSect
+    if (o?.founded) o.razed.push({ name: r.name, year: yr, tier })
+    if (this._warLive) this._claimFirst('razed_sect')   // offline catch-up must not change world.clans (save-roundtrip)
+    this._noteEnemy({ kind: 'sect', name: `the survivors of the ${r.name}`, why: 'you burned their mountain' })
+    this._wsChron(`${o?.name || 'You'} burns the ${r.name} to the ground. ${survivors ? `${survivors} survivors scatter into the hills.` : 'No one is left.'}`, null)
+    const bits = [`+${stones} stones`, herbs ? `+${herbs} Spirit Herbs` : '', manual ? `the ${ARTS[manual]?.name} manual` : '', `${karma} karma`,
+                  cool ? `${cool} sect${cool === 1 ? '' : 's'} recoil${cool === 1 ? 's' : ''}` : '', warm ? `${warm} respect${warm === 1 ? 's' : ''} it` : ''].filter(Boolean)
+    this.addEvent({ type: 'special', text: `The ${r.name} burns. Its halls fall, its gate is ash, and its name is struck from the world (${bits.join(', ')}).` })
+    return { razed: true, sect: r.name, might: 0, stones, herbs, manual, karma, cool, warm, survivors, provoked }
+  }
+  // A world year: dread fades, and the ashes may stir. A joinable sect always returns (the world keeps its gates).
+  _tickAshes(yr) {
+    const W = this._s.world.sects, R = SECT_RAZE, P = R.remnant
+    if (W.dread > 0) W.dread = Math.max(0, Math.round((W.dread - R.dread.decay) * 100) / 100)
+    for (const a of W.ashes || []) {
+      if (a.state !== 'smoking' || yr < a.returnYear) continue
+      const joinable = a.kind === 'joinable' && a.defId && !this._wsByDef(a.defId)
+      if (!joinable && Math.random() >= this._remnantChance(a)) {
+        a.state = 'scattered'
+        this._wsChron(`No one returns to the ashes of the ${a.name}. Grass grows over its gate.`, null)
+        continue
+      }
+      const taken = new Set(this._wsAll().filter(x => x.alive).map(x => x.name))
+      const name = joinable ? a.name : (taken.has(`${P.prefix} ${a.name}`) ? `${P.prefix} ${a.name} ${yr}` : `${P.prefix} ${a.name}`)
+      const heir = wsLeaderName(Math.random)
+      const r = this._wsNewRival({ name, kind: joinable ? 'joinable' : 'rival', origin: 'remnant', defId: joinable ? a.defId : null,
+        tier: Math.max(1, a.tier - 1), temper: a.temper, leader: heir, maxBuildingLevel: a.maxBuildingLevel || 2, maxHall: a.maxHall || 2,
+        disciples: Math.max(4, a.survivors), stance: joinable ? P.stanceJoinable : P.stance, grudge: true, ashOf: a.name })
+      r.deeds.push({ year: a.year, text: `you burned their mountain; ${heir} was among the survivors`, delta: r.stance })
+      a.state = 'reborn'; a.rebornId = r.id
+      this._wsChron(`${heir}, a survivor of the ${a.name}, raises its gate again on the old ashes: the ${r.name}.`, r.id)
+      this.addEvent({ type: 'negative', text: `Smoke rises from the ashes of the ${a.name}: ${heir} has raised the ${r.name}, and swears vengeance on you.` })
     }
   }
 
@@ -6847,7 +10430,9 @@ class GameState {
     let playerPower = (fame + 20) * (1 + (d.warDefense || 0)) * (1 + this.sectShelfWar())   // + the arts on your library's shelf
     if (w.reinforced) playerPower *= 1 + WAR_REINFORCE_POWER_BONUS
     if (w.allyId)     playerPower *= 1 + WAR_ALLY_POWER_BONUS
-    const enemyPower = (fame + 20) * (0.6 + Math.random() * 0.8)
+    const odds = this.sectWarOdds()?.chance ?? null                   // (read before the roll: the Last war card shows it)
+    const vs = this._warMightRatio(false)                               // 43c: the bound sect's real Might
+    const enemyPower = (fame + 20) * vs.ratio * (0.6 + Math.random() * 0.8)
     const win = Math.random() < playerPower / (playerPower + enemyPower)
     const enemyName = w.enemyName
 
@@ -6875,6 +10460,8 @@ class GameState {
       this.addEvent({ text: `Defeat — the ${enemyName} broke through, plundering ${lost} Spirit Stones${arrayHit ? ' and damaging your Defensive Array' : ''}${injured ? `. You were injured (Health -${injured})` : ''}.`, type: 'negative' })
     }
 
+    const foe = this._wsWarResult(win, false)   // Phase 43b: the sect remembers · 43c: and its halls show it
+    Object.assign(w.lastResult, { odds, foeMight: vs.them || null, ourMight: vs.us || null, foeHall: foe?.name ? foe : null, razed: foe?.razed ? foe : null, vowed: !!w.razeVow })   // 43f
     w.phase = 'none'
     this._scheduleNextWar()
     if (this._warLive && w.seen) this._emit(win ? 'war_won' : 'war_lost', { enemy: enemyName, sect: s.ownSect?.name })
@@ -6909,12 +10496,16 @@ class GameState {
   // ── 1.8b-5 (UI read helpers, no state changes) ─────────────────────────────
 
   // Win odds of the coming (or next) sect war, rolled exactly as _resolveSectWar/_resolveMemberWar roll it: your
-  // power multiplier m against an enemy of ×(0.6–1.4, uniform) → P(win) = mean of m/(m+u) = (m/0.8)·ln((m+1.4)/(m+0.6)).
-  // parts: { label, op: 'base' | '+' | 'x', value } — the terms of m, for the "why" card.
+  // power multiplier m against an enemy of r×(0.6–1.4, uniform), r = the Might ratio (43c, _warMightRatio)
+  // → P(win) = mean of m/(m+r·u) = (m/(0.8r))·ln((m+1.4r)/(m+0.6r)).
+  // parts: { label, op: 'base' | '+' | 'x', value } — the terms of m, for the "why" card. vs: the Might match-up.
   sectWarOdds() {
     const s = this._s, w = s.sectWar, d = s.derived || {}
-    const odds = m => (m <= 0 ? 0 : (m / 0.8) * Math.log((m + 1.4) / (m + 0.6)))
-    if (w?.side === 'member' && s.sect?.id) {
+    const member = w?.side === 'member'
+    const mv = this._warMightRatio(member), r = mv.ratio
+    const odds = m => (m <= 0 ? 0 : (m / (0.8 * r)) * Math.log((m + 1.4 * r) / (m + 0.6 * r)))
+    const vs = { ratio: r, them: mv.them, us: mv.us, bound: !!mv.foe, foe: mv.foe ? this._wsRow(mv.foe) : null }
+    if (member && s.sect?.id) {
       const { rankMult, power, shelf } = this.memberWarPower()
       const full = this.memberWarChestFull()
       const beast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
@@ -6925,7 +10516,7 @@ class GameState {
       add(`Pills offered ×${w.pillsGiven}`, MEMBER_WAR_PILL_BONUS * w.pillsGiven)
       if (beast) add(`${beast.name} at the front`, Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * beast.level))
       if (shelf) parts.push({ label: `Arts you gave the library (${s.sect.shelf.length})`, op: 'x', value: 1 + shelf })
-      return { side: 'member', mult: power, chance: odds(power), parts, rankMult,
+      return { side: 'member', mult: power, chance: odds(power), parts, rankMult, vs,
                ifAnswered: w.answered ? null : odds((power / (1 + shelf) + MEMBER_WAR_ANSWER_BONUS * rankMult) * (1 + shelf)) }
     }
     if (w?.side === 'own' && s.ownSect?.founded) {
@@ -6936,7 +10527,7 @@ class GameState {
       if (shelf) { m *= 1 + shelf; parts.push({ label: `Arts in your sect library (${s.ownSect.library.length})`, op: 'x', value: 1 + shelf }) }
       if (w.reinforced) { m *= 1 + WAR_REINFORCE_POWER_BONUS; parts.push({ label: 'Reinforced', op: 'x', value: 1 + WAR_REINFORCE_POWER_BONUS }) }
       if (w.allyId) { m *= 1 + WAR_ALLY_POWER_BONUS; parts.push({ label: `${SECTS.find(x => x.id === w.allyId)?.name || 'Ally'} fights with you`, op: 'x', value: 1 + WAR_ALLY_POWER_BONUS }) }
-      return { side: 'own', mult: m, chance: odds(m), parts, arrayDamaged: !!d.arrayDamaged,
+      return { side: 'own', mult: m, chance: odds(m), parts, vs, arrayDamaged: !!d.arrayDamaged,
                reinforceCost: this._warReinforceCost(), allyCost: this._warAllyCost(),
                ifReinforced: w.reinforced ? null : odds(m * (1 + WAR_REINFORCE_POWER_BONUS)),
                ifAllied: w.allyId ? null : odds(m * (1 + WAR_ALLY_POWER_BONUS)) }
@@ -6950,34 +10541,42 @@ class GameState {
     if (!o?.founded) return null
     const inc = d.ownSectIncomeMult || 1, xpMult = d.discipleXpMult || 1
     let lib = 1
-    for (const id of Object.keys(o.buildings)) if (o.buildings[id]) lib *= SECT_BUILDINGS.find(b => b.id === id)?.effects?.disciple_qi_mult || 1
-    const yieldOf = (talent, level) => {
+    for (const id of Object.keys(o.buildings)) if (o.buildings[id] > 0) lib *= sectBuildingEffects(id, o.buildings[id]).disciple_qi_mult || 1
+    const yieldOf = (talent, level, ym = 1) => {
       const lm = 1 + 0.1 * (level - 1)
-      return { qi: DISCIPLE_QI_FRAC * talent * lm * lib, stonesMin: DISCIPLE_STONE_RATE * talent * lm * inc * 60, herbsMin: DISCIPLE_HERB_RATE * talent * lm * inc * 60 }
+      return { qi: DISCIPLE_QI_FRAC * talent * lm * lib * ym, stonesMin: DISCIPLE_STONE_RATE * talent * lm * inc * 60 * ym, herbsMin: DISCIPLE_HERB_RATE * talent * lm * inc * 60 * ym }
     }
     const disciples = o.disciples.map(dc => {
       const max = dc.level >= DISCIPLE_MAX_LEVEL
       const need = DISCIPLE_XP_PER_LEVEL * dc.level, rate = (DISCIPLE_XP_BASE + DISCIPLE_XP_PER_TALENT * dc.talent) * xpMult
-      return { d: dc, ...yieldOf(dc.talent, dc.level), max, xpFrac: max ? 1 : Math.min(1, dc.xp / need), eta: max ? 0 : Math.ceil((need - dc.xp) / rate), fame: dc.talent * dc.level }
+      return { d: dc, ...yieldOf(dc.talent, dc.level, this._discipleYieldMult(dc)), max, xpFrac: max ? 1 : Math.min(1, dc.xp / need), eta: max ? 0 : Math.ceil((need - dc.xp) / rate), fame: dc.talent * dc.level,
+               branch: !!dc.branchId, kin: !!dc.kin }
     })
-    const full = o.disciples.length >= (d.discipleCap || 0)
+    const full = this._mainRoster().length >= (d.discipleCap || 0)   // Phase 45: the Hall seats your own hall only
     const candidates = o.recruitPool.map(c => {
       const cost = DISCIPLE_RECRUIT_COST * c.talent * c.talent
       return { c, cost, ...yieldOf(c.talent, 1), ok: !full && s.spiritStones >= cost, reason: full ? 'full' : s.spiritStones < cost ? 'stones' : null }
     })
     const buildings = SECT_BUILDINGS.map(b => {
       const missing = Object.entries(b.items).map(([id, need]) => ({ id, need, have: s.inventory[id] || 0 })).filter(x => x.have < x.need)
-      const built = !!o.buildings[b.id]
-      return { b, built, stonesShort: Math.max(0, b.stones - s.spiritStones), missing, ok: !built && s.spiritStones >= b.stones && !missing.length }
+      const level = o.buildings[b.id] || 0, maxed = level >= SECT_BUILDING_MAX_LEVEL
+      const upgradeCost = level > 0 && !maxed ? sectBuildingUpgradeCost(b.id, level) : null
+      return { b, level, built: level > 0, maxed, upgradeCost,
+        stonesShort: Math.max(0, b.stones - s.spiritStones),
+        upShort: upgradeCost != null ? Math.max(0, upgradeCost - s.spiritStones) : 0,
+        missing, ok: level === 0 && s.spiritStones >= b.stones && !missing.length,
+        canUpgrade: upgradeCost != null && s.spiritStones >= upgradeCost }
     })
     const lvl = Math.min(o.hallLevel, SECT_HALL_LEVELS.length)
     const hallNext = SECT_HALL_LEVELS[lvl - 1]?.upgradeStones ?? null
     const builtN = buildings.filter(x => x.built).length
+    const totalLevels = buildings.reduce((a, x) => a + x.level, 0)   // Phase 43: fame carries the depth, not just the count
     return {
-      disciples, candidates, buildings, full,
+      disciples, candidates, buildings, full, builtN, totalLevels,
+      mainCount: this._mainRoster().length, branchCount: o.branches.length,
       totals: { stonesMin: disciples.reduce((a, x) => a + x.stonesMin, 0), herbsMin: disciples.reduce((a, x) => a + x.herbsMin, 0), qi: d.discipleQiFrac || 0 },
       hall: { level: o.hallLevel, cap: d.discipleCap || 0, nextCap: SECT_HALL_LEVELS[lvl]?.cap ?? null, cost: hallNext, ok: hallNext != null && s.spiritStones >= hallNext },
-      fame: { total: d.sectFame || 0, disciples: disciples.reduce((a, x) => a + x.fame, 0), buildings: 10 * builtN, hall: 25 * o.hallLevel, wins: 5 * (s.sectWar?.warVictories || 0), arena: s.arena?.sectFame || 0 },
+      fame: { total: d.sectFame || 0, disciples: disciples.reduce((a, x) => a + x.fame, 0), buildings: 10 * totalLevels, hall: 25 * o.hallLevel, wins: 5 * (s.sectWar?.warVictories || 0), arena: s.arena?.sectFame || 0, razed: SECT_RAZE.fame * (o.razed?.length || 0) },   // 43f
     }
   }
 
@@ -6998,7 +10597,9 @@ class GameState {
     const def = this._sectDef()
     const { bonus, power } = this.memberWarPower()
     const engaged = bonus > 0
-    const enemyPower = 0.6 + Math.random() * 0.8
+    const odds = this.sectWarOdds()?.chance ?? null
+    const vs = this._warMightRatio(true)                                // 43c: your sect's Might against theirs
+    const enemyPower = vs.ratio * (0.6 + Math.random() * 0.8)
     const win = Math.random() < power / (power + enemyPower)
     const rankMult = SECT_RANKS[s.sect.rank]?.rewardMult || 1
     const enemyName = w.enemyName
@@ -7051,6 +10652,7 @@ class GameState {
     if (ignored) {
       w.warsIgnored++
       const lost = loseContrib(MEMBER_WAR_IGNORE_CONTRIB)
+      this._wsDeed(this._wsMine(), SECT_MASTER.regardIgnore, 'you ignored the call to arms')   // 43e
       s.karma = Math.max(0, s.karma - MEMBER_WAR_IGNORE_KARMA)
       parts.push(`−${lost} Contribution and −${MEMBER_WAR_IGNORE_KARMA} karma for ignoring the call`)
     }
@@ -7068,6 +10670,8 @@ class GameState {
     else if (win)            this.addEvent({ text: `The ${def.name} defeated the ${enemyName} — though you played no part in it.${tail}`, type: ignored ? 'negative' : 'positive' })
     else                     this.addEvent({ text: `Defeat — the ${enemyName} routed the ${def.name}. The sect's blessings wane for ${MEMBER_WAR_BUFF_SUPPRESS_HOURS} hours.${tail}${awayNote}`, type: 'negative' })
 
+    const foe = this._wsWarResult(win, true)    // Phase 43b: the sect remembers · 43c: and its halls show it
+    Object.assign(res, { odds, foeMight: vs.them || null, ourMight: vs.us || null, foeHall: foe?.name ? foe : null })
     w.phase = 'none'
     this._scheduleNextWar()
     if (this._warLive && w.seen) this._emit(win ? 'war_won' : 'war_lost', { enemy: enemyName, sect: def?.name })
@@ -7106,6 +10710,7 @@ class GameState {
     if (w.allyId)                                  return { ok: false, reason: 'already' }
     const def = SECTS.find(x => x.id === sectId)
     if (!def)                                      return { ok: false, reason: 'unknown' }
+    if (this._wsWarEnemy()?.defId === sectId)      return { ok: false, reason: 'is_foe' }   // 43c: not the sect you fight
     const cost = this._warAllyCost()
     if (s.spiritStones < cost)                     return { ok: false, reason: 'stones' }
     s.spiritStones -= cost
@@ -7127,6 +10732,7 @@ class GameState {
     if (!this._memberWarActive()) return { ok: false, reason: 'no_war' }
     if (w.answered)               return { ok: false, reason: 'already' }
     w.answered = true
+    this._wsDeed(this._wsMine(), SECT_MASTER.regardAnswer, 'you answered the call to arms')   // 43e
     this.addEvent({ text: `You answered the call to arms. Your sword is pledged to the ${this._sectDef().name} until the ${w.enemyName} is dealt with.`, type: 'positive' })
     this._recalc(); this._notify()
     return { ok: true }
@@ -7199,6 +10805,9 @@ class GameState {
       case 'ally':
         if (!WAR_ORDER_ALLY_OPTIONS.includes(value)) return { ok: false, reason: 'invalid' }
         o.ally = value; break
+      case 'raze':   // Phase 43f
+        if (!WAR_ORDER_RAZE_OPTIONS.includes(value)) return { ok: false, reason: 'invalid' }
+        o.raze = value; this._applyRazeOrder(); break
       case 'chestStones': {
         const n = Math.floor(Number(value))
         if (!isFinite(n) || n < 0) return { ok: false, reason: 'invalid' }
@@ -7241,11 +10850,15 @@ class GameState {
     const s = this._s
     if (!s) return { ok: false, reason: 'no_state' }
     const a = s.automation
-    if (['autoExplore', 'autoSectMissions', 'autoCraft', 'autoBreakthrough'].includes(key)) {
+    if (['autoExplore', 'autoSectMissions', 'autoCraft', 'autoBreakthrough', 'autoTemper'].includes(key)) {
       if (typeof value !== 'boolean') return { ok: false, reason: 'invalid' }
       if (value && !this.automationUnlocked(key)) return { ok: false, reason: 'locked' }
       a[key] = value
       if (key === 'autoSectMissions' && value && s.playMode === 'idle' && s.sect.id) this._fillAutoSectMissions()
+      if (key === 'autoTemper' && value) this._autoTemper(Date.now())
+    } else if (key === 'autoTemperId') {   // Phase 14: which safe method Auto-Temper repeats (null = your last)
+      if (value != null && !['drill', 'spirit'].includes(TEMPERING_METHODS.find(m => m.id === value)?.group)) return { ok: false, reason: 'invalid' }
+      a.autoTemperId = value ?? null
     } else if (key === 'breakthroughThreshold') {
       const n = Number(value)
       if (!isFinite(n)) return { ok: false, reason: 'invalid' }
@@ -7274,6 +10887,7 @@ class GameState {
   setAutoCraftRecipe(recipeId, enabled) {
     const s = this._s
     if (!s) return { ok: false, reason: 'no_state' }
+    if (enabled && !this.recipeKnown(recipeId)) return { ok: false, reason: 'locked' }   // Phase 44: an unknown formula can't be auto-crafted
     if (enabled) s.automation.autoCraftRecipes[recipeId] = true
     else delete s.automation.autoCraftRecipes[recipeId]
     this._notify()
@@ -7286,14 +10900,8 @@ class GameState {
   _tickAutomation(dt) {
     const s = this._s
 
-    // Phase 31 (M2 task 2.7e, clan-succession.md §2.7): Ancestral catch-up auto-BT is a base mechanic, not one
-    // of Phase 22's opt-in automations below — it fires in BOTH Active and Idle Mode, below the clan's best-
-    // reached stage only, with the same Ascension-Trial exclusion Auto-Breakthrough already has.
-    if (CATCHUP_AUTO_BT && s.derived?.catchUp && s.derived.canBreakthrough && s.stageIndex < CULTIVATION_STAGES.length - 2) {
-      const res = this.attemptBreakthrough()
-      if (res.success || res.reason === 'failed') this._emit('auto_fire', { system: 'catchup_breakthrough' })
-    }
-
+    // Phase 46 (1.20a): ancestral catch-up auto-BT is gone (Bloodline Quality → Qi/s replaced it). Only the
+    // opt-in Phase 22 automations below remain.
     if (s.playMode !== 'idle') return
     const a = s.automation
 
@@ -7364,7 +10972,7 @@ class GameState {
     if (p.ownSect) {
       const o = p.ownSect
       s.ownSect = { ...this._blankOwnSect(), founded: true, name: o.name, foundedAt: now, hallLevel: o.hallLevel,
-        buildings: Object.fromEntries(SECT_BUILDINGS.filter(b => o.buildings === 'all' || o.buildings.includes(b.id)).map(b => [b.id, true])),
+        buildings: Object.fromEntries(SECT_BUILDINGS.filter(b => o.buildings === 'all' || o.buildings.includes(b.id)).map(b => [b.id, o.buildingLevel || 1])),
         disciples: o.disciples.map(talent => ({ ...this._genRecruit(), talent, level: o.discipleLevel, xp: 0 })) }
       s.sectWar = this._blankSectWar('own')
     }
@@ -7399,6 +11007,21 @@ class GameState {
   setName(name) {
     this._s.name = name.trim().slice(0, 24) || 'Unnamed Cultivator'
     this._notify()
+  }
+
+  // 2026-10-02 (user): name or rename one of your children. Free and cosmetic — the child keeps their whole
+  // record (root/potential, bond, morality, stage, cooldowns); only their given name changes. The player's
+  // own explicit choice, never rolled (agency rule). Called from the child card's Rename action.
+  renameChild(childId, name) {
+    const kids = this._s.family?.children
+    const c = kids && kids.find(x => x.id === childId)
+    if (!c) return { ok: false, reason: 'unknown' }
+    const v = String(name ?? '').trim().replace(/\s+/g, ' ').slice(0, 16)
+    if (!v) return { ok: false, reason: 'empty' }
+    if (v === c.given) return { ok: true, given: v, unchanged: true }
+    c.given = v
+    this._notify()
+    return { ok: true, given: v }
   }
 
   forceSave() { this._save() }
@@ -7470,6 +11093,100 @@ function fmtTime(s) {
   const m = Math.floor((s % 3600) / 60)
   if (h > 0) return `${h}h ${m}m`
   return `${m}m`
+}
+
+// ── Phase 43: levelled sect buildings ────────────────────────────────────────
+// A building's effects at a given level. Level 1 is the building exactly as first raised; every level after scales
+// its effects by (1 + SECT_BUILDING_LEVEL_STEP × (level − 1)). Level 0 = not built (the caller skips it). Shared by
+// _recalc / ownSectInfo (engine), the Halls UI and the Base diorama — pure, no state.
+function sectBuildingEffects(id, level) {
+  const base = SECT_BUILDINGS.find(b => b.id === id)?.effects || {}
+  const k = 1 + SECT_BUILDING_LEVEL_STEP * (Math.max(1, level) - 1)
+  const out = {}
+  for (const [key, v] of Object.entries(base)) out[key] = key === 'beast_slots' ? Math.round(v * k) : v * k
+  return out
+}
+
+// Stones to reach the NEXT level, or null when the building is unbuilt or already at the cap.
+function sectBuildingUpgradeCost(id, level) {
+  const b = SECT_BUILDINGS.find(x => x.id === id)
+  if (!b || !(level > 0) || level >= SECT_BUILDING_MAX_LEVEL) return null
+  return Math.round(b.stones * Math.pow(SECT_BUILDING_UPGRADE_MULT, level))
+}
+
+// Phase 45: a disciple's personality, derived from its id (a hash, never Math.random — migration is RNG-free).
+function disciplePersonality(id) {
+  let h = 2166136261
+  for (const ch of String(id || '')) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
+  return PERSONALITIES[h % PERSONALITIES.length].id
+}
+
+// Phase 45: a branch's seat count — the head takes one: base + the head's talent (1–5) + 1 per 4 levels, capped.
+function branchCap(head) {
+  const S = SECT_BRANCH
+  if (!head) return S.baseCap
+  return Math.min(S.maxCap, S.baseCap + (head.talent || 1) + Math.floor(((head.level || 1) - 1) / 4) * S.levelCapBonus)
+}
+
+// Phase 45: what a branch's members feed the sect — the shared yield × a loyalty factor (a sour head keeps more back).
+function branchYieldMult(b) {
+  const S = SECT_BRANCH
+  const loy = Math.max(0, Math.min(100, b?.loyalty ?? S.loyaltyStart))
+  return S.yield * (S.loyaltyScaleFloor + (1 - S.loyaltyScaleFloor) * loy / 100)
+}
+
+// Phase 43b: a sect's Might — the one number for how strong it is (levels, Sect Hall, tier, disciples). The ledger,
+// the world events' "your Might against theirs" rolls and (43c) the war odds all read this.
+function worldSectMight(r) {
+  const M = WORLD_SECTS.might
+  const levels = Object.values(r?.buildings || {}).reduce((a, v) => a + (v > 0 ? v : 0), 0)
+  return Math.round(M.perLevel * levels + M.perHall * Math.max(0, (r?.hallLevel || 1) - 1) + M.perTier * (r?.tier || 1)
+    + M.discipleSqrt * Math.sqrt(Math.max(0, r?.disciples || 0)))
+}
+
+// Phase 43d: how much of its full blessing a sect can give, from how built-up it is (SECT_BLESSING). 1 = the
+// blessing as written in SECTS[].effects. The parts are the "why" the Overview + popover show.
+function wsBlessingFactor(r) {
+  const B = SECT_BLESSING
+  const levels = Object.values(r?.buildings || {}).reduce((a, v) => a + (v > 0 ? v : 0), 0)
+  const hall = Math.max(0, (r?.hallLevel || 1) - 1)
+  const raw = B.base + B.perLevel * levels + B.perHall * hall
+  return { factor: Math.round(Math.max(B.min, Math.min(B.max, raw)) * 100) / 100, raw, levels, hall }
+}
+// Phase 43d: a sect's effects scaled by k (factor × your rank's share). Multipliers scale their bonus part, flat
+// bonuses scale whole, a breakthrough floor is capped (SECT_BLESSING.btFloorMax); on/off effects stay on. Shared with the UI.
+function sectBlessingEffects(fx, k) {
+  const out = {}
+  for (const [key, v] of Object.entries(fx || {})) {
+    if (typeof v !== 'number') out[key] = v
+    else if (/_mult$/.test(key)) out[key] = Math.max(1, 1 + (v - 1) * k)
+    else if (key === 'bt_floor') out[key] = Math.min(SECT_BLESSING.btFloorMax, v * k)
+    else out[key] = v * k
+  }
+  return out
+}
+
+// Phase 43b: a small seeded RNG (mulberry32 over an FNV hash) — seeding the world's sects draws no Math.random.
+function wsRng(seed) {
+  let h = 2166136261
+  for (const ch of String(seed)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0
+  return () => {
+    h = (h + 0x6D2B79F5) >>> 0
+    let t = h
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+function wsLeaderName(rng) {
+  return `${SURNAMES[Math.floor(rng() * SURNAMES.length)]} ${GIVEN_NAMES[Math.floor(rng() * GIVEN_NAMES.length)]}`
+}
+function wsRivalName(rng, taken = new Set()) {
+  for (let i = 0; i < 40; i++) {
+    const n = `${RIVAL_SECT_PREFIXES[Math.floor(rng() * RIVAL_SECT_PREFIXES.length)]} ${RIVAL_SECT_SUFFIXES[Math.floor(rng() * RIVAL_SECT_SUFFIXES.length)]}`
+    if (!taken.has(n)) return n
+  }
+  return `${RIVAL_SECT_PREFIXES[Math.floor(rng() * RIVAL_SECT_PREFIXES.length)]} ${RIVAL_SECT_SUFFIXES[Math.floor(rng() * RIVAL_SECT_SUFFIXES.length)]} ${taken.size + 1}`
 }
 
 const gameState = new GameState()

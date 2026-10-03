@@ -59,3 +59,12 @@ _Covers: sects.js (data) · renderer/game/sect.js · game-state.js · game.js (r
   (`derived.sectBuffSuppressed`, checked in `_recalc()`); leaving mid-war costs extra karma (deserter).
   `joinSect`/`leaveSect` reset `sectWar` for the member side.
 - Escort mission gives XP to every beast not currently on expedition, via `_addBeastXp()`.
+
+## Phase 43d — the blessing scales with the sect (2026-10-02)
+`SECTS[].effects` is now the **full** blessing. What a member draws is that × k, where k = the sect's build-up factor
+(its halls in `s.world.sects`) × your rank's share. Members can pay to raise their sect's halls, and a lost hall calls
+a levy. A richer sect may court you. See `npc-sects.md` → "43d".
+
+## Phase 43e — the sect master (2026-10-02)
+`s.sect.masterId` is the master of the sect you joined (a world person). A Grand Elder may challenge them on the battle
+page (a `sectmaster` fight) or petition them to step down; winning makes the sect your founded sect. See `npc-sects.md` → "43e".

@@ -1,5 +1,5 @@
 # Crafting System — Reference
-_Covers: crafting.js · game-state.js (craftItem, equipItem, unequipItem, setActivePill, useElixir) · recipes.js · items.js · Phase: 2 · Updated: 2026-09-24_
+_Covers: crafting.js · game-state.js (craftItem, equipItem, unequipItem, setActivePill, useElixir, useHealPill) · recipes.js · items.js · Phase: 2 + 44 · Updated: 2026-10-02_
 
 ## State
 ```
@@ -9,6 +9,7 @@ equipped: {
   artifact: string|null     — currently equipped artifact id
 }
 activePill: string|null     — pill itemId queued for next breakthrough attempt; consumed by attemptBreakthrough
+recipes:    { known: { [recipeId]: { how, at } } }  — Phase 44: which formulas the player knows (hidden ones are found)
 ```
 
 ## API (game-state.js)
@@ -16,8 +17,9 @@ activePill: string|null     — pill itemId queued for next breakthrough attempt
 craftItem(recipeId)     → { ok, item } | { ok:false, reason: 'unknown'|'ingredients' }
 equipItem(itemId)       → { ok } | { ok:false, reason: 'unknown'|'not_equippable'|'not_owned' }
 unequipItem(slot)       → { ok } | { ok:false, reason: 'empty' }   slot = 'weapon'|'artifact'
-setActivePill(itemId|null) → { ok } | { ok:false, reason: 'not_pill'|'not_owned' }
+setActivePill(itemId|null) → { ok } | { ok:false, reason: 'not_pill'|'not_bt_pill'|'not_owned' }   (a `heal` pill → 'not_bt_pill')
 useElixir(itemId)       → { ok, oldRoot, newRoot } | { ok:false, reason: 'not_elixir'|'not_owned' }
+useHealPill(itemId)     → { ok, health, integrity, healed, integrityHealed } | { ok:false, reason: 'not_heal'|'not_owned'|'full' }
 ```
 
 ## Item Types and Their Behavior
@@ -25,6 +27,7 @@ useElixir(itemId)       → { ok, oldRoot, newRoot } | { ok:false, reason: 'not_
 'resource'   — stored in inventory; used as recipe ingredients; never equipped or consumed at BT
 'currency'   — spirit_stone only; routed to s.spiritStones on expedition return, not inventory
 'pill'       — stored in inventory; queued via setActivePill; consumed in attemptBreakthrough
+               (a `heal` pill is instead consumed by useHealPill — it restores Health/Integrity now)
 'elixir'     — stored in inventory; consumed immediately by useElixir (root reroll)
 'weapon'     — stored in inventory until equipped; equipping moves it from inventory to s.equipped.weapon
 'artifact'   — same pattern as weapon; slot is s.equipped.artifact
@@ -86,3 +89,44 @@ attemptBreakthrough()           — reads + consumes s.activePill
 - `expedition_power` and `enemy_hp_reduce` weapon effects are defined in ITEMS but **not yet wired in `_recalc`** — they're reserved for Phase 3 when expedition combat gets deeper
 - Root reroll via elixir calls `_rollSpecificRoot(type)` — this does NOT check stage; you can reroll to a worse root at any point. There is no confirmation prompt — add one in the UI if needed
 - `useElixir` consumes the item before the roll; the outcome is disclosed in the return value — the UI should display `res.oldRoot → res.newRoot` to the player
+
+---
+
+## Phase 44 — Healing pills & discovered recipes (2026-10-02)
+
+A healing consumable set + more weapons/artifacts, with some **formulas discovered** rather than known from the start.
+
+**State** (`_newGame` + `_ensurePhase44Fields`): `s.recipes = { known: { [recipeId]: { how, at } } }`. `_blankRecipes()`
+seeds every non-`hidden` recipe as `{ how: 'basic' }`, so a new life (and an old save via migration) knows exactly the
+guaranteed formulas; `hidden` ones sit as locked "Unknown formula" cards until found.
+
+**Data** (`recipes.js`): a `hidden: true` entry is unknown until found. `RECIPE_DISCOVERY` maps how:
+- `encounter[]` — a stranger met on the road (Roam → Explore) teaches it (help) or it is lost (rob)
+- `arena{ringId}` — a ring champion guards it; beating them for the **ring's title** teaches it (the *best* formulas)
+- plus `encounterChance / arenaWinChance / robStones / robKarma`; `RECIPE_ENCOUNTER_TEXT` is the road flavour.
+`items.js`: the `heal` pill effect (`{ type: 'heal', health, integrity }`) — Mending +30 HP, Blood-Nourishing +60,
+Spirit-Settling +45 Integrity, Soul-Anchoring +45/+25, Golden Marrow +80/+30, Nine-Turn = full. New weapons/artifacts
+reuse the **already-wired** `_recalc` effects (`qps_mult`, `qi_cap_mult`, `bt_bonus`, `void_blade`).
+
+**API** (game-state.js): `recipeKnown(id)` · `recipeSource(id)` · `recipeHint(id)` · `_learnRecipe(id, how)` ·
+`_rollHiddenRecipe(source)` · `_grantManual`-style `_learnRecipe` from the arena · `learnEncounterRecipe(i)` /
+`robEncounterRecipe(i)` · `useHealPill(id)` · `healLock(effect)`.
+
+**Wiring:** `craftItem` / `setAutoCraftRecipe` refuse a hidden recipe you don't know (`reason: 'locked'`); a heal pill
+is **used**, never queued (`setActivePill` → `'not_bt_pill'`), and is refused at full Health/Integrity (`'full'`).
+`resolveExpedition` may push a `{ kind: 'recipe', recipeId, … }` encounter onto `s.family.encounters`;
+`_arenaBoutEnd` grants the ring's recipe on a first title (+ a small chance on any win); `combat.js` names it on the
+Arena result. UI: Craft shows the note + locked cards + a jade heal Use; the Explore encounter card leads the view;
+Pack's heal pill shows Use. `scripts/sim/checks/recipes.js` pins it; `scenarios/recipes.js` is the smoke.
+
+**Depth pass.** Memory: known formulas persist for the life (a future clan Recipe Book legacy could carry them).
+Choices: help or rob the stranger (the formula vs stones + karma); fight on for the ring title or walk. Hooks: Health &
+Death (healing), Arena (champion formulas), expeditions/road encounters, crafting, the pack. Drama: the best formulas
+are behind ring champions; a road formula can be lost. Feedback: knowing a formula changes what you can craft and
+heal after wounds. Agency: every find is the player's choice (help/rob, fight/walk) — the world only rolls whether a
+stranger appears.
+
+**UX pass.** Surface: Craft names the count + each locked card's route; Pack/Craft name the heal amount. Interact:
+1–2 clicks (Help; Use). Discover: the Explore encounter card + attention item ("One carries a formula…"); a toast on
+learning. Feel: xianxia pill names, jade = Health, dashed "sealed" cards + lock icon. Debt: the Overlay's ~227px
+content window still needs scrolling to reach the recipe grid (known, general).

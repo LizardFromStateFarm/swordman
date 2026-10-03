@@ -39,17 +39,23 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | **Soul Points + Immortal cinematic + "you finished v1" screen** | ✅ Phase 40 (v1 finish) — 40a Soul Points core (UI 7.7) + **40b Immortal Ascension cinematic + finish screen** (2026-09-28; screen 7.75, cinematic accepted by the user) |
 | **Combat & Battles** (battle page, beast battles, bestiary) | ◐ Phase 35 — **A6-1 ✅** (2026-09-28): Fight a wild beast from Roam → Beasts on a full-window ink battle page (UI 7.75, effects 8.0). **A6-2 ✅** (2026-09-29): Roam → Hunt + Roam → Bestiary, battle banter, slayer reputation, sim bot hunts (UI 7.7). **A6-3a ✅** (2026-09-29): duels, head challenges, defending the seat + your step-down bouts on the battle page vs ink duelists, finish/spare · raise/humble, debts + grudges (UI 7.83, duelist 8.1). **A6-3b ✅** (2026-09-29): the Arena — Roam → Arena, six rings, purse × streak × renown, blood matches, titles, grudge call-outs (UI 7.75). Next A6-3c bosses (needs 23E/17) |
 | **Arts & Move Combat** (collectible combat arts, 4 moves + passives, parry QTE, no cooldowns; + Sell items) | ◐ Phase 42 — 1.11 Sell ✅ · 1.12 Arts core ✅ (79 arts, Path → Arts, study, loadout, offers, drops); 1.13a move engine ✅ · 1.13b element effects ✅ · **1.14a people on moves ✅** (every fight kind; p.arts, temper AI, scouting; Press/Guard/Feint removed; UI 7.75) · **1.14b ✅** rival counters, raise → taught / finish → manual, Sect → Library, clan library, **study desks by realm** (UI 7.6) · **1.15 QA & Balance ✅** (2026-09-30: the sim bot plays the arts — offers, study desks, loadout, sect + clan library, selling; 27-run sim healthy; checks 790) · **1.16 four saved loadouts ✅** (2026-10-01: 4 free decks you set + switch on Path → Arts, not tied to Hunt/Duel; checks 797) (docs/systems/arts.md) |
+| **Sect Base scene** (view-only compound diorama) | ✅ **A7 / Phase 38A** (2026-10-01): a founder's 宗 Sect → Base sub-tab draws the compound as a large animated ink diorama that grows with halls / Sect Hall level / disciples / fame, the Defensive Array dimmed while damaged (Visual Review Gate: UI 7.5 · scene asset 8.0; **art 2026-10-02: every building detailed + lit, the gate painted, and the sect re-set on a mountain top under a black starry night with no landscape behind it — UI 8.2 / asset 8.7**; docs/systems/scene-art.md) |
+| **Living Sects** (NPC sect buildings, growth, takeover, razing) | ◐ **Phase 43** — **43b ✅** (2026-10-02): `s.world.sects` — every sect a record with halls to its own caps, a yearly growth/decline/clash/birth sim (only while open), stance + deeds memory, six world-sect events with choices, wars bind a real sect, a seceded branch becomes a splinter sect; the **"Sects of the world"** ledger on Sect → Overview (UI 7.7). **43a ✅** (2026-10-01): buildings are levelled for you *and* the world (Lv1–3, effects scale, each level costs more; old saves migrate `true`→1; Halls shows the level + a Deepen tile; the Base diorama grows with it). **43c ✅** (2026-10-02): war odds read the bound rival's Might (own + member); a won war burns one of their halls, a lost one lets them raise one; the War panel's "Their mountain" card (UI 7.75). **43d ✅** (2026-10-02): the joined blessing = effects × its halls' factor × your rank's share; fund your sect's halls; a lost hall calls the levy; a richer sect courts you; blessing chips on ledger + join list (UI 7.8). **43e ✅** (2026-10-02): the sect master: a Grand Elder (no realm gate) challenges on the battle page or petitions them to step down; the takeover (halls at Lv.1, the old guard, an exiled master raises a splinter) (UI 7.9). **43h ✅** (2026-10-02, user: "a user needs to be able to interact with these systems"): every sect opens its own page from "Sects of the world"; a leader can gift, ally / break it, **declare war**, demand tribute, spy, trade manuals, poach; a member can gift, spar, urge their master to war. **43f ✅** (2026-10-02, docs 2026-10-03): raze an enemy sect: the vow + standing order, the world reacts by temper, dread, the ashes and a remnant that returns with a feud (UI 7.7). Next **43g** QA & Balance, folded into the v1 final QA pass (docs/systems/npc-sects.md) |
+| **Lineage sects, reincarnation continuity & Bloodline Qi** (a player-owned sect outlives you — inherited by a branch head, lives on as a world sect; ancestral catch-up removed, **Bloodline Quality → Qi/s**; recruited back into it at Core Formation; NPC sect leaders age/die) | ✅ **Phase 46** (2026-10-03): on death a founded sect becomes a `kind:'lineage'` world sect led by the highest-loyalty branch head (else the strongest disciple) — it grows/churns/can be razed and never just vanishes; `CATCHUP_*` + `derived.catchUp` removed and `BLOODLINE_QI_COEF` (0.004 → +40% at BQ 100) raises Qi/s instead; at Core Formation the old sect offers a place (join / decline, once a life); `_wsCheckSuccession` ages/kills leaders (docs/systems/lineage-sect.md; checks/lineage.js 36 · smoke scenarios/lineage.js; Visual Review Gate 7.2 → **7.6 PASS**) |
+| **Sect branches & sub-leaders** (appoint a Branch Head who recruits their own; rivalry + promotion; the Tournament of Branches; recruit your children free) | ✅ **Phase 45** (2026-10-02): `s.ownSect.branches` + per-disciple `branchId`/`role`/`kin`/`personality` (`_ensurePhase45Fields`); appoint **freely, no gate**; branch members live in the branch's **own seats** (past the Hall cap); output = member rates × yield × loyalty, and **loyalty only sours on a direct wrong** (a spent head **secedes** with the branch, a rival); a yearly `_tickBranches` (recruit + rivalry heat + brawls); the **Tournament of Branches** pays the chosen prize (Qi / an art / stones); a **grown child joins for free** from Kin → Family. UI = a **Branches** section inside Sect → Disciples (no 6th sub-tab) + a child-card row. checks/sect-branches.js (38) · smoke sect.js (+10); **independent UI review was blocked by a sub-agent tool-permission error → handed to the user for sign-off** (docs/systems/sect-branches.md) |
+| **Bloodline → Immortality pacing** (the Ascension Trial now requires the **full Bloodline Quality 100** — Immortality takes ~15 reincarnations, not ~4; the bloodline keeps nearly its full value between lives so it can climb to the cap, but each life adds **less**; BQ raises Qi/s **×2 at 100**) | ✅ **Phase 47** (2026-10-03): `BLOODLINE_CARRY_NEW_SOUL` 0.25 → 0.95 + smaller growth terms (`BLOODLINE_G_PARTNER` 5→2.5, `BLOODLINE_G_HEIR` 4→2.5, `BLOODLINE_G_TRAUMA_HEIR` 2→1) so BQ climbs to the cap in ~15 lives in shrinking steps; `BLOODLINE_QI_COEF` 0.004 → 0.01 (+1%/pt, **×2 at BQ 100**); new `ASCENSION_MIN_BLOODLINE = 100` gates `attemptAscension()` (`bloodline_too_low` — no roll, no death) with the lock shown on the Character tile, the Trial overlay + the breakdown cards; the sim bot **Passes the Mantle** at the peak below 100. **No post-Immortal content — the game ends at Immortality** (user decision). checks/soul.js +9 · smoke scenarios/soul.js captures the locked Trial (docs/systems/bloodline.md → "Phase 47") |
 | **Tame talisman grades & tame attempts** (驯兽符) | ✅ **Phase 41** (2026-09-29): four graded Beast Taming Talismans (Crude 40% → Fine 55% → Superior 70% → Pristine 90%, the old item = Crude), a real tame roll, a failed tame that fights or escapes (nature-weighted; the wounded flee), the bind roll; grade pickers on Roam → Beasts / details / battle end; checks/talismans.js (25) |
 | **A father's hand** (a bad father's rare beating + the grown-up reckoning) | ✅ 2026-10-01 (user; not a roadmap phase) — docs/systems/family.md → "A father's hand"; checks/family-beating.js (25), smoke scenarios/beating.js |
+| **Healing pills + discovered recipes** (灵丹 · 兵刃 · 法器) | ✅ **Phase 44** (2026-10-02): a healing pill set (Health/Integrity, used from Pack/Craft) + new weapons/artifacts; basic healing formulas are known from the start, the **best are guarded by Arena ring champions**, others are taught (or lost) by strangers met on the road. Craft shows locked "Unknown formula" cards. Visual Review Gate **7.6 PASS** (docs/systems/crafting.md → "Phase 44"; checks/recipes.js 29 · smoke scenarios/recipes.js) |
 | Animation + Visual Overhaul | ⬜ Phase 6A–D |
 | Dao Paths, Tribulation | ⬜ Phase 7 (Phase 8 superseded by 23 + 31) |
 | Tray + opt-in desktop notifications (time-of-day = cosmetic only, M8) | ✅ Phase 9A-B (M1 1.3) |
 | War Standing Orders (absence never punished) | ✅ Phase 32 (M1 1.4) |
 | Game Time & Age (age passes only while open; **age never kills** since 2026-09-26) | ◐ Phase 30 (M2) — game clock + age stat + Pass the Mantle; lifespan/twilight/Final Seclusion removed; pacing (2.4) done. Remaining: heirs/legacies/tuning (2.6-2.8) |
-| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ✅ Phase 31 (M2) — 2.6a–f (world/clan registry, children, heirs + tournament, reign + rebirth, challenge/step-down, branch wars + secession) and 2.7a–f (Ancestral Merit, legacies, Ascended Ancestor ending fixes the post-Ascension dead zone, ancestral catch-up, Hall UI) all built. Family Manual picker in Kin → Hall (1.8b-4). Next: 2.8 tuning |
+| Ancestral Hall & Clan Legacies (meta progression, heirs, Ascended Ancestor) | ✅ Phase 31 (M2) — 2.6a–f (world/clan registry, children, heirs + tournament, reign + rebirth, challenge/step-down, branch wars + secession) and 2.7a–f (Ancestral Merit, legacies, Ascended Ancestor ending fixes the post-Ascension dead zone, ancestral catch-up, Hall UI) all built. Family Manual picker in Kin → Hall (1.8b-4). Plus the **bequest** (2026-10-02): at each rebirth you carry down combat arts + items — 1 of each per reincarnation you are on, free and personal (rides an orphan rebirth), separate from the legacies. Next: 2.8 tuning |
 | Birth Origin & Character Foundation | ⬜ Phase 12 |
 | Alignment / Good vs Evil system | ⬜ Phase 13 |
-| Body Constitution & Physical Tempering | ⬜ Phase 14 |
+| **Body Constitution & Tempering** (every life starts Frail and trains F → S; the tier = max Health, regen, failed-BT Qi kept, fight power; + the Tempering Strikes / Meridian Flow mini-games) | ✅ **Phase 14** (2026-10-03): Path → Body (view id `physique`): real-time tempering (drills · spirit · ordeals · Blood Forging), an ordeal's crisis you answer (Endure / Ease off / Draw on Qi), a tier trial you choose (marrow / the bitter way), scars + taint, Auto-Temper (FB), Temper their body for children; every "max Health 100" now reads `maxHealth()`; 230 banter lines; checks/body.js (62) · smoke scenarios/body.js; Visual Review Gate 7.4 → **7.75 PASS** (docs/systems/body-constitution.md) |
 | NPC World Simulation (personalities, sects) | ⬜ Phase 15 → superseded by Phase 28 (M4) |
 | Marriage & Family system | ◐ Phase 16 — lite+ built: proposals, spouse affection + marriage/crisis events, duels, lovers + affair discovery, uncapped children (family.md); full in M6 |
 | Secret Realm Dungeons (ASCII map grid) | ⬜ Phase 17 |
@@ -63,7 +69,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Doctrine (道统) | ⬜ Phase 25 (planned) |
 | Immortal Island (仙岛) + ascension petitions | ⬜ Phase 26 (planned) |
 | Deep Sect Management (offices, Recruiter, manual recruiting) | ⬜ Phase 27 (planned) |
-| Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ⬜ Phase 28 (planned) |
+| Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ◐ Phase 28: spec approved 2026-10-03 (docs/systems/living-world.md); **4.2 ✅** one registry of persons (family/arena/disciples mirrored, real sect masters + elders, senior-elder succession) + the person card (UI 7.7); **4.3 ✅** the light world sim (people age, break through or fall to backlash, the road and feuds, wed, have children, die of old age as a backstop, Ascend) + ~60 classmates per life + 世 World → Class (UI 7.8); **4.6 ✅** the replacement controller (realm bands refilled by awakening waves, wanderers, the band below breaking through faster and hidden masters who seize or found a sect; the elder draft) + the merged 世 World → Chronicle with "The world by realm" (UI 7.8); next 4.4 + 4.5 heavy AI + tiers |
 
 > **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
 > era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
@@ -85,12 +91,60 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ## UX Debt — known gaps in what the player can see / do (add here; remove when fixed)
 
+- **World → Chronicle (4.6, 7.8 PASS):** the World group now has 5 sub-tabs; on Desktop the band strip stacks full width
+  (the pane is under 250 + 340 px), so its bars run long; the your sect/clan/class tags, the Notable chip's unseen dot and
+  the Sects ledger's chronicle link card were not in a reviewed screenshot; Events-log names are still not clickable (4.7);
+  "N hopefuls take the oath" lines are now routine (Sects filter only) but still fill that filter.
+
+- **World → Class (4.3, 7.8 PASS):** only the name in a class row opens the card (make the whole row tappable); "The
+  fallen" toggle is a small text hit area; classmates' names in the event log are not clickable yet (4.7); there is no
+  way to act on a classmate yet (encounters 4.9, interactions 4.10). The World group now has 4 sub-tabs.
+
+- **Person card (4.2, 7.7 PASS):** a long Realm value wraps onto its own line. The go button can point at the view you
+  opened the card from (a disciple from Sect → Disciples, a duelist from the Arena). There's a dead strip on the right on
+  a 390px phone. Names in the event log are not clickable yet (4.7).
+
+- **NPC people (Phase 28 spec, 2026-10-03):** outside the family tree there is no way to see any NPC. World sect
+  masters are bare name strings. The Events log and the Sects chronicle are two separate feeds. Arena champions mean
+  nothing outside the ring. Planned fixes: living-world.md §3 (person card, World → People, the merged Chronicle).
+
+- **Family tree** (7.7 PASS, 2026-10-03): no scroll cue when the tree is wider than its frame (Desktop clips a sibling; Expanded shows one parent) — an edge fade or "more" hint; pedigree rows are centred, not set exactly over each child; no portraits; in Overlay the flash toast sits over the realm name.
+- **Body Constitution (Phase 14, 7.75 PASS, 2026-10-03; ui-review.md)**: Path now has 4 sub-tabs, so "Body" wraps to a second row in Expanded (same as the Sect row); a possible thin horizontal scrollbar in Expanded's pane; Qi rewards read "+420.00M" (the game-wide fmt keeps 2 decimals for M); Overlay is a long scroll to reach the method list; XP past the bank cap is lost silently except for the hero note (an ordeal at a low tier wastes XP — tune in QA); the sim bot never tempers or plays the mini-games (QA pass).
+- **Razing (43f, 7.7 PASS, 2026-10-02; ui-review.md)**: the "Raze if we win" order labels wrap in Expanded (shorten to Never / If they start / Always); long vow-tile chips wrap boxy (split what it brings from what it costs); in Desktop the World ledger footer should give the Dread line its own line; the sim bot never vows (43g); a taken-over sect (43e) is still not re-seeded in a later life.
+- **Bloodline → Immortality pacing (Phase 47, author-reviewed 7.7 — user sign-off pending, 2026-10-03; ui-review.md)**: the locked Ascension Trial's disabled `Ascend Now` text is intentionally dim (`.45` opacity on `--dim`) and sits near the readability floor; the `Survival Chance — Locked` value uses the same `--dim` as an unaffordable readout, so the status could read as plain text; the independent visual reviewer agent was **blocked by the sub-agent tool-permission error** → author-reviewed screenshots handed to the user.
+- **Lineage recruitment (Phase 46, 7.6 PASS, 2026-10-03; ui-review.md)**: in Expanded the offer card's five header chips each take their own row (a compact/shortened chip row would help); declining ("Send them away") is irreversible for the life but is an ordinary tile with no confirm (only the sub-line says so); a lineage membership draws **neutral joined blessing effects** (a founded sect had none) — the reward is the connection + the road back to owning it, but nothing on the page says that; the sim report's "Between lives → Sect" column now reads zeros (the fate is `lineage`).
+- **World tab / pickers (43h follow-up, 7.75 PASS)**: Desktop War leaves the right column scrolled/empty while the Declare-war picker is open; each poach card repeats the sect-wide stance chip (say it once); the pickers are long scroll lists in Overlay.
+- **Sect relations 43h** (2026-10-02): no art for a sect (text page only); tile fact lines run 4–5 lines in Overlay (split odds+gain / failure); a refused/accepted reply is a toast + log, no moment; the toast from your last action can sit over the open page briefly; the sim bot does not use relations yet (43g).
+- **Living Sects 43e** (7.9 PASS, 2026-10-02; ui-review.md): Desktop leaves empty space under the master card's column; the takeover has no moment of its own beyond the battle result (no gold card or ceremony); the old guard card pushes its choices below the fold in Overlay; an exiled master's later comeback is only the generic splinter events (no unique "return" event).
+- **Living Sects 43d** (7.8 PASS, 2026-10-02; ui-review.md): the "Fund their halls" list is long (7 near-identical tiles; Overlay ~6 tiles of scroll when open) — a compact row per hall or "cheapest first" would scan faster; the pip row's trailing dash (past the sect's cap) reads like a level marker; the levy's rebuilt hall and a defection have no moment (log + toast only); the founder's Overview still shows no blessing (a founder has none — by design, but nothing says so).
+- **Living Sects 43c** (7.75 PASS, 2026-10-02; ui-review.md): in Expanded the War column is long, so Standing Orders and "What rides on it" sit below the fold under "Their mountain" (put the stakes first?); no pre-war choice against a known foe (sue for peace / spy / call a sworn ally: offered, not picked); a burned hall is text only (no moment).
+- **Living Sects 43b** (7.7 PASS, 2026-10-02; ui-review.md): a closed ledger row is 4 lines (name · bar · stance · summary) — a one-row accordion and the stance on the name line would make it scannable; Expanded's narrow column wraps sect names to two lines; the join list doesn't say what a sect's stance means for joining; no art for an NPC sect (text only); in Overlay/phone the ledger folds shut to one line (keeps the founder Overview at 2.95 screens) — a reader may not notice it there.
+- **Sect branches** (7.6 PASS, 2026-10-02; ui-review.md): on phone, scrolled content shows through the translucent
+  bottom tab bar (branch chips overlap the Path/Roam labels; give the bar an opaque background or the pane matching
+  bottom padding, likely app-wide); Overlay's icon-only branch / dismiss disciple actions only explain themselves on
+  hover (no hover on touch; consider a first-time hint).
 - **Phone attention minimize** (7.6 PASS, 2026-10-01; ui-review.md): the head's divider line shows through the caret
   button's box (give `.att-min` a background or drop its negative vertical margins); the caret glyph is small for its
   box; the caret is a no-op when only one item exists. The still-short phone content window is now relieved by the
   app-level scroll with a sticky tab bar (2026-10-01).
 - **A father's hand** (2026-10-01): no custom art — the card reuses the family overlay (the upbringing card's sibling);
   the beating has no dedicated health/wound moment on the sprite.
+- **Sect sub-tabs at five** (A7 added 宗 → Base; Phase 43 pinned the fit): a founder's row is Overview · Halls · Base ·
+  Disciples · War. In Overlay the pills are 10.5px with 2px padding to fit 298px **exactly** (no slack for a longer
+  label); in Expanded the column is only ~274px so the row now **wraps to two lines**. Both are stopgaps — a shorter
+  label set or an overflow menu would be the real fix (the old "Overlay Sect sub-tab row cramped" note below).
+- **Sect branches (Phase 45):** a Branch Head is a plain text name (no portrait/art); a brawl is a log line only (no
+  moment); at Overlay/phone scale a branch card is dense (loyalty + seats + rival + member chips) and the tournament's
+  prize sub-text is hidden (labels only). Secession notes a plain `enemies` entry, not a real rival sect record until
+  43b. **Independent UI review was blocked (sub-agent tool-permission error) → author-reviewed screenshots handed to the
+  user for sign-off** (ui-review.md).
+- **Sect → Base scene (A7/38A):** the 2026-10-02 art pass fixed the buildings blending into the background (every
+  structure now has lit windows/beams/a lit wall top/a contact shadow, a detailed roof, and the gate paints; asset
+  8.6). **Still open:** at Overlay/phone scale the smaller structures (pen, pill hall, vault, gate) are only a few px,
+  so their new detail collapses back to single dots — only the Sect Hall + ward read there. `_buildCache`'s LOD only
+  fires below 0.5 px/logical, which this view never reaches, so nothing is enlarged/thinned for the small modes.
+  Candidates: a scene LOD above ~0.9 px/logical (fewer/bigger figures, drop fireflies/motes, thicker flags), or a
+  tighter `view` crop on the compound in the narrow modes. Also open: the sky's top ~15% is still quiet (stars/moon only).
 - **Your own child's raising row (7.5 PASS, 2026-10-01):** with four actions, the Overlay's ~236px tab body can never
   show the child's head (name/age) and the four tiles together — reaching "Raise a hand" always costs you the child's
   identity (the confirm does name them); the confirm's sub-line still wraps (`#confirm-box` is ~230px — shorten or widen);
@@ -218,6 +272,615 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-10-03 (user present) — part 89
+Agent: **Phase 28 task 4.6: the replacement controller + the merged Chronicle** (user approved the assessment; picks: a
+  hidden master may seize a weaker sect's seat or found one · merge the Sects chronicle into the new feed).
+  - Data: npc-lives.js → NPC_WORLD (5 realm bands + targets, birth room, waves, wanderers, promotion boost, crowding,
+    hidden masters, elder draft, Chronicle tuning) + NPC_CHRON_TEXT; NPC_LIFE_TEXT +3; banter trigger hidden_master
+    (15 pools, token {master}).
+  - Engine (game-state.js): _worldBands/_bandIndex/_worldPeople; _lifeStep reads the bands (boost below a short band,
+    hazard × in a crowded one, births by the low band's room); _replenishWorld (waves, wanderers, _hiddenMaster: seize /
+    found / wander, told by log + toast + banter, louder when it is your sect); _wsDraftElder (the yearly tick + successions
+    only, never a UI read); _chron + _chronLives (quiet years too) + _wsChron writes the merged feed (pids, notable,
+    routine); worldChronicle / chronicleNews / noteChronicleSeen / worldBandsInfo; _wsNewRival takes an rng; w.chron in
+    _blankWorld + migrated from sects.chronicle. Fixed: "1 hopeful take the oath".
+  - UI: 世 World → Chronicle (renderer/game/chronicle-view.js): "The world by realm" (count/target, gold tick, Settled/
+    Thin/Crowded + why, "How the world refills" fold) + the feed (chips, years, names → card, tags, paging). The Sects
+    ledger's fold became a link card → Chronicle (Sects). Attention "The world stirs".
+  - Tests: npm test clean · npm run checks **1398 ok** (living-world.js 68 → 98) · sim:quick healthy (0 errors / 0
+    violations, worst slot 510 KB; new invariant band_extinct + report line) · probe-world-lives: every band within ±11%
+    over 1,200 y on 3 seeds, old age 12–13% · smoke scenarios/chronicle.js zero console errors · Visual Review Gate
+    **7.8 PASS** (cycle 1; 2 polish fixes applied).
+  Docs: living-world.md ("4.6 as built"), qa-sim.md, banter-writing-guide.md, npc-sects.md, ui-review.md, index.md, PLAN
+  (4.6 ✅), CLAUDE tree, this file. Uncommitted.
+  Next: **4.4 + 4.5 heavy AI + tiers** (seasonal goals for heavy people, relevance + familiarity, known-first casting, the
+  new-name throttle): spec §6.2, §6.4, §7, §11.4.
+```
+
+```
+Date: 2026-10-03 (user present) — part 88
+Agent: **Phase 28 task 4.3: the light world sim + your class** (user approved the assessment + "a simple class list").
+  - Data: new assets/data/npc-lives.js (lifespans, realm breakthroughs, hazards by role, weddings/births, NPC Ascension,
+    the pre-existing seed, the class spread, log lines); world-population.js gains 5 causes + 2 roles, masterDiesShare 0.35.
+  - Engine (game-state.js): _tickWorldLives on the game-year tick + _worldYears for the generation jump; _lifeStep (grow
+    with realm breakthrough rolls, Ascension, hazard, old age + twilight, classmates join sects, weddings, births, prune);
+    _growPerson (shared with _advancePersons); _npcDies seats the senior elder (_wsSeatHeir, split out of
+    _wsCheckSuccession, whose deaths are now seat_struggle); _seedWorldPeople + _seedCohort (seeded per slot, no
+    Math.random); _tellLives (log lines naming causes, banter, toasts); _pruneDead + _compactDead; unique minted names;
+    _killPerson counts w.lifeStats; classInfo / noteClassSeen / classNews; personInfo + span/twilight/injured/classmate.
+  - UI: 世 World → Class (renderer/game/class-view.js); the card's "Your classmate", "of ~span", status chips, Ascended;
+    an idle attention item for fallen classmates; showToast for world news (game.js). Banter: classmate_fell +
+    classmate_passed (14 personalities × 4 + generic), token {classmate}.
+  - Tests: npm test clean · npm run checks **1368 ok** (living-world.js 32 → 68) · sim:quick healthy (old age 19% of
+    deaths, worst slot 493 KB, was 551) · probe-world-lives 1800 y: ~250 living steady, old age 21%, 682 KB · smoke
+    scenarios/class.js zero console errors · Visual Review Gate **7.8 PASS** (cycle 1; 2 polish fixes applied).
+  - Found: NPC_STAGE_CAP 21 is already the last mortal stage (the spec said 22); High realms thin out over many lives
+    until 4.6 refills them.
+  Docs: living-world.md ("4.3 as built"), qa-sim.md, banter-writing-guide.md, npc-sects.md, ui-review.md, index.md, PLAN
+  (4.3 ✅), CLAUDE tree, this file. Uncommitted.
+  Next: **4.6 replacement controller + Chronicle** (awakening waves, wanderers, hidden masters, band targets, the merged
+  World → Chronicle): spec §6.1, §11.3.
+```
+
+```
+Date: 2026-10-03 (user present) — part 87
+Agent: **Phase 28 task 4.2: one registry of persons + the person card** (user approved the assessment).
+  - Data: new assets/data/world-population.js (budgets, elders by tier, role/cause/morality words).
+  - Engine: Persons v2 fields (persons.js). game-state.js: _regMerge/_regKeep/_mintPerson (seeded, own 'n…' ids so the
+    family's ids + id-seeded arts never shift)/_disciplePerson/_syncPersons (on save, yearly, once per load);
+    _ensurePhase28Fields migration; world sects seat real masters + elders (_wsEnsurePeople/_wsSeat/sectPeople);
+    succession seats the senior elder (the old master dies or retires, by hash); _sectMaster returns the seated person; a
+    seceding head / exiled master / inheriting branch head IS the new sect's master; _recordLifeInWorld keeps rel/mem
+    (_regKeep); personInfo/notePersonSeen/worldSizeInfo.
+  - UI: renderer/game/person-card.js — tap any [data-pid] name (sect page master + ELDERS line, disciples, arena,
+    master card, Their mountain) for a card: realm, root, temper, character, what they think of you (family: bond /
+    affection), kin (tap through, Back), a go button. Visual Review Gate **7.7 PASS** (cycle 1; 2 polish fixes applied).
+  - Tests: npm test clean · npm run checks **1332 ok** (new checks/living-world.js 32; lineage.js accepts a retirement +
+    pins the elder succession) · sim:quick healthy (0 errors / 0 violations; new invariant sect_master_dead; the report
+    gains a "Living world" size line) · smoke scenarios/person-card.js zero console errors.
+  - Known: until 4.3, nobody you met dies of age (~105 people/life; 7 lives = 551 KB slot, inside the 1.2 MB budget).
+  Docs: living-world.md ("4.2 as built"), qa-sim.md, ui-review.md, PLAN (4.2 ✅), CLAUDE tree, index, this file. Uncommitted.
+  Next: **4.3 light sim + lives** (aging/progress, breakthrough deaths, the old-age backstop, marriages + births, NPC
+  Ascension, the pre-existing world, the per-life cohort of ~60): spec §6.
+```
+
+```
+Date: 2026-10-03 (user present) — part 86
+Agent: **Phase 28 (task 4.1): the living world spec** (user: "i think the next task is Phase 28 living world"). Docs only;
+  no code. Read persons.js, the world registry, world sects, arena, family and road strangers to ground it.
+  - Pre-spec forks answered: NPCs die of old age only as a forgiving backstop · the game ends at Immortality (no
+    Immortal-era hooks) · integrate the existing sect + family systems · keep the world in the slot JSON unless needed ·
+    every NPC encounter is told to the player, NPC intent is theirs (an attacker attacks), the player's answer is a
+    queued card with no forced resolve.
+  - New docs/systems/living-world.md: what exists (6 separate person stores), Depth + UX passes, the v2 Person record,
+    one registry with owner objects + pid write-through, population (pre-existing world, ~60 classmates per life,
+    earlier lives' cohorts live on, replacement controller), heavy/light tiers on game time (world frozen offline → no
+    catch-up), lives + deaths (old age < 25% of deaths), utility AI, Your Rival, encounter cards + queue of 6,
+    storage budget (slot ≤ 1.2 MB; localStorage on mobile), build order, invariants.
+  - Review answers (all recommended): pid + write-through · ~60 cohort · ~1 card per 2–3 expeditions · order as §11.
+  Docs: living-world.md (new), PLAN (Phase 28 note + 4.1 ✅), docs/index.md, CLAUDE tree, this file. Uncommitted.
+  Next: **task 4.2: the registry + integration** (v2 person, owner/pid, disciples/sect leaders+elders/arena
+  duelists/strangers into world.persons, _ensurePhase28Fields, the slot-size meter, clickable person card in sect
+  pages + arena). Spec §5, §11.1.
+```
+
+```
+Date: 2026-10-03 (user present) — part 85
+Agent: **Mini-game tweaks + a family tree** (user: "the mini game for body is good but remove 2 of the hits … dont time limit
+  the qi minigame just make it if you finish you get the qi … a button next to meditate … add a family tree to the family
+  tab, like an actual tree … family saying you walk the path alone because you have no wife but you do have parents and
+  siblings is weird"). Picks: the whole clan line · tap → card + existing actions · Flow pays the full 6% with no time bonus.
+  - Strikes 8 → 6 (cut rescaled so a perfect run still cuts 24%). Flow: no timer / par, flat 6% of the Qi cap; closing it sets
+    it aside with your turns, reopening resumes for no new charge. HUD: Meditate is a split with a Meridian Flow segment.
+  - New Kin → Tree (renderer/game/family-tree.js + gameState.familyTreeInfo()): ancestors (3 gens) → grandchildren, drawn
+    lines, past lives marked, tap for a card (Raise them / Be with them / the Hall). Family tab: a "Family tree" door on top;
+    the unwed card is "No partner at your side" and names your parents + siblings.
+  - Tests: npm test clean · npm run checks **1299 ok** (new checks/family-tree.js 16; body.js +3 for the no-clock Flow) ·
+    smoke family-tree.js (new) + body.js (strike count read from data) zero console errors.
+  - **Visual Review Gate: 6.9 FAIL → 7.7 PASS** (fresh reviewer each cycle).
+  Docs: family.md ("Family tree"), body-constitution.md, qa-sim.md, ui-layout.md, ui-review.md, CLAUDE tree. Uncommitted.
+  Next: as part 84 said — Phase 28 living world spec (docs/systems/living-world.md, task 4.1), reviewed with the user before code.
+```
+
+```
+Date: 2026-10-03 (user present) — part 84
+Agent: **Phase 14 (task 3.3) — Body Constitution & Tempering**, step 1 of the v1 wrap-up (user: "body constitution should
+  start at the bottom for everyone. and they must train to level it up … mini games … same for cultivating qi … flow
+  puzzles or quick time events" + "body constitution should increase total health and health regen as well"). Spec
+  written + approved first (docs/systems/body-constitution.md; picks: reset each life, keep Blood Forging, Strikes lets
+  you choose XP or a time cut).
+  - Data: new assets/data/tempering.js (tiers, methods, crisis, trial, scars, Blood Forging, charges, Strikes, Flow);
+    CHILD_ACTIONS.temper + CHILD_BODY (family.js); autoTemper unlock (automation.js); relaxedTiming setting;
+    void_body + body_s clan firsts; 4 banter triggers + 230 lines.
+  - Engine (game-state.js): s.body + s.minigames (_ensurePhase14Fields), maxHealth()/healthRegenSeconds() replace
+    every fixed 100, regen + offline catch-up, _tickBody (payouts, the crisis hold, Auto-Temper), ordeal answers,
+    the tier trial, scars/mending, Blood Forging (karma, taint, righteous sects cool), Thunder Peak BT edge, root
+    boosts, body Qi kept on a failed BT, body fight power (self + persons; Persons.make bodyTier), mini-game charges +
+    engine-verified rewards (FlowPuzzle.check), the child's Temper their body.
+  - UI: Path → Body (body-view.js), the mini-game overlay (minigames.js), Character Body tile + Health n/max +
+    Meridian Flow button, HUD + battle plate read the max, breakdowns body/ordeal/health, attention items, Mode panel
+    Auto-Temper, child card action + body tag.
+  - Tests: npm test clean · npm run checks **1280 ok** (new checks/body.js 62; breakdowns.js label) · sim:quick healthy
+    (0 exceptions / 0 violations) · smoke scenarios/body.js zero console errors. Visual Review Gate 7.4 FAIL (Overlay
+    order blocker, fixed) → **7.75 PASS** (fresh reviewer each cycle).
+  Docs: body-constitution.md (as built), PLAN (Phase 14 ✅, 3.3 ✅, wrap-up step 1 ✅), CLAUDE tree, index.md, qa-sim.md,
+  settings.md, family.md, automation.md, ui-review.md, this file. Uncommitted.
+  Next: **step 2 of the wrap-up — Phase 28 living world (full): write docs/systems/living-world.md (task 4.1) and review
+  it with the user before code.**
+```
+
+```
+Date: 2026-10-03 (user present) — part 83
+Agent: **43f docs + the v1 wrap-up plan** (user: "read start here and claud.md what is the next task" → "before the final
+  qa pass i kind of want to wrap the project up as post immortal play has been delayed/cut for now. the main 3 systems we
+  are missing is the npc simulated world, the leaderboards, and the body constitution system").
+  - **43f docs finished** (left undone by part 80's usage limit): npc-sects.md gains a full "43f" section (depth, UX,
+    rules, API, gotchas; status line updated; the 43e "re-seed a taken sect" gotcha marked still open); sect-war.md
+    documents `warOrders.raze`; qa-sim.md lists checks/sect-raze.js (41) + smoke scenarios/raze.js; ui-review.md
+    records the 7.7 PASS; styles.css gets `/* UI review: 7.7 (2026-10-02) */`; the polish items → UX Debt. Docs only.
+  - **v1 wrap-up order agreed** (PLAN.md → Development Roadmap note): (1) **Body Constitution** (Phase 14, revised:
+    everyone starts at tier F and trains up, real-time tempering, the tier raises **max Health + Health regen**, plus
+    **optional mini-games** for body XP and for Qi: a flow puzzle / quick-time event worth a small chunk, with cooldowns
+    and diminishing returns) → (2) **full Phase 28** living world as written → (3) **Heavenly Rankings** (28J, in-world)
+    → (4) one final QA & Balance pass (43g + 2.8 + the new systems).
+  Next: **write docs/systems/body-constitution.md** (Depth + UX passes, the mini-game designs) and show it to the user
+  before any code.
+```
+
+```
+Date: 2026-10-03 (user present) — part 82
+Agent: **Phase 47 (task 1.21) — Bloodline → Immortality pacing** (user: "read start here and claud.md I have decided
+  that post immortal gameplay doesnt need to be worried about and that the game will just finish when you become
+  immortal. can you make it so you require more reincarnations to become immortal than currently. make bloodline
+  strength affect qi gain more but make you gain less bloodline strength every reincarnation. and to make it so
+  immortality takes longer to hit make it so the user must have 100 minimum blood line strenghth"). Assessment shown;
+  the three forks answered: **~15 reincarnations**, **×2 Qi at BQ 100**, **keep the existing rebirth/Soul flow**.
+  - **bloodline.js**: `BLOODLINE_CARRY_NEW_SOUL` 0.25 → **0.95** (a life keeps nearly all its bloodline, so BQ can
+    climb to the cap instead of plateauing near ~19) + smaller growth terms (`BLOODLINE_G_PARTNER` 5→2.5,
+    `BLOODLINE_G_HEIR` 4→2.5, `BLOODLINE_G_TRAUMA_HEIR` 2→1) so each life adds less; `BLOODLINE_QI_COEF` 0.004 →
+    **0.01** (+1%/pt, ×2 at BQ 100); new `ASCENSION_MIN_BLOODLINE = 100`.
+  - **game-state.js**: `attemptAscension()` refuses below 100 (`reason:'bloodline_too_low'` — no roll, no death, no
+    first claimed); `ascensionBreakdown()` gains `req { need, have, met }` (its `parts` still sum to the odds).
+  - **UI**: the Character tile reads "Locked · Bloodline n / 100" at the last mortal stage; the Trial overlay shows
+    the requirement, a lock note and a **disabled** Ascend button; the Ascension + Bloodline breakdown cards explain
+    the gate (index.html + styles.css + game.js + breakdowns.js).
+  - **Sim bot**: `tryAscension()` **Passes the Mantle** at the peak while BQ < 100 (now the loop that grows BQ);
+    `checkIn()` no longer books the life-reset purse as a "purchase".
+  - **Tests**: `npm test` clean · `npm run checks` **1218 ok** (was 1209; soul.js +9 incl. a 19-life climb check;
+    tournament.js heir constants now read from data, not hardcoded) · `sim:quick` **healthy** (0 errors / 0
+    violations) — the active bot reaches BQ 50 over 6 generations / 24h (BQ 100 lands ~50–60h; no `ascend` action yet,
+    many `passed_mantle` lives — expected). Measured climb: an orphan reaches BQ 100 in ~18 full lives, a clan player
+    in ~13–15.
+  - **No post-Immortal content** (user decision): the game still ends at the first Immortality (the 40b finish screen);
+    the rebirth/Soul flow after it is unchanged.
+  Docs: bloodline.md (new "Phase 47" section + updated state/API/invariants/gotchas), lineage-sect.md, PLAN (Phase 47 +
+  task 1.21), this file. No new files. Uncommitted (the user handles commits).
+  Next: **43g QA & Balance** (Living Sects) → **2.8 QA & Balance**. Visual Review Gate: a fresh reviewer agent was
+  **blocked by the sub-agent tool-permission error**, so the locked Trial was **author-reviewed 7.7 from real
+  screenshots in all four modes (user sign-off pending)**; its polish items are logged in UX Debt.
+```
+
+```
+Date: 2026-10-03 (user present) — part 81
+Agent: **Phase 46 — lineage sects, reincarnation continuity & Bloodline Qi** (user: "read start here and claude.md i
+  want to make some changes": (1) a player-controlled sect should be inherited by a branch member and continue to
+  exist when you reincarnate; (2) no auto-breakthrough catch-up — Bloodline Quality should give extra Qi gain;
+  (3) the player should be recruitable into their previous life's sect at Core Formation, and the NPC world sim
+  should sim people dying/leaders changing as the years pass). The four forks were answered: **living world sect**,
+  **they recruit you**, **+0.4%/pt BQ → Qi**, **leaders + members churn**. Spec written first →
+  docs/systems/lineage-sect.md; built 46a–e straight through.
+  - **46a:** `BLOODLINE_QI_COEF` 0.004 (≤ +40% Qi/s at BQ 100) replaces ancestral catch-up — `CATCHUP_*`,
+    `derived.catchUp`/`catchUpUntil` and the catch-up auto-BT are gone; the Bloodline tile/breakdown now show the
+    Qi/s effect and reveal from BQ > 0; the HUD catch-up chip + Character catch-up button/CSS removed.
+  - **46b:** a founded (or taken-over) sect is inherited on death by the **highest-loyalty branch head** (else the
+    strongest disciple, else a steward) and becomes a real `kind:'lineage'` world sect — global caps, full halls,
+    `lineageOf`/`founderName`, never auto-dissolves, keeps ≥1 hall. Runs outside the clan block, so an **orphan**
+    founder keeps theirs too. `clan.sect` is now a light claim with `worldSectId`; the reign sim no longer rolls its
+    fate; `_installHead` no longer hands a living sect over; `_ensurePhase46Fields` migrates a pre-46 dormant snapshot.
+  - **46c:** `_wsCheckSuccession` — masters age out (tenure-based yearly chance), a new leader/temper + chronicle
+    (and a player log line for your line's sect); members churn (a flavour oath line over the disciple drift).
+  - **46d:** at **Core Formation** a sect-less life gets an offer from the old sect (join as Outer Disciple /
+    decline, once a life) — a Sect → Overview card + an attention item; joining resolves the membership by record id
+    with a synthesised SECTS def, so rank/missions/blessing/master all work.
+  - **46e:** new `scripts/sim/checks/lineage.js` (36) + `scripts/smoke/scenarios/lineage.js` (4 modes + join);
+    updated checks/breakdowns.js + checks/succession.js; `npm test` clean · `npm run checks` **1209 ok** ·
+    `sim:quick` healthy (0 errors/0 violations) · smoke zero console errors.
+  - **Visual Review Gate 7.2 FAIL → 7.6 PASS** (fresh reviewer each cycle). Cycle 1's `[blocker]` was real: the
+    deferred death card in renderer/game.js (`setTimeout(showDeathOverlay, hold)`) was **unguarded**, so a life
+    resolved before the hold fired popped the stale card over the reborn life (the smoke's geometry-only asserts
+    stayed green). Fixed (`if (gameState.get()?.interlude)`), the smoke now dismisses `#death-ok` + asserts no death
+    card before each shot. Also fixed (polish): full-width stacked actions (dropped a misused `wide`), a stance chip,
+    and the founder/master line kept in Overlay.
+  - Docs: new docs/systems/lineage-sect.md, PLAN (Phase 46 ✅ + task 1.20), npc-sects.md, clan-succession.md (2.7e
+    superseded), bloodline.md, qa-sim.md, index.md, CLAUDE tree, ui-review.md. **Uncommitted.**
+  Next: **43g QA & Balance** (Living Sects) → **2.8 QA & Balance**; 46b open item: the sim report's "Between lives →
+  Sect" column now reads zeros (the fate is `lineage`) — teach the report/bot if it matters.
+```
+
+```
+Date: 2026-10-02 (user present) — part 80
+Agent: **Phase 43f — raze an enemy sect** (user: "read start here and claude.md and work on next"). Spec was thin; user picked
+  **the world reacts + the remnant returns** (no sack, no odds change), **own-sect wars only**.
+  - Data: SECT_RAZE (npc-sects.js), vengeance event, WAR_ORDER_RAZE_OPTIONS + warOrders.raze, CLAN_FIRSTS.razed_sect.
+  - Engine: sectWar.razeVow/razeSet, razeInfo/setRazeVow/_applyRazeOrder, _wsRaze (record dies, treasury, manual, karma,
+    fame, dread, per-temper outrage), dread turns weaker foes back, _tickAshes (joinable always returns; rival may return
+    as Reborn X with a grudge: x2 growth, x2 war weight), joinSect ashes lock, ownSect.razed, W.ashes/dread/razed.
+  - UI: War vow tile + chips, Their mountain note, Last war razed card, Raze if we win order, ledger feud tag + Ashes fold +
+    Dread line, detail tag, vengeance card bits, join list In ashes.
+  - Tests: npm test clean, npm run checks 1172 ok (new checks/sect-raze.js 41), sim:quick healthy (no invariant violations),
+    new smoke scenarios/raze.js 4 modes, zero console errors. **Visual Review Gate: 7.7 PASS** (cycle 1, no blockers).
+  - NOT DONE (usage limit): docs/systems/npc-sects.md 43f section, sect-war.md (raze order), qa-sim.md (sect-raze.js +
+    raze.js smoke), ui-review.md entry + /* UI review: 7.7 */ CSS comment, the 3 polish items below → UX Debt.
+    Polish: shorten order labels (Never / If they start / Always) — they wrap in Expanded; long chips wrap boxy (split
+    brings/costs); Desktop ledger footer: put the Dread line on its own line. Uncommitted.
+  Next: finish the 43f docs above → 43g QA & Balance.
+```
+
+```
+Date: 2026-10-02 (user present) — part 79
+Agent: **43h follow-up — 世 World tab, War → Declare war, Disciples → Poach recruits** (user: "i dont like it — make the log tab a world
+  tab and have the sects of the world there … a button on the war tab where you click it then select a sect … a poach recruits
+  button in recruits where you select a sect then it takes you to their disciple list"). Picks: mark 世, the page inline in
+  World, Declare war / Poach in both places.
+  - nav.js: the `log` group is now 世 World (Sects · Events · Banter); check-no-chrome-cjk + CLAUDE.md + ui-review brief + icons.md
+    name 修歷家宗囊世. New `renderer/game/world-view.js` (#tab-world); `sect-detail.js` is now an inline renderer (the #sect-overlay
+    popup is gone). Sect Overviews: a "Sects of the world" tile instead of the list.
+  - War: `_warPicker` (Declare war / Urge war on a sect). Disciples: "Poach recruits" → `_poach` (sects → their named disciples).
+  - Engine: per-sect named rosters (`_relRoster`), `poachTargets` / `poachRoster` / `poachDisciple` (cost + odds by talent and
+    loyalty); the page's Poach leads into the Disciples flow.
+  - Tests: npm test clean · `npm run checks` **1131 ok** (sect-relations.js 31) · smoke sect-relations.js (rewritten), npc-sects.js,
+    sect.js (Overlay Overview 2.77 / Disciples 3.00), blessing, takeover, war-might, mobile all pass, zero console errors.
+    **nav-attention.js fails 1 check, "Mode panel lists all 4 automations" (the Mode panel, untouched here — looks pre-existing).**
+  - **Visual Review Gate: 7.3 FAIL → 7.75 PASS** (fresh reviewer each cycle; cycle-1 blocker: Overlay poach cards overlapped under the
+    old `.sv-cand` rules). Docs: npc-sects.md (43h follow-up), ui-layout.md, PLAN, CLAUDE tree, ui-review.md. Uncommitted.
+  Next: **43f — raze an enemy sect** → 43g QA & Balance.
+```
+
+```
+Date: 2026-10-02 (user present) — part 78
+Agent: **Phase 43h — sect relations** (user: "is there going to be a section to add user interaction with this system … I am not
+  seeing the way to view other sects or declare war … remember a user needs to be able to interact with these systems").
+  Confirmed an oversight (the world could act on you, you could not act first). User picks: a sect detail page, all four
+  leader groups (war · diplomacy · coercion · trade/people), a smaller member set. Built before 43f.
+  - **Data**: `SECT_RELATIONS` (npc-sects.js). **Engine** (game-state.js "Phase 43h"): `sectRelationsInfo` / `sectAct`,
+    `_openWarOn` (a declared / urged / provoked war enters the real state machine), offers + spar foes per year, cooldowns
+    (`r.acted`), `_sparOutcome` + a `spar` fight kind; `sectWar.declaredByYou`.
+  - **UI**: new `renderer/game/sect-detail.js` (#sect-overlay): hero + Might bars, grouped action tiles (cost, odds, effects,
+    lock reason), halls, memory; "Sects of the world" rows are one tap (moved up; Overlay/phone: one tile → the list in the
+    modal, "All sects" back); battle-page copy for the spar; the founder's war tile reads "You march on…".
+  - **Tests**: npm test clean · `npm run checks` **1125 ok** (new checks/sect-relations.js 25) · `sim:quick` healthy · new smoke
+    scenarios/sect-relations.js + npc-sects.js updated + sect.js (founder Overlay Overview 2.89 screens), zero console errors.
+  - **Visual Review Gate: 7.6 FAIL → 7.8 PASS** (fresh reviewer each cycle; cycle 1 blocker: the Overlay hero rendered last, a shared
+    `.fam-card { order }` rule). 2 polish applied; dense tile lines in Overlay → UX Debt.
+  - Docs: npc-sects.md (43h), qa-sim.md, ui-review.md, PLAN, index, CLAUDE tree. Uncommitted.
+  Next: **43f — raze an enemy sect** (a raze toggle on a war you declared + standing order; a replacement sect is born) → 43g QA & Balance.
+```
+
+```
+Date: 2026-10-02 (user present) — part 77
+Agent: **Phase 43e — the sect master + taking the sect over** (user: "continue"). Assessment shown; the user picked **all four
+  depth adds** (the master's regard, ask them to step down, the old guard's fate, the exiled master returns) and **halls drop to Lv.1**.
+  - **Data**: `SECT_MASTER` (npc-sects.js), `DUELIST_ROLE_LOOK.sect_master` (crown + sovereign robe), `CLAN_FIRSTS.took_sect`,
+    epitaphs + death label `sect_master`.
+  - **Engine** (game-state.js "Phase 43e"): the master minted on join / lazily (`_sectMaster`); regard = the sect's stance (missions
+    +1, war call +3/−5, rank-up +2); `canChallengeSectMaster` (Grand Elder, cooldown, **no realm gate**) → a `sectmaster` fight;
+    `_sectmasterOutcome` (win → `_takeOverSect`; spare → `_exileMaster` splinter; lose → Elder + cooldown, or `_die`);
+    `petitionSectMaster` (odds = regard + Might; success = peaceful); `oldGuardInfo` / `answerOldGuard` (win → a branch at
+    loyalty 35 · go → some to the exile · purge).
+  - **UI**: the master card (Overview, member) with challenge + petition tiles, odds popover, lethal %, the prize; the old guard
+    card + "Taken from…" (founder Overview); battle-page copy; attention items "The master's seat" / "The old guard".
+  - **Tests**: npm test clean · `npm run checks` **1101 ok** (new checks/sect-takeover.js 31) · `sim:quick` healthy · new smoke
+    scenarios/takeover.js (4 modes, a real challenge won through the move buttons, the old guard answered) + blessing.js, zero console errors.
+  - **Visual Review Gate: 7.9 PASS** (fresh reviewer, cycle 1, no blockers); 4 polish applied, rest → UX Debt.
+  - Docs: npc-sects.md (43e), sects.md, combat.md, qa-sim.md, ui-review.md, PLAN, index, CLAUDE tree. Uncommitted.
+  Next: **43f — raze an enemy sect** (a raze toggle + standing order; a replacement is born; re-seed a taken sect's record) → 43g QA & Balance.
+```
+
+```
+Date: 2026-10-02 (user present) — part 76
+Agent: **Phase 43d — the joined blessing scales with the sect** (user: "read start here and claudemd and begin next task").
+  The assessment flagged 43d as thin (a hidden multiplier); the user picked **all four depth adds** (fund your sect's halls,
+  rank share, war damage → levy, a richer sect courts you) and the factor on **both the ledger and the join list**.
+  - **Data** (npc-sects.js): `SECT_BLESSING` (factor 0.6 + 0.1/level + 0.08/Sect Hall, 0.4–1.5; rank shares 0.8→1.1; fund +
+    levy + court tuning); two events `levy` (needs.mine/justLost) and `courted` (needs.court) with new choice fields.
+  - **Engine** (game-state.js): module `wsBlessingFactor` + `sectBlessingEffects`; `_recalc` applies effects × k (labelled
+    in the Qi/s breakdown, `derived.sectBlessingK`); `sectBlessing` / `sectBlessingInfo` / `fundSectHall`; `_wsSetback(r, cause)`
+    records `lastLost` → `_wsMineLost` logs the thinner blessing and queues the levy; a lost member war raids your sect;
+    growth of your sect is logged with the new blessing; `_wsDefect`, `_wsRestore`, `_wsCourts`, contrib/mineStance in answers.
+  - **UI**: the blessing card (You draw ×k + why? popover `data-bd="blessing"`, scaled effects "of ×full", burned warning,
+    "Fund their halls" fold), levy/court tiles name Contribution, Health, your sect's stance, the rank + blessing if you go over;
+    "blessing ×N" chips on the ledger + join list; rank-up tile names the next share; stakes copy mentions the raid.
+  - **Tests**: npm test clean · `npm run checks` **1070 ok** (new checks/sect-blessing.js 36; npc-sects.js member-war loop now
+    resets your sect) · `sim:quick` healthy · new smoke scenarios/blessing.js (4 modes, fund via real button, court) +
+    npc-sects.js smoke, zero console errors.
+  - **Visual Review Gate: 7.8 PASS** (fresh reviewer, cycle 1, no blockers); 5 polish applied, 2 → UX Debt.
+  - **Balance note for 43g**: this re-balances live saves — an early Outer Disciple of the Myriad Herb Hall draws k 0.56.
+    The sim bot answers the new events but does not fund halls yet.
+  - Docs: npc-sects.md (43d), sects.md, qa-sim.md, ui-review.md, PLAN, index, CLAUDE tree. Uncommitted.
+  Next: **43e — the sect master + takeover** (Grand Elder, no realm gate) → 43f razing → 43g QA & Balance.
+```
+
+```
+Date: 2026-10-02 (user present) — part 75
+Agent: **Phase 43c — wars read the bound sect's Might** (user: "start with next task"). The assessment flagged 43c as thin;
+  the user picked **outcomes change halls** + **member war uses your sect's Might** (not the pre-war choices).
+  - **Engine** (game-state.js): `_wsWarEnemy`, `_warMightRatio` (ratio = clamp((them/us)^0.6, 0.4, 2.5); 1 at peace or with no
+    record); both resolvers multiply the enemy's strength by it; `sectWarOdds` generalised to the ratio (+ `vs`);
+    `_wsWarResult` burns a hall on their loss / raises one on their win (never past caps, −5 stance) and logs it; the
+    last result keeps the odds/Mights/hall; `enemyTier` = the foe's tier. **Bug fix**: the ally tile/order/request could
+    pick the sect you fight. Data: `WORLD_SECTS.war`, `stanceWarBeatYou`.
+  - **UI**: the War header Might chip, the odds card's Might line, a **Their mountain** card, a Might row on the why popover,
+    the Last war card's burned/raised hall + odds, the stakes copy.
+  - **Tests**: npm test clean · `npm run checks` **1034 ok** (npc-sects.js +15) · `sim:quick` healthy · new smoke
+    scenarios/war-might.js (4 modes + last war + member), zero console errors.
+  - **Visual Review Gate: 7.75 PASS** (fresh reviewer, cycle 1, no blockers); 3 polish items applied; the rest → UX Debt.
+  - Docs: npc-sects.md (43c section), sect-war.md, qa-sim.md, ui-review.md, PLAN, index, CLAUDE tree. Uncommitted.
+  Next: **43d — the joined blessing scales with the sect's build-up** → 43e takeover → 43f razing → 43g QA & Balance.
+```
+
+```
+Date: 2026-10-02 (user present) — part 74
+Agent: **Phase 43b — the world's sects: registry + growth sim + world-sect events + the ledger** (user: "pick up the next
+  task"). Assessment flagged 43b as thin (no UI, no choices); the user picked **43b + surface + depth**, the ledger
+  **inside Sect → Overview**, and all four depth adds: **stance memory**, **your sect's own record**, **world-sect events
+  with choices**, **a seceded branch → a real sect**.
+  - **Data** new `assets/data/npc-sects.js` (`WORLD_SECTS` tuning, seed tables, `WORLD_SECT_EVENTS` ×6: envoys, a hall
+    raised, an insult, a refugee, a splinter's lure, an alliance — each choice reads the sect's temper, your personality,
+    realm vs tier, or Might vs Might). Loaded in index.html + the sim loader.
+  - **Engine** (game-state.js "Phase 43b"): `s.world.sects` seeded RNG-free (`_seedWorldSects`, `_ensurePhase43bFields`;
+    old "faction" secessions → splinter records); `_tickWorldSects` on the game-year tick (grow within each sect's own
+    caps, setbacks, clashes, falls, births, an event roll); `worldSectsInfo` / `worldSectEventInfo` / `answerWorldSectEvent`
+    / `playerMight`; module `worldSectMight`. Hooks: a war binds a real sect (`w.enemyId`, hostility-weighted, sworn
+    never) and the result is remembered; join +25 / leave −20 / desert −40; `_branchSecede` → `_wsSplinter`. **War odds
+    unchanged** (43c).
+  - **UI**: event card at the top of Sect → Overview (3 tiles: cost, real odds, gains, stance on success/fail) + the
+    "Sects of the world" ledger (ranked by Might, stance chip, fold-open halls with pips to the sect's cap, Sect Hall
+    "of max", memory, chronicle) in every standing; Might/stance line on the join list; urgent attention item.
+  - **Tests**: `npm test` clean · new checks/npc-sects.js (43) → `npm run checks` **1019 ok** · `sim:quick` healthy (bot
+    answers events: active 37/24h) · new smoke scenarios/npc-sects.js all ok, zero console errors (4 modes).
+  - **Visual Review Gate: 7.7 PASS** (fresh reviewer, cycle 1, no blockers); polish applied (stance numbers, Might
+    label, "hall levels", pip key); rest logged as UX Debt.
+  - Tuning notes for 43g: growth halved after the first smoke (rivals maxed in ~4 open hours); envoy/tribute stones
+    scale with the sect's tier, not your realm (sim afk: 41% of a tiny early income).
+  - Docs: npc-sects.md (43b Depth + UX pass + as-built), sect-branches.md, qa-sim.md, ui-review.md, PLAN, index, CLAUDE tree.
+  Next: **43c — war odds read Might** (the rival is already bound) → 43d blessing scales with your sect's record.
+```
+
+```
+Date: 2026-10-02 (user present) — part 73
+Agent: **Phase 45 follow-up: the 4-branch cap + branches UI fixes + a full-depth dev rule** (user: "make sure the max
+  amount of branches is 4", "the buttons for tournament and the button to recruit a family member are awkward and
+  cropped", "add to the dev docs that ... this much depth should be assumed and the implementation should be full").
+  - **Cap**: `SECT_BRANCH.maxBranches: 4`; `appointBranchHead` → `max_branches`; `branchInfo()` gains `max`/`full`.
+    The Branches header reads `n / 4`; at the cap every disciple row's **branch** button is disabled with a tooltip,
+    and a note says to dissolve one first. Existing saves with more keep them.
+  - **UI**: tournament prizes rebuilt as stacked `.sv-prize` medallions (they were cropped in Overlay and one word a line
+    in Desktop); the note wraps instead of ellipsizing; the child's "Bring into the sect" wraps to two gold lines (it
+    was scrolled/cropped in Expanded and greyed by `.fa-quiet`); **root-cause fix**: Overlay sect sections overflowed
+    the pane (`.fam-view` align-items:start) → `align-self: stretch`; the disciple row's branch/dismiss are icon-only
+    in Overlay and wrap together elsewhere (names had been crushed to one letter in Expanded).
+  - **Docs**: CLAUDE.md → Design Depth Pass gains "Full depth is the default, and the build is full too" (sect branches
+    as the baseline) + "If the plan or spec is thin, say so before building" (ask questions / recommend depth).
+  - **Tests**: npm test clean · checks/sect-branches.js 38 → 42 (cap) · new smoke scenarios/branches.js (Overlay /
+    Expanded / Desktop / phone, no clipping, cooldown lock) · sect.js + family.js smoke pass (Disciples 2.95 screens).
+  - **Visual Review Gate: 7.6 PASS** (fresh reviewer, cycle 1, no blockers); 2 polish applied (Overlay child sub-line,
+    cap-note spacing), 2 logged as UX Debt.
+  Next: unchanged from part 72 below.
+```
+
+```
+Date: 2026-10-02 (user present) — part 72
+Agent: **Phase 45 — Sect branches & sub-leaders (分舵)** (user: "add more depth to the sect ownership system — you should
+  be able to appoint your disciples as sect sub leaders to run their own branch of the sect where they would recruit
+  their own disciples, and you should be able to recruit your kids whenever you want for free"). Assessment shown; the
+  user's forks: branch model = **appoint freely, no gate**; children = **grown/awakened, free & instant**; depth = **full
+  (rivalry + promotion)** — plus, on the same answer, **a Tournament of Branches the sect leader holds and prizes (Qi /
+  an art / Spirit Stones)** and a rule that heads need **no relationship maintenance**: only a **direct wrong** sours them.
+  - **Data** new `assets/data/sect-branches.js` (`SECT_BRANCH`: seats/yield/recruit/tourney tuning + `wrong` weights);
+    loaded in index.html + the sim loader.
+  - **Engine** (game-state.js, Phase 45): `ownSect.branches` + per-disciple `branchId`/`role`/`kin`/`personality`
+    (`_blankOwnSect` + `_ensurePhase45Fields`; the personality is a hash of the id — no RNG drift); `appointBranchHead`
+    (free, no gate; calling someone out of another branch is a **poach**), `dismissBranch`, `promoteBranchMember`,
+    `holdBranchTournament(kind)` (qi · art · stones), `recruitChild` (free/instant, root → talent), `childRecruitPreview` /
+    `recruitableChildren`, `branchInfo()`. **The Hall cap seats only your own hall** (`_mainRoster()`; branch members live
+    in `branchCap(head)`), so a sect grows past its Hall. Output = member rates × `branchYieldMult` (yield × loyalty) —
+    `_recalc`, `tickOwnSect` and `ownSectInfo` all read it. Loyalty never decays; `_adjustLoyalty` on a wrong → a spent
+    head **secedes** (`_branchSecede`, `_noteEnemy`, a rival). `_tickBranches()` rides the family's game-year tick
+    (recruit + rivalry heat + brawls) — **not offline** (pillar 4).
+  - **UI**: a **Branches** section inside Sect → Disciples (branch cards: head/temper, loyalty, seats, rival/heat, member
+    chips with a promote ↑, Dissolve) + the Tournament tile; a small **branch** button on each disciple row; a
+    "Bring into the sect" row on a **grown** child's card (Kin → Family). No 6th sub-tab (the row is already cramped).
+  - **Tests**: `npm test` clean (304 files) · `npm run checks` **972 ok** (new checks/sect-branches.js 38) · sect smoke
+    **+10, zero console errors**, Overlay Disciples back under the ≤3-screen bar (2.84). **Visual Review Gate: the two
+    reviewer agents both aborted with a sub-agent tool-permission error → recorded as author-reviewed, user sign-off
+    pending** (two `[blocker]`s found on the real screenshots and fixed: a reason-less disabled tournament tile in
+    Overlay, and a wrapped child-card row).
+  - Docs: new docs/systems/sect-branches.md, PLAN (Phase 45 + task 1.19), docs/index.md, qa-sim.md, CLAUDE.md tree,
+    ui-review.md. Uncommitted (the user handles commits).
+  Next: **43b — the NPC sect registry + growth sim** (a seceding branch can later become a real rival sect record) → 2.8 QA & Balance.
+
+Date: 2026-10-02 (user present) — part 71
+Agent: **Name/rename your children + show each child's root (potential)** (two user asks: "rename/name your kids" and
+  "see the root of your kid so you can see the kid with the highest potential"). Not a roadmap phase. Two forks
+  answered with the user: naming = **rename anytime from the child card** (reusing the cultivator's own name box);
+  potential = **a root chip on every child + crown the best-rooted**.
+  - **Engine** (`game-state.js`): `renameChild(childId, name)` — free, cosmetic, `unknown`/`empty`; trims + collapses
+    whitespace, caps at 16, a same-name rename is a no-op; changes only `given` (root/bond/morality/stage/cooldowns
+    untouched). Root needed **no** new state — children already carry `root` from `Persons.blendRoot` at birth; it was
+    simply never shown.
+  - **UI** (`family-view.js`): the child card's foot now carries a `.kid-root` chip (root name + ×mult, coloured by
+    type: heavenly gold / pure jade / dual purple / mixed dim) on **every** child; `_bestRootIds()` crowns each
+    at-home child at the top multiplier (gold, glowing, `crown` icon) — only when there is a clear best. An open card
+    gets a **Rename** row under the head (house `.fa-quiet`), opening the shared name box. `game.js`: `openRename`
+    generalised to `(value, onOk, maxLength)` (child 16, cultivator 24) and shared with the title's rename; the heir
+    picker's `childSummary` also shows the root. `styles.css`: `.kid-root*` (kept outside `.kid-tags` so Overlay keeps
+    it; Overlay foot = uniform two-row), `.kid-rename-row`, `.fa-quiet:hover`. `#rename-input` gained
+    `spellcheck="false"`.
+  - **Tests:** `npm test` clean · `npm run checks` **934 ok** (family-agency +6) · family smoke all ok, zero console
+    errors (new shots `fam-overlay-kids` / `fam-overlay-child` / `fam-rename-box` / `fam-expanded-kids` /
+    `fam-desktop-kids`). **Visual Review Gate: 7.4 FAIL → 7.6 FAIL → 7.75 PASS** (fresh reviewer each cycle): cycle 1
+    the only blocker was evidence (shots didn't frame the change), cycle 2 the "highest potential" label overflowed
+    the card in Expanded (→ " · best"). Its 3 cycle-3 `[polish]` applied same-day. ui-review.md + family.md updated.
+  Next: **43b — the NPC sect registry + growth sim** (unchanged) → 2.8 QA & Balance.
+
+Date: 2026-10-02 (user present) — part 70
+Agent: **Bequest (arts + items carried into the next life) + a player-owned sect always reaches the global cap**
+  (two user requests). Assessment shown; the user answered three forks: sect = **reach the global cap**, inheritance =
+  **N arts + N items on your Nth reincarnation**, and it is a **new, separate inheritance** (not folded into legacies).
+  - **Bequest** (`clan-succession.md` → "Bequest"): every rebirth you may carry down combat arts + pack items — 1 of
+    each per reincarnation you are on (1st rebirth 1+1, 3rd 3+3), capped at 12 each. **Free and personal**: not
+    clan-gated (it rides an **orphan** rebirth) and separate from the Heirloom / Family Manual / Beast Lineage legacies.
+    Engine: `_bequestPool()` snapshots the dying life's arts (minus basics) + non-currency pack at `_die`;
+    `_beginInterlude` seeds `reincarnation`/`bequestPool`/`bequestMax`/`bequest`; `interludeInfo().bequest` feeds the
+    UI; `toggleBequest(kind, id)` toggles a pick; `_applyBequest(it)` runs at `_beginLife` (builds `s.arts` first,
+    adds each art at mastery 1, each item's whole stack, one log line). UI: the interlude's "Your parting gift" chip
+    block above the rebirth buttons (`renderInterlude` + `.beq*` CSS). Data: `BEQUEST_*` in `succession.js`.
+  - **Sect cap** (`npc-sects.md` → "Player-owned sects always reach the global cap"): a sect the player owns (founded
+    or, later, taken over) can build + deepen every hall to the global caps — `SECT_BUILDING_MAX_LEVEL` (3) and
+    `SECT_HALL_LEVELS.length` (4) — and 43b's per-entity NPC `maxBuildingLevel` must never clamp the player's sect.
+    Pinned by two new `checks/sect-view.js` assertions.
+  - **Tests:** `npm test` clean · `npm run checks` **928 ok** (succession +18, sect-view +3) · `npm run sim:quick`
+    healthy (0 errors / 0 violations; the bot bequeaths — 'active' takes the best, casual/afk a seeded subset) ·
+    succession smoke **all ok, zero console errors** (the picker shows, a chip lights gold, the bequeathed art is
+    known in the new life). New smoke shots `2.6d-2b-bequest`, `2.6d-2c-bequest-picked`.
+  - **Visual Review Gate (bequest picker, fresh reviewer each cycle): cycle 1 7.25 FAIL (1 `[blocker]`: a chip past
+    the cap was a silent dead control — no "why") → cycle 2 7.8 PASS, no blockers.** Cycle-1 fixes: over-cap chips
+    `.maxed` + `disabled` + a "Full — unpick one first" title, `n/N · full`, a stronger unpicked outline, and a
+    bounded 148px chip scroller. Cycle-2 `[polish]` applied: the chip rows keep their scroll across the re-render,
+    44px touch targets, and the chip no longer advertises a mastery that resets to 1. Both reviewers' `vision`
+    tools failed (cached prose) so they graded from source. Open: equipped gear is never offered (Heirloom covers it).
+  - Docs: clan-succession.md (Depth + UX pass + as-built), npc-sects.md, qa-sim.md, ui-review.md, this file. No new files.
+  Next: **43b — the NPC sect registry + growth sim** (carry the player-cap rule into it) → 2.8 QA & Balance.
+
+Date: 2026-10-02 (user present) — part 69
+Agent: **Sect Base scene art — three rounds of user feedback** (user: "review the art for the sect … make the buildings
+  a bit more detailed and easy to see they kind of blend into the background"; then "its still a bit harder to see
+  maybe make the background a black starry night"; then "make the sect at the top of a mountain … only the black starry
+  night … no objects or landscape behind the sect buildings"). Read-only art work — no roadmap phase, no state/controls.
+  - **Round 1 — detail + contrast.** Diagnosis (real screenshots): the dotted walls were flat blocks with no
+    windows/beams and their dark roofs sat at the background's value, so only the main hall read; the `gate` slot —
+    always present — had **no painter**, so it drew nothing. Fix (`scene-renderer.js`): new shared motifs `_win`
+    (lit windows/doorways + halo), `_beams` (timber posts), `_wallTop` (a lit top edge), `_seat` (a contact strip) on
+    hall/pagoda/pillHall/vault/yard/pen; `_roof` gained a deeper under-eave, a brighter ridge with upturned lit tips
+    and a warm lit eave line; a real **`gate`** painter (paifang). Palette: `wall` brightened, `slope` darkened, new
+    `shadow`, terrace paving raised. Only the hall's two outer pillars stay red.
+  - **Round 2 — black starry night.** Sky `#242C52→#04060E`, hills darkened, mist/clouds lowered, stars 60→190 +
+    `bigStars` 10, moon brighter (user: the lit compound should carry the frame).
+  - **Round 3 — mountaintop, no landscape.** `background.ridges:false`, `mistA:0`, the `cloudBank`s/`birds`/`pines`
+    removed; `compoundGround` dropped the hillside band (just a faint lit lip at the summit edge); the rock face below
+    the front lip was lifted a step above the sky; `foreRocks` became lit rock; `buildSectScene` now masks a column
+    out of the sky around the Sect Hall's spire so the star band keeps a **fixed** floor (leveling the hall no longer
+    thins the sky). `ink-renderer.js`: `stars` gained `clear`/`fade`; `_paintMist` tolerates a background with no
+    `mistY` (the removal crashed the smoke until guarded).
+  - **Smoke:** `scenarios/scene.js` now also writes 3× `scene-zoom-{hall,left,right,center}.png` crops (repeatable
+    art-gate evidence). `npm test` clean · `checks/scene.js` 35 ok (`no pines` + `black sky carries stars` added) ·
+    **`npm run checks` 910 ok** · scene smoke all ok, zero console errors, all four modes.
+  - **Visual Review Gate (a fresh reviewer each cycle; every reviewer's `vision` tool was partly impaired and said
+    so): R1 cycle1 UI 8.1/asset 8.4 → cycle2 UI 8.3/asset 8.6 · R2 UI 8.3/asset 8.7 · R3 UI 8.2/asset 8.6 — all
+    PASS, no blockers** (asset bar 8.0; contrast/distinctness peaked at **9.0**: "the buildings do not merge into a
+    single mass"). All `[polish]` applied (terrace light + gate seat; hall pillar colour; star floor + `fade` + spire
+    mask; rock face lifted; near rocks lit). Open: the Overlay/phone small-structure size (known UX debt).
+    docs/systems/ui-review.md + scene-art.md updated.
+  Next: **43b — the NPC sect registry + growth sim** (unchanged) → 2.8 QA & Balance.
+
+Date: 2026-10-02 (user present) — part 68
+Agent: **Phase 44 — healing pills, new weapons/artifacts, and discovered recipes** (user's request: "add more pills like a
+  set for healing and more weapons and artifacts … a few can be guaranteed recipes especially a healing one or two, the
+  best should be rewards from the arena, and some recipes found by interacting with the random encounters in explore";
+  assessment approved, user pick: **only NEW recipes are discovery-gated** — existing recipes stay known).
+  - **Content** (`items.js`/`recipes.js`): six healing pills (`effect.type: 'heal'` → Mending +30 Health · Blood-Nourishing
+    +60 · Spirit-Settling +45 Integrity · Soul-Anchoring +45/+25 · Golden Marrow +80/+30 · Nine-Turn = full), 4 weapons
+    (Dust Cleaver, Feather-Whisper Dagger, Iron Bell Hammer, Starfall Spear) and 3 artifacts (Beast-Calling Whistle,
+    Jade Cicada, Lotus Seat) — all reusing the **already-wired** `_recalc` effects. The three basic healing formulas are
+    known from the start.
+  - **Discovery** (`RECIPE_DISCOVERY`): the 10 `hidden: true` formulas are found two ways — **Arena ring champions**
+    (`_arenaBoutEnd` grants the ring's recipe with its first title; the best are Nine-Turn/Golden Marrow/Lotus Seat…) and
+    **road encounters** (`resolveExpedition` may push a `{ kind:'recipe' }` stranger onto `s.family.encounters`; Help →
+    learn it, Rob → 25 stones + 6 karma and the formula is lost). A per-win chance also turns up an unknown one.
+  - **Engine** (game-state.js "Phase 44"): `s.recipes.known` + `_blankRecipes`/`_ensurePhase44Fields` (old saves gain the
+    non-hidden formulas); `recipeKnown/recipeSource/recipeHint`, `_learnRecipe`, `_rollHiddenRecipe`, `useHealPill` +
+    `healLock`, `learnEncounterRecipe`/`robEncounterRecipe`. `craftItem`/`setAutoCraftRecipe` refuse a locked formula;
+    `setActivePill` refuses a heal pill (`not_bt_pill`); a heal pill is refused at full (`full`).
+  - **UI** (game.js): Craft shows a "N of M formulas known" note + dashed locked "Unknown formula" cards with the route
+    hint, and a jade heal **Use**; the Explore "Encounters on the Road" block now renders at the **very top** of Explore
+    (the attention item routes there); Pack's heal pill shows a jade Use. attention.js copy + the Arena result line name
+    the find.
+  - **Tests:** `npm test` clean · checks **909 ok** (new checks/recipes.js 29: start-known set, locked → no craft/auto-craft,
+    learn unlocks, heal restores/clamps/not-queued/refused-at-full, rob karma, migration) · sim:quick **healthy** (bot
+    learns/robs formulas + uses heal pills) · new smoke `scenarios/recipes.js` (10, zero console errors; Overlay/Expanded/
+    Desktop/phone).
+  - **Visual Review Gate: 7.2 FAIL → 7.25 FAIL → 7.6 PASS** (fresh reviewer each cycle; all `vision` tools failed, so each
+    measured the live DOM + PNG IHDR). Cycle-1 blocker: the encounter card sat ~954px below the Overlay fold → moved to the
+    top. Cycle-2 blocker: the Pack screenshot didn't contain its Use button → the smoke now scrolls + asserts on-screen.
+    Jade override fixed with `!important`; then 3 `[polish]` applied ("costs 6 karma", the strangers' own names, a heal Use
+    disabled at full). ui-review.md updated.
+  - Docs: crafting.md (Phase 44 + heal effect/API), ui-review.md, PLAN (Phase 44 + task 1.18 + next-free 45), index.md,
+    CLAUDE.md tree. Uncommitted (the user handles commits).
+  Next: **43b — the NPC sect registry + growth sim** (unchanged) → 2.8 QA & Balance.
+
+Date: 2026-10-01 (user present) — part 67
+Agent: **Phase 43a — levelled sect buildings** (the user's "Living Sects" brief: NPC sect buildings, a growth sim, sect
+  takeover, and razing an enemy sect — planned as Phase 43, sub-tasks 43a–43g; plan approved and in auto-accept). 43a is
+  the foundation everything else needs: **one building model for the player and the world.**
+  - **Data:** `SECT_BUILDING_MAX_LEVEL` (3), `SECT_BUILDING_LEVEL_STEP` (0.5), `SECT_BUILDING_UPGRADE_MULT` (1.8).
+    `SECT_BUILDINGS[].effects` stay the **level-1** values, so nothing was re-balanced.
+  - **Rule:** `effect(level) = base × (1 + 0.5·(level−1))` (Lv1 ×1, Lv2 ×1.5, Lv3 ×2; `beast_slots` stays whole);
+    upgrade to Lv N+1 costs `round(stones × 1.8^N)`.
+  - **Engine:** `ownSect.buildings[id]` is now a **level** (0 = not built). New `_ensurePhase43Fields()` migrates an old
+    save's `true` → 1 (and normalises a legacy `clan.sect` snapshot); `buildSectBuilding` sets level 1; new
+    `upgradeSectBuilding(id)` + `sectBuildingUpgradeCost(id)`; module-scope `sectBuildingEffects(id, level)` is shared by
+    the engine, the Halls UI and the Base scene. `_recalc` scales each effect by the level and pays fame by **total
+    depth** (`10 × Σ levels`) — level 1 gives exactly the old numbers. `ownSectInfo()` gains `builtN`/`totalLevels` and
+    per-building `{ level, maxed, upgradeCost, upShort, canUpgrade }`.
+  - **UI:** Halls shows `Lv.N` per card, an arrow preview of the next level's value, and a **Deepen** tile carrying its
+    cost; the header reads "N of 6 halls raised · M levels"; the Overview's Halls tile carries the level count.
+    `scene-renderer` grows a hall with its level (and the scene `sig` now carries levels, so a deepening re-bakes the
+    diorama). Overlay gets a **compact** hall row (a 2-column grid: name + Lv and one terse effect line, e.g. `Qi/s
+    +26.2% → +39.3%`, beside a 96px Deepen button) — the first pass made Halls 4.8 Overlay screens and broke the
+    ≤3-screen bar; it is 2.64 now.
+  - **Bot:** the sim's builder deepens the cheapest affordable hall once every hall is raised.
+  - **Two nav fixes the work surfaced** (both were failing the existing sect smoke): the founder's row is now **five**
+    sub-tabs, so the sect pills tighten to 10.5px/2px padding in Overlay (fits 298px) and **Expanded's ~274px column
+    wraps the row to a second line** instead of clipping the last tab behind a hidden scrollbar.
+  - **Tests:** `checks/sect-view.js` +14 → **checks 880 ok** (migration `true`→1, level-1 equivalence, scaling, whole
+    beast slots, `not_built`/`max_level`/`stones` gates, rising costs, fame by depth). `npm test` clean · sect smoke
+    **all ok, zero console errors** (incl. "a raised hall shows its level" / "Deepen: a hall rises to level 2" /
+    "the card previews what the next level gives" and the ≤3-screen + sub-tab-fit bars).
+  - Docs: new `docs/systems/npc-sects.md`, own-sect.md (levels), qa-sim.md, PLAN (Phase 43 + index), docs/index.md. Uncommitted.
+  Next: **43b — the NPC sect registry + growth sim** (`s.world.sects`, per-sect `maxBuildingLevel`, `_tickWorldSects`).
+
+Date: 2026-10-01 (user present) — part 66
+Agent: **A7 / Phase 38A — the Sect Base scene** (roadmap A7; assessment approved, placement = a 5th sect sub-tab). A
+  founder's 宗 Sect → Base sub-tab now draws their compound as a large, view-only animated ink diorama that grows with
+  what they build.
+  - **Engine:** new `renderer/engine/scene-renderer.js` — `SceneRenderer extends InkRenderer` (the plan's "do not write a
+    new rasteriser"): `layerOrder: []` skips the figure machinery, `_drawTo` is overridden (baked background + drifting
+    mist + ambience + the ~2.4 s build-growth burst), and `_scenery`/`_ambience` add the scene's kinds (compoundGround,
+    hall, pagoda, pillHall, pen, yard, vault, ward, gate, lanterns, foreRocks / smoke, wardPulse, beastPace, banners,
+    disciples, spiritMotes) with **unknown kinds falling through to `super`** so the realm kinds still work. `_dpr()`
+    forces a ≥2× backing store (a 1× render left the dots sub-pixel). `buildSectScene(s)` is a pure, DOM-free static → `{ background, sig }`.
+  - **Data:** new `assets/scenes/sect-base-scene.js` (`SECT_SCENE`: a 420×236 box, a twilight palette, sky/ridges/mist,
+    the terrace ground line, each structure's `{id,kind,x,y,scale}` slot, dressing) — data only.
+  - **View:** new `renderer/game/base-view.js` (`BaseView`) owns `#scene-canvas` + one renderer; it re-`setScene`s only when
+    the state signature changes and `triggerGrow`s where a structure was just raised. Rendered through its own
+    `VIEW_RENDER['sect-base']` (not `SectView.render`, which would wipe the canvas). The caption line carries the view's
+    only action ("Raise a hall"); the legend chip row scrolls sideways in Overlay/phone.
+  - **Wiring:** `nav.js` sect views + `sect-view.js` `VIEWS`/`viewsFor` + a "Your mountain" tile on the founder's Overview;
+    `index.html` panel + 3 script tags; `styles.css` scene block; `scripts/sim/loader.js` now loads the scene modules so the
+    harness proves they are safe headless.
+  - **Tests:** new `scripts/sim/checks/scene.js` (34) → **checks 866 ok**; new smoke `scenarios/scene.js` (21 ok, zero
+    console errors: canvas present / sized / painted / fits in Overlay · Expanded · Desktop · phone, the legend on screen,
+    a raise + a damaged array both reflected); the `sect.js` smoke's sub-tab assert updated. `npm test` clean.
+  - **Art + gate:** 3 author passes took my own probe 5.0 → 6.5 (a twilight palette with lit ridge rims, the ≥2× render,
+    tile-coursed roofs + under-eave shadow, a dark foreground rock layer, warm light spill). Visual Review Gate cycle 1:
+    **UI 7.5 PASS · scene asset 8.0 PASS**, no blockers, no emoji; the reviewer's `vision` tool was broken again (it
+    decoded PNG pixels + measured DOM geometry instead). Its 2 fixable `[polish]` were fixed (Overlay legend below the fold —
+    panel overflow 126 → 20 px; Desktop/Expanded dead pane); the third (narrow-mode dressing specks) → UX Debt.
+  - Docs: new `docs/systems/scene-art.md`, own-sect.md, index.md, ui-review.md, qa-sim.md, CLAUDE.md tree, PLAN. Uncommitted
+    (the user handles commits).
+  Next: **A6-3c bosses** (still needs 23E/17, neither built) → **2.8 QA & Balance**; the Base scene's narrow-mode LOD and
+    the 38B island reuse stay open.
+
 Date: 2026-10-01 (user present) — part 65
 Agent: **iOS build/device fixes + a phone-minimizable attention center + a new family event.** Three pieces:
   1. **Codemagic iOS signing** (the user's build failed: "No matching profiles found for bundle identifier

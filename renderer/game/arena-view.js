@@ -30,7 +30,7 @@ const ArenaView = {
       const c = info.callout
       top = `<div class="ar-callout">
         <div class="ar-k">A call-out</div>
-        <div class="ar-callout-t">${esc(Persons.fullName(c.p))} has not forgotten you. They wait on the ${esc(c.ring.name)}${c.blood ? ', <span class="down">to the death</span>' : ''}.</div>
+        <div class="ar-callout-t">${PersonCard.link(c.p.id, Persons.fullName(c.p))} has not forgotten you. They wait on the ${esc(c.ring.name)}${c.blood ? ', <span class="down">to the death</span>' : ''}.</div>
         <div class="ar-sub">${esc(temper(c.p))} · ${esc(realm(c.p.stageIndex))} · your odds <b class="${oc(gs.personFightOdds(c.p, 'arena').chance)}">${pct(gs.personFightOdds(c.p, 'arena').chance)}</b> · a win pays <b class="gold">${h.fmt(c.prize)}</b> (no fee)</div>
         <div class="ar-acts"><button class="ar-btn ${c.blood ? 'blood' : 'gold'}" data-ar-callout="1">Answer them</button><button class="ar-btn quiet" data-ar-callout="0">Let it go<small>${ARENA_RENOWN.declined} renown</small></button></div></div>`
     }
@@ -64,7 +64,7 @@ const ArenaView = {
         const lockTxt = r.lock && r.lock !== 'busy' && r.lock !== 'resting' ? ARENA_LOCK_TEXT[r.lock]?.(R, info) : null
         const bloodTxt = !r.lock && r.bloodLock ? ARENA_LOCK_TEXT[r.bloodLock]?.(R, info) : null
         return `<div class="ar-row${r.champion ? ' champ' : ''}${r.lock ? ' held' : ''}">
-          <div class="ar-who"><span class="ar-pn">${r.champion ? '<b data-icon="crown"></b>' : ''}${esc(Persons.fullName(p))}</span>
+          <div class="ar-who"><span class="ar-pn">${r.champion ? '<b data-icon="crown"></b>' : ''}${PersonCard.link(p.id, Persons.fullName(p))}</span>
             <span class="ar-pm">${r.champion ? '<span class="gold">Champion</span> · ' : ''}${esc(temper(p))} · ${esc(realm(p.stageIndex))}${r.feud ? ` · <span class="cb-feud ${r.feud}">${esc(FEUD_TEXT[r.feud])}</span>` : ''}</span>
             ${rec.fought ? `<span class="ar-pm dim">fought ${rec.fought} · you won ${rec.youWon}</span>` : ''}</div>
           <span class="odds-in ${oc(r.odds)}" data-bd="personfight:${esc(p.id)}:arena" title="Your odds to win · why?"><b>${pct(r.odds)}</b><span class="ar-odds-lbl"> to win</span> <i data-icon="why"></i></span>

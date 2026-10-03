@@ -27,6 +27,7 @@ _Covers: assets/data/settings.js · renderer/game/settings.js · game-state.js (
 | profanity | choice | uncensored / masked | uncensored | `BanterSystem.mask()` at display time (bubble + log) |
 | animSpeed | choice | 0.5 / 1 / 2 | 1 | `renderer.setSpeed()`: scales dt → particles, rings, sprite fps |
 | reducedMotion | choice | false / true | false | `renderer.setReducedMotion()`: no particles/rings, sprite only |
+| relaxedTiming | choice | false / true | false | Phase 14: Tempering Strikes' seal is `STRIKES.relaxedMult` (×1.6) wider — an accessibility aid (body-constitution.md) |
 | colorblind | choice | off / deuteranopia / protanopia | off | `<html data-cb>` → CSS overrides `--red`/`--jade` |
 | fontSize | choice | 11 / 13 / 15 | 13 | `#tab-body` `zoom` = value/13 (scales panel text only) |
 | canvasBrightness | choice | 0.7 / 1 / 1.3 | 1 | `#sprite-canvas` `filter: brightness()` |

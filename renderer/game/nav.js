@@ -6,19 +6,21 @@
 // view id = the panel id suffix (#tab-<view>). Add a view: a panel in index.html, an entry here, a render in game.js.
 const NAV_GROUPS = [
   { id: 'cultivate', glyph: '修', name: 'Path',  title: 'Cultivation: techniques and your character',
-    views: [['stats', 'Character'], ['techniques', 'Techniques'], ['arts', 'Arts']] },   // Phase 42: Arts (arts-view.js)
+    views: [['stats', 'Character'], ['techniques', 'Techniques'], ['arts', 'Arts'], ['physique', 'Body']] },   // Phase 42: Arts (arts-view.js) · Phase 14: Body (body-view.js)
   { id: 'adventure', glyph: '歷', name: 'Roam',  title: 'Adventure: expeditions, the road, spirit beasts',
     views: [['explore', 'Explore'], ['beasts', 'Beasts'], ['hunt', 'Hunt'], ['bestiary', 'Bestiary'], ['arena', 'Arena']] },   // A6-2: Hunt + Bestiary · A6-3b: Arena (Auto-Explore's switch: the Explore expedition panel)
   { id: 'kin',       glyph: '家', name: 'Kin',   title: 'Family, clan and the Ancestral Hall',
-    views: [['family', 'Family'], ['clan', 'Clan'], ['hall', 'Hall']] },
+    views: [['family', 'Family'], ['tree', 'Tree'], ['clan', 'Clan'], ['hall', 'Hall']] },   // 2026-10-03: the family tree (family-tree.js)
   // 1.8b-5: which sub-views show depends on your standing (NavUI.setAvailable, from game.js sectViews())
   { id: 'sect',      glyph: '宗', name: 'Sect',  title: 'Your sect: missions, wars, buildings',
-    views: [['sect', 'Overview'], ['sect-missions', 'Missions'], ['sect-library', 'Library'], ['sect-halls', 'Halls'], ['sect-disciples', 'Disciples'], ['sect-war', 'War']],
+    views: [['sect', 'Overview'], ['sect-missions', 'Missions'], ['sect-library', 'Library'], ['sect-halls', 'Halls'], ['sect-base', 'Base'], ['sect-disciples', 'Disciples'], ['sect-war', 'War']],
     auto: 'autoSectMissions' },
   { id: 'pack',      glyph: '囊', name: 'Pack',  title: 'Your pack and the alchemy furnace',
     views: [['craft', 'Craft'], ['pack', 'Items']], autoView: { craft: 'autoCraft' } },
-  { id: 'log',       glyph: '錄', name: 'Log',   title: 'Chronicle of events and idle chatter',
-    views: [['events', 'Events'], ['banter', 'Banter']] },
+  // 43h (user 2026-10-02): the Log group became 世 World — the sects of the world first, the chronicle + banter after.
+  // The id stays 'log' so a saved nav state still resolves.
+  { id: 'log',       glyph: '世', name: 'World', title: 'The world: its sects, the chronicle of events, idle chatter',
+    views: [['world', 'Sects'], ['class', 'Class'], ['chronicle', 'Chronicle'], ['events', 'Events'], ['banter', 'Banter']] },   // Phase 28 (4.3): your class (class-view.js) · 4.6: the merged Chronicle (chronicle-view.js)
 ]
 
 const NAV_AUTO_NAMES = { autoExplore: 'Auto-Explore', autoSectMissions: 'Auto-Missions', autoCraft: 'Auto-Craft' }

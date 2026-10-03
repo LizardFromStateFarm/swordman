@@ -20,14 +20,14 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
     await ev('(() => { const s = gameState.get(); s.sectWar.nextWarAt = Date.now() + 3600e3 })()')
   }
 
-  // ── Mid-game: the Sect Elder, damaged + in catch-up so every row has something to say ──
+  // ── Mid-game: the Sect Elder, damaged + with a grown bloodline so every row has something to say ──
   await load('member_elder')
   await ev(`(() => { const gs = gameState, s = gs.get(); s.realmIntegrity = 62; s.health = 71; s.karma = 38
-    const c = gs._playerClan(); if (c) c.bestStageIndex = s.stageIndex + 3; s.qi = s.derived.qiCap * 0.95; gs._recalc(); gs._notify() })()`)
+    s.bloodlineQuality = 55; s.qi = s.derived.qiCap * 0.95; gs._recalc(); gs._notify() })()`)
   await sleep(300)
   await click('[data-tab="stats"]'); await sleep(200)
   assert(await ev('document.querySelectorAll("#tab-stats [data-bd]").length') >= 6, 'Character view: ≥ 6 tappable tiles')
-  assert(await ev('!document.getElementById("catchup-chip").classList.contains("hidden")'), 'catch-up chip shows on the HUD')
+  assert(await ev('!!document.querySelector("#tab-stats [data-bd=\\"bloodline\\"]")'), 'Bloodline tile shows once it is > 0 (it raises Qi/s)')
   await shot('char-overlay')
 
   for (const kind of ['qps', 'cap', 'bt', 'integrity', 'health', 'karma']) {

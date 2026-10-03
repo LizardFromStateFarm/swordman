@@ -15,6 +15,7 @@ const AUTOMATION_UNLOCKS = {
   autoSectMissions: { sectRank: 3, hallLevel: 2, label: 'Elder rank or Sect Hall Lv.2' },
   autoCraft:        { stageIndex: 19, label: 'Spirit Severing' },
   autoBreakthrough: { stageIndex: 16, label: 'Nascent Soul' },
+  autoTemper:       { stageIndex: 10, label: 'Foundation Building' },   // Phase 14: repeats a safe tempering, never an ordeal
 }
 
 const AUTO_BREAKTHROUGH_THRESHOLD_DEFAULT = 0.95

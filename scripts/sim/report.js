@@ -14,7 +14,8 @@ const FEATURES = ['expedition', 'craft_equipment', 'craft_pill', 'use_elixir', '
   'join_sect', 'sect_mission', 'sect_rank_up', 'found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce',
   'war_answer_call', 'war_chest', 'war_beast', 'ascend', 'buy_legacy',
   // Phase 42 (arts.md, task 1.15): the arts systems the bot now plays
-  'choose_art', 'study_art', 'set_loadout', 'sell', 'buy_sect_art', 'write_clan_art', 'study_clan_art', 'donate_manual']
+  'choose_art', 'study_art', 'set_loadout', 'sell', 'buy_sect_art', 'write_clan_art', 'study_clan_art', 'donate_manual',
+  'lineage_join']   // Phase 46: rejoining the sect your line founded at Core Formation
 
 const KEY_MILESTONES = [
   ['Qi Condensation L1', r => r.stageTimes.find(x => x.stage === 1)?.atH],
@@ -109,7 +110,7 @@ function buildReport(runs, args) {
     // stat only. The real health check is the afk/casual-vs-active comparison below.
     const mign = med(g.map(r => r.memberWars?.ignored))
     if (mign > 0) flags.push(`${tag} Member wars ignored ${mign}× (present, but the "stay out" order — or no commitment at all — left the war uncommitted)`)
-    const founderOnly = ['found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce']
+    const founderOnly = ['found_sect', 'build', 'recruit_disciple', 'upgrade_hall', 'war_ally', 'war_reinforce', 'lineage_join']
     // war_answer_call/chest/beast/ally/reinforce are standing-order-driven for non-active profiles
     // (Phase 32's bot.js warOrders()) — the sim bot itself never calls them for casual/afk by design,
     // so "never used" would be a false positive there. Only flag them for 'active', which still clicks manually.
@@ -377,6 +378,16 @@ function buildReport(runs, args) {
   L.push(``)
   L.push(`## Performance`)
   const avgUs = med(runs.map(r => r.perf.avgTickUs)), maxUs = Math.max(...runs.map(r => r.perf.maxTickUs))
+  if (runs.every(r => r.people)) L.push(`- Living world (Phase 28): ${f(med(runs.map(r => r.people.persons)))} people in the registry (${f(med(runs.map(r => r.people.living)))} living) · save ${f(med(runs.map(r => r.people.slotKB)))} KB median, ${f(Math.max(...runs.map(r => r.people.slotKB)))} KB worst (budget 1,200 KB; world ${f(Math.max(...runs.map(r => r.people.worldKB)))} KB worst)`)
+  if (runs.every(r => r.people?.deaths)) {   // 4.3: how the world's people end (old age must stay < 25%)
+    const d = {}; for (const r of runs) for (const [k, v] of Object.entries(r.people.deaths)) d[k] = (d[k] || 0) + v
+    const tot = Object.values(d).reduce((a, b) => a + b, 0)
+    L.push(`- World deaths (4.3, all runs): ${tot ? Object.entries(d).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([k, v]) => `${k} ${Math.round(v / tot * 100)}%`).join(' · ') : 'none'} · births ${f(runs.reduce((a, r) => a + r.people.births, 0))} · ascended ${runs.reduce((a, r) => a + r.people.ascended, 0)} · classes ${f(med(runs.map(r => r.people.classes)))} median`)
+    if (runs.every(r => r.people.bands)) {   // 4.6: the replacement controller (each band's mean vs target, median across runs)
+      const ids = runs[0].people.bands.map(b => b.id)
+      L.push(`- World by realm (4.6, mean over the run vs target, median of runs): ${ids.map((id, i) => `${id} ${med(runs.map(r => r.people.bands[i].mean))}/${runs[0].people.bands[i].target}`).join(' · ')} · refills: ${f(runs.reduce((a, r) => a + r.people.refill.waves, 0))} waves, ${f(runs.reduce((a, r) => a + r.people.refill.wanderers, 0))} wanderers, ${runs.reduce((a, r) => a + r.people.refill.hidden, 0)} hidden masters (${runs.reduce((a, r) => a + r.people.refill.seized, 0)} seized a sect)`)
+    }
+  }
   L.push(`- Game tick: ${avgUs}µs avg, ${f(maxUs)}µs worst (budget at 60fps: 16,667µs) · sim speed ~${f(med(runs.map(r => r.perf.simHoursPerWallSec)))} game-hours per real second${args.jobs > 1 ? ` (measured under ${args.jobs}-way parallel load — use \`--jobs=1\` for clean tick timings)` : ''}`)
   L.push(``)
   L.push(`Profiles: ${profiles.map(p => `**${p}** = ${PROFILES[p].desc}`).join('; ')}.`)

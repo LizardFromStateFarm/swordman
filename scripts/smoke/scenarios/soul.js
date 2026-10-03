@@ -25,6 +25,17 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     gs._recalc(); s.qi = s.derived.qiCap; gs._recalc(); gs._notify() })()`); await sleep(400)
   await click('#btn-breakthrough')
   await wait('!document.getElementById("ascension-overlay").classList.contains("hidden")')
+  // Phase 47: below the full bloodline the Trial is locked — no chance shown, the button refused.
+  assert(await ev('document.getElementById("ascend-now").disabled && !document.getElementById("asc-lock").classList.contains("hidden")'), 'Trial locked below Bloodline 100')
+  assert((await ev('document.getElementById("asc-chance").textContent')) === 'Locked', 'Trial card: Survival Chance reads Locked')
+  await shot('soul-trial-locked')
+  for (const mode of ['expanded', 'desktop']) { await pick(mode); await shot(`soul-trial-locked-${mode}`) }
+  await emulate(390, 844); await pick('desktop'); await sleep(400); await shot('soul-trial-locked-phone')
+  await clearEmulation(); await pick('overlay'); await sleep(300)
+  await click('#ascend-wait')
+  await ev('(() => { const s = gameState.get(); s.bloodlineQuality = ASCENSION_MIN_BLOODLINE; gameState._recalc(); gameState._notify() })()'); await sleep(300)
+  await click('#btn-breakthrough')
+  await wait('!document.getElementById("ascension-overlay").classList.contains("hidden")')
   const want = await ev('Math.round(SOUL_FAIL_BASE + SOUL_FAIL_PER_PCT * Math.round(gameState.ascensionChance() * 100))')
   assert((await ev('document.getElementById("asc-soul").textContent')) === `+${want} Soul Points`, `Trial card: "Should you fall +${want} Soul Points"`)
   await shot('soul-trial-card')

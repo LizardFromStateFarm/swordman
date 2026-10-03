@@ -40,9 +40,11 @@ class Bot {
       this.interlude()   // an action this check-in may have ended the life — never act on an unborn one
       const before = this.s.spiritStones
       const acted = this.family() || this.legacies() || this.soul() || this.arts() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
-        this.elixirs() || this.memberWar() || this.beasts() || this.hunt() || this.arena() || this.sect() || this.ownSect() || this.war() ||
+        this.elixirs() || this.heal() || this.memberWar() || this.beasts() || this.hunt() || this.arena() || this.sect() || this.ownSect() || this.war() ||
         this.pushExpedition() || this.expedition()
       if (!acted) break
+      // A life-ending action (pass_mantle / a death) books the life-reset purse delta too — the metrics
+      // stone_ledger invariant requires every stone to be accounted, so it is attributed to that action.
       this.rec.stones(this.rec.lastAction, this.s.spiritStones - before)
     }
     this.interlude()
@@ -459,8 +461,29 @@ class Bot {
       const pw = this.gs.canPushBranchWar()
       if (pw.ok && this.rand() < (this.profile === 'active' ? 0.05 : 0.02)) return this.do('push_branch_war', this.gs.pushBranchWar())
     }
-    // Encounters: seduce 1 in 4 (enough to exercise affairs, discovery and every reaction branch).
+    // Phase 43b: a world-sect event waits on an answer. 'active' takes the best-odds affordable choice; the others pick
+    // any affordable one at random (enough to exercise every branch, stance swings and the fail paths).
+    const wse = this.gs.worldSectEventInfo?.()
+    if (wse) {
+      const open = wse.choices.filter(c => !c.lock)
+      if (open.length) {
+        const c = this.profile === 'active' ? [...open].sort((a, b) => (b.odds ?? 1) - (a.odds ?? 1))[0] : open[Math.floor(this.rand() * open.length)]
+        return this.do('world_sect_event', this.gs.answerWorldSectEvent(c.i))
+      }
+    }
+    // Phase 46 (1.20d): the sect your line founded offers a place at Core Formation. 'active' takes it (a way back
+    // into its own old sect); casual/afk mostly decline — enough to exercise both paths.
+    const lr = this.gs.lineageRecruitInfo?.()
+    if (lr) {
+      const join = this.profile === 'active' ? true : this.rand() < 0.3
+      return this.do(join ? 'lineage_join' : 'lineage_decline', this.gs.answerLineageRecruit(join))
+    }
+    // Encounters: a formula-carrier → help to learn it (mostly) or rob; a lover encounter → seduce 1 in 4
+    // (enough to exercise affairs, discovery and every reaction branch).
     if (f.encounters?.length) {
+      if (f.encounters[0].kind === 'recipe') {
+        return this.rand() < 0.8 ? this.do('learn_recipe', this.gs.learnEncounterRecipe(0)) : this.do('rob_recipe', this.gs.robEncounterRecipe(0))
+      }
       return this.rand() < 0.25 ? this.do('seduce', this.gs.seduceEncounter(0)) : this.do('leave_encounter', this.gs.dismissEncounter(0), false)
     }
     const prop = f.proposal
@@ -484,6 +507,16 @@ class Bot {
         const pick = this.profile === 'active' ? [...c].sort((a, b) => b.stageIndex - a.stageIndex)[0] : c[Math.floor(this.rand() * c.length)]
         this.do('heir_bet', this.gs.placeBet(pick.id), false)
       } else {
+        // 2026-10-02: the bequest — carry arts + items into the next life (1 of each per reincarnation you are on).
+        // 'active' takes the strongest (the pool is best-first); casual/afk take a seeded random subset.
+        const bq = info.bequest
+        if (bq && (bq.maxArts > 0 || bq.maxItems > 0)) {
+          const shuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(this.rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
+          const arts = this.profile === 'active' ? bq.pool.arts : shuffle(bq.pool.arts)
+          const items = this.profile === 'active' ? bq.pool.items : shuffle(bq.pool.items)
+          for (const a of arts.slice(0, bq.maxArts)) this.gs.toggleBequest('arts', a.id)
+          for (const x of items.slice(0, bq.maxItems)) this.gs.toggleBequest('items', x.id)
+        }
         const orphan = !info.canJoinClan || (this.profile === 'casual' && this.rand() < 0.1)
         this.do('rebirth', this.gs.chooseRebirth(orphan ? 'orphan' : 'clan'), false)
       }
@@ -524,11 +557,18 @@ class Bot {
   }
 
   // ── Ascension Trial (Phase 23C) ──────────────────────────────────────────
-  // No in-life lever raises survival chance much beyond passive Health/Integrity regen, so — like the
-  // rest of this bot — it's greedy, not optimal: attempt as soon as ready, accepting the gamble.
+  // Phase 47 (1.21): the Trial requires Bloodline Quality 100. Until then the only way to thicken the bloodline is
+  // to end the life and reincarnate — so at the peak a greedy bot lays down the path (Pass the Mantle) and climbs again.
+  // No other in-life lever raises survival chance much beyond passive Health/Integrity regen, so the attempt itself
+  // stays greedy: take the gamble as soon as BQ 100 opens it.
   tryAscension() {
     const s = this.s, d = s.derived
     if (!d.canBreakthrough) return false
+    if ((s.bloodlineQuality || 0) < this.D.ASCENSION_MIN_BLOODLINE) {
+      this.gs.passTheMantle()
+      this.rec.act('pass_mantle', true)
+      return true
+    }
     const res = this.gs.attemptAscension()
     this.rec.act('ascend', true)
     if (res.success) this.rec.milestone('first_ascend_success')
@@ -550,7 +590,7 @@ class Bot {
     if (s.ownSect.founded) return this.D.SECT_BUILDINGS.filter(b => !s.ownSect.buildings[b.id]).reduce((a, b) => a + (b.items[id] || 0), 0)
     return 0
   }
-  canCraft(r) { return r.ingredients.every(i => this.inv(i.itemId) - this.reserved(i.itemId) >= i.qty) }
+  canCraft(r) { return !!r && (!r.hidden || this.gs.recipeKnown(r.id)) && r.ingredients.every(i => this.inv(i.itemId) - this.reserved(i.itemId) >= i.qty) }
   get ascended() { return this.s.stageIndex >= this.D.CULTIVATION_STAGES.length - 1 }
   recipe(productId) { return this.D.RECIPES.find(r => r.productId === productId) }
 
@@ -573,6 +613,11 @@ class Bot {
       const r = this.recipe(p)
       const cap = p === 'pill_heart_calming' ? 2 : p === 'pill_heaven_defying' ? 1 : 3
       if (r && this.inv(p) < cap && this.canCraft(r)) return this.do('craft_pill', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
+    }
+    // Phase 44: a couple of healing pills on hand — a life-saving use when wounded.
+    for (const p of ['pill_blood_nourish', 'pill_mending']) {
+      const r = this.recipe(p)
+      if (r && this.inv(p) < 2 && this.canCraft(r)) return this.do('craft_heal_pill', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
     }
     // Taming talismans when a beast is waiting and there's room — keep two, so a failed tame can still be bound (Phase 41)
     if (s.beastEncounters.length && this.talismanCount() < 2 && s.beasts.length < s.derived.maxBeasts) {
@@ -608,6 +653,15 @@ class Bot {
       if (this.inv(e)) return this.do('use_elixir', this.gs.useElixir(e))
       const r = this.recipe(e)
       if (this.canCraft(r)) return this.do('craft_elixir', this.gs.craftItem(r.id, { watched: this.profile === 'active' }))
+    }
+    return false
+  }
+
+  // Phase 44: take a healing pill when wounded (best first).
+  heal() {
+    if ((this.s.health ?? 100) >= 60) return false
+    for (const p of ['pill_nine_turn', 'pill_golden_marrow', 'pill_soul_anchor', 'pill_blood_nourish', 'pill_mending']) {
+      if (this.inv(p)) return this.do('use_heal_pill', this.gs.useHealPill(p))
     }
     return false
   }
@@ -810,7 +864,13 @@ class Bot {
     }
     const b = D.SECT_BUILDINGS.filter(b => !o.buildings[b.id] && b.stones <= s.spiritStones &&
       Object.entries(b.items).every(([id, q]) => this.inv(id) >= q)).sort((a, b) => a.stones - b.stones)[0]
-    return b ? this.do('build', this.gs.buildSectBuilding(b.id)) : false
+    if (b) return this.do('build', this.gs.buildSectBuilding(b.id))
+    // Phase 43: once every hall is raised, deepen the cheapest one it can afford (keep a reserve for recruits).
+    const up = D.SECT_BUILDINGS.map(x => ({ id: x.id, lvl: o.buildings[x.id] || 0, stones: x.stones }))
+      .filter(x => x.lvl > 0 && x.lvl < D.SECT_BUILDING_MAX_LEVEL)
+      .map(x => ({ id: x.id, cost: Math.round(x.stones * Math.pow(D.SECT_BUILDING_UPGRADE_MULT, x.lvl)) }))
+      .filter(x => x.cost <= s.spiritStones / 2).sort((a, b) => a.cost - b.cost)[0]
+    return up ? this.do('upgrade_building', this.gs.upgradeSectBuilding(up.id)) : false
   }
 
   war() {

@@ -125,7 +125,7 @@ offline Qi rate, not aging offline.
 |---|---|---|
 | One mortal life (birth → end) | 20–40h of open play (was 10–20h; widened 2026-09-26 when old age was removed) | ✅ median 29.5h (active 9.9h — faster, ≥5h floor) |
 | Generations before the first successful Ascension | ~3–5 (≈ 40–80h total) | not yet measurable — needs ancestral catch-up (tasks 2.5–2.8); every death is still a fresh soul |
-| Early realms in a later generation | noticeably faster than in generation 1 (ancestral catch-up) | not built yet (task 2.7's `CATCHUP_QPS_MULT`) |
+| Early realms in a later generation | noticeably faster than in generation 1 (**Bloodline Quality → Qi/s**) | ✅ built 2026-10-03 (Phase 46: `BLOODLINE_QI_COEF`, up to +40% Qi/s at BQ 100 — the ancestral catch-up was removed in favour of this) |
 | Immortal era | open-ended; long play is fine here | unchanged (M7) |
 
 > **2026-09-26: old-age death was removed** (age is a stat only, no lifespan/twilight/Final Seclusion). With it

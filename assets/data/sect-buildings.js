@@ -1,5 +1,6 @@
-// Own-sect (Phase 5A) data: founding requirements, Sect Hall levels, buildings, disciple constants + name pools.
-// Depends on: items.js (item ids). Used by: game-state.js (own-sect logic, _recalc), game.js (Sect tab).
+// Own-sect (Phase 5A) data: founding requirements, Sect Hall levels, buildings (now levelled, Phase 43), disciple
+// constants + name pools. Depends on: items.js (item ids). Used by: game-state.js (own-sect logic, _recalc), game.js
+// (Sect tab), renderer/game/sect-view.js (Halls), renderer/engine/scene-renderer.js (the Base diorama).
 
 // minStage 19 = Spirit Severing, where void_crystal first drops (void_rift) — was 18, an unreachable promise
 const SECT_FOUNDING = { minStage: 19, stones: 500, items: { void_crystal: 50 }, maxNameLen: 20 }
@@ -44,6 +45,16 @@ const SECT_BUILDINGS = [
     stones: 150, items: {}, effects: { income_mult: 1.3 },
   },
 ]
+
+// ── Phase 43: buildings are levelled ─────────────────────────────────────────────────────────────────────
+// Level 1 is the building exactly as first raised (so nothing changes for a save that had it built); every level
+// after multiplies its `effects` by (1 + SECT_BUILDING_LEVEL_STEP × (level − 1)), and reaching level N+1 costs
+// SECT_BUILDING_UPGRADE_MULT^N × its stone cost. NPC sect records carry their own `maxBuildingLevel` (43b) so the
+// world's sects do not all grow to the same height — but a PLAYER-owned sect is never held below this global cap
+// (user 2026-10-02: owning a sect always lets you deepen every hall to the highest level), pinned by checks/sect-view.js.
+const SECT_BUILDING_MAX_LEVEL   = 3
+const SECT_BUILDING_LEVEL_STEP  = 0.5    // effect × (1 + 0.5·(level−1)) → Lv1 ×1, Lv2 ×1.5, Lv3 ×2
+const SECT_BUILDING_UPGRADE_MULT = 1.8   // upgrade to Lv N+1 = round(stones × 1.8^N)
 
 const DISCIPLE_MAX_LEVEL       = 10
 const DISCIPLE_RECRUIT_COST    = 15      // Spirit Stones × talent²

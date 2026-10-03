@@ -29,8 +29,17 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   assert(await ev('!!document.querySelector("#interlude-body .chron-bet")'), 'bet result shown')
   assert(await ev('document.querySelectorAll("#interlude-choices [data-rebirth]").length === 2'), 'clan / orphan choice offered')
   await shot('2.6d-2-chronicle')
+  // 2026-10-02: the bequest — carry 1 art + 1 item per reincarnation you are on (chosen here, applied at birth).
+  assert(await ev('!!document.querySelector("#interlude-body .beq")'), 'the bequest picker shows on the chronicle card')
+  const pickArt = await ev('document.querySelector(\'#interlude-body [data-beq="arts"]\').dataset.id')
+  await shot('2.6d-2b-bequest')
+  await click('#interlude-body [data-beq="arts"]')
+  assert(await ev('gameState.interludeInfo().bequest.arts.length') === 1, 'clicking an art chip passes it down')
+  assert(await ev('!!document.querySelector("#interlude-body .beq-chip.on")'), 'the picked art chip lights up')
+  await shot('2.6d-2c-bequest-picked')
   await click('#interlude-choices [data-rebirth="clan"]')
   assert(await ev('!document.getElementById("death-ok").classList.contains("hidden") && !gameState.get().interlude'), 'birth card, life begun')
+  assert(await ev(`!!gameState.get().arts.known[${JSON.stringify(pickArt)}]`), 'the bequeathed art is known in the new life')
   await shot('2.6d-3-birth')
   await click('#death-ok')
   assert(await ev('document.getElementById("death-overlay").classList.contains("hidden")'), 'birth card closes')
@@ -256,6 +265,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   await ev(`(() => {
     const gs = gameState, s = gs.get(), lastMortal = CULTIVATION_STAGES.length - 2
     s.stageIndex = lastMortal; s.maxStageThisLife = lastMortal
+    s.bloodlineQuality = ASCENSION_MIN_BLOODLINE   // Phase 47: the Trial is gated on the full bloodline
     gs._recalc(); s.qi = gs.get().derived.qiCap; gs._recalc(); gs._notify()
   })()`)
   await click('#btn-breakthrough')

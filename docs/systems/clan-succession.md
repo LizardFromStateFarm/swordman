@@ -1,8 +1,9 @@
 # Clan Succession — Build Spec (M2 tasks 2.6a–2.6f, 2.7 plan)
 _Covers: world/life save split · clan registry (main line + ≤3 branches) · children who cultivate · bond + morality ·
 Tournament of Heirs · reign simulation · rebirth as a descendant (or orphan) · head challenges · succession tournaments
-· branch wars · secession · Ancestral Hall + Clan Legacies (plan) · Phase: 16/18C/31 rework (M2) · Updated:
-2026-09-26 · **Status: 2.6a–f built; 2.7 is a reconciled plan, not yet built**_
+· branch wars · secession · Ancestral Hall + Clan Legacies · the bequest (arts + items carried into the next life) ·
+Phase: 16/18C/31 rework (M2) · Updated:
+2026-10-02 · **Status: 2.6a–f and 2.7a–f built; the bequest built 2026-10-02**_
 
 **Replaces the old task 2.6** ("choose an heir at death and play as them", life-loop.md §4.3/§5.1/§7 heir parts).
 User-designed 2026-09-26. You never *play as* your heir. The heir (an NPC) takes over the clan; the world simulates
@@ -80,6 +81,9 @@ Pruning: persons who are dead, not a head/heir, and ≥ 3 generations old are dr
   an extra flat `BLOODLINE_G_TRAUMA_HEIR` on top (the blood that survives the crucible runs stronger). Recorded as
   `trauma` on the heir's Person so the reign sim (2.6d) and the Ancestral Hall can show it.
 - **Sect:** the clan head owns the clan's sect. Your founded sect goes to the heir on your death (stored on `clan.sect`).
+  **Phase 46 (1.20b, lineage-sect.md):** it is now inherited by a **branch head** instead, and keeps living as a real
+  world sect — `clan.sect` is only the clan's light claim (the stipend) pointing at the record. A living sect is no
+  longer handed to the player by a head challenge.
 
 ## Death → the heir's reign → rebirth (2.6d)
 1. **Who takes over:** your designated heir; else the clan picks by its own succession rules (strongest adult child,
@@ -525,11 +529,10 @@ behavior change worth confirming.
   through the **already-built** interlude/rebirth flow exactly like any other death, instead of leaving the
   character alive at a stage with nothing left to do. `_recalc()` applies `clan.blessingStacks × ANCESTOR_BLESSING_QPS`
   to Qi/s unconditionally (a permanent clan-wide blessing, not gated by catch-up).
-- **Ancestral catch-up (31E):** in `_recalc()`, while `stageIndex < clan.bestStageIndex`: Qi/s `× CATCHUP_QPS_MULT`,
-  breakthrough chance `+ CATCHUP_BT_BONUS` (still capped at 0.98). Catch-up auto-BT is a small addition to
-  `_tickAutomation()`'s existing dispatch shape — attempt `attemptBreakthrough()` the instant Qi is ready, same
-  Ascension-Trial exclusion (`stageIndex === length − 2`) Auto-Breakthrough already has — but NOT gated behind Phase
-  22's per-stage automation unlocks; it's a base catch-up mechanic, always on below the clan's best.
+- ~~**Ancestral catch-up (31E):** Qi/s `× CATCHUP_QPS_MULT` + `CATCHUP_BT_BONUS` below `clan.bestStageIndex`, and
+  catch-up auto-BT in `_tickAutomation()`.~~ **REMOVED (Phase 46, 1.20a, 2026-10-03)** — the user replaced it with
+  **Bloodline Quality → Qi/s** (`BLOODLINE_QI_COEF`, bloodline.js). `clan.bestStageIndex` remains for the Ancestral
+  Hall's "best realm reached" record only. See lineage-sect.md.
 
 ### UI — the Ancestral Hall
 Expands the existing `#chronicle-overlay` (2.6d, today just `clan.history`) into `#hall-overlay`, opened from the
@@ -672,3 +675,62 @@ Then 2.8 (tuning): Merit costs, catch-up strength, per PLAN.md's roadmap.
   2.8 is explicitly "Merit costs, catch-up strength, lifespans, BQ constants" — the same knobs this fallout points
   at — and re-tuning them now, one task early, would mean re-tuning them again once 2.8's own acceptance criteria
   (3-5 generations to first Ascension, gen 2+ life ≥ 8h) are actually measured against.
+
+## Bequest — arts + items carried into the next life (user 2026-10-02)
+
+User request: *"when you reincarnate you can pass down 1 art and 1 item per reincarnation that you are on."* Decided
+with the user: **a new, separate inheritance** (not folded into the clan legacies) — free at every rebirth, and it
+works for an **orphan** life too. User pick on sizing: **N arts + N items on your Nth reincarnation** (your 1st rebirth
+carries 1 of each, your 3rd carries 3 of each).
+
+### Depth pass
+- **Memory:** `world.pastLives.length` is the reincarnation you are on; the dying life's known arts + pack are
+  snapshotted at death (`summary.bequest`), and the next life records what it received on `lastReincarnation.bequest`.
+- **Choices:** which arts (up to N) and which items (up to N) to carry — picked by the player at the interlude, every
+  life. Toggling is explicit; nothing is rolled or simulated (agency rule).
+- **Hooks (≥3):** the arts library (`s.arts.known`) · the Pack / `s.inventory` · the death→interlude→rebirth flow
+  (2.6d) · the clan (a bequest is personal, so it is **not** clan-gated — an orphan keeps it) · the legacies (this
+  sits *beside* Heirloom / Family Manual / Beast Lineage, not inside them) · the death card / birth log.
+- **Drama:** best — you sacrifice a life you loved to carry a Heaven-grade art (and the sword that won it) into the
+  next; the lineage compounds. Worst — nothing worth passing, or a bequeathed demonic art the next life must pay karma
+  to use. (No failure state: a bequest is a reward, not a gamble.)
+- **Feedback:** the deeper the lineage, the more you can carry (1 → 2 → 3 … capped), so a strong life pays into the
+  next. **Agency:** entirely the player's pick.
+
+### UX pass
+1. **Surface.** The interlude's chronicle card gains a **"Your parting gift"** block: a header naming the count
+   ("carry 1 art · 1 item · 1 reincarnation") and two chip rows — **Arts n/N** and **Items n/N** — with the chosen
+   chips lit gold. Empty pools say "No arts to pass down." / "Nothing in the pack."
+2. **Interact.** One click toggles a chip (`toggleBequest`); the rebirth buttons below are unchanged. Works in
+   Overlay / Expanded / Desktop / phone (the overlay is a 260px scrollable panel everywhere).
+3. **Discover.** The block appears automatically in the death flow, right above "Be born into the X clan". It is
+   skipped entirely on the first life (0 reincarnations → nothing to carry).
+4. **Feel.** Xianxia wording ("Your parting gift"); gold `--gold` for the picks, dashed `--border` for the rest,
+   `--font` mono; honours text size. No animation needed.
+5. **UX debt:** the pool can be long on a deep run (capped at `BEQUEST_MAX_ARTS/ITEMS` 12 each, and it scrolls);
+   the picker has no "select best" shortcut (deliberate — it is the player's choice).
+
+### As built (2026-10-02)
+- **Data** `assets/data/succession.js` → `BEQUEST_ARTS_PER_REINCARNATION` 1 · `BEQUEST_ITEMS_PER_REINCARNATION` 1 ·
+  `BEQUEST_MAX_ARTS` / `BEQUEST_MAX_ITEMS` 12 (caps keep a deep lineage's picker sane; tune in 2.8).
+- **Engine** (`game-state.js`): `_die()` snapshots `summary.bequest = _bequestPool()` (the dying life's known arts,
+  minus `ART_BASICS`, + non-currency pack items, best first). `_beginInterlude()` seeds `it.reincarnation`,
+  `it.bequestPool`, `it.bequestMax = _bequestMax(pastLives.length)`, `it.bequest = { arts: [], items: [] }`.
+  `interludeInfo()` exposes `reincarnation` + `bequest` (defensively defaulted so an old mid-interlude save renders).
+  `toggleBequest(kind, id)` toggles a pick (reasons `not_ready` / `bad_kind` / `not_owned` / `full`).
+  `_applyBequest(it)` runs at `_beginLife()` (next to `_applyLegacies`, **not** clan-gated): it builds `s.arts` first
+  (`_ensurePhase42Fields`), adds each art at **mastery 1** (`how: 'bequest'`), adds each item's whole stack, records
+  `lastReincarnation.bequest`, and writes ONE log line.
+- **UI** (`renderer/game.js` → `renderInterlude`, the `'chronicle'` branch): the "Your parting gift" block above the
+  rebirth buttons; `styles.css` `.beq*` (`.beq-chip` 32px min height). New smoke shots `2.6d-2b-bequest`,
+  `2.6d-2c-bequest-picked`.
+- **Migration:** no `_ensureInterludeFields` exists; `it.bequest`/`bequestPool`/`bequestMax` are defaulted at every
+  read, so an old save resumes into an interlude with no bequest step (nothing to carry) rather than crashing.
+- **Sim:** `scripts/sim/bot.js` `interlude()` picks before rebirthing — 'active' takes the strongest (the pool is
+  best-first), casual/afk take a seeded-random subset via its own `this.rand` (never `Math.random`, so seeds hold).
+- **Tests:** `scripts/sim/checks/succession.js` +18 — the pool excludes basics + currency, the cap scales with the
+  reincarnation (1+1 then 2+2), toggle on/off, the `full` / `not_owned` refusals, the art arrives at mastery 1, the
+  item passes at its stack size, the summary records it, and the bequest rides an **orphan** rebirth. Smoke
+  `scenarios/succession.js` +4 (picker shows, a chip lights, the art is known in the new life).
+- **Evidence:** `npm test` clean · `npm run checks` **928 ok** · `npm run sim:quick` healthy (0 errors / 0
+  violations) · succession smoke all ok, zero console errors.

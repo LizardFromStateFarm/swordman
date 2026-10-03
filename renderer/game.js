@@ -247,6 +247,9 @@
   }
   const bannerMenus = new BannerMenus(gameState, quickActions, { fmt, fmtTime, escHtml, effectText, personStageLabel })
   BeastDetail.init({ gameState, flash: (m, t) => flashMessage(m, t), confirm: showConfirm, fight: id => { BeastDetail.close(); combatView.open(id) } })   // A4-2: beast details page
+  SectDetail.init({ gameState, flash: (m, t) => flashMessage(m, t), confirm: showConfirm, fmt: n => fmt(n), go: v => nav.go(v), fight: () => combatView.resume(),
+    poach: id => { (sectView ||= new SectView(gameState, sectHelpers())).startPoach(id); nav.go('sect-disciples') } })   // 43h: a sect's own page (drawn in World → Sects)
+  WorldView.init({ gameState, ledger: s => (sectView ||= new SectView(gameState, sectHelpers()))._ledger(s) })   // 43h: 世 World → Sects
   layoutUI.onModeChange = mode => { if (mode !== 'banner') bannerMenus.close() }
   // Any popup open? Banter holds new lines while one is, and hides a bubble already showing (1.8b-1).
   const isPopupOpen = () => !!document.querySelector('body > [id$="-overlay"]:not(.hidden)')
@@ -290,7 +293,9 @@
             onContinue: () => { _deathHoldUntil = 0; showDeathOverlay(gameState.get()?.lastReincarnation) } })
         } else {
           _deathHoldUntil = Date.now() + hold
-          if (hold) setTimeout(() => showDeathOverlay(gameState.get()?.lastReincarnation), hold)
+          // Phase 46: guard the deferred card — a life resolved before the hold elapses (a scripted/auto rebirth)
+          // must not pop the stale death card over the new life. Line 299 still shows it if the interlude persists.
+          if (hold) setTimeout(() => { if (gameState.get()?.interlude) showDeathOverlay(gameState.get()?.lastReincarnation) }, hold)
           else showDeathOverlay(s.lastReincarnation)
         }
       } else if (s.interlude && Date.now() >= _deathHoldUntil && document.getElementById('death-overlay').classList.contains('hidden')) {
@@ -368,10 +373,6 @@
       d.meditBonus > 1
         ? `+${fmt(d.qiPerSecondBoosted)} qi/s (${d.meditBonus}×) · ${d.meditSecondsLeft}s`
         : `+${fmt(d.qiPerSecond)} qi/s`
-    // 1.8b-2: ancestral catch-up is visible where the Qi rate is (it opens the same Qi/s breakdown)
-    const cuChip = document.getElementById('catchup-chip')
-    cuChip.classList.toggle('hidden', !d.catchUp)
-    if (d.catchUp) cuChip.title = `Ancestral catch-up: ×${CATCHUP_QPS_MULT} Qi/s until ${stageShortName(d.catchUpUntil)}`
     breakdownUI.refresh(s)
 
     const btnMed = document.getElementById('btn-meditate')
@@ -383,6 +384,20 @@
       btnMed.classList.remove('meditating')
       btnMed.querySelector('.act-sub').textContent = '3× Qi · 30s'
       btnMed.disabled = false
+    }
+
+    // Phase 14 follow-up: the Meridian Flow segment beside Meditate — charges, or "resume" for a puzzle set aside
+    const btnFlow = document.getElementById('btn-flow'), fl = s.minigames?.flow && gameState.minigameInfo().flow   // (refills charges first)
+    if (btnFlow && fl) {
+      const max = MINIGAME_CHARGES.max, waiting = !!fl.waiting, n = fl.charges || 0
+      btnFlow.disabled = !n && !waiting
+      btnFlow.classList.toggle('waiting', waiting)
+      btnFlow.classList.toggle('full', n >= max && !waiting)
+      btnFlow.querySelector('.flow-n').innerHTML = waiting ? Icon('play') : n   // a set-aside puzzle: resume
+      const qi = fmt(fl.qi)
+      btnFlow.title = waiting ? `Meridian Flow: your puzzle waits, as you left it. Finish it for +${qi} Qi.`
+        : n ? `Meridian Flow: turn the channels until the Qi flows, at your own pace. +${qi} Qi · ${n} of ${max} charges.`
+        : `Meridian Flow: no charges. One returns every 30 minutes, even while you are away.`
     }
 
     const btnBt  = document.getElementById('btn-breakthrough')
@@ -429,15 +444,15 @@
     document.getElementById('integrity-numbers').textContent   = String(Math.round(integ))   // out of 100; the bar shows the rest
 
     // Health bar: lerp --jade (full) to --red (empty) (Phase 23A; palette follows color-blind setting)
-    const health = s.health ?? 100
-    const ht = health / 100
+    const health = s.health ?? 100, healthMax = s.derived?.maxHealth || 100   // Phase 14: the body sets the max
+    const ht = Math.max(0, Math.min(1, health / healthMax))
     const { red: R, jade: J } = settingsUI.palette()
     const hr = Math.round(R[0] + ht * (J[0] - R[0]))
     const hg = Math.round(R[1] + ht * (J[1] - R[1]))
     const hb = Math.round(R[2] + ht * (J[2] - R[2]))
-    document.getElementById('health-fill').style.width      = Math.min(100, health) + '%'
+    document.getElementById('health-fill').style.width      = (ht * 100) + '%'
     document.getElementById('health-fill').style.background = `rgb(${hr},${hg},${hb})`
-    document.getElementById('health-numbers').textContent   = String(Math.round(health))
+    document.getElementById('health-numbers').textContent   = healthMax === 100 ? String(Math.round(health)) : `${Math.round(health)}/${healthMax}`
 
     // Age readout (Phase 30) — a stat only, nothing dies of age
     document.getElementById('age-numbers').textContent = String(Math.floor(s.age))
@@ -480,6 +495,7 @@
       updateBeastTimersInPlace()   // Roam > Beasts list + the beast details page count down live
       if (activeTab === 'arts') ArtsView.tickInPlace(document.getElementById('tab-arts'), fmtTime)   // Phase 42: the study countdown
       if (activeTab === 'hunt') HuntView.tickInPlace(document.getElementById('tab-hunt'), fmtTime)   // A6-2: the search countdown
+      if (activeTab === 'physique' && BodyView.tickInPlace(document.getElementById('tab-physique'), fmtTime)) renderView('physique', gameState.get())   // Phase 14: a tempering ends / an ordeal peaks
       if (activeTab === 'arena' && ArenaView.tickInPlace(document.getElementById('tab-arena'), fmtTime)) renderView('arena', gameState.get())   // A6-3b: a ring's rest
       if (activeTab.startsWith('sect')) updateSectTimersInPlace(s)
       if (activeTab === 'pack')    updatePackDeltaInPlace(s)   // Phase 21: per-frame currency delta fade
@@ -493,6 +509,12 @@
   // A6-2 (Roam → Hunt / Bestiary, renderer/game/hunt-view.js)
   const huntHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmtTime, fight: id => combatView.open(id), go: v => nav.go(v) }
   const arenaHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmt, fmtTime, fight: () => combatView.resume() }   // A6-3b
+  // Phase 14 (body-constitution.md): Path → Body + the two mini-games (any [data-mg-open] button opens one)
+  const mgHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmt, fmtTime }
+  const bodyHelpers = { ...mgHelpers, confirm: showConfirm }
+  document.addEventListener('click', e => { const b = e.target.closest('[data-mg-open]'); if (b && !b.disabled) MinigameUI.open(b.dataset.mgOpen, gameState, mgHelpers) })
+  // A7 (Phase 38A): the Sect → Base compound scene — its own view (it owns a canvas, so SectView.render must not rebuild it)
+  const baseView = new BaseView(gameState, { esc: escHtml, fmt, fmtTime, go: v => nav.go(v) })
   // 1.8b-1: one entry point per view (NAV_GROUPS in renderer/game/nav.js)
   const VIEW_RENDER = {
     techniques: s => renderTechniques(s), stats: s => renderStats(s), explore: s => renderExplore(s),
@@ -500,10 +522,15 @@
     bestiary: s => BestiaryView.render(s, document.getElementById('tab-bestiary'), gameState, huntHelpers),
     arena: s => ArenaView.render(s, document.getElementById('tab-arena'), gameState, arenaHelpers),   // A6-3b
     arts: s => ArtsView.render(s, document.getElementById('tab-arts'), gameState, { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmtTime }),   // Phase 42
-    family: s => renderFamily(s), clan: s => renderClan(s), hall: s => renderHall(s), sect: s => renderSect(s),
+    physique: s => BodyView.render(s, document.getElementById('tab-physique'), gameState, bodyHelpers),   // Phase 14
+    family: s => renderFamily(s), tree: s => renderTree(s), clan: s => renderClan(s), hall: s => renderHall(s), sect: s => renderSect(s),
     'sect-missions': s => renderSect(s, 'sect-missions'), 'sect-library': s => renderSect(s, 'sect-library'), 'sect-halls': s => renderSect(s, 'sect-halls'),
     'sect-disciples': s => renderSect(s, 'sect-disciples'), 'sect-war': s => renderSect(s, 'sect-war'),
+    'sect-base': s => baseView.render(s, document.getElementById('tab-sect-base')),   // A7 (Phase 38A): the compound scene
     pack: s => renderPack(s), craft: s => renderCraft(s), events: s => renderEvents(s), banter: s => renderBanter(s),
+    world: s => WorldView.render(s),   // 43h: 世 World → Sects
+    class: s => ClassView.render(s),   // Phase 28 (4.3): 世 World → Class
+    chronicle: s => ChronicleView.render(s),   // Phase 28 (4.6): 世 World → Chronicle
   }
   function renderView(view, s) {
     if (!s) return
@@ -606,8 +633,9 @@
     const st = d.stage
     const lastMortal = CULTIVATION_STAGES.length - 2
     const integ  = d.realmIntegrity ?? 100
-    const health = s.health ?? 100
+    const health = s.health ?? 100, healthMax = d.maxHealth || 100, hpPct = health / healthMax * 100   // Phase 14
     const tone = v => v >= 70 ? 'jade' : v >= 30 ? '' : 'warn'
+    const body = gameState.bodyInfo(), mg = gameState.minigameInfo()
     const persona = PERSONALITIES.find(x => x.id === s.personality?.id)
     const fp = st.id === 'ascension' ? null : gameState.btFailPreview()
     const toFill = Math.max(0, d.qiCap * 0.9 - s.qi)
@@ -618,7 +646,12 @@
 
     let btTile
     if (st.id === 'ascension') btTile = `<div class="ch-tile wide"><span class="t-k"><span>Ascended</span><i data-icon="cloud"></i></span><span class="t-v">Beyond the mortal path</span></div>`
-    else if (s.stageIndex === lastMortal) btTile = tile('bt', 'Ascension Trial', 'lightning', (gameState.ascensionChance() * 100).toFixed(1) + '%', 'Failure ends this life', 'wide')
+    else if (s.stageIndex === lastMortal) {
+      // Phase 47: the Trial is gated on a full bloodline (100) — show the lock, not a misleading chance.
+      const bq = Math.round(s.bloodlineQuality || 0), need = ASCENSION_MIN_BLOODLINE, locked = bq < need
+      btTile = tile('bt', 'Ascension Trial', 'lightning', locked ? 'Locked' : (gameState.ascensionChance() * 100).toFixed(1) + '%',
+        locked ? `Bloodline ${bq} / ${need} required` : 'Failure ends this life', locked ? 'warn wide' : 'wide')
+    }
     else btTile = tile('bt', 'Breakthrough', 'breakthrough', (d.breakthroughChanceDisplay * 100).toFixed(1) + '%',
       fp.guaranteed ? 'Pill guarantees success' : `Fails: −${Math.round(fp.qiLossFrac * 100)}% Qi · −${Math.round(fp.integrityLoss)} Integrity${fp.karmaLoss ? ` · −${Math.round(fp.karmaLoss)} Karma` : ''}${fp.demotes ? ' · fall a stage' : ''}`,
       fp.demotes ? 'warn wide' : 'wide')
@@ -637,7 +670,6 @@
         <div class="ch-meta" title="Age passes only while the game is open. Nothing dies of age.">Age ${Math.floor(s.age)} · Year ${Math.floor(s.world.year)} · Gen ${s.generation || 1}</div>
         ${persona ? `<div class="ch-persona">${escHtml(persona.blurb)}</div>` : ''}
       </div>
-      ${d.catchUp ? `<button class="ch-catchup" data-bd="qps"><span class="ch-cg" data-icon="lineage"></span><span class="ch-ct">Catch-up ×${CATCHUP_QPS_MULT} Qi · +${Math.round(CATCHUP_BT_BONUS * 100)}% BT</span><span class="ch-go" data-icon="why"></span></button>` : ''}
       <div class="ch-grid">
         <section>
           <div class="ch-sec-title"><span>Cultivation</span></div>
@@ -646,15 +678,18 @@
             ${tile('cap', 'Qi capacity', 'dantian', fmt(d.qiCap), toFill > 0 && d.qiPerSecondBoosted > 0 ? `Ready in ${fmtTime(Math.ceil(toFill / d.qiPerSecondBoosted)).replace(/ /g, '\u00a0')}` : 'Ready to break through')}
             ${btTile}
           </div>
+          <button class="ch-play" data-mg-open="flow" ${mg.flow.charges || mg.flow.waiting ? '' : 'disabled'} title="Turn the meridian channels until the Qi flows: +${fmt(mg.flow.qi)} Qi, at your own pace. Charges refill one every 30 minutes, even while you are away.">
+            <i data-icon="vein"></i><span><b>Meridian Flow</b> · ${mg.flow.waiting ? 'resume · ' : ''}+${fmt(mg.flow.qi)} Qi</span><span class="ch-charges">${'<b class="on"></b>'.repeat(mg.flow.charges)}${'<b></b>'.repeat(mg.max - mg.flow.charges)}</span>${mg.flow.charges || mg.flow.waiting ? '' : `<em>${fmtTime(mg.flow.nextIn)}</em>`}</button>
         </section>
         <section>
           <div class="ch-sec-title"><span>Foundation</span></div>
           <div class="ch-tiles">
             ${tile('integrity', 'Integrity', 'integrity', Math.round(integ), integ >= 100 ? 'Settled' : 'Mending', tone(integ), integ)}
-            ${tile('health', 'Health', 'health', Math.round(health), health >= 100 ? 'Whole' : 'Recovering', tone(health), health)}
+            ${tile('health', 'Health', 'health', `${Math.round(health)}<small> / ${healthMax}</small>`, health >= healthMax ? 'Whole' : `+1 every ${Math.round(d.healthRegenSeconds || 45)}s`, tone(hpPct), hpPct)}
+            ${tile('body', 'Body', 'shield', `${body.def.id} · ${escHtml(body.def.name)}`, body.trial.ready ? 'Ready for the tier trial' : body.next ? `${fmt(body.xp)} / ${fmt(body.to)} XP` : 'The body can go no higher', body.trial.ready ? 'gold' : '', body.next ? Math.min(100, (body.xp - body.from) / (body.to - body.from) * 100) : 100)}
             ${tile('karma', 'Karma', 'lotus', Math.round(s.karma), `+${(s.karma / 10).toFixed(1)}% breakthrough`)}
-            ${bloodlineVisible(s) ? tile('bloodline', 'Bloodline', 'vein', Math.round(s.bloodlineQuality || 0), `+${((s.bloodlineQuality || 0) * ASCENSION_BQ_COEF * 100).toFixed(1)}% Ascension`)
-              : `<div class="ch-tile" title="Bloodline Quality is revealed at Spirit Severing, when it starts to matter"><span class="t-k"><span>Bloodline</span><i data-icon="vein"></i></span><span class="t-v ch-sealed" data-icon="lock"></span><span class="t-s">Sealed until Spirit Severing</span></div>`}
+            ${bloodlineVisible(s) ? tile('bloodline', 'Bloodline', 'vein', Math.round(s.bloodlineQuality || 0), `Qi ×${(1 + (s.bloodlineQuality || 0) * BLOODLINE_QI_COEF).toFixed(2)} · ${(s.bloodlineQuality || 0) >= BLOODLINE_CAP ? `+${((s.bloodlineQuality || 0) * ASCENSION_BQ_COEF * 100).toFixed(1)}% Ascension` : `Ascension at ${ASCENSION_MIN_BLOODLINE}`}`)
+              : `<div class="ch-tile" title="Bloodline Quality is revealed once it grows (from your second life) — it raises Qi/s and Ascension odds"><span class="t-k"><span>Bloodline</span><i data-icon="vein"></i></span><span class="t-v ch-sealed" data-icon="lock"></span><span class="t-s">Sealed — grows with each life</span></div>`}
           </div>
         </section>
         <section>
@@ -693,9 +728,19 @@
   function renderFamily(s) {
     familyView ||= new FamilyView(gameState, {
       esc: escHtml, fmt, stageLabel: personStageLabel, affectionLabel, bondLabel, latinOnly,
+      rename: openRename,
       confirm: showConfirm, flash: flashMessage, wire: wireKinButtons, endText: SPOUSE_END_TEXT, pendingKey: familyPendingKey,
+      go: view => nav.go(view),   // the family tree's door (family-tree.js)
     })
     familyView.render(s)
+  }
+
+  // ── 家 Kin → Tree (2026-10-03: renderer/game/family-tree.js — the family tree, opened from Kin → Family) ──
+  let treeView = null
+  function renderTree(s) {
+    treeView ||= new FamilyTreeView(gameState, { esc: escHtml, stageLabel: personStageLabel, latinOnly, causeText: c => DEATH_CAUSE_TEXT[c] || null,
+      go: view => nav.go(view), openOnFamily: id => { if (familyView) familyView.openChild = familyView.gs.get().family.children?.some(c => c.id === id) ? id : null; nav.go('family') } })
+    treeView.render(s)
   }
 
   // ── 家 Kin → Clan + Hall (1.8b-4: renderer/game/clan-view.js) ──
@@ -710,7 +755,7 @@
     nav.go(view)
   }
 
-  // ── 錄 Log → Banter (1.8b-1: was at the bottom of Stats) ──
+  // ── 世 World → Banter (1.8b-1: was at the bottom of Stats) ──
   function renderBanter(s) {
     const el = document.getElementById('tab-banter')
     el.innerHTML = renderBanterLog(s) || '<div class="empty-note">No idle chatter yet. Your cultivator mutters to the wind now and then.</div>'
@@ -815,7 +860,7 @@
   // ── 宗 Sect (1.8b-5): Overview · Missions/Buildings/Disciples · War — renderer/game/sect-view.js ──────────
   let sectView = null
   const sectHelpers = () => ({ esc: escHtml, fmt, fmtTime, flash: flashMessage, confirm: showConfirm, go: v => nav.go(v),
-    orders: (s, el, side) => renderWarOrdersPanel(s, el, side), startMission: id => quickActions.startMission(id) })
+    orders: (s, el, side) => renderWarOrdersPanel(s, el, side), startMission: id => quickActions.startMission(id), fight: () => combatView.resume() })   // 43e: the master challenge
   function renderSect(s, view = 'sect') { (sectView ||= new SectView(gameState, sectHelpers())).render(view, s) }
 
   // ── Automation panel (Phase 22, section 22D) ───────────────────────────────
@@ -837,6 +882,7 @@
       ['autoSectMissions', 'Auto-Missions', 'Keeps the missions you pick running, or re-takes whichever finished.'],
       ['autoCraft', 'Auto-Craft', 'Crafts every recipe you mark Auto in Pack → Craft, whenever materials allow.'],
       ['autoBreakthrough', 'Auto-Breakthrough', 'Attempts a breakthrough once Qi reaches the threshold.'],
+      ['autoTemper', 'Auto-Temper', 'Repeats a safe body drill whenever it ends (pick which on Path → Body). Never an ordeal.'],   // Phase 14
     ]
     for (const [key, name, what] of ROWS) {
       const unlocked = gameState.automationUnlocked(key)
@@ -1067,6 +1113,8 @@
       segRow('Reinforce', 'reinforce', [{ value: 'never', label: 'Never' }, { value: 'if_affordable', label: 'If affordable' }])
       numRow('…and keeps at least', 'reinforceKeep', 'Only reinforce if this many Spirit Stones remain banked afterward')
       segRow('Request ally', 'ally', [{ value: 'never', label: 'Never' }, { value: 'cheapest', label: 'Cheapest' }, { value: 'best', label: 'Best' }])
+      segRow('Raze if we win', 'raze', [{ value: 'never', label: 'Never' }, { value: 'theirs', label: 'Wars they start' }, { value: 'always', label: 'Every war' }],
+        'Vow to burn the foe to the ground if your sect wins. Costs karma and the regard of some sects; a vow you set or lift by hand on a war always wins.')
     }
   }
 
@@ -1166,6 +1214,76 @@
       autoRow.innerHTML = `<span class="exp-auto-l">${Icon('lock')}<b>Auto-Explore</b><small>unlocks at ${escHtml(AUTOMATION_UNLOCKS.autoExplore.label)}</small></span>`
     }
     statusDiv.appendChild(autoRow)
+
+    // ── Encounters on the Road (family.md) — potential lovers + formula-carriers, never expire ────
+    // Rendered at the very top of Explore (above the expedition timer): the attention item routes here, so a
+    // pending choice must be on screen, not below the fold.
+    const people = s.family?.encounters || []
+    if (people.length > 0) {
+      const pTitle = document.createElement('div')
+      pTitle.className = 'section-title'
+      pTitle.textContent = 'Encounters on the Road'
+      el.appendChild(pTitle)
+      people.forEach((enc, i) => {
+        const p = enc.person
+        const pers = PERSONALITIES.find(x => x.id === p.personality)
+        if (enc.kind === 'recipe') {                                  // Phase 44: a stranger carrying a formula
+          const rec = RECIPES.find(r => r.id === enc.recipeId)
+          const product = rec ? ITEMS[rec.productId] : null
+          const row = document.createElement('div')
+          row.className = 'suitor-card'
+          row.style.marginBottom = '6px'
+          row.innerHTML = `
+            <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
+            <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
+            <div style="margin:3px 0">At ${escHtml(enc.place)}, ${escHtml(Persons.fullName(p))} ${escHtml(enc.text || '')}.</div>
+            <div style="margin:3px 0">Their formula: <b>${escHtml(product?.name || 'a pill')}</b>.</div>
+            <div style="display:flex;gap:6px">
+              <button class="sect-btn" style="flex:1;min-height:32px" data-learnrecipe="${i}">Help them · learn it</button>
+              <button class="sect-btn" style="flex:1;min-height:32px" data-robrecipe="${i}" title="Take their stones and leave them the road. The formula goes with them.">Rob them</button>
+              <button class="sect-btn" style="flex:1;min-height:32px" data-leave="${i}">Leave</button>
+            </div>
+            <div class="recipe-enc-note">Robbing pays ${RECIPE_DISCOVERY.robStones} stones but costs ${Math.abs(RECIPE_DISCOVERY.robKarma)} karma — and the formula is lost for good.</div>`
+          el.appendChild(row)
+          return
+        }
+        // A6-3a: Slaughter — a fight to the death, on the battle page. Locked while another fight runs or you are hurt.
+        const lock = s.family.fight ? 'Another fight is underway' : (s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH ? 'Too wounded to fight' : null
+        const row = document.createElement('div')
+        row.className = 'suitor-card'
+        row.style.marginBottom = '6px'
+        row.innerHTML = `
+          <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
+          <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
+          <div style="margin:3px 0">At ${escHtml(enc.place)}, they ${escHtml(enc.text || '')}.</div>
+          <div style="display:flex;gap:6px">
+            <button class="sect-btn" style="flex:1;min-height:32px" data-seduce="${i}">Seduce</button>
+            <button class="sect-btn" style="flex:1;min-height:32px" data-slaughter="${i}" ${lock ? `disabled title="${escHtml(lock)}"` : `title="Fight them to the death. You choose every exchange; if you lose, this life ends."`}>Slaughter</button>
+            <button class="sect-btn" style="flex:1;min-height:32px" data-leave="${i}">Leave</button>
+          </div>${lock ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)"><span data-icon="lock"></span>${escHtml(lock)}</div>` : ''}${s.family.spouse && !s.family.tolerant ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)">${escHtml(s.family.spouse.given)} may find out.</div>` : ''}`
+        el.appendChild(row)
+      })
+      el.querySelectorAll('[data-seduce]').forEach(btn => btn.addEventListener('click', () => {
+        const res = gameState.seduceEncounter(+btn.dataset.seduce)
+        if (res.ok) flashMessage(res.success ? 'An affair begins.' : 'Rebuffed.', res.success ? 'special' : 'negative')
+      }))
+      el.querySelectorAll('[data-slaughter]').forEach(btn => btn.addEventListener('click', () => {
+        const res = gameState.slaughterEncounter(+btn.dataset.slaughter)
+        if (!res.ok) return flashMessage({ busy: 'Another fight is underway.', wounded: 'Too wounded to fight.' }[res.reason] || 'You cannot fight now.', 'negative')
+        combatView.resume()
+      }))
+      el.querySelectorAll('[data-learnrecipe]').forEach(btn => btn.addEventListener('click', () => {
+        const res = gameState.learnEncounterRecipe(+btn.dataset.learnrecipe)
+        flashMessage(res.ok ? `You learn to brew ${res.name}.` : 'The formula slips away.', res.ok ? 'special' : 'negative')
+      }))
+      el.querySelectorAll('[data-robrecipe]').forEach(btn => btn.addEventListener('click', () => {
+        const res = gameState.robEncounterRecipe(+btn.dataset.robrecipe)
+        flashMessage(res.ok ? `You rob them for ${fmt(res.stones)} Spirit Stones. The formula is lost.` : 'You cannot rob them.', 'negative')
+      }))
+      el.querySelectorAll('[data-leave]').forEach(btn => btn.addEventListener('click', () => gameState.dismissEncounter(+btn.dataset.leave)))
+    }
+
+    // Expedition status (below any pending encounter — a decision outranks the timer)
     el.appendChild(statusDiv)
     document.getElementById('_exp_push')?.addEventListener('click', () => {
       const r = gameState.pushExpedition()
@@ -1228,44 +1346,6 @@
         else flashMessage('Cannot queue that location', 'negative')
       })
     })
-
-    // ── Encounters on the Road (family.md) — potential lovers, never expire ────
-    const people = s.family?.encounters || []
-    if (people.length > 0) {
-      const pTitle = document.createElement('div')
-      pTitle.className = 'section-title'
-      pTitle.textContent = 'Encounters on the Road'
-      el.appendChild(pTitle)
-      people.forEach((enc, i) => {
-        const p = enc.person
-        const pers = PERSONALITIES.find(x => x.id === p.personality)
-        // A6-3a: Slaughter — a fight to the death, on the battle page. Locked while another fight runs or you are hurt.
-        const lock = s.family.fight ? 'Another fight is underway' : (s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH ? 'Too wounded to fight' : null
-        const row = document.createElement('div')
-        row.className = 'suitor-card'
-        row.style.marginBottom = '6px'
-        row.innerHTML = `
-          <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
-          <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
-          <div style="margin:3px 0">At ${escHtml(enc.place)}, they ${escHtml(enc.text || '')}.</div>
-          <div style="display:flex;gap:6px">
-            <button class="sect-btn" style="flex:1;min-height:32px" data-seduce="${i}">Seduce</button>
-            <button class="sect-btn" style="flex:1;min-height:32px" data-slaughter="${i}" ${lock ? `disabled title="${escHtml(lock)}"` : `title="Fight them to the death. You choose every exchange; if you lose, this life ends."`}>Slaughter</button>
-            <button class="sect-btn" style="flex:1;min-height:32px" data-leave="${i}">Leave</button>
-          </div>${lock ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)"><span data-icon="lock"></span>${escHtml(lock)}</div>` : ''}${s.family.spouse && !s.family.tolerant ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)">${escHtml(s.family.spouse.given)} may find out.</div>` : ''}`
-        el.appendChild(row)
-      })
-      el.querySelectorAll('[data-seduce]').forEach(btn => btn.addEventListener('click', () => {
-        const res = gameState.seduceEncounter(+btn.dataset.seduce)
-        if (res.ok) flashMessage(res.success ? 'An affair begins.' : 'Rebuffed.', res.success ? 'special' : 'negative')
-      }))
-      el.querySelectorAll('[data-slaughter]').forEach(btn => btn.addEventListener('click', () => {
-        const res = gameState.slaughterEncounter(+btn.dataset.slaughter)
-        if (!res.ok) return flashMessage({ busy: 'Another fight is underway.', wounded: 'Too wounded to fight.' }[res.reason] || 'You cannot fight now.', 'negative')
-        combatView.resume()
-      }))
-      el.querySelectorAll('[data-leave]').forEach(btn => btn.addEventListener('click', () => gameState.dismissEncounter(+btn.dataset.leave)))
-    }
 
   }
 
@@ -1499,6 +1579,16 @@
 
   let _craftSubTab = 'pills'
 
+  // Phase 44: a short "+30 Health, +25 Integrity" — for a heal pill's effect, or the result of using one.
+  function healLabel(x) {
+    const hp = x.healed ?? Math.min(gameState.maxHealth(), x.health || 0)
+    const ig = x.integrityHealed ?? Math.min(100, x.integrity || 0)
+    const parts = []
+    if (hp > 0) parts.push(`+${hp} Health`)
+    if (ig > 0) parts.push(`+${ig} Integrity`)
+    return parts.join(', ') || 'nothing'
+  }
+
   function renderCraft(s) {
     const el = document.getElementById('tab-craft')
     el.innerHTML = ''
@@ -1548,13 +1638,30 @@
     el.appendChild(subTabBar)
 
     // Recipe list for active sub-tab (1.8b-5: cards side by side in Expanded/Desktop)
+    const recipes = RECIPES.filter(r => r.category === _craftSubTab)
+    // Phase 44: how many of this category's formulas you know — above the grid, so it frames what follows.
+    if (recipes.some(r => r.hidden)) {
+      const knownN = recipes.filter(r => gameState.recipeKnown(r.id)).length
+      const note = document.createElement('div')
+      note.className = 'craft-note'
+      note.innerHTML = `<span data-icon="scroll"></span>${knownN} of ${recipes.length} formulas known — the rest are found in Roam → Arena / Explore.`
+      el.appendChild(note)
+    }
     const recipeGrid = document.createElement('div')
     recipeGrid.className = 'card-grid'
     el.appendChild(recipeGrid)
-    const recipes = RECIPES.filter(r => r.category === _craftSubTab)
     for (const recipe of recipes) {
       const item = ITEMS[recipe.productId]
       if (!item) continue
+      if (!gameState.recipeKnown(recipe.id)) {                       // Phase 44: an undiscovered formula
+        const row = document.createElement('div')
+        row.className = 'recipe-row recipe-unknown'
+        row.innerHTML = `
+          <div class="recipe-header"><span class="recipe-name"><span data-icon="lock"></span> Unknown formula</span></div>
+          <div class="recipe-desc">${escHtml(gameState.recipeHint(recipe.id))}</div>`
+        recipeGrid.appendChild(row)
+        continue
+      }
 
       const row = document.createElement('div')
       row.className = 'recipe-row'
@@ -1588,11 +1695,20 @@
       }
 
       if (isPill) {
-        const inQueue = s.activePill === recipe.productId
-        if (inQueue) {
-          btnsHTML += `<button class="pill-queue-btn queued" data-clearqueue="1">★ Queued</button>`
-        } else if (inInv) {
-          btnsHTML += `<button class="pill-queue-btn can-queue" data-queue="${recipe.productId}">Queue BT</button>`
+        if (item.effect?.type === 'heal') {                          // Phase 44: a healing pill is used, not queued
+          if (inInv) {
+            const hl = gameState.healLock(item.effect)
+            btnsHTML += hl
+              ? `<button class="recipe-equip-btn" disabled title="Nothing to heal — Health and Integrity are full.">Use · ${escHtml(healLabel(item.effect))}</button>`
+              : `<button class="recipe-equip-btn can-equip" data-useheal="${recipe.productId}">Use · ${escHtml(healLabel(item.effect))}</button>`
+          }
+        } else {
+          const inQueue = s.activePill === recipe.productId
+          if (inQueue) {
+            btnsHTML += `<button class="pill-queue-btn queued" data-clearqueue="1">★ Queued</button>`
+          } else if (inInv) {
+            btnsHTML += `<button class="pill-queue-btn can-queue" data-queue="${recipe.productId}">Queue BT</button>`
+          }
         }
       }
 
@@ -1655,6 +1771,15 @@
         } else {
           flashMessage('Cannot use elixir', 'negative')
         }
+      })
+    })
+
+    // Wire healing-pill use buttons (Phase 44)
+    el.querySelectorAll('[data-useheal]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const res = craftSys.useHeal(btn.dataset.useheal)
+        if (res.ok) flashMessage(`${ITEMS[btn.dataset.useheal]?.name}: ${healLabel(res)}`, 'positive')
+        else flashMessage('Cannot use that pill', 'negative')
       })
     })
 
@@ -1813,9 +1938,16 @@
 
         let btnsHTML = ''
         if (isPill && invQty > 0) {
-          btnsHTML += (s.activePill === id)
-            ? `<button class="pack-btn-use" data-clearpill>★ Queued (clear)</button>`
-            : `<button class="pack-btn-use" data-usepill="${id}">Queue for Breakthrough</button>`
+          if (item.effect?.type === 'heal') {                       // Phase 44: a healing pill is used, not queued
+            const hl = gameState.healLock(item.effect)
+            btnsHTML += hl
+              ? `<button class="pack-btn-use" disabled title="Nothing to heal — Health and Integrity are full.">Use · ${escHtml(healLabel(item.effect))}</button>`
+              : `<button class="pack-btn-use" data-useheal="${id}">Use · ${escHtml(healLabel(item.effect))}</button>`
+          } else {
+            btnsHTML += (s.activePill === id)
+              ? `<button class="pack-btn-use" data-clearpill>★ Queued (clear)</button>`
+              : `<button class="pack-btn-use" data-usepill="${id}">Queue for Breakthrough</button>`
+          }
         }
         if (isElixir && invQty > 0) {
           btnsHTML += `<button class="pack-btn-use" data-useelixir="${id}">Use</button>`
@@ -1882,6 +2014,13 @@
         const res = craftSys.useElixir(btn.dataset.useelixir)
         if (res.ok) flashMessage(`Root changed: ${res.newRoot}`, 'special')
         else flashMessage('Cannot use elixir', 'negative')
+      })
+    })
+    el.querySelectorAll('[data-useheal]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const res = craftSys.useHeal(btn.dataset.useheal)
+        if (res.ok) flashMessage(`${ITEMS[btn.dataset.useheal]?.name}: ${healLabel(res)}`, 'positive')
+        else flashMessage('Cannot use that pill', 'negative')
       })
     })
     el.querySelectorAll('[data-equip]').forEach(btn => {
@@ -1973,8 +2112,17 @@
   function openAscensionOverlay() {
     const s = gameState.get()
     const chance = gameState.ascensionChance()
-    document.getElementById('asc-bloodline').textContent = `${Math.round(s.bloodlineQuality || 0)} / 100`
-    document.getElementById('asc-chance').textContent = `${Math.round(chance * 100)}%`
+    const need = ASCENSION_MIN_BLOODLINE
+    const bq = Math.round(s.bloodlineQuality || 0)
+    const met = bq >= need
+    document.getElementById('asc-bloodline').textContent = `${bq} / ${need}`
+    document.getElementById('asc-chance').textContent = met ? `${Math.round(chance * 100)}%` : 'Locked'
+    // Phase 47: the Trial is gated on a full bloodline — explain the lock and refuse the button.
+    document.getElementById('asc-lock').classList.toggle('hidden', met)
+    document.getElementById('asc-lock-bq').textContent = bq
+    const btn = document.getElementById('ascend-now')
+    btn.disabled = !met
+    btn.title = met ? '' : `Requires Bloodline Quality ${need} (you have ${bq})`
     // Phase 40: the consolation is known before the choice (same formula as attemptAscension)
     document.getElementById('asc-soul').textContent = `+${Math.round(SOUL_FAIL_BASE + SOUL_FAIL_PER_PCT * Math.round(chance * 100))} Soul Points`
     document.getElementById('ascension-overlay').classList.remove('hidden')
@@ -1986,8 +2134,9 @@
   })
 
   document.getElementById('ascend-now').addEventListener('click', () => {
+    const res = gameState.attemptAscension()
+    if (res.reason === 'bloodline_too_low') return   // the button is disabled, but never die to a locked Trial
     document.getElementById('ascension-overlay').classList.add('hidden')
-    gameState.attemptAscension()
     // Phase 31 (M2 task 2.7d): a successful Ascension ALSO ends the life (fixes the post-Ascension dead zone). The
     // lastReincarnation watcher in bootGame plays what follows: the Immortal Ascension cinematic + finish screen
     // (Phase 40b), then the interlude card; a failed Trial gets the death moment.
@@ -2004,6 +2153,7 @@
     passed_mantle:      'You laid down the path',
     spouse_duel:        'Slain by your spouse in a duel to the death',
     challenge_lost:     'Slain challenging the head for their seat',
+    sect_master:        'Slain challenging your sect master for the seat',
     beast_hunt:         'Killed by the beast you went to slay',
     arena_blood:        'Killed in a blood match in the Arena',
     challenged:         'Slain defending the head seat',
@@ -2082,6 +2232,34 @@
       html += `<div class="chron-line chron-bet${info.betWon ? '' : ' lost'}">Your bet on ${escHtml(Persons.fullName(betP))}: ${info.betWon ? 'you called it.' : 'the elders chose otherwise.'}</div>`
     }
     body.innerHTML = html
+    // 2026-10-02: the bequest — pass down 1 art + 1 item per reincarnation you are on (your 3rd rebirth carries 3 of
+    // each). Your own choice, free every life, and it rides an orphan rebirth too. Picked here, applied at birth.
+    const bq = info.bequest
+    if (bq && (bq.maxArts > 0 || bq.maxItems > 0) && (bq.pool.arts.length || bq.pool.items.length)) {
+      const full = (picked, max) => picked.length >= max
+      const chip = (on, maxed, attrs, label, sub) => `<button class="beq-chip${on ? ' on' : ''}${maxed ? ' maxed' : ''}"${maxed ? ' disabled title="Full — unpick one first"' : ''} ${attrs}>${escHtml(label)}${sub ? `<span class="beq-sub">${escHtml(sub)}</span>` : ''}</button>`
+      const artsFull = full(bq.arts, bq.maxArts), itemsFull = full(bq.items, bq.maxItems)
+      const artsHtml = bq.pool.arts.length
+        ? bq.pool.arts.map(a => chip(bq.arts.includes(a.id), !bq.arts.includes(a.id) && artsFull, `data-beq="arts" data-id="${escHtml(a.id)}"`,
+            a.name, ART_RARITY[a.rarity]?.name || a.rarity)).join('')   // no mastery: a bequeathed art arrives at mastery 1
+        : '<span class="beq-none">No arts to pass down.</span>'
+      const itemsHtml = bq.pool.items.length
+        ? bq.pool.items.map(x => chip(bq.items.includes(x.id), !bq.items.includes(x.id) && itemsFull, `data-beq="items" data-id="${escHtml(x.id)}"`,
+            `${x.name}${x.qty > 1 ? ` ×${x.qty}` : ''}`)).join('')
+        : '<span class="beq-none">Nothing in the pack.</span>'
+      body.innerHTML += `<div class="beq">
+        <div class="beq-head">Your parting gift<span class="beq-meta">carry ${bq.maxArts} art${bq.maxArts === 1 ? '' : 's'} · ${bq.maxItems} item${bq.maxItems === 1 ? '' : 's'} · ${info.reincarnation} reincarnation${info.reincarnation === 1 ? '' : 's'}</span></div>
+        <div class="beq-sec"><span class="beq-k">Arts <i>${bq.arts.length}/${bq.maxArts}${artsFull ? ' · full' : ''}</i></span><div class="beq-chips">${artsHtml}</div></div>
+        <div class="beq-sec"><span class="beq-k">Items <i>${bq.items.length}/${bq.maxItems}${itemsFull ? ' · full' : ''}</i></span><div class="beq-chips">${itemsHtml}</div></div>
+      </div>`
+      body.querySelectorAll('[data-beq]').forEach(btn => btn.addEventListener('click', () => {
+        // The card is rebuilt wholesale, so carry the chip rows' scroll across the re-render (a deep pool scrolls).
+        const sc = [...body.querySelectorAll('.beq-chips')].map(c => c.scrollTop)
+        gameState.toggleBequest(btn.dataset.beq, btn.dataset.id); renderInterlude()
+        const after = document.getElementById('interlude-body')?.querySelectorAll('.beq-chips') || []
+        sc.forEach((v, i) => { if (after[i]) after[i].scrollTop = v })
+      }))
+    }
     const clanBtn = info.canJoinClan
       ? `<button data-rebirth="clan">Be born into the ${escHtml(info.clanName || 'nameless')} clan<span class="family-sub">Eldest, a younger child or a branch child: the wheel decides. You will not remember, and no one will know.</span></button>`
       : ''
@@ -2305,7 +2483,8 @@
   function childSummary(s, c) {
     const pers = PERSONALITIES.find(x => x.id === c.personality)
     const bl = bondLabel(c.bond ?? 50)
-    return `${personStageLabel(c.stageIndex)} · ${escHtml(pers?.name || '')} · ${bl.word}${c.trauma ? ' · scarred' : ''}`
+    return [personStageLabel(c.stageIndex), c.root ? `${escHtml(latinOnly(c.root.name))} ×${c.root.mult}` : '',
+      escHtml(pers?.name || ''), bl.word + (c.trauma ? ' · scarred' : '')].filter(Boolean).join(' · ')
   }
 
   function openHeirOverlay() {
@@ -2457,7 +2636,7 @@
         ${lines.map(l => `<span class="mode-line">${l}</span>`).join('')}${extra}
       </button>`
     // What Idle would actually run right now (so the Idle card says something concrete)
-    const AUTO_NAMES = { autoExplore: 'Auto-Explore', autoSectMissions: 'Auto-Missions', autoCraft: 'Auto-Craft', autoBreakthrough: 'Auto-Breakthrough' }
+    const AUTO_NAMES = { autoExplore: 'Auto-Explore', autoSectMissions: 'Auto-Missions', autoCraft: 'Auto-Craft', autoBreakthrough: 'Auto-Breakthrough', autoTemper: 'Auto-Temper' }
     const runs = Object.keys(AUTO_NAMES).filter(k => gameState.automationUnlocked(k) && s.automation[k]).map(k => AUTO_NAMES[k])
     const firstLock = Object.keys(AUTO_NAMES).find(k => !gameState.automationUnlocked(k))
     const runsLine = runs.length ? `<span class="mode-runs">Runs: ${runs.join(', ')}</span>`
@@ -2472,6 +2651,7 @@
           `A failed breakthrough keeps ${pct(ACTIVE_BT_QI_LOSS_BONUS)} more Qi.`,
           `Push Harder near an expedition's end (${Icon('stone')} ${ACTIVE_PUSH_HARDER_COST}) for an extra roll.`,
           `Master's Touch: ${pct(ACTIVE_CRAFT_TOUCH_CHANCE)} double crafts while you watch the furnace.`,
+          `Body tempering earns ${pct(TEMPERING_XP_ACTIVE)} more XP.`,
           'Automation rests while you play.'], active)}
       </div>
       <div class="section-title">Automation</div>
@@ -2509,6 +2689,21 @@
   attentionUI.onBannerMore = () => layoutUI.peek(false)
   // 1.8b-2: tap any [data-bd] number (HUD, Character tiles) for its "why" card (renderer/game/breakdowns.js)
   const breakdownUI = new BreakdownUI(gameState, { fmt, fmtTime, esc: escHtml })
+  // Phase 28 (4.2): tap any [data-pid] name for that person's card (renderer/game/person-card.js)
+  PersonCard.init(gameState, { esc: escHtml, stageLabel: personStageLabel, latinOnly,
+    go: (view, g) => { if (layoutUI.mode === 'banner') layoutUI.peek(false); if (view === 'world' && g?.sectId) WorldView.show(g.sectId); nav.go(view) } })
+  // Phase 28 (4.3): World → Class, and the toast for rare world news (a Chosen classmate falls, someone Ascends)
+  ClassView.init(gameState, { esc: escHtml, stageLabel: personStageLabel })
+  // Phase 28 (4.6): World → Chronicle; any [data-chronicle="<filter>"] link (the Sects ledger) opens it on that filter
+  ChronicleView.init(gameState, { esc: escHtml })
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-chronicle]')
+    if (!b) return
+    ChronicleView.show(b.dataset.chronicle)
+    if (layoutUI.mode === 'banner') layoutUI.peek(false)
+    nav.go('chronicle')
+  })
+  gameState.onGameEvent((type, ctx) => { if (type === 'world_news') showToast(ctx.text, ctx.type) })
 
   document.getElementById('btn-pin').addEventListener('click', async () => {
     const btn = document.getElementById('btn-pin')
@@ -2526,28 +2721,45 @@
     else window.electron.quit()
   })
 
-  document.getElementById('cultivator-name').addEventListener('click', () => {
-    document.getElementById('rename-input').value = gameState.get()?.name || ''
+  // The one name box, shared by the cultivator's own title (click to rename) and a child's Rename action
+  // (Kin → Family). `openRename(value, onOk, maxLength)` — onOk receives the entered text on OK/Enter.
+  let _renameOnOk = null
+  function openRename(value, onOk, maxLength = 24) {
+    const input = document.getElementById('rename-input')
+    input.maxLength = maxLength
+    input.value = value || ''
+    _renameOnOk = onOk || null
     document.getElementById('rename-overlay').classList.remove('hidden')
-    document.getElementById('rename-input').focus()
+    input.focus(); input.select()
+  }
+  function commitRename() {
+    const input = document.getElementById('rename-input')
+    const fn = _renameOnOk
+    document.getElementById('rename-overlay').classList.add('hidden')
+    _renameOnOk = null
+    if (fn) fn(input.value)
+  }
+  function closeRename() { document.getElementById('rename-overlay').classList.add('hidden'); _renameOnOk = null }
+
+  document.getElementById('cultivator-name').addEventListener('click', () => {
+    openRename(gameState.get()?.name || '', v => gameState.setName(v))
   })
 
   document.getElementById('rename-ok').addEventListener('click', commitRename)
   document.getElementById('rename-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') commitRename()
-    if (e.key === 'Escape') document.getElementById('rename-overlay').classList.add('hidden')
+    if (e.key === 'Escape') closeRename()
   })
-
-  function commitRename() {
-    gameState.setName(document.getElementById('rename-input').value)
-    document.getElementById('rename-overlay').classList.add('hidden')
-  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   let flashTimer = null
   function flashMessage(msg, type = 'positive') {
     gameState.addEvent({ text: msg, type })
+    showToast(msg, type)
+  }
+  // The toast alone (the engine already logged the line, e.g. Phase 28 world news)
+  function showToast(msg, type = 'positive') {
     let toast = document.getElementById('_toast')
     if (!toast) {
       toast = document.createElement('div')

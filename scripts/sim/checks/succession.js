@@ -121,7 +121,7 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
     assert(paths.never_again > 150 && paths.cycle > 150, `trauma: never again ${paths.never_again} · the cycle continues ${paths.cycle}`)
   }
 
-  // 4. Tournament heir → 3 branches; clan sect snapshot → fortunes + stipend.
+  // 4. Tournament heir → 3 branches; the founded sect lives on as a world sect (Phase 46) + stipend.
   { const { gs, kids } = await headWithKids(4, 6)
     const s = gs.get(); s.ownSect.founded = true; s.ownSect.name = 'Azure Peak'; s.ownSect.hallLevel = 3
     gs.startTournament(); while (gs.get().family.tournament) {
@@ -132,12 +132,15 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
     gs.passTheMantle()
     const it = gs.get().interlude, clan = gs.get().world.clans[clanId]
     assert(it.heirKind === 'tournament' && clan.lines.length === 4, `tournament heir; places 2–4 found ${clan.lines.length - 1} branches`)
-    assert(['grow', 'hold', 'decline', 'lost'].includes(it.sectFate), `sect fate rolled: ${it.sectFate}`)
+    // Phase 46 (1.20b): the founded sect is not rolled away by the reign — it becomes a living world sect.
+    assert(it.sectFate === 'lineage', `the founded sect lives on as a world sect (${it.sectFate})`)
+    const rec = gs.get().world.sects.list.find(r => r.kind === 'lineage')
+    assert(rec && rec.name === 'Azure Peak' && rec.alive, `the sect became a living world sect (${rec?.name})`)
+    assert(!clan.sect?.worldSectId || clan.sect.worldSectId === rec.id, 'the clan claim points at the world record')
     const hall = clan.sect?.hallLevel
     gs.chooseRebirth('clan')
     const b = gs.get().birth
-    assert(it.sectFate === 'lost' ? b.stipend === 0 && gs.get().world.enemies.some(e => e.why.includes('Azure Peak'))
-      : b.stipend === Math.round(STIPEND(gs, hall, b)), `stipend ${b.stipend} for a ${b.position} (sect ${it.sectFate})`)
+    assert(b.stipend === Math.round(STIPEND(gs, hall, b)), `stipend ${b.stipend} for a ${b.position} (sect ${it.sectFate})`)
   }
 
   // 5. Positions: bet won favors the main line, bet lost favors a branch (many rebirths, same setup).
@@ -270,7 +273,8 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
     assert(s2.world.persons[headId].alive === false && s2.world.persons[headId].cause === 'challenge', 'the old head is dead')
     assert(clanOf(gs).headId === s2.self.id && s2.self.trauma === true, 'you take the seat, forged in blood')
     assert(s2.bloodlineQuality > bqBefore && s2.karma < karmaBefore, `Bloodline grows (${bqBefore.toFixed(1)} → ${s2.bloodlineQuality.toFixed(1)}), karma costs the kill (${karmaBefore} → ${s2.karma})`)
-    assert(s2.ownSect.founded && s2.ownSect.name === 'Azure Peak' && clanOf(gs).sect === null, 'the clan sect passes to you')
+    // Phase 46 (1.20b): a sect that lives on as a world sect is no longer the clan head's to hand over.
+    assert(!s2.ownSect.founded && !!clanOf(gs).sect?.worldSectId, 'a living sect does not pass with the seat — it stays in the world')
     assert(clanOf(gs).tradition.challenges === 1, 'clan tradition tracks the challenge')
   }
 
@@ -563,6 +567,7 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
   { const sim = await createSim({ seed: 205 }); await sim.boot(0); const gs = sim.gs
     const s = gs.get(), lastMortal = sim.data.CULTIVATION_STAGES.length - 2
     s.stageIndex = lastMortal; s.maxStageThisLife = lastMortal
+    s.bloodlineQuality = sim.data.ASCENSION_MIN_BLOODLINE   // Phase 47: the Trial is gated on the full bloodline
     gs._recalc(); s.qi = gs.get().derived.qiCap; gs._recalc()
     sim.ev('globalThis.__savedRandom = Math.random; Math.random = () => 0')   // force the ascension roll to succeed
     const res = gs.attemptAscension()
@@ -576,28 +581,69 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
     assert(clan.firsts.ascended && clan.firsts.asc_attempt, 'both the attempt and the survival firsts are claimed')
   }
 
-  // 35. Ancestral catch-up: below clan.bestStageIndex, Qi/s and breakthrough chance both get a bonus that
-  // disappears once you reach the clan's best — and the auto-BT it drives fires in Active Mode too (a base
-  // mechanic, unlike Phase 22's opt-in automations, which are Idle-Mode only).
+  // 35. Phase 46/47 (lineage-sect.md): ancestral catch-up is REMOVED. Bloodline Quality raises Qi/s instead
+  // (up to +100% / ×2 at BQ 100, Phase 47), and there is no catch-up auto-breakthrough — even with Qi ready in Idle Mode.
   { const sim = await createSim({ seed: 206 }); await sim.boot(0); const gs = sim.gs
-    const s = gs.get(), clan = clanOf(gs)
-    s.stageIndex = 1; s.maxStageThisLife = 1
-    clan.bestStageIndex = 5
-    gs._recalc()
-    const inCatchUp = gs.get().derived
-    assert(inCatchUp.catchUp === true, 'derived.catchUp true below the clan best')
-    clan.bestStageIndex = 0
-    gs._recalc()
-    const atBest = gs.get().derived
-    assert(atBest.catchUp === false, 'derived.catchUp false at/above the clan best')
-    assert(inCatchUp.qiPerSecond > atBest.qiPerSecond, `catch-up Qi/s (${inCatchUp.qiPerSecond.toFixed(2)}) beats normal (${atBest.qiPerSecond.toFixed(2)})`)
-    assert(inCatchUp.breakthroughChance > atBest.breakthroughChance, 'catch-up breakthrough chance is higher too')
-    clan.bestStageIndex = 5; s.stageIndex = 1; gs.setPlayMode('active'); gs._recalc()
-    s.qi = gs.get().derived.qiCap; gs._recalc()
-    sim.ev('globalThis.__savedRandom = Math.random; Math.random = () => 0')
+    const s = gs.get()
+    assert(s.derived.catchUp === undefined && s.derived.catchUpUntil === undefined, 'derived has no catch-up keys')
+    s.bloodlineQuality = 0; gs._recalc(); const low = gs.get().derived.qiPerSecond
+    s.bloodlineQuality = 100; gs._recalc()
+    const coef = sim.ev('BLOODLINE_QI_COEF')
+    assert(Math.abs(gs.get().derived.qiPerSecond / low - (1 + 100 * coef)) < 1e-6,
+      `BQ 100 scales Qi/s by 1 + 100×coef (got ×${(gs.get().derived.qiPerSecond / low).toFixed(4)})`)
+    // No catch-up auto-BT: Qi ready, Idle Mode, our own Auto-Breakthrough off.
+    s.stageIndex = 1; s.maxStageThisLife = 1; s.qi = gs.get().derived.qiCap * 2; s.health = 100
+    gs.setPlayMode('idle'); gs.get().automation.autoBreakthrough = false; gs._recalc()
     gs._tickAutomation(1)
-    sim.ev('Math.random = globalThis.__savedRandom')
-    assert(gs.get().stageIndex === 2, `catch-up auto-BT fired even in Active Mode (stage now ${gs.get().stageIndex})`)
+    assert(gs.get().stageIndex === 1, `no catch-up auto-BT fires (stage ${gs.get().stageIndex})`)
+  }
+  // ── Bequest (user 2026-10-02): carry N arts + N items into the next life (N = the reincarnation you are on) ──
+  {
+    const r = await headWithKids(911, 2)
+    const bs = r.sim, bg = r.gs, s0 = bg.get()
+    // Give the dying life arts + items worth carrying (the pool excludes the basics + currency).
+    for (const id of bs.ev('ARTS_LIST.filter(a => !a.starter && a.kind === "move").slice(0, 3).map(a => a.id)')) bg._learnArt(id, 'dev')
+    const cur = bs.ev('Object.keys(ITEMS).find(id => ITEMS[id].type === "currency")')
+    s0.inventory.spirit_herb = (s0.inventory.spirit_herb || 0) + 7
+    s0.inventory[cur] = 999
+
+    bg.passTheMantle()                       // → s.interlude; summary.bequest = the dying life's pool
+    let bq = bg.interludeInfo()
+    assert(bq.reincarnation === 1 && bq.bequest.maxArts === 1 && bq.bequest.maxItems === 1, 'the 1st reincarnation carries 1 art + 1 item')
+    assert(bq.bequest.pool.arts.length >= 1 && !bq.bequest.pool.arts.some(a => bs.ev('ART_BASICS').includes(a.id)),
+      `the arts pool holds the dying life's arts, never the basics (${bq.bequest.pool.arts.length})`)
+    assert(bq.bequest.pool.items.some(x => x.id === 'spirit_herb') && !bq.bequest.pool.items.some(x => x.id === cur),
+      'the pack is in the bequest pool, currency is not')
+
+    if (bq.step === 'bet') { bg.placeBet(bq.candidates[0].id); bq = bg.interludeInfo() }
+    const artId = bq.bequest.pool.arts[0].id, art2 = bq.bequest.pool.arts[1]?.id
+    assert(bg.toggleBequest('arts', artId).ok, 'you can pick an art to pass down')
+    if (art2) assert(bg.toggleBequest('arts', art2).reason === 'full', 'the art slot refuses past the cap')
+    assert(bg.toggleBequest('items', 'spirit_herb').ok, 'you can pick an item to pass down')
+    assert(bg.toggleBequest('items', 'no_such_item').reason === 'not_owned', 'an item you do not hold cannot be bequeathed')
+    assert(bg.toggleBequest('arts', artId).ok && bg.toggleBequest('arts', artId).ok, 'toggling an art off then on again works')
+
+    const qty = bq.bequest.pool.items.find(x => x.id === 'spirit_herb').qty
+    bg.chooseRebirth('clan')
+    const s1 = bg.get()
+    assert(!!s1.arts.known[artId] && s1.arts.known[artId].how === 'bequest' && s1.arts.known[artId].mastery === 1,
+      'the bequeathed art is known (mastery 1) in the new life')
+    assert(s1.inventory.spirit_herb === qty, `the bequeathed item passes down (×${qty})`)
+    assert(s1.lastReincarnation.bequest.arts.includes(artId), 'the birth summary records the bequest')
+
+    // The 2nd reincarnation carries 2 + 2 — and the bequest rides an ORPHAN rebirth too (it is personal, not clan).
+    bg.passTheMantle()
+    let bq2 = bg.interludeInfo()
+    assert(bq2.reincarnation === 2 && bq2.bequest.maxArts === 2 && bq2.bequest.maxItems === 2, 'the 2nd reincarnation carries 2 + 2')
+    if (bq2.step === 'bet') { bg.placeBet(bq2.candidates[0].id); bq2 = bg.interludeInfo() }
+    const a2 = bq2.bequest.pool.arts.slice(0, 2).map(x => x.id), i2 = bq2.bequest.pool.items.slice(0, 2).map(x => x.id)
+    for (const id of a2) bg.toggleBequest('arts', id)
+    for (const id of i2) bg.toggleBequest('items', id)
+    assert(bq2.bequest.pool.arts.length < 2 || bg.interludeInfo().bequest.arts.length === 2, 'two arts can be carried on the 2nd reincarnation')
+    bg.chooseRebirth('orphan')
+    const s2 = bg.get()
+    assert(!s2.world.playerClanId, 'born an orphan (the bequest must not be clan-gated)')
+    assert(a2.every(id => s2.arts.known[id]), 'the bequest rides an orphan rebirth')
   }
 })()
 

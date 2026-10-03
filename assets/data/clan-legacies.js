@@ -13,10 +13,8 @@ const MERIT_DEED_BEAST     = 2     // per beast owned at death
 const MERIT_DEED_DISCIPLE  = 1     // per own-sect disciple at death
 const MERIT_DEED_CAP       = 30    // deeds total, capped per life (stage term + firsts are uncapped)
 
-// ── Ancestral catch-up (31E) — below clan.bestStageIndex only ────────────────
-const CATCHUP_QPS_MULT     = 2.5
-const CATCHUP_BT_BONUS     = 0.10  // added before the existing 0.98 breakthrough-chance cap
-const CATCHUP_AUTO_BT      = true  // base mechanic, not gated by Phase 22's automation unlocks
+// ── Ancestral catch-up (31E) — REMOVED by Phase 46 (1.20a). Bloodline Quality → Qi/s (bloodline.js,
+// BLOODLINE_QI_COEF) is the inherited head start now; see docs/systems/lineage-sect.md. ──
 
 // ── Ancestor Blessing (31F — one stack per Ascended Ancestor from this clan) ──
 const ANCESTOR_BLESSING_QPS     = 0.05   // +5% Qi/s per stack, unconditional (not catch-up-gated)
@@ -40,6 +38,10 @@ const CLAN_FIRSTS = {
   ascended:      { label: 'First to survive Ascension',       merit: 150 },
   joined_sect:   { label: 'First to join a sect',              merit: 5 },
   founded_sect:  { label: 'First to found a sect',              merit: 20 },
+  took_sect:     { label: 'First to take a sect from its master', merit: 25 },   // Phase 43e
+  razed_sect:    { label: 'First to raze a sect to the ground', merit: 20 },     // Phase 43f
+  void_body:     { label: 'First to endure the Void Pressure Chamber', merit: 30 }, // Phase 14
+  body_s:        { label: 'First to forge a Heaven-Forged Body', merit: 25 },     // Phase 14
   first_beast:   { label: 'First to tame a spirit beast',      merit: 10 },
   war_won:       { label: 'First war won',                     merit: 15 },
   married:       { label: 'First marriage',                    merit: 10 },
@@ -115,6 +117,10 @@ const EPITAPHS = {
   challenge_lost: [
     '{name}, who reached for the head seat and was cut down reaching.',
     '{name}, buried the day they challenged for the clan.',
+  ],
+  sect_master: [   // Phase 43e: killed challenging your sect's master
+    '{name}, who climbed to the master’s seat and was thrown from it, at {age}.',
+    '{name}, Grand Elder for a season, slain by the master they meant to unseat.',
   ],
   challenged: [
     '{name}, who held the head seat until someone younger wanted it more.',

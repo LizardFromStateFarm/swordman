@@ -2,7 +2,7 @@
 // turns the save + GameState's recorded terms (s.derived.breakdown, ascensionBreakdown(), btFailPreview(),
 // vitalsInfo()) into a card model { glyph, title, total, rows, sections, notes }. BreakdownUI draws that card as
 // a popover next to whatever was tapped: any element with data-bd="<kind>" (HUD numbers, Character tiles).
-// Kinds: qps · cap · bt · integrity · health · karma · bloodline · affection + propose (1.8b-3a) · branch (1.8b-4) · sectwar (1.8b-5). See docs/systems/ui-layout.md → "Breakdowns".
+// Kinds: qps · cap · bt · integrity · health · karma · bloodline · affection + propose (1.8b-3a) · branch (1.8b-4) · sectwar (1.8b-5) · blessing (43d). See docs/systems/ui-layout.md → "Breakdowns".
 
 // Short stage names for locks and hints ("Qi Condensation 4", "Core Formation · Early") instead of "Stage 12+".
 function stageShortName(i) {
@@ -13,10 +13,11 @@ function stageShortName(i) {
   return `${st.realm} · ${st.layer.replace(/ Stage$/, '')}`
 }
 
-// Bloodline is shown from Spirit Severing on (it only matters for the Ascension Trial), or once you have tried it.
+// Bloodline is shown from Spirit Severing on (it matters for the Ascension Trial), once you have tried it, or —
+// Phase 46 (1.20a) — from the moment it is > 0, since it now also raises Qi/s from the second life on.
 function bloodlineVisible(s) {
   const ss = CULTIVATION_STAGES.findIndex(x => x.realm === 'Spirit Severing')
-  return s.stageIndex >= ss || (s.stats?.ascensionAttempts || 0) > 0
+  return (s.bloodlineQuality || 0) > 0 || s.stageIndex >= ss || (s.stats?.ascensionAttempts || 0) > 0
 }
 
 const BD_PCT = v => `${(v * 100).toFixed(1)}%`
@@ -40,7 +41,6 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
     const rows = mulRows(b.qps || [], '')
     if (d.meditBonus > 1) rows.push({ label: `Meditation (${d.meditSecondsLeft}s left)`, val: `×${d.meditBonus}`, run: small(d.qiPerSecondBoosted), op: 'x', tone: 'up' })
     const notes = []
-    if (d.catchUp) notes.push(`Ancestral catch-up: your clan has already reached ${stageShortName(d.catchUpUntil)}. Until you match it, Qi flows ×${CATCHUP_QPS_MULT} and breakthroughs come ${BD_PCT(CATCHUP_BT_BONUS)} easier.`)
     if (d.sectBuffSuppressed) notes.push('Your sect lost a war. Its blessing is withheld for now.')
     notes.push(OFFLINE_QI_MULT === 1 ? 'Qi keeps gathering while the game is closed, at the same rate.' : `While the game is closed, Qi gathers at ×${OFFLINE_QI_MULT}.`)
     return { glyph: 'qi', title: 'Qi per second', total: `${small(d.qiPerSecondBoosted)} /s`, rows, notes }
@@ -149,7 +149,8 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
   if (kind.startsWith('personfight:')) {
     const [, pid, fk] = kind.split(':')
     const st = gs.get(), sp = st.family?.spouse, fi = st.family?.fight
-    const p = fk === 'duel' && sp?.id === pid ? sp : fk === 'arena' ? st.arena?.duelists?.[pid] : fk === 'slaughter' && fi?.foe?.id === pid ? fi.foe : gs.person?.(pid)
+    const p = fk === 'duel' && sp?.id === pid ? sp : fk === 'arena' ? st.arena?.duelists?.[pid] : fk === 'slaughter' && fi?.foe?.id === pid ? fi.foe
+      : fk === 'spar' ? (fi?.foe?.id === pid ? fi.foe : gs._wsAll?.().map(r => r.sparFoe?.p).find(x => x?.id === pid)) : gs.person?.(pid)   // 43h: a spar foe
     const o = p && gs.personFightOdds?.(p, fk)
     if (!o) return null
     const e = o.est, pct = v => v < 0.01 ? '<1%' : v > 0.99 ? '>99%' : `${Math.round(v * 100)}%`
@@ -180,13 +181,36 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
   }
 
   // 1.8b-5: sect war odds — the real roll (gs.sectWarOdds): your strength multiplier against a rival of ×0.6–1.4
+  // Phase 43d: the joined blessing — its halls' factor × your rank's share (docs/systems/npc-sects.md → "43d")
+  if (kind === 'blessing') {
+    const b = gs.sectBlessingInfo?.()
+    if (!b) return null
+    const x = v => `×${v.toFixed(2)}`
+    const rows = b.parts.map((p, i) => i === 0 ? { label: p.label, val: x(p.val), op: 'base' }
+      : { label: p.label, val: `+${p.val.toFixed(2)}`, op: '+', tone: p.val ? 'up' : 'dim' })
+    if (b.capped === 'max') rows.push({ label: 'No sect blesses past', val: x(b.max), tone: 'dim' })
+    if (b.capped === 'min') rows.push({ label: 'No sect blesses less than', val: x(b.min), tone: 'dim' })
+    rows.push({ label: 'Their halls can give', val: x(b.factor) })
+    rows.push({ label: `Your rank, ${b.rankName}, draws`, val: x(b.share), op: 'x', tone: b.share < 1 ? 'down' : 'up' })
+    const notes = ['Every effect scales by what you draw: a ×1.4 becomes ×(1 + 0.4 × it), a +5% becomes +5% × it.',
+      `Fully built, this sect could give ${x(b.reach)}.`]
+    if (b.nextRankName) notes.push(`${b.nextRankName}s draw ${Math.round(b.nextShare * 100)}%.`)
+    if (b.lost) notes.push(`Its ${b.lost.name} was lost in year ${b.lost.year}: rebuild it (the levy, or your own stones) to win it back.`)
+    if (b.suppressed) notes.push('Withheld for now: the sect lost a war and licks its wounds.')
+    return { glyph: 'hall', title: 'The sect’s blessing', total: x(b.k), totalLabel: 'You draw', rows, notes }
+  }
+
   if (kind === 'sectwar') {
     const o = gs.sectWarOdds()
     if (!o) return null
     const rows = o.parts.map(p => p.op === 'base' ? { label: p.label, val: '×1.00', op: 'base' }
       : { label: p.label, val: p.op === 'x' ? `×${p.value.toFixed(2)}` : `+${p.value.toFixed(2)}`, op: p.op === 'x' ? 'x' : '+', tone: 'up' })
     rows.push({ label: 'Your strength', val: `×${o.mult.toFixed(2)}`, tone: '' })
-    const notes = ['The rival rolls its strength when battle is joined: anywhere from ×0.6 to ×1.4 of an even match. These odds average over every roll.']
+    const vs = o.vs?.foe ? o.vs : null   // Phase 43c: the bound sect's real Might sets the rival's strength
+    if (vs) rows.push({ label: `The ${vs.foe.name}: Might ${fmt(vs.them)} vs ${o.side === 'own' ? 'yours' : 'your sect’s'} ${fmt(vs.us)}`, val: `×${vs.ratio.toFixed(2)}`, tone: vs.ratio > 1 ? 'down' : 'up' })
+    const notes = [vs
+      ? `The rival fights at ×${vs.ratio.toFixed(2)} of an even match (their Might over yours, softened), then rolls ×0.6 to ×1.4 of that when battle is joined. These odds average over every roll.`
+      : 'The rival rolls its strength when battle is joined: anywhere from ×0.6 to ×1.4 of an even match. These odds average over every roll.']
     if (o.side === 'member') {
       if (o.rankMult !== 1) notes.push(`Your rank multiplies everything you give by ×${o.rankMult}.`)
       if (o.ifAnswered != null) notes.push(`Answering the call alone would raise this to ${BD_PCT(o.ifAnswered)}.`)
@@ -204,14 +228,20 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
 
   if (kind === 'bt' && s.stageIndex === lastMortal) {
     const ab = gs.ascensionBreakdown()
+    const locked = ab.req && !ab.req.met
     const rows = ab.parts.map(p => p.op === 'base' ? { label: p.label, val: BD_PCT(p.value), op: 'base' }
       : p.want != null && !p.value ? { label: `${p.label} (not yet)`, val: `+${BD_PCT(p.want)}`, op: '+', tone: 'dim' }
       : { label: p.label, val: `+${BD_PCT(p.value)}`, op: '+', tone: 'up' })
+    if (locked) rows.unshift({ label: `Bloodline Quality ${ab.req.need} required`, val: `${Math.round(ab.req.have)} / ${ab.req.need}`, tone: 'warn' })
     const raw = ab.parts.reduce((a, p) => a + p.value, 0)
     if (raw > ab.cap) rows.push({ label: 'Heaven allows no more than', val: BD_PCT(ab.cap), tone: 'dim' })
-    return { glyph: 'lightning', title: 'Ascension Trial', total: BD_PCT(ab.total), rows,
-      sections: [{ title: 'If the tribulation takes you', rows: [{ label: 'This life ends; your heir carries on', val: '', tone: 'warn' }] }],
-      notes: ['Survivors ascend and become the clan’s Ascended Ancestor. Bloodline is what tips the odds.'] }
+    return { glyph: 'lightning', title: 'Ascension Trial', total: locked ? 'Locked' : BD_PCT(ab.total), rows,
+      sections: [{ title: locked ? 'Not yet' : 'If the tribulation takes you', rows: locked
+        ? [{ label: 'Reach the full bloodline to attempt it', val: '', tone: 'warn' }]
+        : [{ label: 'This life ends; your heir carries on', val: '', tone: 'warn' }] }],
+      notes: [locked
+        ? `The heavens take only a full bloodline (${ab.req.need}). End lives and let the line thicken — then the Trial opens.`
+        : 'Survivors ascend and become the clan’s Ascended Ancestor. Bloodline is what tips the odds.'] }
   }
 
   if (kind === 'bt') {
@@ -248,17 +278,37 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
   }
 
   if (kind === 'health') {
-    const h = gs.vitalsInfo().health
-    const rows = [{ label: `Recovers +${h.regenAmount} every ${h.regenSeconds}s`, val: h.value >= 100 ? 'full' : `full in ${fmtTime(Math.ceil((100 - h.value) / h.regenAmount * h.regenSeconds))}`, tone: 'up' }]
+    const h = gs.vitalsInfo().health, max = h.max || 100
+    // Phase 14: the body sets the ceiling and the rate (scars lower both)
+    const rows = [{ label: `Max Health: ${h.body?.name || 'your body'}${h.scars?.length ? ` less ${h.scars.join(', ')}` : ''}`, val: String(max), tone: max > 100 ? 'up' : '' },
+      { label: `Recovers +${h.regenAmount} every ${Math.round(h.regenSeconds)}s`, val: h.value >= max ? 'full' : `full in ${fmtTime(Math.ceil((max - h.value) / h.regenAmount * h.regenSeconds))}`, tone: 'up' }]
     const risks = h.risky.slice(0, 3).map(r => ({ label: `Roaming ${r.name} (${Math.round(r.chance * 100)}% chance)`, val: `−${r.dmg}`, tone: 'down' }))
     if (!risks.length) risks.push({ label: 'Roaming: nowhere in reach outclasses you', val: '—', tone: 'dim' })
     if (h.risky.length > 3) risks.push({ label: `…and ${h.risky.length - 3} more dangerous places`, val: '', tone: 'dim' })
     risks.push({ label: `Losing a sect war you fought in (${Math.round(h.warChance * 100)}% chance)`, val: `−${h.warDmg}`, tone: 'down' })
     risks.push({ label: 'Winning a duel', val: `−${h.duelCost}`, tone: 'down' })
     risks.push({ label: 'At 0, this life ends', val: '', tone: 'warn' })
-    if (s.stageIndex === lastMortal) rows.push({ label: 'At 100 for the Ascension Trial', val: `+${BD_PCT(ASCENSION_PREP_HEALTH)}`, tone: h.value >= 100 ? 'up' : 'dim' })
-    return { glyph: 'health', state: true, title: 'Health', total: `${Math.round(h.value)} / 100`, rows,
-      sections: [{ title: 'What wounds you', rows: risks }], notes: ['Some chance events also wound or heal you.'] }
+    if (s.stageIndex === lastMortal) rows.push({ label: 'Full for the Ascension Trial', val: `+${BD_PCT(ASCENSION_PREP_HEALTH)}`, tone: h.value >= max ? 'up' : 'dim' })
+    return { glyph: 'health', state: true, title: 'Health', total: `${Math.round(h.value)} / ${max}`, rows,
+      sections: [{ title: 'What wounds you', rows: risks }], notes: ['Some chance events also wound or heal you.', 'Temper your body (Path → Body) to raise the ceiling and the rate.'] }
+  }
+
+  // Phase 14 (body-constitution.md): the body tier and what it gives, and an ordeal's clean-endure odds
+  if (kind === 'body') {
+    const b = gs.bodyInfo(), t = b.def
+    const rows = [{ label: 'Max Health', val: String(b.maxHealth), tone: 'up' }, { label: 'Health regen', val: `+1 / ${Math.round(b.regenSec)}s`, tone: 'up' },
+      { label: 'A failed breakthrough keeps more Qi', val: `+${Math.round(b.btKeep * 100)}%`, tone: b.btKeep ? 'up' : 'dim' },
+      { label: 'Fight power', val: `+${b.power}`, tone: b.power ? 'up' : 'dim' }]
+    if (b.btBonus) rows.push({ label: 'Thunder-tempered breakthrough edge', val: `+${BD_PCT(b.btBonus)}`, tone: 'up' })
+    const xpRows = b.xpMult.parts.map(x => ({ label: x.label, val: x.op === 'base' ? '×1' : `+${Math.round(x.value * 100)}%`, tone: x.op === 'base' ? '' : 'up' }))
+    const notes = [b.next ? `${fmt(b.xp)} / ${fmt(b.next.xp)} XP to the ${b.next.name}. At the mark, a trial you choose raises the tier.` : 'The peak: a Heaven-Forged Body.', 'Every life begins in a Frail Body. Temper it on Path → Body.']
+    return { glyph: 'shield', title: `${t.id} · ${t.name}`, total: `${t.id}`, rows, sections: [{ title: 'Tempering XP', rows: xpRows }], notes }
+  }
+  if (kind === 'ordeal') {
+    const o = gs.ordealOdds()
+    const rows = o.parts.map(x => ({ label: x.label, val: `${x.value >= 0 ? '+' : ''}${Math.round(x.value)}%`, tone: x.value > 0 ? 'up' : x.value < 0 ? 'down' : '' }))
+    return { glyph: 'lightning', title: 'Endure cleanly', total: BD_PCT(o.chance), rows,
+      notes: [`Clamped to ${ORDEAL_CRISIS.min}–${ORDEAL_CRISIS.max}%. A bad roll still pays the XP, but costs Health and may scar.`] }
   }
 
   // Spirit Stones (user 2026-09-27): what the purse is for — where stones come from and what they buy, in your numbers
@@ -296,12 +346,16 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
 
   if (kind === 'bloodline') {
     const bq = s.bloodlineQuality || 0
+    const full = bq >= BLOODLINE_CAP
     const rows = [
-      { label: 'Ascension Trial odds', val: `+${BD_PCT(bq * ASCENSION_BQ_COEF)}`, tone: bq ? 'up' : 'dim' },
-      { label: 'At the full 100', val: `+${BD_PCT(BLOODLINE_CAP * ASCENSION_BQ_COEF)}`, tone: 'dim' },
+      { label: 'Qi/s', val: `×${(1 + bq * BLOODLINE_QI_COEF).toFixed(3)}`, tone: bq ? 'up' : 'dim' },
+      { label: 'At the full 100', val: `Qi ×${(1 + BLOODLINE_CAP * BLOODLINE_QI_COEF).toFixed(2)}`, tone: 'dim' },
+      { label: 'The Ascension Trial needs', val: `Bloodline ${ASCENSION_MIN_BLOODLINE}`, tone: full ? 'up' : 'dim' },
     ]
     return { glyph: 'vein', state: true, title: 'Bloodline', total: `${Math.round(bq)} / ${BLOODLINE_CAP}`, rows,
-      notes: ['It thickens with each generation: when a life ends it grows from how far you climbed, how far your spouse climbed, and the strength of the heir who follows.'] }
+      notes: ['It thickens with each generation: when a life ends it grows from how far you climbed, how far your spouse climbed, and the strength of the heir who follows — and it hardly thins between lives.',
+              'A stronger bloodline cultivates faster — this is the head start a reincarnated life carries in place of any catch-up.',
+              `Only at the full ${BLOODLINE_CAP} may you attempt the Ascension Trial. Each life you end gets you closer.`] }
   }
   return null
 }

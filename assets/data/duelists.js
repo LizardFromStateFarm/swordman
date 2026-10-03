@@ -28,4 +28,5 @@ const DUELIST_ROBES = ['azure', 'crimson', 'ink', 'moon', 'sovereign', 'hemp', '
 const DUELIST_ROLE_LOOK = {
   head:        { hair: 'crown' },
   branch_head: { robe: 'sovereign' },
+  sect_master: { hair: 'crown', robe: 'sovereign' },   // Phase 43e: the master of the sect you belong to
 }

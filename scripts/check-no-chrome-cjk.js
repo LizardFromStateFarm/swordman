@@ -1,7 +1,7 @@
 // Chrome-CJK check (roadmap 1.8d-2; CLAUDE.md → "UI icons come from the custom SVG icon set"). CJK in the UI is
 // reserved for the six nav group marks and deliberate in-world flavour. This scans renderer/ (.js/.html/.css) for
 // CJK characters in code (comments are skipped) and prints file:line + the characters. Allowed:
-//   - renderer/game/nav.js NAV_GROUPS glyph lines (修 歷 家 宗 囊 錄) and the 道 rail ornament
+//   - renderer/game/nav.js NAV_GROUPS glyph lines (修 歷 家 宗 囊 世) and the 道 rail ornament
 //   - any line ending in a `cjk-ok` comment (in-world flavour, e.g. a technique's Chinese name shown as content)
 // Flavour that lives in assets/data (stage names, sect nameCN, …) is content, not chrome, and is not scanned.
 // Run: node scripts/check-no-chrome-cjk.js            → report (exit 0)
@@ -11,7 +11,7 @@ const fs = require('fs'), path = require('path')
 
 const root = path.join(__dirname, '..')
 const CJK = /[㐀-䶿一-鿿豈-﫿]/g
-const NAV_MARKS = /glyph: '[修歷家宗囊錄]'|id="rail-ink">道</
+const NAV_MARKS = /glyph: '[修歷家宗囊世]'|id="rail-ink">道</
 
 // Remove comments so documentation text never trips the check. Line-preserving: block comments keep their newlines.
 function stripComments(src, ext) {

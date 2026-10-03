@@ -138,6 +138,9 @@ were explicit choices and are kept). `f.expecting = [{partnerId, dueYear}]` → 
 - 授 **Teach your art** (from `TEACH_MIN_AGE`) — bigger Qi slice, xp (a head start banked before awakening), bond by
   personality, and morality pulled `TEACH_MORALITY_PULL` toward *your* morality (karma shapes your children).
 - 資 **Give resources** (from `GIFT_MIN_AGE`) — stones, xp, bond; spoils some personalities (morality −).
+- **Temper their body** (Phase 14, from `TEMPER_MIN_AGE` 8, 1 Beast Core, cooldown 600s) — bond by the child's temper; every
+  `CHILD_BODY.perTier` (3) sessions the child's `bodyTier` rises (to A), adding `BODY_TIERS[t].power` to their fight power in
+  tournaments, head challenges and duels. A "D body" tag shows on the child's card (body-constitution.md).
 Neglect drift, child events and runaways stay as in 2.6b; these actions are how you fight the drift.
 
 **As built (2026-09-27):**
@@ -263,3 +266,57 @@ generic confirm — deliberate, never automatic (the agency rule: the player's o
   cooldown, the scar at 2 hits, the grown-child reckoning + `accept`, and the old-save path. Smoke `beating.js` (+5:
   child-raise-hand / child-raise-confirm). Sim 100h × 2 healthy; `child_abuse` 464/424 and `child_reckoning` 61/62
   (the bot always answers a reckoning; `active` sometimes raises a hand for the Bloodline trauma term).
+
+## Naming a child + the root / potential chip (user 2026-10-02)
+
+Two asks in one session: rename a child, and see each child's spiritual root so the highest-potential child is obvious.
+
+**Root = potential.** Every child already carried a `root` (blended from the parents at birth, `Persons.blendRoot`) —
+it just was never shown. `root.mult` is the cultivation-speed multiplier, so it *is* the child's potential. The
+Kin → Family child card now shows a `.kid-root` chip on **every** child (root name + `×mult`), coloured by type
+(heavenly gold · pure jade · dual purple · mixed dim). `FamilyView._bestRootIds()` crowns each at-home child at the top
+multiplier with a gold, glowing `crown` chip — but only when there is a clear best (if every at-home child shares one
+multiplier there is no "highest", so nobody is crowned). Outside Overlay the crowned chip also appends a visible
+" · best" (in Overlay the crown + tooltip carry it), and Overlay gives the foot a uniform two-row layout (chip line 1,
+bond line 2) so every card is the same height. The chip deliberately sits **outside** `.kid-tags`, which Overlay
+collapses. The heir picker (`childSummary` in game.js) also shows the root, so potential informs who you name heir.
+
+**Naming.** `renameChild(childId, name)` → `{ok}` / `{ok:false, reason:'unknown'|'empty'}` (game-state.js) — free and
+cosmetic: it trims, collapses whitespace, caps at 16 chars, treats a same-name rename as a no-op, and changes **only**
+`given` (the child keeps root/potential, bond, morality, stage and cooldowns). The card's Rename action (only on an
+open card, on its own row directly under the head, reusing the house `.fa-quiet`) opens the **shared** name box — the
+same `#rename-input` the cultivator's own title uses (`game.js` → `openRename(value, onOk, maxLength)`; a child passes
+16, the player keeps 24). Agency: the name is the player's explicit choice, never rolled (CLAUDE.md rule 6).
+
+**Checks:** `scripts/sim/checks/family-agency.js` +6 (trim+collapse, empty refused, unknown refused, 16-char cap,
+same-name no-op, cosmetic-only). **Smoke:** `scripts/smoke/scenarios/family.js` — every child card shows a root, the
+best is crowned, Rename opens the box and the entered name lands (`fam-overlay-kids` / `fam-overlay-child` /
+`fam-rename-box` / `fam-expanded-kids` / `fam-desktop-kids`). **Visual Review Gate: 7.4 → 7.6 → 7.75 PASS** — cycle 1's
+blocker was evidence (the shots didn't frame the change, fixed by re-framing), cycle 2's was the localisation label
+overflowing the card in Expanded (shortened to " · best"). See `docs/systems/ui-review.md`.
+
+---
+
+## Family tree (Kin → Tree, built 2026-10-03)
+
+> User: *"add a family tree to the family tab, like an actual tree. it can have its own page but make sure there's a button
+> to see the tree on the family tab, because family saying you walk the path alone because you have no wife but you do have
+> parents and siblings is weird."* Picks: **the whole clan line**, **tap a person → their card + the existing actions**.
+
+- **Where:** its own sub-view, **Kin → Tree** (`#tab-tree`, `renderer/game/family-tree.js` FamilyTreeView), reached from a
+  **"Family tree" door at the top of Kin → Family** (`FamilyView._treeLink`: parents · siblings · children counts). The unwed
+  card is now **"No partner at your side"** and names the parents/siblings you do have (`_kinLine`).
+- **Data:** `gameState.familyTreeInfo()` (read-only) — nodes by generation: up to three generations of ancestors up the
+  `parents` chain (−3..−1), you + siblings (full / half: anyone sharing a parent) + partners (spouse, former spouses, a
+  lover who bore your child) (0), your children (alive, dead, estranged) + their spouses (+1), grandchildren (+2). A past
+  life of yours in the line (`world.pastLives`) is marked "Past life · gen N"; earlier lives outside it are listed below the
+  tree. Marks: clan head (crown), named heir. Counts feed the Family door.
+- **Drawing:** generation rows of nodes (ordered: a pedigree above you; older siblings · you · partners · younger siblings;
+  children grouped by their other parent, each with their spouse; grandchildren under their parent). An SVG layer draws a
+  bar between partners (dashed for a former one) and an elbow from each couple to their children (`_lines`, re-run on resize).
+  Wide trees scroll sideways inside `.ft-scroll` and centre on you; the generation labels are sticky.
+- **Tap a person:** their card on top (relation, age or death year + cause, realm, temper, root, bond / affection, morality).
+  A child at home → **"Raise them"** opens Kin → Family with that child's card unfolded; your spouse / a lover → **"Be with
+  them"** on Family; a past life → **the Ancestral Hall**.
+- Checks: `scripts/sim/checks/family-tree.js` (16). Smoke: `scripts/smoke/scenarios/family-tree.js`.
+- **Debt:** the pedigree rows are centred, not placed exactly over each child (the lines connect them anyway); no portraits.

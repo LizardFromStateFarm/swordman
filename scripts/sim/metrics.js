@@ -193,6 +193,24 @@ class Recorder {
       if (wd.playerClanId && !clan) this.violate('world_player_clan_missing', wd.playerClanId)
       if (clan && !clan.lines.some(l => l.memberIds.includes(s.self.id))) this.violate('world_player_not_on_roster', s.self.id)
       if (wd.pastLives.length !== (s.deaths || 0)) this.violate('world_past_lives_mismatch', `${wd.pastLives.length} vs deaths ${s.deaths}`)
+      // Phase 28 (living-world.md §12.1): no dead person holds a world sect's seat.
+      for (const r of wd.sects?.list || []) if (r.alive && r.leaderId && wd.persons[r.leaderId]?.alive === false) this.violate('sect_master_dead', `${r.id} ${r.leaderId}`)
+      for (const r of wd.sects?.list || []) if (r.alive) for (const id of r.elderIds || []) if (wd.persons[id]?.alive === false) this.violate('sect_elder_dead', `${r.id} ${id}`)
+      // 4.3 (§12.7): old age is a backstop — under a quarter of the world's deaths once enough have died to judge
+      { const d = wd.lifeStats?.deaths || {}, tot = Object.values(d).reduce((a, b) => a + b, 0)
+        if (tot >= 200 && (d.old_age || 0) / tot >= 0.25 && !this._oldAgeFlagged) { this._oldAgeFlagged = true; this.violate('old_age_share', `${d.old_age} of ${tot}`) } }
+      // 4.6 (§12.4): the realm bands, sampled for the report; a lower band (Qi Condensation, Foundation, Core) emptied
+      // after the first open hour is an extinction the replacement controller should have prevented.
+      if (this.D.NPC_WORLD) {
+        const B = this.D.NPC_WORLD.bands, c = B.map(() => 0)
+        for (const p of Object.values(wd.persons)) {
+          if (p.alive === false || (p.owner && p.owner !== 'world') || p.role === 'ancestor') continue
+          const st = p.stageIndex || 0, i = B.findIndex(b => st >= b.from && st <= b.to); c[i < 0 ? B.length - 1 : i]++
+        }
+        this.bands ||= { n: 0, sum: B.map(() => 0) }
+        this.bands.n++; c.forEach((v, i) => { this.bands.sum[i] += v })
+        if (this.t > 3600 && !this._bandFlagged) for (let i = 0; i < 3; i++) if (!c[i]) { this._bandFlagged = true; this.violate('band_extinct', B[i].id) }
+      }
       // 2.6d: every living clan has a living head (or none only once extinct); ≤ 3 branches; birth record consistent.
       for (const c of Object.values(wd.clans)) {
         const h = c.headId === s.self.id ? s.self : wd.persons[c.headId]
@@ -418,6 +436,15 @@ class Recorder {
       // Phase 30 (M2 task 2.3): per-life length. Heir kind/marriages/children/Merit/legacies land 2.5-2.7.
       lifeLoop: { lifeLengths: this.lifeLengths,
                   livesPer100h: +(this.lifeLengths.length / Math.max(1e-9, this.t / 3600) * 100).toFixed(1) },
+      // Phase 28 (living-world.md §10): the registry + save size at the end of the run (budget: slot ≤ 1.2 MB)
+      people: (() => { const ps = Object.values(s.world?.persons || {}); return { persons: ps.length, living: ps.filter(p => p.alive !== false).length,
+        slotKB: Math.round(JSON.stringify(s).length / 1024), worldKB: Math.round(JSON.stringify(s.world || {}).length / 1024),
+        deaths: { ...(s.world?.lifeStats?.deaths || {}) }, births: s.world?.lifeStats?.births || 0, ascended: s.world?.lifeStats?.ascended || 0,   // 4.3
+        classes: Object.keys(s.world?.cohorts || {}).length,
+        // 4.6: each band's mean over the run vs its target + the controller's work
+        bands: this.bands && this.D.NPC_WORLD ? this.D.NPC_WORLD.bands.map((b, i) => ({ id: b.id, mean: +(this.bands.sum[i] / this.bands.n).toFixed(1), target: b.target })) : null,
+        refill: { waves: s.world?.lifeStats?.waves || 0, wanderers: s.world?.lifeStats?.wanderers || 0, hidden: s.world?.lifeStats?.hidden || 0, seized: s.world?.lifeStats?.seized || 0 },
+        chron: (s.world?.chron || []).length } })(),
       health: { violations: this.violations, errors: this.errors, saveRoundtrips: this.saveChecks },
       ...extra,
     }

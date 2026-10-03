@@ -19,10 +19,14 @@ const WAR_INJURY_AMOUNT = 12
 const BLOODLINE_CAP            = 100
 const BLOODLINE_G_BASE         = 1
 const BLOODLINE_G_SELF         = 8
-const BLOODLINE_G_PARTNER      = 5       // Phase 16-lite (M2 task 2.5): spouse's maxStage this life (current or last)
-const BLOODLINE_G_HEIR         = 4       // 2.6c: × (heir stage / 22)² — the heir who takes over the clan
-const BLOODLINE_G_TRAUMA_HEIR  = 2       // 2.6c: flat, if that heir won their place through trauma (user, 2026-09-26)
-const BLOODLINE_CARRY_NEW_SOUL = 0.25    // family carry (1.0 + bonus) waits on Phase 16/18 heirs (task 2.6)
+const BLOODLINE_G_PARTNER      = 2.5     // Phase 16-lite (M2 task 2.5): spouse's maxStage this life (current or last)
+const BLOODLINE_G_HEIR         = 2.5     // 2.6c: × (heir stage / 22)² — the heir who takes over the clan
+const BLOODLINE_G_TRAUMA_HEIR  = 1       // 2.6c: flat, if that heir won their place through trauma (user, 2026-09-26)
+// Phase 47 (1.21): the bloodline barely thins between lives, so it can climb toward the 100 the Trial now demands
+// — but each life adds less (the growth above is small and shrinks as BQ nears the cap), so it takes ~15 lives, not ~4.
+const BLOODLINE_CARRY_NEW_SOUL = 0.95
+const BLOODLINE_QI_COEF        = 0.01    // Phase 47: +1% Qi/s per point, up to +100% (×2) at BQ 100 — the inherited
+                                         // head start that replaced ancestral catch-up (lineage-sect.md)
 
 // ── 23C: Ascension Trial ─────────────────────────────────────────────────────
 const ASCENSION_BASE_CHANCE    = 0.07
@@ -30,3 +34,4 @@ const ASCENSION_BQ_COEF        = 0.006   // +60% at Bloodline Quality 100
 const ASCENSION_PREP_INTEGRITY = 0.03    // Realm Integrity at 100 when the trial is attempted
 const ASCENSION_PREP_HEALTH    = 0.03    // Health at 100 when the trial is attempted
 const ASCENSION_CHANCE_CAP     = 0.95
+const ASCENSION_MIN_BLOODLINE  = 100     // Phase 47 (1.21): the Trial may only be attempted at the full bloodline

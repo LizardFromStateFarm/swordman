@@ -1568,6 +1568,8 @@ class InkRenderer {
             if (B.ridges !== false && y > this._ridge(B.ridgeFar, x) - 4) continue
             if (a.y0 != null && y < a.y0) continue
             if (a.avoid && Math.hypot(x - a.avoid[0], y - a.avoid[1]) < a.avoid[2] + 3) continue
+            if (a.clear && x > a.clear[0] && x < a.clear[2] && y > a.clear[1] && y < a.clear[3]) continue   // keep off a silhouette (e.g. the compound)
+            if (a.fade && inkRnd(i * 2.7) > Math.max(0, Math.min(1, (a.y1 - y) / a.fade))) continue         // thin out toward the horizon line
             const tw = calm ? 0.5 : 0.5 + 0.5 * Math.sin(t * (0.8 + inkRnd(i) * 1.6) + i)
             const rr = 0.3 + 0.35 * inkRnd(i * 1.7) * tw
             path[tw > 0.6 ? 1 : 0].moveTo(x + rr, y); path[tw > 0.6 ? 1 : 0].arc(x, y, rr, 0, Math.PI * 2)
@@ -1935,12 +1937,13 @@ class InkRenderer {
     return C.deathDots
   }
 
-  // Two soft mist bands, 600 logical px wide (drawn twice for a seamless drift).
+  // Two soft mist bands, 600 logical px wide (drawn twice for a seamless drift). A background may have no mist
+  // (`mistY` absent) — e.g. the mountaintop sect scene — in which case there is simply nothing to paint.
   _paintMist(ctx, S) {
     const B = this.art.background, col = this.art.palette.mist
     ctx.setTransform(S, 0, 0, S, 0, 0)
     ctx.filter = `blur(${(4 * S).toFixed(1)}px)`
-    for (const [yi, my] of B.mistY.entries()) {
+    for (const [yi, my] of (B.mistY || []).entries()) {
       for (let i = 0; i < 9; i++) {
         const x = (i / 9) * 600 + inkRnd(i + yi * 20) * 40
         const rx = 30 + inkRnd(i + 3 + yi * 20) * 36, ry = 2.2 + inkRnd(i + 9) * 2.4

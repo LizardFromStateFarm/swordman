@@ -21,8 +21,8 @@ const COMBAT_REASON = {
   gone: 'It has gone.',
 }
 // A6-3a: a fight with a person — its title, and what yielding costs you
-const PERSON_FIGHT_TITLE = { duel: 'A Duel to the Death', challenge: 'Challenge for the Head Seat', defend: 'Defending the Head Seat', stepdown: 'Contest for the Head Seat', arena: 'The Arena', slaughter: 'A Killing on the Road' }
-const PERSON_FIGHT_YIELD = { duel: 'your marriage ends', challenge: 'you lose; heal before you try again', defend: 'you give up the head seat', stepdown: 'you are out of the contest', arena: 'the run ends; you keep half the purse', slaughter: 'they let you live, and walk on' }
+const PERSON_FIGHT_TITLE = { duel: 'A Duel to the Death', challenge: 'Challenge for the Head Seat', defend: 'Defending the Head Seat', stepdown: 'Contest for the Head Seat', arena: 'The Arena', slaughter: 'A Killing on the Road', sectmaster: 'Challenge for the Master’s Seat', spar: 'A Friendly Spar' }
+const PERSON_FIGHT_YIELD = { duel: 'your marriage ends', challenge: 'you lose; heal before you try again', defend: 'you give up the head seat', stepdown: 'you are out of the contest', arena: 'the run ends; you keep half the purse', slaughter: 'they let you live, and walk on', sectmaster: 'you are stripped to Elder; heal before you try again', spar: 'you bow out; no harm done' }
 
 // The look of a person you fight: temper → slots, then their role (assets/data/duelists.js)
 // (never the robe you wear: a rival must not read as your reflection — the next robe in DUELIST_ROBES instead)
@@ -223,7 +223,7 @@ class CombatView {
     const after = !live && this.snap && done
     const S = after || P ? this.snap : null
     const M = after ? S.m : live?.m || (P ? S.m : null)
-    const hp = S?.dead ? 0 : Math.max(0, Math.ceil(s.health ?? 100))
+    const hp = S?.dead ? 0 : Math.max(0, Math.ceil(s.health ?? 100)), hpMax = this.gs.maxHealth?.() || 100   // Phase 14: the body's max
     const prec = P ? null : (after ? S.rec : rec)
     const prof = prec ? this.gs.beastProfile(prec) : null
     const pv = !P && !M && this.encId ? this.gs.beastFightPreview(this.encId) : null
@@ -246,7 +246,7 @@ class CombatView {
       : prof ? `<div class="cb-tier">${fate}<span class="tier-chip tier-${prof.tier.id}">${esc(prof.tier.name)}</span>${prof.variant ? '<span class="tier-chip tier-variant">Rare colour</span>' : ''}</div>` : ''
     this.plates.innerHTML = `
       <div class="cb-plate you"><div class="cb-pn">${esc((S?.youName ?? s.name) || 'You')}</div>
-        <div class="cb-hp${hp < 30 ? ' low' : ''}" title="Your Health: wounds here are real"><span data-icon="health"></span><span class="cb-hpbar"><b style="width:${Math.min(100, hp)}%"></b></span><span class="cb-hpv">${hp}</span></div>
+        <div class="cb-hp${hp < 30 ? ' low' : ''}" title="Your Health (${hp} / ${hpMax}): wounds here are real"><span data-icon="health"></span><span class="cb-hpbar"><b style="width:${Math.min(100, hp / hpMax * 100)}%"></b></span><span class="cb-hpv">${hp}</span></div>
         ${M ? `<div class="cb-qi" title="Combat Qi: each move costs some; +${M.you.regen} a turn, more from Circulate and parries"><span data-icon="qi"></span><span class="cb-qibar"><b style="width:${Math.round(100 * qi / pool)}%"></b></span><span class="cb-hpv">${qi}</span></div>` : ''}
         <div class="cb-sts">${chips(M?.you)}</div></div>
       <div class="cb-plate foe${foeGone}"><div class="cb-pn">${el ? `<span class="cb-el el-${el}" title="${esc(ART_ELEMENTS[el].name)}${P ? ': their root' : ''}">${Icon(ART_ELEMENTS[el].icon)}</span>` : ''}${esc(foeName)}</div>
@@ -544,8 +544,8 @@ class CombatView {
     const react = f => f === 'debt' ? `<span class="cb-st-l good">${esc(who)} will owe you</span>` : `<span class="cb-st-l warn">${esc(who)} will hold a grudge</span>`
     const opt = (id, title, sub, extra = '') => `
       <button class="cb-end ${id}" data-end="${id}"><span class="cb-st-n">${title}</span><span class="cb-st-sub">${sub}</span>${extra}</button>`
-    const FIN = { duel: 'End it. Your spouse does not rise.', challenge: 'End it, and take the head seat over their body.', defend: 'End it. Your seat is secure.', stepdown: 'End it. One fewer between you and the seat.', arena: 'End it on the sand. The crowd roars.', slaughter: 'End it. They do not rise, and the road keeps the body.' }
-    const SPR = { duel: 'Lower your blade. They leave you, and live.', challenge: 'Let them live. You take the head seat all the same.', defend: 'Let them live. Your seat is secure.', stepdown: 'Let them live. They are out of the contest.', arena: 'Let them live. The crowd will remember your mercy.', slaughter: 'Lower your blade. They get up and go.' }
+    const FIN = { duel: 'End it. Your spouse does not rise.', challenge: 'End it, and take the head seat over their body.', defend: 'End it. Your seat is secure.', stepdown: 'End it. One fewer between you and the seat.', arena: 'End it on the sand. The crowd roars.', slaughter: 'End it. They do not rise, and the road keeps the body.', sectmaster: 'End it, and take the master’s seat over their body.', spar: 'End it.' }
+    const SPR = { duel: 'Lower your blade. They leave you, and live.', challenge: 'Let them live. You take the head seat all the same.', defend: 'Let them live. Your seat is secure.', stepdown: 'Let them live. They are out of the contest.', arena: 'Let them live. The crowd will remember your mercy.', slaughter: 'Lower your blade. They get up and go.', sectmaster: 'Let them live. They go into exile, and may raise a sect of their own.', spar: 'Let them up.' }
     const quiet = ch.quietYears ? `${ch.quietYears[0]}–${ch.quietYears[1]}` : ''
     // 1.14b: what each choice brings in arts — a debtor raised teaches you one of theirs; a body may hold its manual
     const manual = ch.finishManual ? `<span class="cb-st-l good">their manual: ${Math.round(ch.finishManual * 100)}% chance</span>` : ''
@@ -674,15 +674,20 @@ class CombatView {
       const T = { duel: `${name}'s blade is faster. Your path ends in your own courtyard.`, challenge: `${name}'s blade is faster. Your challenge ends your life.`,
         defend: `${name}'s blade is faster. Your reign ends where it stood.`, stepdown: `${name}'s blade is faster. You fall in the contest for the seat.`,
         arena: `${name}'s blade is faster. You die on the sand, and the crowd roars for the wrong one.`,
-        slaughter: `${name}'s blade is faster. You die on the road, far from home.` }
+        slaughter: `${name}'s blade is faster. You die on the road, far from home.`,
+        sectmaster: `${name}'s blade is faster. You die on the floor of the Sect Hall you meant to rule.` }
       return this._fall(name, T[this.kind] || 'Your path ends here.')
     }
     this.scene.play({ type: r.yielded ? 'retreat' : 'lost' })
     const T = r.yielded
       ? { duel: `You throw down your sword. ${name} spares you, and walks out of your life.`, challenge: 'You yield. The head keeps the seat; heal before you try again.',
-          defend: `You yield. ${name} takes the head seat.`, stepdown: 'You yield, and step out of the contest.', slaughter: `You yield. ${name} lets you live, and walks on.` }
+          defend: `You yield. ${name} takes the head seat.`, stepdown: 'You yield, and step out of the contest.', slaughter: `You yield. ${name} lets you live, and walks on.`,
+          sectmaster: `You yield. ${name} keeps the seat and strips you to Elder. Heal before you try again.`,
+          spar: `You bow out. ${name} returns the bow.` }
       : { challenge: `${name} beats you down and lets you live. Heal before you try again.`, defend: `${name} beats you before the whole clan. They take the head seat.`,
-          stepdown: `${name} beats you. You are out of the contest.`, slaughter: `${name} beats you down and lets you live. You limp home.` }
+          stepdown: `${name} beats you. You are out of the contest.`, slaughter: `${name} beats you down and lets you live. You limp home.`,
+          sectmaster: `${name} beats you down before the whole sect, lets you live, and strips you to Elder.`,
+          spar: `${name} puts you on your back, and helps you up.` }
     this.result = { name, tone: r.yielded ? 'dim' : 'red', head: r.yielded ? 'You yield' : `${name} stands over you`, text: T[this.kind] || 'You are beaten, but alive.' }
     if (this.kind === 'arena') {                                     // A6-3b: the run ends; half the purse is yours
       const L = this.gs.get().arena?.last
@@ -711,6 +716,9 @@ class CombatView {
       stepdown: { finish: 'One fewer stands between you and the seat.', spare: 'They are out of the contest, alive.', raise: 'They are out of the contest.', humble: 'They are out of the contest, and the clan saw it.' },
       arena: { finish: 'The sand drinks it in.', spare: 'They limp from the ring, alive.', raise: 'The crowd cheers the gesture.', humble: 'The crowd howls with delight.' },
       slaughter: { finish: 'Their body lies on the road behind you.', spare: 'They get up and go, and do not look back.' },
+      sectmaster: { finish: 'The master’s seat is yours, over their body. The sect is yours to rule.', spare: 'The sect is yours. They walk down the mountain into exile.',
+        raise: 'The sect is yours. They leave in exile, owing you their life.', humble: 'The sect is yours. They crawl from the hall, and will not forget it.' },
+      spar: { raise: 'You help them up. Their sect saw the courtesy.', humble: 'You leave them in the dust of their own courtyard.' },
     }
     const karma = choice === 'spare' ? (typeof SPARE_KARMA !== 'undefined' ? SPARE_KARMA : 0) : choice === 'finish' && kind === 'arena' ? (typeof ARENA_KILL_KARMA !== 'undefined' ? ARENA_KILL_KARMA : 0) : 0
     // 1.14b: an art that came of it (taught by a debtor, or a manual on the body)
@@ -722,7 +730,7 @@ class CombatView {
       const L = this.gs.get().arena?.last
       if (L?.won) Object.assign(this.result, { arena: true, purse: L.purse, gain: L.gain, streak: L.streak,
         head: L.title ? `${L.title}` : this.result.head,
-        text: `${L.title ? `You beat the champion. ` : ''}${this.result.text} +${this.h.fmt(L.gain)} to the purse: ${this.h.fmt(L.purse)} now, ${L.streak} win${L.streak === 1 ? '' : 's'} in a row.${L.champLeft ? '' : ' The champion will answer you.'}` })
+        text: `${L.title ? `You beat the champion. ` : ''}${this.result.text} +${this.h.fmt(L.gain)} to the purse: ${this.h.fmt(L.purse)} now, ${L.streak} win${L.streak === 1 ? '' : 's'} in a row.${L.champLeft ? '' : ' The champion will answer you.'}${L.recipe ? ` The champion's formula is yours — you can now craft ${L.recipe} in Pack → Craft.` : ''}` })
     }
     this._stepdownTail(r)
     this.step = 'result'

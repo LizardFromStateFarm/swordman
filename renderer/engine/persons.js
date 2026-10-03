@@ -67,7 +67,7 @@ const Persons = {
   // Callers pass `id` explicitly (GameState owns id assignment via clan.nextId, see _newPersonId()).
   make(fields = {}) {
     return {
-      v:          1,
+      v:          2,
       id:         fields.id ?? null,
       given:      fields.given ?? '',
       family:     fields.family ?? '',
@@ -76,13 +76,40 @@ const Persons = {
       personality:fields.personality ?? null,
       stageIndex: fields.stageIndex ?? 0,
       maxStage:   fields.maxStage ?? 0,
+      bodyTier:   fields.bodyTier ?? 0,       // Phase 14 (body-constitution.md): 0 = F … 6 = S
       alive:      fields.alive ?? true,
       diedYear:   fields.diedYear ?? null,
       cause:      fields.cause ?? null,
       role:       fields.role ?? 'new_soul',
       parents:    fields.parents ?? [],
       spouseIds:  fields.spouseIds ?? [],
+      ...Persons.v2Defaults(fields),
     }
+  },
+
+  // Phase 28 (living-world.md §4): the living-world keys every person carries. A record missing any of them is
+  // filled by stampV2 (migration) — existing keys are never overwritten.
+  v2Defaults(f = {}) {
+    return {
+      gender:  f.gender ?? null,          // filled by Phase 36 (crates/courtship); null = unspecified
+      sectId:  f.sectId ?? null,          // a world-sect record id, 'own' (your founded sect) or null
+      sectRole:f.sectRole ?? null,        // 'master' | 'elder' | 'disciple' | null
+      cohort:  f.cohort ?? null,          // 4.3: the life they awakened with, or an awakening wave
+      tier:    f.tier ?? 'light',         // 4.4/4.5: 'heavy' | 'light'
+      fam:     f.fam ?? 0,                // familiarity: how often the player has seen the name
+      pin:     f.pin ?? false,
+      rel:     f.rel ?? 0,                // toward the player, −100..100 (4.10)
+      mem:     f.mem ?? [],               // [{ y, k, w }] ≤ 6 (4.10)
+      ties:    f.ties ?? {},              // { [pid]: −100..100 } (4.4)
+      owner:   f.owner ?? 'world',        // who runs their relationship state: 'world' | 'family' | 'arena' | 'sect'
+    }
+  },
+  stampV2(p) {
+    if (!p) return p
+    const d = Persons.v2Defaults()
+    for (const k of Object.keys(d)) if (p[k] === undefined) p[k] = d[k]
+    p.v = Math.max(p.v || 1, 2)
+    return p
   },
 
   // Display name: 'Lin Mei', or just 'Mei' while the clan has no surname yet (clan.name is '' until 2.6).
@@ -91,6 +118,7 @@ const Persons = {
   // 28J extends this (encounter/ranking power). p.root may be null (e.g. `s.self`, which reads root live
   // off s.root instead) — treat that as 0 root bonus rather than throwing.
   powerScore(p) {
-    return p.stageIndex * 100 + Math.round((p.root?.mult ?? 0) * 10)
+    const body = typeof BODY_TIERS !== "undefined" ? (BODY_TIERS[p.bodyTier || 0]?.power || 0) : 0   // Phase 14
+    return p.stageIndex * 100 + Math.round((p.root?.mult ?? 0) * 10) + body
   },
 }

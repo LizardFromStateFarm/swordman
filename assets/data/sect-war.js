@@ -71,6 +71,9 @@ const WAR_ORDER_ANSWER_OPTIONS      = ['always', 'defensive', 'stay_out']
 const WAR_ORDER_LEND_BEAST_OPTIONS  = ['never', 'strongest']
 const WAR_ORDER_REINFORCE_OPTIONS   = ['never', 'if_affordable']
 const WAR_ORDER_ALLY_OPTIONS        = ['never', 'cheapest', 'best']
+// Phase 43f: vow to raze the foe's mountain if your own sect wins. 'theirs' = only wars a sect starts against you;
+// 'always' = every war, the ones you declare too. A vow you set or lift by hand on a war always overrides the order.
+const WAR_ORDER_RAZE_OPTIONS        = ['never', 'theirs', 'always']
 // 'cheapest' vs 'best' also pick identically-priced/-powered allies today (WAR_ALLY_* costs/bonuses
 // don't vary by which SECTS entry is asked) — 'cheapest' takes SECTS[0], 'best' the last entry, both
 // flavor-only until Phase 15 gives sects distinct power. Kept for forward-compat, same reasoning as above.
@@ -82,4 +85,5 @@ const WAR_ORDERS_DEFAULT = {
   reinforce:     'never',
   reinforceKeep: 200,         // only used once reinforce !== 'never'
   ally:          'never',
+  raze:          'never',     // Phase 43f — never vows on its own unless you set it
 }

@@ -27,6 +27,8 @@ _The brief for anyone writing lines for `assets/data/banter-lines.js`. The engin
 | `{enemy}` | enemy sect name | `war_call`, `war_won`, `war_lost` only |
 | `{sect}` | your sect's name | `war_call`, `war_won`, `war_lost` only |
 | `{beast}` | the beast's name, e.g. "White Tiger" (write "the {beast}") | `beast_slain`, `beast_spared`, `battle_lost` only |
+| `{classmate}` | a classmate's given name (falls back to "an old classmate") | `classmate_fell`, `classmate_passed` only |
+| `{master}` | the woken old monster's full name (falls back to "an old monster") | `hidden_master` only |
 
 Use tokens in maybe 1 of 5 lines. Lines must read fine with any value substituted.
 
@@ -52,6 +54,9 @@ Use tokens in maybe 1 of 5 lines. Lines must read fine with any value substitute
 | `beast_spared` | Spared a beaten beast, let it flee, or bound it as a companion | 4 |
 | `battle_lost` | Lost a beast battle, or broke away from one | 4 |
 | `arena_win` | Won a bout in the Arena (the purse grows; the crowd cheers) | 4 |
+| `classmate_fell` | Phase 28 (4.3): someone who awakened the same year as you has died (the road, a feud, backlash…) | 4 |
+| `classmate_passed` | Phase 28 (4.3): a classmate broke through past your realm | 4 |
+| `hidden_master` | Phase 28 (4.6): an old monster broke a long seclusion (token `{master}`, their full name) | 4 |
 
 ## The 14 personalities
 Each one is: id · name · voice in one line · what drives the jokes · two sample lines.

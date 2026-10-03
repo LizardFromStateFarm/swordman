@@ -35,7 +35,7 @@ When an older design section below conflicts with these, the pillars win. The se
   Cite phase numbers in code and docs, never task numbers.
 - **The design sections after the roadmap are grouped by milestone in the same order.** Built phases are in the
   M0 archive.
-- **New ideas** get a new phase number (next free: **41**) and are then *placed* into a milestone. A slot is never
+- **New ideas** get a new phase number (next free: **46**) and are then *placed* into a milestone. A slot is never
   renumbered.
 
 ## Releases: v1 and v2 (user 2026-09-28)
@@ -88,9 +88,9 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 8 | Ascension & Reincarnation (New Game+) | ↪ superseded by 23 + 31 (Dao Seeds cut) | M2 |
 | 12 | Birth Origin | ⬜ | M3 |
 | 13 | Alignment & Karmic Path | ⬜ | M3 |
-| 14 | Body Constitution & Tempering (supersedes 7B) | ⬜ | M3 |
+| 14 | Body Constitution & Tempering (supersedes 7B) | ✅ 2026-10-03 (revised: everyone starts at F; + max Health/regen; + the Strikes / Meridian Flow mini-games; docs/systems/body-constitution.md; follow-up 2026-10-03: Strikes 6 hits, Flow has no clock + a HUD button, and Kin → Tree, the family tree, docs/systems/family.md) | M3 |
 | 7A, 7C | Dao Paths, Heavenly Tribulation | ⬜ | M3 |
-| 28 | Persistent Living World (supersedes 15 and 11A) | ⬜ | M4 |
+| 28 | Persistent Living World (supersedes 15 and 11A) | ◐ spec ✅ (living-world.md) | M4 |
 | 15 | NPC World Simulation | ↪ superseded by 28 (kept as design input) | M4 |
 | 27 | Deep Sect Management | ⬜ | M5 |
 | 16 (full) | Courtship & family with living-world persons | ⬜ | M6 |
@@ -107,11 +107,16 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 35 | **Combat & Battles (战斗)**: an interactive battle page — turn-based exchanges with animated art, reusing the fight card (user 2026-09-27) | ⬜ | M1 (art track; built after A4) |
 | 36 | **Auction House & Crates (拍卖行)**: buy themed crates, open for a random-quality beast or a person (user 2026-09-27) | ⬜ | M4 |
 | 37 | **Party & Party Combat (结伴 · 群战)**: a party of up to 6; fights become 6 vs N (user 2026-09-27) | ⬜ | M4 (after 35/36) |
-| 38 | **Sect Base & Immortal Island scenes (宗门场景 · 仙岛图)**: large-area art that grows/upgrades as you build (user 2026-09-27) | ⬜ | 38A M1 (art track, after A4; v1); 38B M7 (v2) |
+| 38 | **Sect Base & Immortal Island scenes (宗门场景 · 仙岛图)**: large-area art that grows/upgrades as you build (user 2026-09-27) | ◐ | 38A ✅ M1 (art track, after A4; v1); 38B ⬜ M7 (v2) |
 | 39 | **Cultivation Path & Appearance (修途 · 仪容)**: Basic method until Core, then Virtuous / Neutral / Demonic (changes arts + look, anchors the alignment meter, one costly Dao Reversal per life); appearance chosen at every creation/rebirth; effects unlocked by realm, arts and path; robes unlocked by positions + in-world rankings; NPC portraits (user 2026-09-27) | ⬜ | 39A–B M3 (tasks 3.2b–c; v1); 39C–F art track A5, A8–A10 (**v2**, user 2026-09-28) |
 | 40 | **Soul Points & the v1 finish (魂)**: cross-save Soul Points from failed Ascension Trials + a big grant on first Immortality; spent on Soul Resonance (+Qi/s); a full-window Immortal Ascension cinematic; the "you have finished v1" screen (user 2026-09-28; spec docs/systems/soul-points.md) | ✅ | v1 finish (tasks 40a–b) |
 | 41 | **Tame Talisman Grades & Tame Attempts (驯兽符)**: four graded Beast Taming Talismans with escalating tame chances (Crude 40% → Fine 55% → Superior 70% → Pristine 90%, none guaranteed); a failed direct tame turns the beast hostile (a battle) or lets it escape, weighted by its nature; the post-battle bind rolls too (user 2026-09-29; spec docs/systems/combat.md) | ✅ | M1 (combat follow-up) |
 | 42 | **Arts & Move Combat (功法)**: collectible arts as study-able martial art manuals (72 combat arts at launch, 5 rarity grades, Five Elements), 4 equipped move arts + passive slots by realm, arts from breakthroughs (pick 1 of 3) / expeditions / slain beasts / Arena champions / duelists / sect library / events / clan library; a Pokemon-like move combat engine (HP = Health, combat Qi with no cooldowns (spam until out of Qi), a parry quick-time event (0 damage + Qi back), element matchups, statuses, temper-driven opponent AI) **replacing Press/Guard/Feint** in every fight; plus **selling items** in Pack (user 2026-09-29; spec docs/systems/arts.md) | ⬜ | M1 (**next**, tasks 1.11–1.15) |
+| 43 | **Living Sects (宗门众生)**: the world's sects own levelled buildings and grow them on their own; wars fight real rival sects you can burn to the ground (a new sect is born after); a joined sect's blessing scales with how built-up it is; and a **Grand Elder can challenge the sect master with no realm gate** and take the sect over (user 2026-10-01; spec docs/systems/npc-sects.md) | ◐ | 43a ✅ · 43b ✅ · 43c ✅ · 43d ✅ · 43e ✅ · 43h ✅ · 43f ✅ built; 43g next |
+| 44 | **Potions, Weapons & Artifacts (灵丹 · 兵刃 · 法器)**: a healing pill set (Health/Integrity restores used from the Pack) plus more weapons/artifacts; some formulas are **discovered** rather than known — the basic healing ones from the start, the best guarded by Arena ring champions, others taught (or lost) by strangers met on the road (user 2026-10-02; spec docs/systems/crafting.md → "Phase 44") | ✅ | M1 (crafting follow-up) |
+| 45 | **Sect Branches & Sub-leaders (分舵)**: appoint any disciple — or a grown child you bring into the sect — as a **Branch Head** who runs their own branch and gathers disciples of their own (beyond the Hall's seats); branch-vs-branch rivalry with brawls; promote members up into your own hall; a **Tournament of Branches** the sect leader holds and pays the winner (Qi / an art / Spirit Stones); recruit your children **for free, any time**; loyalty never decays on its own — only a direct wrong can sour a head into seceding (user 2026-10-02; spec docs/systems/sect-branches.md) | ✅ | M1 (sect-ownership depth) |
+| 46 | **Lineage Sects, Reincarnation Continuity & Bloodline Qi (承宗 · 血脉)**: a player-owned sect is inherited by a branch head on death and keeps living as a world sect (never lost by the reign sim); ancestral catch-up is **removed** and **Bloodline Quality gives extra Qi/s** instead; the next life can be **recruited back into that old sect at Core Formation**; the NPC world sim now ages/kills sect leaders and churns members over the generations (user 2026-10-03; spec docs/systems/lineage-sect.md) | ✅ | M1/M2 (tasks 1.20a–e; Visual Review Gate 7.6 PASS) |
+| 47 | **Bloodline → Immortality pacing (血脉 · 飞升)**: the Ascension Trial now requires the **full Bloodline Quality (100)** — immortality takes ~15 reincarnations, not ~4; the bloodline keeps nearly its full value between lives so it can climb to the cap, but each life adds **less**; and Bloodline Quality raises Qi/s **+1%/pt (×2 at BQ 100)**, up from +0.4%. No post-Immortal content: the game still ends at Immortality (user 2026-10-03; docs/systems/bloodline.md → "Phase 47") | ✅ | M1/M2 (task 1.21; the pre-Immortal endgame) |
 | 10 | Cosmetics (titles, pet, cave) | ⬜ | M8 |
 | 11B–C | Heaven's Will, Scripture Lore | ⬜ | M8 |
 | 20A–B | Permadeath, Challenge modes | ⬜ | M8 |
@@ -120,6 +125,19 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 ---
 
 ## Development Roadmap
+
+> **v1 wrap-up order (user 2026-10-03).** Post-Immortal play is cut for now (the game ends at the first Immortality).
+> Before the final QA pass, three systems are built, in this order:
+> 1. ✅ **Body Constitution (Phase 14, task 3.3)** — built 2026-10-03 — revised by the user: **everyone starts at the bottom tier (F)** and must
+>    train it up (no roll, no inheritance; Phase 12 regions are not a prerequisite). Tempering runs on **real-time timers**
+>    (idle-friendly, like expeditions). The body tier **raises max Health and Health regen**. Plus **optional mini-games**
+>    to speed it up (a quick tempering mini-game for body XP) and the same for **Qi** (a meridian flow puzzle / quick-time
+>    event for a small chunk of Qi): cooldown + diminishing returns so they stay a bonus, never a required clicker.
+>    Spec first: `docs/systems/body-constitution.md`.
+> 2. **The NPC world: full Phase 28 as written** (tasks 4.1–4.7, 4.9–4.11, 4.10b): heavy + light tiers, utility AI, the
+>    per-slot world file over IPC on both platforms, encounters, memory, Your Rival, the perf pass. Spec first (4.1).
+> 3. **Heavenly Rankings (28J, task 4.8)**: in-world boards (Heaven / Rising Dragon / Your Class), not an online leaderboard.
+> 4. **One final QA & Balance pass** = 43g + 2.8 + the three new systems.
 
 **Why this order (revised 2026-09-25, session 12):**
 - **M1** is independent, low-risk and improves play today. It now also removes the one existing "punish absence"
@@ -175,9 +193,24 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 1.16 ✅ | **Four saved loadouts** (42d polish; built 2026-10-01, as-built arts.md → "Four saved loadouts"; **diverged from the planned two fixed "Hunt / Duel" decks** — the user 2026-10-01 wants **4 free loadouts you set and switch yourself**, not tied to any activity): `s.arts.loadouts[4]` + `activeLoadout`, each deck its own 4 moves + passive slots; `s.arts.loadout` kept as the **live pointer to the active deck** so every reader (fights, estimates, the sim bot, the sim checks) is unchanged; `setActiveLoadout(i)` + a switcher row on Path → Arts (label + what's in it, the lit one fights); migration folds an old single loadout into deck 1; checks/arts.js +8, smoke scenarios/arts.js +4 | 42 | 1.15 | Switch decks freely; a slot edit lands on the active deck only; gate ≥ 7.5 |
 | 1.17 ✅ | **A father's hand** (user 2026-10-01; family depth, not a new phase): a rare random family event — when the head who raised you is a *bad father* (cruel parenting style or personality, his own trauma, or a cold bond) and you are still young, he beats you. Endure / Run / Strike back; −20 Health (never lethal, floors at 1); 2 hits scar you (trauma → heir Bloodline); enough defiance, grown and outranking him, unlocks the **reckoning** (forgive / break him). Data `assets/data/family-events.js`; engine `s.abuse` + `_tickFamily` roll + `resolveBeating`/`resolveReckoning`; surfaces as attention items + a family-overlay card | 16 | — | Rare (year interval AND 0.30), never lethal, checks/family-beating.js (36) + smoke scenarios/beating.js. **Plus the mirror (user 2026-10-01): the player may raise a hand to their own child** — a fourth action on the child's raising row (Kin → Family, confirmed), bond/karma cost read from the CHILD's personality, a scar at 2 hits, and a grown child's reckoning (Let them strike / Put them down) closing the cycle |
 
+| 1.18 ✅ | **Healing pills + discovered recipes** (Phase 44; built 2026-10-02, as-built crafting.md → "Phase 44"; user pick: only NEW recipes are discovery-gated, existing ones stay known): six healing pills (Health/Integrity restores, used from Pack/Craft, refused at full) + new weapons/artifacts; `s.recipes.known` + `_ensurePhase44Fields` migration; `hidden` recipes found via Roam → Explore road encounters (help → learn / rob → stones+karma) or **Arena ring champions** (the best: Nine-Turn Restoration Pill, Lotus Seat…); Craft shows a count + locked "Unknown formula" cards; checks/recipes.js (29) + smoke scenarios/recipes.js; sim bot learns/robs formulas + uses heal pills. Visual Review Gate **7.2 → 7.25 → 7.6 PASS** | 44 | — | A heal pill restores + clamps and can't be queued; a locked formula can't be crafted/auto-crafted until found; every hidden recipe has a finder; gate ≥ 7.5 |
+
+| 1.19 ✅ | **Sect branches + the Tournament of Branches + recruiting your children** (Phase 45; built 2026-10-02, as-built docs/systems/sect-branches.md; user picks: appoint freely with **no gate**, grown/awakened children only, **full depth** incl. branch rivalry + promotion, and a branch tournament the sect leader holds — and **no relationship maintenance**, a head only sours on a **direct wrong**): `s.ownSect.branches` + per-disciple `branchId`/`role`/`kin`/`personality` (`_ensurePhase45Fields`, personality from an id hash — no RNG drift); `appointBranchHead` (free) / `dismissBranch` / `promoteBranchMember` / `holdBranchTournament` (qi · art · stones) / `recruitChild` (free & instant, a child's root sets their talent); **branch members live in the branch's own seats** (`branchCap`), so a sect grows past its Hall; output = member rates × yield × loyalty, and loyalty only falls on a wrong (`_adjustLoyalty` → a head can **secede** as a rival); a yearly `_tickBranches` (recruit + rivalry heat + brawls) rides the family tick; UI = a **Branches** section inside Sect → Disciples (no sixth sub-tab — the row is already cramped) + a "Bring into the sect" row on a grown child's card. checks/sect-branches.js (38 → 42); smoke scenarios/sect.js (+9). **2026-10-02 follow-up (user):** at most **4 branches** (`SECT_BRANCH.maxBranches`, `max_branches`, `4 / 4` header, locked branch buttons with a reason); the tournament prizes rebuilt as stacked medallions and the child's "Bring into the sect" button made to wrap (both were cropped); Overlay sect sections no longer overflow the pane; smoke scenarios/branches.js | 45 | — | Free to appoint; a branch's seats are its own (the Hall cap seats only your hall); loyalty only on a wrong, secession when it is spent; the tournament pays the chosen prize and honours the winner; a grown child joins for free; gate ≥ 7.5 |
+
+| 1.20 ✅ | **Lineage sects, reincarnation continuity & Bloodline Qi** (Phase 46; built 2026-10-03, as-built docs/systems/lineage-sect.md; sub-tasks in dependency order): **1.20a** remove ancestral catch-up + Bloodline Quality → Qi/s (+0.4%/pt) · **1.20b** a founded sect is inherited by a branch head on death and becomes a living `kind:'lineage'` world sect · **1.20c** NPC sect leaders age/die and members churn in `_tickWorldSects` · **1.20d** the next life is recruited into that sect at Core Formation (join/decline) · **1.20e** QA & Balance (sim bot, checks/lineage.js, smoke scenarios/lineage.js, visual review gate) | 46 | 43b, 45, 2.7e | The sect survives death and can be razed; no catch-up keys remain; BQ raises Qi/s; the offer fires once at CF; zero console errors; gate ≥ 7.5 |
+
+> **Not a roadmap phase — the pre-Immortal endgame retune (user 2026-10-03, part 82):** the user decided there is no
+> post-Immortal gameplay to worry about (the game simply **ends at Immortality**) and asked to (a) require **more
+> reincarnations**, (b) make **Bloodline Quality raise Qi/s more** while gaining **less bloodline per life**, and
+> (c) require the **full Bloodline Quality 100** to attempt the Ascension Trial. Built as **task 1.21 / Phase 47**;
+> no post-Immortal content added. See docs/systems/bloodline.md → "Phase 47".
+
+| 1.21 ✅ | **Bloodline → Immortality pacing** (Phase 47; built 2026-10-03, as-built docs/systems/bloodline.md → "Phase 47"; user: "make it so you require more reincarnations to become immortal … make bloodline strength affect qi gain more but make you gain less bloodline strength every reincarnation … the user must have 100 minimum blood line strength"): `BLOODLINE_CARRY_NEW_SOUL` 0.25 → **0.95** (the bloodline keeps nearly its full value between lives, so it can climb to the cap) with smaller family/growth terms (`BLOODLINE_G_PARTNER` 5 → 2.5, `BLOODLINE_G_HEIR` 4 → 2.5, `BLOODLINE_G_TRAUMA_HEIR` 2 → 1) — each life adds less and the gains shrink as BQ nears 100 (**~15 lives, was ~4**); `BLOODLINE_QI_COEF` 0.004 → **0.01** (+1%/pt, **×2 at BQ 100**); new `ASCENSION_MIN_BLOODLINE = 100` gates `attemptAscension()` (reason `bloodline_too_low`; a refusal does not roll and does not end the life), surfaced on the Character tile, the Trial overlay (lock note + refused button) and the breakdown cards; the sim bot **Passes the Mantle** at the peak below 100; checks/soul.js +9, tournament.js heir constants read from data, smoke scenarios/soul.js captures the locked Trial | 47 | 1.20 | The Trial is refused below the full bloodline; BQ climbs to the cap in ~15 lives in shrinking steps; BQ 100 doubles Qi/s; checks + smoke pass; gate ≥ 7.5 |
+
 > **1.15 deferral (2026-09-30), resolved by 1.16:** the 42d **"two saved loadouts (Hunt / Duel)"** polish was **not** built
 > in the QA pass; the user then asked (2026-10-01) for **4 freely-set loadouts** instead of two activity-tied ones — built as
-> **1.16**. Next: A6-3c/A7 (the 2026-09-29 priority note).
+> **1.16**. **A7 (the Sect Base scene) built 2026-10-01.** Next: **A6-3c bosses** (still needs 23E/17, neither built) →
+> **2.8 QA & Balance** (the 2026-09-29 priority note).
 
 > **Small fix while 1.14b is fresh (2026-09-30, part 62, not a roadmap task):** (a) the **loadout is no longer locked
 > mid-fight** — `_mbYou` snapshots your move slots and `fightMoves()` shows that deck, so a change only affects your next
@@ -208,7 +241,7 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | A4-1 ✅ | (built 2026-09-27, revised on user feedback: realms must be wildly different; as-built art-engine.md → "Realm variants"; **accepted by the user** after cycle 2: "perfect") **Cultivator in every realm**: 7 ink sprite states (new `severing` + `ascended`): shirtless Mortal peasant → QC robe (no halo) → Foundation halo + formation → Core floating + golden core + baby Qi dragon → Nascent Soul 2 young dragons + lotus + ribbons → Spirit Severing grown dragons + flying-sword fan + sun halo → Ascension 3 golden dragons + celestial robe + heaven's pillar. A4-2 beasts ✅ (10 baked beasts + variants, 2026-09-28). **A4-3 realm backgrounds/ambience + death moment ✅ built 2026-09-28** (a journey upward, every background moving: dusk paddies → moonlit grasslands → the foot of a snow mountain → snow peaks + cranes → in the clouds → above the turning earth → among the stars; the figure dissolves into ash, or rises as gold light on Ascension; art-engine.md → "Realm scenery + death moment"; **accepted by the user** 2026-09-28). **A4-4 Ink default + sprite emoji lint ✅ 2026-09-28** (Ink is the Sprite art default, old Classic-default saves move once with a log line; Classic sprites ⚡ → ϟ, ☯ → ◎; `npm test` lints assets/sprites/ too; reviewer 8.0). Next: A5. Idea: dragons could also grow per layer (early/mid/late) inside a realm | 34 | A3-2 | User accepts the realm sheet |
 | A4-2 ◐ | (built 2026-09-28; as-built art-engine.md → "Beasts"; **awaiting the user's look**) **Beasts in ink**: `INK_BEASTS` (Spirit Fox, Thunder Eagle, Void Hound) as animated portraits on the Roam → Beasts encounter + companion cards (`BeastPortraits`, pooled canvases); engine gains art tables, swinging tail/wing layers, lightning, rift; Classic keeps the ASCII sprite with all frames (fixes the 1.8c frame-0 bug). Later ideas: portraits grow with beast level (the fox's tail count), combat poses in A6 | 34 | A4-1 | User accepts the beast sheet |
 | A6 ◐ | (split 2026-09-28, user-approved: **A6-1 ✅ built 2026-09-28** — beast battles from Roam → Beasts: Fight beside Tame, battle page (prepare → Press/Guard/Feint → finish/spare/bind), real wounds (Slay can kill), bestiary, grateful/vengeful returns, cubs; as-built combat.md. **A6-2 ✅ built 2026-09-28** — Roam → Hunt (hunting grounds, track a beast), Roam → Bestiary, battle banter (3 triggers), slayer reputation, the sim bot hunts + fights; **A6-3** split 2026-09-29 (user-approved): **A6-3a ✅ built 2026-09-29** — spouse duels, head challenges, defending the seat and your own step-down tournament bouts on the battle page vs ink duelists (temper/role → part slots, mirrored), finish/spare · raise/humble end choices, debts + grudges that change who challenges you, a cowed clan; **A6-3b ✅ built 2026-09-29** — the Arena (Roam → Arena: six rings, duelist rosters + champions + titles, push-your-luck purse × streak × renown, opt-in blood matches, grudge call-outs + debtor gifts, a 30-min rest between runs); **A6-3c** bosses (needs 23E/17)) **Combat page (Phase 35)** (user 2026-09-27): a full-window battle scene on the hybrid engine — your cultivator on one side, a beast/duelist on the other, animated attack/parry/guard/feint exchanges. Reuses the fight card's rules & odds (`FIGHT_TACTICS`/`FIGHT_STYLE`/`_powerChance`/`_exchangeChance`), generalizes `f.fight` to non-family opponents, and adds combat art + animation passes. Reached from a Beast Hunt / Arena entry; duels, tournaments and bosses route in. **Expeditions keep auto-resolving** | 35, 34 | A4 | A battle plays out animated in every layout mode; outcome hooks (health/karma/beasts) verified; gate ≥ 8.0 |
-| A7 | **Sect base scene (Phase 38A)** (user 2026-09-27): a large, **view-only** landscape diorama of your sect compound that grows with `buildings` / `hallLevel` / disciples / fame, on the hybrid engine's new **scene layer** (background + placed building parts + ambient effects; scaffold from the bakeoff's `drawC`). Build/upgrade still happens in the existing rows | 38A, 34 | A4 | Scene reflects live sect state in every layout mode; each building part + the whole scene pass the gate ≥ 8.0 |
+| A7 ✅ | **Sect base scene (Phase 38A)** (built 2026-10-01, as-built docs/systems/scene-art.md; Visual Review Gate cycle 1 **UI 7.5 PASS · scene asset 8.0 PASS**): a large, **view-only** ink diorama of your sect compound in a new 宗 Sect → Base sub-tab, growing with `buildings` / `hallLevel` / disciples / fame, on the hybrid engine's new **scene layer** — `SceneRenderer extends InkRenderer` (no second rasteriser: `layerOrder: []`, an overridden `_drawTo`, and scene kinds that fall through to `super`), a pure `buildSectScene(s)` descriptor, `assets/scenes/sect-base-scene.js`, and a ≥2× render so the dots stay crisp. Build/upgrade still happens in the existing rows | 38A, 34 | A4 | ✅ Scene reflects live sect state in every layout mode; the whole scene + its parts clear the gate ≥ 8.0 |
 
 > **Priority change (2026-09-29, user): Arts & Move Combat (Phase 42, tasks 1.11–1.15) is next.** The user dislikes the
 > Press/Guard/Feint loop (a small ±18% lever). It's replaced by Pokemon-like move combat built on collectible, study-able
@@ -265,7 +298,7 @@ Trials + Immortality; they buy Qi gathering only (Soul Resonance); after the v1 
 |---|---|---|---|---|
 | 3.1 | Birth Origin: regions, family types, special constitutions. An heir's origin comes from the clan | 12 | 2.2, 2.6 | Regions become the world map for M4 |
 | 3.2 | Alignment meter, tiers, shift sources, gating table | 13 | 2.2 | Choice events shift alignment; gates enforced |
-| 3.3 | Body Constitution & tempering | 14 | 3.1 | Parallel track, one tempering at a time |
+| 3.3 ✅ | Body Constitution & tempering (built 2026-10-03, ahead of 3.1: everyone starts at F, so regions are not needed) | 14 | — | Parallel track, one tempering at a time. As built: body-constitution.md; checks/body.js (62); smoke scenarios/body.js |
 | 3.2b | **Cultivation Path choice at Core Formation** (Phase 39A): everyone cultivates the Basic Method until the first Core Formation breakthrough, then chooses **Virtuous / Neutral / Demonic** on a choice card (offer follows the alignment meter; locked options say why). The path gates Arts, sects and Phase 24 Immortal Paths, pulls alignment toward itself, and changes the cultivator's look | 39 | 3.2 | The choice is the player's, every option shows its trade-offs; path-locked Arts gate correctly; look changes in every layout mode |
 | 3.2c | **Dao Reversal** (Phase 39B): once per life, a costly, risky switch (fall into the demonic / repent and purify). Success seals the old path's Arts; failure cripples. Family, clan and sect react | 39 | 3.2b | Once-per-life enforced; success/failure both play; NPC reactions fire |
 | 3.4 | Dao Paths | 7A | 3.2 | Path chosen at Foundation Building |
@@ -275,12 +308,12 @@ Trials + Immortality; they buy Qi gathering only (Soul Resonance); after the v1 
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
-| 4.1 | `docs/systems/living-world.md` + data files (names, personalities, population targets) | 28 | M3 | Doc reviewed with user before code |
-| 4.2 | Extend the 2.2 person record + world store + **per-slot world save file** (IPC on both platforms) + migration of 5A disciples / `SECTS` / rival pools / M2 spouses & children | 28A, 28G | 4.1 | Old saves load with a generated world; save ≤ budget |
-| 4.3 | Light sim step (aging on game time, progress, lifespan death, NPC Ascension) + **starting cohort** + pre-existing population | 28B–C, 28H | 4.2 | Cohort grows alongside the player in sim |
+| 4.1 ✅ | `docs/systems/living-world.md` + data files (names, personalities, population targets). Spec approved 2026-10-03. The data files (`world-population.js`, `npc-lives.js`) are created in 4.2/4.3. The build order is the spec's §11: 4.2 → 4.3 → 4.6 → 4.4+4.5 → 4.7 → 4.9 → 4.10 → 4.10b → 4.11 → 4.8 | 28 | M3 | Doc reviewed with user before code |
+| 4.2 ✅ | Extend the 2.2 person record + world store + **per-slot world save file** (IPC on both platforms) + migration of 5A disciples / `SECTS` / rival pools / M2 spouses & children. **As built 2026-10-03:** no separate world file (user: only if needed; the slot holds it under a 1.2 MB budget); v2 person + one registry with owner copies (family / arena / own sect) mirrored by `_syncPersons`; world sect masters + elders are real people (own `n…` id series) and succession seats the senior elder; the person card (UI 7.7). checks/living-world.js (32) · smoke scenarios/person-card.js. See living-world.md → "4.2 as built" | 28A, 28G | 4.1 | Old saves load with a generated world; save ≤ budget |
+| 4.3 ✅ | Light sim step (aging on game time, progress, lifespan death, NPC Ascension) + **starting cohort** + pre-existing population. **As built 2026-10-03:** `_lifeStep` on the game-year tick + the generation jump (realm breakthroughs that injure/kill, the road/feud/beast/sect-clash hazard, old age as a backstop at 19–22% of deaths, weddings + births under a soft cap, NPC Ascension, pruning + compaction); ~64 wanderers + 6 old monsters seeded once; ~60 classmates per life (3 Heaven's Chosen); 世 World → Class + the card's span/chips (UI 7.8); `NPC_STAGE_CAP` stays 21 (22 is Ascension). Data `npc-lives.js`. checks/living-world.js 68 · smoke scenarios/class.js. Births are a stand-in until 4.6's controller | 28B–C, 28H | 4.2 | Cohort grows alongside the player in sim |
 | 4.4 | Heavy sim: utility AI, activities, NPC sects rise/split/war (15B logic) | 28D | 4.3 | NPC sects form without the player |
 | 4.5 | Tier promotion/demotion, **familiarity, known-first casting, new-name throttle** | 28B | 4.4 | Distinct-names-per-open-hour metric within target |
-| 4.6 | **Replacement controller** (births, awakening waves, wanderers, hidden masters, succession) + Chronicle | 28H | 4.3 | Band populations flat over 500h sim, no extinction/explosion |
+| 4.6 ✅ | **Replacement controller** (births, awakening waves, wanderers, hidden masters, succession) + Chronicle. **As built 2026-10-03:** `NPC_WORLD` realm bands (low/FB/CF/NS/SS → 190/30/14/8/4) refilled over years by awakening waves, wanderers, the faster pace of the band below and hidden masters (who seize a weaker master's seat or found a sect; user pick), a crowded band grows dangerous, births follow the low band; the elder draft seats living people; the merged 世 World → Chronicle (+ "The world by realm", filters, names → card; the Sects ledger links to it; user pick: merge) (UI 7.8). Bands measured within ±11% over 1,200 y on 3 seeds. checks/living-world.js 98 · smoke scenarios/chronicle.js · invariant band_extinct | 28H | 4.3 | Band populations flat over 500h sim, no extinction/explosion |
 | 4.7 | World tab: person inspector, Known People (★ pins), Chronicle, clickable names in the log | 28F | 4.2 | Fits 300 px overlay + iOS |
 | 4.8 | **Heavenly Rankings** (in-world, not an online leaderboard): Heaven Ranking + Rising Dragon (young cultivators, by game-time age) + **Your Class board**, published each game year. Top 10 / #1 placings unlock robes (Phase 39E, task A9) | 28J | 4.3, 2.2 | Player row always visible; Class board keeps fallen/ascended; your heirs appear on it |
 | 4.9 | **Encounters** on expeditions + sect missions, stance setting, choice cards | 28I | 4.4, 4.5 | Bot has a stance; encounters/h by type in report |
@@ -1427,6 +1460,11 @@ alignmentLabel: '',      // computed in _recalc
 
 ## Phase 14 — Body Constitution & Physical Tempering (Deep)
 
+> **✅ Built 2026-10-03 — the as-built spec is `docs/systems/body-constitution.md`.** It diverges from the text below: every life
+> starts at F (no regional roll), the tier raises max Health + regen (no Qi-cap multiplier), ordeals stop at a crisis the player
+> answers, the tier rises only through a trial the player chooses, Blood Forging uses karma (alignment is Phase 13), Tribulation
+> tempering waits for 7C, and two mini-games were added (Tempering Strikes, Meridian Flow).
+
 *Supersedes the simpler Body Cultivation sketched in Phase 7B — Phase 7B is now expanded into this.*
 
 The body is a second cultivation path running in parallel to Qi cultivation.
@@ -1556,6 +1594,16 @@ This is a major event — the most dramatic animation in the game.
 ---
 
 ## Phase 28 — Persistent Living World (活世界) — *supersedes Phase 15 and 11A*
+
+> **Build spec: `docs/systems/living-world.md` (task 4.1 ✅, approved by the user on 2026-10-03).** Where it differs
+> from the text below, the spec wins:
+> - The world stays in the slot JSON (no world file unless the 1.2 MB budget breaks).
+> - Old age kills NPCs only as a forgiving backstop.
+> - No Immortal-era hooks.
+> - Encounter cards queue and never expire (the stance only pre-selects an answer); NPC intent is the NPC's own.
+> - Family, sect, arena and stranger persons join one registry (pid + write-through).
+> - About 60 classmates per life.
+> - Sim steps run on game time (heavy every season, light every year).
 
 Every NPC is a **persistent person** with a whole life, not a flavor name. Phase 15's trait pool, sect-decision
 logic and relationship tiers carry over as the starting design. Phase 11A's single rival becomes the top genius
@@ -2045,6 +2093,37 @@ across a fight, clean state on finish).
 
 ---
 
+## Phase 43 — Living Sects (宗门众生) *(user request 2026-10-01)*
+
+**Status: 43a–43f + 43h built (43f docs written 2026-10-03); 43g planned (folded into the v1 final QA pass).** Spec: `docs/systems/npc-sects.md`.
+
+The world's sects get a body: buildings they own and grow, wars against **real** rivals, the right to burn one to the
+ground, and a Grand Elder's road to taking a sect over. This is the NPC sect sim the Phase 5B/5C war code has been
+stubbing out (`'defensive'` war orders, ally `'cheapest'/'best'`).
+
+**User's words:** *"the enemy sects you go to war with … should have their own buildings. When you take over a sect some
+people should leave and the sect buildings should be low level. … it's only the joinable ones that should be weakish
+unless there's one you can join at a late rank. It'd be cool if the sects were actually simmed and could upgrade their
+own buildings. They should have different max building levels when NPC controlled … When a sect war is hosted by a
+player the player should be allowed to burn the enemy sect to the ground — new sects should be born and start upgrading
+when this happens."* Plus: **no realm gate** on challenging the sect master — a Grand Elder can always call them out,
+even if they lose; the **master decides whether the loss is lethal**.
+
+| # | Task | Needs | Status |
+|---|---|---|---|
+| 43a | **Levelled buildings** — one model for you and the world: `ownSect.buildings[id]` is a level 1–3, effects scale ×(1+0.5·(level−1)), each level costs more; `_ensurePhase43Fields` migrates `true`→1; Halls shows the level + a Deepen tile; the Base diorama grows with it | — | ✅ 2026-10-01 |
+| 43b | **The NPC sect registry + growth sim** — `s.world.sects` (the 5 joinable weak, the late one strong), per-sect caps, `_tickWorldSects` (yearly, while open), births/falls/clashes, Might derived. **As built, with the user's depth picks:** stance + deeds memory, six world-sect events with choices, wars bind a real sect, a seceded branch becomes a splinter sect, the "Sects of the world" ledger on Sect → Overview (UI 7.7) | 43a | ✅ 2026-10-02 |
+| 43c | **War binds real sects** — (43b already binds `w.enemyId` + stance/deeds) its Might replaces the flat enemy roll in both resolvers; the odds read it; the war panel shows its halls. **As built, with the user's depth picks:** enemy strength = your side × (their Might / yours)^0.6 (clamped 0.4–2.5) × 0.6–1.4; a member war reads your joined sect's own Might; a won war burns one of their halls a level, a lost one lets them raise one (never past caps, −5 stance); the War panel's "Their mountain" card + Might chip + Might line on the odds/why cards; the Last war card shows the hall + the odds; the ally tile never offers the foe | 43b | ✅ 2026-10-02 |
+| 43d | **The blessing scales with the sect** — the joined blessing = `SECTS[].effects` × the sect's build-up factor. **As built, with the user's depth picks:** factor 0.6 + 0.1/hall level + 0.08/Sect Hall level (0.4–1.5) × your rank's share (0.8 → 1.1); fund your sect's halls with stones (Contribution + stance; Sect Hall at Elder); a hall your sect loses (war raid, clash, fire) calls **the levy** (pay · lead the work crew · refuse); a richer friendly sect **courts you** (go over one rank down · leverage the letter · stay loyal); "blessing ×N" on the ledger + join list; the blessing card + why popover (UI 7.8) | 43b | ✅ 2026-10-02 |
+| 43e | **The sect master + takeover** — mint a master on join; `canChallengeSectMaster` (Grand Elder, **no realm gate**); a `sectmaster` fight on the battle page; win → convert to a founded sect (loyalists leave, halls drop to Lv1, the library stays); lose → the master's lethality call. **As built, with the user's depth picks:** the master's regard = the sect's stance (service moves it; it shades the lethal call); **ask them to step down** (odds = regard + Might; a peaceful takeover); **the old guard** (win over → a branch · let them choose → some go to the exile · purge); a spared master is **exiled and raises a splinter**; the master card + attention items (UI 7.9) | 43a, 43c | ✅ 2026-10-02 |
+| 43h | **Sect relations** (user 2026-10-02: "a user needs to be able to interact with these systems") — a sect's own page from "Sects of the world" (Overlay/phone: a tile → the list in the modal); leader actions: gift, alliance / break it, **declare war**, tribute, spy, trade manuals, poach; member actions: gift, spar (battle page), urge your master to war; every reply's odds shown first; deeds + cooldowns. **Follow-up (user):** the 錄 Log group became **世 World** (Sects · Events · Banter) with the sect page inline; **War → Declare war** (pick a sect); **Disciples → Poach recruits** (pick a sect → its named disciples → lure one) | 43b–43e | ✅ 2026-10-02 |
+| 43f | **Raze an enemy sect** — a "raze if you win" toggle + a standing order; a won own-sect war destroys the rival record; a replacement is born and grows. **As built (user picks):** vow + standing order; the world reacts by temper; dread; a remnant returns with a feud + its vengeance event (UI 7.7) | 43c, 43b | ✅ 2026-10-02 (docs 2026-10-03) |
+| 43g | **QA & Balance + UX polish** — growth rates, max-level spread, takeover difficulty, raze costs; the sim bot + invariants; checks; smoke; a UX walkthrough; the Visual Review Gate on every new screen | 43a–f | ⬜ |
+
+**Pillar 4:** 43b's growth must never punish absence — slow, capped, and the war odds always show the real numbers first.
+
+---
+
 ## Phase 41 — Tame Talisman Grades & Tame Attempts (驯兽符) *(user request 2026-09-29)*
 
 > **Status (2026-09-29):** ✅ built. As-built: `docs/systems/combat.md` → "Tame talisman grades & tame attempts";
@@ -2133,7 +2212,7 @@ Large-area art for the player's **sect base** and, later, the **Immortal Island*
 as you build**. **View-only** (user 2026-09-27): you still build/upgrade from the existing rows — the scene reacts.
 Split into **38A (sect base, after A4)** and **38B (island, after Phase 26)**.
 
-### 38A — Sect base scene (after A4)
+### 38A — Sect base scene (after A4) — ✅ built 2026-10-01 as **A7** (as-built: docs/systems/scene-art.md)
 
 - A new **Base view** in the Sect group (a sub-tab beside Overview/Buildings) with a **new large canvas**
   (`#scene-canvas`), sized per layout mode — large in Expanded/Desktop, scaled in Overlay, minimised in Banner.

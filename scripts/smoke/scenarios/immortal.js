@@ -14,7 +14,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   const ovOpen = () => ev('!document.getElementById("immortal-overlay").classList.contains("hidden")')
   const finShown = () => ev('document.getElementById("finish-box").classList.contains("shown")')
   const readyTrial = () => ev(`(() => { const gs = gameState, s = gs.get(); s.stageIndex = CULTIVATION_STAGES.length - 2; s.maxStageThisLife = s.stageIndex
-    s.health = 100; s.realmIntegrity = 100; gs._recalc(); s.qi = s.derived.qiCap; gs._recalc(); gs._notify() })()`)
+    s.health = 100; s.realmIntegrity = 100; s.bloodlineQuality = ASCENSION_MIN_BLOODLINE; gs._recalc(); s.qi = s.derived.qiCap; gs._recalc(); gs._notify() })()`)
   const ascend = async () => {
     await readyTrial(); await sleep(300)
     await click('#btn-breakthrough')
