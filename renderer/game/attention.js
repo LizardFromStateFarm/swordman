@@ -85,6 +85,23 @@ function collectAttention(s, gs) {
   if (lr) add('urgent', 'lineage-recruit', 'gate', `The ${lr.name} sends for you`, `The sect your blood founded offers a place at the outer gate, under ${lr.leader}.`, 'sect')
 
   // ── Opportunities ──
+  // Phase 28 4.9: the world's people met on the road wait on your answer (an ambush or an avenger is urgent)
+  const met = s.road?.cards || []
+  if (met.length) {
+    const urgent = met.find(c => c.kind === 'ambush' || c.avenger || c.kind === 'rivalKin' || c.blood || c.kind === 'hunter' || c.kind === 'hunterKin')   // 4.8: a genius hunter too
+    const rival = met.find(c => c.rival)   // 4.10b: your rival sought you out
+    const one = met.length === 1 ? met[0] : null
+    const title = urgent?.kind === 'rivalKin' ? `${urgent.name} goes after your own` : urgent?.kind === 'hunterKin' ? `A genius hunter is after ${urgent.kin?.name || 'your child'}` : urgent ? `${urgent.name} is upon you`
+      : rival ? `Your rival ${rival.name} seeks you` : one ? `${one.name}, met on the road` : `${met.length} met on the road`
+    const sub = urgent?.kind === 'rivalKin' ? 'Your rival is on the road to your kin. Stand between them, pay, or let it be: it waits on your answer.'
+      : urgent?.kind === 'hunterKin' ? 'The rankings named your child, and a hunter read the list. Stand between them, pay, hide them, or let it be.'
+      : urgent?.kind === 'hunter' ? 'The Rising Dragon Ranking put a price on your head. Fight, flee, pay, or veil your name: it waits on your answer.'
+      : urgent?.rival ? 'Your rival has come to kill you. Fight or refuse: it waits on your answer.'
+      : urgent ? `${urgent.avenger ? 'They have come for vengeance.' : 'An ambush.'} Fight, flee or pay them off: it waits on your answer.${met.length > 1 ? ` (${met.length} waiting)` : ''}`
+      : rival ? 'They came on their own, as they always do. How you meet them moves the heat between you.'
+      : 'They came to you with something in mind. Each waits until you answer.'
+    add(urgent ? 'urgent' : 'ready', 'met-road', urgent ? 'sword' : rival ? 'duel' : 'explore', title, sub, 'explore')
+  }
   const road = f.encounters || []
   if (road.length) {
     const hasRecipe = road.some(e => e.kind === 'recipe')   // Phase 44: a stranger carrying a formula
@@ -196,6 +213,15 @@ function collectAttention(s, gs) {
   // Phase 28 (4.6): notable world news since you last opened the Chronicle (an old monster woke, a Nascent Soul fell)
   const chron = gs.chronicleNews?.() || 0
   if (chron) add('idle', 'chronicle-news', 'scroll', chron === 1 ? 'The world stirs' : `The world stirs: ${chron} notable events`, 'Old monsters wake, the great fall, a rare few Ascend. Read the chronicle.', 'chronicle')
+  // Phase 28 (4.7): news of someone you pinned since you last opened World → People
+  const pinNews = gs.peopleNews?.() || 0
+  if (pinNews) add('idle', 'people-news', 'star', pinNews === 1 ? 'News of someone you follow' : `${pinNews} pieces of news of those you follow`, 'Someone you pinned has moved in the world. See what they did.', 'people')
+  // 4.10b: your rival's story moved (a breakthrough, a pass, a fall) since you last opened World → Rival
+  const rivalNews = gs.rivalNews?.() || 0
+  if (rivalNews) add('idle', 'rival-news', 'duel', 'News of your rival', 'Their breakthroughs, your meetings, who leads now. See the rivalry.', 'rival')
+  // 4.8: a publication moved you past a mark, gave you a title, or named a classmate's first
+  const rankNews = gs.ranksNews?.() || 0
+  if (rankNews) { const n = gs.ranksNewsLast?.(); add('idle', 'rank-news', 'crown', 'The rankings are published', n ? n.text : 'See where you stand.', 'rankings') }
   if (fell) add('idle', 'class-news', 'lineage', fell === 1 ? 'A classmate has fallen' : `${fell} classmates have fallen`, 'Those who awakened the year you did. See how your class fares.', 'class')
 
   return out.sort((a, b) => ATTENTION_TIER_ORDER[a.tier] - ATTENTION_TIER_ORDER[b.tier])

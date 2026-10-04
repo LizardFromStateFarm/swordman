@@ -17,6 +17,20 @@ newest first.
 > invented its own standard. **Scores recorded before this date used the old bar** — treat them as roughly 0.5 lower
 > than they'd score now.
 
+## 2026-10-03 — Phase 28 / task 4.7: 世 World → People, pins, tappable log names
+`renderer/game/people-view.js`, `renderer/game/person-card.js` (the star, inline mode), `renderer/styles.css` ("Phase 28 (4.7)", `.pp-*`, `.pc-pin`), `renderer/game.js` (`evText`), `class-view.js` (whole row taps). Screenshots: `scripts/smoke/scenarios/people.js` → `out/people-*.png` (Overlay · Expanded · Desktop · phone; list, search, inline card, a log name's popover).
+
+| Cycle | Score | Result | Notes |
+|---|---|---|---|
+| 1 (fresh reviewer) | **7.75** (8 · 7.5 · 8 · 8 · 8 · 7) | **PASS**, no blockers | Polish applied: the Desktop list is now the wide column (card 260–300px); meta segments never leave a dangling "·" (no-wrap segments with the separator leading); the news line runs to 2 lines. The fresh-news dot was in no reviewed screenshot (smoke asserts it in Overlay). |
+
+## 2026-10-03 — Phase 28 / tasks 4.4 + 4.5: the person card's "Their life now" + the "known face" pill
+`renderer/game/person-card.js` (`_html`, `known`), `renderer/styles.css` ("Phase 28 (4.4)", `.pc-now`/`.pc-tie`/`.pc-known`; the arena row fix), the pill in `renderer/game.js` (proposal + road encounters), `family-view.js` (courtship), `arena-view.js`, `sect-view.js` (gate recruits). Screenshots: `scripts/smoke/scenarios/heavy.js` → `out/heavy-*.png` (Overlay · Expanded · Desktop · phone).
+
+| Cycle | Score | Result | Notes |
+|---|---|---|---|
+| 1 (fresh reviewer) | **7.7** (8 · 7.5 · 8 · 7.5 · 8 · 7) | **PASS**, no blockers | Polish applied: the pill wraps under a ring champion's name instead of splitting it (`.ar-pn` wraps, names nowrap); the eye icon's gap 3 → 4px; the smoke now seeds a classmate at the gate (the recruit pill verified in 4 modes). Pre-existing overlap fixed while here: a held champion's "Answers you after N more wins" note drew over the odds pill in narrow rows — it now takes its own line (`.ar-row.held`). Logged: the 9.5px uppercase tie words are small in Overlay. |
+
 ## 2026-10-03 — Phase 28 / task 4.6: 世 World → Chronicle + the Sects ledger's chronicle link
 `renderer/game/chronicle-view.js`, `renderer/styles.css` ("Phase 28 (4.6)", `.chr-*`, `.ws-chron-link`), `renderer/game/sect-view.js` (`_ledger`). Screenshots: `scripts/smoke/scenarios/chronicle.js` → `out/chronicle-*.png` (Overlay · Expanded · Desktop · phone; All + Notable + the feed scrolled; the ledger link).
 
@@ -361,3 +375,45 @@ status chips. Shots: `scripts/smoke/out/class-*.png` (Overlay / Expanded / Deskt
 - **Cycle 1: 7.8 PASS** (8 / 7.5 / 8 / 7.5 / 8 / 7.5). Applied after: the fallen rows lose the extra opacity and keep the
   realm + sect on one line (nowrap); the card's chips moved up under the subtitle. Polish → UX Debt: make the whole class
   row tappable (today only the name); a larger hit area for "The fallen" toggle; the phone tab bar overlap (still open).
+
+## Met on the road (Phase 28 / task 4.9, 2026-10-03)
+Roam → Explore → "Met on the road" (`renderer/game/encounter-view.js`): the count, the bearing picker, compact rows that
+open into the encounter card (who, feeling, why they came, answers with odds / locks, the bearing's mark), the old lover
+stranger in the same list, the urgent attention item + Roam dot, and the battle page entered from an ambush ("An Ambush
+on the Road", "holds a grudge"). Shots: `scripts/smoke/out/encounters-*.png` (Overlay / Expanded / Desktop / phone).
+- **Cycle 1: 7.7 PASS** (8 / 7.5 / 8.5 / 7.5 / 7.5 / 7). Applied after: the first-time hint moved under the list (the
+  open card's answers start higher in Overlay / phone); the kind tag shrunk (8.5px) so Expanded row titles wrap less.
+  Polish → UX Debt: the lover / formula stranger cards should take the encounter row shell (icon, title, tag); the
+  bearing chips are small in Expanded / Desktop; Overlay still needs a scroll to reach the answers; the phone tab bar
+  overlap (still open).
+
+## Memory, reputation + the person card's deeds (Phase 28 / task 4.10, 2026-10-03)
+The person card's "What you can do" (eight deeds: open first with cost / their odds / fight odds, locked ones as quiet
+lines with the reason, the real-time countdown, the first-time hint, the duel / denounce confirm), the "Why" ledger under
+"What they think of you" (each memory's +/−, past lives marked, the remainder, the total), the Sworn sibling chip, World →
+People → Friends, and Path → Character's "Your name" tile + its breakdown. Shots: `scripts/smoke/out/rep-*.png`
+(Overlay / Expanded / Desktop / phone).
+- **Cycle 1: 7.75 PASS** (8 / 7 / 8.5 / 7.5 / 8 / 7.5). Applied after: under a countdown every deed dims alike (the open
+  deeds had dimmed below the locked rows); locked rows lost their box (a hairline divider, `--dim` titles). Polish → UX
+  Debt: no screenshot of the closed "Your name" tile; the success toast can sit over the card header on phone.
+
+## Your Rival — World → Rival + the rival's road cards (Phase 28 / task 4.10b, 2026-10-04)
+World → Rival (the face-off, their meta + chips, the house banner, the heat meter with both ends, the record, the status
+line + Answer them, "Seek them out yourself" deeds, the history timeline), the rival's card in Met on the road (heat line,
+Rival tag, the locked duel with its reason), a blood feud (meter in the red, the duel open). Shots:
+`scripts/smoke/out/rival-*.png` (Overlay / Expanded / Desktop / phone).
+- **Cycle 1: 7.9 PASS** (8 / 7.5 / 8.5 / 8 / 8 / 7.5). Applied after (all polish): the face-off stacks by a container
+  query in narrow panes (Expanded's ~250px pane kept 3 columns under the old viewport query); the heat card's secondary
+  text 10 → 10.5px; the "Indifferent" feel chip is hidden on rival cards (the heat line says it). Polish → UX Debt: the
+  phone bottom nav is translucent over scrolled content (pre-existing).
+
+## Heavenly Rankings — World → Rankings + the rankings road cards (Phase 28 / task 4.8, 2026-10-04)
+World → Rankings (Your Class / Rising Dragon / Under Heaven, the standing card + rank power why, the board with ▲▼ and the
+Class duel, the side column: Public | Veiled toggle, titles, headlines, honour roll), the veiled state, the challenger and
+genius-hunter road cards. Shots: `scripts/smoke/out/rankings-*.png` (Overlay / Expanded / Desktop / phone).
+- **Cycle 1: 7.7 FAIL** (8 / 7.5 / 8.5 / 7.5 / 8 / 6.5): [blocker] the "Veil your name" button overflowed the Desktop side
+  card. Fixed: a two-segment Public | Veiled toggle (set-seg); polish applied: no "–" marker on unchanged rows, the sect on
+  its own line, "published year N" kept on one line.
+- **Cycle 2: 8.0 PASS** (8 / 8 / 8.5 / 8 / 8 / 7.5). Applied after: a "scores as published in year N; yours now is X"
+  caption (the board's snapshot vs your live pill). Polish → UX Debt: the Overlay hint + standing card push the board below
+  the fold for a first-time player; the gold accent on row #1 looks like the You row's.

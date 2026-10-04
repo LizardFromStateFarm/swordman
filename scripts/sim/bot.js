@@ -478,6 +478,17 @@ class Bot {
       const join = this.profile === 'active' ? true : this.rand() < 0.3
       return this.do(join ? 'lineage_join' : 'lineage_decline', this.gs.answerLineageRecruit(join))
     }
+    // Phase 28 4.9: Met on the road. Each profile keeps a bearing (active bold, casual courteous, afk wary; 1 in 10
+    // answers is ruthless, so robbing / betrayal / feuds get exercised) and answers what its bearing marks.
+    const road = this.gs.roadCards?.()
+    if (road?.cards.length) {
+      const want = this.profile === 'active' ? 'bold' : this.profile === 'afk' ? 'wary' : 'courteous'
+      const st = this.rand() < 0.1 ? 'ruthless' : want
+      if (road.stance !== st) this.gs.setRoadStance(st)
+      const c = this.gs.roadCardInfo(road.cards[0].id)
+      const a = c.answers.find(x => x.id === c.pre && !x.lock) || c.answers.find(x => !x.lock)
+      if (a) return this.do('road_' + c.kind + '_' + a.id, this.gs.answerRoadCard(c.id, a.id))
+    }
     // Encounters: a formula-carrier → help to learn it (mostly) or rob; a lover encounter → seduce 1 in 4
     // (enough to exercise affairs, discovery and every reaction branch).
     if (f.encounters?.length) {

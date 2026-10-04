@@ -24,7 +24,7 @@ _The brief for anyone writing lines for `assets/data/banter-lines.js`. The engin
 | `{stage}` | current stage name, e.g. "Foundation Building" | any trigger |
 | `{item}` | the rare item just found | `rare_drop` only |
 | `{hours}` | whole hours away, e.g. "9" | `welcome_back` only |
-| `{enemy}` | enemy sect name | `war_call`, `war_won`, `war_lost` only |
+| `{enemy}` | enemy sect name (`war_*`); the ambusher's full name (`ambushed`) | `war_call`, `war_won`, `war_lost`, `ambushed` only |
 | `{sect}` | your sect's name | `war_call`, `war_won`, `war_lost` only |
 | `{beast}` | the beast's name, e.g. "White Tiger" (write "the {beast}") | `beast_slain`, `beast_spared`, `battle_lost` only |
 | `{classmate}` | a classmate's given name (falls back to "an old classmate") | `classmate_fell`, `classmate_passed` only |
@@ -57,6 +57,9 @@ Use tokens in maybe 1 of 5 lines. Lines must read fine with any value substitute
 | `classmate_fell` | Phase 28 (4.3): someone who awakened the same year as you has died (the road, a feud, backlash…) | 4 |
 | `classmate_passed` | Phase 28 (4.3): a classmate broke through past your realm | 4 |
 | `hidden_master` | Phase 28 (4.6): an old monster broke a long seclusion (token `{master}`, their full name) | 4 |
+| `ambushed` | Phase 28 (4.9): someone met on the road attacks you, or an avenger comes for you (token `{enemy}`, their full name) | 4 |
+| `rival_rise` | Phase 28 (4.10b): your rival broke into a new realm (token `{rival}`, their given name) | 4 |
+| `rank_rise` | Phase 28 (4.8): you entered the top ten of a ranking (tokens `{board}` e.g. "the Heaven Ranking", `{place}` e.g. "#7") | 4 |
 
 ## The 14 personalities
 Each one is: id · name · voice in one line · what drives the jokes · two sample lines.

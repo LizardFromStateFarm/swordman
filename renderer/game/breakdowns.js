@@ -2,7 +2,7 @@
 // turns the save + GameState's recorded terms (s.derived.breakdown, ascensionBreakdown(), btFailPreview(),
 // vitalsInfo()) into a card model { glyph, title, total, rows, sections, notes }. BreakdownUI draws that card as
 // a popover next to whatever was tapped: any element with data-bd="<kind>" (HUD numbers, Character tiles).
-// Kinds: qps · cap · bt · integrity · health · karma · bloodline · affection + propose (1.8b-3a) · branch (1.8b-4) · sectwar (1.8b-5) · blessing (43d). See docs/systems/ui-layout.md → "Breakdowns".
+// Kinds: qps · cap · bt · integrity · health · karma · bloodline · affection + propose (1.8b-3a) · branch (1.8b-4) · sectwar (1.8b-5) · blessing (43d) · repute (4.10). See docs/systems/ui-layout.md → "Breakdowns".
 
 // Short stage names for locks and hints ("Qi Condensation 4", "Core Formation · Early") instead of "Stage 12+".
 function stageShortName(i) {
@@ -342,6 +342,38 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
     if (s.techniques.includes('karma_cultivation')) rows.push({ label: 'Karma Cultivation Art', val: '+0.5 /s', tone: 'up' })
     return { glyph: 'lotus', state: true, title: 'Karma', total: `${Math.round(s.karma)} / 100`, rows,
       notes: ['Every 10 karma is +1% to break through. Some chance events weigh your deeds too.'] }
+  }
+
+  // 4.8 (living-world.md → "4.8 Heavenly Rankings"): your rank power — what every board sorts by.
+  if (kind === 'rankpower') {
+    const r = gs.rankPowerParts(null, true), R = gs.rankingsInfo('heaven')
+    return { glyph: 'crown', state: true, title: 'Rank power', total: String(r.total),
+      rows: r.parts.map(p => ({ label: p.label, val: (p.value > 0 ? '+' : '') + p.value, tone: p.value > 0 ? 'up' : p.value < 0 ? 'down' : 'dim' })),
+      sections: [{ title: 'Where it puts you', rows: [
+        { label: 'Under Heaven', val: R.you.heaven ? '#' + R.you.heaven : '—', tone: R.you.heaven ? 'up' : 'dim' },
+        { label: 'Among the Rising Dragons', val: R.you.dragon ? '#' + R.you.dragon : '—', tone: R.you.dragon ? 'up' : 'dim' },
+        { label: 'In your class', val: R.you.class ? '#' + R.you.class : '—', tone: R.you.class ? 'up' : 'dim' }] }],
+      notes: ['Every board sorts by the same power for you and everyone else: realm, progress in the stage, spirit root, body, the arts you wear and your gear, plus the renown of ranked duels.',
+        'Others’ arts are counted as the world reckons them for their realm. Renown fades a little every year.'] }
+  }
+
+  // 4.10 (living-world.md): your name in the world — Honour / Infamy, the deeds behind them, what they change.
+  if (kind === 'repute') {
+    const r = gs.reputeInfo(), T = NPC_ACTS_TEXT.deed
+    const DEED = { helped: 'You saved', spared: 'You spared', raised: 'You raised up', yielded: 'You yielded a find to', split: 'You split a find with',
+      invited: 'You took in', pointed: 'You showed the way to', teamup: 'You travelled with', mentored: 'You taught', gift: 'A gift to', sworn: 'You swore brotherhood with',
+      denounceJust: 'You named the crimes of', robbed: 'You robbed', betrayed: 'You betrayed', humbled: 'You shamed', walked: 'You walked past',
+      denounced: 'You denounced', murdered: 'You killed in a duel', betrayedSworn: 'You turned on your sworn sibling', slander: 'Slander from', carried: 'Carried from', slewHunter: 'You cut down the genius hunter' }
+    const sg = v => (v > 0 ? '+' : '') + v
+    const deeds = r.log.slice(0, 8).map(x => ({ label: `${DEED[x.k] || T[x.k] || x.k} ${x.n || ''}`.trim(),
+      val: x.k === 'carried' ? `H ${x.h} · I ${x.i}` : [x.h ? `Honour ${sg(x.h)}` : '', x.i ? `Infamy ${sg(x.i)}` : ''].filter(Boolean).join(' · '),
+      tone: x.k === 'carried' ? 'dim' : x.h ? 'up' : 'down' }))
+    return { glyph: 'mask', state: true, title: 'Your name', total: `${r.word}`,
+      rows: [{ label: 'Honour', val: `${r.h} / 100`, tone: r.h ? 'up' : 'dim' }, { label: 'Infamy', val: `${r.i} / 100`, tone: r.i ? 'down' : 'dim' }],
+      sections: [{ title: 'What it changes', rows: r.effects.length ? r.effects : [{ label: 'Nothing yet. No one knows your name.', val: '', tone: 'dim' }] },
+        ...(deeds.length ? [{ title: 'What they say of you', rows: deeds }] : [])],
+      notes: ['Mercy, rescue and teaching raise Honour; robbery, betrayal and slander raise Infamy. You can carry both.',
+        'Word of a deed reaches the kin and friends of those you touched within a year. Both fade slowly; a new life inherits half.'] }
   }
 
   if (kind === 'bloodline') {

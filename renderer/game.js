@@ -529,7 +529,10 @@
     'sect-base': s => baseView.render(s, document.getElementById('tab-sect-base')),   // A7 (Phase 38A): the compound scene
     pack: s => renderPack(s), craft: s => renderCraft(s), events: s => renderEvents(s), banter: s => renderBanter(s),
     world: s => WorldView.render(s),   // 43h: 世 World → Sects
+    people: s => PeopleView.render(s),   // Phase 28 (4.7): 世 World → People
+    rival: s => RivalView.render(s),     // Phase 28 (4.10b): 世 World → Rival
     class: s => ClassView.render(s),   // Phase 28 (4.3): 世 World → Class
+    rankings: s => RankingsView.render(s),   // Phase 28 (4.8): 世 World → Rankings
     chronicle: s => ChronicleView.render(s),   // Phase 28 (4.6): 世 World → Chronicle
   }
   function renderView(view, s) {
@@ -688,6 +691,7 @@
             ${tile('health', 'Health', 'health', `${Math.round(health)}<small> / ${healthMax}</small>`, health >= healthMax ? 'Whole' : `+1 every ${Math.round(d.healthRegenSeconds || 45)}s`, tone(hpPct), hpPct)}
             ${tile('body', 'Body', 'shield', `${body.def.id} · ${escHtml(body.def.name)}`, body.trial.ready ? 'Ready for the tier trial' : body.next ? `${fmt(body.xp)} / ${fmt(body.to)} XP` : 'The body can go no higher', body.trial.ready ? 'gold' : '', body.next ? Math.min(100, (body.xp - body.from) / (body.to - body.from) * 100) : 100)}
             ${tile('karma', 'Karma', 'lotus', Math.round(s.karma), `+${(s.karma / 10).toFixed(1)}% breakthrough`)}
+            ${(() => { const r = gameState.reputeInfo(); return tile('repute', 'Your name', 'mask', escHtml(r.word), `Honour ${r.h} · Infamy ${r.i}`, r.tone === 'red' ? 'warn' : r.tone === 'jade' ? 'jade' : r.tone === 'gold' ? 'gold' : '') })()}
             ${bloodlineVisible(s) ? tile('bloodline', 'Bloodline', 'vein', Math.round(s.bloodlineQuality || 0), `Qi ×${(1 + (s.bloodlineQuality || 0) * BLOODLINE_QI_COEF).toFixed(2)} · ${(s.bloodlineQuality || 0) >= BLOODLINE_CAP ? `+${((s.bloodlineQuality || 0) * ASCENSION_BQ_COEF * 100).toFixed(1)}% Ascension` : `Ascension at ${ASCENSION_MIN_BLOODLINE}`}`)
               : `<div class="ch-tile" title="Bloodline Quality is revealed once it grows (from your second life) — it raises Qi/s and Ascension odds"><span class="t-k"><span>Bloodline</span><i data-icon="vein"></i></span><span class="t-v ch-sealed" data-icon="lock"></span><span class="t-s">Sealed — grows with each life</span></div>`}
           </div>
@@ -1146,6 +1150,14 @@
 
   // ── Events tab ────────────────────────────────────────────────────────────
 
+  // Phase 28 (4.7): a log line with every person it names (ev.who, stored by addEvent) tappable for their card.
+  function evText(ev) {
+    let t = escHtml(ev.text)
+    const who = [...(ev.who || [])].sort((a, b) => b.n.length - a.n.length)   // the longest name first; marks keep links from nesting
+    who.forEach((w, k) => { const n = escHtml(w.n), i = t.indexOf(n); if (i >= 0) t = t.slice(0, i) + `\u0001${k}\u0001` + t.slice(i + n.length) })
+    return t.replace(/\u0001(\d+)\u0001/g, (m, k) => PersonCard.link(who[k].pid, who[k].n))
+  }
+
   function renderEvents(s) {
     const el = document.getElementById('tab-events')
     el.innerHTML = ''
@@ -1156,7 +1168,7 @@
     for (const ev of s.events) {
       const row = document.createElement('div')
       row.className = `ev-row ${ev.type || 'neutral'}`
-      row.innerHTML = `${escHtml(ev.text)}<div class="ev-time">${fmtAgo(ev.ts)}</div>`
+      row.innerHTML = `${evText(ev)}<div class="ev-time">${fmtAgo(ev.ts)}</div>`
       el.appendChild(row)
     }
   }
@@ -1218,12 +1230,13 @@
     // ── Encounters on the Road (family.md) — potential lovers + formula-carriers, never expire ────
     // Rendered at the very top of Explore (above the expedition timer): the attention item routes here, so a
     // pending choice must be on screen, not below the fold.
+    // Phase 28 4.9: the world's people (EncounterView) lead the section; the lover / formula strangers join its list.
     const people = s.family?.encounters || []
+    const roadSec = EncounterView.render(s)
+    if (roadSec) el.appendChild(roadSec)
+    const roadList = roadSec?.querySelector('.er-list') || el
     if (people.length > 0) {
-      const pTitle = document.createElement('div')
-      pTitle.className = 'section-title'
-      pTitle.textContent = 'Encounters on the Road'
-      el.appendChild(pTitle)
+      const append = row => roadList.appendChild(row)
       people.forEach((enc, i) => {
         const p = enc.person
         const pers = PERSONALITIES.find(x => x.id === p.personality)
@@ -1234,8 +1247,8 @@
           row.className = 'suitor-card'
           row.style.marginBottom = '6px'
           row.innerHTML = `
-            <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
-            <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
+            <div class="suitor-name">${PersonCard.known(p.id) ? PersonCard.link(p.id, Persons.fullName(p)) + ' ' + PersonCard.known(p.id) : escHtml(Persons.fullName(p))}</div>
+            <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(latinOnly(p.root?.name || ''))}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
             <div style="margin:3px 0">At ${escHtml(enc.place)}, ${escHtml(Persons.fullName(p))} ${escHtml(enc.text || '')}.</div>
             <div style="margin:3px 0">Their formula: <b>${escHtml(product?.name || 'a pill')}</b>.</div>
             <div style="display:flex;gap:6px">
@@ -1244,7 +1257,7 @@
               <button class="sect-btn" style="flex:1;min-height:32px" data-leave="${i}">Leave</button>
             </div>
             <div class="recipe-enc-note">Robbing pays ${RECIPE_DISCOVERY.robStones} stones but costs ${Math.abs(RECIPE_DISCOVERY.robKarma)} karma — and the formula is lost for good.</div>`
-          el.appendChild(row)
+          append(row)
           return
         }
         // A6-3a: Slaughter — a fight to the death, on the battle page. Locked while another fight runs or you are hurt.
@@ -1253,15 +1266,15 @@
         row.className = 'suitor-card'
         row.style.marginBottom = '6px'
         row.innerHTML = `
-          <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
-          <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
+          <div class="suitor-name">${PersonCard.known(p.id) ? PersonCard.link(p.id, Persons.fullName(p)) + ' ' + PersonCard.known(p.id) : escHtml(Persons.fullName(p))}</div>
+          <div>${escHtml(personStageLabel(p.stageIndex))} · ${escHtml(latinOnly(p.root?.name || ''))}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
           <div style="margin:3px 0">At ${escHtml(enc.place)}, they ${escHtml(enc.text || '')}.</div>
           <div style="display:flex;gap:6px">
             <button class="sect-btn" style="flex:1;min-height:32px" data-seduce="${i}">Seduce</button>
             <button class="sect-btn" style="flex:1;min-height:32px" data-slaughter="${i}" ${lock ? `disabled title="${escHtml(lock)}"` : `title="Fight them to the death. You choose every exchange; if you lose, this life ends."`}>Slaughter</button>
             <button class="sect-btn" style="flex:1;min-height:32px" data-leave="${i}">Leave</button>
           </div>${lock ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)"><span data-icon="lock"></span>${escHtml(lock)}</div>` : ''}${s.family.spouse && !s.family.tolerant ? `<div style="font-size:9px;margin-top:3px;color:var(--gold)">${escHtml(s.family.spouse.given)} may find out.</div>` : ''}`
-        el.appendChild(row)
+        append(row)
       })
       el.querySelectorAll('[data-seduce]').forEach(btn => btn.addEventListener('click', () => {
         const res = gameState.seduceEncounter(+btn.dataset.seduce)
@@ -2318,9 +2331,9 @@
       const pers = PERSONALITIES.find(x => x.id === p.personality)
       const age  = Math.max(0, Math.floor(s.world.year - p.bornYear))
       return `<div class="suitor-card">
-        <div class="suitor-name">${escHtml(Persons.fullName(p))}</div>
+        <div class="suitor-name">${PersonCard.known(p.id) ? PersonCard.link(p.id, Persons.fullName(p)) + ' ' + PersonCard.known(p.id) : escHtml(Persons.fullName(p))}</div>
         <div>${personStageLabel(p.stageIndex)} · age ${age}</div>
-        <div>${escHtml(p.root?.name || '')}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
+        <div>${escHtml(latinOnly(p.root?.name || ''))}${pers ? ` · ${escHtml(pers.name)}` : ''}</div>
         <button data-suitor="${escHtml(p.id)}">Accept</button>
       </div>`
     }).join('')
@@ -2675,7 +2688,7 @@
 
 
   // ── Navigation + attention (1.8b-1) ─────────────────────────────────────────
-  const nav = new NavUI({ onShow: view => renderView(view, gameState.get()), onMode: openModePanel })
+  const nav = new NavUI({ onShow: view => { if (view === 'people') PeopleView.enter(); renderView(view, gameState.get()) }, onMode: openModePanel })
   const attentionUI = new AttentionUI(item => {
     if (layoutUI.mode === 'banner' && !item.open) layoutUI.peek(false)   // a nav target needs the full window
     const s = gameState.get()
@@ -2690,10 +2703,19 @@
   // 1.8b-2: tap any [data-bd] number (HUD, Character tiles) for its "why" card (renderer/game/breakdowns.js)
   const breakdownUI = new BreakdownUI(gameState, { fmt, fmtTime, esc: escHtml })
   // Phase 28 (4.2): tap any [data-pid] name for that person's card (renderer/game/person-card.js)
-  PersonCard.init(gameState, { esc: escHtml, stageLabel: personStageLabel, latinOnly,
+  PersonCard.init(gameState, { esc: escHtml, stageLabel: personStageLabel, latinOnly, flash: (m, t) => showToast(m, t), fmt: n => fmt(n), confirm: showConfirm,
+    onFight: () => combatView.resume(),   // 4.10: a spar / duel from the card opens the battle page
     go: (view, g) => { if (layoutUI.mode === 'banner') layoutUI.peek(false); if (view === 'world' && g?.sectId) WorldView.show(g.sectId); nav.go(view) } })
   // Phase 28 (4.3): World → Class, and the toast for rare world news (a Chosen classmate falls, someone Ascends)
   ClassView.init(gameState, { esc: escHtml, stageLabel: personStageLabel })
+  RankingsView.init(gameState, { esc: escHtml, stageLabel: personStageLabel, clock: sec => PersonCard.clock(sec), go: v => nav.go(v), onFight: () => combatView.resume(), flash: (t, tone) => showToast(t, tone) })   // 4.8
+  // Phase 28 (4.7): World → People — the people you know, pins, the card inline
+  PeopleView.init(gameState, { esc: escHtml, stageLabel: personStageLabel })
+  EncounterView.init(gameState, { esc: escHtml, stageLabel: personStageLabel, flash: (t, tone) => flashMessage(t, tone),   // Phase 28 4.9
+    onFight: () => combatView.resume(), rerender: () => renderView('explore', gameState.get()), goRival: () => nav.go('rival'), goRanks: () => nav.go('rankings') })
+  // Phase 28 (4.10b): World → Rival
+  RivalView.init(gameState, { esc: escHtml, stageLabel: personStageLabel, clock: sec => PersonCard.clock(sec),
+    go: v => { if (layoutUI.mode === 'banner') layoutUI.peek(false); nav.go(v) } })
   // Phase 28 (4.6): World → Chronicle; any [data-chronicle="<filter>"] link (the Sects ledger) opens it on that filter
   ChronicleView.init(gameState, { esc: escHtml })
   document.addEventListener('click', e => {

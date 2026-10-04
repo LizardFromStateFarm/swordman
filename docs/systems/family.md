@@ -320,3 +320,10 @@ overflowing the card in Expanded (shortened to " · best"). See `docs/systems/ui
   them"** on Family; a past life → **the Ancestral Hall**.
 - Checks: `scripts/sim/checks/family-tree.js` (16). Smoke: `scripts/smoke/scenarios/family-tree.js`.
 - **Debt:** the pedigree rows are centred, not placed exactly over each child (the lines connect them anyway); no portraits.
+
+## Phase 28 (4.5): suitors and strangers are people of the world (2026-10-03)
+`_rollStranger(role, exclude)` casts **known-first** (living-world.md "4.4 + 4.5 as built"): about 75% of proposals, courtship
+candidates and road strangers (lover + recipe) are people the world already has (a classmate, a face from your log) — single,
+never your kin, never a sect master or elder — copied into the family structure (the registry person is marked owner
+`family` at once). The rest are new, counted against the new-name throttle. Their cards carry the "known face" pill
+(`PersonCard.known`). The player still chooses everything.

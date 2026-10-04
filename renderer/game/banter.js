@@ -103,12 +103,14 @@ class BanterSystem {
       beast: ctx.beast,   // Phase 35 (A6-2): beast_slain / beast_spared / battle_lost
       classmate: ctx.classmate,   // Phase 28 (4.3): classmate_fell / classmate_passed
       master: ctx.master,         // Phase 28 (4.6): hidden_master
+      rival: ctx.rival,           // Phase 28 (4.10b): rival_rise
+      board: ctx.board, place: ctx.place,   // Phase 28 (4.8): rank_rise
       // Phase 16-lite (M2 task 2.5): given names from the married/child_born events; fall back to the live
       // family (e.g. a queued line said after a reload) and then to a neutral phrase.
       spouse: ctx.spouse ?? s.family?.spouse?.given,
       child:  ctx.child ?? s.family?.children?.[s.family.children.length - 1]?.given,
     }
-    const FALLBACK = { item: 'something', spouse: 'my spouse', child: 'the little one', beast: 'beast', classmate: 'an old classmate', master: 'an old monster' }
+    const FALLBACK = { item: 'something', spouse: 'my spouse', child: 'the little one', beast: 'beast', classmate: 'an old classmate', master: 'an old monster', rival: 'my rival', board: 'the rankings', place: 'a high place' }
     return line.replace(/\{(\w+)\}/g, (m, k) => vals[k] != null ? String(vals[k]) : (FALLBACK[k] || 'someone'))
   }
 

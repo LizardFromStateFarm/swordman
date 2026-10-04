@@ -64,7 +64,7 @@ const ArenaView = {
         const lockTxt = r.lock && r.lock !== 'busy' && r.lock !== 'resting' ? ARENA_LOCK_TEXT[r.lock]?.(R, info) : null
         const bloodTxt = !r.lock && r.bloodLock ? ARENA_LOCK_TEXT[r.bloodLock]?.(R, info) : null
         return `<div class="ar-row${r.champion ? ' champ' : ''}${r.lock ? ' held' : ''}">
-          <div class="ar-who"><span class="ar-pn">${r.champion ? '<b data-icon="crown"></b>' : ''}${PersonCard.link(p.id, Persons.fullName(p))}</span>
+          <div class="ar-who"><span class="ar-pn">${r.champion ? '<b data-icon="crown"></b>' : ''}${PersonCard.link(p.id, Persons.fullName(p))}${PersonCard.known(p.id)}</span>
             <span class="ar-pm">${r.champion ? '<span class="gold">Champion</span> · ' : ''}${esc(temper(p))} · ${esc(realm(p.stageIndex))}${r.feud ? ` · <span class="cb-feud ${r.feud}">${esc(FEUD_TEXT[r.feud])}</span>` : ''}</span>
             ${rec.fought ? `<span class="ar-pm dim">fought ${rec.fought} · you won ${rec.youWon}</span>` : ''}</div>
           <span class="odds-in ${oc(r.odds)}" data-bd="personfight:${esc(p.id)}:arena" title="Your odds to win · why?"><b>${pct(r.odds)}</b><span class="ar-odds-lbl"> to win</span> <i data-icon="why"></i></span>

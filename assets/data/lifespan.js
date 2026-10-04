@@ -7,6 +7,7 @@
 // ── Game clock (task 2.3) ────────────────────────────────────────────────────
 const GAME_YEARS_PER_OPEN_HOUR = 30    // 1 year per 2 open minutes. Age/gameYear advance ONLY in tick().
 const AWAKENING_AGE            = 16    // every life (incl. heirs) starts here
+const YEAR_FRAME_MS            = 4     // 4.11: a real frame spends about this long on the game-year turn's jobs; the rest wait a frame (game-state.js _drainYear)
 const OFFLINE_QI_MULT          = 1.0   // multiplies initSlot() offline Qi gain (afk lever, task 2.4)
 
 // ── Marriage & children timing (task 2.5, lite) ──────────────────────────────

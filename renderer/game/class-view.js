@@ -47,7 +47,7 @@ const ClassView = {
       m.twilight ? `<span class="pc-chip dim" title="Near the end of their years: in final seclusion">Final seclusion</span>` : '',
     ].join('')
     const realm = i => esc(typeof stageShortName === 'function' ? stageShortName(i) : this.h.stageLabel(i))
-    const row = (m, i) => `<div class="cls-row${m.chosen ? ' chosen' : ''}">
+    const row = (m, i) => `<div class="cls-row tap${m.chosen ? ' chosen' : ''}" data-pid="${esc(m.pid)}">
         <span class="cls-n">${i}</span>
         <span class="cls-body"><span class="cls-who">${PersonCard.link(m.pid, m.name)}${tags(m)}</span>
           <span class="cls-meta"><span class="cls-realm">${realm(m.stage)}</span> · age ${m.age}${m.sect ? ` · <span class="cls-sect" title="Sworn to the ${esc(m.sect)}">${esc(m.sect)}</span>` : ''}</span></span>
@@ -63,7 +63,7 @@ const ClassView = {
       rows += row(m, ++n)
     }
     if (!youIn) rows += you(++n)
-    const dead = m => `<div class="cls-row dead">
+    const dead = m => `<div class="cls-row dead tap" data-pid="${esc(m.pid)}">
         <span class="cls-n">${m.ascended ? Icon.g('rise') : Icon.g('lineage')}</span>
         <span class="cls-body"><span class="cls-who">${PersonCard.link(m.pid, m.name)}${m.chosen ? '<span class="pc-chip gold">Chosen</span>' : ''}</span>
           <span class="cls-meta"><span class="cls-cause">${m.ascended ? 'Ascended' : esc(m.cause || 'Passed on')}</span> · year ${m.diedYear ?? "?"} · <span class="cls-realm dim">${realm(m.stage)}, at ${m.age}</span></span></span>

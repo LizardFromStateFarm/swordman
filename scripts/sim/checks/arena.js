@@ -34,7 +34,7 @@ const iron = gs => gs.arenaInfo().rings.find(r => r.id === 'iron')
     assert(info.rings.length === 6 && info.rings.filter(r => r.open).map(r => r.id).join() === 'dust,iron', `stage 5: Dust + Iron open (${info.rings.filter(r => r.open).map(r => r.id)})`)
     const R = iron(gs)
     assert(R.rows.length === K('ARENA_ROSTER') + 1 && R.rows.filter(r => r.champion).length === 1, `a roster of ${K('ARENA_ROSTER')} + a champion`)
-    assert(R.rows.every(r => !s.world.persons[r.id] && s.arena.duelists[r.id]), 'duelists live in s.arena, not the world registry')
+    assert(R.rows.every(r => s.arena.duelists[r.id] && (!s.world.persons[r.id] || s.world.persons[r.id].id === r.id)), 'duelists live in s.arena (4.5: a known face cast into a ring keeps their registry id)')
     assert(R.rows.find(r => r.champion).lock === 'champion', 'the champion waits for wins in a run')
     assert(info.rings.find(r => r.id === 'jade').rows.length === 0, 'a locked ring has no roster yet')
     const again = gs.arenaInfo(); assert(iron(gs).rows.map(r => r.id).join() === R.rows.map(r => r.id).join(), 'rosters are stable between looks') }

@@ -25,7 +25,10 @@ const BANTER_TRIGGERS = ['idle', 'bt_success', 'bt_fail', 'bt_fail_streak', 'rar
   'welcome_back', 'morning', 'night', 'soul_remembers', 'beast_slain', 'beast_spared', 'battle_lost', 'arena_win',
   'body_tier_up', 'ordeal_endure', 'ordeal_scar', 'minigame_perfect',   // Phase 14 (body-constitution.md)
   'classmate_fell', 'classmate_passed',   // Phase 28 (4.3): your class
-  'hidden_master']   // Phase 28 (4.6): an old monster breaks seclusion
+  'hidden_master',   // Phase 28 (4.6): an old monster breaks seclusion
+  'ambushed',   // Phase 28 (4.9): someone met on the road attacks you
+  'rival_rise',   // Phase 28 (4.10b): your rival broke into a new realm
+  'rank_rise']   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
 const BANTER_MIN_LINES = { idle: 25, other: 4, genericIdle: 20, genericOther: 2 }
 
 // Idle chatter interval (seconds, min–max) per banterFreq setting. 'off' = silent (no contextual lines either).

@@ -24,6 +24,13 @@ const WORLD_PEOPLE = {
   // Own-sect disciples as people: disciple level → realm stage (level 1 = stage 1 … level 10 = stage 10).
   discipleStagePerLevel: 1,
   discipleAge: [16, 40],
+
+  // 4.7 (World → People): how many people you can pin. A pinned person always lives in the heavy tier (their deeds
+  // reach you) and is never forgotten after death, so the cap keeps that a choice, not a blanket.
+  pinMax: 12,
+  // People listed per page, and how many names one log line can make tappable.
+  peoplePage: 60,
+  logNamesMax: 3,
 }
 
 // The life fields an owner's copy (family / arena / own sect) writes into the registry on every sync. Everything else
@@ -40,7 +47,7 @@ const PERSON_CAUSE_TEXT = {
   stepdown_tournament: 'Fell in a succession tournament', branch_war: 'Fell in a branch war', duel: 'Slain in a duel',
   tournament: 'Fell in the Tournament of Heirs', ascended: 'Ascended',
   // 4.3 (npc-lives.js): the light world sim's causes
-  bt_backlash: 'Died in a breakthrough backlash', road: 'Slain on the road', feud: 'Killed in a feud',
+  bt_backlash: 'Died in a breakthrough backlash', road: 'Slain on the road', feud: 'Killed in a feud', rival: 'Slain by their rival', hunter: 'Taken by a genius hunter',
   sect_clash: 'Fell in a clash between sects', seat_struggle: 'Fell in a struggle for the master’s seat',
 }
 

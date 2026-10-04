@@ -65,7 +65,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   assert(await ev('!!document.querySelector(".bd-pop") && document.querySelector(".bd-pop").textContent.includes("time spent together")'), 'affection breakdown names the last cause')
   await shot('fam-overlay-bd-affection'); await click('#breakdown-overlay'); await sleep(150)
   await ev(`document.querySelectorAll('#tab-family [data-fa="ch-open"]')[1].click()`); await sleep(250)
-  assert(await ev('document.querySelectorAll("#tab-family .kid.open .kid-acts [data-fa]").length') === 4, 'an open child card offers time / teach / resources / raise a hand')
+  assert(await ev('document.querySelectorAll("#tab-family .kid.open .kid-acts [data-fa]").length') === 5, 'an open child card offers time / teach / resources / temper their body / raise a hand')
   await ev(`document.querySelector('#tab-family .kid.open').scrollIntoView({ block: 'start' })`); await sleep(200)
   await shot('fam-overlay-child')   // head + root chip + Rename, framed
   const bond0 = await ev(`gameState.get().family.children[1].bond`)

@@ -411,3 +411,16 @@ a run waiting between bouts (ready), a newly opened ring (nudge). First visit: a
 - `canChallengeHead()` / `_branchWarBusy()` / NPC head challenges wait while any `f.fight` is set, beast fights
   included (one fight at a time).
 - A won battle stays in `f.fight` with `over: 'won'` until the end choice, so a reload mid-choice resumes on it.
+
+## Phase 28 (4.5): arena rosters cast known-first (2026-10-03)
+`_arenaEnsureRosters` draws a ring's duelists from the world's people of its realm about 75% of the time (`_castKnown('duelist')`):
+a classmate can hold a ring. The copy lives in `s.arena.duelists` under the registry id (owner `arena`); the world sim skips
+them while they are on a roster. Roster rows show the "known face" pill.
+
+## Fight kind `road` (Phase 28 task 4.9, 2026-10-03)
+A fight started from a "Met on the road" card (ambush · challenge spar / to the death · contest · old-face spar). The
+opponent is the **registry person** itself (`this.person(oppId)`), the card rides on `fi.road` (the page title comes
+from its kind), and `_roadFightOutcome` settles it: rel + a memory line, a kill → `_npcSlain` (their kin swear
+vengeance on you), no karma for killing an ambusher, an ambusher who beats you takes 25% of your stones. The end
+choice is kept as `fi.roadChoice` (a registry person never gets the old string `feud`); a feud sworn against you reads
+as "grudge" on the battle page. Full rules: living-world.md → "4.9 as built".

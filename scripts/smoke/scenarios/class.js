@@ -30,7 +30,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   const cardOpen = () => ev('!document.getElementById("person-overlay").classList.contains("hidden") && !!document.querySelector("#person-overlay .pc-pop")')
   const inWindow = () => ev(`(() => { const p = document.querySelector('#person-overlay .pc-pop'); if (!p) return false
     const r = p.getBoundingClientRect(); return r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1 })()`)
-  const noHScroll = () => ev('(() => { const el = document.getElementById("tab-class"); return el.scrollWidth <= el.clientWidth + 1 })()')
+  const noHScroll = async () => { const r = await ev('(() => { const el = document.getElementById("tab-class"); if (el.scrollWidth <= el.clientWidth + 1) return true; const R = el.getBoundingClientRect().right; return [...el.querySelectorAll("*")].filter(x => x.getBoundingClientRect().right > R + 1).map(x => x.tagName + "." + x.className + ":" + Math.round(x.getBoundingClientRect().right - R) + " " + x.textContent.slice(0, 30)).slice(0, 5).join(" | ") })()'); if (r !== true) console.log("  overflow:", r); return r === true }
 
   const pass = async tag => {
     await click('#tabs [data-group="log"]'); await sleep(200); await click('[data-tab="class"]'); await sleep(350)

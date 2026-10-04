@@ -87,6 +87,8 @@ const UI_ICONS = {
   lantern: '<path d="M12 2v2"/><path d="M7 9c0-2.6 2.2-4.5 5-4.5s5 1.9 5 4.5v4c0 2.6-2.2 4.5-5 4.5S7 15.6 7 13z"/><path d="M7.3 9.5h9.4M7.3 12.5h9.4" opacity=".7"/><path d="M12 17.5V22M10.5 22h3"/>',
   alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v6"/><path d="M12 16.6v.1" stroke-width="2.4"/>',
   veil: '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.6"/><path d="M4 20 20 4"/>',
+  star: '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/>',   // 4.7: a pinned person (filled via .on)
+  search: '<circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/>',   // 4.7: World → People's search
   eye: '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.6"/>',
   speech: '<path d="M4 5.5h16V16h-9.5L6 20v-4H4z"/><path d="M8 9.5h8M8 12.5h5" opacity=".6"/>',
   skull: '<path d="M12 3a7.5 7.5 0 0 0-7.5 7.5c0 2.6 1.3 4.3 3 5.3V19h9v-3.2c1.7-1 3-2.7 3-5.3A7.5 7.5 0 0 0 12 3z"/><circle cx="9" cy="11" r="1.6"/><circle cx="15" cy="11" r="1.6"/><path d="M10.5 19v2.5M13.5 19v2.5" opacity=".7"/>',

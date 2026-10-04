@@ -383,6 +383,26 @@ function buildReport(runs, args) {
     const d = {}; for (const r of runs) for (const [k, v] of Object.entries(r.people.deaths)) d[k] = (d[k] || 0) + v
     const tot = Object.values(d).reduce((a, b) => a + b, 0)
     L.push(`- World deaths (4.3, all runs): ${tot ? Object.entries(d).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([k, v]) => `${k} ${Math.round(v / tot * 100)}%`).join(' · ') : 'none'} · births ${f(runs.reduce((a, r) => a + r.people.births, 0))} · ascended ${runs.reduce((a, r) => a + r.people.ascended, 0)} · classes ${f(med(runs.map(r => r.people.classes)))} median`)
+    if (runs.every(r => r.people.cast)) {   // 4.4 + 4.5: the heavy tier + known-first casting
+      const k = runs.reduce((a, r) => a + r.people.cast.known, 0), fr = runs.reduce((a, r) => a + r.people.cast.fresh, 0), oh = runs.reduce((a, r) => a + r.people.cast.openHours, 0)
+      const dd = {}; for (const r of runs) for (const [x, v] of Object.entries(r.people.deeds || {})) dd[x] = (dd[x] || 0) + v
+      L.push(`- Heavy tier + casting (4.4/4.5): ${f(med(runs.map(r => r.people.heavy)))} heavy (median) · deeds ${Object.entries(dd).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([x, v]) => `${x} ${f(v)}`).join(' · ') || 'none'} · cast ${k + fr ? Math.round(k / (k + fr) * 100) : 0}% known faces, ${oh ? (fr / oh).toFixed(1) : '0'} new names per open hour (cap 5–10)`)
+    }
+    if (runs.some(r => r.people.road)) {   // 4.9: encounters per open hour, by kind; how they were answered
+      const sum = k => { const o = {}; for (const r of runs) for (const [x, v] of Object.entries(r.people.road?.[k] || {})) o[x] = (o[x] || 0) + v; return o }
+      const oh = runs.reduce((a, r) => a + r.people.cast.openHours, 0), tot = k => runs.reduce((a, r) => a + (r.people.road?.[k] || 0), 0)
+      const kinds = sum('byKind'), ans = sum('byAnswer'), per = v => oh ? (v / oh).toFixed(2) : '0'
+      L.push(`- Encounters (4.9): ${per(tot('cards'))} cards per open hour (${Object.entries(kinds).sort((a, b) => b[1] - a[1]).map(([x, v]) => `${x} ${per(v)}`).join(' · ') || 'none'}) · ${tot('brushes')} brushes, ${tot('waited')} waited, ${tot('gone')} died first · answers: ${Object.entries(ans).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([x, v]) => `${x} ${v}`).join(' · ') || 'none'}`)
+      // final QA: which card killed a life (kind:answer, grouped over stages) — lethal road tuning
+      const rd = {}; for (const r of runs) for (const [x, v] of Object.entries(r.lineage?.roadDeaths || {})) { const [ka, st] = x.split('@'); (rd[ka] ||= { n: 0, st: [] }).n += v; for (let i = 0; i < v; i++) rd[ka].st.push(+st) }
+      if (Object.keys(rd).length) L.push(`- Road deaths by card (kind:answer × lives · median stage at death): ${Object.entries(rd).sort((a, b) => b[1].n - a[1].n).map(([x, o]) => `${x} ${o.n} · st ${med(o.st)}`).join(' · ')}`)
+    }
+    if (runs.some(r => r.people.rivals?.length)) {   // 4.10b: Your Rival — meetings per life (closed lives), heat both ways, how they ended
+      const all = runs.flatMap(r => r.people.rivals || []), done = all.filter(x => x.end && x.end !== null)
+      const ends = {}; for (const x of done) ends[x.end] = (ends[x.end] || 0) + 1
+      const heats = all.map(x => x.heat)
+      L.push(`- Your Rival (4.10b): ${all.length} rivalries (${done.length} closed) · meetings per closed life ${done.length ? med(done.map(x => x.meets)) : '-'} median, ${done.length ? Math.min(...done.map(x => x.meets)) : '-'} min · heat ${heats.length ? `${Math.min(...heats)}…${Math.max(...heats)}` : '-'} (warm ≥ 35: ${heats.filter(h => h >= 35).length}, bitter ≤ −35: ${heats.filter(h => h <= -35).length}) · W–L ${all.reduce((a, x) => a + x.wins, 0)}–${all.reduce((a, x) => a + x.losses, 0)} · ends: ${Object.entries(ends).map(([k, v]) => `${k} ${v}`).join(' · ') || 'none'} · house heirs ${all.filter(x => x.house).length}`)
+    }
     if (runs.every(r => r.people.bands)) {   // 4.6: the replacement controller (each band's mean vs target, median across runs)
       const ids = runs[0].people.bands.map(b => b.id)
       L.push(`- World by realm (4.6, mean over the run vs target, median of runs): ${ids.map((id, i) => `${id} ${med(runs.map(r => r.people.bands[i].mean))}/${runs[0].people.bands[i].target}`).join(' · ')} · refills: ${f(runs.reduce((a, r) => a + r.people.refill.waves, 0))} waves, ${f(runs.reduce((a, r) => a + r.people.refill.wanderers, 0))} wanderers, ${runs.reduce((a, r) => a + r.people.refill.hidden, 0)} hidden masters (${runs.reduce((a, r) => a + r.people.refill.seized, 0)} seized a sect)`)

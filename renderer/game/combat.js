@@ -21,8 +21,12 @@ const COMBAT_REASON = {
   gone: 'It has gone.',
 }
 // A6-3a: a fight with a person — its title, and what yielding costs you
-const PERSON_FIGHT_TITLE = { duel: 'A Duel to the Death', challenge: 'Challenge for the Head Seat', defend: 'Defending the Head Seat', stepdown: 'Contest for the Head Seat', arena: 'The Arena', slaughter: 'A Killing on the Road', sectmaster: 'Challenge for the Master’s Seat', spar: 'A Friendly Spar' }
-const PERSON_FIGHT_YIELD = { duel: 'your marriage ends', challenge: 'you lose; heal before you try again', defend: 'you give up the head seat', stepdown: 'you are out of the contest', arena: 'the run ends; you keep half the purse', slaughter: 'they let you live, and walk on', sectmaster: 'you are stripped to Elder; heal before you try again', spar: 'you bow out; no harm done' }
+const PERSON_FIGHT_TITLE = { duel: 'A Duel to the Death', challenge: 'Challenge for the Head Seat', defend: 'Defending the Head Seat', stepdown: 'Contest for the Head Seat', arena: 'The Arena', slaughter: 'A Killing on the Road', sectmaster: 'Challenge for the Master’s Seat', spar: 'A Friendly Spar', road: 'Met on the Road' }
+// Phase 28 4.9: a road fight's title by the card that started it
+const ROAD_FIGHT_TITLE = { ambush: 'An Ambush on the Road', challenge: 'A Challenge on the Road', contest: 'A Fight for the Find', oldface: 'A Spar with an Old Face',
+  spar: 'A Spar, at Your Invitation', duel: 'A Duel to the Death',   // 4.10: a fight you called from their person card
+  rivalDuel: 'Your Rival, Again', rivalTalk: 'A Spar Between Rivals', rivalKin: 'Between Your Rival and Your Kin' }   // 4.10b
+const PERSON_FIGHT_YIELD = { duel: 'your marriage ends', challenge: 'you lose; heal before you try again', defend: 'you give up the head seat', stepdown: 'you are out of the contest', arena: 'the run ends; you keep half the purse', slaughter: 'they let you live, and walk on', sectmaster: 'you are stripped to Elder; heal before you try again', spar: 'you bow out; no harm done', road: 'they let you go, and take what they came for' }
 
 // The look of a person you fight: temper → slots, then their role (assets/data/duelists.js)
 // (never the robe you wear: a rival must not read as your reflection — the next robe in DUELIST_ROBES instead)
@@ -190,6 +194,7 @@ class CombatView {
       if (this.step === 'result' || this.step === 'died') return this.result?.next ? 'Between Bouts' : 'After the Fight'
       const fi = this.gs.fightInfo(), br = fi?.bracket
       if (this.kind === 'arena' && fi?.arena) return `${fi.arena.ring?.name || 'The Arena'}${fi.arena.blood ? ' · Blood Match' : ''}${fi.arena.callout ? ' · Grudge Match' : ''}`
+      if (this.kind === 'road') return (fi?.road && ROAD_FIGHT_TITLE[fi.road.kind]) || PERSON_FIGHT_TITLE.road
       return (PERSON_FIGHT_TITLE[this.kind] || 'A Fight') + (this.kind === 'stepdown' && br ? ` · Round ${br.round}` : '')
     }
     const n = this._name()
@@ -214,7 +219,7 @@ class CombatView {
     let rec = null, opp = null
     if (P) {
       opp = this._opp()
-      if (live && opp) this.snap = { person: true, name: Persons.fullName(opp), youName: s.name, stage: opp.stageIndex || 0, feud: opp.feud || null, m: clone(live.m), foeGone: this.snap?.foeGone || null }
+      if (live && opp) this.snap = { person: true, name: Persons.fullName(opp), youName: s.name, stage: opp.stageIndex || 0, feud: typeof opp.feud === 'string' ? opp.feud : opp.feud?.pid === s.self?.id ? 'grudge' : null, m: clone(live.m), foeGone: this.snap?.foeGone || null }
       if (!this.snap) return
     } else {
       rec = live ? live.beast : (s.beastEncounters || []).find(e => e.id === this.encId)
@@ -544,15 +549,18 @@ class CombatView {
     const react = f => f === 'debt' ? `<span class="cb-st-l good">${esc(who)} will owe you</span>` : `<span class="cb-st-l warn">${esc(who)} will hold a grudge</span>`
     const opt = (id, title, sub, extra = '') => `
       <button class="cb-end ${id}" data-end="${id}"><span class="cb-st-n">${title}</span><span class="cb-st-sub">${sub}</span>${extra}</button>`
-    const FIN = { duel: 'End it. Your spouse does not rise.', challenge: 'End it, and take the head seat over their body.', defend: 'End it. Your seat is secure.', stepdown: 'End it. One fewer between you and the seat.', arena: 'End it on the sand. The crowd roars.', slaughter: 'End it. They do not rise, and the road keeps the body.', sectmaster: 'End it, and take the master’s seat over their body.', spar: 'End it.' }
-    const SPR = { duel: 'Lower your blade. They leave you, and live.', challenge: 'Let them live. You take the head seat all the same.', defend: 'Let them live. Your seat is secure.', stepdown: 'Let them live. They are out of the contest.', arena: 'Let them live. The crowd will remember your mercy.', slaughter: 'Lower your blade. They get up and go.', sectmaster: 'Let them live. They go into exile, and may raise a sect of their own.', spar: 'Let them up.' }
+    const FIN = { duel: 'End it. Your spouse does not rise.', challenge: 'End it, and take the head seat over their body.', defend: 'End it. Your seat is secure.', stepdown: 'End it. One fewer between you and the seat.', arena: 'End it on the sand. The crowd roars.', slaughter: 'End it. They do not rise, and the road keeps the body.', sectmaster: 'End it, and take the master’s seat over their body.', spar: 'End it.', road: 'End it. They do not rise, and their kin will learn who did it.' }
+    const SPR = { duel: 'Lower your blade. They leave you, and live.', challenge: 'Let them live. You take the head seat all the same.', defend: 'Let them live. Your seat is secure.', stepdown: 'Let them live. They are out of the contest.', arena: 'Let them live. The crowd will remember your mercy.', slaughter: 'Lower your blade. They get up and go.', sectmaster: 'Let them live. They go into exile, and may raise a sect of their own.', spar: 'Let them up.', road: 'Lower your blade. They will remember it.' }
     const quiet = ch.quietYears ? `${ch.quietYears[0]}–${ch.quietYears[1]}` : ''
     // 1.14b: what each choice brings in arts — a debtor raised teaches you one of theirs; a body may hold its manual
     const manual = ch.finishManual ? `<span class="cb-st-l good">their manual: ${Math.round(ch.finishManual * 100)}% chance</span>` : ''
     const taught = ch.teach ? `<span class="cb-st-l good">in thanks, they teach you one of their arts</span>` : ''
     const opts = ch.lethal
-      ? opt('finish', 'Finish them', FIN[ch.kind] || 'End it.', `<span class="cb-st-l warn">${esc(who)} dies; no one is left to remember it</span>${manual}<span class="cb-st-l${ch.karma.finish < 0 ? ' warn' : ''}">${k(ch.karma.finish) || 'no karma change'}</span>`)
+      ? opt('finish', 'Finish them', FIN[ch.kind] || 'End it.', `<span class="cb-st-l warn">${esc(who)} dies; ${ch.kind === 'road' ? 'their kin may come for you' : 'no one is left to remember it'}</span>${manual}<span class="cb-st-l${ch.karma.finish < 0 ? ' warn' : ''}">${k(ch.karma.finish) || 'no karma change'}</span>`)
         + opt('spare', 'Spare them', SPR[ch.kind] || 'Let them live.', `${react(ch.reaction.spare)}<span class="cb-st-l">${k(ch.karma.spare)}</span>`)
+      : ch.kind === 'road'   // Phase 28 4.9: no clan watches on the road; they remember it themselves
+        ? opt('raise', 'Raise them up', 'Offer your hand. They will remember the mercy.', `${react(ch.reaction.raise)}${taught}<span class="cb-st-l good">they will think better of you</span>`)
+          + opt('humble', 'Humble them', 'Leave them in the dust.', `${react(ch.reaction.humble)}<span class="cb-st-l warn">they will hate you for it; a proud heart may swear to repay it</span>`)
       : opt('raise', 'Raise them up', `Offer your hand before the ${ch.arena ? 'crowd' : 'clan'}. Mercy, seen by all.`,
           `${react(ch.reaction.raise)}${taught}<span class="cb-st-l">${ch.arena ? 'One who owes you may repay it one day' : 'A debtor never challenges you'}</span>`)
         + opt('humble', 'Humble them', ch.arena ? 'Leave them in the dust before the crowd.' : 'Leave them in the dust before the clan.',
@@ -675,6 +683,7 @@ class CombatView {
         defend: `${name}'s blade is faster. Your reign ends where it stood.`, stepdown: `${name}'s blade is faster. You fall in the contest for the seat.`,
         arena: `${name}'s blade is faster. You die on the sand, and the crowd roars for the wrong one.`,
         slaughter: `${name}'s blade is faster. You die on the road, far from home.`,
+        road: `${name}'s blade is faster. You die on the road, far from home.`,
         sectmaster: `${name}'s blade is faster. You die on the floor of the Sect Hall you meant to rule.` }
       return this._fall(name, T[this.kind] || 'Your path ends here.')
     }
@@ -689,6 +698,7 @@ class CombatView {
           sectmaster: `${name} beats you down before the whole sect, lets you live, and strips you to Elder.`,
           spar: `${name} puts you on your back, and helps you up.` }
     this.result = { name, tone: r.yielded ? 'dim' : 'red', head: r.yielded ? 'You yield' : `${name} stands over you`, text: T[this.kind] || 'You are beaten, but alive.' }
+    if (this.kind === 'road') this.result.text = this.gs.get().road?.last?.text || this.result.text   // Phase 28 4.9: what they took
     if (this.kind === 'arena') {                                     // A6-3b: the run ends; half the purse is yours
       const L = this.gs.get().arena?.last
       this.result.text = `${r.yielded ? 'You yield.' : `${name} beats you.`} Your run ends${L?.purse ? `: you keep ${this.h.fmt(L.keep)} of the ${this.h.fmt(L.purse)} purse` : ''}.`
@@ -720,6 +730,7 @@ class CombatView {
         raise: 'The sect is yours. They leave in exile, owing you their life.', humble: 'The sect is yours. They crawl from the hall, and will not forget it.' },
       spar: { raise: 'You help them up. Their sect saw the courtesy.', humble: 'You leave them in the dust of their own courtyard.' },
     }
+    if (kind === 'road') TXT.road = { [choice]: this.gs.get().road?.last?.text || '' }   // Phase 28 4.9: the card's own ending (a find won, a feud sworn)
     const karma = choice === 'spare' ? (typeof SPARE_KARMA !== 'undefined' ? SPARE_KARMA : 0) : choice === 'finish' && kind === 'arena' ? (typeof ARENA_KILL_KARMA !== 'undefined' ? ARENA_KILL_KARMA : 0) : 0
     // 1.14b: an art that came of it (taught by a debtor, or a manual on the body)
     const artLine = r.art && ARTS[r.art] ? (choice === 'raise' ? ` In thanks, ${name} writes out ${ARTS[r.art].name} for you: the manual is in your pack, study it in Path → Arts.` : ` On the body: the ${ARTS[r.art].name} manual, now in your pack.`) : ''

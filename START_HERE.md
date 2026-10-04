@@ -69,7 +69,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Doctrine (道统) | ⬜ Phase 25 (planned) |
 | Immortal Island (仙岛) + ascension petitions | ⬜ Phase 26 (planned) |
 | Deep Sect Management (offices, Recruiter, manual recruiting) | ⬜ Phase 27 (planned) |
-| Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ◐ Phase 28: spec approved 2026-10-03 (docs/systems/living-world.md); **4.2 ✅** one registry of persons (family/arena/disciples mirrored, real sect masters + elders, senior-elder succession) + the person card (UI 7.7); **4.3 ✅** the light world sim (people age, break through or fall to backlash, the road and feuds, wed, have children, die of old age as a backstop, Ascend) + ~60 classmates per life + 世 World → Class (UI 7.8); **4.6 ✅** the replacement controller (realm bands refilled by awakening waves, wanderers, the band below breaking through faster and hidden masters who seize or found a sect; the elder draft) + the merged 世 World → Chronicle with "The world by realm" (UI 7.8); next 4.4 + 4.5 heavy AI + tiers |
+| Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ◐ Phase 28: spec approved 2026-10-03 (docs/systems/living-world.md); **4.2 ✅** one registry of persons (family/arena/disciples mirrored, real sect masters + elders, senior-elder succession) + the person card (UI 7.7); **4.3 ✅** the light world sim (people age, break through or fall to backlash, the road and feuds, wed, have children, die of old age as a backstop, Ascend) + ~60 classmates per life + 世 World → Class (UI 7.8); **4.6 ✅** the replacement controller (realm bands refilled by awakening waves, wanderers, the band below breaking through faster and hidden masters who seize or found a sect; the elder draft) + the merged 世 World → Chronicle with "The world by realm" (UI 7.8); **4.4 + 4.5 ✅** the heavy tier (≤ 150, your class reserved) living 12 seasonal goals (duels, feuds with one avenger, betrayals that seat / kill / split, sworn brotherhood, weddings, joins, founding) + known-first casting of suitors, strangers, arena duelists and gate recruits with the "known face" pill + the card's "Their life now" (UI 7.7); **4.7 ✅** 世 World → People (search, filters, sort, ★ pins capped at 12 — a pinned life runs in full and is never forgotten — news of the pinned, the card inline) + tappable names in the Events log (UI 7.75); **4.9 ✅** encounters: Roam → Explore → "Met on the road", 7 NPC intents + gate visitors, a never-expiring queue of 6, your bearing (pre-selects only), every answer writes rel + a memory line, avengers return as lethal ambushes, road fights on the battle page (UI 7.7); **4.10 ✅** memory (each memory's +/− behind a "Why"), Honour / Infamy + rumours, grudges whole / debts halved into the next life, the person card's 8 deeds (gift · spar · duel · teach · invite · swear · denounce · court) on a real-time per-person wait, sworn siblings in your wars, Path → Character "Your name" (UI 7.75); **4.10b ✅** Your Rival (UI 7.9); **4.8 ✅** the Heavenly Rankings (2026-10-04): World → Rankings (Your Class / Rising Dragon / Under Heaven, rank power + why, Veil your name, titles, honour roll), challengers from below, genius hunters, sect invitations, the Class duel (UI 8.0); **4.11 ✅** perf pass (year turn spread over frames: worst frame 21.5 → 11.6 ms); next the final QA & Balance pass |
 
 > **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
 > era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
@@ -91,18 +91,41 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ## UX Debt — known gaps in what the player can see / do (add here; remove when fixed)
 
-- **World → Chronicle (4.6, 7.8 PASS):** the World group now has 5 sub-tabs; on Desktop the band strip stacks full width
+- **Heavenly Rankings (4.8, 8.0 PASS):** in Overlay the first-time hint + standing card push the board below the fold; the
+  gold accent on row #1 reads like the You row's highlight; the sim bot never uses the Veil or the Class duel, and accepts
+  every invitation on a bold bearing (QA pass).
+
+- **Your Rival (4.10b, 7.9 PASS):** the sim bot never starts deeds from World → Rival; the phone bottom nav is translucent over
+  scrolled content (pre-existing); a blood feud with no grown child or spouse never brings a kin card (by design, but untold).
+
+- **Memory + reputation + card deeds (4.10, 7.75 PASS):** no reviewed shot of the closed "Your name" tile; the success toast
+  can sit over the card header on phone; in Overlay the deeds sit below a long card (a scroll); the sim bot never uses the
+  card deeds (QA pass); a friend's gift / an enemy's slander is a log line only (no attention item).
+
+- **Met on the road (4.9, 7.7 PASS):** the lover / formula stranger cards still use the old suitor-card look in the same
+  list (give them the encounter row shell); the bearing chips are small in Expanded / Desktop; in Overlay the open card's
+  answers need a scroll. (A feud against a past life now follows you: 4.10.)
+
+- **Heavy tier + casting (4.4/4.5, 7.7 PASS):** the card's uppercase tie words (9.5px) are small in Overlay; NPC deeds reach
+  you as log/Chronicle lines and, since 4.9, on the road (Met on the road); a cast duelist doesn't age while on a ring roster; the
+  heavy tier's kills don't count toward the "classmates have fallen" nudge.
+
+- **World → People (4.7, 7.75 PASS):** the World group now has **6** sub-tabs (Overlay scrolls the row sideways, Expanded
+  wraps it to two rows); the fresh-news dot was not in a reviewed screenshot; no "Rivals" filter until 4.10b; the rel
+  words only appear once `rel` moves (4.10); a log line naming a child born that instant isn't tappable (mirrored on the
+  next save); Overlay needs a scroll to reach the first row (title + lede + search + sort + chips).
+
+- **World → Chronicle (4.6, 7.8 PASS):** on Desktop the band strip stacks full width
   (the pane is under 250 + 340 px), so its bars run long; the your sect/clan/class tags, the Notable chip's unseen dot and
-  the Sects ledger's chronicle link card were not in a reviewed screenshot; Events-log names are still not clickable (4.7);
+  the Sects ledger's chronicle link card were not in a reviewed screenshot;
   "N hopefuls take the oath" lines are now routine (Sects filter only) but still fill that filter.
 
-- **World → Class (4.3, 7.8 PASS):** only the name in a class row opens the card (make the whole row tappable); "The
-  fallen" toggle is a small text hit area; classmates' names in the event log are not clickable yet (4.7); there is no
-  way to act on a classmate yet (encounters 4.9, interactions 4.10). The World group now has 4 sub-tabs.
+- **World → Class (4.3, 7.8 PASS):** "The fallen" toggle is a small text hit area; there is no way to act on a
+  classmate yet (encounters 4.9, interactions 4.10). (Whole rows tap since 4.7.)
 
 - **Person card (4.2, 7.7 PASS):** a long Realm value wraps onto its own line. The go button can point at the view you
   opened the card from (a disciple from Sect → Disciples, a duelist from the Arena). There's a dead strip on the right on
-  a 390px phone. Names in the event log are not clickable yet (4.7).
+  a 390px phone.
 
 - **NPC people (Phase 28 spec, 2026-10-03):** outside the family tree there is no way to see any NPC. World sect
   masters are bare name strings. The Events log and the Sects chronicle are two separate feeds. Arena champions mean
@@ -272,6 +295,176 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-10-04 (user present) — part 96
+Agent: **Phase 28 task 4.11: the perf pass** (user approved; "bring any big changes to balancing to me before doing them" —
+  none made).
+  - Measured: new scripts/sim/probe-world-perf.js (per-piece timings on a matured world) + new smoke
+    scripts/smoke/scenarios/perf-yearturn.js (the real app's year-turn frame). Heavy season 0.94 ms mean / 1.4 p95 (budget 2);
+    light step 3.1 ms/yr; save stringify 3.3 ms (budget 15). In the app the year-turn frame hit 17–18 ms p95, 21.5 max.
+  - Fix (no gameplay change): the year turn is a job queue (_queueYear/_drainYear, YEAR_FRAME_MS = 4 in lifespan.js)
+    spread over frames, its re-renders batched into one; dt ≥ 1 s drains at once (sim/checks unchanged); flushYear() before
+    every save and when a life ends mid-turn. Worst year-turn frame now ~10 ms p95, 11.6 max.
+  - Tests: npm test clean · npm run checks 1683 ok · sim:quick healthy · perf smoke zero console errors.
+  - **For the user (not changed):** the generation jump between lives costs ~6.5 ms per skipped year (20 y 0.13 s, 80 y
+    0.5 s): a one-off pause when you choose the next life. Capping the jumped years would change the world between lives.
+  Docs: living-world.md ("4.11 as built"), qa-sim.md, PLAN (4.11 ✅, wrap-up step 2 ✅), CLAUDE tree, this file. Uncommitted.
+  Next: **the final QA & Balance pass** (43g + 2.8 + 1.9 + Body / Living World / Rival / Rankings).
+```
+
+```
+Date: 2026-10-04 (user present) — part 95
+Agent: **Phase 28 task 4.8: the Heavenly Rankings** (user: "lets do step 3 4.8 first then the pass" — so 4.8 before 4.11;
+  picks: a World → Rankings sub-tab · all four consequences (challengers, genius hunters, fame + sect effects, Veil your
+  name) · published each game year, every countdown in real m:ss).
+  - Spec first: living-world.md → "4.8 Heavenly Rankings — spec" (depth + UX passes), then "4.8 as built".
+  - Data: npc-lives.js → NPC_RANK + NPC_RANK_TEXT; PERSON_CAUSE_TEXT.hunter; NPC_REP.deeds.slewHunter; banter trigger
+    rank_rise ({board} {place}; 59 lines).
+  - Engine (game-state.js, section 4.8): w.ranks; rankPowerParts (one power for you + everyone: realm, progress, root, body,
+    arts, gear, renown; NPC arts = the realm estimate so a read never reorders the board); _tickRanks each game year
+    (Heaven ≤ 100, Rising Dragon ≤ 60 yrs on the path with power × 20 ÷ (yrs + 20), Your Class; ▲▼, bests, titles, honour
+    roll, class firsts + "only N still live", a new #1, your rival passing you); visitors via the road queue (challenger
+    from below, genius hunter after you or your Rising Dragon child, sect invitation), all answers + fights (renown);
+    the Class duel (challengeRanked, real-time cooldown); Veil (setRankVeil); rank fame for a founder; ranked members add
+    world-sect Might; person card rankOf.
+  - UI: new renderer/game/rankings-view.js (World → Rankings); road card tags + crown line; attention (hunters urgent,
+    "The rankings are published" for logged headlines only); person card chips; World → Rival rankings line; Sect → Fame row;
+    the rank power breakdown (data-bd="rankpower").
+  - Tests: npm test clean · npm run checks **1683 ok** (new checks/rankings.js 53) · smoke scenarios/rankings.js (new; 4
+    modes) zero console errors · sim:quick healthy · Visual Review Gate cycle 1 7.7 FAIL (veil button overflow) →
+    cycle 2 **8.0 PASS**.
+  - Tuning: the first card rates added 2.35 cards / open hour; lowered (challenge 0.03, hunter 0.02, invite 0.03) → ≈ 1.5.
+  - Harness fix: checkSaveRoundtrip (metrics.js) now skips the people an offline encounter just cast onto a card (it
+    tripped save_roundtrip_world: persons once the card mix shifted; not a save bug) — qa-sim.md gotcha.
+  Docs: living-world.md (spec + as built), qa-sim.md, ui-review.md, banter-writing-guide.md, index.md, PLAN (4.8 ✅ + the
+  wrap-up note), CLAUDE tree, this file. Uncommitted.
+  Watch (QA pass): ~8 road cards per open hour in total now; the bot accepts every invitation on bold/ruthless.
+  Next: **4.11 Perf pass** (heavy tick ≤ 2 ms, batched light step, capped catch-up), then the final QA & Balance pass.
+```
+
+```
+Date: 2026-10-04 (user present) — part 94
+Agent: **Phase 28 task 4.10b: Your Rival (宿敌)** (user approved; picks: a World → Rival sub-tab · the spec's cadence
+  (~15–25 game years, shown only as real open time) · blood feud = lethal duels + visits that go after your kin (always a
+  card you answer) · the Class board duel deferred to 4.8).
+  - Data: npc-lives.js → NPC_RIVAL + NPC_RIVAL_TEXT; PERSON_CAUSE_TEXT.rival; banter trigger rival_rise ({rival}; 59 lines).
+  - Engine (game-state.js, section 4.10b): w.rivals (one record per life: heat, meetings, W/L, beats) + w.rivalHouses;
+    _pickRival at the class's seeding (Chosen, never kin; old saves name one on load); heat = every _remember × 0.5 + extras;
+    _tickRival (first visit 5–10 y after awakening, then 15–25) → 4 card kinds (challenge · wine · cornered · after your kin)
+    that skip the road caps and wait first in line; answers with heat on every note; fights write the record (a kill ends
+    it); breakthrough headlines + banter; passes are beats; their death ends it; they lead a war their sect fights (Might ×);
+    a strong rivalry → a house whose heir is the next life's rival (heat × 0.5) + the 2.6d rival rebirth uses that line;
+    the person card's duel opens in a blood feud; the living rival takes world hazards × 0.35.
+  - UI: new renderer/game/rival-view.js (World → Rival: face-off, heat meter, record, real-time next visit, deeds, history,
+    houses, past rivals); rival cards in Met on the road (Rival tag, heat line, the rivalry link); attention items; person
+    card chip; People → Rivals filter; Sect → War names the rival; battle titles.
+  - Tests: npm test clean · npm run checks **1630 ok** (new checks/rival.js 62) · smoke scenarios/rival.js (new; 4 modes, 84
+    ok) zero console errors · sim:quick healthy (rival ≈ 1 card / open hour) · Visual Review Gate **7.9 PASS** (cycle 1;
+    3 polish fixes applied).
+  - Diverged: the rival's house is w.rivalHouses, not a world.clans clan (clan members leave the heavy tier).
+  Docs: living-world.md ("4.10b as built"), qa-sim.md, banter-writing-guide.md, ui-review.md, index.md, PLAN (4.10b ✅),
+  CLAUDE tree, this file. Uncommitted.
+  Watch (QA pass): meetings per casual life (target ≥ 3; quick-sim active lives met theirs 0–7 times, median 1 before the
+  hazard cut); total road cards rose 4.4 → 6.6 per open hour.
+  Next: **4.11 Perf pass** (heavy tick ≤ 2 ms, batched light step, capped catch-up), then 4.8 Heavenly Rankings.
+```
+
+```
+Date: 2026-10-03 (user present) — part 93
+Agent: **Phase 28 task 4.10: Memory, reputation + the person card's deeds** (user approved; picks: a per-person
+  cooldown shown in REAL time (m:ss) — the user rejected "N game years" as meaningless (saved to memory); all 8 deeds;
+  strong grudges whole, debts at half across lives).
+  - Data: npc-lives.js → NPC_REP (deeds → Honour/Infamy, fade, carry, words, road + accept reads, rumours, friends/enemies,
+    heirFeudStage), NPC_ACTS (cooldown 240 s + each deed), NPC_ACTS_TEXT; NPC_ENC_TEXT.why + feudHeir / hunter.
+  - Engine: _remember (one writer: rel ± d, mem {d, life, ×n}, _repDeed, rumours) · w.rep / w.rumours · _tickRepute (fade,
+    rumours to kin + friends, friend gifts, enemy slander) · road intent reads Infamy (righteous hunters) + Honour ·
+    personActions / personAct (gift, spar, duel, teach → p.mentorUntil pace, invite → _takeIntoSect, swear → p.sworn +
+    war bonus + avenging you, denounce honest vs villain, court → f.court) · _inheritRepute at _beginLife (feuds re-aim at
+    you and wait until Foundation Building, rel ≤ −50 whole, rest halved, oaths end, name × 0.5) · Friends filter · reputeInfo.
+  - UI: person card "What you can do" (open first, locked as quiet lines with reasons, live countdown, hint, duel/denounce
+    confirm) + "Why" ledger + Sworn chip; World → People → Friends; Path → Character "Your name" tile + breakdown (repute);
+    battle titles for a called spar/duel.
+  - Tests: npm test clean · npm run checks **1569 ok** (new checks/reputation.js 45) · smoke scenarios/reputation.js (new;
+    4 modes) zero console errors · Visual Review Gate **7.75 PASS** (cycle 1; 2 polish fixes applied).
+  Docs: living-world.md ("4.10 as built"), qa-sim.md, ui-review.md, index.md, PLAN (4.10 ✅), CLAUDE tree, this file.
+  Uncommitted.
+  Next: **4.10b Your Rival** (one same-generation Chosen per life, heat, recurring meetings, the feud across lives).
+```
+
+```
+Date: 2026-10-03 (user present) — part 92
+Agent: **Phase 28 task 4.9: Encounters — "Met on the road"** (user approved the assessment; picks: answers write rel + a
+  memory line now (pulled forward from 4.10) · the bearing (stance) lives on the queue itself).
+  - Data: npc-lives.js → NPC_ENC (chances, caps, temper weights, answer numbers, rel deltas, bearing pre-selects) +
+    NPC_ENC_TEXT (titles, scene / why / brush / wait / gone / memory lines, feud reasons). Banter trigger `ambushed`
+    ({enemy}; 14 × 4 + 3 generic).
+  - Engine (game-state.js): s.road (per life) + w.roadStance / roadHint / roadStats; _roadRoll from expeditions, sect
+    missions and a founder's yearly gate; avengers (feud.pid = you) first, ≤ 1 / open hour; _roadCast (roamers there,
+    your sect on missions, known-first, else minted); _roadIntent (temper × morality × rel × gap × karma); queue ≤ 6 with
+    brushes + a waiting list for notable people; p.roadCard freezes their goals + casting, _killPerson drops the card;
+    answerRoadCard → _roadRemember (rel + mem; rob / betray / shame → a feud on you); fight kind `road` →
+    _roadFightOutcome (_npcSlain makes kin avengers). fightInfo maps a feud on you to "grudge" (+ power, − yield odds).
+  - UI: new renderer/game/encounter-view.js (count, bearing picker, rows → card with why + odds + locks, hint once per
+    slot), the old lover / formula cards in the same list; battle page titles + end-step texts for the road; attention
+    "X is upon you" (urgent) / "N met on the road".
+  - Sim: the bot keeps a bearing (active bold · casual courteous · afk wary · 1 in 10 ruthless); report line "Encounters
+    (4.9)". sim:quick healthy, 4.4 cards / open hour (a first cut ran 5.8 with an avenger cascade → capped).
+  - Tests: npm test clean · npm run checks **1524 ok** (new checks/encounters.js 71) · smoke scenarios/encounters.js
+    (new; 4 modes) zero console errors · Visual Review Gate **7.7 PASS** (cycle 1; 2 polish fixes applied).
+  - Fixed on the way: the contest card sorted a location's drop table in place (now a copy).
+  Docs: living-world.md ("4.9 as built"), qa-sim.md, banter-writing-guide.md, ui-review.md, index.md, PLAN (4.9 ✅),
+  CLAUDE tree, this file. Uncommitted.
+  Watch (QA pass): one active-bot life in 7 ended on the road (an early lethal ambush it chose to fight).
+  Next: **4.10 Memory + reputation + interactions** (rumours, honour / infamy, clan grudges to heirs, person-card
+  actions: gift, spar, duel, mentor, recruit…): spec §2, §3, §11.7.
+```
+
+```
+Date: 2026-10-03 (user present) — part 91
+Agent: **Phase 28 task 4.7: World → People, pins, tappable log names** (user approved the assessment as written).
+  - Data: world-population.js → WORLD_PEOPLE.pinMax 12, peoplePage 60, logNamesMax 3. Icons: star, search.
+  - Engine (game-state.js): knownPeople({ q, filter, sort, limit, since }) (who you know: class, kin/clan, your sect,
+    arena, familiar names, rel, pins, anyone sworn against you; ties to you; the latest the world wrote of them),
+    togglePin (cap; heavy at once; pins already kept the dead), peopleNews / notePeopleSeen (+ w.peopleSeen migration),
+    p.seenY (Recently seen), addEvent stores ev.who (the people a line names) via _namesIn.
+  - UI: new renderer/game/people-view.js (世 World → People: search keeps focus, 7 filter chips, 4 sorts, rows with
+    tie chips + feeling + latest news + fresh dot, ★ per row, the card inline — beside the list ≥ 560px, in place with
+    "All people" when narrow, step-through + Back); person card gets a ★ in its header + an inline mode; Events-log
+    names tappable (game.js evText); attention "News of someone you follow"; World → Class whole rows tap.
+  - Tests: npm test clean · npm run checks **1453 ok** (living-world.js 98 → 118) · smoke scenarios/people.js (new),
+    class.js, person-card.js zero console errors (class.js's Expanded overflow assert was flaky before this change;
+    its helper now names the culprit) · Visual Review Gate **7.75 PASS** (cycle 1; 3 polish fixes applied).
+  Docs: living-world.md ("4.7 as built"), qa-sim.md, ui-review.md, index.md, PLAN (4.7 ✅), CLAUDE tree, this file.
+  Uncommitted.
+  Next: **4.9 Encounters** (NPC intents, the "Met on the road" card queue of 6, stance pre-selects, battle-page fights,
+  gate visitors): spec §9, §11.6.
+```
+
+```
+Date: 2026-10-03 (user present) — part 90
+Agent: **Phase 28 tasks 4.4 + 4.5: the heavy tier, NPC goals, known-first casting** (user approved; picks: the full goal
+  set incl. NPC kills / betrayal / splits / founding · cast known-first in all four systems).
+  - Data: npc-lives.js → NPC_HEAVY (tiers, relevance, 12 goals × temper, morality, outcomes), NPC_CAST, NPC_DEED_TEXT,
+    NPC_ACT_TEXT.
+  - Engine: _assignTiers (yearly), _tickSeasons/_heavyStep (seasonal goals, seeded), roam meetings → ties, _npcDuel,
+    _npcSlain (one avenger per killing), _npcBetray (seat / death / split), _deed (Chronicle + log + toast), _personNow;
+    _castKnown/_castCopy/_castFresh + throttle (seeded castSeq), wired into _rollStranger (suitors, courtship, road),
+    _arenaEnsureRosters, the gate's _genRecruit (pid kept by recruitDisciple); knownFace; addEvent pid → familiarity.
+    Fixed: _weightedRng ignores missing/NaN weights (a hidden master's NaN "found" weight forced foundings).
+  - Tuning: a first cut (feuds to all kin) was a bloodbath (75% of deaths, bands −70%) → one avenger, feuds fade, rarer
+    duels, the high realms rarely duel; top-band refill raised; hidden seizures ~1 / 50 y. probe: bands −13…+5%.
+  - UI: person card "Their life now" (activity, feud, ties); the eye "known face" pill on proposal / courtship / road /
+    arena / gate recruits (names tappable); proposal + encounter root names latinOnly; arena held-champion lock note
+    no longer overlaps the odds.
+  - Tests: npm test clean · npm run checks **1433 ok** (new checks/heavy-ai.js 35; living-world + arena adjusted) ·
+    sim:quick healthy (59% known faces, 7.8 new names / open hour) · smoke heavy.js (new), person-card, class, arena,
+    family (stale Phase 14 count fixed) all zero console errors · Visual Review Gate **7.7 PASS**.
+  Docs: living-world.md ("4.4 + 4.5 as built"), qa-sim.md, family.md, combat.md, own-sect.md, ui-review.md, index,
+  PLAN (4.4 ✅ 4.5 ✅), CLAUDE tree, this file. Uncommitted.
+  Next: **4.7 World → People** (Known People list with search, filters, ★ pins; clickable names in the event log): spec
+  §3, §11.5.
+```
+
+```
 Date: 2026-10-03 (user present) — part 89
 Agent: **Phase 28 task 4.6: the replacement controller + the merged Chronicle** (user approved the assessment; picks: a
   hidden master may seize a weaker sect's seat or found one · merge the Sects chronicle into the new feed).
@@ -379,7 +572,7 @@ Agent: **Mini-game tweaks + a family tree** (user: "the mini game for body is go
     smoke family-tree.js (new) + body.js (strike count read from data) zero console errors.
   - **Visual Review Gate: 6.9 FAIL → 7.7 PASS** (fresh reviewer each cycle).
   Docs: family.md ("Family tree"), body-constitution.md, qa-sim.md, ui-layout.md, ui-review.md, CLAUDE tree. Uncommitted.
-  Next: as part 84 said — Phase 28 living world spec (docs/systems/living-world.md, task 4.1), reviewed with the user before code.
+  Next: see part 89 (Phase 28 4.4 + 4.5) — this side task ran alongside parts 86–89.
 ```
 
 ```

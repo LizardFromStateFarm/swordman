@@ -155,6 +155,7 @@ class GameState {
       _intRegenAcc:     0,
       beasts:           [],
       beastEncounters:  [],
+      road:             this._blankRoad(),   // Phase 28 4.9: "Met on the road" (living-world.md §9)
       bestiary:         {},   // Phase 35 (combat.md): per beast type — seen, fought/won/lost/slain/spared/bound, habitsKnown, returning, variants (rare colours met, 2026-09-30)
       bestiarySeenVer:  2,
       arena:            this._blankArena(),   // A6-3b (combat.md): rings, duelists, the run, renown, titles, call-outs
@@ -504,7 +505,10 @@ class GameState {
              playerLineId: null, pastLives: [],
              // 2.6d: people/sects that wronged you (rare rival-family rebirth) + the clan an orphan life came from
              enemies: [], lastClanId: null,
-             chron: [], chronSeq: 0, chronSeen: 0 }   // Phase 28 (4.6): the merged world Chronicle
+             chron: [], chronSeq: 0, chronSeen: 0,   // Phase 28 (4.6): the merged world Chronicle
+             rep: { h: 0, i: 0, log: [] }, rumours: [],   // 4.10: your Honour / Infamy + the rumours on their way
+             rivals: [], rivalHouses: {},                  // 4.10b: one rivalry record per life + the lines that carry a rivalry on
+             ranks: null }                                 // 4.8: the Heavenly Rankings (built lazily by _ranks())
   }
 
   // A fresh slot: a new world with one founding clan (unnamed until a later task gives clans surnames).
@@ -638,6 +642,7 @@ class GameState {
       const rec = this._wsFromOwnSect(s.ownSect, w)
       if (clan?.sect) clan.sect.worldSectId = rec ? rec.id : null
     }
+    this._rivalLifeEnds(cause, yr)   // 4.10b: the rivalry is closed, and a strong one passes to the next life as a house
     w.pastLives.push({ personId: me.id, clanId: clan?.id || null, lineId: w.playerLineId, cause, year: yr,
                        maxStage, generation, openHours: +(s.stats.timePlayed / 3600).toFixed(2) })
     return w
@@ -1036,7 +1041,7 @@ class GameState {
     if (p.owner === 'arena') go.push({ view: 'arena', label: 'Roam → Arena' })
     if (p.sectId === 'own') go.push({ view: 'sect-disciples', label: 'Sect → Disciples' })
     else if (sect?.id) go.push({ view: 'world', sectId: sect.id, label: `The ${sect.name}` })
-    if ((f.encounters || []).some(e => e.person?.id === pid)) go.push({ view: 'explore', label: 'Roam → Explore' })
+    if ((f.encounters || []).some(e => e.person?.id === pid) || (s.road?.cards || []).some(c => c.pid === pid)) go.push({ view: 'explore', label: 'Roam → Explore' })
     return {
       pid, name: Persons.fullName(p) || 'Nameless', alive, age: Math.max(0, yr - (p.bornYear ?? yr)),
       stage: p.stageIndex || 0, maxStage: p.maxStage || p.stageIndex || 0, diedYear: p.diedYear ?? null,
@@ -1046,7 +1051,19 @@ class GameState {
       morality: mor ? { word: mor.word, tone: mor.tone } : null,
       body: BODY_TIER_LETTERS[p.bodyTier || 0] || 'F',
       role: PERSON_ROLE_TEXT[p.role] || (p.role ? String(p.role).replace(/_/g, ' ') : 'Cultivator'),
-      sectRole: p.sectRole, sect, toYou: rel, relScore: p.rel || 0, memories: (p.mem || []).slice(-3),
+      sectRole: p.sectRole, sect, toYou: rel, relScore: p.rel || 0,
+      // 4.10: every memory with what it moved (d) and whether a past life of yours earned it; "older" = what the
+      // memories they no longer name still add (rumours trimmed, a gift long ago, a forebear's halved debt).
+      memories: (p.mem || []).slice(-3).map(m => ({ ...m, past: m.life != null && m.life < this._lifeNo() })),
+      relWhy: (() => {
+        const items = (p.mem || []).filter(m => typeof m.d === 'number' && m.d).map(m => ({ text: m.text || m.k, d: m.d, y: m.y, n: m.n || 1, past: m.life != null && m.life < this._lifeNo() }))
+        const older = (p.rel || 0) - items.reduce((a, m) => a + m.d, 0)
+        return { items: items.reverse(), older: Math.abs(older) >= 1 ? Math.round(older) : 0 }
+      })(),
+      sworn: !!p.sworn && p.sworn === s.self?.id,
+      rank: alive ? this.rankOf(pid) : null, rankBest: p.rankBest || null, hunter: !!p.hunter,   // 4.8
+      rival: this._isRival(p) ? (({ w: word, tone }) => ({ word, tone, heat: this._rivalRec().heat }))(this._rivalWord(this._rivalRec().heat))
+        : p.rivalOf ? { word: 'Rival of a past life', tone: '', heat: null } : null,   // 4.10b
       // Family already keeps how they feel about you (bond / affection); the world's rel takes over for everyone else (4.10).
       feel: f.spouse?.id === pid && typeof f.affection === 'number' ? { label: 'Affection', v: Math.round(f.affection) }
         : (() => { const c = (f.children || []).find(x => x.id === pid); return c && typeof c.bond === 'number' ? { label: 'Bond', v: Math.round(c.bond) } : null })(),
@@ -1056,13 +1073,14 @@ class GameState {
       span: alive && p.owner !== 'family' ? this._lifespan(p) : null, twilight: alive && !!p.twilight,
       injured: alive && (p.injuredUntil || 0) > yr ? p.injuredUntil - yr : 0, ascended: !!p.ascended, chosen: !!p.chosen,
       classmate: p.cohort == null ? null : p.cohort === this._lifeNo() ? 'Your classmate' : `Your classmate in life ${p.cohort}`,
+      ...(alive && p.owner !== 'family' ? this._personNow(p) : { now: null, ties: [], feud: null, heavy: false, killedBy: this._personNow(p).killedBy }),   // 4.4: Now + ties
     }
   }
 
   // Public (UI): a name was shown to the player on a card — familiarity grows (living-world.md §6.4).
   notePersonSeen(pid) {
     const p = this._s.world?.persons?.[pid]
-    if (p) p.fam = (p.fam || 0) + 1
+    if (p) { p.fam = (p.fam || 0) + 1; p.seenY = Math.floor(this._s.world.year || 0) }
   }
 
   // Phase 28 migration: v2 fields on every registry person, every owner's people mirrored, and every world sect's
@@ -1070,17 +1088,21 @@ class GameState {
   // _syncPersons / _wsEnsurePeople as they appear.
   _ensurePhase28Fields() {
     const s = this._s, w = s?.world
+    if (s && !s.road) s.road = this._blankRoad()   // 4.9: encounters
     if (w?.persons && s.self && w.peopleV >= 1 && this._syncedFor !== s) { this._syncedFor = s; this._syncPersons() }   // once per load
     if (w?.persons && s.self && w.peopleV >= 1) {   // 4.3: the pre-existing world (once per slot) + this life's class
       if (!w.worldSeedV) { this._seedWorldPeople(); w.worldSeedV = 1 }
       if (!s.interlude && !w.cohorts?.[this._lifeNo()]) this._seedCohort()
+      else if (!s.interlude && !this._rivalRec()) this._pickRival()   // 4.10b: a save from before Your Rival
       if (w.livesYear == null) w.livesYear = Math.floor(w.year)
+      if (w.seasonAt == null) w.seasonAt = Math.floor(w.year * NPC_HEAVY.seasons)   // 4.4: no catch-up for the seasons before 4.4
       // 4.6: the merged Chronicle starts from the sects' own short chronicle (once).
       if (!Array.isArray(w.chron)) {
         w.chron = []; w.chronSeq = 0
         for (const c of w.sects?.chronicle || []) this._chron({ k: 'sect', t: c.text, s: c.sectId, y: c.year })
         w.chronSeen = w.chronSeq
       }
+      if (w.peopleSeen == null) w.peopleSeen = w.chronSeq || 0   // 4.7: World → People's "news of the pinned" mark
     }
     if (!w?.persons || !s.self || w.peopleV >= 1) return
     for (const p of Object.values(w.persons)) Persons.stampV2(p)
@@ -1125,7 +1147,8 @@ class GameState {
     p.stageIndex = p.stageIndex || 0
     while (left > 0 && p.stageIndex < NPC_STAGE_CAP) {
       const slow = p.injuredUntil && p.injuredUntil > year - left ? NPC_LIVES.injuredMult : 1
-      const rate = this._npcStageRate(p.stageIndex, p.root?.mult || 1, NPC_YEARS_PER_STAGE / (p.talent || 1)) * slow * boost
+      const taught = p.mentorUntil && p.mentorUntil > year - left ? NPC_ACTS.mentor.mult : 1   // 4.10: you taught them
+      const rate = this._npcStageRate(p.stageIndex, p.root?.mult || 1, NPC_YEARS_PER_STAGE / (p.talent || 1)) * slow * boost * taught
       const need = (1 - xp) / rate
       if (left < need) { xp += left * rate; left = 0; break }
       left -= need; xp = 0
@@ -1134,7 +1157,7 @@ class GameState {
         const L = NPC_LIVES, rng = wsRng(`${p.id}|bt|${next}|${year}`)
         const ok = Math.min(L.btSuccessMax, (L.btSuccess[realm] ?? 0.6) + L.btRootBonus * ((p.root?.mult || 1) - 1))
         if (rng() >= ok) {
-          if (rng() < (L.btDeathShare[realm] ?? 0.2)) { out.died = true; break }
+          if (rng() < (L.btDeathShare[realm] ?? 0.2) * (p.rivalOf && p.rivalOf === this._s.self?.id ? NPC_RIVAL.hazardMult : 1)) { out.died = true; break }   // 4.10b: (your rival, mostly spared)
           out.injured = true
           p.injuredUntil = year + L.injuredYears[0] + Math.floor(rng() * (L.injuredYears[1] - L.injuredYears[0] + 1))
           xp = 0.5; left = 0; break
@@ -1189,8 +1212,12 @@ class GameState {
   // The years skipped between lives (2.6d's generation jump): the world lives them too, quietly.
   _worldYears(fromYear, toYear) {
     const w = this._s.world
-    for (let y = Math.max((w.livesYear ?? fromYear) + 1, fromYear + 1); y <= toYear; y++) this._lifeStep(y, true)
+    for (let y = Math.max((w.livesYear ?? fromYear) + 1, fromYear + 1); y <= toYear; y++) {
+      this._lifeStep(y, true)
+      for (let k = 0; k < NPC_HEAVY.seasons; k++) this._heavyStep(y * NPC_HEAVY.seasons + k, true)   // 4.4: the heavy tier lives those years too
+    }
     w.livesYear = Math.max(w.livesYear ?? toYear, toYear)
+    w.seasonAt = Math.max(w.seasonAt ?? 0, (toYear + 1) * NPC_HEAVY.seasons - 1)
   }
 
   // One game year for every world-owned person. Family / arena / own-sect people live under their owners; clan people
@@ -1219,7 +1246,8 @@ class GameState {
       if (p.alive === false) continue   // fell earlier this step (a master's death can't kill another, but stay safe)
       const clan = clanIds.has(p.id), rng = wsRng(`${p.id}|${yr}|life`)
       const bi = this._bandIndex(p.stageIndex)
-      const g = this._growPerson(p, yr, !clan, boostOf(bi))
+      const sec = this._actOn(p, yr * NPC_HEAVY.seasons)?.k === 'seclude' ? NPC_HEAVY.secludePace : 1   // 4.4: a secluded heavy person cultivates faster
+      const g = this._growPerson(p, yr, !clan, boostOf(bi) * sec)
       if (g.died) { this._npcDies(p, yr, 'bt_backlash', news); continue }
       if (g.injured) news.push({ k: 'injured', p })
       if (g.up) news.push({ k: 'up', p, realm: g.up })
@@ -1243,6 +1271,7 @@ class GameState {
         let h = L.hazard[role] ?? L.hazard.default
         if ((p.stageIndex || 0) >= L.hazardHighStage) h *= L.hazardHighMult
         if (p.chosen) h *= L.hazardChosenMult
+        if (p.rivalOf && p.rivalOf === s.self?.id) h *= NPC_RIVAL.hazardMult   // 4.10b: the world spares your rival for you, mostly
         if (bands[bi]?.state === 'crowded') h *= W6.crowdHazard   // 4.6: too many at one realm — feuds multiply
         if (rng() < h) {
           const tbl = L.hazardCauses[role === 'disciple' ? 'disciple' : p.sectId ? 'sect' : role === 'wanderer' ? 'wanderer' : 'default']
@@ -1307,6 +1336,7 @@ class GameState {
       }
     }
     this._replenishWorld(yr, quiet)   // 4.6: waves, wanderers, hidden masters (the world refills over years)
+    this._assignTiers(yr)             // 4.5: who is heavy this year
     if (yr % L.pruneEvery === 0) this._pruneDead(yr)
     this._chronLives(news, life, myClan, yr)   // 4.6: the merged Chronicle keeps the year (quiet years too)
     if (!quiet) this._tellLives(news, life, myClan)
@@ -1396,7 +1426,7 @@ class GameState {
     this._chron({ k: 'hidden', t: this._chronText('hidden', p, { years }), p: [p.id], n: true })
     // What they do: an ambitious nature reaches for power.
     const wt = { ...W6.hiddenFates }
-    if (W6.hiddenAmbitious.includes(p.personality)) { wt.seize *= 2; wt.found *= 2 }
+    if (W6.hiddenAmbitious.includes(p.personality)) for (const k of ['seize', 'found']) if (wt[k] != null) wt[k] *= 2
     const W = w.sects, foe = s.sectWar?.enemyId
     const prey = this._wsAll().filter(r => r.alive && r.id !== W?.event?.sectId && r.id !== foe)
       .map(r => ({ r, m: this._wsLeader(r) }))
@@ -1523,8 +1553,2350 @@ class GameState {
   // Public (UI): the world's people by realm band against the controller's targets (World → Chronicle's strip).
   worldBandsInfo() { return this._worldBands() }
 
+  // ── Phase 28 tasks 4.4 + 4.5 (living-world.md §6.2, §6.4, §7): the heavy tier + NPC goals, known-first casting ──
+  // Relevance decides who is heavy (≤ NPC_HEAVY.heavyMax; this life's class holds a reserved share). Each game season
+  // a heavy person whose activity has run out picks a goal (utility: base × temper × morality × situation) and acts —
+  // roams and meets people, courts, duels, avenges, joins / leaves / founds a sect, betrays a master, helps a friend,
+  // swears brotherhood. Seeded per person + season (no Math.random). Clan people stay with the clan's own systems.
+
+  _clanIdSet() {
+    const ids = new Set()
+    for (const c of Object.values(this._s.world.clans || {})) { if (c.headId) ids.add(c.headId); for (const l of c.lines || []) for (const id of l.memberIds || []) ids.add(id) }
+    return ids
+  }
+  // Who in the world (world-owned, living, not a clan's) can take part in the heavy step or be its target.
+  _heavyEligible(p, clanIds) {
+    const s = this._s
+    return p && p.alive !== false && (!p.owner || p.owner === 'world') && p.id !== s.self?.id && p.role !== 'ancestor' && !clanIds.has(p.id)
+  }
+  // Yearly: who matters to you now. Relevance = familiarity + feeling + your class + your sect + seats + ties.
+  _assignTiers(yr) {
+    const s = this._s, w = s.world, H = NPC_HEAVY, R = H.relevance, life = this._lifeNo(), clanIds = this._clanIdSet()
+    const mine = this._wsMine()?.id || null
+    const pool = []
+    for (const p of Object.values(w.persons)) {
+      if (p.ties) for (const id of Object.keys(p.ties)) if (w.persons[id]?.alive === false || !w.persons[id]) delete p.ties[id]   // ties to the dead fade
+      if (p.feud && (w.persons[p.feud.pid]?.alive === false || yr - (p.feud.y || yr) > NPC_HEAVY.feudYears)) delete p.feud   // the dead or a long-cold feud
+      if (!this._heavyEligible(p, clanIds)) { if (p.tier === 'heavy') p.tier = 'light'; continue }
+      const score = Math.min(R.famCap, (p.fam || 0) * R.fam) + Math.abs(p.rel || 0) * R.rel + (p.cohort === life ? R.classmate : p.cohort ? R.pastClassmate : 0)
+        + (p.chosen ? R.chosen : 0) + (mine && p.sectId === mine ? R.mySect : 0) + (p.sectRole === 'master' || p.sectRole === 'elder' ? R.seat : 0)
+        + (p.feud ? R.feud : 0) + Object.keys(p.ties || {}).length * R.tie + (p.pin ? R.pin : 0)
+      pool.push({ p, score, cls: p.cohort === life })
+    }
+    const max = H.heavyMax, reserve = Math.round(max * H.cohortReserve)
+    const by = (a, b) => b.score - a.score || String(a.p.id).localeCompare(String(b.p.id))
+    const cls = pool.filter(x => x.cls).sort(by), heavy = new Set(cls.slice(0, reserve).map(x => x.p.id))
+    for (const x of pool.sort(by)) { if (heavy.size >= max) break; heavy.add(x.p.id) }
+    for (const x of pool) x.p.tier = heavy.has(x.p.id) ? 'heavy' : 'light'
+    w.tiersYear = yr
+  }
+
+  // The seasons since the last one stepped (only while open; the world is frozen while closed).
+  _tickSeasons() {
+    const s = this._s, w = s?.world
+    if (!w?.persons || s.interlude) return
+    const now = Math.floor(w.year * NPC_HEAVY.seasons)
+    if (w.seasonAt == null) w.seasonAt = now - 1
+    for (let si = Math.max(w.seasonAt + 1, now - NPC_HEAVY.catchUpSeasons + 1); si <= now; si++) this._heavyStep(si)
+    w.seasonAt = Math.max(w.seasonAt, now)
+  }
+
+  _act(p, k, si, rng, extra = {}) {
+    const len = NPC_HEAVY.goals[k]?.len || [1, 1]
+    p.act = { k, until: si + len[0] + Math.floor(rng() * (len[1] - len[0] + 1)), ...extra }
+  }
+  _actOn(p, si) { return p.act && p.act.until > si ? p.act : null }
+  _tie(a, b) { return a?.ties?.[b?.id] || 0 }
+  _tieAdd(a, b, d, set = false) {
+    if (!a || !b || a === b) return
+    a.ties ||= {}
+    a.ties[b.id] = Math.max(-100, Math.min(100, Math.round(set ? d : (a.ties[b.id] || 0) + d)))
+    const ks = Object.keys(a.ties)
+    if (ks.length > NPC_HEAVY.tiesMax) {   // keep the strongest feelings
+      ks.sort((x, y) => Math.abs(a.ties[y]) - Math.abs(a.ties[x]))
+      for (const k of ks.slice(NPC_HEAVY.tiesMax)) delete a.ties[k]
+    }
+  }
+  _npcPower(p, rng) { return Persons.powerScore(p) + (p.talent || 1) * 40 + rng() * NPC_HEAVY.duelLuck - ((p.injuredUntil || 0) > Math.floor(this._s.world.year) ? 80 : 0) }
+  // How `p` is bound to the slain `v` (for the feud's reason), or null.
+  _kinWord(p, v) {
+    if ((p.parents || []).includes(v.id)) return 'their parent'
+    if ((v.parents || []).includes(p.id)) return 'their child'
+    if ((p.spouseIds || []).includes(v.id)) return 'their spouse'
+    if ((p.parents || []).some(x => (v.parents || []).includes(x))) return 'their sibling'
+    if (this._tie(p, v) >= 100) return 'their sworn sibling'
+    return null
+  }
+  // `killer` slew `v`: v dies, and v's kin + sworn take up the feud (the world remembers who killed whom).
+  _npcSlain(v, killer, yr, cause, news = null) {
+    if (!v || v.alive === false) return
+    this._npcDies(v, yr, cause, news)
+    v.killedBy = killer?.id || null
+    if (!killer) return
+    const w = this._s.world, clanIds = this._clanIdSet()
+    const near = new Set([...(v.parents || []), ...(v.spouseIds || []), ...Object.keys(v.ties || {}).filter(id => v.ties[id] >= 100)])
+    for (const p of Object.values(w.persons)) if ((p.parents || []).includes(v.id) || ((v.parents || []).length && (p.parents || []).some(x => v.parents.includes(x)))) near.add(p.id)
+    // Every one of them hates the killer; one (the closest: a child, a spouse, a parent, a sibling, a sworn sibling) swears to avenge.
+    const order = ['their child', 'their spouse', 'their parent', 'their sibling', 'their sworn sibling'], cand = []
+    for (const id of near) {
+      const p = w.persons[id]
+      if (!this._heavyEligible(p, clanIds) || p.id === killer.id) continue
+      const why = this._kinWord(p, v)
+      if (!why) continue
+      this._tieAdd(p, killer, NPC_HEAVY.feudTie, true)
+      if (!p.feud || w.persons[p.feud.pid]?.alive === false) cand.push({ p, why, o: order.indexOf(why.replace(/^their (parent|child)$/, (m, x) => x === 'parent' ? 'their child' : 'their parent')) })
+    }
+    const av = cand.sort((a, b) => a.o - b.o || String(a.p.id).localeCompare(String(b.p.id)))[0]
+    if (av) av.p.feud = { pid: killer.id, why: `${av.why} ${Persons.fullName(v)}`, y: yr }
+  }
+
+  // Does the player know them (their class, clan, sect, or a name they have seen)?
+  _knownToYou(p, ctx) { return !!p && (p.cohort === ctx.life || (p.fam || 0) > 0 || ctx.clan.has(p.id) || (ctx.mine && p.sectId === ctx.mine)) }
+  // A heavy deed: always in the Chronicle when someone in it is known to you (or it is notable); in your log too when
+  // you know them and the year is not quiet; the big ones toast for your class and familiar faces.
+  _deed(key, a, b, ctx, { extra = {}, notable = false, big = false, sectId = null } = {}) {
+    const known = this._knownToYou(a, ctx) || this._knownToYou(b, ctx)
+    if (!known && !notable) return
+    const vals = { name: Persons.fullName(a), other: b ? Persons.fullName(b) : '', ...extra }
+    const text = (NPC_DEED_TEXT[key] || '').replace(/\{(\w+)\}/g, (m, k) => vals[k] ?? m)
+    this._chron({ k: 'deed', t: text, p: [a?.id, b?.id].filter(Boolean), s: sectId, n: notable || (big && known) })
+    if (ctx.quiet || !known) return
+    this.addEvent({ type: big ? 'special' : 'neutral', text, pid: a?.id || null })
+    const close = x => x && (x.cohort === ctx.life || (x.fam || 0) >= 3)
+    if (big && (close(a) || close(b))) this._emit('world_news', { text, type: 'special' })
+  }
+
+  // One season for the heavy tier.
+  _heavyStep(si, quiet = false) {
+    const s = this._s, w = s.world, H = NPC_HEAVY, G = H.goals, yr = Math.floor(si / H.seasons)
+    if (w.tiersYear == null) this._assignTiers(yr)
+    const clanIds = this._clanIdSet(), mine = this._wsMine()
+    const ctx = { life: this._lifeNo(), clan: new Set(this._clanMemberIds(this._playerClan(w))), mine: mine?.id || null, quiet }
+    const st = w.lifeStats ||= { deaths: {}, births: 0, marriages: 0, ascended: 0 }
+    const deeds = st.deeds ||= {}
+    const did = k => { deeds[k] = (deeds[k] || 0) + 1 }
+    const all = Object.values(w.persons).filter(p => this._heavyEligible(p, clanIds))
+    const heavy = all.filter(p => p.tier === 'heavy').sort((a, b) => String(a.id).localeCompare(String(b.id)))
+    const sects = this._wsAll().filter(r => r.alive)
+    const roamers = {}
+    for (const p of heavy) {
+      if (p.alive === false || p.roadCard || this._actOn(p, si)) continue   // 4.9: on a card, they wait for your answer
+      const rng = wsRng(`${p.id}|${si}|goal`), age = yr - (p.bornYear ?? yr), adult = age >= AWAKENING_AGE + 2, stg = p.stageIndex || 0
+      const tw = H.temperGoals[p.personality] || {}, mor = p.morality || 0
+      const single = !(p.spouseIds || []).some(id => w.persons[id] && w.persons[id].alive !== false)
+      const foe = p.feud ? w.persons[p.feud.pid] : null
+      const r = p.sectId && p.sectId !== 'own' ? this._wsRec(p.sectId) : null
+      const master = r && r.leaderId !== p.id ? w.persons[r.leaderId] : null
+      const friends = Object.keys(p.ties || {}).map(id => w.persons[id]).filter(x => x && x.alive !== false && p.ties[x.id] >= H.friendTie)
+      const hurt = friends.find(x => (x.injuredUntil || 0) > yr)
+      const sworn = friends.find(x => p.ties[x.id] >= H.swearTie && p.ties[x.id] < 100 && this._tie(x, p) >= H.swearTie)
+      const ok = {
+        seclude: true, roam: adult, mission: adult && !!r && !!p.sectRole, court: adult && age >= NPC_LIVES.marryAge && single,
+        duel: adult && stg >= 1, revenge: adult && !!foe && foe.alive !== false, join: adult && !p.sectId && sects.length > 0,
+        leave: p.sectRole === 'disciple' && !!r, found: adult && !p.sectId && stg >= 13 && (w.sects?.list.length || 0) < WORLD_SECTS.maxAlive,
+        betray: p.sectRole === 'elder' && !!master && master.alive !== false && stg >= (master.stageIndex || 0) - 1,
+        help: !!hurt, swear: !!sworn,
+      }
+      const wt = {}
+      for (const [k, g] of Object.entries(G)) {
+        if (!ok[k]) continue
+        let v = g.base * (tw[k] ?? 1)
+        if (H.moralityDark.includes(k)) v *= Math.max(0.1, 1 - mor / 150)
+        if (H.moralityLight.includes(k)) v *= Math.max(0.1, 1 + mor / 150)
+        if (k === 'seclude' && (p.injuredUntil || 0) > yr) v *= 2
+        if (k === 'duel' && stg >= H.highStage) v *= H.highDuel
+        if ((k === 'found' || k === 'betray') && H.ambitious.includes(p.personality)) v *= 2
+        if (k === 'leave' && master && this._tie(p, master) <= -40) v *= 5
+        wt[k] = v
+      }
+      const k = this._weightedRng(wt, rng)
+      if (k === 'seclude' || k === 'mission' || k === 'duel' || k === 'join' || k === 'leave' || k === 'found' || k === 'court') this._act(p, k, si, rng)
+      if (k === 'mission') { p.npcXp = Math.min(0.95, (p.npcXp || 0) + 0.08); this._act(p, 'mission', si, rng, { sect: r.id }) }
+      else if (k === 'roam') {
+        const locs = LOCATIONS.filter(l => (l.minStage || 0) <= stg).slice(-3)
+        const loc = locs[Math.floor(rng() * locs.length)] || LOCATIONS[0]
+        this._act(p, 'roam', si, rng, { loc: loc.id })
+        ;(roamers[loc.id] ||= []).push(p)
+      } else if (k === 'court') {
+        const pool = all.filter(x => x !== p && x.alive !== false && (yr - (x.bornYear ?? yr)) >= NPC_LIVES.marryAge && Math.abs((x.bornYear || 0) - (p.bornYear || 0)) <= NPC_LIVES.marryAgeGap
+          && Math.abs((x.stageIndex || 0) - stg) <= NPC_LIVES.marryStageGap && !(x.spouseIds || []).some(id => w.persons[id]?.alive !== false)
+          && !this._kinWord(p, x) && this._tie(p, x) > -20)
+          .sort((a, b) => this._tie(p, b) - this._tie(p, a) || String(a.id).localeCompare(String(b.id))).slice(0, 6)
+        const q = pool[Math.floor(rng() * pool.length)]
+        if (q) {
+          if (rng() < H.courtWed) {
+            p.spouseIds = [...(p.spouseIds || []), q.id]; q.spouseIds = [...(q.spouseIds || []), p.id]
+            this._tieAdd(p, q, 70, true); this._tieAdd(q, p, 70, true); st.marriages++; did('wed')
+            this._deed('wed', p, q, ctx)
+          } else { this._tieAdd(p, q, 10); this._act(p, 'court', si, rng, { other: q.id }) }
+        }
+      } else if (k === 'duel') {
+        const near = all.filter(x => x !== p && x.alive !== false && Math.abs((x.stageIndex || 0) - stg) <= 2 && (yr - (x.bornYear ?? yr)) >= AWAKENING_AGE + 2)
+        const hated = near.filter(x => this._tie(p, x) <= -20)
+        const pick = (hated.length ? hated : near.filter(x => x.sectId !== p.sectId || !p.sectId))
+        const q = pick[Math.floor(rng() * pick.length)]
+        if (q) {
+          const blood = this._tie(p, q) <= H.bloodTie || rng() < (p.personality === 'psycho' ? H.psychoBlood : H.duelBloodChance)
+          this._npcDuel(p, q, blood, yr, rng, ctx, 'duel'); did(blood ? 'duelBlood' : 'duel')
+        }
+      } else if (k === 'revenge') {
+        if ((foe.stageIndex || 0) >= stg + H.revengeBide) this._act(p, 'seclude', si, rng, { bide: foe.id })
+        else { this._act(p, 'revenge', si, rng, { other: foe.id }); this._npcDuel(p, foe, true, yr, rng, ctx, 'revenge'); did('revenge') }
+      } else if (k === 'join') {
+        const wts = {}
+        for (const x of sects) wts[x.id] = (x === mine ? H.joinYoursMult : 1) * (1 + (x.tier || 1) * 0.2)
+        const to = this._wsRec(this._weightedRng(wts, rng))
+        if (to) { p.sectId = to.id; p.sectRole = 'disciple'; p.role = 'disciple'; to.disciples = (to.disciples || 0) + 1; did('join'); this._deed('join', p, null, ctx, { extra: { sect: to.name }, sectId: to.id }) }
+      } else if (k === 'leave') {
+        p.sectId = null; p.sectRole = null; p.role = 'wanderer'; r.disciples = Math.max(0, (r.disciples || 0) - 1); did('leave')
+        this._deed('leave', p, null, ctx, { extra: { sect: r.name }, sectId: r.id })
+      } else if (k === 'found') {
+        const nr = this._wsNewRival({ tier: stg >= 16 ? 2 : 1, origin: 'founded', rng, leader: Persons.fullName(p) })
+        if (WORLD_SECT_TEMPERS.includes(p.personality)) nr.temper = p.personality
+        this._wsSeat(nr, p); nr.leaderSince = yr; did('found')
+        this._wsChron(`A new sect raises its gate: the ${nr.name}, founded by ${Persons.fullName(p)}.`, nr.id, [p.id], stg >= NPC_WORLD.notableStage)
+        this._deed('found', p, null, ctx, { extra: { sect: nr.name }, big: true, sectId: nr.id })
+      } else if (k === 'betray') {
+        this._act(p, 'betray', si, rng); this._npcBetray(p, master, r, yr, rng, ctx); did('betray')
+      } else if (k === 'help') {
+        hurt.injuredUntil = yr + Math.ceil(((hurt.injuredUntil || yr) - yr) / 2)
+        this._tieAdd(p, hurt, 10); this._tieAdd(hurt, p, 15); this._act(p, 'help', si, rng, { other: hurt.id }); did('help')
+        this._deed('helped', p, hurt, ctx)
+      } else if (k === 'swear') {
+        this._tieAdd(p, sworn, 100, true); this._tieAdd(sworn, p, 100, true); this._act(p, 'swear', si, rng, { other: sworn.id }); did('sworn')
+        this._deed('sworn', p, sworn, ctx, { big: true })
+      }
+    }
+    // Roamers who share a place this season may meet: like hearts befriend, a gulf in character breeds a grudge
+    // (and the hot-headed settle it on the spot).
+    for (const [loc, ps] of Object.entries(roamers)) {
+      for (let i = 0; i + 1 < ps.length; i += 2) {
+        const a = ps[i], b = ps[i + 1], rng = wsRng(`${a.id}|${b.id}|${si}|meet`)
+        if (a.alive === false || b.alive === false || rng() >= H.roamMeet) continue
+        const hostile = Math.abs((a.morality || 0) - (b.morality || 0)) >= H.moralityGulf || a.personality === 'psycho' || b.personality === 'psycho'
+        const [lo, hi] = hostile ? H.meetHostile : H.meetFriendly, d = lo + Math.floor(rng() * (hi - lo + 1))
+        this._tieAdd(a, b, d); this._tieAdd(b, a, d); did(hostile ? 'metHostile' : 'metFriendly')
+        const hot = x => (H.temperGoals[x.personality]?.duel || 1) > 1.5
+        if (hostile && (hot(a) || hot(b)) && rng() < H.meetDuel) this._npcDuel(hot(a) ? a : b, hot(a) ? b : a, this._tie(a, b) <= H.bloodTie, yr, rng, ctx, 'duel')
+      }
+    }
+  }
+
+  // Two of the world's people fight (a duel, a revenge). With `blood` the loser dies and their kin take up the feud.
+  _npcDuel(a, b, blood, yr, rng, ctx, kind = 'duel') {
+    const H = NPC_HEAVY, aw = this._npcPower(a, rng) >= this._npcPower(b, rng)
+    const [win, lose] = aw ? [a, b] : [b, a]
+    if (blood) {
+      this._npcSlain(lose, win, yr, kind === 'revenge' ? 'feud' : 'duel')
+      if (kind === 'revenge') {
+        if (win === a) { const why = a.feud?.why || 'an old wrong'; delete a.feud; this._deed('revengeKill', a, b, ctx, { extra: { why }, big: true }) }
+        else this._deed('revengeFail', a, b, ctx, { big: true })
+      } else this._deed('duelKill', win, lose, ctx, { big: true, notable: (lose.stageIndex || 0) >= NPC_WORLD.notableStage })
+      return win
+    }
+    lose.injuredUntil = Math.max(lose.injuredUntil || 0, yr + H.sparInjury[0] + Math.floor(rng() * (H.sparInjury[1] - H.sparInjury[0] + 1)))
+    const proud = lose.personality === 'arrogant' || lose.personality === 'demonking'
+    this._tieAdd(lose, win, proud ? -25 : 6); this._tieAdd(win, lose, 4)
+    this._deed('duelWin', win, lose, ctx)
+    return win
+  }
+
+  // An elder rises against their master: they take the seat, die, or break away with the malcontents (a split).
+  _npcBetray(p, m, r, yr, rng, ctx) {
+    const H = NPC_HEAVY
+    const odds = Math.max(0.15, Math.min(0.85, H.betrayWin + (this._npcPower(p, rng) - this._npcPower(m, rng)) / 400))
+    const yours = r === this._wsMine() || r.kind === 'lineage'
+    let text = null
+    if (rng() < odds) {
+      const old = Persons.fullName(m)
+      this._npcSlain(m, p, yr, 'seat_struggle')
+      if (r.alive && r.leaderId !== p.id) {   // _npcDies seated the senior elder; the usurper takes it from them
+        this._wsSeat(r, p); r.elderIds = (r.elderIds || []).filter(id => id !== p.id); r.leaderSince = yr
+      }
+      this._wsChron(NPC_DEED_TEXT.betrayWin.replace('{name}', Persons.fullName(p)).replace('{other}', old).replace('{sect}', r.name), r.id, [p.id, m.id], true)
+      text = `${Persons.fullName(p)} has overthrown ${old}. They lead the ${r.name} now.`
+    } else if (rng() < 0.5) {
+      this._npcSlain(p, m, yr, 'seat_struggle')
+      this._wsChron(NPC_DEED_TEXT.betrayDie.replace('{name}', Persons.fullName(p)).replace('{other}', Persons.fullName(m)).replace('{sect}', r.name), r.id, [p.id, m.id], (r.tier || 1) >= 3)
+    } else {
+      r.elderIds = (r.elderIds || []).filter(id => id !== p.id)
+      const n = Math.round((r.disciples || 0) * H.splitShare)
+      r.disciples = Math.max(0, (r.disciples || 0) - n)
+      const nr = (this._s.world.sects?.list.length || 0) < WORLD_SECTS.maxAlive
+        ? this._wsNewRival({ tier: Math.max(1, (r.tier || 1) - 1), origin: 'split', rng, leader: Persons.fullName(p), disciples: Math.max(3, n), splitFrom: r.id }) : null
+      this._tieAdd(p, m, -100, true); this._tieAdd(m, p, -100, true)
+      if (nr) {
+        if (WORLD_SECT_TEMPERS.includes(p.personality)) nr.temper = p.personality
+        this._wsSeat(nr, p); nr.leaderSince = yr
+        this._wsChron(NPC_DEED_TEXT.betraySplit.replace('{name}', Persons.fullName(p)).replace('{other}', Persons.fullName(m)).replace('{sect}', r.name).replace('{split}', nr.name), nr.id, [p.id, m.id], true)
+        text = `${Persons.fullName(p)} broke from the ${r.name} and raised the ${nr.name}.`
+      } else { p.sectId = null; p.sectRole = null; p.role = 'wanderer' }
+    }
+    this._wsEnsurePeople(r, true)
+    if (text && yours && !ctx.quiet) { this.addEvent({ type: 'negative', text, pid: p.id }); this._emit('world_news', { text, type: 'negative' }) }
+  }
+
+  // Public (UI): what a person is doing now and who they are bound to (the person card).
+  _personNow(p) {
+    const w = this._s.world, si = Math.floor((w.year || 0) * NPC_HEAVY.seasons), a = this._actOn(p, si)
+    const nm = id => id === this._s.self?.id ? 'you' : Persons.fullName(w.persons[id]) || 'someone'
+    let now = null, nowPid = null
+    if (a) {
+      const key = a.bide ? 'bide' : a.k === 'court' && a.other ? 'courtWho' : a.k
+      const loc = a.loc ? LOCATIONS.find(l => l.id === a.loc) : null
+      const sect = a.sect ? this._wsRec(a.sect)?.name : p.sectId && p.sectId !== 'own' ? this._wsRec(p.sectId)?.name : null
+      const other = a.bide || a.other || null
+      now = (NPC_ACT_TEXT[key] || '').replace('{place}', loc ? `the ${loc.name}` : 'the wilds').replace('{sect}', sect || 'sect')
+        .replace('{other}', other ? nm(other) : 'someone')
+      nowPid = other
+    }
+    const ties = Object.entries(p.ties || {}).map(([id, v]) => ({ id, v, q: w.persons[id] })).filter(x => x.q && x.q.alive !== false)
+      .sort((x, y) => Math.abs(y.v) - Math.abs(x.v)).slice(0, 5)
+      .map(x => ({ pid: x.id, name: Persons.fullName(x.q), v: x.v, word: x.v >= 100 ? 'Sworn' : x.v >= 60 ? 'Close' : x.v >= 40 ? 'Friend' : x.v <= -80 ? 'Blood feud' : x.v <= -40 ? 'Enemy' : x.v < 0 ? 'Grudge' : 'Acquaintance',
+                    tone: x.v >= 100 ? 'gold' : x.v >= 40 ? 'jade' : x.v <= -40 ? 'red' : 'dim' }))
+    const feud = p.feud && w.persons[p.feud.pid]?.alive !== false ? { pid: p.feud.pid, name: nm(p.feud.pid), why: p.feud.why, y: p.feud.y } : null
+    return { now, nowPid, nowName: nowPid ? nm(nowPid) : null, ties, feud, heavy: p.tier === 'heavy', killedBy: p.killedBy ? { pid: p.killedBy, name: nm(p.killedBy) } : null }
+  }
+
+  // ── Known-first casting (§6.4, task 4.5) ──
+  // Who the world can offer as a suitor / road stranger / arena duelist / recruit, ~75% of the time someone it
+  // already has (weighted by how familiar they are). Returns the registry person (callers copy it) or null.
+  _castKnown(kind, { stage = [0, NPC_STAGE_CAP], age = [AWAKENING_AGE, 999], exclude = [] } = {}) {
+    const s = this._s, w = s.world, C = NPC_CAST
+    if (!w?.persons) return null
+    const throttled = this._castThrottled()
+    w.castSeq = (w.castSeq || 0) + 1
+    const rng = wsRng(`${this._peopleSeed()}|cast|${w.castSeq}`)   // its own seeded stream: casting never shifts Math.random
+    if (rng() >= (throttled ? C.knownChanceThrottled : C.knownChance)) return null
+    const yr = Math.floor(w.year), life = this._lifeNo(), clanIds = this._clanIdSet()
+    const busy = new Set(exclude.filter(Boolean))
+    const f = s.family || {}
+    for (const x of [f.spouse, ...(f.formerSpouses || []), ...(f.children || []), ...(f.lovers || []).map(l => l.person), ...(f.encounters || []).map(e => e.person),
+      ...(f.proposal?.suitors || []), ...(f.court?.candidates || []), f.court?.target, ...(f.spurned || []).map(x => x.person)]) if (x?.id) busy.add(x.id)
+    for (const id of Object.keys(s.arena?.duelists || {})) busy.add(id)
+    for (const c of s.ownSect?.recruitPool || []) if (c.pid) busy.add(c.pid)
+    for (const id of s.self?.parents || []) busy.add(id)
+    const kinOfYou = new Set((f.children || []).flatMap(c => [c.id]))
+    const cand = Object.values(w.persons).filter(p => {
+      if (!this._heavyEligible(p, clanIds) || busy.has(p.id) || kinOfYou.has(p.id) || (p.parents || []).includes(s.self?.id)) return false
+      const st = p.stageIndex || 0, a = yr - (p.bornYear ?? yr)
+      if (st < stage[0] || st > stage[1] || a < age[0] || a > age[1]) return false
+      if (p.sectRole === 'master' || p.sectRole === 'elder' || p.roadCard) return false
+      if (kind === 'suitor' && (p.spouseIds || []).some(id => w.persons[id]?.alive !== false)) return false
+      if (kind === 'recruit' && (p.sectId || st > 9)) return false
+      return true
+    })
+    if (!cand.length) return null
+    const W = C.weight, wt = p => 1 + Math.min(W.famCap, (p.fam || 0) * W.fam) + (p.cohort === life ? W.classmate : p.cohort ? W.pastClassmate : 0) + (p.chosen ? W.chosen : 0)
+    let r = rng() * cand.reduce((a, p) => a + wt(p), 0)
+    let pick = cand[cand.length - 1]
+    for (const p of cand) { r -= wt(p); if (r < 0) { pick = p; break } }
+    pick.fam = (pick.fam || 0) + 1; pick.seenY = yr
+    const cs = this._castStats(); cs.known++; cs.knownTotal++
+    return pick
+  }
+  // A copy of a registry person for an owner (family / arena) — the registry stays the one home (§5, pid write-through).
+  _castCopy(p, role) {
+    p.owner = role === 'duelist' ? 'arena' : 'family'; p.role = role   // mirrored now (the next sync would; a card may open first)
+    const c = JSON.parse(JSON.stringify(p))
+    for (const k of ['tier', 'act', 'ties', 'feud', 'mem', 'killedBy', 'grownYear', 'npcXp']) delete c[k]
+    c.role = role
+    return c
+  }
+  _castStats() {
+    const w = this._s.world, hour = Math.floor((w.year || 0) / GAME_YEARS_PER_OPEN_HOUR)
+    const c = w.cast ||= { hour, fresh: 0, known: 0, freshTotal: 0, knownTotal: 0, hours: 0 }
+    if (c.hour !== hour) { c.hour = hour; c.fresh = 0; c.known = 0; c.hours = (c.hours || 0) + 1 }
+    return c
+  }
+  _castCap() { const C = NPC_CAST; return Math.min(C.newPerHour[1], C.newPerHour[0] + Math.floor((this._s.stageIndex || 0) / 4)) }
+  _castThrottled() { return this._castStats().fresh >= this._castCap() }
+  _castFresh() { const c = this._castStats(); c.fresh++; c.freshTotal++ }
+
+  // Public (UI): is this someone you know? (the "known face" marker on suitors, strangers, duelists, recruits)
+  knownFace(pid) {
+    const s = this._s, w = s.world, p = pid ? w?.persons?.[pid] : null
+    if (!p || p.id === s.self?.id) return null
+    const life = this._lifeNo()
+    if (p.cohort === life) return { label: 'Your classmate', tone: 'gold', why: 'They awakened the same year as you.' }
+    if (p.cohort) return { label: 'Old classmate', tone: '', why: `They awakened beside a past life of yours (life ${p.cohort}).` }
+    if ((p.fam || 0) >= 2) return { label: 'Known face', tone: '', why: `You have come across their name ${p.fam} times.` }
+    return null
+  }
+
+  // ── Phase 28 task 4.9 (living-world.md §9): encounters — the world's people meet you ─────────────────────────
+  // The NPC acts first (their intent is theirs: _roadIntent reads temper, morality, rel, the power gap, your karma);
+  // you answer from a queued card in Roam → Explore → "Met on the road". A card never expires and is never answered
+  // for you; the stance only pre-selects a button. Every answer moves their rel and leaves a line in their mem.
+  // State: s.road (per life: cards, waiting, the hour's count, stats) · w.roadStance (per slot) · p.roadCard / p.roadY.
+
+  _blankRoad() {
+    return { cards: [], waiting: [], seq: 0, hour: -1, n: 0, hintSeen: false, last: null }
+  }
+  // The counters (QA + the sim report) live on the world, so they add up across lives.
+  _roadStats() { return this._s.world.roadStats ||= { rolled: 0, cards: 0, brushes: 0, waited: 0, answered: 0, gone: 0, byKind: {}, byAnswer: {}, bySource: {} } }
+  _road() { return this._s.road ||= this._blankRoad() }
+  roadStance() { return this._s.world?.roadStance || NPC_ENC.stanceDefault }
+  // The player's bearing on the road (their own setting): it only pre-selects an answer on each card.
+  setRoadStance(id) {
+    if (!NPC_ENC.stances.some(x => x.id === id)) return { ok: false, reason: 'unknown' }
+    this._s.world.roadStance = id
+    this._notify()
+    return { ok: true, stance: id }
+  }
+  _roadQueueLen() { return this._road().cards.length + (this._s.family?.encounters?.length || 0) }
+  _roadFill(t, vals) { return String(t || '').replace(/\{(\w+)\}/g, (m, k) => vals[k] ?? m) }
+  _roadPick(a) { return a[Math.floor(Math.random() * a.length)] }
+
+  // An expedition returned / a sect mission ended / a game year passed at a founder's gate: does someone meet you?
+  // source: 'expedition' | 'mission' | 'gate'. Returns the card, { brush }, { waited } or null.
+  _roadRoll(source, loc = null, place = null) {
+    const s = this._s, w = s.world, E = NPC_ENC
+    if (!w?.persons || !s.self || s.interlude || !Array.isArray(s.family?.encounters)) return null
+    const R = this._road(), hour = Math.floor((w.year || 0) / GAME_YEARS_PER_OPEN_HOUR)
+    if (R.hour !== hour) { R.hour = hour; R.n = 0; R.avN = 0 }
+    place = place || loc?.name || 'the road'
+    // Someone sworn against you finds you first (they skip the hour's cap; when the queue is full they wait).
+    const av = source !== 'mission' ? this._roadAvenger() : null
+    if (av && (R.avN || 0) < E.avengersPerHour && Math.random() < E.avengerChance) { R.avN = (R.avN || 0) + 1; return this._roadMeet(av, 'ambush', source, loc, place, true) }
+    if (Math.random() >= (E.chance[source] || 0) || R.n >= E.perHour) return null
+    const p = this._roadCast(source, loc)
+    if (!p) return null
+    const intent = this._roadIntent(p, source)
+    return intent ? this._roadMeet(p, intent, source, loc, place, false) : null
+  }
+
+  // A living person sworn to repay you (p.feud.pid = you): an avenger from _npcSlain, or someone you robbed / betrayed.
+  _roadAvenger() {
+    const s = this._s, w = s.world, yr = Math.floor(w.year), clanIds = this._clanIdSet()
+    const rid = this._rivalOf()?.id   // 4.10b: your rival comes on their own schedule, never as an ordinary avenger
+    return Object.values(w.persons).filter(p => p.feud?.pid === s.self.id && this._heavyEligible(p, clanIds) && !p.roadCard && p.id !== rid
+      && !(p.feud.heir && s.stageIndex < NPC_REP.heirFeudStage)   // 4.10: an avenger of your line waits until you are grown
+      && !(p.roadY != null && yr - p.roadY < NPC_ENC.avengerCooldown)).sort((a, b) => String(a.id).localeCompare(String(b.id)))[0] || null
+  }
+
+  // Who you meet: a heavy roamer at that place first, your own sect's people on a mission, else the world's known-first
+  // casting (a fresh face is minted into the registry, and stays).
+  _roadCast(source, loc) {
+    const s = this._s, w = s.world, E = NPC_ENC, yr = Math.floor(w.year), clanIds = this._clanIdSet()
+    const near = p => Math.abs((p.stageIndex || 0) - s.stageIndex) <= 4
+    const rid = this._rivalOf()?.id   // 4.10b: (the rival seeks you out on their own schedule)
+    const free = p => this._heavyEligible(p, clanIds) && !p.roadCard && p.sectRole !== 'master' && p.id !== rid
+      && !(p.roadY != null && yr - p.roadY < E.cooldownYears && Math.abs(p.rel || 0) < E.notableRel)
+    const si = Math.floor((w.year || 0) * NPC_HEAVY.seasons)
+    if (source === 'expedition' && loc && Math.random() < E.roamerShare) {
+      const here = Object.values(w.persons).filter(p => free(p) && near(p) && this._actOn(p, si)?.k === 'roam' && p.act.loc === loc.id)
+      if (here.length) { const p = this._roadPick(here); p.fam = (p.fam || 0) + 1; p.seenY = yr; return p }
+    }
+    if (source === 'mission') {
+      const mine = this._wsMine()
+      const fellows = mine ? Object.values(w.persons).filter(p => free(p) && p.sectId === mine.id && near(p)) : []
+      if (fellows.length) { const p = this._roadPick(fellows); p.fam = (p.fam || 0) + 1; p.seenY = yr; return p }
+    }
+    const busy = Object.values(w.persons).filter(p => !free(p)).map(p => p.id)
+    const sectOpen = s.ownSect?.founded || s.sect?.id || (w.sects?.list || []).length
+    const youth = sectOpen && Math.random() < 0.18
+    const lo = Math.max(0, s.stageIndex + E.stageSpread[0]), hi = Math.min(NPC_STAGE_CAP, s.stageIndex + E.stageSpread[1])
+    const known = youth ? this._castKnown('recruit', { stage: [0, E.youthMaxStage], age: [AWAKENING_AGE, E.youthMaxAge], exclude: busy })
+      : this._castKnown('stranger', { stage: [lo, Math.max(lo, hi)], age: [AWAKENING_AGE + 2, 9999], exclude: busy })
+    if (known) return known
+    this._castFresh()
+    const R = this._road(), rng = wsRng(`${this._peopleSeed()}|road|${R.seq}|${w.castSeq || 0}`)
+    return youth ? this._mintPerson({ stage: Math.floor(rng() * (E.youthMaxStage + 1)), age: [AWAKENING_AGE, 24], role: 'youth' }, rng)
+      : this._mintPerson({ stage: lo + Math.floor(rng() * (Math.max(lo, hi) - lo + 1)), age: [20, 70], role: 'wanderer' }, rng)
+  }
+
+  // What the NPC means to do — their choice, read from who they are and what they remember of you.
+  _roadIntent(p, source) {
+    const s = this._s, E = NPC_ENC, yr = Math.floor(s.world.year), rel = p.rel || 0, mor = p.morality || 0
+    const tw = E.temper[p.personality] || {}, gap = (p.stageIndex || 0) - s.stageIndex, age = yr - (p.bornYear ?? yr)
+    const young = (p.stageIndex || 0) <= E.youthMaxStage && age <= E.youthMaxAge && !p.sectId
+    const sectOpen = s.ownSect?.founded || s.sect?.id || (s.world.sects?.list || []).length
+    const gate = source === 'gate'
+    const rep = this._rep(), RR = NPC_REP.road
+    const hunter = rep.i >= RR.hunterInfamy && mor >= RR.hunterMorality   // 4.10: the righteous hunt the infamous
+    const ok = {
+      ambush: mor < E.ambushMorality || rel <= E.relCold || hunter,
+      challenge: Math.abs(gap) <= 3 && age >= AWAKENING_AGE + 2,
+      rescue: !gate && gap <= 1,
+      contest: source === 'expedition',
+      teamup: !gate && rel > E.relCold && mor > -40,
+      youth: young && !!sectOpen && rel > E.relCold,
+      oldface: p.cohort != null || (p.fam || 0) >= 3 || Math.abs(rel) >= 20,
+    }
+    const wt = {}
+    for (const [k, b] of Object.entries(E.base)) {
+      if (!ok[k]) continue
+      let v = b * (tw[k] ?? 1)
+      if (k === 'ambush') v *= (1 + E.infamy * (50 - (s.karma ?? 50)) / 100) * (rel <= E.relCold ? 2.5 : 1) * (gap > 0 ? 1.3 : gap < -2 ? 0.4 : 1)
+      if (k === 'ambush' && hunter) v *= RR.hunterWeight * rep.i / 50
+      if (k === 'rescue') v *= 1 + rep.h / 100 * RR.honourRescue   // 4.10: the wounded seek out a merciful name
+      if (k === 'teamup') v *= 1 + rep.h / 100 * RR.honourTeamup
+      if ((k === 'teamup' || k === 'oldface') && rel >= E.relWarm) v *= 2
+      if (k === 'challenge' && rel <= E.relCold) v *= 1.5
+      if (k === 'oldface' && p.cohort === this._lifeNo()) v *= 2
+      if (k === 'youth') v *= 3
+      wt[k] = v
+    }
+    return Object.keys(wt).length ? this._weightedRng(wt, Math.random) : null
+  }
+
+  // Why they came, in words for the card (no silent mechanics).
+  _roadWhy(p, kind, avenger) {
+    const s = this._s, T = NPC_ENC_TEXT.why, E = NPC_ENC, rel = p.rel || 0
+    const mem = (p.mem || []).slice(-1)[0]?.text || ''
+    const temper = (PERSONALITIES.find(x => x.id === p.personality)?.name || 'restless').toLowerCase()
+    const moral = (MORALITY_WORDS.find(m => (p.morality || 0) >= m.min)?.word || 'pragmatic').toLowerCase()
+    const v = { why: p.feud?.why || 'an old wrong', heir: p.feud?.heir || 'your forebear', mem, temper, moral, root: this._rootWords(p.root), n: p.fam || 0 }
+    let k
+    if (avenger) k = p.feud?.heir ? 'feudHeir' : 'feud'
+    else if (kind === 'ambush') k = rel <= E.relCold && mem ? 'hate' : this._rep().i >= NPC_REP.road.hunterInfamy && (p.morality || 0) >= NPC_REP.road.hunterMorality ? 'hunter' : (s.karma ?? 50) < 35 ? 'infamy' : 'greed'
+    else if (kind === 'challenge') k = rel <= E.relCold && mem ? 'grudge' : 'proud'
+    else if (kind === 'rescue') k = rel >= E.relWarm && mem ? 'warm' : 'weaker'
+    else if (kind === 'contest') k = rel <= E.relCold && mem ? 'grudge' : 'greedy'
+    else if (kind === 'teamup') k = rel >= E.relWarm && mem ? 'warm' : 'kind'
+    else if (kind === 'youth') k = 'talent'
+    else k = p.cohort === this._lifeNo() ? 'classmate' : rel >= E.relWarm && mem ? 'warm' : rel <= E.relCold && mem ? 'grudge' : (p.fam || 0) >= 2 ? 'familiar' : 'plain'
+    return this._roadFill(T[k], v)
+  }
+
+  // They found you. A card when there's room; else a notable person waits for a slot and an ordinary one is a brush.
+  _roadMeet(p, kind, source, loc, place, avenger) {
+    const s = this._s, R = this._road(), E = NPC_ENC, yr = Math.floor(s.world.year)
+    this._roadStats().rolled++
+    const notable = avenger || Math.abs(p.rel || 0) >= E.notableRel
+    if (this._roadQueueLen() >= E.queueMax) {
+      if (notable && R.waiting.length < E.waitMax) {
+        R.waiting.push({ pid: p.id, kind, source, locId: loc?.id || null, place, avenger: !!avenger })
+        p.roadCard = 'wait'; this._roadStats().waited++
+        this.addEvent({ text: this._roadFill(NPC_ENC_TEXT.waits, { name: Persons.fullName(p) }), type: 'neutral', pid: p.id })
+        return { waited: true, pid: p.id }
+      }
+      this._roadStats().brushes++; p.roadY = yr
+      this.addEvent({ text: this._roadFill(this._roadPick(NPC_ENC_TEXT.brush), { name: Persons.fullName(p), place }), type: 'neutral', pid: p.id })
+      return { brush: true, pid: p.id }
+    }
+    return this._roadCard(p, kind, source, loc, place, avenger)
+  }
+
+  _roadCard(p, kind, source, loc, place, avenger, x = {}) {
+    const s = this._s, R = this._road(), E = NPC_ENC, X = NPC_ENC_TEXT, yr = Math.floor(s.world.year)
+    const gate = source === 'gate'
+    const card = { id: 'r' + (++R.seq), kind, pid: p.id, name: Persons.fullName(p), source, gate, locId: loc?.id || null, place, y: yr, avenger: !!avenger }
+    if (x.rival) return this._rivalCardOpen(card, p, x.kin || null)   // 4.10b: your rival's own cards
+    if (x.rank) return this._rankCardOpen(card, p, x.rank)   // 4.8: a rankings card (challenger · hunter · invitation)
+    if (kind === 'ambush') card.lethal = !!avenger || (p.rel || 0) <= -60 || p.personality === 'psycho'
+    if (kind === 'challenge') card.blood = (p.rel || 0) <= -40 || p.personality === 'psycho' || p.personality === 'demonking'
+    if (kind === 'contest') {
+      const tbl = (loc?.dropTable || []).filter(d => ITEMS[d.itemId] && ITEMS[d.itemId].type !== 'currency')
+      const d = tbl.length ? [...tbl].sort((a, b) => a.weight - b.weight)[Math.floor(Math.random() * Math.min(3, tbl.length))] : null
+      card.item = d ? { id: d.itemId, qty: 2 + Math.floor(Math.random() * 3) } : { id: null, qty: 0, stones: 40 + 20 * s.stageIndex }
+    }
+    const itemName = card.item?.id ? ITEMS[card.item.id].name : 'cache of spirit stones'
+    card.text = this._roadFill(this._roadPick((gate && X.gateOpen[kind]) || X.open[kind]), { name: card.name, place, item: itemName })
+    card.why = this._roadWhy(p, kind, avenger)
+    p.roadCard = card.id; p.roadY = yr; p.fam = (p.fam || 0) + 1; p.seenY = yr
+    if (!avenger) R.n++
+    R.cards.push(card)
+    this._roadStats().cards++
+    this._roadStats().byKind[kind] = (this._roadStats().byKind[kind] || 0) + 1
+    this._roadStats().bySource[source] = (this._roadStats().bySource[source] || 0) + 1
+    this.addEvent({ text: `${card.text} (Roam → Explore)`, type: kind === 'ambush' ? 'negative' : 'special', pid: p.id })
+    if (kind === 'ambush') this._emit('ambushed', { enemy: card.name, kind })   // (a banter line; other cards stay quiet so the return's line isn't lost)
+    this._notify()
+    return card
+  }
+
+  // The card is answered (or its person is gone): off the queue, and a waiting one takes the slot.
+  _roadClose(card, answer) {
+    const s = this._s, R = this._road(), p = s.world.persons[card.pid]
+    R.cards = R.cards.filter(c => c.id !== card.id)
+    if (p && p.roadCard === card.id) delete p.roadCard
+    if (answer) { this._roadStats().answered++; const k = `${card.kind}:${answer}`; this._roadStats().byAnswer[k] = (this._roadStats().byAnswer[k] || 0) + 1 }
+    this._roadPromote()
+  }
+  _roadPromote() {
+    const s = this._s, R = this._road()
+    while (R.waiting.length && this._roadQueueLen() < NPC_ENC.queueMax) {
+      const x = R.waiting.shift(), p = s.world.persons[x.pid]
+      if (!p || p.alive === false) continue
+      delete p.roadCard
+      this._roadCard(p, x.kind, x.source, LOCATIONS.find(l => l.id === x.locId) || null, x.place, x.avenger, x.rival ? { rival: true, kin: x.kin } : x.rank ? { rank: x.rank } : {})
+    }
+  }
+  // A person on a card (or waiting) died before you answered: the card goes, and the log says why.
+  _roadForget(p, cause) {
+    const s = this._s, R = s.road
+    if (!R) return
+    const card = R.cards.find(c => c.pid === p.id), wait = R.waiting.find(x => x.pid === p.id)
+    if (!card && !wait) return
+    R.waiting = R.waiting.filter(x => x.pid !== p.id)
+    if (card) { R.cards = R.cards.filter(c => c.id !== card.id); this._roadStats().gone++ }
+    delete p.roadCard
+    this.addEvent({ text: this._roadFill(NPC_ENC_TEXT.gone, { name: Persons.fullName(p), cause: (PERSON_CAUSE_TEXT[cause] || 'they have passed on').toLowerCase() }), type: 'neutral', pid: p.id })
+    this._roadPromote()
+  }
+
+  // Their feeling toward you moves, and they keep a line of it (their own words, shown on their card).
+  _roadRemember(p, key, place) {
+    if (!p) return
+    const s = this._s, E = NPC_ENC, yr = Math.floor(s.world.year)
+    this._remember(p, key, E.rel[key] || 0, this._roadFill(NPC_ENC_TEXT.mem[key], { place: place || 'the road' }))   // 4.10: + reputation + rumour
+    if (E.feudOn.includes(key) && p.alive !== false && !(p.feud && s.world.persons[p.feud.pid]?.alive !== false)) {
+      p.feud = { pid: s.self.id, why: NPC_ENC_TEXT.feudWhy[key] || 'an old wrong', y: yr }
+    }
+  }
+
+  // Public (UI + bot): the cards waiting, each with its person, the answers (odds, costs, locks) and the stance's pick.
+  roadCards() {
+    const s = this._s, R = this._road(), st = this.roadStance()
+    return { stance: st, stances: NPC_ENC.stances, max: NPC_ENC.queueMax, waiting: R.waiting.length, hintSeen: !!(R.hintSeen || s.world?.roadHint),
+      family: (s.family?.encounters || []).length,
+      cards: R.cards.map(c => this.roadCardInfo(c.id)).filter(Boolean) }
+  }
+  noteRoadHint() { this._road().hintSeen = true; this._s.world.roadHint = true; this._notify() }   // (once per slot)
+
+  roadCardInfo(id) {
+    const s = this._s, R = this._road(), E = NPC_ENC, card = R.cards.find(c => c.id === id)
+    if (!card) return null
+    const p = s.world.persons[card.pid]
+    if (!p) return null
+    const yr = Math.floor(s.world.year), fight = s.family?.fight, hurt = (s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH
+    const fightLock = fight ? 'Another fight is underway' : hurt ? 'Too wounded to fight' : null
+    const odds = lethal => Math.round((this.personFightOdds(p, 'road', lethal)?.chance ?? 0.5) * 100)
+    const A = [], add = (id, label, note, extra = {}) => A.push({ id, label, note, ...extra })
+    const stoneYield = Math.min(s.spiritStones, Math.max(E.yieldStones[1], Math.round(s.spiritStones * E.yieldStones[0])))
+    if (card.kind === 'ambush') {
+      add('fight', 'Fight', `${odds(card.lethal)}% to win${card.lethal ? ' · to the death: lose, and this life ends' : ` · lose, and they take ${Math.round(E.lossStones * 100)}% of your stones`}`, { odds: odds(card.lethal), lock: fightLock, tone: 'red' })
+      add('flee', 'Flee', `${Math.round(this._roadFleeChance(p) * 100)}% to slip away · fail, and the fight starts here`, { odds: Math.round(this._roadFleeChance(p) * 100), lock: fight ? 'Another fight is underway' : null })
+      add('yield', 'Hand over stones', card.lethal ? '' : `They take ${stoneYield} Spirit Stones and go`, { lock: card.lethal ? 'They came for your life, not your purse' : null })
+    } else if (card.kind === 'challenge') {
+      add('spar', 'Accept: a spar', `${odds(false)}% to win · until one yields`, { odds: odds(false), lock: fightLock })
+      add('blood', 'Accept: to the death', `${odds(true)}% to win · lose, and this life ends`, { odds: odds(true), lock: fightLock, tone: 'red' })
+      add('decline', 'Decline', E.proud.includes(p.personality) ? 'A proud heart will take it hard' : 'They will think a little less of you')
+    } else if (card.kind === 'rescue') {
+      const cost = this._roadRescueCost(card)
+      add('help', 'Help them', `Costs about ${cost} Health · karma +${E.rescueKarma} · they may repay you`, { lock: (s.health ?? 100) <= cost + 5 ? 'Too wounded to fight their foes off' : null, tone: 'jade' })
+      add('walk', 'Walk on', `Karma ${E.walkKarma} · they will remember`)
+      add('rob', 'Rob them', `About ${this._roadRobStones(p)} stones · karma ${E.robKarma} · they may swear to repay it`, { tone: 'red' })
+    } else if (card.kind === 'contest') {
+      const it = card.item, nm = it.id ? `${it.qty}× ${ITEMS[it.id].name}` : `${it.stones} Spirit Stones`
+      add('split', 'Split it', `You take half of ${nm}`)
+      add('fight', 'Fight for it', `${odds(false)}% to win all of it · until one yields`, { odds: odds(false), lock: fightLock })
+      add('yield', 'Let them have it', 'They will think well of you')
+    } else if (card.kind === 'teamup') {
+      add('accept', 'Travel together', 'One more haul from the place · they warm to you', { tone: 'jade' })
+      add('betray', 'Accept, then take their share', `Two hauls · karma ${E.betrayKarma} · they may swear to repay it`, { tone: 'red' })
+      add('decline', 'Go alone', 'They go their own way')
+    } else if (card.kind === 'youth') {
+      const o = s.ownSect, full = o?.founded && this._mainRoster().length >= (s.derived?.discipleCap || 0)
+      add('invite', 'Take them into your sect', o?.founded ? `They join ${o.name} as a disciple, free` : '', { lock: !o?.founded ? 'You have no sect of your own' : full ? 'Your hall has no room' : null, tone: 'jade' })
+      const to = this._roadPointSect()
+      add('point', 'Point them to a sect', to ? `They take the oath at the ${to.name}${s.sect?.id && to === this._wsMine() ? ' · your sect thanks you' : ''}` : '', { lock: to ? null : 'No sect will have them' })
+      add('pass', 'Pass on', 'They find their own way')
+    } else if (card.rival) {
+      this._rivalAnswers(card, p, add, odds, fightLock)   // 4.10b
+    } else if (card.rank) {
+      this._rankAnswers(card, p, add, odds, fightLock)   // 4.8
+    } else {
+      add('talk', 'Talk', 'Old days and new news · they warm to you', { tone: 'jade' })
+      add('spar', 'Spar', `${odds(false)}% to win · until one yields`, { odds: odds(false), lock: fightLock })
+      const will = (p.rel || 0) >= E.favourMinRel
+      add('favour', 'Ask a favour', will ? `They think well enough of you to help` : 'They owe you nothing, and will likely refuse')
+    }
+    const pre = (card.rival ? NPC_RIVAL.preselect : card.rank ? NPC_RANK.preselect : E.preselect)[card.kind]?.[this.roadStance()]
+    const pick = A.find(a => a.id === pre && !a.lock) ? pre : (A.find(a => !a.lock)?.id || null)
+    const pers = PERSONALITIES.find(x => x.id === p.personality)
+    const title = card.rank ? NPC_RANK_TEXT.title[card.kind] : card.rival ? (card.blood ? NPC_RIVAL_TEXT.bloodTitle : NPC_RIVAL_TEXT.title[card.kind]) : (card.gate && NPC_ENC_TEXT.gateTitle[card.kind]) || NPC_ENC_TEXT.title[card.kind]
+    const rv = card.rival ? this._rivalRec() : null
+    return { ...card, answers: A, pre: pick, title, heat: rv ? rv.heat : null, heatWord: rv ? this._rivalWord(rv.heat).w : null,
+      urgent: card.kind === 'ambush' || card.avenger || card.kind === 'rivalKin' || !!card.blood || card.kind === 'hunter' || card.kind === 'hunterKin', alive: p.alive !== false, stage: p.stageIndex || 0, temper: pers?.name || null,
+      morality: (MORALITY_WORDS.find(m => (p.morality || 0) >= m.min) || {}).word || null, rel: p.rel || 0, ago: yr - card.y }
+  }
+
+  _roadFleeChance(p) {
+    const F = NPC_ENC.flee, s = this._s
+    const c = F.base + (s.stageIndex - (p.stageIndex || 0)) * F.perStage + (s.body?.tier || 0) * F.body + (p.personality === 'coward' ? F.coward : 0)
+    return Math.max(F.min, Math.min(F.max, c))
+  }
+  _roadRescueCost(card) {
+    const s = this._s, loc = LOCATIONS.find(l => l.id === card.locId), R = NPC_ENC.rescueHealth
+    const outclass = Math.max(0, (loc?.enemyTier || 1) - (1 + Math.floor(s.stageIndex / 5)))
+    return Math.min(R[1] + 10, R[0] + Math.round((R[1] - R[0]) * Math.min(1, 0.3 + outclass * 0.35)))
+  }
+  _roadRobStones(p) { const R = NPC_ENC.robStones; return Math.round((R[0] + (R[1] - R[0]) * 0.5) * ((p.stageIndex || 0) + 1) / 4) }
+  _roadPointSect() {
+    const mine = this._wsMine()
+    if (mine?.alive !== false && mine) return mine
+    return this._wsAll().filter(r => r.alive).sort((a, b) => (b.tier || 1) - (a.tier || 1) || String(a.id).localeCompare(String(b.id)))[0] || null
+  }
+
+  // Your answer — always yours. Returns { ok, answer, text, fight? } (fight: the battle page opens; the card's story
+  // ends in _roadFightOutcome).
+  answerRoadCard(id, answer) {
+    const s = this._s, E = NPC_ENC, R = this._road(), info = this.roadCardInfo(id)
+    if (!info) return { ok: false, reason: 'unknown' }
+    const a = info.answers.find(x => x.id === answer)
+    if (!a) return { ok: false, reason: 'bad_answer' }
+    if (a.lock) return { ok: false, reason: 'locked', lock: a.lock }
+    const card = R.cards.find(c => c.id === id), p = s.world.persons[card.pid], yr = Math.floor(s.world.year)
+    const name = card.name, place = card.place, loc = LOCATIONS.find(l => l.id === card.locId) || null
+    const fight = (lethal, why) => {
+      this._roadClose(card, answer)
+      this.addEvent({ text: why, type: 'negative', pid: p.id })
+      this._startFight('road', p, lethal, { road: { ...card, answer } })
+      return { ok: true, answer, fight: true, text: why }
+    }
+    let text = '', type = 'neutral'
+    const gain = (drops) => {
+      const parts = []
+      for (const [iid, q] of Object.entries(drops)) {
+        if (ITEMS[iid]?.type === 'currency') s.spiritStones += q; else s.inventory[iid] = (s.inventory[iid] || 0) + q
+        parts.push(`${q}× ${ITEMS[iid]?.name || iid}`)
+      }
+      return parts.join(', ') || 'little of worth'
+    }
+    switch (`${card.kind}:${answer}`) {
+      case 'ambush:fight': return fight(card.lethal, `You turn to face ${name}${card.lethal ? '. This ends with one of you.' : '.'}`)
+      case 'ambush:flee': {
+        if (Math.random() < this._roadFleeChance(p)) { this._roadRemember(p, 'fled', place); text = `You slip away from ${name} at ${place}.`; break }
+        return fight(card.lethal, `You run, and ${name} runs you down at ${place}.`)
+      }
+      case 'ambush:yield': {
+        const n = Math.min(s.spiritStones, Math.max(E.yieldStones[1], Math.round(s.spiritStones * E.yieldStones[0])))
+        s.spiritStones -= n; this._roadRemember(p, 'paid', place)
+        text = `You hand ${name} ${n} Spirit Stones. They weigh the pouch, and go.`; type = 'negative'; break
+      }
+      case 'challenge:spar': case 'oldface:spar': return fight(false, `You accept ${name}'s challenge: until one yields.`)
+      case 'challenge:blood': return fight(true, `You accept ${name}'s challenge: to the death.`)
+      case 'challenge:decline': {
+        const proud = E.proud.includes(p.personality)
+        this._roadRemember(p, proud ? 'declinedProud' : 'declined', place)
+        text = card.gate ? `You send ${name} away from your gate. Your disciples watch them go.` : `You decline ${name}'s challenge and walk on.`; break
+      }
+      case 'rescue:help': {
+        const cost = this._roadRescueCost(card)
+        s.health = Math.max(1, (s.health ?? 100) - cost)
+        s.karma = Math.min(100, s.karma + E.rescueKarma)
+        this._roadRemember(p, 'helped', place)
+        p.injuredUntil = Math.min(p.injuredUntil || yr, yr + 1)
+        let gift = ''
+        if (Math.random() < E.rescueGift) {
+          const t = this._teachableArts(p)
+          if (t.length) { const art = this._roadPick(t); this._grantManual(art, `from ${p.given}, in thanks for their life`); gift = ` In thanks, they write out ${ARTS[art].name} for you.` }
+          else { const n = 30 + 20 * ((p.stageIndex || 0) + 1); s.spiritStones += n; gift = ` They press ${n} Spirit Stones on you.` }
+        }
+        text = `You drive off what was hunting ${name} at ${place}. Health -${cost}.${gift}`; type = 'positive'; break
+      }
+      case 'rescue:walk':
+        s.karma = Math.max(0, s.karma + E.walkKarma); this._roadRemember(p, 'walked', place)
+        text = `You walk past ${name} at ${place}. Their eyes follow you.`; break
+      case 'rescue:rob': {
+        const n = this._roadRobStones(p)
+        s.spiritStones += n; s.karma = Math.max(0, s.karma + E.robKarma)
+        p.injuredUntil = Math.max(p.injuredUntil || 0, yr + 3)
+        this._roadRemember(p, 'robbed', place)
+        text = `You take ${n} Spirit Stones from ${name} as they lie bleeding at ${place}.`; type = 'negative'; break
+      }
+      case 'contest:split': {
+        const it = card.item
+        text = `You and ${name} split the find: ${it.id ? gain({ [it.id]: Math.max(1, Math.ceil(it.qty * E.contestShare)) }) : gain({ spirit_stone: Math.round(it.stones * E.contestShare) })}.`
+        this._roadRemember(p, 'split', place); type = 'positive'; break
+      }
+      case 'contest:fight': return fight(false, `You and ${name} fight for the find at ${place}: until one yields.`)
+      case 'contest:yield': this._roadRemember(p, 'yielded', place); text = `You step back and let ${name} take the find.`; break
+      case 'teamup:accept': {
+        const got = loc ? gain(this._rollDrops(loc)) : 'little of worth'
+        this._roadRemember(p, 'teamup', place); p.fam = (p.fam || 0) + 2
+        text = `You and ${name} clear ${place} together: ${got}.`; type = 'positive'; break
+      }
+      case 'teamup:betray': {
+        const d1 = loc ? this._rollDrops(loc) : {}, d2 = loc ? this._rollDrops(loc) : {}
+        for (const [k, q] of Object.entries(d2)) d1[k] = (d1[k] || 0) + q
+        const got = gain(d1)
+        s.karma = Math.max(0, s.karma + E.betrayKarma); this._roadRemember(p, 'betrayed', place)
+        text = `You clear ${place} with ${name}, then take their share at knifepoint: ${got}.`; type = 'negative'; break
+      }
+      case 'teamup:decline': this._roadRemember(p, 'declined', place); text = `You thank ${name}, and go on alone.`; break
+      case 'youth:invite': {
+        const o = s.ownSect
+        this._takeIntoSect(p)
+        this._roadRemember(p, 'invited', place)
+        text = `${name} kneels and takes the oath of ${o.name}.`; type = 'positive'; break
+      }
+      case 'youth:point': {
+        const r = this._roadPointSect()
+        p.sectId = r.id; p.sectRole = 'disciple'; p.role = 'disciple'; r.disciples = (r.disciples || 0) + 1
+        if (s.sect?.id && r === this._wsMine()) s.sect.contribution += 15
+        this._roadRemember(p, 'pointed', place)
+        text = `You send ${name} to the ${r.name}. They bow low before they go.`; type = 'positive'; break
+      }
+      case 'youth:pass': text = `You leave ${name} to find their own way.`; break
+      case 'oldface:talk': {
+        this._roadRemember(p, 'talked', place)
+        const now = this._personNow(p).now
+        text = `You and ${name} talk late into the night${now ? `. ${now.charAt(0) + now.slice(1).toLowerCase()}, they say` : ''}.`; type = 'positive'; break
+      }
+      case 'oldface:favour': {
+        if ((p.rel || 0) >= E.favourMinRel) {
+          const F = E.favourStones, n = Math.round((F[0] + Math.random() * (F[1] - F[0])) * ((p.stageIndex || 0) + 1) / 4)
+          s.spiritStones += n; this._roadRemember(p, 'favour', place)
+          text = `${name} helps you without a second thought: ${n} Spirit Stones.`; type = 'positive'
+        } else { this._roadRemember(p, 'favourRefused', place); text = `${name} hears you out, and says no.` }
+        break
+      }
+      default: {
+        if (!card.rival && !card.rank) return { ok: false, reason: 'bad_answer' }
+        const r = card.rank ? this._rankAnswer(card, p, answer, fight) : this._rivalAnswer(card, p, answer, fight)   // 4.10b: your rival's cards · 4.8: rankings cards
+        if (!r || r.fight || !r.ok) return r || { ok: false, reason: 'bad_answer' }
+        text = r.text; type = r.type || 'neutral'
+      }
+    }
+    this._roadClose(card, answer)
+    R.last = { id, kind: card.kind, answer, text }
+    this.addEvent({ text, type, pid: p.id })
+    this._recalc(); this._notify()
+    return { ok: true, answer, text }
+  }
+
+  // A road fight ended (fight kind 'road'; the card's story is on fi.road). res from _finishFight.
+  _roadFightOutcome(fi, opp, res) {
+    const s = this._s, E = NPC_ENC, yr = Math.floor(s.world.year), card = fi.road || {}, place = card.place || 'the road'
+    const name = Persons.fullName(opp), R = this._road()
+    this._applyLethalTrauma(res, fi.lethal)
+    let text = '', outcome
+    const rv = this._isRival(opp) ? this._rivalRec() : null   // 4.10b: a fight with your rival writes the rivalry's record
+    if (res.winner.id === s.self.id) {
+      if (res.died) {
+        // An ambusher cut down in self-defence costs no karma (nor a rival stopped on the way to your kin); killing a
+        // challenger you agreed to fight does.
+        if (card.kind !== 'ambush' && card.kind !== 'rivalKin' && card.kind !== 'hunter' && card.kind !== 'hunterKin') s.karma = Math.max(0, s.karma + CHALLENGE_KARMA_DEATH)   // (4.8: nor a genius hunter)
+        if (card.kind === 'duel' && opp.feud?.pid !== s.self.id && !(rv && rv.heat <= NPC_RIVAL.bloodHeat)) this._repDeed('murdered', opp)   // 4.10: a duel you called (4.10b: a blood feud with your rival is not murder)
+        if (rv) this._rivalFought(rv, opp, card, 'slain', place)
+        const rk = card.rank ? this._rankFought(card, opp, 'slain') : ''   // 4.8
+        this._npcSlain(opp, s.self, yr, rv ? 'rival' : 'road')
+        text = card.kind === 'ambush' ? `${name} came for you at ${place}, and does not leave it.` : `You kill ${name} at ${place}.`
+        if (card.kind === 'contest') text += ` The find is yours: ${this._roadTake(card, 1)}.`
+        text += rk
+        outcome = 'won_lethal'
+      } else {
+        const ch = fi.roadChoice || 'raise'
+        this._roadRemember(opp, ch === 'humble' ? 'humbled' : ch === 'spare' ? 'spared' : card.kind === 'ambush' ? 'lostTo' : ch === 'raise' ? 'raised' : 'sparred', place)
+        if (ch === 'humble' && E.proud.includes(opp.personality) && !opp.feud) opp.feud = { pid: s.self.id, why: NPC_ENC_TEXT.feudWhy.humbled, y: yr }
+        text = { spare: `You let ${name} live.`, raise: `You help ${name} up.`, humble: `You leave ${name} in the dust.` }[ch] || `You beat ${name}.`
+        if (card.kind === 'contest') text += ` The find is yours: ${this._roadTake(card, 1)}.`
+        if (rv) text += this._rivalFought(rv, opp, card, ch === 'humble' ? 'humbled' : ch === 'spare' ? 'spared' : 'won', place)
+        if (card.rank) text += this._rankFought(card, opp, 'won')   // 4.8
+        outcome = 'won_nonlethal'
+      }
+    } else if (res.died) {
+      this._roadRemember(opp, 'beatYou', place)
+      R.last = { kind: card.kind, answer: card.answer, text: `${name} killed you at ${place}.` }
+      this.addEvent({ text: `Year ${yr}: ${name}'s blade is faster. You die at ${place}.`, type: 'negative', pid: opp.id })
+      if (rv) this._rivalFought(rv, opp, card, 'killedYou', place)
+      if (opp.feud?.pid === s.self.id) delete opp.feud
+      for (const sw of this._swornWar().people) {   // 4.10: your sworn siblings take up the feud
+        if (sw.id === opp.id || (sw.feud && s.world.persons[sw.feud.pid]?.alive !== false)) continue
+        sw.feud = { pid: opp.id, why: `their sworn sibling ${s.name}`, y: yr }
+        this.addEvent({ text: NPC_ACTS_TEXT.swornAvenge.replace('{name}', Persons.fullName(sw)).replace('{killer}', name), type: 'special', pid: sw.id })
+      }
+      this._recalc(); this._notify()
+      this._die('road')
+      return 'lost_lethal'
+    } else {
+      this._roadRemember(opp, 'beatYou', place)
+      if (card.kind === 'ambush') {
+        const n = Math.floor(s.spiritStones * E.lossStones)
+        s.spiritStones -= n
+        text = `${name} beats you down at ${place} and takes ${n} Spirit Stones.`
+      } else text = card.kind === 'contest' ? `${name} beats you, and takes the find.` : `${name} beats you${res.yielded ? ' — you yield' : ''}, and walks on.`
+      if (rv) text += this._rivalFought(rv, opp, card, 'lost', place)
+      if (card.rank) text += this._rankFought(card, opp, 'lost')   // 4.8
+      outcome = 'lost_nonlethal'
+    }
+    R.last = { kind: card.kind, answer: card.answer, text }
+    this.addEvent({ text, type: outcome.startsWith('won') ? 'positive' : 'negative', pid: opp.id })
+    this._recalc(); this._notify()
+    return outcome
+  }
+  _roadTake(card, share) {
+    const s = this._s, it = card.item || {}
+    if (it.id) { const q = Math.max(1, Math.round(it.qty * share)); s.inventory[it.id] = (s.inventory[it.id] || 0) + q; return `${q}× ${ITEMS[it.id].name}` }
+    const n = Math.round((it.stones || 0) * share); s.spiritStones += n; return `${n} Spirit Stones`
+  }
+
+  // Public (QA + the sim report): encounter counters.
+  roadStats() { const R = this._road(); return { ...this._roadStats(), queued: R.cards.length, waiting: R.waiting.length } }
+
+  // ── Phase 28 task 4.10 (living-world.md §2): memory, reputation, rumours, the person card's deeds ──────────────
+  // Every memory carries its rel delta (`d`, the person card's "why"), and the life it was written in. A deed with a
+  // weight in NPC_REP.deeds moves your Honour / Infamy (w.rep, carried at half into the next life); a big one becomes a
+  // rumour that reaches the person's kin + friends the next game year. State: w.rep · w.rumours · p.mem[].d/.life ·
+  // p.sworn (your id) · p.actAt (real-time cooldown stamp) · p.mentorUntil · w.actStats.
+
+  _rep() { return this._s.world.rep ||= { h: 0, i: 0, log: [] } }
+  // A deed moves Honour / Infamy. Returns the deed key as counted (a wrong done to a sworn sibling is its own deed).
+  _repDeed(key, p) {
+    if (!key) return null
+    const R = NPC_REP, rep = this._rep(), me = this._s.self?.id
+    if (['robbed', 'betrayed', 'denounced', 'murdered'].includes(key) && me && p?.sworn === me) { key = 'betrayedSworn'; p.sworn = null }
+    const d = R.deeds[key]
+    if (!d) return key
+    if (d.h) rep.h = Math.min(R.max, rep.h + d.h)
+    if (d.i) rep.i = Math.min(R.max, rep.i + d.i)
+    rep.log.push({ y: Math.floor(this._s.world.year), k: key, h: d.h || 0, i: d.i || 0, pid: p?.id || null, n: p ? Persons.fullName(p) : '' })
+    if (rep.log.length > R.logMax) rep.log.splice(0, rep.log.length - R.logMax)
+    return key
+  }
+  // `p` remembers something you did: rel moves by d, they keep the line, your name moves, and word may spread.
+  _remember(p, key, d, text, { rumour = true, deed = key } = {}) {
+    if (!p) return
+    const s = this._s, w = s.world, yr = Math.floor(w.year)
+    d = Math.round(d || 0)
+    p.rel = Math.max(-100, Math.min(100, Math.round((p.rel || 0) + d)))
+    const last = (p.mem || []).slice(-1)[0]
+    if (text && last && last.k === key && last.text === text && last.life === this._lifeNo()) { last.y = yr; last.d = (last.d || 0) + d; last.n = (last.n || 1) + 1 }   // the same deed again: one line, ×n
+    else if (text) p.mem = [...(p.mem || []), { y: yr, k: key, text, d, life: this._lifeNo() }].slice(-NPC_ENC.memMax)
+    const dk = this._repDeed(deed, p)
+    if (rumour && dk && Math.abs(d) >= NPC_REP.rumour.minDelta && NPC_ACTS_TEXT.deed[dk]) {
+      (w.rumours ||= []).push({ y: yr, pid: p.id, k: dk, d })
+      if (w.rumours.length > 30) w.rumours.shift()
+    }
+    if (d && this._isRival(p)) this._rivalHeat(this._rivalRec(), d * NPC_RIVAL.relToHeat)   // 4.10b: what your rival remembers moves the heat
+  }
+
+  // Public (UI): your name in the world — Honour, Infamy, the word for it, the latest deeds, and what it changes.
+  reputeInfo() {
+    const R = NPC_REP, rep = this._rep(), h = Math.round(rep.h), i = Math.round(rep.i)
+    let word = R.none, tone = 'dim'
+    if (h >= R.bothMin && i >= R.bothMin) { word = R.both; tone = 'gold' }
+    else for (const x of R.words) {
+      if (Math.max(h, i) < x.min) continue
+      word = h >= i ? x.h : x.i; tone = h >= i ? 'jade' : 'red'; break
+    }
+    const acc = Math.round((h * R.acceptHonour + i * R.acceptInfamy) * 100)
+    const effects = []
+    if (h) effects.push({ label: 'The wounded and the kind seek you out on the road', val: `×${(1 + h / 100 * R.road.honourRescue).toFixed(2)}`, tone: 'up' })
+    if (i >= R.road.hunterInfamy) effects.push({ label: 'The righteous hunt you on the road', val: `×${(R.road.hunterWeight * i / 50).toFixed(2)}`, tone: 'down' })
+    if (acc) effects.push({ label: 'Offers you make (spar, recruit, swear, court)', val: `${acc > 0 ? '+' : ''}${acc}% to accept`, tone: acc > 0 ? 'up' : 'down' })
+    if (i) effects.push({ label: 'A courtship starts cooler', val: `−${Math.round(i * -R.courtInfamy)} interest`, tone: 'down' })
+    return { h, i, word, tone, log: [...rep.log].reverse(), effects, carry: R.carry, fade: R.fadePerYear }
+  }
+
+  // The yearly tick: your name fades a little, rumours reach the people of those you touched, friends send gifts and
+  // enemies talk. Seeded per person + year (wsRng), so the sim's other draws don't shift.
+  _tickRepute(yr) {
+    const s = this._s, w = s.world, R = NPC_REP, T = NPC_ACTS_TEXT, rep = this._rep(), me = s.self?.id
+    if (!w?.persons || !me || s.interlude) return
+    rep.h *= 1 - R.fadePerYear; rep.i *= 1 - R.fadePerYear
+    const st = w.repStats ||= { rumours: 0, heard: 0, gifts: 0, slanders: 0 }
+    const rs = w.rumours || []
+    w.rumours = []
+    for (const r of rs) {
+      const v = w.persons[r.pid]
+      if (!v) continue
+      const near = new Set([...(v.parents || []), ...(v.spouseIds || []), ...Object.keys(v.ties || {}).filter(id => v.ties[id] >= 40)])
+      for (const p of Object.values(w.persons)) if ((p.parents || []).includes(v.id)) near.add(p.id)
+      let n = 0
+      for (const id of [...near].sort()) {
+        if (n >= R.rumour.max) break
+        const h = w.persons[id]
+        if (!h || h.alive === false || id === me || id === v.id || h.role === 'ancestor') continue
+        if (r.d < 0 && (h.morality || 0) <= R.rumour.darkAdmire) continue   // a dark heart shrugs off cruelty
+        const text = this._roadFill(r.d > 0 ? T.mem.heardKind : T.mem.heard, { deed: T.deed[r.k], name: Persons.fullName(v) })
+        this._remember(h, 'heard', r.d * R.rumour.share, text, { rumour: false, deed: null })
+        n++; st.heard++
+      }
+      if (n) st.rumours++
+    }
+    for (const p of Object.values(w.persons)) {
+      if (p.alive === false || p.tier !== 'heavy' || p.id === me || p.roadCard) continue
+      const rel = p.rel || 0
+      if (rel < R.friendRel && rel > R.enemyRel && p.feud?.pid !== me) continue
+      const rng = wsRng(`${p.id}|rep|${yr}`), nm = Persons.fullName(p)
+      const mem = (p.mem || []).filter(m => m.life === this._lifeNo() || m.life == null).slice(-1)[0]?.text || 'For old times.'
+      if (rel >= R.friendRel && rng() < R.friendGift) {
+        const n = Math.round((R.friendStones[0] + rng() * (R.friendStones[1] - R.friendStones[0])) * ((p.stageIndex || 0) + 1) / 4)
+        s.spiritStones += n; st.gifts++
+        this.addEvent({ text: this._roadFill(T.friendGift[Math.floor(rng() * T.friendGift.length)], { name: nm, n, mem }), type: 'positive', pid: p.id })
+      } else if ((rel <= R.enemyRel || p.feud?.pid === me) && rng() < R.enemySlander) {
+        rep.i = Math.min(R.max, rep.i + R.slanderInfamy); st.slanders++
+        rep.log.push({ y: yr, k: 'slander', h: 0, i: R.slanderInfamy, pid: p.id, n: nm })
+        if (rep.log.length > R.logMax) rep.log.splice(0, rep.log.length - R.logMax)
+        for (const q of Object.values(w.persons)) if (q.alive !== false && (q.ties?.[p.id] || 0) >= 40 && q.id !== me) q.rel = Math.max(-100, Math.min(100, (q.rel || 0) + R.slanderRel))
+        const deed = T.deed[(p.mem || []).slice(-1)[0]?.k] || 'wronged them'
+        this.addEvent({ text: this._roadFill(T.slander[Math.floor(rng() * T.slander.length)], { name: nm, mem, n: R.slanderInfamy, deed }), type: 'negative', pid: p.id })
+      }
+    }
+  }
+
+  // A new life (2.6d `_beginLife`): what the world remembers of the last one. Feuds sworn against it now hunt you;
+  // hatred (rel ≤ −50) stays whole; every other feeling is halved; sworn oaths end with the life; Honour / Infamy carry
+  // at NPC_REP.carry (user pick 2026-10-03: strong grudges, half debts).
+  _inheritRepute(year = null) {
+    const s = this._s, w = s.world, last = (w.pastLives || []).slice(-1)[0], me = s.self?.id, R = NPC_REP
+    if (!last || !me || last.personId === me) return
+    const old = w.persons[last.personId], oldName = (old && Persons.fullName(old)) || 'your forebear'
+    for (const p of Object.values(w.persons)) {
+      if (p.id === me) continue
+      if (p.feud?.pid === last.personId) { p.feud.pid = me; p.feud.heir = oldName; if (year != null) p.feud.y = year }   // the clock starts again with the new life
+      if (p.sworn === last.personId) p.sworn = null
+      if (p.rel && p.rel > -50) p.rel = Math.round(p.rel * R.carry)
+    }
+    const rep = this._rep()
+    rep.h *= R.carry; rep.i *= R.carry
+    rep.log.push({ y: Math.floor(w.year), k: 'carried', h: Math.round(rep.h), i: Math.round(rep.i), pid: last.personId, n: oldName })
+    if (rep.log.length > R.logMax) rep.log.splice(0, rep.log.length - R.logMax)
+  }
+
+  // The sworn siblings you have (alive), and what they add to a sect war of yours.
+  _swornWar() {
+    const s = this._s, me = s.self?.id, A = NPC_ACTS.swear
+    const ps = Object.values(s.world?.persons || {}).filter(p => p.sworn === me && p.alive !== false)
+    return { people: ps, names: ps.map(p => Persons.fullName(p)), bonus: Math.min(A.warMax, ps.length * A.warEach) }
+  }
+
+  // Takes a registry person into your own sect as a disciple (they ARE the disciple: pid kept). Shared with the road's
+  // youth card. Leaves a world sect one disciple short.
+  _takeIntoSect(p) {
+    const s = this._s, o = s.ownSect, t = p.root?.type
+    const talent = t === 'heavenly' ? 5 : t === 'pure' ? 4 : t === 'dual' ? 3 : 2
+    o.disciples.push({ id: `d${Date.now()}_${Math.floor(Math.random() * 99999)}`, pid: p.id, name: Persons.fullName(p), talent, level: 1, xp: 0, branchId: null, role: 'disciple', kin: false, personality: disciplePersonality(p.id) })
+    const r = p.sectId && p.sectId !== 'own' ? this._wsRec(p.sectId) : null
+    if (r) { r.disciples = Math.max(0, (r.disciples || 0) - 1); r.memberIds = (r.memberIds || []).filter(id => id !== p.id) }
+    p.sectId = 'own'; p.sectRole = 'disciple'; p.role = 'disciple'; p.owner = 'sect'
+    return r
+  }
+
+  _isYourKin(p) {
+    const s = this._s, f = s.family || {}, id = p.id
+    return f.spouse?.id === id || (f.children || []).some(c => c.id === id) || (f.lovers || []).some(l => l.person?.id === id)
+      || (s.self?.parents || []).includes(id) || (p.parents || []).includes(s.self?.id) || this._clanIdSet().has(id)
+  }
+
+  // Public (UI + bot): what you can do to this person from their card. Every deed with its cost, the odds they accept
+  // (theirs to decide), the fight odds, and why it is locked. cd = seconds of open time before they take another deed.
+  personActions(pid) {
+    const s = this._s, w = s.world, p = w?.persons?.[pid], me = s.self?.id
+    if (!p || pid === me) return null
+    const A = NPC_ACTS, R = NPC_REP, T = NPC_ACTS_TEXT, yr = Math.floor(w.year), rel = p.rel || 0, rep = this._rep()
+    if (p.alive === false || p.role === 'ancestor' || (w.pastLives || []).some(l => l.personId === pid)) return { pid, acts: [], cd: 0, gone: true }
+    const f = s.family || {}, kin = this._isYourKin(p), proud = NPC_ENC.proud.includes(p.personality)
+    const clamp = v => Math.max(0.05, Math.min(0.95, v)), pct = v => Math.round(v * 100)
+    const accept = b => clamp(b + rep.h * R.acceptHonour + rep.i * R.acceptInfamy)
+    const fightLock = f.fight ? 'Another fight is underway' : (s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH ? 'Too wounded to fight' : null
+    const odds = lethal => Math.round((this.personFightOdds(p, 'road', lethal)?.chance ?? 0.5) * 100)
+    const acts = [], add = (id, note, x = {}) => acts.push({ id, label: T.label[id], icon: T.icon[id], note, lock: null, tone: '', ...x })
+    // Gift
+    const cost = Math.round(A.gift.stones[0] + A.gift.stones[1] * (p.stageIndex || 0))
+    const greedy = A.gift.greedy.includes(p.personality)
+    const gd = rel >= A.gift.warmCap ? A.gift.warmRel : greedy ? A.gift.greedyRel : A.gift.rel
+    add('gift', `${cost} Spirit Stones · +${gd}${greedy && rel < A.gift.warmCap ? ' (a greedy heart loves a gift)' : rel >= A.gift.warmCap ? ' (they already hold you dear)' : ''}`,
+      { cost, lock: s.spiritStones < cost ? `Needs ${cost} Spirit Stones` : null, tone: 'jade' })
+    // Spar
+    const sparAcc = accept(A.spar.accept + (proud ? A.spar.proud : 0) + rel * A.spar.perRel + (rel <= -30 ? A.spar.hateAccept : 0))
+    add('spar', `${pct(sparAcc)}% they accept · ${odds(false)}% to win · until one yields`, { chance: pct(sparAcc), odds: odds(false), lock: fightLock })
+    // Duel to the death
+    const rv = this._isRival(p) ? this._rivalRec() : null   // 4.10b: with your rival, a blood feud (heat) opens it too
+    const atOdds = rel <= A.duel.needRel || p.feud?.pid === me || (rv && rv.heat <= NPC_RIVAL.bloodHeat)
+    const duelAcc = clamp(A.duel.accept + (proud ? A.duel.proud : 0) + (atOdds ? A.duel.hate : 0))
+    add('duel', `${pct(duelAcc)}% they accept · ${odds(true)}% to win · lose, and this life ends`, { chance: pct(duelAcc), odds: odds(true), tone: 'red',
+      lock: kin ? 'Not against your own family' : !atOdds ? (rv ? `Only in a blood feud (heat ${this._rivalSigned(NPC_RIVAL.bloodHeat)} or colder; now ${this._rivalSigned(rv.heat)})`
+        : `Only against someone at odds with you (${A.duel.needRel} or sworn against you)`) : fightLock })
+    // Teach them (mentor)
+    const qiCost = Math.round((s.derived?.qiCap || 0) * A.mentor.qiFrac)
+    const gap = s.stageIndex - (p.stageIndex || 0)
+    add('mentor', `Costs {qi} Qi · they cultivate ×${A.mentor.mult} for a while · +${A.mentor.rel} · Honour +${R.deeds.mentored.h}`, { qiCost, tone: 'jade',
+      lock: gap < A.mentor.gap ? `You must stand ${A.mentor.gap} stages above them` : (p.stageIndex || 0) >= NPC_STAGE_CAP ? 'They have nothing left to learn' : rel < A.mentor.needRel ? `They must think well of you (+${A.mentor.needRel})` : (p.mentorUntil || 0) > yr ? 'Still learning from your last lesson' : s.qi < qiCost ? 'Not enough Qi' : null })
+    // Invite to your sect
+    const o = s.ownSect, full = o?.founded && this._mainRoster().length >= (s.derived?.discipleCap || 0)
+    const recAcc = accept(A.recruit.base + rel * A.recruit.perRel + (p.sectId ? A.recruit.member : A.recruit.unaffiliated))
+    const fromSect = p.sectId && p.sectId !== 'own' ? this._wsRec(p.sectId) : null
+    add('recruit', `${pct(recAcc)}% they accept${fromSect ? ` · the ${fromSect.name} will resent it` : ''}`, { chance: pct(recAcc), tone: 'jade',
+      lock: !o?.founded ? 'You have no sect of your own' : p.sectId === 'own' ? 'Already in your sect' : p.sectRole === 'master' || p.sectRole === 'elder' ? 'A sect master or elder will not leave their sect'
+        : kin ? 'Your family is not yours to recruit here (Kin → Family)' : p.owner === 'arena' ? 'They belong to the Arena\'s rings' : full ? 'Your hall has no room' : rel < A.recruit.needRel ? `They must think well of you (+${A.recruit.needRel})` : null })
+    // Swear brotherhood
+    const swAcc = accept(A.swear.base + (rel - A.swear.needRel) * A.swear.perRel)
+    add('swear', `${pct(swAcc)}% they accept · they fight in your sect wars and avenge you`, { chance: pct(swAcc), tone: 'gold',
+      lock: p.sworn === me ? 'Already sworn to you' : kin ? 'Family is already bound to you' : rel < A.swear.needRel ? `They must hold you dear (+${A.swear.needRel})` : null })
+    // Denounce
+    const just = (p.morality || 0) <= A.denounce.justMorality
+    add('denounce', just ? `Their crimes are real: Honour +${R.deeds.denounceJust.h}, no karma cost · they will hate you` : `Karma ${A.denounce.karma} · Infamy +${R.deeds.denounced.i} · they and theirs turn on you${p.sworn === me ? ' · breaks your oath' : ''}`,
+      { tone: 'red', lock: kin ? 'Not your own family' : null })
+    // Court
+    const age = yr - (p.bornYear ?? yr), married = (p.spouseIds || []).some(id => w.persons[id] && w.persons[id].alive !== false)
+    const interest = Math.round(COURT_INTEREST_START + rel * A.court.interestPerRel + rep.i * R.courtInfamy + (p.personality === s.personality?.id ? COURT_SAME_PERSONALITY : 0))
+    add('court', `Begins a courtship on Kin → Family · they start ${Math.max(0, interest)} interested`, { tone: 'jade',
+      lock: f.spouse ? 'You are married' : f.court ? 'You are already courting someone' : Math.max(s.maxStageThisLife || 0, s.stageIndex) < PROPOSAL_MIN_STAGE ? 'Courtship opens at Foundation Building'
+        : kin ? 'Not your own family' : married ? 'They are married' : age < A.court.minAge ? 'They are too young' : p.owner === 'arena' ? 'They belong to the Arena\'s rings' : rel < A.court.needRel ? `They hardly know you (+${A.court.needRel})` : null })
+    return { pid, acts, cd: this._cdLeft(p.actAt), hint: !w.actHint, sworn: p.sworn === me }
+  }
+
+  // Public (UI + bot): do it. Your choice; their answer to an offer is theirs (rolled on the odds shown). Returns
+  // { ok, text, accepted?, fight? } (fight: the battle page opens as a road fight).
+  personAct(pid, id) {
+    const s = this._s, w = s.world, info = this.personActions(pid)
+    if (!info || info.gone) return { ok: false, reason: 'unknown' }
+    const a = info.acts.find(x => x.id === id)
+    if (!a) return { ok: false, reason: 'bad_act' }
+    if (info.cd) return { ok: false, reason: 'cooldown', secsLeft: info.cd }
+    if (a.lock) return { ok: false, reason: 'locked', lock: a.lock }
+    const A = NPC_ACTS, T = NPC_ACTS_TEXT, p = w.persons[pid], name = Persons.fullName(p), yr = Math.floor(w.year)
+    p.actAt = this._cdNow() + A.cooldownSecs
+    w.actHint = true
+    const st = w.actStats ||= {}
+    st[id] = (st[id] || 0) + 1
+    const roll = () => Math.random() * 100 < a.chance
+    let text = '', type = 'neutral', accepted = null
+    const fight = (lethal, kind, why) => {
+      this.addEvent({ text: why, type: 'negative', pid })
+      this._startFight('road', p, lethal, { road: { id: 'act', kind, pid, name, place: 'a quiet courtyard', answer: kind, act: true } })
+      this._notify()
+      return { ok: true, fight: true, accepted: true, text: why }
+    }
+    switch (id) {
+      case 'gift': {
+        s.spiritStones -= a.cost
+        const greedy = A.gift.greedy.includes(p.personality)
+        const gd = (p.rel || 0) >= A.gift.warmCap ? A.gift.warmRel : greedy ? A.gift.greedyRel : A.gift.rel
+        this._remember(p, 'gift', gd, T.mem[greedy ? 'giftGreedy' : 'gift'], { rumour: false })
+        text = `You send ${name} ${a.cost} Spirit Stones.${greedy ? ' Their eyes light up.' : ''}`; type = 'positive'; break
+      }
+      case 'spar':
+        if (roll()) return fight(false, 'spar', `${name} accepts your invitation to spar: until one yields.`)
+        this._remember(p, 'sparRefused', -2, T.mem.sparRefused, { rumour: false, deed: null })
+        text = `${name} declines to spar with you.`; accepted = false; break
+      case 'duel':
+        if (Math.random() * 100 < a.chance) return fight(true, 'duel', `${name} accepts your challenge: to the death.`)
+        this._remember(p, 'duelRefused', -5, T.mem.duelRefused, { rumour: false, deed: null })
+        text = `${name} will not meet you to the death.`; accepted = false; break
+      case 'mentor':
+        s.qi = Math.max(0, s.qi - a.qiCost)
+        p.npcXp = Math.min(0.95, (p.npcXp || 0) + A.mentor.xp)
+        p.mentorUntil = yr + A.mentor.years
+        this._remember(p, 'mentored', A.mentor.rel, T.mem.mentored)
+        text = `You sit with ${name} and open the way a little further for them.`; type = 'positive'; break
+      case 'recruit':
+        if (roll()) {
+          const from = this._takeIntoSect(p)
+          if (from) this._wsDeed(from, A.recruit.stanceHit, `you lured ${name} away`)
+          this._remember(p, 'invited', NPC_ENC.rel.invited, T.mem.recruited)
+          text = `${name} takes the oath of ${s.ownSect.name}.${from ? ` The ${from.name} will not forget it.` : ''}`; type = 'positive'; accepted = true
+        } else {
+          this._remember(p, 'recruitRefused', A.recruit.refuseRel, T.mem.recruitRefused, { rumour: false, deed: null })
+          text = `${name} hears you out, and declines your sect.`; accepted = false
+        }
+        break
+      case 'swear':
+        if (roll()) {
+          p.sworn = s.self.id
+          this._remember(p, 'sworn', A.swear.rel, T.mem.sworn)
+          this._chron({ k: 'deed', t: `${s.name} and ${name} swear brotherhood under the same sky.`, p: [p.id], n: false })
+          text = `You and ${name} swear brotherhood: from this day, your enemies are theirs.`; type = 'special'; accepted = true
+          this._emit('world_news', { text, type: 'special' })
+        } else {
+          this._remember(p, 'swearRefused', 0, T.mem.swearRefused, { rumour: false, deed: null })
+          text = `${name} is moved, but not ready to swear.`; accepted = false
+        }
+        break
+      case 'denounce': {
+        const D = A.denounce, just = (p.morality || 0) <= D.justMorality
+        if (!just) s.karma = Math.max(0, s.karma + D.karma)
+        this._remember(p, just ? 'denounceJust' : 'denounced', D.rel, T.mem[just ? 'denounceJust' : 'denounced'])
+        for (const q of Object.values(w.persons)) {
+          if (q.alive === false || q.id === p.id || !q.ties || q.ties[p.id] == null) continue
+          const was = q.ties[p.id]
+          this._tieAdd(q, p, D.tieHit)
+          if (was <= -40) q.rel = Math.max(-100, Math.min(100, (q.rel || 0) + D.foesWarm))   // their foes like you for it
+        }
+        if (!just && NPC_ENC.proud.includes(p.personality) && !(p.feud && w.persons[p.feud.pid]?.alive !== false)) p.feud = { pid: s.self.id, why: 'you denounced them before the world', y: yr }
+        text = just ? `You name ${name}'s crimes before the world. Some nod; ${name} will not forgive it.` : `You denounce ${name} before the world.`
+        type = just ? 'neutral' : 'negative'; break
+      }
+      case 'court': {
+        this._courtPerson(p)
+        this._remember(p, 'courted', 3, T.mem.courted, { rumour: false, deed: null })
+        text = `You begin to court ${name}. (Kin → Family)`; type = 'special'; break
+      }
+      default: return { ok: false, reason: 'bad_act' }
+    }
+    this.addEvent({ text, type, pid })
+    this._recalc(); this._notify()
+    return { ok: true, text, accepted }
+  }
+
+  // ── Phase 28 task 4.10b (living-world.md §8 + "4.10b as built", PLAN 28K): Your Rival ────────────────────────────
+  // One genius of your class per life, never your kin (_pickRival, when the class is seeded). The record lives on the
+  // world (w.rivals, one per life) so it outlives you. Heat (−100 bitter … +100 kindred) moves with every memory they
+  // keep of you (_remember × NPC_RIVAL.relToHeat) plus a few rival-only reads (a refused challenge, being overtaken, a
+  // war they led, your kin). They seek you out on their own schedule (_tickRival, yearly) through the road queue: their
+  // cards skip the hour cap and the face cooldown, and wait first in line when the queue is full. A strong rivalry
+  // becomes a house (w.rivalHouses): the next life's class holds an heir of that line, and they are its rival.
+  // State: w.rivals [{ life, pid, name, heat, meets, wins, losses, beats, seq, seen, nextY, lead, end, house, inherited }]
+  // · w.rivalHouses { [surname]: { surname, pid, fromLife, fromName, heat, end, y, used } } · w.rivalHint · person
+  // rivalOf (your id that life) / rivalHouse.
+
+  _rivalRec(life = null) {
+    const w = this._s?.world
+    if (!w?.rivals?.length) return null
+    const n = life ?? this._lifeNo()
+    return w.rivals.find(r => r.life === n) || null
+  }
+  // The living rival of this life, or null.
+  _rivalOf() {
+    const r = this._rivalRec(), p = r && !r.end ? this._s.world.persons[r.pid] : null
+    return p && p.alive !== false ? p : null
+  }
+  _isRival(p) { const r = p ? this._rivalRec() : null; return !!(r && !r.end && r.pid === p.id) }
+  _rivalWord(heat) { const W = NPC_RIVAL.words; return W.find(x => heat >= x.min) || W[W.length - 1] }
+  _rivalHeat(r, d) {
+    if (!r || !d) return r?.heat || 0
+    r.heat = Math.max(NPC_RIVAL.heatMin, Math.min(NPC_RIVAL.heatMax, Math.round((r.heat || 0) + d)))
+    return r.heat
+  }
+  _rivalSigned(n) { n = Math.round(n || 0); return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n) }
+  _rivalStage(i) { const st = CULTIVATION_STAGES[i]; return st ? `${st.realm}${st.layer && st.realm !== 'Mortal' ? ' ' + st.layer : ''}` : 'Mortal' }
+  // A beat of the rivalry's history (structured, so a later story mode can quote it). meet: it was a meeting.
+  _rivalBeat(r, k, vals = {}, { meet = false, tone = '' } = {}) {
+    const text = this._roadFill(NPC_RIVAL_TEXT.beat[k], { name: r.name, ...vals })
+    r.seq = (r.seq || 0) + 1
+    r.beats.push({ i: r.seq, y: Math.floor(this._s.world.year), k, text, place: vals.place || null, heat: r.heat, tone })
+    if (r.beats.length > NPC_RIVAL.beatsMax) r.beats.splice(0, r.beats.length - NPC_RIVAL.beatsMax)
+    if (meet) r.meets++
+    return text
+  }
+
+  // The class is seeded (_seedCohort): a house that carries a rivalry puts its heir among them. Returns { surname, parentId }.
+  _rivalHouseHeir(life) {
+    const s = this._s, w = s.world
+    const hs = Object.values(w.rivalHouses || {}).filter(h => !h.used && h.surname && h.surname !== s.self?.family)   // (born into their line: no rival of your own blood)
+    if (!hs.length) return null
+    const h = hs.sort((a, b) => (b.y || 0) - (a.y || 0))[0]
+    h.used = life
+    const founder = w.persons[h.pid]
+    const parent = founder && founder.alive !== false ? founder
+      : Object.values(w.persons).filter(p => p.alive !== false && (p.parents || []).includes(h.pid)).sort((a, b) => String(a.id).localeCompare(String(b.id)))[0] || null
+    return { surname: h.surname, parentId: parent?.id || null }
+  }
+
+  // Names this life's rival: the house's heir if there is one, else the strongest of Heaven's Chosen, never kin.
+  _pickRival() {
+    const s = this._s, w = s.world, life = this._lifeNo(), me = s.self?.id, R = NPC_RIVAL
+    if (!w?.persons || !w.cohorts?.[life] || s.interlude || !me) return null
+    w.rivals ||= []; w.rivalHouses ||= {}
+    const had = this._rivalRec(life)
+    if (had) return had
+    const clanIds = this._clanIdSet(), fam = s.self.family || ''
+    const cands = w.cohorts[life].ids.map(id => w.persons[id])
+      .filter(p => p && p.alive !== false && !clanIds.has(p.id) && !(fam && p.family === fam) && !this._isYourKin(p))
+    if (!cands.length) return null
+    const score = p => (p.rivalHouse ? 1e4 : 0) + (p.chosen ? 1e3 : 0) + (p.stageIndex || 0) * 10 + (p.talent || 1)
+    cands.sort((a, b) => score(b) - score(a) || String(a.id).localeCompare(String(b.id)))
+    const p = cands[0], yr = Math.floor(w.year), awake = w.cohorts[life].year
+    const house = p.rivalHouse ? w.rivalHouses[p.rivalHouse] : null
+    const rng = wsRng(`${p.id}|rival|first`)
+    const r = { life, pid: p.id, name: Persons.fullName(p), heat: 0, meets: 0, wins: 0, losses: 0, beats: [], seq: 0, seen: 0,
+      nextY: Math.max(yr + 1, awake + R.firstMeet[0] + Math.floor(rng() * (R.firstMeet[1] - R.firstMeet[0] + 1))),
+      lead: Math.sign((s.stageIndex || 0) - (p.stageIndex || 0)), end: null, house: house?.surname || null, inherited: null }
+    p.rivalOf = me
+    if (house) {
+      r.heat = Math.round(house.heat * R.carryHeat)
+      r.inherited = { fromLife: house.fromLife, fromName: house.fromName, heat: house.heat, end: house.end || null }
+      if (house.heat < 0) p.rel = Math.min(p.rel || 0, R.houseRel)
+      this._rivalBeat(r, 'inherited', { house: house.surname, from: house.fromName })
+    } else this._rivalBeat(r, 'chosen')
+    w.rivals.push(r)
+    this.addEvent({ text: this._roadFill(NPC_RIVAL_TEXT.named, { name: r.name }), type: 'special', pid: p.id })
+    return r
+  }
+
+  // The game-year tick: who leads, and whether the rival comes looking for you this year (their choice, on their clock).
+  _tickRival(yr) {
+    const s = this._s, w = s.world, R = NPC_RIVAL
+    if (!w?.persons || s.interlude || !s.self) return
+    const r = this._rivalRec()
+    if (!r || r.end) return
+    const p = w.persons[r.pid]
+    if (!p || p.alive === false) return
+    this._rivalLead(r, p)
+    if (yr < r.nextY || p.roadCard) return
+    const rng = wsRng(`${p.id}|rival|${yr}`)
+    r.nextY = yr + R.meetEvery[0] + Math.floor(rng() * (R.meetEvery[1] - R.meetEvery[0] + 1))
+    const kin = r.heat <= R.bloodHeat ? this._rivalKinTarget() : null
+    const kind = kin && rng() < R.kinStrike ? 'rivalKin'
+      : rng() < ((p.injuredUntil || 0) > yr ? R.troubleHurt : R.trouble) ? 'rivalTrouble'
+      : r.heat >= R.talkHeat && rng() < R.talkShare ? 'rivalTalk' : 'rivalDuel'
+    this._rivalMeet(p, kind, kind === 'rivalKin' ? kin : null)
+  }
+
+  // Who leads now. A pass either way is a beat (and being overtaken stings a proud heart).
+  _rivalLead(r, p) {
+    const s = this._s, R = NPC_RIVAL, T = NPC_RIVAL_TEXT, you = s.stageIndex || 0, them = p.stageIndex || 0
+    const lead = Math.sign(you - them)
+    if (!lead || lead === r.lead) return
+    const was = r.lead
+    r.lead = lead
+    if (!was) return
+    const vals = { name: r.name, realm: this._rivalStage(you), theirs: this._rivalStage(them) }
+    if (lead > 0) {
+      this._rivalHeat(r, NPC_ENC.proud.includes(p.personality) ? R.heat.overtakenProud : R.heat.overtakenHumble)
+      this._rivalBeat(r, 'overtook', vals, { tone: 'jade' })
+      this.addEvent({ text: this._roadFill(T.overtook, vals), type: 'special', pid: p.id })
+    } else {
+      this._rivalBeat(r, 'passed', vals, { tone: 'red' })
+      this.addEvent({ text: this._roadFill(T.passed, vals), type: 'neutral', pid: p.id })
+    }
+  }
+
+  // Their breakthrough, as a headline (from _tellLives). Returns the line for the log.
+  _rivalRose(p) {
+    const r = this._rivalRec(), realm = this._lifeRealm(p.stageIndex)
+    if (r) this._rivalBeat(r, 'rose', { realm }, { tone: 'gold' })
+    this._emit('rival_rise', { rival: p.given || Persons.fullName(p) })
+    return { text: this._roadFill(NPC_RIVAL_TEXT.rose, { name: Persons.fullName(p), realm }), type: 'special', toast: true, who: p }
+  }
+
+  _rivalPlace(p) {
+    const s = this._s, loc = p.act?.loc ? LOCATIONS.find(l => l.id === p.act.loc) || null : null
+    if (loc) return { loc, place: loc.name }
+    if (s.ownSect?.founded) return { loc: null, place: `the gate of ${s.ownSect.name}` }
+    const mine = this._wsMine()
+    return { loc: null, place: mine ? `the foot of the ${mine.name}'s mountain` : 'the mountain road' }
+  }
+
+  // They come: a card at once, or first in line when your hands are full (never answered for you, never expires).
+  _rivalMeet(p, kind, kin = null) {
+    const Rd = this._road(), { loc, place } = this._rivalPlace(p)
+    if (this._roadQueueLen() >= NPC_ENC.queueMax) {
+      Rd.waiting.unshift({ pid: p.id, kind, source: 'rival', locId: loc?.id || null, place, avenger: false, rival: true, kin })
+      p.roadCard = 'wait'; this._roadStats().waited++
+      this.addEvent({ text: this._roadFill(NPC_RIVAL_TEXT.waits, { name: Persons.fullName(p) }), type: 'special', pid: p.id })
+      this._notify()
+      return { waited: true, pid: p.id }
+    }
+    return this._roadCard(p, kind, 'rival', loc, place, false, { rival: true, kin })
+  }
+
+  // (_roadCard hands a rival's card here.)
+  _rivalCardOpen(card, p, kin) {
+    const s = this._s, Rd = this._road(), r = this._rivalRec(), T = NPC_RIVAL_TEXT, yr = Math.floor(s.world.year)
+    card.rival = true
+    if (kin) card.kin = kin
+    if (card.kind === 'rivalDuel') card.blood = (r?.heat ?? 0) <= NPC_RIVAL.bloodHeat
+    const key = card.kind === 'rivalDuel' && card.blood ? 'rivalDuelBlood' : card.kind
+    card.text = this._roadFill(this._roadPick(T.open[key]), { name: card.name, place: card.place, kin: kin?.name || 'your kin' })
+    card.why = this._rivalWhy(card, r)
+    p.roadCard = card.id; p.roadY = yr; p.fam = (p.fam || 0) + 1; p.seenY = yr
+    Rd.cards.push(card)
+    const st = this._roadStats()
+    st.cards++; st.byKind[card.kind] = (st.byKind[card.kind] || 0) + 1; st.bySource.rival = (st.bySource.rival || 0) + 1
+    const bad = card.kind === 'rivalKin' || card.blood
+    this.addEvent({ text: `${card.text} (Roam → Explore)`, type: bad ? 'negative' : 'special', pid: p.id })
+    this._emit('world_news', { text: `${card.name}, your rival, has come looking for you.`, type: bad ? 'negative' : 'special' })
+    this._notify()
+    return card
+  }
+
+  _rivalWhy(card, r) {
+    const T = NPC_RIVAL_TEXT.why, heat = r?.heat ?? 0
+    const k = card.kind === 'rivalKin' ? 'kin' : card.kind === 'rivalTrouble' ? 'trouble' : card.kind === 'rivalTalk' ? 'talk'
+      : card.blood ? 'blood' : r && r.meets === 0 && !r.inherited ? 'first' : 'duel'
+    let t = this._roadFill(T[k], { heat: this._rivalSigned(heat), word: this._rivalWord(heat).w.toLowerCase() })
+    if (r?.inherited) t += this._roadFill(T.house, { from: r.inherited.fromName })
+    return t
+  }
+
+  // In a blood feud: the kin they would go after — your heir, else your eldest grown child, else your spouse.
+  _rivalKinTarget() {
+    const s = this._s, f = s.family || {}, yr = Math.floor(s.world.year)
+    const grown = (f.children || []).filter(c => c.alive && !c.estranged && yr - (c.bornYear ?? yr) >= ADULT_AGE)
+    const c = grown.find(x => x.id === f.heirId) || [...grown].sort((a, b) => (a.bornYear ?? 0) - (b.bornYear ?? 0))[0]
+    if (c) return { id: c.id, name: c.given || Persons.fullName(c), kind: 'child', word: c.id === f.heirId ? 'your heir' : 'your child' }
+    if (f.spouse) return { id: f.spouse.id, name: f.spouse.given || Persons.fullName(f.spouse), kind: 'spouse', word: 'your spouse' }
+    return null
+  }
+  _rivalKinNow(kin) {
+    const f = this._s.family || {}
+    if (!kin) return null
+    if (kin.kind === 'spouse') return f.spouse?.id === kin.id ? f.spouse : null
+    return (f.children || []).find(c => c.id === kin.id && c.alive && !c.estranged) || null
+  }
+  // The odds your kin lives if you let them face your rival (theirs to fight; your choice not to be there).
+  _rivalKinOdds(p, kin) {
+    const R = NPC_RIVAL, k = this._rivalKinNow(kin)
+    if (!k) return 1
+    return Math.max(R.kinMin, Math.min(R.kinMax, R.kinBase + ((k.stageIndex || 0) - (p.stageIndex || 0)) * R.kinPerStage))
+  }
+  _rivalHelpCost(p) { const H = NPC_RIVAL.helpHealth; return Math.min(H[1], H[0] + Math.max(0, (p.stageIndex || 0) - (this._s.stageIndex || 0)) * 3) }
+  _rivalPayCost(p) { return Math.round(NPC_RIVAL.payStones * ((p.stageIndex || 0) + 1)) }
+  _rivalSwearChance(heat) { const S = NPC_RIVAL.swear; return Math.min(0.95, S.base + Math.max(0, heat - NPC_RIVAL.bondHeat) * S.perHeat) }
+
+  // A rival card's answers (roadCardInfo). Every answer shows what it does to the heat; locks say what they need.
+  _rivalAnswers(card, p, add, odds, fightLock) {
+    const s = this._s, R = NPC_RIVAL, r = this._rivalRec(), heat = r?.heat ?? 0, me = s.self?.id, sg = n => this._rivalSigned(n)
+    const proud = NPC_ENC.proud.includes(p.personality), needBond = `Needs heat ${sg(R.bondHeat)} (now ${sg(heat)})`
+    if (card.kind === 'rivalDuel') {
+      add('spar', 'Accept: until one yields', `${odds(false)}% to win · win, and they respect you more`, { odds: odds(false), lock: fightLock })
+      add('blood', 'Accept: to the death', `${odds(true)}% to win · lose, and this life ends`, { odds: odds(true), tone: 'red',
+        lock: card.blood ? fightLock : `Only in a blood feud (heat ${sg(R.bloodHeat)} or colder; now ${sg(heat)})` })
+      const k = proud ? 'declinedProud' : 'declined'
+      add('decline', 'Decline', `${proud ? 'A proud heart takes it hard' : 'They think less of you'} · heat ${sg(R.heat[k] + R.rel['rv_' + k] * R.relToHeat)}`)
+    } else if (card.kind === 'rivalTalk') {
+      add('drink', 'Drink with them', `An evening of old stories · heat ${sg(R.rel.rv_drink * R.relToHeat)}`, { tone: 'jade' })
+      add('spar', 'A friendly spar', `${odds(false)}% to win · until one yields`, { odds: odds(false), lock: fightLock })
+      const sw = Math.round(this._rivalSwearChance(heat) * 100)
+      add('swear', 'Swear brotherhood', `${sw}% they accept · they fight in your sect wars and avenge you`, { chance: sw, tone: 'gold',
+        lock: p.sworn === me ? 'Already sworn to you' : heat < R.bondHeat ? needBond : null })
+      const court = this.personActions(p.id)?.acts?.find(a => a.id === 'court')
+      add('court', 'Court them', 'Begins a courtship on Kin → Family', { tone: 'jade', lock: heat < R.bondHeat ? needBond : court?.lock || null })
+    } else if (card.kind === 'rivalTrouble') {
+      const cost = this._rivalHelpCost(p)
+      add('help', 'Help them', `Costs about ${cost} Health · karma +${R.helpKarma} · heat ${sg(R.rel.rv_helped * R.relToHeat)}`,
+        { tone: 'jade', lock: (s.health ?? 100) <= cost + 5 ? 'Too wounded to fight their foes off' : null })
+      add('sabotage', 'Sabotage them', `They lose their progress and heal for years · karma ${R.sabotageKarma} · ${Math.round(R.sabotageFound * 100)}% they learn it was you (heat ${sg(R.rel.rv_sabotaged * R.relToHeat)})`, { tone: 'red' })
+      add('walk', 'Walk on', `Heat ${sg(R.rel.rv_walked * R.relToHeat)} · they will remember`)
+    } else if (card.kind === 'rivalKin') {
+      const kin = card.kin, k = this._rivalKinNow(kin)
+      if (!k) { add('leave', 'Let it go', `${kin?.name || 'They'} ${kin ? 'is' : 'are'} beyond their reach now`); return }
+      const live = Math.round(this._rivalKinOdds(p, kin) * 100), cost = this._rivalPayCost(p)
+      add('intercept', `Stand between them and ${kin.name}`, `${odds(true)}% to win · to the death: lose, and this life ends`, { odds: odds(true), tone: 'red', lock: fightLock })
+      add('pay', 'Pay the blood price', `${cost} Spirit Stones · they turn back, this time`, { cost, lock: s.spiritStones < cost ? `Needs ${cost} Spirit Stones` : null })
+      add('leave', `Let ${kin.name} face them`, `${live}% ${kin.name} lives · otherwise ${kin.word} dies`, { tone: 'red', chance: live })
+    }
+  }
+
+  // Your answer to a rival card (from answerRoadCard). Returns { ok, text, type } or a fight (the battle page opens).
+  _rivalAnswer(card, p, answer, fight) {
+    const s = this._s, R = NPC_RIVAL, T = NPC_RIVAL_TEXT, r = this._rivalRec(), name = card.name, place = card.place, yr = Math.floor(s.world.year)
+    const kinName = card.kin?.name || 'your kin'
+    const mem = key => this._remember(p, key, R.rel[key] || 0, this._roadFill(T.mem[key], { place, kin: kinName }), { deed: R.deeds[key] || null, rumour: !!R.deeds[key] })
+    const beat = (k, vals = {}, o = {}) => r ? this._rivalBeat(r, k, { place, ...vals }, o) : ''
+    switch (`${card.kind}:${answer}`) {
+      case 'rivalDuel:spar': case 'rivalTalk:spar': return fight(false, `You accept ${name}'s challenge: until one yields.`)
+      case 'rivalDuel:blood': return fight(true, `You accept ${name}'s challenge: to the death.`)
+      case 'rivalKin:intercept': return fight(true, `You find ${name} on the road to ${kinName}, and step into their path.`)
+      case 'rivalDuel:decline': {
+        const proud = NPC_ENC.proud.includes(p.personality)
+        mem(proud ? 'rv_declinedProud' : 'rv_declined'); this._rivalHeat(r, R.heat[proud ? 'declinedProud' : 'declined'])
+        beat('declined', {}, { meet: true, tone: 'red' })
+        return { ok: true, text: `You refuse ${name}. ${proud ? 'Their laughter follows you down the road.' : 'They watch you go.'}` }
+      }
+      case 'rivalTalk:drink':
+        mem('rv_drink'); beat('drink', {}, { meet: true, tone: 'jade' })
+        return { ok: true, type: 'positive', text: `You and ${name} drink until the jar is dry, and argue about the Dao until dawn.` }
+      case 'rivalTalk:swear': {
+        if (Math.random() < this._rivalSwearChance(r?.heat ?? 0)) {
+          p.sworn = s.self.id
+          mem('rv_sworn'); beat('sworn', {}, { meet: true, tone: 'gold' })
+          this._chron({ k: 'deed', t: `${s.name} and ${name}, rivals since the day they awakened, swear brotherhood.`, p: [p.id], n: true })
+          this._emit('world_news', { text: `You and ${name} swear brotherhood. Rivals still.`, type: 'special' })
+          return { ok: true, type: 'special', text: `You and ${name} swear brotherhood under the same sky. Rivals still.` }
+        }
+        beat('swornRefused', {}, { meet: true })
+        return { ok: true, text: `${name} turns the cup in their hands: "Not yet. Beat me first."` }
+      }
+      case 'rivalTalk:court':
+        this._courtPerson(p)
+        mem('rv_courted'); beat('courted', {}, { meet: true, tone: 'jade' })
+        return { ok: true, type: 'special', text: `You begin to court ${name}, of all people. (Kin → Family)` }
+      case 'rivalTrouble:help': {
+        const cost = this._rivalHelpCost(p)
+        s.health = Math.max(1, (s.health ?? 100) - cost); s.karma = Math.min(100, s.karma + R.helpKarma)
+        p.injuredUntil = Math.min(p.injuredUntil || yr, yr + 1)
+        mem('rv_helped'); beat('helped', {}, { meet: true, tone: 'jade' })
+        return { ok: true, type: 'positive', text: `You cut ${name} free at ${place}. Health −${cost}. They do not thank you; they do not need to.` }
+      }
+      case 'rivalTrouble:sabotage': {
+        s.karma = Math.max(0, s.karma + R.sabotageKarma)
+        p.npcXp = 0; p.injuredUntil = Math.max(p.injuredUntil || 0, yr + R.sabotageInjury)
+        const found = Math.random() < R.sabotageFound
+        if (found) mem('rv_sabotaged')   // (unseen, nobody knows: karma only)
+        beat('sabotaged', { found: found ? ', and they know it was you' : '' }, { meet: true, tone: 'red' })
+        return { ok: true, type: 'negative', text: `You break the last ward around ${name} at ${place}, and leave. Their cultivation will not recover for years.${found ? ' Somehow, they know it was you.' : ''}` }
+      }
+      case 'rivalTrouble:walk':
+        mem('rv_walked'); beat('walked', {}, { meet: true })
+        return { ok: true, text: `You leave ${name} to it at ${place}. They get out alone, and they saw you go.` }
+      case 'rivalKin:pay': {
+        const cost = this._rivalPayCost(p)
+        s.spiritStones -= cost; mem('rv_paid'); this._rivalHeat(r, R.heat.paid)
+        beat('kinPaid', { kin: kinName }, { meet: true })
+        return { ok: true, type: 'negative', text: `You send ${name} ${cost} Spirit Stones for ${kinName}'s life. They take it, and turn back. This time.` }
+      }
+      case 'rivalKin:leave': {
+        const res = this._rivalKinStrike(r, p, card.kin, place)
+        return { ok: true, type: res.died ? 'negative' : 'neutral', text: res.text }
+      }
+    }
+    return null
+  }
+
+  // Your rival reaches your kin (you let them face it, or you fell back from the fight). Their fight; the odds were shown.
+  _rivalKinStrike(r, p, kin, place) {
+    const s = this._s, R = NPC_RIVAL, T = NPC_RIVAL_TEXT, f = s.family || {}, name = Persons.fullName(p), yr = Math.floor(s.world.year)
+    const k = this._rivalKinNow(kin)
+    if (!k) return { died: false, text: `${name} finds no one left to strike.` }
+    if (Math.random() < this._rivalKinOdds(p, kin)) {
+      this._remember(p, 'rv_kinWounded', R.rel.rv_kinWounded, this._roadFill(T.mem.rv_kinWounded, { kin: kin.name }), { rumour: false, deed: null })
+      if (r) this._rivalBeat(r, 'kinSafe', { kin: kin.name, place }, { tone: 'jade' })
+      return { died: false, text: `${kin.name} meets ${name} blade to blade, and drives them off, bleeding but alive.` }
+    }
+    const text = `${name} has killed ${kin.name}, ${kin.word}. The blood feud has its first grave.`
+    if (kin.kind === 'spouse') this._spouseEnds('rival', `${name}, your rival, has killed ${kin.name}.`)
+    else { k.alive = false; k.diedYear = yr; k.cause = 'rival'; if (f.heirId === k.id) f.heirId = null }
+    this._killPerson(kin.id, yr, 'rival')
+    this._remember(p, 'rv_kinKilled', 0, this._roadFill(T.mem.rv_kinKilled, { kin: kin.name }), { rumour: false, deed: null })
+    this._rivalHeat(r, R.heat.kinKilled)
+    if (r) this._rivalBeat(r, 'kinKilled', { kin: kin.name, place }, { tone: 'red' })
+    this._emit('world_news', { text, type: 'negative' })
+    return { died: true, text }
+  }
+
+  // A fight with your rival ended (_roadFightOutcome). Writes the record; returns extra text for the result line.
+  _rivalFought(r, p, card, what, place) {
+    const R = NPC_RIVAL, yr = Math.floor(this._s.world.year), kinCard = card.kind === 'rivalKin', kin = card.kin?.name
+    if (what === 'slain') {
+      r.wins++
+      if (kinCard) this._rivalBeat(r, 'kinSaved', { kin, place }, { tone: 'jade' })
+      this._rivalBeat(r, 'slain', { place }, { meet: true, tone: 'red' })
+      r.end = { y: yr, k: 'slain', text: `You killed them at ${place}.` }
+      return ''
+    }
+    if (what === 'won' || what === 'spared' || what === 'humbled') {
+      r.wins++
+      if (kinCard) { this._rivalHeat(r, R.heat.kinSaved); this._rivalBeat(r, 'kinSaved', { kin, place }, { tone: 'jade' }) }
+      this._rivalBeat(r, what, { place }, { meet: true, tone: what === 'humbled' ? 'red' : 'jade' })
+      return kinCard ? ` ${kin} is safe.` : ''
+    }
+    if (what === 'lost') {
+      r.losses++
+      this._rivalBeat(r, 'lost', { place }, { meet: true, tone: 'red' })
+      return kinCard ? ' ' + this._rivalKinStrike(r, p, card.kin, place).text : ''
+    }
+    if (what === 'killedYou') {
+      r.losses++
+      this._rivalBeat(r, kinCard ? 'kinLost' : 'killedYou', { kin, place }, { meet: true, tone: 'red' })
+      r.end = { y: yr, k: 'killedYou', text: `They killed you at ${place}.` }
+    }
+    return ''
+  }
+
+  // Your rival died (any cause but your blade) or Ascended (_killPerson).
+  _rivalEnds(r, p, cause, yr) {
+    const T = NPC_RIVAL_TEXT, asc = cause === 'ascended', c = (PERSON_CAUSE_TEXT[cause] || 'They passed on').toLowerCase()
+    this._rivalBeat(r, asc ? 'ascended' : 'fell', { cause: c }, { tone: asc ? 'gold' : 'red' })
+    r.end = { y: yr, k: asc ? 'ascended' : 'fell', cause, text: asc ? 'They Ascended.' : (PERSON_CAUSE_TEXT[cause] || 'They passed on') + '.' }
+    const text = this._roadFill(asc ? T.ascended : T.fell, { name: r.name, cause: c })
+    this.addEvent({ text, type: asc ? 'special' : 'negative', pid: r.pid })
+    this._emit('world_news', { text, type: asc ? 'special' : 'negative' })
+  }
+
+  // Your life ends (_recordLifeInWorld): the record closes, and a strong rivalry (or a death between you) becomes a house
+  // whose heir will be the next life's rival. A bitter house is also an enemy the rare rival-family rebirth can use (2.6d).
+  _rivalLifeEnds(cause, yr) {
+    const w = this._s.world, r = this._rivalRec(), R = NPC_RIVAL
+    if (!r) return
+    const p = w.persons[r.pid]
+    if (!r.end) { this._rivalBeat(r, 'lifeEnded'); r.end = { y: yr, k: 'lifeEnded', text: 'Your life ended first.' } }
+    const blood = r.end.k === 'slain' || r.end.k === 'killedYou' || r.beats.some(b => b.k === 'kinKilled')
+    if (!p?.family || (Math.abs(r.heat) < R.houseMin && !blood)) return
+    let heat = r.heat
+    if (r.end.k === 'slain') heat = Math.min(heat, -60)   // you killed their founder: the line hates you
+    else if (blood) heat = Math.min(heat, -40)
+    w.rivalHouses ||= {}
+    w.rivalHouses[p.family] = { surname: p.family, pid: p.id, fromLife: r.life, fromName: r.name, heat, end: r.end.k, y: yr, used: null }
+    if (heat < 0) this._noteEnemy({ kind: 'rival', personId: p.id, name: r.name, surname: p.family, why: 'your rival' })
+  }
+
+  // The rare rival-family rebirth (2.6d, _rivalClan): the rival of a past life, or a child of theirs, heads the house.
+  _rivalLineHead(pid) {
+    const w = this._s.world, clanIds = this._clanIdSet()
+    const ok = p => p && p.alive !== false && !clanIds.has(p.id) && !p.roadCard
+    if (ok(w.persons[pid])) return w.persons[pid]
+    return Object.values(w.persons).filter(q => ok(q) && (q.parents || []).includes(pid)).sort((a, b) => String(a.id).localeCompare(String(b.id)))[0] || null
+  }
+
+  // Sect wars: your rival leads the foe when their sect is the one you fight (_warMightRatio reads it).
+  _rivalWar(foe) {
+    const p = this._rivalOf(), W = NPC_RIVAL.war
+    if (!p || !foe || p.sectId !== foe.id) return null
+    const gap = Math.max(0, (p.stageIndex || 0) - (this._s.stageIndex || 0))
+    return { pid: p.id, name: Persons.fullName(p), mult: 1 + Math.min(W.max, W.base + gap * W.perStage) }
+  }
+  _rivalWarBeat(foe, win) {
+    const rv = this._rivalWar(foe), r = this._rivalRec()
+    if (!rv || !r) return
+    this._rivalHeat(r, NPC_RIVAL.heat.warLed)
+    this._rivalBeat(r, 'war', { sect: foe.name, result: win ? ', and is thrown back' : ', and carries the day' }, { tone: win ? 'jade' : 'red' })
+    this.addEvent({ text: this._roadFill(NPC_RIVAL_TEXT.war, { name: rv.name, sect: foe.name }) + (win ? ' They are thrown back.' : ' They carry the day.'), type: win ? 'positive' : 'negative', pid: rv.pid })
+  }
+
+  // A courtship with a registry person (the person card's Court, and a rival's card at heat ≥ bondHeat).
+  _courtPerson(p) {
+    const s = this._s, A = NPC_ACTS, f = s.family, c = this._castCopy(p, 'suitor')
+    const interest = Math.max(0, Math.min(100, Math.round(COURT_INTEREST_START + (p.rel || 0) * A.court.interestPerRel + this._rep().i * NPC_REP.courtInfamy
+      + (p.personality === s.personality?.id ? COURT_SAME_PERSONALITY : 0))))
+    f.court = { candidates: [], target: c, interest, meetings: 0, nextMeetAt: this._cdNow(), beat: null, lastBeatId: null }
+    return f.court
+  }
+
+  // Public (UI: World → Rival, the person card, the bot): the rivalry of this life, earlier lives' rivals, and the
+  // deeds you can do from the panel. nextSecs: about how long (open time) until they seek you out again.
+  rivalInfo() {
+    const s = this._s, w = s.world, R = NPC_RIVAL, life = this._lifeNo(), yr = Math.floor(w?.year || 0)
+    const row = x => { const wd = this._rivalWord(x.heat); return { life: x.life, pid: x.pid, name: x.name, heat: x.heat, word: wd.w, tone: wd.tone,
+      meets: x.meets, wins: x.wins, losses: x.losses, end: x.end?.k || null, endText: x.end?.text || null, alive: w.persons[x.pid]?.alive !== false } }
+    const past = (w?.rivals || []).filter(x => x.life !== life).sort((a, b) => b.life - a.life).map(row)
+    const houses = Object.values(w?.rivalHouses || {}).filter(h => !h.used).map(h => ({ surname: h.surname, fromName: h.fromName, heat: h.heat, fromLife: h.fromLife }))
+    const r = this._rivalRec()
+    if (!r) return { has: false, life, past, houses, hint: !w?.rivalHint }
+    const p = w.persons[r.pid], alive = !!p && p.alive !== false, wd = this._rivalWord(r.heat)
+    const Rd = this._road(), card = Rd.cards.find(c => c.pid === r.pid), waiting = Rd.waiting.some(x => x.pid === r.pid)
+    const nextSecs = !r.end && alive && !card && !waiting ? Math.max(0, Math.round((r.nextY - (w.year || 0)) * 3600 / GAME_YEARS_PER_OPEN_HOUR)) : null
+    const sect = p?.sectId === 'own' ? (s.ownSect?.name || null) : p?.sectId ? this._wsRec(p.sectId)?.name || null : null
+    const youStage = s.stageIndex || 0, themStage = p ? (alive ? p.stageIndex || 0 : p.maxStage || p.stageIndex || 0) : 0
+    const acts = alive && !r.end ? this.personActions(r.pid) : null
+    return { has: true, life, pid: r.pid, name: r.name, alive, ascended: !!p?.ascended, chosen: !!p?.chosen, sworn: !!p && p.sworn === s.self?.id,
+      heat: r.heat, word: wd.w, tone: wd.tone, blood: r.heat <= R.bloodHeat, bond: r.heat >= R.bondHeat, bloodHeat: R.bloodHeat, bondHeat: R.bondHeat,
+      meets: r.meets, wins: r.wins, losses: r.losses, end: r.end, house: r.house, inherited: r.inherited,
+      them: { stage: themStage, age: p ? Math.max(0, (alive ? yr : p.diedYear ?? yr) - (p.bornYear ?? yr)) : null, sect,
+        temper: PERSONALITIES.find(x => x.id === p?.personality)?.name || null, root: p ? this._rootWords(p.root) : null,
+        morality: (MORALITY_WORDS.find(m => (p?.morality || 0) >= m.min) || {}).word || null, rel: p?.rel || 0 },
+      you: { stage: youStage, age: Math.floor(s.age || 0) },
+      lead: alive ? Math.sign(youStage - themStage) : 0, gap: Math.abs(youStage - themStage),
+      onRoad: card ? card.id : null, waiting, nextSecs,
+      acts: acts && !acts.gone ? { cd: acts.cd, list: ['spar', 'duel', 'gift'].map(id => acts.acts.find(a => a.id === id)).filter(Boolean) } : null,
+      beats: [...r.beats].reverse(), fresh: Math.max(0, (r.seq || 0) - (r.seen || 0)), past, houses, hint: !w.rivalHint,
+      ranks: w.ranks?.y != null && alive ? { them: this.rankOf(r.pid), you: w.ranks.veil ? null : { ...w.ranks.you } } : null }   // 4.8
+  }
+  noteRivalSeen() { const r = this._rivalRec(); if (r && (r.seen || 0) !== (r.seq || 0)) { r.seen = r.seq || 0; this._notify() } }
+  rivalNews() { const r = this._rivalRec(); return r ? Math.max(0, (r.seq || 0) - (r.seen || 0)) : 0 }
+  noteRivalHint() { this._s.world.rivalHint = true; this._notify() }
+  // QA + the sim report: every life's rivalry in short.
+  rivalStats() {
+    return (this._s.world?.rivals || []).map(r => ({ life: r.life, heat: r.heat, meets: r.meets, wins: r.wins, losses: r.losses, end: r.end?.k || null,
+      house: !!r.inherited, beats: r.seq || 0 }))
+  }
+
+  // ── Phase 28 task 4.8 (living-world.md → "4.8 Heavenly Rankings", PLAN 28J): the in-world boards ─────────────────
+  // Heaven (everyone living), Rising Dragon (≤ NPC_RANK.dragonYears on the path, power for their years) and Your Class
+  // (your cohort, living + fallen + ascended), all by one rank power (rankPowerParts: realm, progress, root, body, arts,
+  // gear, renown). Published each game year (_tickRanks): the boards, ▲▼, headlines, titles, the Rising Dragon honour
+  // roll, class firsts. Unless you veil your name, a place brings sect fame, challengers from just below, genius hunters
+  // (after you or your Rising Dragon child) and sect invitations, all as road cards you answer. The Class board duel:
+  // challenge the classmate just above you (a real-time cooldown).
+  // State: w.ranks { life, y, seq, seen, boards { heaven, dragon: [{ pid, sc }] }, prev { heaven, dragon, class: { pid: place } },
+  // you { heaven, dragon, class }, best { heaven, dragon, class }, titles [{ t, life, y }], honour [{ pid, name, place, y, you }],
+  // news [{ i, y, text, tone }], veil, declines, cd { challenge, hunter, invite }, renown, firsts { realm: pid }, alive, duelAt,
+  // stats, hint } · person renown, rankBest { h, d }, rankHiddenUntil, hunter · world sect `ranked` (members in the Heaven top 20).
+
+  _ranks() {
+    const w = this._s.world
+    w.ranks ||= { life: this._lifeNo(), y: null, seq: 0, seen: 0, boards: { heaven: [], dragon: [] }, prev: { heaven: {}, dragon: {}, class: {} },
+      you: { heaven: null, dragon: null, class: null }, best: { heaven: null, dragon: null, class: null }, titles: [], honour: [], news: [],
+      veil: false, declines: 0, cd: { challenge: 0, hunter: 0, invite: 0 }, renown: 0, firsts: null, alive: null, duelAt: 0,
+      stats: { pubs: 0, challengers: 0, hunters: 0, invites: 0, duels: 0 }, hint: false }
+    const R = w.ranks
+    if (R.life !== this._lifeNo()) {   // a new life: a new name to make (titles + the honour roll stay with the world)
+      R.life = this._lifeNo(); R.you = { heaven: null, dragon: null, class: null }; R.best = { heaven: null, dragon: null, class: null }
+      R.prev.class = {}; R.prev.classNow = {}; R.declines = 0; R.renown = 0; R.firsts = null; R.alive = null; R.cd = { challenge: 0, hunter: 0, invite: 0 }
+    }
+    return R
+  }
+
+  // Rank power, term by term (the "why"). self: you (live state); else a registry person.
+  rankPowerParts(p, self = false) {
+    const s = this._s, K = NPC_RANK, Y = self ? 'Your' : 'Their'
+    if (self) p = this._selfAsPerson()
+    const stage = p?.stageIndex || 0, sn = typeof stageShortName === 'function' ? stageShortName(stage) : 'stage ' + stage
+    const cap = s.derived?.qiCap || CULTIVATION_STAGES[s.stageIndex]?.qiCap || 1
+    const prog = self ? Math.min(99, Math.floor((s.qi || 0) / cap * 100)) : stage >= NPC_STAGE_CAP ? 0 : Math.min(99, Math.floor((p.npcXp || 0) * 100))
+    const parts = [{ label: `${Y} realm (${sn})`, value: stage * 100 }]
+    if (prog > 0) parts.push({ label: 'Progress in the stage', value: prog })
+    parts.push({ label: `${Y} spirit root`, value: Math.round((p.root?.mult || 1) * 10) })
+    const bt = BODY_TIERS[Math.max(0, Math.min(BODY_TIERS.length - 1, self ? (s.body?.tier || 0) : (p.bodyTier || 0)))]
+    if (bt?.power) parts.push({ label: `${Y} body (${bt.name})`, value: bt.power })
+    let arts = 0, artsLabel = `${Y} arts`
+    if (self) {
+      const lo = s.arts?.loadout || {}, ids = [...(lo.moves || []).slice(0, ART_MOVE_SLOTS), ...(lo.passives || []).slice(0, this.passiveSlots())]
+      for (const id of ids) if (ARTS[id]) arts += (K.artPoints[ARTS[id].rarity] || 0) * (1 + K.artMastery * Math.max(0, (s.arts?.known?.[id]?.mastery || 1) - 1))
+      artsLabel = 'Your worn arts'
+    } else {   // (by realm, as the world reckons them: rolling their real arts here would reorder the board mid-read)
+      arts = K.artEstimate[Math.min(K.artEstimate.length - 1, this._personRealm(stage))] || 0; artsLabel = 'Their arts (as the world reckons them)'
+    }
+    if (arts) parts.push({ label: artsLabel, value: Math.round(arts) })
+    if (self) for (const slot of ['weapon', 'artifact']) {
+      const id = s.equipped?.[slot]
+      if (id && ITEMS[id]) parts.push({ label: `${ITEMS[id].name} (${slot})`, value: K.gear[slot] })
+    }
+    const ren = Math.round(self ? (this._ranks().renown || 0) : (p.renown || 0))
+    if (ren) parts.push({ label: 'Renown from ranked duels', value: ren })
+    return { parts, total: Math.max(0, parts.reduce((a, x) => a + x.value, 0)) }
+  }
+  _rankYears(p, self = false) {
+    const yr = Math.floor(this._s.world.year)
+    return self ? Math.max(0, Math.floor((this._s.age || AWAKENING_AGE) - AWAKENING_AGE)) : Math.max(0, yr - ((p.bornYear ?? yr) + AWAKENING_AGE))
+  }
+  _rankDragonScore(power, years) { const k = NPC_RANK.dragonK; return Math.round(power * k / (years + k)) }
+
+  // Everyone the boards can hold this year: [{ pid, power, years, self }]. Hidden children are off both boards.
+  _rankField() {
+    const s = this._s, w = s.world, yr = Math.floor(w.year), me = s.self?.id, out = []
+    for (const p of Object.values(w.persons)) {
+      if (p.alive === false || p.ascended || p.role === 'ancestor' || p.id === me) continue
+      if ((p.stageIndex || 0) < 1 && yr - (p.bornYear ?? yr) < AWAKENING_AGE) continue   // not yet awakened
+      if ((p.rankHiddenUntil || 0) > yr) continue
+      out.push({ pid: p.id, power: this.rankPowerParts(p).total, years: this._rankYears(p), self: false })
+    }
+    return out
+  }
+  _rankSelf() { return { pid: this._s.self?.id, power: this.rankPowerParts(null, true).total, years: this._rankYears(null, true), self: true } }
+
+  // Sorted board ([{ pid, sc }]) from the field; you are placed in it unless veiled (your place is returned either way).
+  _rankBoard(field, me, kind) {
+    const K = NPC_RANK, sc = e => kind === 'dragon' ? this._rankDragonScore(e.power, e.years) : e.power
+    const pool = field.filter(e => kind !== 'dragon' || e.years <= K.dragonYears).map(e => ({ pid: e.pid, sc: sc(e) }))
+    const meIn = me && (kind !== 'dragon' || me.years <= K.dragonYears)
+    const mine = meIn ? { pid: me.pid, sc: sc(me) } : null
+    const all = mine ? [...pool, mine] : pool
+    all.sort((a, b) => b.sc - a.sc || String(a.pid).localeCompare(String(b.pid)))
+    const place = mine ? all.indexOf(mine) + 1 : null
+    const shown = this._ranks().veil && mine ? all.filter(e => e !== mine) : all
+    return { list: shown.slice(0, K.keep), place, total: all.length, mineSc: mine?.sc ?? null }
+  }
+
+  // Your cohort by rank power (living; the fallen + ascended listed apart). Returns [{ pid, power, self }] sorted.
+  _rankClass() {
+    const s = this._s, w = s.world, c = w.cohorts?.[this._lifeNo()]
+    if (!c || !s.self) return []
+    const rows = c.ids.map(id => w.persons[id]).filter(p => p && p.alive !== false && !p.ascended).map(p => ({ pid: p.id, power: this.rankPowerParts(p).total, self: false }))
+    rows.push({ pid: s.self.id, power: this.rankPowerParts(null, true).total, self: true })
+    return rows.sort((a, b) => b.power - a.power || String(a.pid).localeCompare(String(b.pid)))
+  }
+
+  _rankNews(text, tone = '', { log = false, pid = null, type = null } = {}) {
+    const R = this._ranks()
+    R.seq++
+    R.news.push({ i: R.seq, y: Math.floor(this._s.world.year), text, tone, log: !!log })
+    if (R.news.length > NPC_RANK.newsMax) R.news.splice(0, R.news.length - NPC_RANK.newsMax)
+    if (log) this.addEvent({ text: `${text} (World → Rankings)`, type: type || (tone === 'red' ? 'negative' : 'special'), pid })
+  }
+
+  // The game year turns: publish (every NPC_RANK.every years), then what a public name brings.
+  _tickRanks(yr) {
+    const s = this._s, w = s.world, K = NPC_RANK
+    if (!w?.persons || s.interlude || !s.self) return
+    const R = this._ranks()
+    if (R.y != null && yr - R.y < K.every) return
+    const first = R.y == null
+    R.y = yr; R.stats.pubs++
+    // Renown fades (yours and theirs).
+    R.renown = Math.round((R.renown || 0) * (1 - K.renown.fade))
+    for (const p of Object.values(w.persons)) if (p.renown) { p.renown = Math.round(p.renown * (1 - K.renown.fade)); if (Math.abs(p.renown) < 2) delete p.renown }
+    const field = this._rankField(), me = this._rankSelf()
+    const H = this._rankBoard(field, me, 'heaven'), D = this._rankBoard(field, me, 'dragon')
+    const cls = this._rankClass(), cPlace = cls.findIndex(e => e.self) + 1 || null
+    const before = { heaven: R.you.heaven, dragon: R.you.dragon, class: R.you.class }
+    const prevFirst = R.boards.heaven[0]?.pid || null
+    // ▲▼ is measured against the last publication.
+    const mapOf = list => Object.fromEntries(list.map((e, i) => [e.pid, i + 1]))
+    R.prev = { heaven: mapOf(R.boards.heaven), dragon: mapOf(R.boards.dragon), class: R.prev.classNow || {} }
+    R.prev.classNow = Object.fromEntries(cls.map((e, i) => [e.pid, i + 1]))
+    R.boards = { heaven: H.list, dragon: D.list }
+    R.you = { heaven: H.place, dragon: D.place, class: cPlace }
+    // Everyone's best place (the honour roll + the person card).
+    H.list.forEach((e, i) => { const p = w.persons[e.pid]; if (p) { p.rankBest ||= {}; p.rankBest.h = Math.min(p.rankBest.h ?? 1e9, i + 1) } })
+    D.list.forEach((e, i) => { const p = w.persons[e.pid]; if (p) { p.rankBest ||= {}; p.rankBest.d = Math.min(p.rankBest.d ?? 1e9, i + 1) } })
+    // A world sect's Might counts its members in the Heaven top 20.
+    const ranked = {}
+    for (const e of H.list.slice(0, 20)) { const p = w.persons[e.pid]; if (p?.sectId && p.sectId !== 'own') ranked[p.sectId] = (ranked[p.sectId] || 0) + 1 }
+    for (const r of this._wsAll()) { if (ranked[r.id]) r.ranked = ranked[r.id]; else delete r.ranked }
+    if (first) {   // the first publication on an old save: set the baselines quietly
+      R.best = { heaven: R.veil ? null : H.place, dragon: R.veil ? null : D.place, class: cPlace }
+      this._rankClassMarks(true)
+      this._rankNews('The world publishes its rankings. Your name stands among them.', 'gold')
+      this._notify(); return
+    }
+    if (!R.veil) for (const b of ['heaven', 'dragon']) this._rankYouMoved(b, before[b], R.you[b], b === 'heaven' ? H.total : D.total)
+    this._rankYouMoved('class', before.class, cPlace, cls.length, true)
+    // A new first under Heaven.
+    const nf = H.list[0]?.pid
+    if (nf && prevFirst && nf !== prevFirst && nf !== s.self.id) {
+      const p = w.persons[nf], name = Persons.fullName(p)
+      this._chron({ k: 'deed', t: this._roadFill(NPC_RANK_TEXT.newFirst, { name }), p: [nf], n: true })
+      this._rankNews(this._roadFill(NPC_RANK_TEXT.newFirst, { name }), 'gold', { log: (p.fam || 0) > 0, pid: nf })
+    }
+    // Your rival passes you on a board.
+    const rv = this._rivalOf()
+    if (rv && !R.veil) for (const b of ['heaven', 'dragon']) {
+      const theirs = R.boards[b].findIndex(e => e.pid === rv.id) + 1, wasTheirs = R.prev[b][rv.id], yours = R.you[b], wasYours = before[b]
+      if (theirs && yours && theirs < yours && wasTheirs && wasYours && wasTheirs > wasYours)
+        this._rankNews(this._roadFill(NPC_RANK_TEXT.rivalPassed, { name: Persons.fullName(rv), on: NPC_RANK_TEXT.on[b], theirs, yours }), 'red', { log: true, pid: rv.id, type: 'neutral' })
+    }
+    this._rankHonourRoll(yr, D)
+    this._rankClassMarks(false)
+    if (!R.veil) this._rankVisitors(yr)
+    this._recalc()
+    this._notify()
+  }
+
+  // Your place moved on a board: news always, the log on a threshold, a title on the high ones.
+  _rankYouMoved(b, was, now, total, quiet = false) {
+    const R = this._ranks(), T = NPC_RANK_TEXT, on = T.on[b]
+    if (!now) return
+    const bestWas = R.best[b]
+    if (bestWas == null || now < bestWas) R.best[b] = now
+    if (was == null) { if (!quiet && now <= NPC_RANK.keep) this._rankNews(this._roadFill(T.firstListed, { place: now, on }), 'gold', { log: true }); return }
+    if (now === was) return
+    const tops = [1, 3, 10, 20]
+    const crossed = tops.find(t => now <= t && was > t)
+    if (crossed) {
+      this._rankNews(this._roadFill(T.top[crossed], { on }), 'gold', { log: !quiet || crossed === 1 })
+      if (crossed <= 10) this._emit('rank_rise', { board: b === 'heaven' ? 'the Heaven Ranking' : b === 'dragon' ? 'the Rising Dragon Ranking' : 'my class', place: '#' + now })
+    } else if (!quiet) this._rankNews(this._roadFill(now < was ? (bestWas != null && now < bestWas ? T.best : T.rose) : T.fell, { place: now, on }), now < was ? 'jade' : '')
+    for (const [n, t] of NPC_RANK.titles[b] || []) if (now <= n) { this._rankTitle(t); break }
+  }
+  _rankTitle(t) {
+    const R = this._ranks(), life = this._lifeNo()
+    if (R.titles.some(x => x.t === t && x.life === life)) return
+    R.titles.push({ t, life, y: Math.floor(this._s.world.year) })
+    this._rankNews(this._roadFill(NPC_RANK_TEXT.titleEarned, { title: t }), 'gold', { log: true })
+  }
+
+  // Those who aged off Rising Dragon this year: the honour roll (yours too).
+  _rankHonourRoll(yr, D) {
+    const s = this._s, w = s.world, R = this._ranks(), K = NPC_RANK, T = NPC_RANK_TEXT
+    for (const pid of Object.keys(R.prev.dragon)) {
+      const p = w.persons[pid]
+      if (!p || p.alive === false || this._rankYears(p) <= K.dragonYears || this._rankYears(p) > K.dragonYears + K.every) continue
+      const best = p.rankBest?.d
+      if (best && best <= K.show && !R.honour.some(x => x.pid === pid)) {
+        R.honour.push({ pid, name: Persons.fullName(p), place: best, y: yr, you: false })
+        this._rankNews(this._roadFill(T.honour, { name: Persons.fullName(p), place: best }), '', { log: (p.fam || 0) > 0 || p.cohort === this._lifeNo(), pid, type: 'neutral' })
+      }
+    }
+    const yrs = this._rankYears(null, true), best = R.best.dragon
+    if (yrs > K.dragonYears && yrs <= K.dragonYears + K.every && best && best <= K.show && !R.honour.some(x => x.you && x.life === this._lifeNo())) {
+      R.honour.push({ pid: s.self.id, name: s.name, place: best, y: yr, you: true, life: this._lifeNo() })
+      this._rankNews(this._roadFill(T.honourYou, { place: best }), 'gold', { log: true })
+    }
+    if (R.honour.length > K.honourMax) R.honour.splice(0, R.honour.length - K.honourMax)
+  }
+
+  // Class milestones: the first of your class to reach each realm, and how few still live.
+  _rankClassMarks(quiet) {
+    const s = this._s, w = s.world, R = this._ranks(), T = NPC_RANK_TEXT, c = w.cohorts?.[this._lifeNo()]
+    if (!c) return
+    R.firsts ||= {}
+    const order = [...new Set(CULTIVATION_STAGES.slice(0, NPC_STAGE_CAP + 1).map(x => x.realm))].filter(r => r !== 'Mortal' && r !== 'Qi Condensation')
+    const living = c.ids.map(id => w.persons[id]).filter(p => p && p.alive !== false && !p.ascended)
+    for (const realm of order) {
+      if (R.firsts[realm]) continue
+      const at = st => order.indexOf(this._lifeRealm(st)) >= order.indexOf(realm)
+      if (at(s.stageIndex || 0)) { R.firsts[realm] = s.self.id; if (!quiet) this._rankNews(this._roadFill(T.classFirstYou, { realm }), 'gold', { log: true }); continue }
+      const who = living.filter(p => at(p.stageIndex || 0)).sort((a, b) => String(a.id).localeCompare(String(b.id)))[0]
+      if (who) { R.firsts[realm] = who.id; if (!quiet) this._rankNews(this._roadFill(T.classFirst, { name: Persons.fullName(who), realm }), '', { log: true, pid: who.id, type: 'neutral' }) }
+    }
+    const n = living.length + 1   // (you count)
+    const mark = NPC_RANK.classAlive.find(t => n <= t)
+    if (R.alive == null) R.alive = mark ?? null
+    else if (mark != null && (R.alive == null || mark < R.alive)) { R.alive = mark; if (!quiet) this._rankNews(this._roadFill(T.classAlive, { n }), 'red', { log: true, type: 'neutral' }) }
+  }
+
+  // What a public name brings this year: a challenger from just below, a genius hunter, an invitation (each its own clock).
+  _rankVisitors(yr) {
+    const s = this._s, R = this._ranks(), K = NPC_RANK, rng = wsRng(`${s.self.id}|rank|${yr}`)
+    const C = K.challenge, h = R.you.heaven, d = R.you.dragon
+    if (yr >= R.cd.challenge && ((h && h <= C.heavenTop) || (d && d <= C.dragonTop))
+      && rng() < C.chance * (1 + C.perDecline * Math.min(R.declines || 0, C.declineMax))) {
+      const b = h && h <= C.heavenTop ? 'heaven' : 'dragon', mine = R.you[b]
+      const p = this._rankChallenger(b, mine)
+      if (p) { R.cd.challenge = yr + C.cooldown; R.stats.challengers++; this._rankMeet(p, 'rankChallenge', { board: b, theirs: R.boards[b].findIndex(e => e.pid === p.id) + 1, yours: mine }) }
+    }
+    const Hn = K.hunter
+    if (yr >= R.cd.hunter && rng() < Hn.chance) {
+      const kin = d && d <= Hn.dragonTop ? null : this._rankKinTarget()
+      if ((d && d <= Hn.dragonTop) || kin) {
+        const target = kin ? (s.world.persons[kin.pid]?.stageIndex || 0) : (s.stageIndex || 0)
+        const p = this._rankHunter(target, rng)
+        R.cd.hunter = yr + Hn.cooldown; R.stats.hunters++
+        this._rankMeet(p, kin ? 'hunterKin' : 'hunter', { board: 'dragon', yours: d, theirs: kin?.place || null, kin: kin ? { id: kin.pid, name: kin.name, word: kin.word, kind: 'child' } : null })
+      }
+    }
+    const I = K.invite
+    if (yr >= R.cd.invite && !s.ownSect?.founded && ((h && h <= I.heavenTop) || (d && d <= I.dragonTop)) && rng() < I.chance) {
+      const sect = this._rankInviter()
+      const envoy = sect && this._rankEnvoy(sect)
+      if (envoy) { R.cd.invite = yr + I.cooldown; R.stats.invites++; this._rankMeet(envoy, 'invite', { board: h && h <= I.heavenTop ? 'heaven' : 'dragon', yours: h && h <= I.heavenTop ? h : d, sect: sect.id }) }
+    }
+  }
+
+  // Someone ranked just below you who would fight for your place (proud tempers first).
+  _rankChallenger(b, mine) {
+    const s = this._s, w = s.world, K = NPC_RANK.challenge, clan = this._clanIdSet(), rid = this._rivalOf()?.id
+    const cands = this._ranks().boards[b].slice(mine, mine + K.below).map(e => w.persons[e.pid])   // (you sit at index mine − 1)
+      .filter(p => p && this._heavyEligible(p, clan) && !p.roadCard && p.id !== rid && !this._isYourKin(p) && p.sectRole !== 'master'
+        && Math.abs((p.stageIndex || 0) - (s.stageIndex || 0)) <= K.stageGap)
+    if (!cands.length) return null
+    const wt = p => (NPC_ENC.temper[p.personality]?.challenge ?? 1) * ((p.rel || 0) <= NPC_ENC.relCold ? 1.5 : 1)
+    return cands.sort((a, b2) => wt(b2) - wt(a) || String(a.id).localeCompare(String(b2.id)))[0]
+  }
+
+  // Your grown or growing child on the Rising Dragon top N (not in hiding).
+  _rankKinTarget() {
+    const s = this._s, f = s.family || {}, R = this._ranks(), top = NPC_RANK.hunter.dragonTop
+    for (let i = 0; i < Math.min(top, R.boards.dragon.length); i++) {
+      const pid = R.boards.dragon[i].pid, c = (f.children || []).find(x => x.id === pid && x.alive && !x.estranged)
+      if (c) return { pid, name: c.given || Persons.fullName(c), word: c.id === f.heirId ? 'your heir' : 'your child', place: i + 1 }
+    }
+    return null
+  }
+
+  // A genius hunter: a dark-hearted cultivator a realm-step or two above their prey, minted into the registry (and kept).
+  _rankHunter(stage, rng) {
+    const H = NPC_RANK.hunter, st = Math.min(NPC_STAGE_CAP, stage + H.stageAbove[0] + Math.floor(rng() * (H.stageAbove[1] - H.stageAbove[0] + 1)))
+    const known = Object.values(this._s.world.persons).find(p => p.hunter && p.alive !== false && !p.roadCard && Math.abs((p.stageIndex || 0) - st) <= 2)
+    if (known) return known
+    const p = this._mintPerson({ stage: st, age: [60, 160], personality: ['psycho', 'demonking', 'miser', 'paranoid'][Math.floor(rng() * 4)], role: 'wanderer' }, rng)
+    p.morality = -60 - Math.floor(rng() * 30); p.hunter = true
+    return p
+  }
+
+  // A sect that wants a ranked name: unaffiliated → any open sect; a member → only a mightier one than yours.
+  _rankInviter() {
+    const s = this._s, mine = this._wsMine(), myM = mine ? worldSectMight(mine) : -1
+    const ok = this._wsAll().filter(r => r.alive && r.defId && r !== mine && !this.sectInAshes?.(r.defId)
+      && (SECTS.find(d => d.id === r.defId)?.minStage ?? 0) <= (s.stageIndex || 0) && worldSectMight(r) > myM && (r.stance ?? 0) > -40)
+    return ok.sort((a, b) => worldSectMight(b) - worldSectMight(a) || String(a.id).localeCompare(String(b.id)))[0] || null
+  }
+  _rankEnvoy(r) {
+    const ps = Object.values(this._s.world.persons).filter(p => p.alive !== false && p.sectId === r.id && !p.roadCard)
+    return ps.find(p => p.sectRole === 'elder') || ps.find(p => p.sectRole === 'master') || null
+  }
+
+  // They come (a card, or first in line when the queue is full — never answered for you).
+  _rankMeet(p, kind, x) {
+    const Rd = this._road(), s = this._s
+    const loc = p.act?.loc ? LOCATIONS.find(l => l.id === p.act.loc) || null : null
+    const place = loc?.name || (s.ownSect?.founded ? `the gate of ${s.ownSect.name}` : 'the mountain road')
+    if (this._roadQueueLen() >= NPC_ENC.queueMax) {
+      Rd.waiting.unshift({ pid: p.id, kind, source: 'rank', locId: loc?.id || null, place, avenger: false, rank: x })
+      p.roadCard = 'wait'; this._roadStats().waited++
+      this.addEvent({ text: this._roadFill(NPC_ENC_TEXT.waits, { name: Persons.fullName(p) }), type: 'neutral', pid: p.id })
+      return { waited: true, pid: p.id }
+    }
+    return this._roadCard(p, kind, 'rank', loc, place, false, { rank: x })
+  }
+
+  // (_roadCard hands a rankings card here.)
+  _rankCardOpen(card, p, x) {
+    const s = this._s, Rd = this._road(), T = NPC_RANK_TEXT, R = this._ranks(), yr = Math.floor(s.world.year)
+    card.rank = x
+    if (x.kin) card.kin = x.kin
+    if (card.kind === 'hunter' || card.kind === 'hunterKin') card.lethal = true
+    const sect = x.sect ? this._wsRec(x.sect) : null
+    const vals = { name: card.name, place: card.place, on: T.on[x.board] || '', theirs: x.theirs ?? '?', yours: x.yours ?? '?', kin: x.kin?.name || 'your child', sect: sect?.name || 'sect' }
+    card.text = this._roadFill(this._roadPick(T.open[card.kind]), vals)
+    let why = this._roadFill(T.why[card.kind], { ...vals, weaker: this._wsMine() ? T.why.inviteWeaker : '' })
+    if (card.kind === 'rankChallenge' && R.declines) why += this._roadFill(T.why.challengeCoward, { n: R.declines })
+    card.why = why
+    p.roadCard = card.id; p.roadY = yr; p.fam = (p.fam || 0) + 1; p.seenY = yr
+    Rd.cards.push(card)
+    const st = this._roadStats()
+    st.cards++; st.byKind[card.kind] = (st.byKind[card.kind] || 0) + 1; st.bySource.rank = (st.bySource.rank || 0) + 1
+    const bad = card.kind === 'hunter' || card.kind === 'hunterKin'
+    this.addEvent({ text: `${card.text} (Roam → Explore)`, type: bad ? 'negative' : 'special', pid: p.id })
+    if (bad) this._emit('world_news', { text: card.kind === 'hunterKin' ? `A genius hunter is after ${x.kin?.name || 'your child'}.` : 'A genius hunter has found you.', type: 'negative' })
+    this._notify()
+    return card
+  }
+
+  _rankKinNow(kin) { return kin ? (this._s.family?.children || []).find(c => c.id === kin.id && c.alive && !c.estranged) || null : null }
+  _rankKinOdds(p, kin) {
+    const H = NPC_RANK.hunter, k = this._rankKinNow(kin)
+    if (!k) return 1
+    return Math.max(H.kinMin, Math.min(H.kinMax, H.kinBase + ((k.stageIndex || 0) - (p.stageIndex || 0)) * H.kinPerStage))
+  }
+  _rankPayCost(p) { return Math.round(NPC_RANK.hunter.payStones * ((p.stageIndex || 0) + 1)) }
+
+  // A rankings card's answers (roadCardInfo).
+  _rankAnswers(card, p, add, odds, fightLock) {
+    const s = this._s, K = NPC_RANK, x = card.rank || {}, proud = NPC_ENC.proud.includes(p.personality), sg = n => (n > 0 ? '+' : '') + n
+    if (card.kind === 'rankChallenge') {
+      add('spar', 'Accept: until one yields', `${odds(false)}% to win · win: renown ${sg(K.renown.win)}, lose: ${sg(K.renown.lose)}`, { odds: odds(false), lock: fightLock })
+      add('blood', 'Accept: to the death', `${odds(true)}% to win · lose, and this life ends`, { odds: odds(true), tone: 'red', lock: fightLock })
+      add('decline', 'Decline', `Renown ${sg(proud ? K.renown.declineProud : K.renown.decline)} · ${proud ? 'a proud heart will spread it' : 'they will say you can be pushed'}; more will come`)
+    } else if (card.kind === 'hunter') {
+      const flee = Math.round(this._roadFleeChance(p) * 100), cost = this._rankPayCost(p)
+      add('fight', 'Fight', `${odds(true)}% to win · to the death · win: Honour +${K.hunter.honour}, renown +${K.renown.killHunter}`, { odds: odds(true), tone: 'red', lock: fightLock })
+      add('flee', 'Flee', `${flee}% to slip away · fail, and the fight starts here`, { odds: flee, lock: s.family?.fight ? 'Another fight is underway' : null })
+      add('pay', 'Pay them off', `${cost} Spirit Stones · they find other prey, this time`, { cost, lock: s.spiritStones < cost ? `Needs ${cost} Spirit Stones` : null })
+      add('veil', 'Veil your name', `${Math.round(K.hunter.veilLoses * 100)}% they lose the trail · you leave the public boards (World → Rankings)`, { chance: Math.round(K.hunter.veilLoses * 100), tone: 'jade' })
+    } else if (card.kind === 'hunterKin') {
+      const kin = card.kin, k = this._rankKinNow(kin)
+      if (!k) { add('leave', 'Let it go', `${kin?.name || 'They'} ${kin ? 'is' : 'are'} beyond their reach now`); return }
+      const live = Math.round(this._rankKinOdds(p, kin) * 100), cost = this._rankPayCost(p)
+      add('intercept', `Stand between them and ${kin.name}`, `${odds(true)}% to win · to the death: lose, and this life ends`, { odds: odds(true), tone: 'red', lock: fightLock })
+      add('pay', 'Pay them off', `${cost} Spirit Stones · they find other prey`, { cost, lock: s.spiritStones < cost ? `Needs ${cost} Spirit Stones` : null })
+      add('hide', `Hide ${kin.name}`, `${kin.name} leaves the boards for ${K.hunter.hideYears} years, safe and unseen (their bond with you dips)`, { tone: 'jade' })
+      add('leave', `Let ${kin.name} face them`, `${live}% ${kin.name} lives · otherwise ${kin.word} dies`, { tone: 'red', chance: live })
+    } else if (card.kind === 'invite') {
+      const r = this._wsRec(x.sect), def = r && SECTS.find(d => d.id === r.defId), mine = this._sectDef?.()
+      const rankName = SECT_RANKS[K.invite.startRank]?.name || 'Inner Disciple'
+      const lock = !r ? 'The sect is gone' : s.ownSect?.founded ? 'You lead a sect of your own' : this.sectInAshes?.(r.defId) ? 'Their mountain is in ashes' : def && s.stageIndex < def.minStage ? 'Your realm is too low for them' : null
+      add('accept', `Join the ${r?.name || 'sect'}`, mine ? `As ${rankName} · you leave the ${mine.name} (rank and contribution forfeit; a deserter on the eve of war)` : `As ${rankName}, not an Outer Disciple`, { tone: 'jade', lock })
+      add('decline', 'Decline with thanks', 'They will ask again some day, perhaps')
+      add('refuse', 'Refuse them outright', `The ${r?.name || 'sect'} remembers the insult`, { tone: 'red' })
+    }
+  }
+
+  // Your answer to a rankings card (from answerRoadCard). Returns { ok, text, type } or a fight.
+  _rankAnswer(card, p, answer, fight) {
+    const s = this._s, K = NPC_RANK, T = NPC_RANK_TEXT, R = this._ranks(), name = card.name, place = card.place, yr = Math.floor(s.world.year)
+    const kinName = card.kin?.name || 'your child'
+    const mem = key => this._remember(p, key, T.rel[key] || 0, this._roadFill(T.mem[key], { place, kin: kinName }), { rumour: false, deed: null })
+    const renown = d => { R.renown = Math.max(K.renown.min, Math.min(K.renown.max, Math.round((R.renown || 0) + d))) }
+    switch (`${card.kind}:${answer}`) {
+      case 'rankChallenge:spar': return fight(false, `You accept ${name}'s challenge for your place: until one yields.`)
+      case 'rankChallenge:blood': return fight(true, `You accept ${name}'s challenge for your place: to the death.`)
+      case 'rankChallenge:decline': {
+        const proud = NPC_ENC.proud.includes(p.personality)
+        mem(proud ? 'rk_declinedProud' : 'rk_declined'); renown(proud ? K.renown.declineProud : K.renown.decline); R.declines = (R.declines || 0) + 1
+        p.renown = Math.min(K.renown.max, (p.renown || 0) + Math.round(-(proud ? K.renown.declineProud : K.renown.decline) / 2))
+        return { ok: true, text: `You will not fight ${name} for your place. ${proud ? 'They make sure the world hears of it.' : 'They bow, and go, and talk.'}` }
+      }
+      case 'hunter:fight': return fight(true, `You turn on ${name}. A hunter of geniuses meets one.`)
+      case 'hunterKin:intercept': return fight(true, `You find ${name} on the road to ${kinName}, and step into their path.`)
+      case 'hunter:flee': {
+        if (Math.random() < this._roadFleeChance(p)) { mem('rk_fled'); return { ok: true, text: `You lose ${name} in the hills beyond ${place}.` } }
+        return fight(true, `You run, and ${name} runs you down at ${place}.`)
+      }
+      case 'hunter:pay': case 'hunterKin:pay': {
+        const cost = this._rankPayCost(p)
+        s.spiritStones -= cost; mem(card.kind === 'hunterKin' ? 'rk_kinPaid' : 'rk_paid')
+        return { ok: true, type: 'negative', text: `You send ${name} ${cost} Spirit Stones. They weigh the pouch, and go hunting elsewhere.` }
+      }
+      case 'hunter:veil': {
+        this.setRankVeil(true)
+        if (Math.random() < K.hunter.veilLoses) { mem('rk_veiled'); return { ok: true, type: 'positive', text: `You go quiet, and your name goes dark. ${name} loses the trail.` } }
+        return fight(true, `You veil your name, but ${name} already has your scent. They find you at ${place}.`)
+      }
+      case 'hunterKin:hide': {
+        const k = this._rankKinNow(card.kin), q = s.world.persons[card.kin?.id]
+        if (q) q.rankHiddenUntil = yr + K.hunter.hideYears
+        if (k && typeof k.bond === 'number') k.bond = Math.max(0, k.bond - 5)
+        return { ok: true, type: 'neutral', text: `You send ${kinName} into hiding. The rankings will not carry their name for ${K.hunter.hideYears} years.` }
+      }
+      case 'hunterKin:leave': {
+        const res = this._rankKinStrike(p, card.kin)
+        return { ok: true, type: res.died ? 'negative' : 'neutral', text: res.text }
+      }
+      case 'invite:accept': {
+        const r = this._wsRec(card.rank?.sect)
+        if (!r) return { ok: false, reason: 'gone' }
+        if (s.sect?.id) this.leaveSect()
+        const j = this.joinSect(r.defId)
+        if (!j.ok) return { ok: false, reason: j.reason }
+        s.sect.rank = Math.max(s.sect.rank || 0, K.invite.startRank)
+        mem('rk_joined')
+        return { ok: true, type: 'special', text: `You take the oath of the ${r.name} as ${SECT_RANKS[s.sect.rank]?.name || 'an Inner Disciple'}. The rankings opened their gate.` }
+      }
+      case 'invite:decline': {
+        const r = this._wsRec(card.rank?.sect)
+        if (r) this._wsDeed(r, K.invite.stanceDecline, 'you turned down their invitation')
+        mem('rk_inviteDeclined')
+        return { ok: true, text: `You thank ${name}, and decline. They bow, and take the news home.` }
+      }
+      case 'invite:refuse': {
+        const r = this._wsRec(card.rank?.sect)
+        if (r) this._wsDeed(r, K.invite.stanceRefuse, 'you spat on their invitation')
+        mem('rk_inviteRefused')
+        return { ok: true, type: 'negative', text: `You send ${name} away with words they will repeat to their master.` }
+      }
+    }
+    return null
+  }
+
+  // The hunter reaches your child (you let them face it, or you fell back from the fight).
+  _rankKinStrike(p, kin) {
+    const s = this._s, f = s.family || {}, name = Persons.fullName(p), yr = Math.floor(s.world.year)
+    const k = this._rankKinNow(kin)
+    if (!k) return { died: false, text: `${name} finds no one to take.` }
+    if (Math.random() < this._rankKinOdds(p, kin)) return { died: false, text: `${kin.name} meets ${name} blade to blade, and drives the hunter off, bleeding but alive.` }
+    const text = `${name}, a hunter of geniuses, has killed ${kin.name}, ${kin.word}.`
+    k.alive = false; k.diedYear = yr; k.cause = 'hunter'
+    if (f.heirId === k.id) f.heirId = null
+    this._killPerson(kin.id, yr, 'hunter')
+    this._emit('world_news', { text, type: 'negative' })
+    return { died: true, text }
+  }
+
+  // A fight from a rankings card or the Class duel ended (_roadFightOutcome). what: won | lost | slain | killedYou.
+  _rankFought(card, opp, what) {
+    const s = this._s, K = NPC_RANK, R = this._ranks(), kinCard = card.kind === 'hunterKin'
+    const renown = d => { R.renown = Math.max(K.renown.min, Math.min(K.renown.max, Math.round((R.renown || 0) + d))) }
+    if (card.kind === 'rankChallenge' || card.kind === 'rankDuel') {
+      if (what === 'won' || what === 'slain') { renown(K.renown.win); if (opp.alive !== false) opp.renown = Math.max(K.renown.min, (opp.renown || 0) + K.renown.lose) }
+      if (what === 'lost') { renown(K.renown.lose); opp.renown = Math.min(K.renown.max, (opp.renown || 0) + K.renown.win) }
+      if (what !== 'killedYou' && opp.alive !== false) this._remember(opp, 'rk_spar', NPC_RANK_TEXT.rel.rk_spar, this._roadFill(NPC_RANK_TEXT.mem.rk_spar, { place: card.place || 'the road' }), { rumour: false, deed: null })
+      R.stats.duels++
+      return ''
+    }
+    if (card.kind === 'hunter' || kinCard) {
+      if (what === 'slain') {
+        renown(K.renown.killHunter); s.karma = Math.min(100, (s.karma ?? 50) + K.hunter.karma); this._repDeed('slewHunter', opp)
+        return kinCard ? ` ${card.kin?.name || 'Your child'} is safe.` : ' The geniuses of this generation breathe easier.'
+      }
+      if (what === 'won') return kinCard ? ` ${card.kin?.name || 'Your child'} is safe, for now.` : ''
+      if (what === 'lost' && kinCard) return ' ' + this._rankKinStrike(opp, card.kin).text
+    }
+    return ''
+  }
+
+  // Public: veil (or unveil) your name. Takes effect at the next publication.
+  setRankVeil(on) {
+    const R = this._ranks()
+    on = !!on
+    if (R.veil === on) return { ok: true, veil: on }
+    R.veil = on
+    this._rankNews(on ? NPC_RANK_TEXT.veilOn : NPC_RANK_TEXT.veilOff, on ? '' : 'jade', { log: true, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, veil: on }
+  }
+
+  // Public: the Class board duel — challenge the classmate ranked just above you (a spar for renown).
+  challengeRanked(pid) {
+    const s = this._s, info = this._rankDuelInfo()
+    if (!info || info.pid !== pid) return { ok: false, reason: 'not_above' }
+    if (info.lock) return { ok: false, reason: 'locked', lock: info.lock }
+    const p = s.world.persons[pid], R = this._ranks()
+    R.duelAt = this._cdNow() + NPC_RANK.duel.cdSec
+    const yours = R.prev.classNow?.[s.self.id] || null, theirs = R.prev.classNow?.[pid] || null
+    this.addEvent({ text: `You call out ${Persons.fullName(p)}, who stands one place above you in your class. Until one yields.`, type: 'special', pid })
+    this._startFight('road', p, false, { road: { id: null, kind: 'rankDuel', pid, name: Persons.fullName(p), place: 'the ranking stone', answer: 'spar', rank: { board: 'class', theirs, yours } } })
+    return { ok: true, fight: true }
+  }
+  _rankDuelInfo() {
+    const s = this._s, cls = this._rankClass(), i = cls.findIndex(e => e.self)
+    if (i <= 0) return null
+    const p = s.world.persons[cls[i - 1].pid]
+    if (!p) return null
+    const cd = this._cdLeft(this._ranks().duelAt), gap = Math.abs((p.stageIndex || 0) - (s.stageIndex || 0))
+    const lock = s.family?.fight ? 'Another fight is underway' : (s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH ? 'Too wounded to fight'
+      : p.roadCard ? 'They are already on the road to you' : gap > NPC_RANK.duel.stageGap ? `They stand ${gap} stages from you: too far to call out` : cd ? 'Wait for the cooldown' : null
+    return { pid: p.id, name: Persons.fullName(p), lock, cd, odds: Math.round((this.personFightOdds(p, 'road', false)?.chance ?? 0.5) * 100) }
+  }
+
+  // Sect fame from a public place (a founder's sect): the best of each board's row.
+  _rankFame() {
+    const R = this._s.world?.ranks
+    if (!R || R.veil || R.life !== this._lifeNo()) return 0
+    const pick = (b, n) => n ? ((NPC_RANK.fame[b].find(([t]) => n <= t) || [0, 0])[1]) : 0
+    return pick('heaven', R.you.heaven) + pick('dragon', R.you.dragon)
+  }
+
+  // A person's places this year (the person card's chip). { heaven, dragon } or null.
+  rankOf(pid) {
+    const R = this._s.world?.ranks
+    if (!R || R.y == null) return null
+    const h = R.boards.heaven.findIndex(e => e.pid === pid) + 1, d = R.boards.dragon.findIndex(e => e.pid === pid) + 1
+    return h || d ? { heaven: h || null, dragon: d || null } : null
+  }
+
+  // Public (UI: World → Rankings). board: 'class' | 'dragon' | 'heaven'.
+  rankingsInfo(board = 'class') {
+    const s = this._s, w = s.world, K = NPC_RANK, R = this._ranks(), yr = Math.floor(w.year || 0), me = s.self?.id
+    const rid = this._rivalOf()?.id || null, kinIds = new Set((s.family?.children || []).map(c => c.id).concat(s.family?.spouse ? [s.family.spouse.id] : []))
+    const stageOf = p => p.alive !== false ? (p.stageIndex || 0) : (p.maxStage || p.stageIndex || 0)
+    const sectOf = p => p.sectId === 'own' ? (s.ownSect?.name || null) : p.sectId ? this._wsRec(p.sectId)?.name || null : null
+    const row = (pid, place, sc, prevMap) => {
+      const self = pid === me, p = self ? null : w.persons[pid]
+      if (!self && !p) return null
+      const was = prevMap?.[pid]
+      return { place, pid, self, name: self ? (s.name || 'You') : Persons.fullName(p) || 'Nameless', sc,
+        stage: self ? (s.stageIndex || 0) : stageOf(p), sect: self ? (s.ownSect?.founded ? s.ownSect.name : this._wsMine()?.name || null) : sectOf(p),
+        move: was == null ? 'new' : was - place, chosen: !!p?.chosen, rival: !!rid && pid === rid, kin: kinIds.has(pid), pinned: !!p?.pin,
+        hunter: !!p?.hunter, age: self ? Math.floor(s.age || 0) : Math.max(0, yr - (p.bornYear ?? yr)) }
+    }
+    const nextSecs = R.y == null ? null : Math.max(0, Math.round((R.y + K.every - (w.year || 0)) * 3600 / GAME_YEARS_PER_OPEN_HOUR))
+    const out = { board, year: R.y, nextSecs, veil: R.veil, hint: !R.hint, renown: R.renown || 0, declines: R.declines || 0,
+      you: { ...R.you }, best: { ...R.best }, titles: R.titles.filter(t => t.life === this._lifeNo()), pastTitles: R.titles.filter(t => t.life !== this._lifeNo()),
+      honour: [...R.honour].reverse(), news: [...R.news].reverse().slice(0, 8), fresh: Math.max(0, (R.seq || 0) - (R.seen || 0)),
+      power: this.rankPowerParts(null, true).total, fame: this._rankFame(), founder: !!s.ownSect?.founded, rows: [], total: 0, place: null, fallen: [] }
+    if (board === 'class') {
+      const cls = this._rankClass(), prev = R.prev.class
+      out.total = cls.length
+      const all = cls.map((e, i) => row(e.pid, i + 1, e.power, prev)).filter(Boolean)
+      out.place = all.find(r => r.self)?.place || null
+      const shown = new Set(all.slice(0, K.show).map(r => r.pid))
+      const i = all.findIndex(r => r.self)
+      for (let j = Math.max(0, i - K.around); j <= Math.min(all.length - 1, i + K.around); j++) shown.add(all[j].pid)
+      for (const r of all) if (r.pinned || r.rival) shown.add(r.pid)
+      out.rows = all.filter(r => shown.has(r.pid))
+      const duel = this._rankDuelInfo()
+      if (duel) { const r = out.rows.find(x => x.pid === duel.pid); if (r) r.duel = duel }
+      const c = w.cohorts?.[this._lifeNo()]
+      out.fallen = (c?.ids || []).map(id => w.persons[id]).filter(p => p && (p.alive === false || p.ascended))
+        .map(p => ({ pid: p.id, name: Persons.fullName(p), ascended: !!p.ascended, stage: stageOf(p), cause: p.ascended ? 'Ascended' : PERSON_CAUSE_TEXT[p.cause] || 'Passed on', y: p.diedYear ?? null }))
+        .sort((a, b) => (b.ascended - a.ascended) || b.stage - a.stage)
+      out.counts = { living: cls.length, fallen: out.fallen.filter(f => !f.ascended).length, ascended: out.fallen.filter(f => f.ascended).length }
+    } else {
+      const list = R.boards[board] || [], prev = R.prev[board]
+      out.total = list.length + (R.veil && R.you[board] ? 1 : 0)
+      out.place = R.you[board]
+      const all = list.map((e, i) => ({ e, place: i + 1 }))
+      const shown = new Set(all.slice(0, K.show).map(x => x.e.pid))
+      const i = all.findIndex(x => x.e.pid === me)
+      if (i >= 0) for (let j = Math.max(0, i - K.around); j <= Math.min(all.length - 1, i + K.around); j++) shown.add(all[j].e.pid)
+      for (const x of all) { const p = w.persons[x.e.pid]; if (p?.pin || x.e.pid === rid || kinIds.has(x.e.pid)) shown.add(x.e.pid) }
+      out.rows = all.filter(x => shown.has(x.e.pid)).map(x => row(x.e.pid, x.place, x.e.sc, prev)).filter(Boolean)
+      out.youOff = R.veil ? 'veiled' : board === 'dragon' && this._rankYears(null, true) > K.dragonYears ? 'aged' : !R.you[board] ? 'none' : R.you[board] > K.keep ? 'below' : null
+      out.dragonYears = K.dragonYears; out.yourYears = this._rankYears(null, true)
+    }
+    return out
+  }
+  noteRanksSeen() { const R = this._ranks(); if (R.seen !== R.seq) { R.seen = R.seq; this._notify() } }
+  // What the attention strip counts: the logged headlines (your moves past a threshold, titles, a child hunted…) since you last looked.
+  ranksNews() { const R = this._s.world?.ranks; return R ? R.news.filter(n => n.log && n.i > (R.seen || 0)).length : 0 }
+  ranksNewsLast() { const R = this._s.world?.ranks; return R ? [...R.news].reverse().find(n => n.log && n.i > (R.seen || 0)) || null : null }
+  noteRanksHint() { this._ranks().hint = true; this._notify() }
+  rankStats() { const R = this._s.world?.ranks; return R ? { ...R.stats, you: { ...R.you }, best: { ...R.best }, renown: R.renown, veil: R.veil, titles: R.titles.length, honour: R.honour.length } : null }
+
+  // ── Phase 28 task 4.7 (living-world.md §3): World → People — the people you know, pins, tappable log names ──
+
+  // The registry people named (in full) in a line of text, the event's own pid first. [{ pid, n }] (≤ logNamesMax).
+  _namesIn(text, pid = null) {
+    const ps = this._s.world?.persons, out = []
+    if (!ps || !text) return out
+    const me = this._s.self?.id, max = WORLD_PEOPLE.logNamesMax
+    const take = p => {
+      const n = Persons.fullName(p)
+      if (n && n.includes(' ') && text.includes(n) && !out.some(x => x.pid === p.id || x.n === n)) out.push({ pid: p.id, n })
+    }
+    if (pid && ps[pid] && pid !== me) take(ps[pid])
+    for (const p of Object.values(ps)) { if (out.length >= max) break; if (p.id !== me) take(p) }
+    return out
+  }
+
+  // What a person is to you, in a word (the People list's tie): the strongest bond wins.
+  _tieToYou(p, ctx) {
+    const s = this._s, f = s.family || {}, id = p.id
+    if (f.spouse?.id === id) return { k: 'kin', word: 'Your spouse', tone: 'gold' }
+    if ((f.children || []).some(c => c.id === id)) return { k: 'kin', word: 'Your child', tone: 'gold' }
+    if ((f.lovers || []).some(l => l.person?.id === id)) return { k: 'kin', word: 'Your lover', tone: 'jade' }
+    if ((f.formerSpouses || []).some(x => x.id === id)) return { k: 'kin', word: 'Former spouse', tone: '' }
+    if ((s.self?.parents || []).includes(id)) return { k: 'kin', word: 'Your parent', tone: 'gold' }
+    if (ctx.clan.has(id)) return { k: 'kin', word: 'Your clan', tone: 'jade' }
+    if (ctx.rival && id === ctx.rival) return { k: 'rival', word: 'Your rival', tone: 'red' }   // 4.10b
+    if (p.rivalOf && p.rivalOf !== s.self?.id && !ctx.clan.has(id)) return { k: 'rival', word: 'Rival of a past life', tone: '' }
+    if (p.sworn && p.sworn === s.self?.id) return { k: 'friend', word: 'Sworn sibling', tone: 'gold' }   // 4.10
+    if (p.feud?.pid === s.self?.id) return { k: 'grudge', word: 'Sworn against you', tone: 'red' }
+    if (p.sectId === 'own') return { k: 'sect', word: p.role === 'branch_head' ? 'Your branch head' : 'Your disciple', tone: 'jade' }
+    if (ctx.mine && p.sectId === ctx.mine) return { k: 'sect', word: p.sectRole === 'master' ? 'Your sect master' : p.sectRole === 'elder' ? 'Your sect elder' : 'Fellow disciple', tone: 'jade' }
+    if (p.cohort === ctx.life) return { k: 'class', word: 'Your classmate', tone: 'gold' }
+    if (p.cohort) return { k: 'class', word: `Classmate, life ${p.cohort}`, tone: '' }
+    if (p.owner === 'arena') return { k: 'other', word: 'Arena duelist', tone: '' }
+    if (p.owner === 'family') return { k: 'other', word: PERSON_ROLE_TEXT[p.role] || 'Met on the road', tone: '' }
+    return { k: 'other', word: 'Known face', tone: '' }
+  }
+
+  // Is this someone the People list shows? (you have met them, seen their name, or they are bound to you)
+  _inPeople(p, ctx) {
+    if (!p || p.id === ctx.me || p.role === 'ancestor' || ctx.past.has(p.id)) return false
+    return !!(p.pin || p.cohort != null || (p.fam || 0) > 0 || p.rel || ctx.clan.has(p.id) || p.owner === 'family' || p.owner === 'arena'
+      || p.sectId === 'own' || (ctx.mine && p.sectId === ctx.mine) || p.feud?.pid === ctx.me || ctx.parents.has(p.id))
+  }
+
+  _peopleCtx() {
+    const s = this._s, w = s.world
+    return { me: s.self?.id, life: this._lifeNo(), mine: this._wsMine()?.id || null, yr: Math.floor(w.year || 0),
+      clan: new Set(this._clanMemberIds(this._playerClan(w))), parents: new Set(s.self?.parents || []),
+      past: new Set((w.pastLives || []).map(l => l.personId)), rival: this._rivalOf()?.id || null }
+  }
+
+  // Public (UI): World → People. filter: all | pinned | class | kin | sect | grudge | fallen; sort: relevance | realm |
+  // recent | name; q: a search over names + sect names. Every filter but Pinned + Fallen lists the living.
+  // Rows: { pid, name, alive, ascended, stage, age, tie, sect, rel, relWord, relTone, last: { y, text }, pinned, fresh, chips }.
+  knownPeople({ q = '', filter = 'all', sort = 'relevance', limit = WORLD_PEOPLE.peoplePage, since = null } = {}) {
+    const s = this._s, w = s.world, ctx = this._peopleCtx(), yr = ctx.yr
+    if (!w?.persons) return { rows: [], counts: {}, shown: 0, matched: 0, pins: 0, pinMax: WORLD_PEOPLE.pinMax, year: yr }
+    // The latest thing the world wrote about each person (the Chronicle, then your log for those it never named).
+    const last = new Map(), seen = since ?? (w.peopleSeen || 0)
+    for (let i = (w.chron || []).length - 1; i >= 0; i--) {
+      const e = w.chron[i]
+      for (const id of e.p || []) if (!last.has(id)) last.set(id, { y: e.y, text: e.t, i: e.i })
+    }
+    for (const ev of s.events || []) for (const x of ev.who || []) if (!last.has(x.pid)) last.set(x.pid, { y: null, text: ev.text, i: 0 })
+    const needle = String(q || '').trim().toLowerCase()
+    const counts = { all: 0, pinned: 0, class: 0, kin: 0, sect: 0, friend: 0, grudge: 0, rival: 0, fallen: 0 }
+    const list = []
+    let pins = 0
+    for (const p of Object.values(w.persons)) {
+      if (p.pin) pins++
+      if (!this._inPeople(p, ctx)) continue
+      const alive = p.alive !== false, tie = this._tieToYou(p, ctx)
+      const grudge = (p.rel || 0) < 0 || p.feud?.pid === ctx.me
+      const sectRec = p.sectId && p.sectId !== 'own' ? this._wsRec(p.sectId) : null
+      const sect = p.sectId === 'own' ? (s.ownSect?.name || 'your sect') : sectRec?.name || null
+      if (needle && !(Persons.fullName(p).toLowerCase().includes(needle) || (sect && sect.toLowerCase().includes(needle)))) continue
+      const is = { all: alive, pinned: !!p.pin, class: alive && p.cohort != null, kin: alive && tie.k === 'kin', sect: alive && tie.k === 'sect',
+                   friend: alive && ((p.rel || 0) >= NPC_ENC.relWarm || (!!p.sworn && p.sworn === ctx.me)),   // 4.10
+                   grudge: alive && grudge, rival: !!p.rivalOf, fallen: !alive }   // 4.10b: Rivals = every life's rival, living or not
+      for (const k of Object.keys(counts)) if (is[k]) counts[k]++
+      if (!is[filter]) continue
+      list.push({ p, alive, tie, sect, grudge })
+    }
+    const R = NPC_HEAVY.relevance
+    const score = p => Math.min(R.famCap, (p.fam || 0) * R.fam) + Math.abs(p.rel || 0) * R.rel + (p.cohort === ctx.life ? R.classmate : p.cohort ? R.pastClassmate : 0)
+      + (p.chosen ? R.chosen : 0) + (ctx.mine && p.sectId === ctx.mine ? R.mySect : 0) + (p.sectRole === 'master' || p.sectRole === 'elder' ? R.seat : 0)
+      + (ctx.clan.has(p.id) || p.owner === 'family' ? R.classmate : 0) + (p.pin ? R.pin : 0)
+    const stage = p => p.alive !== false ? (p.stageIndex || 0) : (p.maxStage || p.stageIndex || 0)
+    const by = { relevance: (a, b) => score(b.p) - score(a.p), realm: (a, b) => stage(b.p) - stage(a.p),
+                 recent: (a, b) => (b.p.seenY ?? -1) - (a.p.seenY ?? -1) || (last.get(b.p.id)?.i || 0) - (last.get(a.p.id)?.i || 0),
+                 name: () => 0 }[sort] || (() => 0)
+    list.sort((a, b) => by(a, b) || Persons.fullName(a.p).localeCompare(Persons.fullName(b.p)))
+    const rows = list.slice(0, limit).map(({ p, alive, tie, sect, grudge }) => {
+      const r = p.rel || 0, l = last.get(p.id)
+      const relWord = !r ? null : r >= 60 ? 'Devoted' : r >= 30 ? 'Warm' : r > -30 ? 'Indifferent' : r > -60 ? 'Cold' : 'Hateful'
+      return { pid: p.id, name: Persons.fullName(p) || 'Nameless', alive, ascended: !!p.ascended, stage: stage(p),
+        age: Math.max(0, (alive ? yr : p.diedYear ?? yr) - (p.bornYear ?? yr)), diedYear: p.diedYear ?? null,
+        cause: !alive && !p.ascended ? (PERSON_CAUSE_TEXT[p.cause] || 'Passed on') : null,
+        tie, sect, grudge, rel: r, relWord, relTone: r >= 30 ? 'jade' : r <= -30 ? 'red' : '',
+        role: p.sectRole === 'master' ? 'Sect master' : p.sectRole === 'elder' ? 'Sect elder' : null,
+        chosen: !!p.chosen, injured: alive && (p.injuredUntil || 0) > yr, twilight: alive && !!p.twilight, heavy: p.tier === 'heavy',
+        feud: alive && p.feud && w.persons[p.feud.pid]?.alive !== false ? { pid: p.feud.pid, name: Persons.fullName(w.persons[p.feud.pid]) || 'someone', you: p.feud.pid === ctx.me } : null,
+        last: l ? { y: l.y, text: l.text } : null, pinned: !!p.pin, fresh: !!p.pin && !!l && l.i > seen }
+    })
+    return { rows, counts, shown: rows.length, matched: list.length, pins, pinMax: WORLD_PEOPLE.pinMax, year: yr }
+  }
+
+  // Public (UI): pin / unpin someone (★). The player's own choice; capped by WORLD_PEOPLE.pinMax.
+  togglePin(pid) {
+    const s = this._s, p = s.world?.persons?.[pid]
+    if (!p || pid === s.self?.id) return { ok: false, reason: 'unknown' }
+    if (p.pin) { delete p.pin; this._notify(); return { ok: true, pinned: false } }
+    const pins = Object.values(s.world.persons).filter(x => x.pin).length
+    if (pins >= WORLD_PEOPLE.pinMax) return { ok: false, reason: 'full', pinMax: WORLD_PEOPLE.pinMax }
+    p.pin = 1; p.fam = Math.max(1, p.fam || 0)
+    if (p.alive !== false && this._heavyEligible(p, this._clanIdSet())) p.tier = 'heavy'   // their life runs in full from now on
+    this._notify()
+    return { ok: true, pinned: true }
+  }
+
+  // Public (attention): Chronicle lines about people you pinned since you last opened World → People.
+  peopleNews() {
+    const w = this._s?.world
+    if (!Array.isArray(w?.chron) || !w.persons) return 0
+    const seen = w.peopleSeen || 0
+    let n = 0
+    for (let i = w.chron.length - 1; i >= 0 && w.chron[i].i > seen; i--) if ((w.chron[i].p || []).some(id => w.persons[id]?.pin)) n++
+    return n
+  }
+  // Returns the mark before (the view keeps it while open, so the fresh dots stay until you leave).
+  notePeopleSeen() { const w = this._s?.world; if (!w) return 0; const was = w.peopleSeen || 0; w.peopleSeen = w.chronSeq || 0; return was }
+
   _weightedRng(tbl, rng) {
-    const ks = Object.keys(tbl), tot = ks.reduce((a, k) => a + tbl[k], 0)
+    const ks = Object.keys(tbl).filter(k => Number.isFinite(tbl[k]) && tbl[k] > 0), tot = ks.reduce((a, k) => a + tbl[k], 0)   // 4.4: a missing or NaN weight never wins
     let r = rng() * tot
     for (const k of ks) { r -= tbl[k]; if (r < 0) return k }
     return ks[ks.length - 1]
@@ -1542,8 +3914,10 @@ class GameState {
   _tellLives(news, life, myClan) {
     const s = this._s, out = [], youStage = s.stageIndex || 0
     const told = s.world.classTold ||= { fell: 0, passed: [] }
+    const rid = this._rivalOf()?.id   // 4.10b
     for (const n of news) {
       const p = n.p, mine = p.cohort === life, known = (p.fam || 0) > 0 || myClan.has(p.id)
+      if (n.k === 'up' && rid && p.id === rid) { out.unshift(this._rivalRose(p)); continue }   // 4.10b: your rival's breakthrough is a headline
       if (n.k === 'died') {
         if (mine) { out.push({ text: this._lifeText(p.chosen ? 'chosenFell' : 'classmateFell', p, { cause: n.cause }), type: 'negative', toast: !!p.chosen, banter: 'classmate_fell', who: p }); told.fell = (told.fell || 0) + 1 }
         else if (myClan.has(p.id)) out.push({ text: this._lifeText('kinFell', p, { cause: n.cause }), type: 'negative', who: p })
@@ -1643,7 +4017,7 @@ class GameState {
     if (w.cohorts[life] || s.interlude) return
     const born = this._playerBorn(), awake = born + AWAKENING_AGE, yr = Math.floor(w.year)
     const rng = wsRng(`${this._peopleSeed()}|cohort|${life}|${born}`)
-    const ids = [], els = ['fire', 'water', 'earth', 'wood', 'metal']
+    const ids = [], els = ['fire', 'water', 'earth', 'wood', 'metal'], heir = this._rivalHouseHeir(life)
     for (let i = 0; i < L.cohortSize; i++) {
       const chosen = i < L.cohortChosen
       let band = L.cohortSpread[L.cohortSpread.length - 1]
@@ -1654,11 +4028,13 @@ class GameState {
       p.talent = Math.round((tal[0] + rng() * (tal[1] - tal[0])) * 100) / 100
       p.cohort = life; p.grownYear = p.bornYear + AWAKENING_AGE
       if (chosen) p.chosen = true
+      if (i === 0 && heir) { p.family = heir.surname; p.parents = heir.parentId ? [heir.parentId] : []; p.rivalHouse = heir.surname; this._names?.add(Persons.fullName(p)) }   // 4.10b: the rival line's heir
       ids.push(p.id)
       for (let y = p.grownYear + 1; y <= yr; y++) { if (this._growPerson(p, y, true).died) { this._npcDies(p, y, 'bt_backlash'); break } }
     }
     w.cohorts[life] = { year: awake, born, ids }
     w.livesYear = Math.max(w.livesYear ?? yr, yr)
+    this._pickRival()   // 4.10b
   }
 
   // Public (UI): a class — yours this life, or an earlier life's. The living by realm, then the ascended, then the fallen.
@@ -1951,7 +4327,7 @@ class GameState {
     const s = this._s, f = s.family, sp = f.spouse
     if (!sp) return
     const y = s.world.year, yr = Math.floor(y)
-    const died = endCause === 'suicide' || endCause === 'murder_suicide' || endCause === 'duel'
+    const died = endCause === 'suicide' || endCause === 'murder_suicide' || endCause === 'duel' || endCause === 'rival'   // 4.10b: a rival's blade
     const former = { ...sp, endedYear: yr, endCause }
     if (died) { former.alive = false; former.diedYear = yr; former.cause = endCause }
     f.formerSpouses.push(former)
@@ -2029,8 +4405,14 @@ class GameState {
   }
 
   // A generated person near the player's stage/age (suitors and lovers).
-  _rollStranger(role) {
+  // 4.5: known-first — about 75% of the time a person the world already has (a classmate, a face you've seen), copied
+  // for the family; else a new one (counted against the new-name throttle). `exclude`: ids already offered this time.
+  _rollStranger(role, exclude = []) {
     const s = this._s
+    const lo = Math.max(1, Math.min(SPOUSE_STAGE_CAP, s.stageIndex + SUITOR_STAGE_OFFSET[0])), hi = Math.max(1, Math.min(SPOUSE_STAGE_CAP, s.stageIndex + SUITOR_STAGE_OFFSET[1]))
+    const known = this._castKnown(role === 'suitor' ? 'suitor' : 'stranger', { stage: [lo, hi], age: [18, Math.max(30, (s.age || 16) + SUITOR_AGE_OFFSET_YEARS[1] + 10)], exclude })
+    if (known) return this._castCopy(known, role)
+    this._castFresh()
     const stage = Math.max(1, Math.min(SPOUSE_STAGE_CAP, s.stageIndex + this._randInt(SUITOR_STAGE_OFFSET)))
     const age   = Math.max(18, s.age + this._randRange(SUITOR_AGE_OFFSET_YEARS))
     const p = Persons.make({
@@ -2263,7 +4645,7 @@ class GameState {
       } else if (y >= f.nextProposalYear) {
         const n = this._randInt(PROPOSAL_SUITORS)
         const suitors = []
-        for (let i = 0; i < n; i++) suitors.push(this._rollStranger('suitor'))
+        for (let i = 0; i < n; i++) suitors.push(this._rollStranger('suitor', suitors.map(x => x.id)))
         f.proposal = { suitors, year: yr }
         f.nextProposalYear = null
         this.addEvent({ text: `Year ${yr}: a matchmaker arrives with ${n === 1 ? 'a proposal' : `${n} proposals`} of marriage.`, type: 'special' })
@@ -2483,7 +4865,7 @@ class GameState {
       }
       discQi *= libMult
       discCap = SECT_HALL_LEVELS[Math.min(own.hallLevel, SECT_HALL_LEVELS.length) - 1].cap
-      fame   += 10 * totalLevels + 25 * own.hallLevel + 5 * (s.sectWar?.warVictories || 0) + (s.arena?.sectFame || 0) + SECT_RAZE.fame * (own.razed?.length || 0)   // A6-3b · 43f: sects you razed: arena wins (Phase 43: deeper halls carry more fame)
+      fame   += 10 * totalLevels + 25 * own.hallLevel + 5 * (s.sectWar?.warVictories || 0) + (s.arena?.sectFame || 0) + SECT_RAZE.fame * (own.razed?.length || 0) + this._rankFame()   // 4.8: a public place on the rankings · A6-3b · 43f: sects you razed: arena wins (Phase 43: deeper halls carry more fame)
     }
     qMul('Disciples’ offerings', 1 + discQi)
 
@@ -2567,10 +4949,38 @@ class GameState {
     this._maybeLineageRecruit()   // Phase 46 (1.20d): the old line-sect offers you a place at Core Formation
   }
 
-  _notify(fromTick = false) { this._subs.forEach(fn => fn(this._s, fromTick)) }
+  _notify(fromTick = false) {
+    if (this._yearBatch && !fromTick) { this._yearDirty = true; return }   // 4.11: the year's jobs re-render once, at the end
+    this._subs.forEach(fn => fn(this._s, fromTick))
+  }
+
+  // ── Phase 28 task 4.11 (living-world.md → "4.11 as built"): the game-year turn, spread over frames ──────────────────
+  // The year's jobs run in their old order, but a real frame (dt < 1 s) only spends about YEAR_FRAME_MS on them and the
+  // rest wait for the next frames (the whole turn lands within a few frames, ~1/15 s). Their full re-renders collapse into
+  // one when the queue empties. A tick of a second or more (the sim, the checks, a long-stalled frame) drains them all at
+  // once, so results there are unchanged. Not saved: closing mid-turn drops at most a few frames' jobs (the lives and the
+  // rankings catch up on the next turn).
+  _queueYear(yr) {
+    const s = this._s, J = this._yearJobs ||= []
+    J.push(() => this._tickFamily(), () => this._tickArena(), () => this._tickBranches(), () => this._tickWorldSects(),
+      () => this._tickWorldLives(), () => this._tickRepute(yr), () => this._tickRival(yr), () => this._tickRanks(yr),
+      () => { this._syncPersons(); if (s.ownSect?.founded && !s.interlude) this._roadRoll('gate', null, `the gate of ${s.ownSect.name}`) })
+  }
+  _drainYear(dt) {
+    const J = this._yearJobs, now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now())
+    const all = dt >= 1, t0 = now()
+    this._yearBatch = true
+    try {
+      do { J.shift()() } while (J.length && (all || now() - t0 < YEAR_FRAME_MS))
+    } finally { this._yearBatch = false }
+    if (!J.length && this._yearDirty) { this._yearDirty = false; this._notify() }
+  }
+  // Run anything still queued now (before a save, a life's end, a test that reads the year's results at once).
+  flushYear() { if (this._yearJobs?.length) this._drainYear(1e9) }
 
   _save() {
     const s = this._s
+    try { this.flushYear() } catch (e) { console.error(e) }   // 4.11: a year turn half-spread across frames lands whole first
     try { this._syncPersons() } catch (e) { console.error(e) }   // Phase 28: owners mirrored before every write
     s.lastSave = Date.now()
     window.electron.saveSlot(this._slot, s).catch(() => {})
@@ -2635,6 +5045,7 @@ class GameState {
 
   tick(dt) {
     const s = this._s
+    if (s?.interlude && this._yearJobs?.length) this.flushYear()   // 4.11: a life that ended mid-turn: the turn finishes as it always did, in one go
     if (!s || s.interlude) return   // 2.6d: between lives the clock stops until the player chooses
     if (s.family?.bracket && !s.family.fight) this._bracketStep()   // A6-3a: a bracket saved between bouts runs on
 
@@ -2643,10 +5054,12 @@ class GameState {
     // since Phase 9A keeps ticking while hidden — only the app not running at all skips aging).
     // Age is a stat only — nothing dies of age (user decision 2026-09-26).
     const years = dt * GAME_YEARS_PER_OPEN_HOUR / 3600
-    const prevYear = Math.floor(s.world.year)
+    const prevYear = Math.floor(s.world.year), prevSeason = Math.floor(s.world.year * NPC_HEAVY.seasons)
     s.age      += years
     s.world.year += years
-    if (Math.floor(s.world.year) !== prevYear) { this._tickFamily(); this._tickArena(); this._tickBranches(); this._tickWorldSects(); this._tickWorldLives(); this._syncPersons() }   // Phase 16-lite (M2 task 2.5) · A6-3b · Phase 45 · Phase 43b · Phase 28 (4.3: the world's people live)
+    if (Math.floor(s.world.year) !== prevYear) this._queueYear(Math.floor(s.world.year))   // Phase 16-lite (M2 task 2.5) · A6-3b · Phase 45 · Phase 43b · Phase 28 (4.3 … 4.8) — 4.11: spread over the next frames
+    if (Math.floor(s.world.year * NPC_HEAVY.seasons) !== prevSeason) { if (this._yearJobs?.length) this._yearJobs.push(() => this._tickSeasons()); else this._tickSeasons() }   // Phase 28 (4.4): the heavy tier's seasons (4.11: after the year's jobs)
+    if (this._yearJobs?.length) this._drainYear(dt)
     if (s.hunt && !s.hunt.found && Date.now() >= s.hunt.endsAt) this._resolveHunt()   // Phase 35 (A6-2)
     if (s.arts?.studies?.length) this._finishStudies()      // Phase 42 (arts.md): study runs on real time, closed or open (1.14b: desks)
     this._tickBody()                                         // Phase 14: tempering + mini-game charges run on real time
@@ -3108,7 +5521,7 @@ class GameState {
     const s = this._s, f = s.family
     s.spiritStones -= chk.cost
     const candidates = []
-    for (let i = 0; i < COURT_CANDIDATES; i++) candidates.push(this._rollStranger('suitor'))
+    for (let i = 0; i < COURT_CANDIDATES; i++) candidates.push(this._rollStranger('suitor', candidates.map(x => x.id)))
     f.court = { candidates, target: null, interest: 0, meetings: 0, nextMeetAt: null, beat: null, lastBeatId: null }
     this.addEvent({ text: `A matchmaker brings word of ${COURT_CANDIDATES} cultivators who might be courted.`, type: 'special' })
     this._recalc(); this._notify()
@@ -3706,7 +6119,7 @@ class GameState {
     if (temper) parts.push({ label: `${self ? 'Your' : 'Their'} temper (${PERSONALITIES.find(x => x.id === p.personality)?.name || p.personality})`, value: temper })
     const bt = BODY_TIERS[Math.max(0, Math.min(BODY_TIERS.length - 1, self ? (this._s.body?.tier || 0) : (p.bodyTier || 0)))]   // Phase 14: the body
     if (bt.power) parts.push({ label: `${self ? 'Your' : 'Their'} body (${bt.name})`, value: bt.power })
-    if (!self && p.feud === 'grudge') parts.push({ label: 'Their grudge against you', value: FEUD_POWER })
+    if (!self && (p.feud === 'grudge' || (p.feud?.pid && p.feud.pid === this._s.self?.id))) parts.push({ label: 'Their grudge against you', value: FEUD_POWER })   // 4.9: sworn against you counts too
     return { parts, total: parts.reduce((a, x) => a + x.value, 0) }
   }
 
@@ -3740,7 +6153,7 @@ class GameState {
     if (fi.kind === 'duel') a += (f.affection - 50) / 200
     else if (fi.kind === 'challenge') a += (this._bondWithHead(opp) - 50) / 200
     if (opp?.feud === 'debt') a += FEUD_YIELD                   // A6-3a: they owe you / they hate you
-    else if (opp?.feud === 'grudge') a -= FEUD_YIELD
+    else if (opp?.feud === 'grudge' || (opp?.feud?.pid && opp.feud.pid === this._s.self?.id)) a -= FEUD_YIELD   // 4.9: an avenger too
     return Math.max(0.05, Math.min(0.95, a))
   }
 
@@ -3757,7 +6170,10 @@ class GameState {
              hint: known ? style.hint : null, habitsKnown: known, yieldAccept: beast ? 1 : this._yieldAccept(opp), log: [...fi.log] }
     if (beast) Object.assign(out, { beast: { ...fi.beast }, stance: fi.stance,
       wound: this._beastWound(fi.beast, fi.stance), lossWound: this._beastLossWound(fi.beast, fi.stance), power: fi.power })
-    else Object.assign(out, { record: this.personRecord(opp), feud: opp?.feud || null, bracket: this._bracketInfo(), scout: this.personScouting(opp) })
+    else Object.assign(out, { record: this.personRecord(opp),
+      // a registry person's feud is an object (4.4); one sworn against you reads as the old fights' grudge
+      feud: typeof opp?.feud === 'string' ? opp.feud : opp?.feud?.pid === this._s.self?.id ? 'grudge' : null,
+      bracket: this._bracketInfo(), scout: this.personScouting(opp), road: fi.road || null })   // 4.9: the card a road fight came from
     if (fi.kind === 'arena') {                                     // A6-3b: the ring, the purse, what this win would add
       const A = this._s.arena, R = ARENA_RINGS.find(r => r.id === fi.arena?.ringId)
       out.arena = { ...fi.arena, ring: R, purse: A.run?.purse || 0, streak: A.run?.streak || 0,
@@ -3805,6 +6221,7 @@ class GameState {
     if (fi.kind === 'slaughter') return this._slaughterOutcome(fi, opp, res)
     if (fi.kind === 'sectmaster') return this._sectmasterOutcome(opp, fi.lethal, res)   // Phase 43e
     if (fi.kind === 'spar') return this._sparOutcome(fi, opp, res)                         // Phase 43h
+    if (fi.kind === 'road') return this._roadFightOutcome(fi, opp, res)                    // 4.9: an encounter's fight
     const clan = this._playerClan()
     return fi.kind === 'challenge' ? this._challengeOutcome(clan, opp, fi.lethal, res) : this._defendOutcome(clan, opp, fi.lethal, res)
   }
@@ -3817,13 +6234,13 @@ class GameState {
     const opp = this._fightOpp(), pid = opp?.personality
     const react = T => T[pid] || T.default
     const ids = fi.lethal ? ['finish', 'spare'] : ['raise', 'humble']
-    const karma = { finish: fi.kind === 'duel' ? 0 : fi.kind === 'arena' ? ARENA_KILL_KARMA : CHALLENGE_KARMA_DEATH, spare: SPARE_KARMA, raise: 0, humble: 0 }
+    const karma = { finish: fi.kind === 'duel' || (fi.kind === 'road' && fi.road?.kind === 'ambush') ? 0 : fi.kind === 'arena' ? ARENA_KILL_KARMA : CHALLENGE_KARMA_DEATH, spare: SPARE_KARMA, raise: 0, humble: 0 }
     // 1.14b: raising one who will owe you → they teach you one of their arts; finishing → their manual may drop
     const reaction = { spare: react(SPARE_REACTION), raise: react(RAISE_REACTION), humble: react(HUMBLE_REACTION) }
     const teachable = opp && !opp.beast ? this._teachableArts(opp) : []
     return { kind: fi.kind, lethal: fi.lethal, ids, name: opp?.given, begs: fi.lethal && pid === 'coward', reaction, karma,
       teach: reaction.raise === 'debt' && teachable.length > 0, finishManual: opp && !opp.beast && this._lootableArts(opp).length ? PERSON_FINISH_MANUAL : 0,
-      quietYears: fi.kind === 'arena' ? null : HUMBLE_QUIET_YEARS, bracket: this._bracketInfo(),
+      quietYears: fi.kind === 'arena' || fi.kind === 'road' ? null : HUMBLE_QUIET_YEARS, bracket: this._bracketInfo(),
       arena: fi.kind === 'arena' ? { ...fi.arena, renownHumble: ARENA_RENOWN.humble } : null }
   }
 
@@ -3839,13 +6256,14 @@ class GameState {
     let feud = null
     if (choice !== 'finish') {
       feud = ch.reaction[choice]
-      if (opp) opp.feud = feud
+      if (opp && fi.kind !== 'road') opp.feud = feud   // 4.9: a registry person's feud is an object; the road keeps the choice
+      if (fi.kind === 'road') fi.roadChoice = choice
       if (choice === 'spare') { s.karma = Math.min(100, s.karma + SPARE_KARMA); if (opp) opp.vsYou = { ...this.personRecord(opp), spared: this.personRecord(opp).spared + 1 } }
       if (choice === 'raise' && opp) opp.vsYou = { ...this.personRecord(opp), raised: this.personRecord(opp).raised + 1 }
       if (choice === 'humble') {
         if (opp) opp.vsYou = { ...this.personRecord(opp), humbled: this.personRecord(opp).humbled + 1 }
         if (fi.kind === 'arena') s.arena.renown += ARENA_RENOWN.humble   // the crowd loves it; the clan never saw it
-        else if (fi.kind !== 'spar' && fi.kind !== 'sectmaster') f.cowedUntilYear = yr + Math.round(this._randRange(HUMBLE_QUIET_YEARS))   // (43e/h: not a clan matter)
+        else if (fi.kind !== 'spar' && fi.kind !== 'sectmaster' && fi.kind !== 'road') f.cowedUntilYear = yr + Math.round(this._randRange(HUMBLE_QUIET_YEARS))   // (43e/h: not a clan matter)
       }
       const said = { spare: `You lower your blade and let ${opp?.given} live.`, raise: `You offer ${opp?.given} your hand and help them up.`,
         humble: `You leave ${opp?.given} in the dust before the whole clan.` }[choice]
@@ -3892,7 +6310,10 @@ class GameState {
       const ring = A.rings[R.id] || (A.rings[R.id] = { roster: [], championId: null })
       if (A.run?.ringId === R.id) continue
       const make = stage => {
-        const p = this._genPerson({ family: Persons.rollSurname(), bornYear: yr - 20 - this._randInt([0, 40]), stage, role: 'duelist' })
+        // 4.5: known-first — a ring draws on the world's people of its realm (a classmate may hold a ring)
+        const known = this._castKnown('duelist', { stage: [Math.max(0, stage - 1), stage + 1], age: [AWAKENING_AGE + 2, 9999] })
+        const p = known ? this._castCopy(known, 'duelist') : this._genPerson({ family: Persons.rollSurname(), bornYear: yr - 20 - this._randInt([0, 40]), stage, role: 'duelist' })
+        if (!known) this._castFresh()
         p.arenaRing = R.id; A.duelists[p.id] = p; return p.id
       }
       ring.roster = ring.roster.filter(alive)
@@ -5650,6 +8071,7 @@ class GameState {
       heirStage: null, heirTrauma: false, heirKind: null, heirTerm: 0,
       tournamentDeaths: fam.tally?.tournamentDeaths || 0,
       wasHead: false, birth: null,
+      roadDeath: cause === 'road' ? { kind: s.road?.last?.kind || null, answer: s.road?.last?.answer || null } : null,   // final QA: which encounter killed this life (sim metrics)
     }
 
     // 2.6a: the world survives. The dying life's person, spouse(s) and children are written into the registry
@@ -5985,7 +8407,10 @@ class GameState {
       if (!enemy.surname) enemy.surname = Persons.rollSurname()
       clan = this._foundClan(w, enemy.surname)
       clan.rivalOf = { clanId: fromClan?.id || null, enemyName: enemy.name }
-      const head = this._genPerson({ family: clan.name, bornYear: yr - this._randInt([60, 200]), stage: this._randInt([10, 18]), role: 'head' })
+      // 4.10b: a rival of a past life — their own line takes you in (they, or a child of theirs, head it)
+      const line = enemy.kind === 'rival' ? this._rivalLineHead(enemy.personId) : null
+      const head = line || this._genPerson({ family: clan.name, bornYear: yr - this._randInt([60, 200]), stage: this._randInt([10, 18]), role: 'head' })
+      if (line) line.role = 'head'   // (a clan member now: the clan's systems run them, not the heavy step)
       w.persons[head.id] = head
       this._joinClan(w, clan, head.id)
       head.parentingStyle = this._rollStyle(head).style
@@ -6012,6 +8437,7 @@ class GameState {
     const target = it.clanId ? w.clans[it.clanId] : null
     const newYear = it.year + (it.extinct ? this._randInt(REIGN_YEARS) : it.reignYears)
     w.year = newYear
+    this._inheritRepute(newYear)         // 4.10: grudges whole, debts halved, feuds re-aimed at you (before the skipped years, so they don't lapse)
     this._worldYears(it.year, newYear)   // Phase 28 (4.3): the world lives the skipped years (backlash, the road, old age, births)
     this._advancePersons(w, newYear)
     const yourBorn = newYear - AWAKENING_AGE
@@ -6305,6 +8731,13 @@ class GameState {
     const w = this._s.world, p = w.persons[id]
     if (!p || p.alive === false) return
     p.alive = false; p.diedYear = yr; p.cause = cause
+    if (p.roadCard) this._roadForget(p, cause)   // 4.9: a card waiting on them goes
+    const rv = this._rivalRec()
+    if (rv && !rv.end && rv.pid === id) this._rivalEnds(rv, p, cause, yr)   // 4.10b: your rival is gone
+    if (p.sworn && p.sworn === this._s.self?.id) {   // 4.10: your sworn sibling falls
+      const text = NPC_ACTS_TEXT.swornFell.replace('{name}', Persons.fullName(p)).replace('{cause}', (PERSON_CAUSE_TEXT[cause] || 'they have passed on').toLowerCase())
+      this.addEvent({ text, type: 'negative', pid: p.id }); this._emit('world_news', { text, type: 'negative' })
+    }
     const st = w.lifeStats ||= { deaths: {}, births: 0, marriages: 0, ascended: 0 }   // 4.3: how the world's people end (QA)
     st.deaths[cause] = (st.deaths[cause] || 0) + 1
   }
@@ -7081,6 +9514,8 @@ class GameState {
     // Health risk: zones whose enemy tier outclasses the player's current stage (Phase 23A)
     const expectedTier = 1 + Math.floor(s.stageIndex / 5)
     const outclass = Math.max(0, loc.enemyTier - expectedTier)
+    this._roadRoll('expedition', loc)   // Phase 28 4.9: someone on the road (living-world.md §9)
+
     if (outclass > 0 && Math.random() < EXPEDITION_INJURY_CHANCE_PER_TIER * outclass) {
       const dmg = EXPEDITION_INJURY_BASE + EXPEDITION_INJURY_PER_TIER * outclass
       s.health = Math.max(0, (s.health ?? 100) - dmg)
@@ -8244,13 +10679,21 @@ class GameState {
     }
 
     this.addEvent({ text: `Mission complete — ${m.name}: ${parts.join(', ')}.`, type: 'positive' })
+    this._roadRoll('mission', null, m.name)   // Phase 28 4.9: one of your sect's people, met on the mission
     this._maybeAutoSectMission(active.missionId)
     this._recalc(); this._notify()
   }
 
   // ── Phase 5A: Own Sect ────────────────────────────────────────────────────
 
-  _genRecruit() {
+  _genRecruit(exclude = [], cast = false) {   // cast: only the gate's recruit pool draws real people
+    // 4.5: known-first — an unsworn youth of the world (a wave's child, a classmate without a sect); stars from their root
+    const known = cast && this._s.world?.persons ? this._castKnown('recruit', { stage: [0, 9], age: NPC_CAST.recruitAge, exclude }) : null
+    if (known) {
+      const t = known.root?.type, talent = t === 'heavenly' ? 5 : t === 'pure' ? 4 : t === 'dual' ? 3 : (known.talent || 1) >= 1 ? 2 : 1
+      return { id: `d${Date.now()}_${Math.floor(Math.random() * 99999)}`, pid: known.id, name: Persons.fullName(known), talent }
+    }
+    if (cast && this._s.world?.persons) this._castFresh()
     const w = RECRUIT_TALENT_WEIGHTS
     let r = Math.random() * w.reduce((a, b) => a + b, 0), talent = 1
     for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) { talent = i + 1; break } }
@@ -8260,7 +10703,8 @@ class GameState {
 
   _refreshRecruitPool() {
     const o = this._s.ownSect
-    o.recruitPool = Array.from({ length: RECRUIT_POOL_SIZE }, () => this._genRecruit())
+    o.recruitPool = []
+    for (let i = 0; i < RECRUIT_POOL_SIZE; i++) o.recruitPool.push(this._genRecruit(o.recruitPool.map(c => c.pid), true))
     o.poolRefreshAt = Date.now() + RECRUIT_REFRESH_SECONDS * 1000
   }
 
@@ -8356,7 +10800,7 @@ class GameState {
     if (s.spiritStones < cost) return { ok: false, reason: 'stones' }
     s.spiritStones -= cost
     o.recruitPool = o.recruitPool.filter(x => x.id !== candidateId)
-    const disciple = { id: c.id, name: c.name, talent: c.talent, level: 1, xp: 0,
+    const disciple = { id: c.id, ...(c.pid ? { pid: c.pid } : {}), name: c.name, talent: c.talent, level: 1, xp: 0,   // 4.5: a cast recruit IS that person
                        branchId: null, role: 'disciple', kin: false, personality: disciplePersonality(c.id) }
     o.disciples.push(disciple)
     this.addEvent({ text: `${c.name} (${'★'.repeat(c.talent)}) joined ${o.name} as a disciple.`, type: 'positive' })
@@ -9437,14 +11881,15 @@ class GameState {
     const them = foe ? worldSectMight(foe) : 0
     const us = member ? (mine ? worldSectMight(mine) : 0) : this.playerMight()
     if (!foe || !us || !them) return { ratio: 1, foe, them, us }
-    const W = WORLD_SECTS.war
-    return { ratio: Math.max(W.ratioMin, Math.min(W.ratioMax, Math.pow(them / us, W.ratioExp))), foe, them, us }
+    const W = WORLD_SECTS.war, rival = this._rivalWar(foe)   // 4.10b: your rival leads them
+    return { ratio: Math.max(W.ratioMin, Math.min(W.ratioMax, Math.pow(them / us, W.ratioExp) * (rival ? rival.mult : 1))), foe, them, us, rival }
   }
   // The sect remembers the war, and its mountain shows it (43c): a foe that loses burns one hall a level; a foe that
   // wins raises one with the spoils (never past its own caps). Returns what changed, for the log + the Last war card.
   _wsWarResult(win, member) {
     const r = this._wsWarEnemy()
     if (!r) return null
+    this._rivalWarBeat(r, win)   // 4.10b: your rival led them
     if (win && !member && this._s.sectWar?.razeVow) return this._wsRaze(r)   // Phase 43f: the vow is kept
     const S = WORLD_SECTS
     const where = member ? `the ${this._sectDef()?.name || 'your sect'}` : this._s.ownSect?.name || 'your mountain'
@@ -10430,6 +12875,8 @@ class GameState {
     let playerPower = (fame + 20) * (1 + (d.warDefense || 0)) * (1 + this.sectShelfWar())   // + the arts on your library's shelf
     if (w.reinforced) playerPower *= 1 + WAR_REINFORCE_POWER_BONUS
     if (w.allyId)     playerPower *= 1 + WAR_ALLY_POWER_BONUS
+    const sworn = this._swornWar()                                      // 4.10: your sworn siblings come to fight
+    if (sworn.bonus) { playerPower *= 1 + sworn.bonus; this.addEvent({ text: NPC_ACTS_TEXT.swornWar.replace('{names}', sworn.names.join(', ')), type: 'special' }) }
     const odds = this.sectWarOdds()?.chance ?? null                   // (read before the roll: the Last war card shows it)
     const vs = this._warMightRatio(false)                               // 43c: the bound sect's real Might
     const enemyPower = (fame + 20) * vs.ratio * (0.6 + Math.random() * 0.8)
@@ -10488,6 +12935,7 @@ class GameState {
     bonus += MEMBER_WAR_PILL_BONUS * w.pillsGiven
     const beast = w.beastId && (s.beasts || []).find(b => b.id === w.beastId)
     if (beast) bonus += Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * beast.level)
+    bonus += this._swornWar().bonus                          // 4.10: your sworn siblings answer the call too
     const rankMult = SECT_RANKS[s.sect.rank]?.rewardMult || 1
     const shelf = this.sectShelfWar()                        // (a multiplier: the shelf alone never counts as taking part)
     return { bonus, rankMult, shelf, power: (1 + bonus * rankMult) * (1 + shelf) }
@@ -10504,7 +12952,7 @@ class GameState {
     const member = w?.side === 'member'
     const mv = this._warMightRatio(member), r = mv.ratio
     const odds = m => (m <= 0 ? 0 : (m / (0.8 * r)) * Math.log((m + 1.4 * r) / (m + 0.6 * r)))
-    const vs = { ratio: r, them: mv.them, us: mv.us, bound: !!mv.foe, foe: mv.foe ? this._wsRow(mv.foe) : null }
+    const vs = { ratio: r, them: mv.them, us: mv.us, bound: !!mv.foe, foe: mv.foe ? this._wsRow(mv.foe) : null, rival: mv.rival || null }   // 4.10b: your rival leads them
     if (member && s.sect?.id) {
       const { rankMult, power, shelf } = this.memberWarPower()
       const full = this.memberWarChestFull()
@@ -10515,6 +12963,8 @@ class GameState {
       add(`War chest ${Math.min(w.chestStones, full)}/${full}`, MEMBER_WAR_CHEST_MAX_BONUS * Math.min(1, w.chestStones / full))
       add(`Pills offered ×${w.pillsGiven}`, MEMBER_WAR_PILL_BONUS * w.pillsGiven)
       if (beast) add(`${beast.name} at the front`, Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * beast.level))
+      const sw = this._swornWar()
+      if (sw.bonus) add(`Sworn siblings at your side (${sw.names.length})`, sw.bonus)
       if (shelf) parts.push({ label: `Arts you gave the library (${s.sect.shelf.length})`, op: 'x', value: 1 + shelf })
       return { side: 'member', mult: power, chance: odds(power), parts, rankMult, vs,
                ifAnswered: w.answered ? null : odds((power / (1 + shelf) + MEMBER_WAR_ANSWER_BONUS * rankMult) * (1 + shelf)) }
@@ -10526,6 +12976,8 @@ class GameState {
       const shelf = this.sectShelfWar()
       if (shelf) { m *= 1 + shelf; parts.push({ label: `Arts in your sect library (${s.ownSect.library.length})`, op: 'x', value: 1 + shelf }) }
       if (w.reinforced) { m *= 1 + WAR_REINFORCE_POWER_BONUS; parts.push({ label: 'Reinforced', op: 'x', value: 1 + WAR_REINFORCE_POWER_BONUS }) }
+      const sw = this._swornWar()
+      if (sw.bonus) { m *= 1 + sw.bonus; parts.push({ label: `Sworn siblings at your side (${sw.names.length})`, op: 'x', value: 1 + sw.bonus }) }
       if (w.allyId) { m *= 1 + WAR_ALLY_POWER_BONUS; parts.push({ label: `${SECTS.find(x => x.id === w.allyId)?.name || 'Ally'} fights with you`, op: 'x', value: 1 + WAR_ALLY_POWER_BONUS }) }
       return { side: 'own', mult: m, chance: odds(m), parts, vs, arrayDamaged: !!d.arrayDamaged,
                reinforceCost: this._warReinforceCost(), allyCost: this._warAllyCost(),
@@ -10576,7 +13028,7 @@ class GameState {
       mainCount: this._mainRoster().length, branchCount: o.branches.length,
       totals: { stonesMin: disciples.reduce((a, x) => a + x.stonesMin, 0), herbsMin: disciples.reduce((a, x) => a + x.herbsMin, 0), qi: d.discipleQiFrac || 0 },
       hall: { level: o.hallLevel, cap: d.discipleCap || 0, nextCap: SECT_HALL_LEVELS[lvl]?.cap ?? null, cost: hallNext, ok: hallNext != null && s.spiritStones >= hallNext },
-      fame: { total: d.sectFame || 0, disciples: disciples.reduce((a, x) => a + x.fame, 0), buildings: 10 * totalLevels, hall: 25 * o.hallLevel, wins: 5 * (s.sectWar?.warVictories || 0), arena: s.arena?.sectFame || 0, razed: SECT_RAZE.fame * (o.razed?.length || 0) },   // 43f
+      fame: { total: d.sectFame || 0, disciples: disciples.reduce((a, x) => a + x.fame, 0), buildings: 10 * totalLevels, hall: 25 * o.hallLevel, wins: 5 * (s.sectWar?.warVictories || 0), arena: s.arena?.sectFame || 0, razed: SECT_RAZE.fame * (o.razed?.length || 0), ranked: this._rankFame() },   // 43f · 4.8
     }
   }
 
@@ -10999,7 +13451,10 @@ class GameState {
 
   addEvent(ev) {
     this._s.events = this._s.events || []
-    this._s.events.unshift({ ...ev, ts: Date.now() })
+    const w = this._s.world
+    if (ev.pid) { const p = w?.persons?.[ev.pid]; if (p) { p.fam = (p.fam || 0) + 1; p.seenY = Math.floor(w.year || 0) } }   // 4.5: a name in your log grows familiar
+    const who = this._namesIn(ev.text, ev.pid)   // 4.7: the names in the line, so the Events log can make them tappable
+    this._s.events.unshift({ ...ev, ...(who.length ? { who } : {}), ts: Date.now() })
     if (this._s.events.length > 25) this._s.events.pop()
     this._notify()
   }
@@ -11141,7 +13596,8 @@ function worldSectMight(r) {
   const M = WORLD_SECTS.might
   const levels = Object.values(r?.buildings || {}).reduce((a, v) => a + (v > 0 ? v : 0), 0)
   return Math.round(M.perLevel * levels + M.perHall * Math.max(0, (r?.hallLevel || 1) - 1) + M.perTier * (r?.tier || 1)
-    + M.discipleSqrt * Math.sqrt(Math.max(0, r?.disciples || 0)))
+    + M.discipleSqrt * Math.sqrt(Math.max(0, r?.disciples || 0))
+    + (typeof NPC_RANK !== 'undefined' ? NPC_RANK.sectMight : 0) * (r?.ranked || 0))   // 4.8: its people in the Heaven top 20
 }
 
 // Phase 43d: how much of its full blessing a sect can give, from how built-up it is (SECT_BLESSING). 1 = the

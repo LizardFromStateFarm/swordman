@@ -482,7 +482,7 @@ class SectView {
         <section class="fam-card sect"><div class="fc-head"><span class="fc-glyph" data-icon="hall"></span><div class="fc-id">
           <div class="fc-name">${h.esc(o.name)}</div>
           <div class="fc-sub">${o.takenOver ? `Taken from ${h.esc(o.takenOver.from)} in year ${o.takenOver.year}${o.takenOver.how === 'peaceful' ? ', who handed you the seal' : ''}. Its halls are yours to raise again.` : 'Your sect, founded by your own hand.'} Disciples cultivate beside you and share what they gather.</div>
-          <div class="fc-tags"><span class="fam-tag tone-gold"><b data-icon="crown"></b>Sect Leader</span><span class="fam-tag" title="Fame: disciples ${f.disciples} + halls ${f.buildings} + Sect Hall ${f.hall} + victories ${f.wins}${f.arena ? ` + the Arena ${f.arena}` : ''}. Fame draws stronger rivals, and more often.">Fame ${h.fmt(f.total)}</span></div></div></div>
+          <div class="fc-tags"><span class="fam-tag tone-gold"><b data-icon="crown"></b>Sect Leader</span><span class="fam-tag" title="Fame: disciples ${f.disciples} + halls ${f.buildings} + Sect Hall ${f.hall} + victories ${f.wins}${f.arena ? ` + the Arena ${f.arena}` : ''}${f.ranked ? ` + your place on the rankings ${f.ranked}` : ''}. Fame draws stronger rivals, and more often.">Fame ${h.fmt(f.total)}</span></div></div></div>
           <div class="sv-stats">
             ${this._stat('Spirit Stones', `${info.totals.stonesMin.toFixed(1)}<small>/min</small>`, 'gold')}
             ${this._stat('Spirit Herbs', `${info.totals.herbsMin.toFixed(1)}<small>/min</small>`, 'jade')}
@@ -508,7 +508,7 @@ class SectView {
 
   _fameSec(f) {
     const h = this.h
-    return this._sec('Fame', `<div class="sv-fame">${[['Disciples (talent × level)', f.disciples], ['Halls raised', f.buildings], ['Sect Hall', f.hall], ['Wars won', f.wins], ...(f.arena ? [['Your Arena wins', f.arena]] : [])].map(([k, v]) =>
+    return this._sec('Fame', `<div class="sv-fame">${[['Disciples (talent × level)', f.disciples], ['Halls raised', f.buildings], ['Sect Hall', f.hall], ['Wars won', f.wins], ...(f.arena ? [['Your Arena wins', f.arena]] : []), ...(f.ranked ? [['Your place on the rankings', f.ranked]] : [])].map(([k, v]) =>
       `<div class="sv-fx-row"><span>${k}</span><b>${h.fmt(v)}</b></div>`).join('')}</div>
       <div class="fk-note">Fame draws rivals: the more you have, the sooner the next one comes, and the richer the spoils.</div>`, h.fmt(f.total), 'sv-fame-sec')
   }
@@ -575,7 +575,7 @@ class SectView {
         <div class="sv-disc-y"><span class="up">+${(x.qi * 100).toFixed(2)}% Qi/s</span><span>${x.stonesMin.toFixed(2)} stones/min</span><span>${x.herbsMin.toFixed(2)} herbs/min</span>
           <span class="dim">${x.max ? 'fully grown' : `Lv.${x.d.level + 1} in ${h.fmtTime(x.eta)}`}</span></div></div>`).join('')
     const pool = info.candidates.map(x => `<div class="sv-card sv-cand">
-        <div class="sv-card-h"><span class="sv-card-n">${h.esc(x.c.name)}</span>${SV_STARS(x.c.talent)}</div>
+        <div class="sv-card-h"><span class="sv-card-n">${x.c.pid ? PersonCard.link(x.c.pid, x.c.name) + PersonCard.known(x.c.pid) : h.esc(x.c.name)}</span>${SV_STARS(x.c.talent)}</div>
         <div class="sv-gains"><span class="sv-gain up">+${(x.qi * 100).toFixed(2)}% Qi/s</span><span class="sv-gain">${x.stonesMin.toFixed(2)} stones/min</span><span class="sv-gain dim">at Lv.1, more as they grow</span></div>
         ${this._tile('recruit', 'disciple', 'Take <span class="sv-long">them </span>in', this._cost(x.cost, s.spiritStones), x.reason === 'full' ? 'Every hall seat is taken: raise the Sect Hall' : x.reason === 'stones' ? `${h.fmt(x.cost - Math.floor(s.spiritStones))} stones short` : '', 'wide sv-go', ` data-id="${h.esc(x.c.id)}"`)}</div>`).join('')
     return `<div class="fam-view sect-view sv-disc-view">
@@ -732,6 +732,7 @@ class SectView {
       <div class="sv-vs" title="Might: ${WORLD_SECTS.might.perLevel} per hall level + ${WORLD_SECTS.might.perHall} per Sect Hall level + ${WORLD_SECTS.might.perTier} per tier + its disciples">
         ${bar(h.esc(f.name), vs.them, 'red')}${bar(ours, vs.us, 'jade')}</div>
       <div class="ws-lead">Led by <b>${PersonCard.link(f.leaderId, f.leader)}</b>${f.temper ? `, ${h.esc(f.temper)}` : ''} · <span class="fam-tag tone-${f.stanceTone}" title="Their stance toward you (${f.stance} of ±100)">${h.esc(f.stanceLabel)} ${sgn(f.stance)}</span>${deed ? ` <span class="sv-foe-deed">They remember: ${h.esc(deed.text)}</span>` : ''}</div>
+      ${vs.rival ? `<div class="sv-rival">${Icon('duel')}<span>Your rival ${PersonCard.link(vs.rival.pid, vs.rival.name)} leads them into the field: their Might ×${vs.rival.mult.toFixed(2)} (more the further they stand above you).</span></div>` : ''}
       <div class="ws-halls">${halls}<div class="ws-hall hall"><span>Sect Hall</span><span class="ws-hlv">Lv.${f.hallLevel} <i>of ${f.maxHall}</i> · ${h.fmt(f.disciples)} disciples</span></div></div>
       <div class="fk-note">${this.gs.razeInfo?.()?.vow ? '<span class="down">You have vowed it: win, and their whole mountain burns.</span>' : 'Win, and one of their halls burns a level as they flee.'} Lose, and they raise one on your spoils.</div></section>`
   }

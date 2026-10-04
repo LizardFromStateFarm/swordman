@@ -189,7 +189,7 @@ class FamilyView {
         <div class="cand-grid">${c.candidates.map(p => {
           const pers = this._persona(p.personality)
           return `<div class="cand">
-            <div class="cand-name">${this._name(p)}</div>
+            <div class="cand-name">${PersonCard.known(p.id) ? PersonCard.link(p.id, Persons.fullName(p)) + ' ' + PersonCard.known(p.id) : this._name(p)}</div>
             <div class="cand-sub">${h.stageLabel(p.stageIndex)} · age ${this._age(s, p)}</div>
             <div class="cand-tags"><span class="fam-tag" title="${h.esc(pers?.blurb || '')}"><b data-icon="mask"></b>${h.esc(pers?.name || '')}</span><span class="fam-tag"><b data-icon="root"></b>${h.esc(h.latinOnly(p.root?.name || ''))}</span></div>
             ${pers ? `<div class="cand-blurb">${h.esc(pers.blurb)}</div>` : ''}

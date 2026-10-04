@@ -6,6 +6,21 @@
 const BANTER_LINES = {
   // ── generic ───────────────────────────────────────────────────────────────
   generic: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy} steps onto the road with a drawn blade. So be it.",
+      "Ambushed. {enemy}, you picked the wrong traveller.",
+      "{enemy} has been waiting for me. I should have taken the long way.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through again. The gap between us is a debt, and I pay my debts.",
+      "So {rival} climbs higher. Good. I was getting comfortable.",
+      "Word of {rival}'s breakthrough reached me before breakfast. It ruined breakfast.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}. The heavens keep a ledger, and my name is in it.",
+      "{board} names me {place}. Somewhere, someone is sharpening a sword because of it.",
+      "{place}. The world is watching now. I had better be worth watching.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} awakened the same morning I did. The road is shorter for some.",
       "Another name from my year, gone. I should burn incense, and then cultivate harder.",
@@ -161,6 +176,24 @@ const BANTER_LINES = {
   },
   // ── arrogant ──────────────────────────────────────────────────────────────
   arrogant: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy} dares to ambush ME? I will remember the name. Briefly.",
+      "An ambush. How flattering. {enemy} thinks I'm worth the trouble.",
+      "{enemy}, kneel now and I may let you crawl home.",
+      "Hiding in the trees like a bandit. {enemy}, you embarrass the whole road.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through? A puddle rising is still a puddle.",
+      "Let {rival} climb. The view from my shadow is all they will ever get.",
+      "{rival} has a new realm. I will have a new trophy.",
+      "Fine, {rival}. Climb. It makes the fall more instructive.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}? A clerical error. They mean first.",
+      "Only {place}. The scribes must have run out of ink before they reached the truth.",
+      "{board} finally notices me. The rest of the list should start apologising.",
+      "{place}. Let those above me enjoy the view while it lasts.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is dead? I always said they lacked the fortune to walk this path.",
       "One rival fewer. I find I am not as pleased as I expected.",
@@ -385,6 +418,24 @@ const BANTER_LINES = {
   },
   // ── coward ────────────────────────────────────────────────────────────────
   coward: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy}?! Why me? Why is it always me?",
+      "I'm going to run. I'm going to run very fast. Please, {enemy}, let me run.",
+      "My legs have already decided to flee, {enemy}. The rest of me is catching up.",
+      "Talk, {enemy}! We can talk! I have stones! Some stones!",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} is even stronger now. That's bad. That's very bad for me specifically.",
+      "Why does {rival} keep breaking through? Can't they rest? I'd rest.",
+      "{rival} broke through. I'm going to cultivate. Behind a locked door. For years.",
+      "If {rival} comes looking, I'm not here. I was never here.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}?! Take it off. Take my name off. People read that list.",
+      "Every genius hunter in the land can read, and now they all know where {place} lives.",
+      "{board} put me at {place}. I preferred being nobody. Nobody is never challenged.",
+      "{place}. Wonderful. I will be cultivating behind three locked doors from now on.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} died? They were braver than me. That is exactly what killed them.",
       "Note to self: whatever {classmate} did, do the opposite.",
@@ -609,6 +660,24 @@ const BANTER_LINES = {
   },
   // ── hotblood ──────────────────────────────────────────────────────────────
   hotblood: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy}! FINALLY, someone with guts! Come on!",
+      "An ambush? My blood's already boiling, {enemy}. Let's go!",
+      "{enemy}, you should've challenged me to my face. Now I'm annoyed AND excited.",
+      "Ha! {enemy} wants a fight on the road! I accept before you ask!",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through! YES! Now beating them will actually mean something!",
+      "Hear that? {rival} levelled up. My fists are already warm.",
+      "{rival}, you climb, I climb faster. That's the deal!",
+      "{rival} broke through and I'm sitting here? Unacceptable. Training. NOW.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}! Whoever stands above me, come down here and fight!",
+      "{place}! My blood is boiling. Give me the name of whoever is next.",
+      "The list says {place}. My fists say we are not done counting.",
+      "{board}, {place}! Ha! Now every challenger knows where to find me. Good.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate}! NO! Who did it?! Point me at them!",
       "{classmate} fell, so I will climb twice as hard! For both of us!",
@@ -833,6 +902,24 @@ const BANTER_LINES = {
   },
   // ── miser ─────────────────────────────────────────────────────────────────
   miser: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy} wants my purse. My purse wants to stay with me.",
+      "An ambush. Do you know what bandages cost, {enemy}? Do you?!",
+      "Every stone I own I earned. {enemy} will have to earn them too.",
+      "{enemy}... how much is this going to cost me. Roughly.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through. Do you know what that costs in pills? I do. To the stone.",
+      "Every realm {rival} gains is a price I'll have to match. Ruinous.",
+      "{rival} spends like a prince and climbs like one. I hate them on two counts.",
+      "I'll catch {rival}, and I'll do it cheaper. That's the real victory.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}. Does it pay? It should pay. Who do I invoice?",
+      "{place}. A good name is worth stones, if you know who to sell it to.",
+      "{board} rank {place}. Sects will bid for me now. Let them bid high.",
+      "Fame is a currency. {place} on {board} is a very full purse.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is dead, and they still owed me three spirit stones. Heaven owes me now.",
       "A funeral means gifts. I will bring incense. The cheap kind. They would understand.",
@@ -1057,6 +1144,24 @@ const BANTER_LINES = {
   },
   // ── glutton ───────────────────────────────────────────────────────────────
   glutton: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy} jumped me right before lunch. Unforgivable.",
+      "I was thinking about dumplings, {enemy}. Now I'm thinking about violence.",
+      "If I win this, {enemy}, I'm eating whatever you packed.",
+      "An ambush on an empty stomach. {enemy}, you monster.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through. I'm eating my feelings. They're dumplings.",
+      "Every time {rival} rises, I lose my appetite. Briefly.",
+      "{rival} is stronger now. I need a feast and a plan. Feast first.",
+      "They say {rival} fasted for that breakthrough. Fool. Food is fuel.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}! This calls for a banquet. Several banquets.",
+      "They ranked me {place}. I will celebrate with roast duck, and then another roast duck.",
+      "{board} says {place}. My stomach says dumplings. Both are right.",
+      "{place}! A rank like that deserves a feast the size of a mountain.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} never got to try the crab at the river inn. That is the real tragedy.",
       "I will eat a bowl of noodles in their honour. Two bowls. They had a big appetite.",
@@ -1282,6 +1387,24 @@ const BANTER_LINES = {
   },
   // ── poet ──────────────────────────────────────────────────────────────────
   poet: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy} rises from the reeds like a bad rhyme.",
+      "Steel at dusk, a stranger's hate. {enemy}, at least make it a good verse.",
+      "The road was quiet until {enemy} wrote themselves into my story.",
+      "Even an ambush has its meter. {enemy}, yours is clumsy.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} climbs another peak; I hear the echo in my own empty valley.",
+      "Two blades forged in one fire. {rival} is sharper today. Tomorrow, we'll see.",
+      "The heavens sang for {rival} tonight. I will write the reply in steel.",
+      "{rival} rises like the moon, and I am the tide that follows.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} upon {board}: a name written in ink that the wind cannot read aloud.",
+      "The heavens wrote my name at {place}. I will write them a poem in reply.",
+      "{board} is a river of names. Mine floats at {place}, for this one season.",
+      "{place}. Even the plum blossom does not ask where it ranks among the trees.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "The willow by the gate has lost a leaf, and its name was {classmate}.",
       "We awakened under one sky. Now the sky keeps only one of us. Weep, brush, weep.",
@@ -1508,6 +1631,24 @@ const BANTER_LINES = {
   },
   // ── stoic ─────────────────────────────────────────────────────────────────
   stoic: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy}. Breathe. Then answer.",
+      "An ambush is only a question. I will answer it.",
+      "{enemy} has chosen this. So will I.",
+      "The road brings what it brings. Today, {enemy}.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through. Noted. Back to work.",
+      "Another realm for {rival}. The road is the same length for both of us.",
+      "{rival} does not make me smaller by growing taller.",
+      "Let {rival} rise. The mountain does not hurry, and it is never late.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}. The list changes. The work does not.",
+      "{place}. Noted. Back to the cushion.",
+      "{board} measures what was. I cultivate what will be.",
+      "A place on a list is a shadow of the Dao. {place}. Continue.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is dead. Noted.",
       "The road takes who it takes. I will keep walking it.",
@@ -1734,6 +1875,24 @@ const BANTER_LINES = {
   },
   // ── demonking ─────────────────────────────────────────────────────────────
   demonking: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy} ambushes the one who will rule the world. Bold. Fatal.",
+      "Ah, {enemy}. You came to me. How considerate.",
+      "Kneel, {enemy}, or become an example. I'm fine with either.",
+      "An ambush? {enemy}, this is my road. Everything on it is mine.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} grows stronger. Good. A throne is cheap if no one worthy contests it.",
+      "Climb, {rival}. Every rung you gain is one more you will fall from.",
+      "{rival} broke through. Remind me to ruin their celebration.",
+      "When I rule the world, {rival} will hold my banner. Kneeling.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}. The world finally learns the name it will kneel to.",
+      "Let them rank me {place}. Every name above mine is a throat.",
+      "{board}, {place}. Write it in blood next year. It reads better.",
+      "{place}. Delightful. Now they know whom to fear, and they are still too slow to run.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} has fallen before I could make them my general. Unforgivable, Heaven!",
       "Death dares touch MY year? I will add it to my list of enemies.",
@@ -1960,6 +2119,24 @@ const BANTER_LINES = {
   },
   // ── paranoid ──────────────────────────────────────────────────────────────
   paranoid: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "I KNEW it. I knew {enemy} was out there. I always know.",
+      "{enemy}! Who sent you? Who else is in the trees?",
+      "Every road is a trap. {enemy} just proved it.",
+      "Don't look away. {enemy} wants me to look away. I won't.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through right as I was meditating. Coincidence? No such thing.",
+      "Who is feeding {rival} pills? Find out. Find out NOW.",
+      "{rival} is stronger. They'll come for me next. They always come.",
+      "That breakthrough was a message. {rival}, I received it.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}. Who submitted my name? Who is watching? Who benefits?",
+      "They ranked me {place}. A list is just a map for assassins.",
+      "{board} at {place}. Now every hunter knows my realm, my face, my road. Change the road.",
+      "{place}. Too high to hide, too low to be safe. Someone planned this.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} died. Officially. I want to see the body.",
       "Too convenient. {classmate} knew something. Now nobody can ask them.",
@@ -2186,6 +2363,24 @@ const BANTER_LINES = {
   },
   // ── grumpy ────────────────────────────────────────────────────────────────
   grumpy: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "In my day, {enemy}, bandits at least had manners.",
+      "An ambush. On my knees. On this road. Wonderful.",
+      "{enemy}, get off the path. I'm old and I'm in a hurry.",
+      "Another young fool with a blade. Fine, {enemy}. Fine.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through. In my day, you earned a realm. With suffering.",
+      "Youth these days. {rival} breaks through and expects applause.",
+      "{rival} again. Every year it's {rival} this, {rival} that.",
+      "Fine, {rival}, climb. My knees and I will get there. Eventually.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}. Now every brat with a sword will come knocking. Wonderful.",
+      "They ranked me {place}. Do they rank the noise, too? I win that.",
+      "{board}. {place}. Fine. Leave me alone now.",
+      "{place}. Congratulations to me. Now go away.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is dead. Young people, always in a hurry. Even to the grave.",
       "In my day we died properly, of old age, after complaining for centuries.",
@@ -2412,6 +2607,24 @@ const BANTER_LINES = {
   },
   // ── lazy ──────────────────────────────────────────────────────────────────
   lazy: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy}, could you ambush me later? I was nearly asleep.",
+      "Fighting is so much effort. {enemy}, is this really necessary?",
+      "An ambush. I'll handle it. Eventually. Right now, apparently.",
+      "{enemy} woke me up for this. Rude.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through. Ugh. Now I have to try.",
+      "If {rival} would just nap more, we'd both be happier.",
+      "{rival} works so hard. It's honestly exhausting to hear about.",
+      "Wake me when {rival} stops breaking through. ...Actually, wake me now. Fine.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}? I did not even try. Imagine if I tried. Actually, do not.",
+      "{place}. That is high enough to nap on.",
+      "{board} says {place}. If I close my eyes, it still says {place}. Perfect.",
+      "{place}. Someone else can climb the rest. I will supervise.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} worked so hard. And now they get to rest forever. Hm.",
       "Rest well, {classmate}. You earned the nap I keep stealing.",
@@ -2638,6 +2851,24 @@ const BANTER_LINES = {
   },
   // ── niceguy ───────────────────────────────────────────────────────────────
   niceguy: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy}, hey, hey. Whatever this is, we can sort it out.",
+      "I don't want to hurt you, {enemy}. Please don't make me.",
+      "Are you alright, {enemy}? People don't ambush strangers when things are going well.",
+      "Put the blade down, {enemy}. I'll buy you tea. Honest.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through! Honestly? Good for them. Now I gotta catch up.",
+      "I should send {rival} a gift. Then beat them. In that order.",
+      "Proud of {rival}, weirdly. Doesn't mean I'm letting them win.",
+      "{rival}'s doing great. I'm doing... I'm doing my best!",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}! I hope everyone below me is proud of how far they came too.",
+      "{place}! I should send gifts to my teachers. And my rivals. Especially my rivals.",
+      "{board} put me at {place}. I will try to be worthy of it, and kind with it.",
+      "{place}. A good name is a promise. I mean to keep it.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is gone. I hope someone held their hand at the end.",
       "I will write to their family. They should know {classmate} was kind to me once.",
@@ -2862,6 +3093,24 @@ const BANTER_LINES = {
   },
   // ── psycho ────────────────────────────────────────────────────────────────
   psycho: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy} came to play. Hehe. I love when they come to play.",
+      "Oh, {enemy}, you're shaking. Don't. It ruins the fun.",
+      "An ambush! For me? {enemy}, you shouldn't have. Really. You shouldn't have.",
+      "I'm going to remember your face, {enemy}. For a very short time.",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through. Hehe. Their blood will taste so much stronger now.",
+      "Grow, {rival}. Grow nice and strong for me.",
+      "{rival} is ripening. I can be patient. I can be so, so patient.",
+      "Every realm {rival} climbs is a longer scream when they fall.",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}. Lovely. A list of everyone I have not met yet.",
+      "They ranked me {place}. I wonder how fast the names above me can run.",
+      "{board}, {place}. Let us thin the list a little before next year.",
+      "{place}! So many challengers coming. I hope they bring friends.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} died without me? Rude. Hehe.",
       "Oh. Somebody else got to {classmate} first. I'm a little jealous.",
@@ -3087,6 +3336,24 @@ const BANTER_LINES = {
   },
   // ── gremlin ───────────────────────────────────────────────────────────────
   gremlin: {
+    ambushed: [   // Phase 28 (4.9): someone you met on the road attacks you ({enemy})
+      "{enemy} jumped out of a bush. I respect the bush. Not {enemy}.",
+      "Ambush! Ambush is just 'am bush'. {enemy} IS bush.",
+      "{enemy}, I have a spoon and no fear. Choose wisely.",
+      "Beans? No? Then why are we fighting, {enemy}?",
+    ],
+    rival_rise: [   // Phase 28 (4.10b): your rival broke into a new realm ({rival})
+      "{rival} broke through. I broke a teapot. We are not the same.",
+      "{rival} up a realm. Me up a tree. Both climbing. Equal.",
+      "Rival-rise! Rival-RISE! Like bread! {rival} is bread!",
+      "{rival} has more Dao now. I have more beans. Trade?",
+    ],
+    rank_rise: [   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+      "{place} on {board}! Time to scribble mustaches on everyone above me.",
+      "They ranked me {place}. I am going to steal the ranking stone and ring it like a bell.",
+      "{board} says {place}. I say we hold a party in the scribes' library. Uninvited.",
+      "{place}! Quick, someone carve my name bigger than everyone else's.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} has gone to the big soup. Borgin.",
       "Dead. Like a turnip. A wise turnip. Gorgin.",

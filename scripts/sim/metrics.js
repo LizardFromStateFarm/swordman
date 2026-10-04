@@ -38,6 +38,7 @@ class Recorder {
     this._lastSlow = -Infinity
     this._lastDeathTs = null         // Phase 23A/B: dedupe s.lastReincarnation across ticks
     this.deathsByCause = {}
+    this.roadDeaths = {}
     this.lifeLengths = []            // Phase 30 (M2 task 2.3): [{cause, openHours, ageAtDeath, married, children, ...}]
     this.fightTurns = { beast: { n: 0, sum: 0 }, person: { n: 0, sum: 0 } }   // arts.md fight-length target (4–8 turns)
   }
@@ -92,6 +93,7 @@ class Recorder {
       this._lastDeathTs = s.lastReincarnation.ts
       const lr = s.lastReincarnation
       this.deathsByCause[lr.cause] = (this.deathsByCause[lr.cause] || 0) + 1
+      if (lr.roadDeath) { const k = `${lr.roadDeath.kind}:${lr.roadDeath.answer}@${lr.stageAtDeath}`; this.roadDeaths[k] = (this.roadDeaths[k] || 0) + 1 }   // final QA: which card killed the life, at which stage
       if (lr.openHours != null) this.lifeLengths.push({ cause: lr.cause, openHours: lr.openHours, ageAtDeath: lr.ageAtDeath,
         // Phase 16-lite (M2 task 2.5): family per life
         married: !!lr.married, children: lr.children || 0, adultChildren: lr.adultChildren || 0, spouseMaxStage: lr.spouseMaxStage || 0,
@@ -360,6 +362,18 @@ class Recorder {
   }
 
   // Called by run.js around a close→reopen (real save + initSlot load).
+  // The first person (and fields) that differ between two persons maps — names the culprit in a roundtrip violation.
+  _personsDiff(a = {}, b = {}) {
+    for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) {
+      const x = a[id], y = b[id]
+      if (!x || !y) return `${id} ${x ? 'lost' : 'added'} (${(x || y).role || '?'})`
+      if (JSON.stringify(x) === JSON.stringify(y)) continue
+      const keys = [...new Set([...Object.keys(x), ...Object.keys(y)])].filter(k => JSON.stringify(x[k]) !== JSON.stringify(y[k]))
+      return `${id} (${x.role || '?'}): ${keys.map(k => `${k} ${JSON.stringify(x[k])?.slice(0, 60)} → ${JSON.stringify(y[k])?.slice(0, 60)}`).join('; ')}`
+    }
+    return ''
+  }
+
   checkSaveRoundtrip(before, after) {
     this.saveChecks++
     const keys = ['stageIndex', 'name', 'techniques', 'equipped', 'root']
@@ -367,8 +381,17 @@ class Recorder {
     if (before.beasts.length !== after.beasts.length) this.violate('save_roundtrip_beasts', `${before.beasts.length} → ${after.beasts.length}`)
     // 2.6a: the world (clans, persons, past lives, clock) must survive save → load unchanged (nextId may move:
     // an offline expedition can roll an encounter, which mints a person id).
-    for (const k of ['year', 'clans', 'persons', 'pastLives', 'playerClanId', 'playerLineId'])
-      if (JSON.stringify(before.world?.[k]) !== JSON.stringify(after.world?.[k])) this.violate('save_roundtrip_world', k)
+    // (4.8 QA: the people an offline return just cast onto a card — a road card or a family stranger — were touched by
+    // that encounter on load, not lost by the save; they are left out of the persons comparison.)
+    const met = new Set([...(after.road?.cards || []).map(c => c.pid), ...(after.road?.waiting || []).map(x => x.pid),
+      ...(after.family?.encounters || []).map(e => e.person?.id).filter(Boolean)])
+    // (final QA: a road *brush* — met, not queued — stamps p.roadY with no card; anyone whose roadY moved was met on load.)
+    for (const [id, p] of Object.entries(after.world?.persons || {})) if (p.roadY !== before.world?.persons?.[id]?.roadY) met.add(id)
+    const strip = ps => ps && Object.fromEntries(Object.entries(ps).filter(([id]) => !met.has(id) || before.road?.cards?.some(c => c.pid === id)))
+    for (const k of ['year', 'clans', 'persons', 'pastLives', 'playerClanId', 'playerLineId']) {
+      const a = k === 'persons' ? strip(before.world?.persons) : before.world?.[k], b = k === 'persons' ? strip(after.world?.persons) : after.world?.[k]
+      if (JSON.stringify(a) !== JSON.stringify(b)) this.violate('save_roundtrip_world', k + (k === 'persons' ? ' ' + this._personsDiff(a, b) : ''))
+    }
     if (before.sect.id !== after.sect.id || before.ownSect.founded !== after.ownSect.founded) this.violate('save_roundtrip_sect', '')
     if (after.qi < before.qi - 1e-6 && after.stageIndex === before.stageIndex) this.violate('offline_lost_qi', `${before.qi} → ${after.qi}`)
     // Phase 30 (M2 task 2.3): age/gameYear never advance while closed (pillar 4) — exact equality, since
@@ -432,7 +455,7 @@ class Recorder {
       // Cumulative across the whole run (not final s.stats, which is per-life and resets on reincarnation).
       lineage: { generation: s.generation, deaths: s.deaths, bloodlineQuality: Math.round(s.bloodlineQuality || 0),
                  ascensionAttempts: this.actions.ascend || 0, ascensions: this.milestones.first_ascend_success != null ? 1 : 0,
-                 deathsByCause: this.deathsByCause },
+                 deathsByCause: this.deathsByCause, roadDeaths: this.roadDeaths },
       // Phase 30 (M2 task 2.3): per-life length. Heir kind/marriages/children/Merit/legacies land 2.5-2.7.
       lifeLoop: { lifeLengths: this.lifeLengths,
                   livesPer100h: +(this.lifeLengths.length / Math.max(1e-9, this.t / 3600) * 100).toFixed(1) },
@@ -444,7 +467,12 @@ class Recorder {
         // 4.6: each band's mean over the run vs its target + the controller's work
         bands: this.bands && this.D.NPC_WORLD ? this.D.NPC_WORLD.bands.map((b, i) => ({ id: b.id, mean: +(this.bands.sum[i] / this.bands.n).toFixed(1), target: b.target })) : null,
         refill: { waves: s.world?.lifeStats?.waves || 0, wanderers: s.world?.lifeStats?.wanderers || 0, hidden: s.world?.lifeStats?.hidden || 0, seized: s.world?.lifeStats?.seized || 0 },
-        chron: (s.world?.chron || []).length } })(),
+        chron: (s.world?.chron || []).length,
+        // 4.4 + 4.5: the heavy tier's deeds + known-first casting (new names per open hour vs the throttle)
+        deeds: { ...(s.world?.lifeStats?.deeds || {}) }, heavy: Object.values(s.world?.persons || {}).filter(p => p.alive !== false && p.tier === 'heavy').length,
+        cast: { known: s.world?.cast?.knownTotal || 0, fresh: s.world?.cast?.freshTotal || 0, openHours: +(this.openSec / 3600).toFixed(2) },
+        road: s.world?.roadStats ? JSON.parse(JSON.stringify(s.world.roadStats)) : null,   // 4.9: encounters
+        rivals: (s.world?.rivals || []).map(r => ({ life: r.life, heat: r.heat, meets: r.meets, wins: r.wins, losses: r.losses, end: r.end?.k || null, house: !!r.inherited })) } })(),   // 4.10b: every life's rivalry
       health: { violations: this.violations, errors: this.errors, saveRoundtrips: this.saveChecks },
       ...extra,
     }

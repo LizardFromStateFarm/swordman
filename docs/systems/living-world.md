@@ -2,12 +2,13 @@
 _Covers (planned): renderer/engine/game-state.js (world persons, sim, encounters, rival) · renderer/engine/persons.js ·
 assets/data/world-population.js (new) · assets/data/npc-lives.js (new: lifespans, goals, encounter + memory tables) ·
 renderer/game/world-people.js (new: World → People + the person card) · renderer/game/encounter-view.js (new) ·
-scripts/sim/checks/living-world.js (new) · renderer/game/chronicle-view.js (4.6) · Phase: 28 (M4 tasks 4.1–4.7, 4.9–4.11, 4.10b) · Updated: 2026-10-03_
+scripts/sim/checks/living-world.js (new) · renderer/game/chronicle-view.js (4.6) · Phase: 28 (M4 tasks 4.1–4.11, 4.10b) · renderer/game/rankings-view.js (4.8) · Updated: 2026-10-04_
 
-**Status: 4.2 + 4.3 + 4.6 built (2026-10-03).** Spec reviewed and approved by the user on 2026-10-03 (§13). 4.2 = the one
+**Status: 4.2 + 4.3 + 4.6 + 4.4/4.5 + 4.7 + 4.9 + 4.10 built (2026-10-03).** Spec reviewed and approved by the user on 2026-10-03 (§13). 4.2 = the one
 registry + the person card (see "4.2 as built"). 4.3 = the light world sim: lives, deaths, the pre-existing world, your
 class and World → Class (see "4.3 as built"). 4.6 = the replacement controller + the merged World → Chronicle (see
-"4.6 as built"). Next: 4.4 + 4.5 heavy AI + tiers.
+"4.6 as built"). 4.4 + 4.5 = the heavy tier, NPC goals and known-first casting (see "4.4 + 4.5 as built"). 4.7 = World → People, pins
+and tappable log names (see "4.7 as built"). 4.9 = encounters and the "Met on the road" queue (see "4.9 as built"). 4.10 = memory, reputation, rumours and the person card's deeds (see "4.10 as built"). 4.10b = Your Rival (see "4.10b as built"). 4.8 = the Heavenly Rankings (built 2026-10-04 ahead of 4.11 by the user's call; see "4.8 Heavenly Rankings" + "4.8 as built"). 4.11 = the perf pass (see "4.11 as built"). Next: the final QA & Balance pass.
 PLAN.md → Phase 28 is the original design (2026-09-25). This doc is the build spec. It updates Phase 28 for what
 was built since: Phase 30's clock, the world sects of Phase 43, the lineage sects of Phase 46, the game ending at
 Immortality (Phase 47), Phase 14 bodies, Phase 42 arts, and the person fights on the battle page (A6-3a).
@@ -575,3 +576,562 @@ the player answers people in 4.9/4.10.
 - A hidden master who founds a sect needs room under `WORLD_SECTS.maxAlive` (12). In a full world they seize or wander.
 - Not yet built: clickable names in the Events log (4.7) and NPC goals (4.4/4.5). Today an old monster's whole agency is
   the moment of waking.
+
+## 4.4 + 4.5 as built (2026-10-03): the heavy tier, NPC goals, known-first casting
+
+**User picks (assessment):** the **full goal set** (NPCs may kill each other, betray, split and found sects on their own)
+and known-first casting in **all four** systems (suitors + courtship, arena rosters, road strangers, own-sect recruits).
+
+**Depth.**
+- **Memory:** `p.ties` (≤ 8, −100..100: sworn 100, a blood feud ≤ −80), `p.feud { pid, why, y }` (one avenger per
+  killing), `p.killedBy`, `p.act`.
+- **Choices:** none for the player. Every goal is the NPC's own; you choose whether to court, recruit or fight whoever
+  is cast, as before.
+- **Hooks:**
+  - Sects: joins and defections; a strong wanderer founds a sect; an elder betrays their master and takes the seat,
+    dies, or splits the sect.
+  - Family: suitors and courtship candidates can be classmates.
+  - Arena: a classmate can hold a ring.
+  - Own sect: a wave's youth or an unsworn classmate is offered at your gate and becomes that disciple.
+  - The road: lover and recipe strangers are real people.
+  - The Chronicle (deeds), the log (people you know), toasts (big deeds of your class and familiar faces).
+- **Drama:** a classmate slain in a blood duel; their child swears the feud and dies trying, or avenges them; two
+  Chosen swear brotherhood; an elder overthrows your sect's master (a negative log line + toast).
+
+**Data** (`npc-lives.js`):
+- `NPC_HEAVY`:
+  - heavyMax 150, cohortReserve 0.4, relevance weights, 4 seasons a year;
+  - 12 goals with bases + activity lengths, temper multipliers (`temperGoals`), ambitious tempers;
+  - morality bends dark goals (duel, betray, revenge) and light ones (help, swear);
+  - seclusion pace × 1.3, the roamers' meetings, blood-duel odds, the `bloodTie` −80, the high-realm duel damper,
+    feud fading (50 y), betrayal odds and the split share.
+- `NPC_CAST`: known chance 0.75 (0.95 once throttled), new names 5 + stage/4 (≤ 10) per open hour, weights, the
+  recruit age.
+- `NPC_DEED_TEXT` and `NPC_ACT_TEXT` hold the deed lines and the card's "Now:" lines.
+
+**State.**
+- World: `seasonAt`, `tiersYear`, `cast { hour, fresh, known, freshTotal, knownTotal, hours }`, `castSeq`, and
+  `lifeStats.deeds`.
+- Person: `tier`, `act`, `ties`, `feud`, `killedBy`.
+- A recruit-pool entry may carry `pid`, and so may the disciple made from it.
+- `_ensurePhase28Fields` sets `seasonAt` without any catch-up.
+
+**Rules.**
+- `_assignTiers(yr)` runs yearly in `_lifeStep`. Relevance = familiarity + |rel| + this life's class + Chosen + your
+  sect + a seat + a feud + ties + a pin. This life's class takes its reserved share first. Clan rosters and
+  family / arena / own-sect people are never heavy, and ties to the dead fade.
+- `_tickSeasons()` runs on each new game season while open (catch-up ≤ 8 seasons). `_worldYears` lives 4 seasons a
+  year quietly in the generation jump.
+- `_heavyStep(si)`: every heavy person whose activity has run out picks a goal by `_weightedRng` (seeded
+  `wsRng(id|season|goal)`):
+  - seclude (pace × 1.3; injured × 2);
+  - roam (one of the 3 highest places they may enter; roamers there meet: a gulf in morality or a psycho makes a
+    grudge, else a friendship; a hot-head may duel on the spot);
+  - mission (a little progress);
+  - court (the closest-tied single who fits; 45% weds);
+  - duel (the hated first, else someone of another sect within 2 stages; to the death on a deep hatred, 4%, or 40%
+    for a psycho; × 0.3 urge from Nascent Soul);
+  - revenge (to the death, or bide in seclusion if the target is 3+ stages above);
+  - join (your sect × 3);
+  - leave;
+  - found (Core Formation+, room under maxAlive);
+  - betray (an elder within a stage of their master: win → seated, the master slain; else die or split);
+  - help (halves a friend's injury);
+  - swear (a mutual tie ≥ 60 → 100).
+- `_npcSlain(v, killer)`: v dies (`_npcDies`, seats handled) and every kin + sworn sibling hates the killer. **One**
+  of them (the closest: a child, a spouse, a parent, a sibling, a sworn sibling) takes up `feud`. A first cut that
+  spread the feud to all kin cascaded into a bloodbath (75% of deaths) and was replaced.
+- `_deed()`: the Chronicle (k `deed`) when someone in it is known to you or it is notable; your log when you know them
+  (a log line also raises familiarity: `addEvent` with a pid → `fam + 1`); a toast for big deeds of your class or a
+  face you've seen 3+ times.
+- **Casting** (`_castKnown(kind, { stage, age, exclude })`):
+  - A seeded stream (`castSeq`), so casting never shifts Math.random.
+  - Candidates are world-owned and living, not a clan's, not your kin or children, not busy anywhere else, not a
+    master or elder. Suitors must be single; recruits unsworn and below Foundation.
+  - Weighted by familiarity + class + Chosen.
+  - `_castCopy` gives the owner a copy and marks the registry person's owner + role at once.
+  - Call sites: `_rollStranger` (suitors, courtship, both road strangers; ids already offered are excluded),
+    `_arenaEnsureRosters`, `_genRecruit(exclude, cast)` (only the gate's pool casts). `recruitDisciple` keeps the pid.
+- `knownFace(pid)` returns "Your classmate" / "Old classmate" / "Known face" (fam ≥ 2) / null.
+- `_weightedRng` now ignores missing / NaN / ≤ 0 weights. A hidden master's ambitious doubling of an absent "found"
+  weight gave NaN and silently forced a founding (found by a check).
+
+**UI.**
+- The person card's **"Their life now"** (`personInfo` → `now`, `nowPid`, `nowName`, `ties`, `feud`, `killedBy`): the
+  activity line (names tappable), the feud with who and why, the ties as toned words + tappable names, and "Slain by"
+  on the dead.
+- `PersonCard.known(pid)` is the eye pill, used on the proposal overlay, courtship candidates, road encounter cards
+  (game.js), arena roster rows and the gate's recruits (now tappable names).
+- Also fixed: the proposal + road encounter cards printed a root's CJK name (now `latinOnly`).
+
+**Tuning (measured).**
+- `probe-world-lives.js 1200` on 3 seeds (with the seasons):
+  - every band within −13…+5%;
+  - deaths: duel ~20%, feud ~18%, seat struggles ~16%, old age 5–6%;
+  - per 1,200 years about 2,700 duels (440 to the death), 270–340 revenges, 115–165 betrayals, 1,900 sworn
+    brotherhoods, 1,600 heavy weddings;
+  - hidden-master seizures fall to ~1 per 50 years (`hiddenFates` seize 2 / found 2 / wander 6; `thinBoost` 1.5,
+    `hiddenChance` 0.7, `hiddenGap` 5, since the strong now die in duels and betrayals too);
+  - ~6.5 ms per game year in all, a season ≈ 1.3 ms.
+- `sim:quick`: healthy; 150 heavy; 59% of casts are known faces; 7.8 new names per open hour (cap 5–10).
+
+**Tests.**
+- `checks/heavy-ai.js` (new, 35): tiers + the reservation, no Math.random, step cost, 120 years of goals, ties, sworn
+  brotherhood, old age < 25%, duels + feuds < 50%, no dead seat; one avenger, cards for the feud and the killer, a
+  revenge to the death; a betrayal; "Now"; casting share, no kin, single, copies, distinct suitors, the classmate
+  marker, the throttle, a recruit who is that person, arena rosters, the counters; seasons frozen while closed.
+- `living-world.js`: the lineage-disciple check rests the heavy tier (a disciple may now leave of their own accord);
+  `arena.js` accepts cast duelists' registry ids.
+- Smoke: `scenarios/heavy.js` (new: card + proposal + arena + recruits, 4 modes); `family.js` updated for Phase 14's
+  fifth child action.
+- The report's "Heavy tier + casting" line.
+
+**Gotchas.**
+- A cast duelist is arena-owned while on a roster: the world sim skips them there (they don't age or grow in the ring).
+- NPC↔NPC kills by the heavy tier don't feed the class's "fallen" attention count (they reach your log + Chronicle as
+  deeds).
+- Not yet: any of this reaching **you** — NPCs never seek you out or remember you here (encounters 4.9, memory 4.10,
+  rival 4.10b).
+
+---
+
+## 4.7 as built (2026-10-03): World → People, pins, tappable log names
+
+**What the player gets.**
+- **世 World → People** (`renderer/game/people-view.js`, pane `#tab-people`, the second World sub-tab): everyone you know.
+  - A search box (names + sect names), a sort (Who matters most · Highest realm · Recently seen · Name), and filter
+    chips with counts: All · Pinned · Classmates · Kin · Sect · Grudges · Fallen. Every filter but Pinned + Fallen
+    lists the living; empty chips hide (All + Pinned always show).
+  - A row: the pin star, the name, how they feel about you (only when `rel` ≠ 0, with a heart / broken icon so it
+    isn't colour alone), tie chips (Your spouse / child / parent / clan, Sworn against you, Your disciple / branch
+    head, Your sect master / elder / Fellow disciple, Your classmate, Classmate life N, Arena duelist, Known face;
+    plus Sect master/elder, Chosen, Feud, Healing, Final seclusion), realm · age · sect (or cause · year for the
+    fallen), and the latest line the world wrote of them (Chronicle first, then your log), with a gold dot when it's
+    fresh news of someone pinned.
+  - Tapping a row opens the **person card inline**: beside the list when the pane is ≥ 560px (Desktop; the row stays
+    marked, a "Close" link), in place of the list with an "All people" link when narrow (Overlay, Expanded, phone).
+    Names inside the inline card step through in place (`data-pc-inline` → `PersonCard.onInline`) with a Back
+    link; its "go" buttons work as in the popover.
+  - The shell (title, search, sort) is drawn once; a state change redraws only `.pp-body`, so typing keeps focus.
+- **Pins (★).** The star on a row or in any person card's header (popover too). The player's own choice, capped at
+  `WORLD_PEOPLE.pinMax` (12; a toast says why when full). A pinned person is **heavy at once** (the relevance weight
+  `pin: 1000` already kept them heavy yearly), so their deeds reach your log + the Chronicle, and they are **never
+  pruned** after death (`_pruneDead` already kept `p.pin`). Pins live on the registry person, so they carry across lives.
+- **News of the pinned.** `peopleNews()` counts Chronicle lines naming a pinned person since `w.peopleSeen`; an idle
+  attention item ("News of someone you follow", icon `star`) points at People. Entering the view (nav onShow →
+  `PeopleView.enter()`) takes the mark once, so the rows' fresh dots stay while you look.
+- **Tappable log names.** `addEvent` stores `ev.who = [{ pid, n }]` (≤ `logNamesMax` 3): the event's own pid first,
+  then any registry person whose full name (two words) appears in the text. The Events log renders those names as
+  `PersonCard.link` (longest name first, marks so links never nest). All 221 `addEvent` sites get it for free.
+- **World → Class:** the whole row now opens the card (was only the name).
+- New icons: `star` (filled via `.on`), `search`.
+
+**State.** `p.seenY` (the year you last saw their name: card opened, log line, cast to you; drives "Recently seen") ·
+`w.peopleSeen` (the People news mark; migrated to `w.chronSeq` in `_ensurePhase28Fields`, so an old save's history isn't
+news) · `ev.who` on events. `p.pin` already existed (relevance + pruning) and now has its setter.
+
+**API (game-state.js).** `knownPeople({ q, filter, sort, limit, since })` → `{ rows, counts, shown, matched, pins, pinMax,
+year }` (~0.2 ms at 160 people) · `togglePin(pid)` → `{ ok, pinned }` or `{ ok: false, reason: 'full' | 'unknown' }` ·
+`peopleNews()` · `notePeopleSeen()` (returns the previous mark) · internal `_namesIn`, `_tieToYou`, `_inPeople`,
+`_peopleCtx`. Who is listed (`_inPeople`): pinned, any cohort, a familiar name (`fam` > 0), any `rel`, your clan, family
+or arena owned, your own sect, your joined sect, anyone sworn against you, your parents. Never you, never a past life.
+
+**Data.** `WORLD_PEOPLE.pinMax` 12 · `peoplePage` 60 (a "Show more" button pages) · `logNamesMax` 3.
+
+**Tests.** `checks/living-world.js` +20 (98 → 118, see qa-sim.md). Smoke `scenarios/people.js` (new; Overlay / Expanded /
+Desktop / phone: the attention item, list, fresh dot, pin count, Grudges, search keeps focus through a redraw, the
+inline card wide + narrow, step-through + Back, unpin + pin from the card, a log name → popover card; no sideways
+scroll) · `class.js`'s overflow helper now names the culprit.
+
+**Gotchas.**
+- (4.10b added the Rivals filter.) Grudges covers `rel` < 0 and anyone sworn against you.
+- A log line names only people already in the registry when it's written (a child born that instant is mirrored on
+  the next save, so its first line isn't tappable).
+- The rel words appear only once `rel` moves, and `rel` toward you only moves from 4.10 (memory + interactions).
+
+---
+
+## 4.9 as built (2026-10-03): encounters — "Met on the road"
+
+**User picks (assessment):** the full 4.9 as specced; answers **write rel + a memory line now** (4.10 adds rumours,
+honour/infamy, clan grudges and card actions on top); the **stance lives on the queue itself** (not in ⚙).
+
+**What the player gets.**
+- **Roam → Explore → "Met on the road"** (`renderer/game/encounter-view.js`), at the top of Explore: a count (`n/6`,
+  counting the old lover / formula strangers, which now sit in the same list), **Your bearing** (Wary · Courteous · Bold ·
+  Ruthless, with a one-line hint and "it only marks an answer; you always choose"), compact rows (icon, title, name ·
+  place · years ago, a kind tag; ambush / vengeance rows red), one row open into the full card: the name (tappable →
+  person card) + known-face pill + how they feel about you (word + heart/broken icon), realm · temper · character, the
+  scene, **why they came** ("They are sworn against you: you robbed them as they lay bleeding."), and the answers with
+  odds, costs and lock reasons. The bearing's answer carries a gold "your bearing" mark. A one-time hint (once per slot)
+  sits under the list. A line naming "N more are looking for you" when people wait.
+- **Seven card kinds** (the NPC's intent): ambush (fight · flee · hand over stones), challenge (spar · to the death ·
+  decline), rescue (help · walk on · rob them), contest a find (split · fight for it · let them have it), travel together
+  (accept · accept then take their share · go alone), a promising youth (take into your sect · point to a sect · pass),
+  an old face (talk · spar · ask a favour). At your gate (a founder, yearly): challenge, youth, old face, ambush.
+- Fights open the **battle page** as fight kind `road`, titled by the card ("An Ambush on the Road", "A Fight for the
+  Find"…); the end step's raise/humble/spare/finish text speaks of the road, and the result line is the card's ending.
+- **Attention:** "X is upon you" (urgent, for an ambush / avenger) or "N met on the road"; the Roam tab's dot follows.
+- **Banter:** a new trigger `ambushed` (`{enemy}`), 4 lines × 14 tempers + 3 generic. Other cards stay quiet so the
+  expedition's own line isn't replaced.
+
+**Rules (game-state.js).**
+- `_roadRoll(source, loc, place)` from `resolveExpedition` (after the lover/formula rolls), `resolveSectMission` and the
+  yearly tick (a founder's gate). Chance `NPC_ENC.chance` 18% / 15% / 10%, at most `perHour` 4 cards per open hour.
+- **Avengers first:** a living person whose `feud.pid` is you (an `_npcSlain` avenger after you killed their kin, or
+  someone you robbed / betrayed / shamed) finds you with `avengerChance` 35%, outside the hour cap but at most
+  `avengersPerHour` 1, not again within `avengerCooldown` 8 years. Their card is a **lethal ambush**.
+- **Who** (`_roadCast`): a heavy roamer at that place (`roamerShare` 60%), on a mission someone of your own sect, else
+  known-first casting (`_castKnown`, 18% a youth for a recruit), else a fresh person minted into the registry. Never
+  someone already on a card, a master, or a face seen within `cooldownYears` 10 (unless |rel| ≥ 60).
+- **Intent** (`_roadIntent`): base × temper (`NPC_ENC.temper`) × reads: ambush only when morality < 20 or rel ≤ −30,
+  × infamy (low karma) × hate × the power gap; warm rel doubles team-up / old face; the gate never rescues, contests or
+  teams up. An ambush is lethal for an avenger, rel ≤ −60 or a psycho; a challenge offers blood when rel ≤ −40.
+- **Queue:** `s.road.cards` (per life) + `family.encounters` ≤ `queueMax` 6. Full: a notable person (avenger or
+  |rel| ≥ 60) **waits** (`s.road.waiting` ≤ 3, told in the log) and takes the next free slot; anyone else is a **brush**
+  (a log line, no choice owed). Nothing is ever answered for you; nothing expires.
+- **On a card** a person has `p.roadCard`: they skip their seasonal goals (`_heavyStep`), casting skips them, and if they
+  die anyway (`_killPerson` → `_roadForget`) the card goes with a log line ("X will not keep the meeting: …").
+- **Answers** (`answerRoadCard(id, answer)`): every one runs `_roadRemember(p, key, place)` → `p.rel` ± (`NPC_ENC.rel`)
+  and a line in `p.mem` (≤ 6, their own words, shown on the person card). Robbing / betraying (and humbling a proud heart)
+  sets `p.feud = { pid: you, why }` → they come back as an avenger. Rescue costs Health (more where the place outclasses
+  you), karma +3, and may bring a gift (one of their arts, or stones). Youth invite = a free disciple who IS that person
+  (`pid` kept, `owner:'sect'`); point = they join your sect (Contribution +15) or the strongest world sect.
+- **Road fights** (`_roadFightOutcome`): a win to the death → `_npcSlain(opp, you)` (their kin swear vengeance on you),
+  no karma for killing an ambusher, otherwise `CHALLENGE_KARMA_DEATH`; a win that lets them live → spared / raised /
+  humbled memory; a contest won → the find. A loss: dead in a lethal fight (`_die('road')`), else beaten (an ambusher
+  takes 25% of your stones). The old string `p.feud` reactions of A6-3a never touch a registry person
+  (`fi.roadChoice` instead); a feud sworn against you reads as the battle page's "holds a grudge" (power + yield odds).
+
+**State.** `s.road { cards, waiting, seq, hour, n, avN, hintSeen, last }` (per life; `_newGame` + `_ensurePhase28Fields`) ·
+`w.roadStance` · `w.roadHint` · `w.roadStats { rolled, cards, brushes, waited, answered, gone, byKind, byAnswer, bySource }`
+(across lives, for QA) · person `roadCard`, `roadY`, `rel`, `mem`, and `feud.pid` = your id.
+
+**API.** `roadCards()` · `roadCardInfo(id)` (answers with odds / notes / locks, `pre` = the bearing's pick) ·
+`answerRoadCard(id, answer)` · `setRoadStance(id)` · `roadStance()` · `noteRoadHint()` · `roadStats()`.
+
+**Data.** `npc-lives.js` → `NPC_ENC` (chances, caps, temper weights, the answers' numbers, rel deltas, the bearing's
+pre-selects) + `NPC_ENC_TEXT` (titles, scene lines, why lines, brush / wait / gone lines, memory lines, feud reasons).
+
+**Tests.** `checks/encounters.js` (71). Smoke `scenarios/encounters.js` (Overlay / Expanded / Desktop / phone: the
+attention item, the Roam dot, the section first, 5/6, the hint, the ambush open first with its why + odds + the locked
+yield, the bearing marking a different answer without answering, a row opening, an answer leaving a memory, Fight →
+the road battle page). `sim:quick`: healthy; 4.4 cards per open hour (contest 0.89 · ambush 0.85 · challenge 0.73 ·
+team-up 0.73 · rescue 0.61 · old face 0.36 · youth 0.24); the bot keeps a bearing per profile (active bold, casual
+courteous, afk wary, 1 in 10 ruthless). First cut without the avenger cap ran 5.8/h with ambushes 1.8/h (a kill →
+kin → avenger cascade); capped. Visual Review Gate **7.7 PASS** (cycle 1).
+
+**Gotchas.**
+- A feud sworn against a past life is against that life's id: it does not follow you into the next life yet (clan
+  grudges are 4.10).
+- Cards are per life (`s.road`); a new life starts with an empty road.
+- One life in 7 of the active bot ended on the road (a lethal ambush fought early in a life): watch in the QA pass.
+
+---
+
+## 4.10 as built (2026-10-03): memory, reputation, rumours, the person card's deeds
+
+**User picks (assessment):** one deed per person at a time on a **real-time** cooldown shown as `m:ss` ("never N game
+years" — the user's rule; no Action Points); all eight deeds (gift · spar · duel · teach · invite · swear · denounce ·
+court); **strong grudges, half debts** across lives.
+
+**What the player gets.**
+- **The person card → "What you can do"** (`person-card.js` `_acts`, popover + World → People's inline card): the open
+  deeds first (icon, name, cost / the odds they accept / fight odds), then the locked ones as quiet lines with the reason
+  ("They must hold you dear (+80)", "Only against someone at odds with you"). After a deed: "They need time before another
+  deed: ready again in 3:59" (a live countdown; every deed dims alike). A first-time hint (once per slot, `w.actHint`). Duel
+  and Denounce ask first (`showConfirm`). A spar / duel opens the battle page (fight kind `road`, card kind `spar` / `duel`,
+  titles "A Spar, at Your Invitation" / "A Duel to the Death").
+- **"Why"** beside their feeling: every memory with what it moved (`+40`, `−70`, `×2` for a repeated deed), a past life's
+  marked, "Older memories, rumours, a forebear's debts" for the remainder, and the total.
+- **Sworn sibling** chip (card header, People rows), a **Friends** filter on World → People (rel ≥ 30 or sworn).
+- **Path → Character → "Your name"** tile (Unknown · Well spoken of / Whispered about · Upright / Infamous · Renowned /
+  Notorious · Feared and honoured) with "Honour N · Infamy N"; its breakdown (`breakdowns.js` kind `repute`) lists what the
+  name changes and the latest deeds.
+- **Log lines that name the cause:** a friend's gift of stones, an enemy's slander (+Infamy), a sworn sibling falling, a
+  sworn sibling swearing to avenge you, "X came to fight at your side" in a won/lost own war, rumours as memory lines.
+
+**Rules (game-state.js).**
+- `_remember(p, key, d, text, { rumour, deed })` is the one writer: rel ± d, a `mem` line `{ y, k, text, d, life, n }`
+  (the same deed again in the same life folds into one line ×n), `_repDeed` (NPC_REP.deeds → `w.rep.h` / `w.rep.i`, ≤ 100,
+  a log of 12), and a **rumour** when |d| ≥ 8. `_roadRemember` (4.9) now goes through it.
+- `_tickRepute(yr)` (yearly, beside `_tickWorldLives`): both scores fade 1.2%/year; each rumour reaches ≤ 4 of the
+  person's parents / children / spouses / ties ≥ 40 as a "heard" memory at 40% of the delta (a hearer with morality ≤ −40
+  shrugs off cruelty); heavy friends (rel ≥ 50) send stones 5%/year; heavy enemies (rel ≤ −50 or sworn against you)
+  slander you 4%/year (Infamy +2, their friends' rel −6). Seeded per person + year (wsRng).
+- **The road reads your name:** Infamy ≥ 40 lets the righteous (morality ≥ 40) ambush you, weighted × 1.6 × infamy/50,
+  with their own "why" ("your name has become a byword for cruelty"); Honour raises rescue + team-up weights.
+- **Deeds** (`personActions(pid)` → `{ acts, cd, hint, sworn }`, `personAct(pid, id)`): one per person per
+  `NPC_ACTS.cooldownSecs` 240 s of open time (`p.actAt`, `_cdNow`). Accept odds = base + reads ± Honour × 0.002 ± Infamy ×
+  0.003, clamped 5–95%, rolled on the NPC's side; your choice is never rolled. Gift (30 + 25 × their stage; a miser /
+  glutton / gremlin +20, else +10; +4 once they hold you dear) · Spar (accept 55% + proud + rel) · Duel to the death (only
+  rel ≤ −40 or sworn against you; a kill of someone not sworn against you = `murdered`, Infamy +6) · Teach (you ≥ 3 stages
+  above, rel ≥ 30, 15% of your Qi cap: their npcXp +0.4 and ×1.6 pace for 10 years via `p.mentorUntil` in `_growPerson`) ·
+  Invite (a founder with room, rel ≥ 20, not a master/elder/kin/duelist; from a world sect → its stance −6) · Swear
+  (rel ≥ 80: `p.sworn = your id`; each sworn sibling +0.08 to your sect wars, ≤ 0.3, in `sectWarOdds` /
+  `_resolveSectWar` / `memberWarPower`; they take up a feud on whoever kills you on the road) · Denounce (honest: karma −5,
+  Infamy +5, rel −30, their ties toward them −15, their foes warm +8, a proud heart feuds; a villain (morality ≤ −40):
+  Honour +3, no karma) · Court (single, ≥ 18, rel ≥ 10, you at Foundation Building, no spouse / courtship: `f.court` with
+  them as the target, interest + rel × 0.25 − Infamy × 0.25). A wrong (rob / betray / denounce / duel-kill) to a sworn
+  sibling is `betrayedSworn` (Infamy +15) and breaks the oath.
+- **A new life** (`_inheritRepute(newYear)`, first thing in `_beginLife`, before the skipped years so feuds don't lapse):
+  feuds against the last life re-aim at you (`feud.heir` = their name, the clock restarts; the card says "sworn against
+  your line"), rel ≤ −50 stays whole, every other rel halves, oaths end, Honour / Infamy × 0.5. An inherited avenger
+  waits until you reach Foundation Building (`NPC_REP.heirFeudStage` 10). This closes 4.9's "a feud against a past life
+  doesn't follow you".
+
+**State.** `w.rep { h, i, log }` + `w.rumours` (in `_blankWorld`, so old saves get them via the blank-fill) · `w.repStats`
+· `w.actStats` · `w.actHint` · person `mem[].d/.life/.n`, `sworn`, `actAt`, `mentorUntil`, `feud.heir`.
+
+**API.** `reputeInfo()` · `personActions(pid)` · `personAct(pid, id)` · internal `_remember`, `_repDeed`, `_tickRepute`,
+`_inheritRepute`, `_swornWar`, `_takeIntoSect` (shared with the road's youth card), `_isYourKin`. `personInfo` adds
+`relWhy { items, older }`, `sworn`, and `memories[].past`.
+
+**Data.** `npc-lives.js` → `NPC_REP` (deed weights, fade, carry, words, road reads, accept reads, rumours, friends /
+enemies, heirFeudStage), `NPC_ACTS` (cooldown + each deed's numbers), `NPC_ACTS_TEXT` (labels, icons, memory lines, rumour
+verbs, gift / slander / sworn lines, the hint). `NPC_ENC_TEXT.why` + `feudHeir`, `hunter`.
+
+**Tests.** `checks/reputation.js` (45). Smoke `scenarios/reputation.js` (Overlay / Expanded / Desktop / phone: the deeds,
+locks with reasons, the hint, Why, swear → countdown + Sworn chip + Friends, the duel confirm, a gift from the popover,
+Character → Your name + its card). `npm run checks` 1569 ok. Visual Review Gate **7.75 PASS** (cycle 1).
+
+**Gotchas.**
+- The sim bot does not use the card deeds yet (the QA pass teaches it).
+- Family members (spouse / children / lovers / clan) keep their own bond on Kin → Family; the card's deeds lock for kin.
+- A rumour names its subject by the victim's full name; a hearer who died before the year tick is skipped.
+- Rel toward you is per person, not per life: `_inheritRepute` is what scales it at each rebirth.
+
+---
+
+## 4.10b as built (2026-10-04): Your Rival (宿敌)
+
+**User picks (assessment):** a **World → Rival** sub-tab (plus a chip on the person card and a Rivals filter in People);
+the spec's cadence (~15–25 game years between visits, shown to the player only as real open time); in a **blood feud**
+duels to the death **and** visits that go after your kin (always as a card you answer, never a silent death); the
+Heavenly Rankings "Your Class board" duel is **deferred to 4.8**.
+
+**What the player gets.**
+- **世 World → Rival** (`renderer/game/rival-view.js`, pane `#tab-rival`): you and your rival side by side (name →
+  person card, realm, age, "They lead by 2 stages"), their temper · morality · root · sect + chips (Chosen, Sworn sibling,
+  "The X line"), a red banner when their line carries a past life's rivalry, the **heat meter** (−100…+100, the −70 and
+  +70 zones marked, each end saying what it opens and lit when reached, a "why it moves" line), the record (meetings ·
+  wins · losses), a status line ("They are waiting for you on the road" + **Answer them** → Explore · "looking for you" ·
+  "They will seek you out again in about N min of open time" with a live estimate · the ending), **Seek them out
+  yourself** (spar · duel to the death · gift, the person card's own buttons and cooldown), the history as a timeline,
+  a house that will send its heir into your next class, and a fold of past lives' rivals. A first-time hint.
+- **Their cards** in Roam → Explore → "Met on the road" (gold "Rival" tag, "Blood feud" when bitter; a heat line +
+  "The rivalry" link; every answer says what it does to the heat; locks say what they need):
+  - *Your rival comes calling* (`rivalDuel`): spar · to the death (locked outside a blood feud: "heat −70 or colder; now
+    −45") · decline (heat −8, a proud heart −14).
+  - *Your rival, with a jar of wine* (`rivalTalk`, heat ≥ 40): drink · a friendly spar · swear brotherhood · court them
+    (both need heat +70; court also has the person card's own locks).
+  - *Your rival, cornered* (`rivalTrouble`; more often when they are wounded): help (Health, karma +3, heat up) ·
+    sabotage (their progress gone + years healing, karma −6, found out 50%: heat way down + Infamy) · walk on.
+  - *Your rival goes after your own* (`rivalKin`, only in a blood feud): stand between them (a lethal fight) · pay the
+    blood price (160 × their stage + 1) · let your heir / child / spouse face them (odds shown; they can die).
+- **Attention:** "Your rival X seeks you" (urgent when it is a blood duel or your kin), "News of your rival" (World dot).
+- **Log + toast:** "Your rival X has broken into Core Formation. The heavens tremble." (+ banter `rival_rise`), passing
+  each other, their fall or Ascension, a war they lead. The battle page titles: "Your Rival, Again", "Between Your Rival
+  and Your Kin".
+- **Sect wars:** when their sect is the foe, Sect → War → "Their mountain" names them: the foe's Might × (1.12 + 0.03 per
+  stage they stand above you, ≤ 1.35); the war is a beat and cools the heat by 6.
+- People: tie "Your rival" / "Rival of a past life", the **Rivals** filter (every life's rival, living or not; this
+  closes the 4.7 "no Rivals filter yet" gap).
+
+**Rules (game-state.js, section "Phase 28 task 4.10b").**
+- **Who** (`_pickRival`, at the end of `_seedCohort`; a pre-4.10b save names one on load): of your class, alive, not
+  in a clan, not your surname, not kin; a house heir first, then Heaven's Chosen, then stage and talent. `p.rivalOf` =
+  your id. The log names them.
+- **Heat:** every `_remember` on the rival moves heat by `relToHeat` 0.5 × its rel delta; extras: a refused challenge,
+  being overtaken (proud −6, else +3), a war they led −6, paying the blood price +4, your kin killed −20, your kin saved +6.
+- **Schedule** (`_tickRival`, yearly, live only): first visit 5–10 game years after you awaken, then every 15–25 (seeded per
+  person + year). Kind: in a blood feud with kin to strike 35% `rivalKin`; else trouble 18% (60% when they are wounded);
+  heat ≥ 40 → wine 60%; else a challenge (blood at ≤ −70). Their cards skip the hour cap and the face cooldown; when the
+  queue is full they wait **first in line** (`unshift`). The rival is never an ordinary road face or avenger.
+- **Fights** (`_roadFightOutcome` → `_rivalFought`): wins / losses / meetings + a beat; a kill ends it (`slain`, no karma
+  in a kin defence, no "murder" Infamy in a blood-feud duel); losing a lethal one ends your life (`killedYou`); a lost kin
+  defence lets them reach your kin.
+- **The person card's duel** with your rival also opens at heat ≤ −70 (with the heat-worded lock otherwise).
+- **Hazards:** the living rival takes the world's road and backlash perils at `hazardMult` 0.35 (the rivalry needs time).
+- **Endings:** their death (`_killPerson` → `_rivalEnds`: fell / ascended), your kill, your death, or your life ending
+  first (`_rivalLifeEnds` in `_recordLifeInWorld`).
+- **Across lives:** at your death, |heat| ≥ 30 or a death between you (your kill, theirs, a kin killed) makes a **house**
+  (`w.rivalHouses[surname]`; a slain founder → heat ≤ −60, other blood → ≤ −40). The next class's first Chosen is born
+  into that line (`_rivalHouseHeir`: surname + the founder or a living child as parent, `rivalHouse`) and becomes the
+  rival: heat × 0.5, rel ≤ −20 when bitter, beat "inherited", the card's "why" names the forebear. A bitter house is also
+  noted as an enemy (`kind: 'rival'`) and the rare **rival-family rebirth** (2.6d) uses their line: the old rival, or a
+  living child of theirs, heads the house you're born into (`_rivalLineHead`).
+
+**Diverged from the spec:** the rival's "clan" is a house record (`w.rivalHouses`), not a `world.clans` entry, because
+clan members are excluded from the heavy NPC tier (`_heavyEligible`) and the rival must keep living a heavy life.
+Overtaking gives no karma (heat only). The Class board duel waits for 4.8.
+
+**State.** `w.rivals [{ life, pid, name, heat, meets, wins, losses, beats [{ i, y, k, text, place, heat, tone }], seq, seen,
+nextY, lead, end { y, k, text, cause? }, house, inherited { fromLife, fromName, heat, end } }]` · `w.rivalHouses` ·
+`w.rivalHint` · person `rivalOf`, `rivalHouse` · road card `rival`, `kin`, `blood` · `PERSON_CAUSE_TEXT.rival`.
+
+**API.** `rivalInfo()` · `noteRivalSeen()` · `rivalNews()` · `noteRivalHint()` · `rivalStats()` (QA) · internal
+`_pickRival`, `_tickRival`, `_rivalMeet`, `_rivalCardOpen`, `_rivalAnswers`, `_rivalAnswer`, `_rivalKinStrike`,
+`_rivalFought`, `_rivalEnds`, `_rivalLifeEnds`, `_rivalHouseHeir`, `_rivalLineHead`, `_rivalWar`, `_rivalWarBeat`,
+`_rivalLead`, `_rivalRose`, `_courtPerson` (shared with the person card's Court).
+
+**Data.** `npc-lives.js` → `NPC_RIVAL` (cadence, heat reads, thresholds, the answers' numbers, house carry, war, hazard,
+words, the bearing's pre-selects) + `NPC_RIVAL_TEXT`. Banter trigger `rival_rise` (`{rival}`; 4 × 14 + 3 generic).
+
+**Tests.** `checks/rival.js` (62). Smoke `scenarios/rival.js` (Overlay / Expanded / Desktop / phone; 84 ok, zero console
+errors). `npm run checks` 1630 ok. `sim:quick`: rival cards ≈ 1 per open hour; active-bot lives (~1.8 h) met their
+rival 0–7 times (median 1 before the hazard cut; the casual profile wasn't in quick), heat −20…+81, 5 house heirs.
+Visual Review Gate **7.9 PASS** (cycle 1; 3 polish fixes applied: a container query stacks the face-off in narrow panes,
+larger heat-card text, the "Indifferent" feel chip hidden on rival cards).
+
+**Gotchas / for QA.**
+- Watch meetings per **casual** life in the QA pass (target ≥ 3); tune `meetEvery` / `hazardMult` there.
+- The sim bot answers rival cards by its bearing (`NPC_RIVAL.preselect`) but doesn't start deeds from World → Rival.
+- `rivalKin` needs a grown child or a spouse; with neither, a blood feud only brings blood duels.
+
+## 4.8 Heavenly Rankings (天榜 · 潜龙榜 · 同届榜) — spec (2026-10-04)
+
+**User picks (assessment, 2026-10-04):** a new **World → Rankings** sub-tab (three boards, opens on Your Class; World →
+Class keeps its realm view); **all four consequences** (challengers from below, genius hunters, fame + sect effects, Veil
+your name); published **each game year**, every countdown shown in real open time (mm:ss), never game years.
+
+**Depth pass.**
+1. *Memory.* `w.ranks` keeps the last publication, the one before it (▲▼), your best place per board, titles earned
+   (per life, for the v2 robes, A9), the Rising Dragon honour roll (who aged out and how high they rose), recent
+   headlines, and how many challenges you refused. Each person keeps `rankBest` and `renown`.
+2. *Choices.* A **challenger from just below** (spar / to the death / decline). A **genius hunter** after a Rising Dragon
+   (you: fight / flee / pay / veil your name; your child: stand between them / pay / hide the child / let them face it).
+   A **sect invitation** to a Rising Dragon or a Heaven ranker (accept → join as an Inner Disciple, leaving your sect if you
+   have one / decline politely / refuse outright). The **Class board duel**: challenge the classmate just above you.
+   **Veil your name**: off the public boards (fewer challengers, no hunters or invitations, no rank fame); your toggle.
+3. *Hooks.* Power (realm, progress, root, body tier, arts, gear) · encounters (the road queue, the bearing) ·
+   reputation (killing a hunter is Honour; killing a challenger is a challenge death: karma) · Your Rival (their place
+   beside yours) · sects (rank fame for a founder; ranked members raise a world sect's Might; invitations) · family
+   (your children on Rising Dragon draw hunters) · the Chronicle (a new #1 Under Heaven) · banter (`rank_rise`).
+4. *Drama.* Best: #1 Under Heaven, titles, sects courting you. Worst: a hunter kills your prodigy child; a challenger
+   you accepted kills you; your rival passes you on the board for all the world to see.
+5. *Feedback.* Refusing challenges marks you a coward (more challengers come, renown bleeds); winning ranked duels
+   builds renown (your place); a veiled name fades from the world's mind.
+6. *Agency.* Every challenge, hunter and invitation is a card you answer (the bearing only pre-selects). The Veil is a
+   toggle. Nothing resolves for you.
+
+**Rules.**
+- **Rank power** = realm (stage × 100) + progress in the stage (0–99) + spirit root + body tier + arts (rarity points of
+  the worn loadout, mastery-scaled; an NPC's rolled arts, else an estimate by realm) + gear (your weapon / artifact) +
+  renown. One function, `rankPowerParts(p, self)`, for you and everyone (the "why" breakdown shows its parts). Temper and
+  grudges are fight factors, not rank. `Persons.powerScore` is unchanged (the heavy sim's duels keep it).
+- **Heaven Ranking:** every living mortal in the registry (not ancestors, not the ascended) + you, by rank power.
+- **Rising Dragon:** anyone ≤ 60 years on the path (game years since awakening at 16); score = power × 20 ÷ (years + 20),
+  so youth counts. Aging out with a best place ≤ 20 writes the honour roll (and a title for you).
+- **Your Class:** your cohort (alive, fallen, ascended), by power; the fallen and ascended stay listed below the living.
+- **Publication** each game year (`_tickRanks`): boards recomputed (top 100 kept), ▲▼ against the last one, headlines for
+  you (first listed, top 20 / 10 / 3 / #1, a best), a new #1 Under Heaven (chronicle), your rival's place passing yours,
+  classmates' firsts ("first of your class to reach Core Formation"), class milestones ("only 20 of your class still
+  live"). Only notable lines reach the log; the rest stay on the Rankings view.
+- **Renown** (±): ranked duels move it (win +, lose −, refuse −), it fades 8% a year.
+- **Consequences** (unveiled only): rank fame for a founded sect; a world sect's Might + per member in the Heaven top 20;
+  a challenger roll each publication when you're on Heaven top 50 or Rising Dragon top 20 (more after refusals); a hunter
+  roll when you or your child are on Rising Dragon top 20; an invitation roll when unaffiliated or in a weaker sect.
+  Cooldowns between visits are internal; nothing is shown as game years.
+
+**UX pass.** World → Rankings: board chips (Your Class · Rising Dragon · Under Heaven), your row pinned at the top with
+your place, ▲▼ and a "why" (power breakdown), the top 20 + your ±2 neighbours, names open the person card, ★ pinned and
+rival/kin chips, the next publication in real time, the Veil switch with its trade-offs, titles, the honour roll and the
+last headlines. Cards arrive in Roam → Explore → "Met on the road" with a "why" and the odds. An attention item tells you
+when a publication moved you. Overlay: one column; Expanded/Desktop: the board beside your standing + headlines.
+
+## 4.8 as built (2026-10-04): the Heavenly Rankings
+
+Built as the spec above, in full (the user's picks: a World → Rankings sub-tab, all four consequences, each game year).
+
+**State.** `w.ranks` (built lazily by `_ranks()`; `_blankWorld` has `ranks: null`): `{ life, y, seq, seen, boards { heaven,
+dragon: [{ pid, sc }] ≤ 100 }, prev { heaven, dragon, class, classNow: { pid: place } }, you, best, titles [{ t, life, y }],
+honour [{ pid, name, place, y, you }], news [{ i, y, text, tone, log }] ≤ 24, veil, declines, cd { challenge, hunter,
+invite } (game years, internal only), renown, firsts { realm: pid }, alive, duelAt (real time, `_cdNow`), stats, hint }`.
+A new life resets the per-life fields (you, best, renown, declines, firsts, cooldowns); titles + the honour roll stay.
+Person: `renown` (fades 8%/yr, dropped under 2), `rankBest { h, d }`, `rankHiddenUntil` (a hidden child), `hunter`.
+World sect: `ranked` (members in the Heaven top 20). `PERSON_CAUSE_TEXT.hunter`; `NPC_REP.deeds.slewHunter` (Honour +4).
+About 9 KB in a late save.
+
+**Rules as built.**
+- `rankPowerParts(p, self)`: realm × 100 + progress (yours: Qi ÷ cap; theirs: npcXp) + root × 10 + body tier + arts + gear
+  (yours) + renown. **NPC arts are always the realm estimate** (`NPC_RANK.artEstimate` by `_personRealm`), never their rolled
+  arts: `personFightOdds` rolls arts on first read, and reading them here reordered the board between two reads (the Class
+  duel's "one above you" moved). Yours are your worn loadout × mastery.
+- `_tickRanks(yr)` on the game-year tick (after `_tickRival`). The first publication on any save is quiet (baselines + one
+  news line). Then: renown fades; Heaven / Rising Dragon / Class rebuilt; ▲▼ vs the last publication; best places; a world
+  sect's `ranked`; your moves (`_rankYouMoved`: the log only on crossing 20 / 10 / 3 / 1, titles at 10 / 3 / 1, the
+  `rank_rise` banter at the top 10); a new first under Heaven (chronicle); your rival passing you on a board; the honour roll;
+  class firsts (each realm from Foundation Building) + "only N still live" (20 / 10 / 5 / 1); then `_rankVisitors` (unveiled only).
+- Visitors (seeded `wsRng(self|rank|yr)`, never Math.random): a challenger (Heaven ≤ 50 or Dragon ≤ 20; chance 0.03 ×
+  (1 + 0.25 × refusals, ≤ 4); 8-yr cooldown; someone 1–6 places below, ≤ 3 stages away, proud tempers first); a genius
+  hunter (you on Dragon ≤ 20, else your child there; 0.02; 15-yr cooldown; a minted dark-hearted cultivator 1–2 stages
+  above the prey, reused while alive); an invitation (no own sect; 0.03; 20-yr cooldown; the mightiest open sect mightier
+  than yours, its elder or master as envoy). All go through the road queue (`_rankMeet` → `_roadCard(…, { rank })` →
+  `_rankCardOpen`; first in line when the queue is full).
+- Answers (`_rankAnswers` / `_rankAnswer`): challenge spar / blood / decline (renown −15, proud −25; they gain half);
+  hunter fight / flee / pay (120 × (stage + 1)) / veil (75% they lose the trail, else the fight); a hunter after your child:
+  intercept / pay / hide (off the boards 12 years, bond −5) / leave (the child lives 0.5 + 0.08 × stage gap, else dies:
+  cause `hunter`); invite accept (leaves your sect first, joins at rank 1) / decline (stance −2) / refuse (stance −8). Fights
+  end in `_rankFought` (renown +30 / −20; a hunter slain: renown +40, karma +2, Honour; killing a hunter costs no karma).
+- The Class duel (`challengeRanked`): only the classmate one place above you, ≤ 3 stages away, a spar, a 5-minute
+  real-time cooldown.
+- `_rankFame()` joins a founder's fame (`ownSectInfo().fame.ranked`, Sect → Fame); `worldSectMight` + 6 per ranked member.
+
+**UI.** `renderer/game/rankings-view.js` (pane `#tab-rankings`, the World sub-tab after Class): tabs Your Class / Rising
+Dragon / Under Heaven; your standing (place, ▲▼, the Rank power pill → `data-bd="rankpower"` breakdown, renown, best, why
+you're off a board); the real-time next publication; top 20 + your ±2 + pinned / rival / kin, a gap marker, a "scores as
+published" caption; the Class duel row; the fallen; a side column (two columns at a ≥ 540px container): the Public | Veiled
+toggle with its trade-offs, titles, headlines, the honour roll. Road cards: tags Ranked / Hunter / Invitation, a crown line
++ "The rankings" link. Attention: hunters are urgent; "The rankings are published" (idle) only for logged headlines
+(`ranksNews`). Person card chips (#n under Heaven / Rising Dragon, Genius hunter); World → Rival's rankings line; Sect →
+Fame row.
+
+**API.** `rankPowerParts` · `rankingsInfo(board)` · `rankOf(pid)` · `setRankVeil(on)` · `challengeRanked(pid)` ·
+`noteRanksSeen` / `ranksNews` / `ranksNewsLast` / `noteRanksHint` · `rankStats` (QA).
+
+**Data.** `npc-lives.js` → `NPC_RANK` (cadence, board sizes, rank power points, renown, fame, Might, visitor chances +
+cooldowns, the answers' numbers, titles, class milestones, the bearing's pre-selects) + `NPC_RANK_TEXT`. Banter trigger
+`rank_rise` (`{board}` `{place}`; 4 × 14 + 3 generic).
+
+**Tests.** `checks/rankings.js` (53) · `npm run checks` 1683 ok · smoke `scenarios/rankings.js` (4 modes, zero console
+errors) · `sim:quick` healthy: rankings cards ≈ 1.5 per open hour after tuning (challenger 0.73 · invite 0.48 · hunter
+0.24 · hunter-after-kin 0.04); the first pass (0.06 / 0.05 / 0.06) added 2.35 an hour. Visual Review Gate cycle 1 7.7 FAIL
+(the veil button overflowed on Desktop) → cycle 2 **8.0 PASS**.
+
+**Gotchas / for QA.**
+- Total road cards ≈ 8 per open hour with the rival + rankings: watch the queue in the final QA pass.
+- The sim bot answers by its bearing; `bold` / `ruthless` accepts every invitation (it sect-hops). Teach it in QA.
+- `_rankHunter` mints with the publication's seeded rng; a check that calls it directly passes Math.random.
+- The spec's ad-hoc power formulas (5B, 17D, 28I) still use their own math; `Persons.powerScore` is unchanged.
+
+## 4.11 as built (2026-10-04): the perf pass
+
+**Measured first** (`node scripts/sim/probe-world-perf.js 400 120`, a matured world: ~1,000 in the registry, ~230 living,
+149 heavy, slot ~580 KB; Node, desktop): a heavy season 0.94 ms mean / 1.42 p95 / 2.1 max (budget ≤ 2 ms: met at p95) · the
+light step 3.1 ms per year (4.8 max) · world sects 0.35 · repute 0.16 · rankings publication 1.06 · syncPersons 0.2 · the save
+`JSON.stringify` 3.3 ms (5.6 max; budget ≤ 15 ms: met) · the UI reads (People 0.9 ms, Rankings 0.14 ms).
+In the real app (`scripts/smoke/scenarios/perf-yearturn.js`, Desktop, a late founder save, 300 matured years) the frame that
+turned a game year took **9–11 ms mean, 17–18 ms p95, 21.5 ms max** with World → Rankings / People open: every yearly job
+ran in one `tick()` and fired 1.4–2 full UI re-renders.
+
+**Changed (no gameplay change; same order, same results):**
+- The year turn is a **job queue** (`_queueYear` / `_drainYear`): family, arena, branches, world sects, the light step,
+  repute, rival, rankings, sync + the gate roll — and that turn's heavy season after them. A real frame (dt < 1 s) spends
+  about `YEAR_FRAME_MS` (4 ms, lifespan.js) on it and the rest wait for the next frames; a tick of ≥ 1 s (the sim's dt 1,
+  the checks, a stalled frame) drains everything at once, so sims and checks are unchanged.
+- The jobs' full re-renders collapse into **one** `_notify()` when the queue empties (`_yearBatch` / `_yearDirty`).
+- `flushYear()` runs anything left before every save (`_save`) and when a life ended mid-turn (tick, interlude).
+- Not saved: closing mid-turn loses at most a few frames' jobs; the lives (≤ 5 years) and the rankings catch up next turn.
+
+**After:** the worst frame of a year turn is **7–9 ms mean, ~10 ms p95, 11.6 ms max** (Rankings / People open), inside
+the 16.7 ms frame. `npm run checks` 1683 ok; `sim:quick` healthy.
+
+**Catch-up caps (already in place, verified):** the light step catches up ≤ 5 years (`_tickWorldLives`), the heavy tier
+`NPC_HEAVY.catchUpSeasons`; the world is frozen while closed (no offline sim at all).
+**Not changed, for the user:** the generation jump between lives (`_worldYears`, quiet) costs ~6.5 ms per skipped year
+(20 years 133 ms, 40 years 277 ms, 80 years 508 ms) in one call when you choose the next life: a one-off pause at that
+click. Capping or thinning the jumped years would change what the world lives through between lives (a balance call).
+**Heavy season:** p95 is in budget; the max (2.1 ms) sits on it. The fixed cost is the per-season scan of the whole
+registry (`Object.values(w.persons).filter(_heavyEligible)`); keeping a heavy list between tier assignments is the next
+lever if the registry grows.

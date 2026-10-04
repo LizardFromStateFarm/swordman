@@ -20,7 +20,7 @@ const NAV_GROUPS = [
   // 43h (user 2026-10-02): the Log group became 世 World — the sects of the world first, the chronicle + banter after.
   // The id stays 'log' so a saved nav state still resolves.
   { id: 'log',       glyph: '世', name: 'World', title: 'The world: its sects, the chronicle of events, idle chatter',
-    views: [['world', 'Sects'], ['class', 'Class'], ['chronicle', 'Chronicle'], ['events', 'Events'], ['banter', 'Banter']] },   // Phase 28 (4.3): your class (class-view.js) · 4.6: the merged Chronicle (chronicle-view.js)
+    views: [['world', 'Sects'], ['people', 'People'], ['rival', 'Rival'], ['class', 'Class'], ['rankings', 'Rankings'], ['chronicle', 'Chronicle'], ['events', 'Events'], ['banter', 'Banter']] },   // Phase 28 (4.7): People you know (people-view.js) · 4.10b: Your Rival (rival-view.js) · 4.3: your class (class-view.js) · 4.6: the merged Chronicle (chronicle-view.js)
 ]
 
 const NAV_AUTO_NAMES = { autoExplore: 'Auto-Explore', autoSectMissions: 'Auto-Missions', autoCraft: 'Auto-Craft' }

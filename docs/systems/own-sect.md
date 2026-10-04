@@ -71,3 +71,9 @@ computed here, and can zero out Defensive Array's `war_defense` contribution via
 - Defensive Array's desc was dev-speak ("used by sect wars, Phase 5B"); reworded 1.8b-5.
 - ~~Buildings have no levels: once all six are raised the Halls view has nothing left to do but the Sect Hall.~~
   **Fixed in Phase 43** — every hall is levelled (1→3) and can be deepened for a stronger effect.
+
+## Phase 28 (4.5): recruits at the gate are people of the world (2026-10-03)
+`_refreshRecruitPool` → `_genRecruit(exclude, true)` offers an unsworn youth of the world (a wave's child, a classmate without
+a sect) about 75% of the time: the entry carries `pid`, stars come from their root (heavenly 5 · pure 4 · dual 3 · else 2), and
+`recruitDisciple` keeps the pid, so the disciple IS that person. Other `_genRecruit` callers (branch recruits, poach rosters,
+dev presets) never cast. Their names are tappable, with the "known face" pill.

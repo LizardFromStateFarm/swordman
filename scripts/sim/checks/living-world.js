@@ -135,7 +135,9 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
     assert(w4.persons[kid.id]?.rel === 55, 'the end of a life keeps what the registry knew (rel)')
     assert(rec && rec.leaderId === pe1 && w4.persons[pe1].sectRole === 'master' && b4.ok, 'the branch head who inherits your sect is that same person')
     assert(w4.persons[pe2].sectId === rec.id, 'your disciples belong to the lineage sect now')
+    sim4.ev('globalThis.__hm = NPC_HEAVY.heavyMax; NPC_HEAVY.heavyMax = 0')   // 4.4: the heavy tier may make a disciple leave of their own accord; this pins the sync, so it rests
     g4.finishInterlude('clan'); g4._syncPersons()
+    sim4.ev('NPC_HEAVY.heavyMax = globalThis.__hm')
     assert(w4.persons[pe2].sectId === rec.id && w4.persons[pe2].owner === 'world', 'the next life does not strip them from it')
     assert(!w4.persons[g4.get().self.id], 'the reborn player is not in the registry')
   }
@@ -368,6 +370,62 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
     delete w.chron; delete w.chronSeq; delete w.chronSeen
     g._ensurePhase28Fields()
     assert(Array.isArray(w.chron) && w.chron.length === w.sects.chronicle.length && w.chron.every(e => e.k === 'sect') && g.chronicleNews() === 0, `an old save's Chronicle starts from the sects' ${w.chron.length} lines, nothing unseen`)
+  }
+  // ── 4.7: World → People — the people you know, pins (capped, heavy, kept after death), pinned news, log names ──
+  {
+    const sim7 = await createSim({ seed: 47 }); await sim7.boot(0); const g = sim7.gs, s7 = g.get(), w7 = s7.world, P7 = sim7.ev('WORLD_PEOPLE')
+    const full7 = p => sim7.ev('Persons').fullName(p)
+    let k = g.knownPeople({ limit: 1000 })
+    const cls = w7.cohorts[g._lifeNo()].ids
+    assert(cls.every(id => k.rows.some(r => r.pid === id) || w7.persons[id]?.alive === false) && k.counts.class >= cls.length - k.counts.fallen, `People lists your whole living class (${k.counts.class})`)
+    assert(!k.rows.some(r => r.pid === s7.self.id), 'you are never in your own People list')
+    const stranger = Object.values(w7.persons).find(p => p.alive !== false && p.cohort == null && !p.fam && !p.rel && !p.pin && (!p.owner || p.owner === 'world') && !p.sectId)
+    assert(!stranger || !k.rows.some(r => r.pid === stranger.id), 'a stranger you never met is not listed')
+    const a = w7.persons[cls[0]], b = w7.persons[cls[1]]
+    // search + sort
+    assert(g.knownPeople({ q: a.given.toLowerCase() }).rows.some(r => r.pid === a.id), 'search finds a name (any case)')
+    const realm = g.knownPeople({ sort: 'realm', limit: 1000 }).rows
+    assert(realm.every((r, i) => i === 0 || realm[i - 1].stage >= r.stage), 'the realm sort runs highest first')
+    // pins: toggle, heavy, capped, kept after death
+    const r1 = g.togglePin(a.id)
+    assert(r1.ok && r1.pinned && a.pin && a.tier === 'heavy', 'pinning makes them followed (heavy tier at once)')
+    assert(g.knownPeople({ filter: 'pinned' }).rows.map(r => r.pid).join() === a.id, 'the Pinned filter shows exactly them')
+    assert(g.knownPeople().rows[0].pid === a.id, 'a pinned person heads the relevance sort')
+    const others = Object.values(w7.persons).filter(p => p.id !== a.id && p.alive !== false).slice(0, P7.pinMax)
+    let full = null
+    for (const p of others) { const r = g.togglePin(p.id); if (!r.ok) { full = r; break } }
+    assert(full && full.reason === 'full' && Object.values(w7.persons).filter(p => p.pin).length === P7.pinMax, `pins cap at ${P7.pinMax}`)
+    for (const p of others) if (p.pin) g.togglePin(p.id)
+    assert(Object.values(w7.persons).filter(p => p.pin).length === 1, 'unpinning releases the slots')
+    // news of the pinned: counted, cleared by the view, not raised by an unpinned person
+    g.notePeopleSeen()
+    g._chron({ k: 'rise', t: 'A test rise for ' + full7(b), p: [b.id] })
+    assert(g.peopleNews() === 0, 'news of someone you did not pin is not People news')
+    g._chron({ k: 'rise', t: 'A test rise for ' + full7(a), p: [a.id] })
+    assert(g.peopleNews() === 1, 'news of the pinned is counted')
+    const mark = g.notePeopleSeen()
+    assert(g.peopleNews() === 0 && g.knownPeople({ since: mark, filter: 'pinned' }).rows[0].fresh, 'opening People clears the news; the rows keep their fresh mark while open')
+    assert(g.knownPeople({ filter: 'pinned' }).rows[0].last?.text === 'A test rise for ' + full7(a), 'a row carries the latest the world wrote of them')
+    // grudges + kin filters
+    b.rel = -45; b.feud = { pid: s7.self.id, why: 'their brother', y: Math.floor(w7.year) }
+    const gr = g.knownPeople({ filter: 'grudge' }).rows.find(r => r.pid === b.id)
+    assert(gr && gr.tie.word === 'Sworn against you' && gr.relTone === 'red' && gr.feud?.you, 'a sworn enemy shows under Grudges, tied as "Sworn against you"')
+    delete b.feud; b.rel = 0
+    // the dead: Fallen only, and a pinned one is never pruned
+    g._npcDies(a, Math.floor(w7.year), 'road')
+    assert(!g.knownPeople({ limit: 1000 }).rows.some(r => r.pid === a.id) && g.knownPeople({ filter: 'fallen', limit: 1000 }).rows.some(r => r.pid === a.id && r.cause), 'the fallen leave All for Fallen, with their cause')
+    a.cohort = null; a.diedYear = Math.floor(w7.year) - 9999
+    g._pruneDead(Math.floor(w7.year))
+    assert(!!w7.persons[a.id], 'a pinned person is never forgotten after death')
+    // log names: stored on the event, the event's own pid first, ≤ logNamesMax, never you
+    g.addEvent({ type: 'neutral', text: `${full7(b)} crossed blades with ${full7(w7.persons[cls[2]])}.`, pid: cls[2] })
+    const ev = s7.events[0]
+    assert(ev.who?.length === 2 && ev.who[0].pid === cls[2] && ev.who.some(x => x.pid === b.id), 'a log line keeps the people it names (its own pid first)')
+    g.addEvent({ type: 'neutral', text: 'Nothing of note.' })
+    assert(!s7.events[0].who, 'a line naming no one carries no names')
+    // migration: an old save gets the People mark at the Chronicle's head (nothing old reads as news)
+    delete w7.peopleSeen; g._ensurePhase28Fields()
+    assert(w7.peopleSeen === w7.chronSeq, 'an old save starts its People news mark at the Chronicle head')
   }
 })()
 
