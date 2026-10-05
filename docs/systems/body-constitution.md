@@ -171,6 +171,10 @@ is never punished. Each play spends one charge. Neither is ever required.
 - If a tempering is running, you can instead apply the strikes to it: each point cuts 1⅓% off its remaining time
   (max 24%).
 - A perfect run gives a small banter line and a gold flash.
+- **Input (v1 mobile fix 2026-10-05):** a strike is judged on **pointerdown, at the event's own timeStamp** (Space/Enter use
+  theirs too; key repeat ignored). A touch `click` only fires on finger-up, 80–150 ms late, which pushed every on-the-seal
+  tap on a phone past the perfect window (only "good" by aiming early). The trailing click is skipped.
+- **Your other self** (Body Beyond the Body, bosses.md → "The clone tempers your body") can run a second tempering at full XP.
 
 **Meridian Flow (Qi).**
 - A pipe-style puzzle: rotate meridian tiles so Qi flows from the dantian to the open acupoints.

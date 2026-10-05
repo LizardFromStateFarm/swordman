@@ -3,7 +3,7 @@
 // fortunes + stipend, rebirth positions (bet won/lost weights), orphan birth + returning to the last clan, extinct
 // clan, the rare rival-family rebirth, interlude pauses the clock + survives save/load, upbringing event, head-only
 // heir naming, and a long multi-generation chain (invariants hold, registry stays bounded).
-// Run: npm run checks (all) · node scripts/sim/checks/succession.js (this file). Prints ok/FAIL lines.
+// Run: npm run checks (all) · node scripts/sim/checks/succession.js (part a; succession-2.js = part b; SUCC_PART=all = both).
 const { createSim } = require('../loader.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
 // 1.8b-3b / 1.14a: your fights are played on moves; fight-helpers.js decides one (want 'win' / 'lose').
@@ -20,6 +20,9 @@ const fought = (sim, gs, start, want = 'win', end = null) => { let r = null
 // A first-life head (stage 18) married with `nKids` adult children (stages 5…), optional named heir.
 async function headWithKids(seed, nKids, opts = {}) {
   const sim = await createSim({ seed, overrides: opts.overrides || [] }); await sim.boot(0); const gs = sim.gs, s = gs.get()
+  // fastWorld: the generation jump skips the heavy tier's seasonal goals (~60% of a rebirth's cost) — only for loops that
+  // tally clan outcomes over many seeds, which never read the heavy tier (2026-10-05, test speed; see qa-sim.md)
+  if (opts.fastWorld) { gs._heavyStep = () => {}; gs._lifeStep = () => {} }   // + the light years: world persons only
   s.name = 'Lin Mei'; s.stageIndex = 18; s.maxStageThisLife = 18; s.spiritStones = 1e6; s.karma = 50; gs._recalc()
   s.family.nextProposalYear = s.world.year - 1; gs._tickFamily(); gs.acceptSuitor(gs.get().family.proposal.suitors[0].id)
   const f = gs.get().family; f.planning = 'none'; f.nextEventYear = 1e9; f.nextChildEventYear = 1e9
@@ -70,6 +73,10 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
 }
 
 ;(async () => {
+  // Split in two so npm run checks runs the halves in parallel (2026-10-05, test speed): this file = part a (2.6d,
+  // sections 1-11); succession-2.js = part b (sections 12+). SUCC_PART=all node scripts/sim/checks/succession.js runs both.
+  const PART = process.env.SUCC_PART || 'a'
+  if (PART !== 'b') {   // part a: 2.6d — death, the heir bet, reigns, rebirth positions, interludes, generations
   // 1. Head dies with a named heir → no bet; the heir takes the seat; a sibling founds a branch; chronicle written.
   { const { gs, kids } = await headWithKids(1, 4)
     gs.chooseHeir(kids[1].id)
@@ -146,7 +153,7 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
   // 5. Positions: bet won favors the main line, bet lost favors a branch (many rebirths, same setup).
   { const tally = { won: {}, lost: {} }
     for (let seed = 100; seed < 160; seed++) {
-      const { gs, kids } = await headWithKids(seed, 5)
+      const { gs, kids } = await headWithKids(seed, 5, { fastWorld: true })
       gs.chooseHeir(kids[4].id)
       gs.passTheMantle(); gs.finishInterlude('clan')          // life 2: the heir reigns, one branch exists
       gs.passTheMantle()                                      // life 2 dies → bet
@@ -243,6 +250,8 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
 
   // ── 2.6e (clan-succession.md): challenge the head, be challenged as head, step-down tournaments ──────
 
+  }
+  if (PART !== 'a') {   // part b: 2.6e/2.6f — challenges, step-downs, branches, wars, bequests
   // 12. canChallengeHead: is_head / stage_gap / cooldown / ok / no_clan.
   { const { gs } = await headWithKids(20, 2)
     assert(gs.canChallengeHead().reason === 'is_head', 'the sitting head cannot challenge themselves')
@@ -644,6 +653,7 @@ async function branchLife(seed, { asHead = true, nKids = 2, overrides = [] } = {
     const s2 = bg.get()
     assert(!s2.world.playerClanId, 'born an orphan (the bequest must not be clan-gated)')
     assert(a2.every(id => s2.arts.known[id]), 'the bequest rides an orphan rebirth')
+  }
   }
 })()
 

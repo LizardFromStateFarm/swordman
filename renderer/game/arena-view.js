@@ -31,7 +31,7 @@ const ArenaView = {
       top = `<div class="ar-callout">
         <div class="ar-k">A call-out</div>
         <div class="ar-callout-t">${PersonCard.link(c.p.id, Persons.fullName(c.p))} has not forgotten you. They wait on the ${esc(c.ring.name)}${c.blood ? ', <span class="down">to the death</span>' : ''}.</div>
-        <div class="ar-sub">${esc(temper(c.p))} · ${esc(realm(c.p.stageIndex))} · your odds <b class="${oc(gs.personFightOdds(c.p, 'arena').chance)}">${pct(gs.personFightOdds(c.p, 'arena').chance)}</b> · a win pays <b class="gold">${h.fmt(c.prize)}</b> (no fee)</div>
+        <div class="ar-sub">${esc(temper(c.p))} · ${esc(realm(c.p.stageIndex))} · your odds <b class="${oc(gs.personFightOdds(c.p, 'arena').chance)}">${pct(gs.personFightOdds(c.p, 'arena').chance)}</b> · a win pays <b class="gold">${h.fmt(c.prize)}</b> (no fee, and the Arena does not rest after)</div>
         <div class="ar-acts"><button class="ar-btn ${c.blood ? 'blood' : 'gold'}" data-ar-callout="1">Answer them</button><button class="ar-btn quiet" data-ar-callout="0">Let it go<small>${ARENA_RENOWN.declined} renown</small></button></div></div>`
     }
     if (run) {

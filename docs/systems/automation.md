@@ -25,6 +25,7 @@ automation: {
   autoCraftRecipes:   { [recipeId]: true } — recipes flagged to auto-repeat whenever materials allow
   autoBreakthrough:   bool            — attempts a breakthrough once Qi crosses the threshold below
   autoTemper:         bool            — Phase 14: repeats a safe body drill (drill/spirit group) whenever it ends; never an ordeal
+  (the clone's own duty lives on s.clone.auto + autoDuty 'explore'|'temper' — bosses.md → "The clone tempers your body")
   autoTemperId:       string | null   — which method Auto-Temper repeats (null = your last drill); an ordeal id is refused
   breakthroughThreshold: number       — 0.80–1.00 fraction of qiCap (slider, Automation panel)
   _craftAcc: number                   — internal throttle accumulator (not player-facing)

@@ -143,6 +143,21 @@ flavour line each, no emoji, the effect in plain words.
 - **When:** every enemy **attack** (strike, multi-hit, charge, finisher) is telegraphed on the battle scene. A ring closes
   on your figure, and a **Parry** button / Space / tapping the scene is live. Each hit of a multi-hit move is its own
   window. Hexes, heals and buffs can't be parried, so status play stays a real counter.
+- **Input (v1 iOS fix 2026-10-05):** a press is taken on **pointerdown and judged at its event timeStamp** (Space too, no key
+  repeat); the trailing click is skipped; a press stamped before the last resolved hit is dropped; "It lands" waits
+  `parryGraceMs` (120) past the window so a tap in flight is still judged at its own time. Before, iOS's late finger-up
+  click missed the window and then counted again ("Too soon") against the next hit: one tap, two misses.
+- **Library filters (2026-10-05):** one framed panel (`.af-box`), labelled rows Kind / Grade / Element, every chip with the
+  count it would show (the other two filters kept; a zero dims), grade chips in their colour, element chips with the icon
+  (icon + count in Overlay), "Clear filters". A filter keeps your place: `ArtsView._keepPlace(".af-box", render)` puts the
+  panel back where it was on screen (it used to throw you to the top). The rows stack under a container query in a narrow
+  pane. UI 7.7.
+- **The cue + tap anywhere (user 2026-10-05):** the prompt shows a timing track (a red marker slides into a fixed gold
+  zone = the window, like Tempering Strikes) and a button that reads **Wait…** → **PARRY NOW** (bold, thicker border, a
+  touch larger; label + shape, not only colour); the whole stage edge goes faint red while the blow comes and solid gold
+  inside the window (`#combat-stage.parry-live` / `.parry-hot`). **A tap anywhere on the battle page parries** — only
+  Leave, Retreat / Yield and a "why" card keep their meaning (`_parryTarget`); your moves are locked meanwhile. The
+  canvas ring around you is kept. Smoke: scenarios/combat.js parries through a pointerdown on the canvas.
 - **Success:** the hit does **0 damage** and you gain **+`PARRY_QI` (25) Qi** (×2 on a Circulate turn), with a
   "Parried!" flash, a ward ring on the scene and a log line. Statuses riding on that hit are blocked too.
 - **Timing:** the window is `PARRY_WINDOW_MS` (≈250 ms, clamped 120–450), widened by your Swift over theirs, earth ward

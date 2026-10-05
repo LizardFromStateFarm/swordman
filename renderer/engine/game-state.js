@@ -4921,7 +4921,7 @@ class GameState {
     qMul(`Soul Resonance (rank ${this._soul.resonance})`, this.soulQiMult())
     // v1 add-on (bosses.md): the soul techniques' costs — a spent seed, a spirit split with your other self
     if ((s.soulUse?.essenceUntil || 0) > Date.now()) qMul('Essence spent (Seed of the Self)', SOUL_TECH.seed.essenceQiMult)
-    if (s.clone?.exp) qMul('Your other self is out (Body Beyond the Body)', SOUL_TECH.clone.qiMult)
+    if (s.clone?.exp || s.clone?.temper) qMul(`Your other self is ${s.clone.temper ? 'tempering' : 'out'} (Body Beyond the Body)`, SOUL_TECH.clone.qiMult)
 
     // Family (docs/systems/family.md): a Devoted spouse steadies your breakthroughs; a betrayed one
     // sabotages the next attempt (cleared by attemptBreakthrough()).
@@ -6438,6 +6438,7 @@ class GameState {
       A.record.runs++
       this.addEvent({ text: `You pay ${R.entry} Spirit Stones and step onto the ${R.name}.`, type: 'neutral' })
     }
+    A.run.chosen = true                       // a bout you picked: this run will rest the Arena when it ends
     const opp = A.duelists[oppId]
     this._startFight('arena', opp, !!blood,
       { arena: { ringId: R.id, blood: !!blood, champion: A.rings[R.id].championId === oppId, callout: false } })
@@ -6445,6 +6446,13 @@ class GameState {
   }
 
   // Your choice between bouts: take the purse and go
+  // The 30-min Arena rest follows a run YOU chose (user 2026-10-05): a grudge-holder's call-out you only answered never
+  // starts or extends it; fight on after one (a bout you pick) and the run is yours, so it rests as usual.
+  _arenaRest(run) {
+    const A = this._s.arena
+    if (run && run.callout && !run.chosen) return
+    A.restUntil = Date.now() + ARENA_REST_SECONDS * 1000
+  }
   arenaWalkAway() {
     const s = this._s, A = s.arena, run = A.run
     if (!run) return { ok: false, reason: 'no_run' }
@@ -6454,7 +6462,7 @@ class GameState {
     this.addEvent({ text: `You walk off the ${R?.name || 'sand'} with ${run.purse} Spirit Stones${run.streak > 1 ? ` and a streak of ${run.streak}` : ''}.`, type: 'positive' })
     A.last = { walked: true, purse: run.purse, streak: run.streak, ringId: run.ringId }
     A.run = null
-    A.restUntil = Date.now() + ARENA_REST_SECONDS * 1000
+    this._arenaRest(run)
     this._arenaEnsureRosters()
     this._recalc(); this._notify()
     return { ok: true, purse: run.purse }
@@ -6499,7 +6507,7 @@ class GameState {
     s.spiritStones += keep
     A.last = { lost: true, keep, purse: run?.purse || 0, streak: run?.streak || 0, ringId: R.id, died: !!res.died }
     A.run = null
-    A.restUntil = Date.now() + ARENA_REST_SECONDS * 1000
+    this._arenaRest(run)
     if (res.died) {
       this.addEvent({ text: `Year ${yr}: on the ${R.name}, ${Persons.fullName(opp)}'s blade is faster. The crowd roars for the wrong one.`, type: 'negative' })
       this._recalc(); this._notify()
@@ -7431,6 +7439,10 @@ class GameState {
     if (!w.soulTech || typeof w.soulTech !== 'object') w.soulTech = { seed: false, clone: false }
     if (!s.soulUse || typeof s.soulUse !== 'object') s.soulUse = { seedUsed: false, essenceUntil: 0 }
     if (!s.clone || typeof s.clone !== 'object') s.clone = { exp: null, outSec: 0, linger: null, gone: false, restUntil: 0, auto: false }
+    // 2026-10-05: the clone can temper your body too — its own tempering slot, what it has trained, and its auto duty
+    for (const [k, v] of Object.entries({ temper: null, temperXp: 0, autoDuty: 'explore', autoTemperId: null, lastTemperId: null })) if (s.clone[k] === undefined) s.clone[k] = v
+    if (s.clone.temper && !this._temperMethod(s.clone.temper.id)) s.clone.temper = null
+    if (!['explore', 'temper'].includes(s.clone.autoDuty)) s.clone.autoDuty = 'explore'
   }
   _stName(i) { return typeof stageShortName === 'function' ? stageShortName(i) : (CULTIVATION_STAGES[i]?.realm || 'stage ' + i) }
   soulTechKnown(id) { return !!this._s.world?.soulTech?.[id] }
@@ -7758,8 +7770,12 @@ class GameState {
       : s.stageIndex < T.minStage ? `Reach ${this._stName(T.minStage)} first`
       : Date.now() < (c.restUntil || 0) ? 'rest' : null
     const exp = c.exp ? { ...c.exp, name: LOCATIONS.find(l => l.id === c.exp.locationId)?.name || '', left: Math.max(0, Math.ceil((c.exp.endsAt - Date.now()) / 1000)) } : null
+    const tm = c.temper ? this._temperMethod(c.temper.id) : null
+    const temper = c.temper ? { ...c.temper, name: tm?.name || '', group: tm?.group, left: Math.max(0, Math.ceil((c.temper.endsAt - Date.now()) / 1000)) } : null
     return { name: T.name, lock, restLeft: lock === 'rest' ? Math.ceil((c.restUntil - Date.now()) / 1000) : 0, qiCost: cost, qiMult: T.qiMult,
-      canPay: s.qi >= cost, exp, linger: c.linger ? { ...c.linger } : null, auto: !!c.auto,
+      canPay: s.qi >= cost, exp, temper, busy: !!(c.exp || c.temper), crisis: this.cloneCrisisInfo(), temperXp: c.temperXp || 0,
+      linger: c.linger ? { ...c.linger } : null, auto: !!c.auto, autoDuty: c.autoDuty || 'explore', autoTemperId: c.autoTemperId || null,
+      lastTemperId: c.lastTemperId || null,
       will, willWord: T.willWords.find(x => will >= x.min).w,
       places: LOCATIONS.filter(l => s.stageIndex >= l.minStage).map(l => ({ id: l.id, name: l.name, duration: l.duration, shatter: this._cloneShatter(l) })) }
   }
@@ -7768,7 +7784,7 @@ class GameState {
     const s = this._s, info = this.cloneInfo()
     if (!info) return { ok: false, reason: 'unknown' }
     if (info.lock) return { ok: false, reason: 'locked', lock: info.lock }
-    if (s.clone.exp) return { ok: false, reason: 'active' }
+    if (s.clone.exp || s.clone.temper) return { ok: false, reason: 'active' }
     if (s.clone.linger) return { ok: false, reason: 'linger' }
     const loc = LOCATIONS.find(l => l.id === locationId)
     if (!loc || s.stageIndex < loc.minStage) return { ok: false, reason: 'stage' }
@@ -7781,6 +7797,13 @@ class GameState {
   }
   recallClone() {
     const c = this._s.clone
+    if (c.temper) {
+      const m = this._temperMethod(c.temper.id)
+      c.temper = null
+      this.addEvent({ text: `You call your other self back from ${m?.name || 'its tempering'}. What it cost is spent; the work is lost.`, type: 'neutral' })
+      this._recalc(); this._notify()
+      return { ok: true }
+    }
     if (!c.exp) return { ok: false, reason: 'none' }
     c.exp = null
     this.addEvent({ text: 'You call your other self home before it arrives. It brings nothing back.', type: 'neutral' })
@@ -7788,14 +7811,153 @@ class GameState {
     return { ok: true }
   }
   setCloneAuto(on) { this._s.clone.auto = !!on; this._notify(); return { ok: true } }
+  // "On its own": off, or the duty it repeats — 'explore' (its last place, never above your realm) or 'temper' (a safe
+  // drill / spirit method, never an ordeal). The player's delegated chore; any manual send overrides it for that trip.
+  setCloneDuty(duty) {
+    const c = this._s.clone
+    if (duty === 'off') c.auto = false
+    else if (duty === 'explore' || duty === 'temper') { c.auto = true; c.autoDuty = duty }
+    else return { ok: false, reason: 'unknown' }
+    this._notify(); return { ok: true }
+  }
+  setCloneAutoTemper(id) {
+    const m = id ? this._temperMethod(id) : null
+    if (id && (!m || (m.group !== 'drill' && m.group !== 'spirit'))) return { ok: false, reason: 'unsafe' }
+    this._s.clone.autoTemperId = id || null; this._notify(); return { ok: true }
+  }
   _tickClone() {
     const s = this._s, c = s.clone
     if (!c || s.interlude) return
     if (c.exp && Date.now() >= c.exp.endsAt) this._resolveClone()
-    if (c.auto && !c.exp && !c.linger && c.lastLocationId) {   // the player's delegated chore (off by default), never above your realm
-      const info = this.cloneInfo()
-      if (info && !info.lock && s.qi >= info.qiCost) this.startCloneExpedition(c.lastLocationId)
+    let guard = 0
+    while (c.temper && !c.temper.crisis && Date.now() >= c.temper.endsAt && guard++ < 60) {
+      const end = c.temper.endsAt
+      this._resolveCloneTemper()
+      this._cloneAutoTemper(end)
     }
+    if (c.auto && !c.exp && !c.temper && !c.linger) {   // the player's delegated chore (off by default)
+      if (c.autoDuty === 'temper') this._cloneAutoTemper(Date.now())
+      else if (c.lastLocationId) {                       // never above your realm
+        const info = this.cloneInfo()
+        if (info && !info.lock && s.qi >= info.qiCost) this.startCloneExpedition(c.lastLocationId)
+      }
+    }
+  }
+
+  // ── The clone tempers your body (2026-10-05): a second tempering beside yours, full XP, items + the forming Qi paid
+  // up front; Qi/s x0.85 while it works (a spirit method's halving falls on it, not you). It may take an ordeal (your
+  // choice, never automated): at the peak the risk is its — a failed endure shatters it instead of scarring you.
+  cloneTemperCheck(id) {
+    const s = this._s, c = s.clone, m = this._temperMethod(id), info = this.cloneInfo()
+    if (!info || !m) return 'unknown'
+    if (m.group === 'demonic' || m.group === 'tribulation') return 'own_body'
+    if (m.locked) return 'locked'
+    if (info.lock) return info.lock === 'rest' ? 'rest' : info.lock.startsWith('Reach') ? 'clone_stage' : 'gone'
+    if (s.stageIndex < m.minStage) return 'stage'
+    if (c.exp || c.temper) return 'busy'
+    if (c.linger) return 'linger'
+    if (m.once && s.body.ordealsDone[m.id]) return 'once'
+    if ((m.group === 'ordeal' || m.once) && s.body.active?.id === m.id) return 'yours'
+    if (m.needsBeast && !this._strongestBeast()) return 'no_beast'
+    if (Object.entries(m.cost || {}).some(([k, n]) => (s.inventory[k] || 0) < n)) return 'items'
+    if (s.qi < info.qiCost) return 'qi'
+    return null
+  }
+  startCloneTempering(id) {
+    const r = this.cloneTemperCheck(id)
+    if (r) return { ok: false, reason: r }
+    return this._beginCloneTemper(this._temperMethod(id), Date.now())
+  }
+  _beginCloneTemper(m, at) {
+    const s = this._s, c = s.clone, cost = this.cloneInfo().qiCost
+    for (const [id, n] of Object.entries(m.cost || {})) { s.inventory[id] -= n; if (s.inventory[id] <= 0) delete s.inventory[id] }
+    s.qi -= cost
+    const xp = this.methodXp(m)
+    c.temper = { id: m.id, startedAt: at, endsAt: at + m.secs * 1000, xp, crisis: false }
+    if (m.group === 'drill' || m.group === 'spirit') c.lastTemperId = m.id
+    this.addEvent({ text: `Your other self begins ${m.name} in your place. (${fmtTime(m.secs)}, about ${fmtQi(xp)} body XP; −${fmtQi(cost)} Qi to form it)`, type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, xp, endsAt: c.temper.endsAt }
+  }
+  // Auto duty 'temper': repeats the chosen safe method from where the last one ended (offline too). Never an ordeal.
+  _cloneAutoTemper(from) {
+    const c = this._s.clone
+    if (!c.auto || c.autoDuty !== 'temper' || c.temper || c.exp || c.linger) return
+    const id = c.autoTemperId || c.lastTemperId, m = this._temperMethod(id)
+    if (!m || (m.group !== 'drill' && m.group !== 'spirit') || this.cloneTemperCheck(id)) return
+    this._beginCloneTemper(m, Math.max(from, Date.now() - m.secs * 1000 * 50))
+    this._emit('auto_fire', { system: 'clone_temper' })
+  }
+  _resolveCloneTemper() {
+    const s = this._s, c = s.clone, t = c.temper, m = this._temperMethod(t.id)
+    if (!m) { c.temper = null; return }
+    if (m.group === 'ordeal') {
+      t.crisis = true
+      this.addEvent({ text: `Your other self reaches the peak of ${m.name}. It looks to you: endure, ease off, or lend it your Qi?`, type: 'special' })
+      this._emit('ordeal_crisis', { id: m.id, clone: true })
+      return
+    }
+    c.temper = null
+    c.outSec = (c.outSec || 0) + Math.max(0, (t.endsAt - t.startedAt) / 1000)
+    if (Math.random() < this._cloneWillChance()) return this._cloneLingers(m, t.xp)
+    this._cloneTemperPay(m, t.xp)
+  }
+  _cloneTemperPay(m, xp0, note = '') {
+    const s = this._s, c = s.clone, b = s.body, xp = this._gainBodyXp(xp0)
+    c.temperXp = (c.temperXp || 0) + xp
+    if (m.group === 'drill' && b.taint > 0) { b.taint = Math.max(0, b.taint - TAINT_CLEANSE_PER_DRILL); note += ' The quiet work draws a little taint from your blood.' }
+    b.history.unshift({ id: m.id, year: Math.floor(s.world.year), xp, clone: true })
+    if (b.history.length > 20) b.history.length = 20
+    this.addEvent({ text: `Your other self finishes ${m.name}, and the body it trained is yours: +${fmtQi(xp)} body XP.${this.tierTrialInfo().ready ? ' Your body is ready for the tier trial.' : ''}${note}`, type: 'positive' })
+    this._recalc(); this._notify()
+    return xp
+  }
+  _cloneLingers(m, xp) {
+    const c = this._s.clone
+    c.linger = { kind: 'temper', place: m.name, drops: {}, xp }
+    this.addEvent({ text: `Your other self finishes ${m.name} and does not come back to you. It flexes hands that are yours, and looks at you with your own eyes.`, type: 'special' })
+    this._emit('clone_lingers', {})
+    this._recalc(); this._notify()
+  }
+  cloneCrisisInfo() {
+    const s = this._s, t = s.clone?.temper
+    if (!t?.crisis) return null
+    const m = this._temperMethod(t.id), C = ORDEAL_CRISIS, T = SOUL_TECH.clone, qiCost = Math.round((s.derived?.qiCap || 0) * C.qiFrac)
+    return { id: m.id, name: m.name, xp: t.xp, easeXp: Math.round(t.xp * C.easeXp), odds: this.ordealOdds(), qiCost, qiOk: s.qi >= qiCost,
+             bonus: this._endureBonusText(m), shatterHealth: Math.round(this.maxHealth() * T.shatterHealth), restSec: T.restSec }
+  }
+  // The clone's ordeal peak — always the player's answer. Endure: on the same odds as yours (it has your body), clean ->
+  // the XP + the ordeal's reward; failed -> it shatters (Health -20%, 20:00 rest, no XP) and you keep no scar.
+  answerCloneOrdeal(choice) {
+    const info = this.cloneCrisisInfo()
+    if (!info) return { ok: false, reason: 'no_crisis' }
+    const s = this._s, c = s.clone, b = s.body, t = c.temper, m = this._temperMethod(info.id), T = SOUL_TECH.clone
+    if (choice === 'qi' && !info.qiOk) return { ok: false, reason: 'qi' }
+    if (!['qi', 'ease', 'endure'].includes(choice)) return { ok: false, reason: 'unknown' }
+    c.temper = null
+    c.outSec = (c.outSec || 0) + Math.max(0, (t.endsAt - t.startedAt) / 1000)
+    if (m.once || m.group === 'ordeal') b.ordealsDone[m.id] = (b.ordealsDone[m.id] || 0) + 1
+    const res = { ok: true, choice }
+    if (choice === 'qi') {
+      s.qi -= info.qiCost
+      this._applyEndureBonus(m)
+      res.xp = this._cloneTemperPay(m, info.xp, ` You poured ${fmtQi(info.qiCost)} Qi into it and it came through whole.`)
+    } else if (choice === 'ease') {
+      res.xp = this._cloneTemperPay(m, info.easeXp, ' It eased off at the peak.')
+    } else if (Math.random() < info.odds.chance) {
+      res.clean = true; b.cleanEndures++
+      this._applyEndureBonus(m)
+      res.xp = this._cloneTemperPay(m, info.xp, info.bonus ? ` It endured to the end. (${info.bonus})` : ' It endured to the end.')
+      this._emit('ordeal_endure', { id: m.id, clone: true })
+    } else {
+      res.clean = false; res.shattered = true
+      s.health = Math.max(1, (s.health ?? 100) - info.shatterHealth)
+      c.restUntil = Date.now() + T.restSec * 1000
+      this.addEvent({ text: `${m.name} breaks your other self before it breaks the ordeal. It shatters, and the backlash tears through you (−${info.shatterHealth} Health). No scar is yours: the body that broke was its.`, type: 'negative' })
+      this._emit('clone_shattered', {})
+      this._recalc(); this._notify()
+    }
+    return res
   }
   _resolveClone() {
     const s = this._s, c = s.clone, T = SOUL_TECH.clone, exp = c.exp, loc = LOCATIONS.find(l => l.id === exp.locationId)
@@ -7835,7 +7997,8 @@ class GameState {
     const s = this._s, c = s.clone, L = c.linger
     if (!L) return { ok: false, reason: 'none' }
     if (choice === 'absorb') {
-      const got = this._cloneGive(L.drops)
+      let got = this._cloneGive(L.drops)
+      if (L.xp) { const xp = this._gainBodyXp(L.xp); s.clone.temperXp = (s.clone.temperXp || 0) + xp; got = `${got ? got + ', ' : ''}+${fmtQi(xp)} body XP` }
       const ids = (s.arts?.loadout?.moves || []).filter(id => id && s.arts.known?.[id] && (s.arts.known[id].mastery || 1) < ART_MASTERY_MAX)
       const art = ids.length ? ids[Math.floor(Math.random() * ids.length)] : null
       if (art) s.arts.known[art].mastery = (s.arts.known[art].mastery || 1) + 1
@@ -7849,8 +8012,11 @@ class GameState {
       const p = this._mintPerson({ family: me.family || null, given: `${me.given || s.name}`, stage: Math.max(0, s.stageIndex - 3), age: [s.age || 20, s.age || 20],
         personality: s.personality?.id || null, root: { ...s.root }, role: 'wanderer' }, Math.random)
       p.cloneOf = me.id; p.rel = 20; p.fam = 1; p.seenY = yr
-      p.mem = [{ y: yr, k: 'cloneFreed', text: `You let me go at ${L.place}. I have your face, and my own road.`, d: 20, life: this._lifeNo() }]
-      c.linger = null; c.gone = true; c.exp = null
+      // the body it trained walks away with it: a clone that tempered keeps your body tier (a hard rival on the road);
+      // one that never did is a shade of it, a tier below
+      p.bodyTier = c.temperXp > 0 ? s.body.tier : Math.max(0, s.body.tier - 1)
+      p.mem = [{ y: yr, k: 'cloneFreed', text: `You let me go at ${L.place}. I have your face, ${c.temperXp > 0 ? 'the body I trained for you, ' : ''}and my own road.`, d: 20, life: this._lifeNo() }]
+      c.linger = null; c.gone = true; c.exp = null; c.temper = null
       this.addEvent({ text: `You let your other self go. It walks away from ${L.place} with your face, and your name, and a road of its own.`, type: 'special', pid: p.id })
       this._recalc(); this._notify()
       return { ok: true, choice, pid: p.id }
@@ -7959,7 +8125,7 @@ class GameState {
 
   // Public (UI): every method with its cost, XP, and why it can't start (reason) if it can't.
   temperingList() {
-    const s = this._s, b = s.body
+    const s = this._s, b = s.body, cloneOn = this.soulTechKnown('clone') && !s.clone?.gone
     return TEMPERING_METHODS.filter(m => m.group !== 'demonic' || this._bloodOpen()).map(m => {
       const cost = Object.entries(m.cost || {}).map(([id, n]) => ({ id, name: ITEMS[id]?.name || id, n, have: s.inventory[id] || 0 }))
       const out = { id: m.id, group: m.group, name: m.name, desc: m.desc, secs: m.secs, cost, xp: m.locked ? m.xp : this.methodXp(m),
@@ -7971,10 +8137,12 @@ class GameState {
       if (s.stageIndex < m.minStage) lock('stage')
       if (m.once && b.ordealsDone[m.id]) lock('once')
       if (m.needsBeast && !this._strongestBeast()) lock('no_beast')
+      if ((m.group === 'ordeal' || m.once) && s.clone?.temper?.id === m.id) lock('clone_same')
       if (b.active) lock('busy')
       if (cost.some(c => c.have < c.n)) lock('items')
       if (m.group === 'demonic' && (s.health ?? 100) <= BLOOD_FORGING.health) lock('health')
       if (out.reason === 'locked') out.lockText = m.locked
+      if (cloneOn && m.group !== 'demonic' && m.group !== 'tribulation') out.clone = { reason: this.cloneTemperCheck(m.id) }
       return out
     })
   }

@@ -23,7 +23,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   const turn = async (sel, ok) => {
     await ev('combatView.lockUntil = 0'); await ev(`document.querySelector('#combat-panel ${sel}')?.click()`); await sleep(160)
     for (let g = 0; g < 6 && await ev('!!combatView.qte && !combatView.qte.sent'); g++) {
-      if (ok) { await ev('combatView.qte.due[combatView.qte.results.length] = performance.now()'); await ev('document.querySelector("#combat-parry [data-parry]").click()') }
+      if (ok) { await ev('combatView.qte.due[combatView.qte.results.length] = performance.now()'); await ev('document.getElementById("combat-canvas").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0 }))')   /* tap anywhere (2026-10-05) */ }
       else await ev('combatView._parryHit(false, "It lands")')
       await sleep(80)
     }
@@ -64,6 +64,10 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     assert(await ev('!!combatView.qte && !!document.querySelector("#combat-parry:not(.hidden) .cb-parry-btn")'), `${mode}: its attack opens the parry prompt`)
     assert(await ev('document.querySelectorAll("#combat-panel .cb-moves.locked [data-move][disabled]").length > 0 && !!document.querySelector("#combat-panel [data-move=circulate][disabled]")'), `${mode}: the prompt sits on the field; your moves stay in view, locked`)
     await shot(`combat-parry-${mode}`)
+    // the window open (held wide for the shot): the gold zone holds the marker, the button reads PARRY NOW, the stage edge glows
+    await ev('(() => { const q = combatView.qte; q.w = 6000; q.due[q.results.length] = performance.now() + 1500 })()'); await sleep(250)
+    assert(await ev('document.getElementById("combat-parry").classList.contains("hot") && document.getElementById("combat-stage").classList.contains("parry-hot") && /PARRY NOW/.test(document.querySelector("#combat-parry .cb-pb-l").textContent)'), `${mode}: inside the window — PARRY NOW + the stage glow`)
+    await shot(`combat-parry-now-${mode}`)
     await ev('combatView._parryHit(false, "It lands")'); await sleep(560)
     assert(await ev('gameState.get().health < 100 && [...document.querySelectorAll("#combat-panel .cb-ll")].some(l => /damage/.test(l.textContent))'), `${mode}: a missed parry costs Health and says so`)
     const hp0 = await ev('gameState.get().health')

@@ -107,7 +107,14 @@ const iron = gs => gs.arenaInfo().rings.find(r => r.id === 'iron')
     assert(gs.arenaInfo().callout.prize === Math.round(8 * K('ARENA_CALLOUT_MULT') * 3 * gs.arenaInfo().mult.renown), 'a grudge match pays double the ring prize (×3 blood)')
     const r = gs.answerArenaCallout(true)
     assert(r.fight && s.family.fight?.kind === 'arena' && s.family.fight.lethal && s.spiritStones === 0, 'accepting: their stakes, no fee')
-    s.family.fight = null; s.arena.run = null
+    s.family.fight = null
+    // the rest follows only a run you chose (user 2026-10-05): a call-out you answered ends without resting the Arena
+    s.arena.restUntil = 0; gs.arenaWalkAway()
+    assert(!s.arena.run && !(gs.arenaInfo().restUntil), 'a call-out run ends without the 30-min Arena rest')
+    s.arena.run = { ringId: 'iron', purse: 0, streak: 1, wins: 1, beaten: [], startedYear: 0, callout: true, chosen: true }
+    gs.arenaWalkAway()
+    assert(gs.arenaInfo().restUntil > sim.ev('Date.now()'), 'fight on after a call-out (a bout you picked) and the run rests the Arena as usual')
+    s.arena.restUntil = 0; s.arena.run = null
     p.feud = 'grudge'; rng(sim, 0); gs._tickArena(); unrng(sim)
     const rn = s.arena.renown; gs.answerArenaCallout(false)
     assert(s.arena.renown === rn + K('ARENA_RENOWN').declined && p.feud === 'grudge' && !s.arena.callout, 'declining: −renown, the grudge stays')

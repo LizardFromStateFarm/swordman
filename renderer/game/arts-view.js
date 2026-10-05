@@ -132,14 +132,25 @@ const ArtsView = {
           <span class="art-meta">${esc(this.meta(gs, id, true))}</span></span>${k ? this.pips(k.mastery) : ''}</button>
         <div class="art-row-a">${tags}${act}</div>${detail}</div>`
     }).join('') || `<div class="art-empty">${this.pick ? `You know no ${this.pick.kind === 'move' ? 'move' : 'passive art'} to put here yet.` : 'Nothing here yet.'}</div>`
-    const chip = (key, val, label, cur) => `<button class="pack-chip${cur === val ? ' active' : ''}" data-f="${key}:${val}">${label}</button>`
+    // Faceted counts (2026-10-05 restyle): how many a chip would show, the other two filters kept
+    const F = this.filter, pool = all.filter(id => !this.pick || (ARTS[id].kind === this.pick.kind && info.known[id]))
+    const count = (key, val) => pool.filter(id => ['kind', 'rar', 'el'].every(k => k === key ? (val === 'all' || ARTS[id][{ kind: 'kind', rar: 'rarity', el: 'element' }[k]] === val)
+      : (F[k] === 'all' || ARTS[id][{ kind: 'kind', rar: 'rarity', el: 'element' }[k]] === F[k]))).length
+    const n = (key, val) => { const c = count(key, val); return `<b class="af-n">${c}</b>` }
+    const chip = (key, val, label, cur, cls = '', inner = '') => { const c = count(key, val)
+      return `<button class="af-chip${cls ? ' ' + cls : ''}${cur === val ? ' active' : ''}${c ? '' : ' none'}" data-f="${key}:${val}" aria-pressed="${cur === val}"${inner ? ` title="${label}"` : ''}>${inner}<span class="af-l">${label}</span>${n(key, val)}</button>` }
     // a grade chip carries its grade's colour (g-<grade>), so "Heaven" reads gold and "Profound" jade, as the art names do
-    const gradeChip = g => `<button class="pack-chip rar-chip g-${g}${this.filter.rar === g ? ' active' : ''}" data-f="rar:${g}">${ART_RARITY[g].name}</button>`
+    const gradeChip = g => chip('rar', g, ART_RARITY[g].name, F.rar, `rar-chip g-${g}`)
+    const anyOn = F.kind !== 'all' || F.rar !== 'all' || F.el !== 'all'
+    const frow = (label, body) => `<div class="af-row"><span class="af-k">${label}</span><div class="af-chips">${body}</div></div>`
+    const fbox = `<div class="af-box">
+      ${this.pick ? '' : frow('Kind', chip('kind', 'all', 'All', F.kind) + chip('kind', 'move', 'Moves', F.kind) + chip('kind', 'passive', 'Passives', F.kind))}
+      ${this.pick ? '' : frow('Grade', chip('rar', 'all', 'Any', F.rar) + ART_RARITY_ORDER.map(gradeChip).join(''))}
+      ${frow('Element', chip('el', 'all', 'Any', F.el) + Object.keys(ART_ELEMENTS).map(e => chip('el', e, ART_ELEMENTS[e].name, F.el, `el-chip el-${e}`, this.elIcon(e))).join(''))}
+      ${anyOn ? '<button class="af-clear" data-f="clear:all">Clear filters</button>' : ''}</div>`
     const library = `<section class="art-sec"><div class="art-sec-h"><span>Library</span><span class="art-dim" title="Arts you have known, held or been offered; the second number counts what the filters leave">${info.found} of ${info.total} found${ids.length !== all.length ? ` · ${ids.length} shown` : ''}</span></div>
       ${this.pick ? `<div class="art-picking">${Icon('play')}Choosing for ${this.pick.kind} slot ${this.pick.index + 1}<button class="art-btn quiet" data-pick-cancel>Cancel</button></div>` : ''}
-      <div class="art-filters">${this.pick ? '' : chip('kind', 'all', 'All', this.filter.kind) + chip('kind', 'move', 'Moves', this.filter.kind) + chip('kind', 'passive', 'Passives', this.filter.kind)}</div>
-      <div class="art-filters">${this.pick ? '' : chip('rar', 'all', 'Any grade', this.filter.rar) + ART_RARITY_ORDER.map(gradeChip).join('')}</div>
-      <div class="art-filters">${chip('el', 'all', 'Any element', this.filter.el)}${Object.keys(ART_ELEMENTS).map(e => `<button class="pack-chip el-chip el-${e}${this.filter.el === e ? ' active' : ''}" data-f="el:${e}" title="${ART_ELEMENTS[e].name}">${this.elIcon(e)}<span>${ART_ELEMENTS[e].name}</span></button>`).join('')}</div>
+      ${fbox}
       <div class="art-list">${rows}</div></section>`
 
     const els = info.elements.map(e => `<span class="art-root el-${e}">${this.elIcon(e)}${ART_ELEMENTS[e].name}</span>`).join('')
@@ -149,6 +160,20 @@ const ArtsView = {
         ${desk}${loadout}</div>
       <div class="arts-col">${library}</div></div>`
     Icon.hydrate?.(el)
+  },
+
+  // Re-render without losing your place: the anchor (the filter panel) is put back where it was on screen, whatever the
+  // list below it now holds. The scroller is the nearest ancestor that scrolls (it differs by layout mode).
+  _keepPlace(sel, fn) {
+    const a0 = this.el.querySelector(sel), top0 = a0?.getBoundingClientRect().top
+    let sc = this.el
+    while (sc && sc !== document.body && !(sc.scrollHeight > sc.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement
+    const before = sc && sc !== document.body ? sc.scrollTop : window.scrollY
+    fn()
+    const a1 = this.el.querySelector(sel)
+    if (top0 == null || !a1) return
+    if (sc && sc !== document.body) { sc.scrollTop = before; sc.scrollTop += a1.getBoundingClientRect().top - top0 }
+    else { window.scrollTo(0, before); window.scrollBy(0, a1.getBoundingClientRect().top - top0) }
   },
 
   tickInPlace(el, fmtTime) {
@@ -187,6 +212,10 @@ const ArtsView = {
     if (d.put) { const [kind, i, id] = d.put.split(':'); return say(gs.setArtSlot(kind, +i, id), `${ARTS[id].name} equipped.`, { locked: 'That slot is still locked' }) }
     if (d.pickCancel != null) { this.pick = null; return this.render(s, this.el, gs, h) }
     if (d.open) { this.open = this.open === d.open ? null : d.open; return this.render(s, this.el, gs, h) }
-    if (d.f) { const [k, v] = d.f.split(':'); this.filter[k] = v; return this.render(s, this.el, gs, h) }
+    if (d.f) {
+      const [k, v] = d.f.split(':')
+      if (k === 'clear') this.filter = { kind: 'all', el: 'all', rar: 'all' }; else this.filter[k] = v
+      return this._keepPlace('.af-box', () => this.render(s, this.el, gs, h))
+    }
   },
 }

@@ -175,6 +175,74 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
   assert(/own road/.test(gs.cloneInfo().lock || ''), 'and the slot is closed for this life')
   ST.clone.willMax = wm
 
+  // ── The clone tempers your body (2026-10-05): full XP, the forming Qi + the method's cost, one duty at a time, its own
+  // ordeal peak (a failed endure shatters it, no scar on you), "On its own" Temper (safe drills only, chained offline),
+  // It Lingers after a tempering (absorb → the XP), a released tempered clone keeps your body tier ──
+  at(17); s = gs.get()
+  Object.assign(s.clone, { gone: false, linger: null, exp: null, temper: null, restUntil: 0, outSec: 0, temperXp: 0, auto: false })
+  s.body.active = null; s.body.scars = []; s.body.taint = 0
+  const TM = id => sim.ev('TEMPERING_METHODS').find(m => m.id === id), OC = sim.ev('ORDEAL_CRISIS')
+  const xpCap = () => { s.body.tier = 0; s.body.xp = 0 }
+  xpCap(); s.qi = gs._qiCapValue(); s.inventory.beast_core = 20
+  const cq = gs.cloneInfo().qiCost, q1 = s.qi
+  r = gs.startCloneTempering('iron_fist')
+  assert(r.ok && s.clone.temper?.id === 'iron_fist' && s.qi === q1 - cq && s.inventory.beast_core === 19, 'the clone tempers: it pays the method + the forming Qi')
+  gs._recalc()
+  assert(JSON.stringify(gs.qiBreakdown?.() || s.derived || {}).includes('tempering') || gs.cloneInfo().busy, 'while it tempers, your Qi/s carries the split (or it is busy)')
+  assert(gs.startCloneExpedition(safe.id).ok === false && gs.startCloneTempering('morning').reason === 'busy', 'one duty at a time: no expedition or second tempering meanwhile')
+  assert(gs.startTempering('iron_fist').ok, 'and you can temper yourself beside it')
+  assert(gs.cloneTemperCheck('blood_forging') === 'own_body', 'Blood Forging is yours alone: the clone refuses it')
+  const want = gs.methodXp(TM('iron_fist')), x0 = s.body.xp
+  s.clone.temper.endsAt = sim.clock.now - 1; s.clone.outSec = 0
+  gs._tickClone()
+  assert(!s.clone.temper && s.body.xp - x0 === want && s.clone.temperXp === want, `its tempering pays full XP to you (+${want})`)
+  assert(s.body.history[0]?.clone === true, 'the body remembers the clone did it')
+  s.body.active = null
+  // the ordeal: your choice only; the peak holds for your answer
+  s.inventory.heavenly_ore = 20; s.qi = gs._qiCapValue(); s.health = gs.maxHealth()
+  r = gs.startCloneTempering('thunder_peak')
+  assert(r.ok, 'it may take an ordeal when you send it')
+  assert(gs.temperingList().find(x => x.id === 'thunder_peak').reason === 'clone_same', 'while it runs that ordeal, you cannot begin the same one')
+  s.clone.temper.endsAt = sim.clock.now - 1; gs._tickClone()
+  assert(s.clone.temper?.crisis && gs.cloneInfo().crisis, 'at the peak it waits for your answer')
+  const oMin = OC.min, oMax = OC.max
+  OC.min = 0; OC.max = 0
+  const hpC = s.health, xb = s.body.xp, sc0 = s.body.scars.length
+  r = gs.answerCloneOrdeal('endure')
+  assert(r.ok && r.shattered && s.health < hpC && s.body.xp === xb && s.body.scars.length === sc0 && gs.cloneInfo().lock === 'rest', 'a failed endure shatters it: Health backlash + rest, no XP, no scar on you')
+  s.clone.restUntil = 0; s.inventory.heavenly_ore = 20; s.qi = gs._qiCapValue(); s.health = gs.maxHealth()
+  OC.min = 100; OC.max = 100
+  const bt0 = s.body.btBonus, ce0 = s.body.cleanEndures
+  gs.startCloneTempering('thunder_peak'); s.clone.temper.endsAt = sim.clock.now - 1; gs._tickClone()
+  r = gs.answerCloneOrdeal('endure')
+  assert(r.ok && r.clean && s.body.btBonus > bt0 && s.body.cleanEndures === ce0 + 1 && r.xp > 0, 'a clean endure: the XP + the ordeal reward are yours')
+  OC.min = oMin; OC.max = oMax
+  // On its own: Temper
+  xpCap(); s.qi = gs._qiCapValue() * 3; s.inventory.beast_core = 50
+  assert(gs.setCloneAutoTemper('thunder_peak').ok === false, 'the auto duty refuses an ordeal')
+  gs.setCloneDuty('temper'); gs.setCloneAutoTemper('iron_fist')
+  gs._tickClone()
+  assert(s.clone.auto && s.clone.temper?.id === 'iron_fist', '"On its own: Temper" starts the chosen drill')
+  s.clone.temper.endsAt = s.clone.temper.startedAt = sim.clock.now - 5 * TM('iron_fist').secs * 1000; s.clone.temper.endsAt += TM('iron_fist').secs * 1000
+  s.qi = 1e30; s.clone.outSec = 0; const h1 = s.body.history.filter(x => x.clone).length
+  gs._tickClone()
+  assert(s.body.history.filter(x => x.clone).length - h1 >= 3, 'away for hours, it chains its drills from where each ended')
+  gs.setCloneDuty('off'); s.clone.temper = null
+  assert(!s.clone.auto, 'Off stops it')
+  // It Lingers after a tempering → absorb gives the XP; a released tempered clone keeps your body tier
+  ST.clone.willMax = 1; xpCap(); s.qi = gs._qiCapValue(); s.clone.outSec = 1e9
+  gs.startCloneTempering('morning'); s.clone.temper.endsAt = sim.clock.now - 1; gs._tickClone()
+  assert(s.clone.linger?.kind === 'temper' && s.clone.linger.xp > 0, 'it may linger after a tempering, its XP waiting')
+  const xl = s.body.xp; r = gs.answerCloneLinger('absorb')
+  assert(r.ok && s.body.xp > xl, 'drawn back in: the XP it earned is yours')
+  s.body.tier = 3; s.qi = gs._qiCapValue(); s.clone.outSec = 1e9
+  gs.startCloneTempering('morning'); s.clone.temper.endsAt = sim.clock.now - 1; gs._tickClone()
+  r = gs.answerCloneLinger('release')
+  assert(r.ok && w().persons[r.pid]?.bodyTier === 3, 'let go after tempering: it walks away with your body tier')
+  ST.clone.willMax = wm
+  delete s.clone.temperXp; delete s.clone.autoDuty; gs._ensureBossFields()
+  assert(s.clone.temperXp === 0 && s.clone.autoDuty === 'explore', 'an older clone record gains the tempering fields')
+
   // ── Save round trip ──
   const back = JSON.parse(JSON.stringify(gs.get()))
   assert(back.world.bosses.bird.wins === 1 && back.world.soulTech.seed && back.world.soulTech.clone, 'bosses + soul techniques survive a save round trip')

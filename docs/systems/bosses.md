@@ -97,6 +97,38 @@ rest of this life**).
 **Automation:** Auto-Explore may also refill the clone's slot (a separate toggle, off by default; the player's delegated
 chore, overridable per trip). It never sends the clone above your realm.
 
+### The clone tempers your body (user 2026-10-05 — built)
+User: "once you get the body double technique you should be able to automate the body working out as well as the double
+expedition." Picks: **full XP**; **ordeals allowed, the risk falls on it**.
+- **One duty at a time:** the clone either walks an expedition *or* tempers. Sending it to temper pays the method's
+  item cost **and** the forming Qi (20% of the cap), like a trip. Your Qi/s ×0.85 while it works ("Your other self is
+  tempering" on the Qi breakdown); a spirit method's ×0.5 falls on it, not you, which is the reason to delegate one.
+- **Full XP**, to your body (`methodXp`, so the Training Ground + Active Mode count). A finished drill cleanses taint
+  like yours; the body history marks the line `clone: true`. You can temper yourself beside it (two temperings at once).
+- **Not the clone's:** Blood Forging (your veins, your karma) and the Tribulation. An ordeal or once-a-life method can't
+  run in both slots at once (`clone_same` / `yours` locks).
+- **Ordeals:** only when you send it by hand. At the peak it holds for **your answer** (a clone crisis card on Path →
+  Body + the urgent attention item `clone-crisis`): **Let it endure** (your own ordeal odds; it has your body) → clean:
+  the XP + the ordeal's reward + a clean endure; failed: **it shatters** — no XP, Health −20% of your max, the 20:00 rest —
+  and **you take no scar**. **Call it to ease off** (half XP, no risk) · **Lend it your Qi** (the crisis Qi cost; safe).
+- **It Lingers** applies to tempering time too (`outSec` grows). A lingering clone holds the XP it earned
+  (`linger.kind = 'temper'`, `linger.xp`): Draw it back in = the XP + the usual art mastery; Let it go = the XP is lost.
+- **Memory / drama:** `s.clone.temperXp` = what it has trained for you this life. A **released clone that tempered keeps
+  your body tier** (`person.bodyTier` = yours, real fight power on the road); one that never did is a tier below.
+- **On its own** (the delegated chore, overridable per send): **Off / Explore / Temper** on both Path → Body and Roam →
+  Explore. Temper repeats a chosen safe drill / spirit method (`autoTemperId`, else its last drill) and **never takes an
+  ordeal**; it chains from where each ended (offline catch-up, guard 60). It pays the cost + forming Qi each time.
+- State: `s.clone.{ temper: {id, startedAt, endsAt, xp, crisis} | null, temperXp, autoDuty: 'explore'|'temper',
+  autoTemperId, lastTemperId }` (migrated in `_ensureBossFields`). API: `cloneTemperCheck(id)` → a reason or null ·
+  `startCloneTempering(id)` · `recallClone()` (also calls it back from a tempering; nothing refunded) ·
+  `cloneCrisisInfo()` · `answerCloneOrdeal('endure'|'ease'|'qi')` · `setCloneDuty('off'|'explore'|'temper')` ·
+  `setCloneAutoTemper(id)` (refuses an ordeal) · `temperingList()` rows carry `clone: { reason }`.
+- UI: Path → Body "Your other self" section (free / tempering with timer + progress / exploring / shattered + "On its
+  own"), the clone crisis card, an **Other self** button (purple) beside Begin on each method it can take (with its lock
+  reason when it can't); Roam → Explore's clone panel shows the tempering + the duty switch (replacing the checkbox).
+- Checks: `scripts/sim/checks/bosses.js` (20 more). Smoke: `scripts/smoke/scenarios/clone-temper.js`.
+- Not taught to the sim bot yet (it still only sends the clone on expeditions).
+
 ---
 
 ## Depth pass

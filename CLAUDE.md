@@ -264,6 +264,7 @@ renderer/
     immortal-view.js    ← ImmortalView — plays the cinematic, then the finish screen ("your race to immortality") / later-Immortal card (Phase 40b)
     sect-view.js        ← SectView — 宗 Sect sub-views: Overview · Missions · War (joined) / Overview · Halls · Disciples · War (founded) / join list + founding (none) (1.8b-5)
     icons.js            ← Icon(name) → inline SVG from assets/icons/ui-icons.js; Icon.g() for glyph slots; [data-icon] auto-filled (1.8d)
+    ink-select.js       ← InkSelect — every native <select> becomes an in-app picker (button + popover listbox; the select stays hidden as the source of truth; auto-enhanced via MutationObserver; data-native opts out) (v1 mobile fix 2026-10-05)
     arts-view.js        ← ArtsView — Path → Arts: breakthrough offer, study desk, 2×2 moves + passive slots, the library (Phase 42 / 42a)
     body-view.js        ← BodyView — Path → Body (view id `physique`): the tier seal + XP bar, the ordeal crisis + tier trial cards, the running tempering, Practice (mini-games), scars/taint, Auto-Temper, every method (Phase 14)
     minigames.js        ← FlowPuzzle (DOM-free, seeded — the engine verifies solutions) + MinigameUI: the Tempering Strikes + Meridian Flow overlay (Phase 14)

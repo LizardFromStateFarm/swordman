@@ -2,6 +2,8 @@
 // the trial mark + the bank cap, what the tier gives: max Health, regen, failed-breakthrough Qi kept, fight power), then
 // whatever needs you (the ordeal's crisis, the tier trial), the tempering underway, the two mini-games, scars + taint and
 // Auto-Temper. Right: every tempering method by group with its cost (have / need), time and XP, or why it can't start.
+// With Body Beyond the Body (bosses.md), "Your other self" tempers too: its card on the left (its tempering, its ordeal
+// peak, It Lingers, "On its own"), and an "Other self" button on each method it can take (2026-10-05).
 // State comes from gameState.bodyInfo() / temperingList() / minigameInfo(); every change goes through gameState.
 // h: { esc, flash, fmt, fmtTime, confirm, play(kind) }.
 
@@ -16,13 +18,17 @@ const BodyView = {
   render(s, el, gs, h) {
     this.gs = gs; this.h = h
     const b = gs.bodyInfo(), mg = gs.minigameInfo(), list = gs.temperingList()
+    this.ci = gs.cloneInfo?.() || null
     el.innerHTML = `<div class="fam-view body-view">
-      <div class="fam-col">${this._hero(b)}${this._crisis(b)}${this._trial(b, s)}${this._active(b)}${this._games(mg)}${this._marks(b)}${this._auto(s, list)}</div>
+      <div class="fam-col">${this._hero(b)}${this._crisis(b)}${this._cloneCrisis()}${this._trial(b, s)}${this._active(b)}${this._clone(list)}${this._games(mg)}${this._marks(b)}${this._auto(s, list)}</div>
       <div class="fam-col">${this._methods(list, s)}${this._history(b)}</div></div>`
     if (!this._wired) {
       this._wired = true
       el.addEventListener('click', e => this._click(e))
-      el.addEventListener('change', e => { const p = e.target.closest('[data-bd-pick]'); if (p) this.gs.setAutomation('autoTemperId', p.value || null) })
+      el.addEventListener('change', e => {
+        const p = e.target.closest('[data-bd-pick]'); if (p) this.gs.setAutomation('autoTemperId', p.value || null)
+        const c = e.target.closest('[data-bd-cpick]'); if (c) this.gs.setCloneAutoTemper(c.value || null)
+      })
     }
   },
 
@@ -162,7 +168,7 @@ const BodyView = {
     const h = this.h
     const cost = x.cost.length ? x.cost.map(c => `<span class="bd-cost${c.have < c.n ? ' short' : ''}" title="You have ${c.have}">${c.n} ${h.esc(c.name)}</span>`).join(' ')
       : x.blood ? `<span class="bd-cost short">−${x.blood.health} Health · ${x.blood.karma} karma · +${x.blood.taint} taint</span>` : '<span class="bd-cost free">free</span>'
-    const lock = { locked: x.lockText || 'Locked', stage: `Opens at ${this.realm(x.minStage)}`, busy: 'Another tempering is underway',
+    const lock = { locked: x.lockText || 'Locked', stage: `Opens at ${this.realm(x.minStage)}`, busy: 'Another tempering is underway', clone_same: 'Your other self is doing this one',
       items: 'Not enough to pay for it', no_beast: 'Needs a tamed spirit beast', once: 'Done this life: once is all a body can bear',
       health: 'Too wounded to bleed for it' }[x.reason] || ''
     const extra = x.beast ? ` · sparring ${h.esc(x.beast)}` : x.onEndure ? ` · endure: ${h.esc(this._endureShort(x.onEndure))}` : ''
@@ -170,9 +176,84 @@ const BodyView = {
       <div class="bd-m-top"><span class="bd-m-name">${h.esc(x.name)}</span><span class="bd-m-xp">+${h.fmt(x.xp)} XP</span></div>
       <div class="bd-m-desc">${h.esc(x.desc)}</div>
       <div class="bd-m-meta"><span class="bd-time">${this.dur(x.secs)}</span> · ${cost}${extra}</div>
-      ${x.ok ? `<button class="fa-btn bd-begin${x.group === 'demonic' ? ' grave' : ''}" data-bd-act="begin" data-id="${x.id}"><span class="fa-g">${Icon.g(x.group === 'demonic' ? 'skull' : x.group === 'ordeal' ? 'lightning' : 'play')}</span><span class="fa-t"><span class="fa-n">Begin</span></span></button>`
-             : x.reason === 'busy' ? '' : `<div class="bd-m-lock"><i data-icon="lock"></i>${h.esc(lock)}</div>`}</div>`
+      ${this._mActs(x, lock)}</div>`
   },
+  // Begin (you) and, when your other self is free, its own button (or why it can't take this one)
+  _mActs(x, lock) {
+    const h = this.h
+    const mine = x.ok ? `<button class="fa-btn bd-begin${x.group === 'demonic' ? ' grave' : ''}" data-bd-act="begin" data-id="${x.id}"><span class="fa-g">${Icon.g(x.group === 'demonic' ? 'skull' : x.group === 'ordeal' ? 'lightning' : 'play')}</span><span class="fa-t"><span class="fa-n">Begin</span></span></button>`
+      : x.reason === 'busy' ? '' : `<div class="bd-m-lock"><i data-icon="lock"></i>${h.esc(lock)}</div>`
+    const r = x.clone?.reason
+    const shown = x.clone && !['busy', 'rest', 'gone', 'clone_stage', 'linger', 'unknown', 'own_body', 'stage', 'locked'].includes(r)
+    if (!shown || (r && x.ok === false && x.reason === r)) return mine || ''
+    const why = { items: 'Not enough to pay for it', qi: `Needs ${h.fmt(this.ci?.qiCost || 0)} Qi to form`, once: 'Done this life', yours: 'You are doing this one', no_beast: 'Needs a tamed beast' }[r]
+    const clone = r ? `<div class="bd-m-lock bd-clone-lock"><i data-icon="split"></i>${h.esc(why || 'Not now')}</div>`
+      : `<button class="fa-btn bd-begin bd-clone-go${x.group === 'ordeal' ? ' grave' : ''}" data-bd-act="clone-begin" data-id="${x.id}" title="Your other self takes this on: it pays the cost and ${h.fmt(this.ci?.qiCost || 0)} Qi to form; the XP is yours"><span class="fa-g">${Icon.g('split')}</span><span class="fa-t"><span class="fa-n">Other self</span></span></button>`
+    return `<div class="bd-m-acts">${mine}${clone}</div>`
+  },
+
+  // ── Your other self (Body Beyond the Body): what it is doing, its peak, It Lingers, and "On its own" ──
+  _clone(list) {
+    const c = this.ci, h = this.h
+    if (!c || c.crisis) return ''
+    const will = `its will: <b>${h.esc(c.willWord)}</b> (${this.pct(c.will)} it lingers next time)`
+    let status = '', body = ''
+    if (c.linger) {
+      status = 'waits on you'
+      const t = c.linger.kind === 'temper'
+      body = `<div class="bd-text">${t ? `It finished ${h.esc(c.linger.place)} and did not come back to you. It flexes hands that are yours` : `It sits on a stone at ${h.esc(c.linger.place)}`}, and looks at you with your own eyes.</div>
+        <div class="fa-grid bd-choices">
+          ${this._tile('clone-absorb', 'split', 'Draw it back in', `${t ? `+${h.fmt(c.linger.xp)} body XP` : 'its finds'}, a deeper grasp of one art · its will resets`)}
+          ${this._tile('clone-release', 'person', 'Let it walk its own road', `a person with your face${c.temperXp > 0 ? ' and the body it trained' : ''} joins the world · no other self this life`, '', '', 'grave')}
+        </div>`
+    } else if (c.temper) {
+      const t = c.temper
+      status = `<span data-bd-left="${t.endsAt}">${h.fmtTime(t.left)}</span>`
+      body = `<div class="bd-act-name">${h.esc(t.name)}</div>
+        <div class="bd-prog bd-clone-prog"><div data-bd-prog="${t.startedAt}:${t.endsAt}" style="width:${Math.min(100, (Date.now() - t.startedAt) / (t.endsAt - t.startedAt) * 100)}%"></div></div>
+        <div class="bd-act-meta">+${h.fmt(t.xp)} body XP, all yours · <span class="down">your Qi/s ×${c.qiMult} while it works</span>${t.group === 'ordeal' ? ' · stops at its peak for your answer' : ''} · ${will}</div>
+        <button class="fa-quiet" data-bd-act="clone-recall">Call it back (what it cost is spent)</button>`
+    } else if (c.exp) {
+      status = 'on the road'
+      body = `<div class="bd-act-meta">It walks to ${h.esc(c.exp.name)}, back in <span data-bd-left="${c.exp.endsAt}">${h.fmtTime(c.exp.left)}</span> (Roam → Explore). When it returns it can temper.</div>`
+    } else if (c.lock) {
+      status = c.lock === 'rest' ? 'shattered' : ''
+      body = `<div class="bd-foot bd-auto-lock"><i data-icon="lock"></i> ${c.lock === 'rest' ? `Shattered. It can be formed again in <span data-bd-left="${Date.now() + c.restLeft * 1000}">${h.fmtTime(c.restLeft)}</span>.` : h.esc(c.lock)}</div>`
+    } else {
+      status = 'free'
+      body = `<div class="bd-act-meta">Send it to temper with <b class="bd-gold">Other self</b> on any method: it pays that cost and ${c.canPay ? '' : '<span class="down">'}${h.fmt(c.qiCost)} Qi${c.canPay ? '' : '</span>'} to form, and every point of XP is yours. Your Qi/s ×${c.qiMult} while it works (a spirit method's halving falls on it, not you). An ordeal's peak risks only it: a failed endure shatters it instead of scarring you. ${will}.</div>`
+    }
+    return `<div class="fam-sec bd-clone"><div class="fam-sec-title"><span><i data-icon="split"></i>Your other self</span>${status ? `<span class="fam-count">${status}</span>` : ''}</div>
+      ${body}${c.lock && c.lock !== 'rest' ? '' : this._cloneAuto(list)}</div>`
+  },
+  _cloneAuto(list) {
+    const c = this.ci, h = this.h, duty = c.auto ? c.autoDuty : 'off'
+    const safe = list.filter(x => (x.group === 'drill' || x.group === 'spirit') && x.reason !== 'stage' && x.reason !== 'locked')
+    const lastName = c.lastTemperId ? TEMPERING_METHODS.find(x => x.id === c.lastTemperId)?.name : ''
+    const id = c.autoTemperId || c.lastTemperId, m = TEMPERING_METHODS.find(x => x.id === id)
+    const seg = ['off', 'explore', 'temper'].map(d => `<button class="set-opt${duty === d ? ' active' + (d !== 'off' ? ' is-on' : '') : ''}" data-bd-act="clone-duty" data-duty="${d}">${{ off: 'Off', explore: 'Explore', temper: 'Temper' }[d]}</button>`).join('')
+    const pick = duty === 'temper' ? `<select class="bd-auto-pick" data-bd-cpick="1" aria-label="Which drill your other self repeats"><option value="">Its last drill${lastName ? ` (${h.esc(lastName)})` : ''}</option>
+        ${safe.map(x => `<option value="${x.id}"${c.autoTemperId === x.id ? ' selected' : ''}>${h.esc(x.name)}</option>`).join('')}</select>` : ''
+    const note = duty === 'temper' ? (m ? `Repeats ${h.esc(m.name)} whenever it ends and you can pay for it (the cost + ${h.fmt(c.qiCost)} Qi each time). It never takes an ordeal on its own.` : 'Pick a drill, or send it once by hand: it repeats the last one.')
+      : duty === 'explore' ? 'Walks to its last place again whenever it comes home (Roam → Explore), never above your realm.'
+      : 'It waits for you. Send it by hand, or let it repeat a duty.'
+    return `<div class="bd-clone-auto"><div class="bd-auto-row auto-row"><span class="bd-clone-k">On its own</span><div class="set-seg">${seg}</div>${pick}</div><div class="bd-foot">${note}</div></div>`
+  },
+  // The clone's ordeal peak: always your answer. The risk is its: a failed endure shatters it, never scars you.
+  _cloneCrisis() {
+    const c = this.ci?.crisis, h = this.h
+    if (!c) return ''
+    const o = c.odds
+    return `<div class="fam-card bd-crisis bd-clone-crisis">
+      <div class="bd-card-title"><i data-icon="split"></i>Your other self: ${h.esc(c.name)}, the peak</div>
+      <div class="bd-text">It looks to you. The ordeal waits on your answer; the risk is its body, not yours.</div>
+      <div class="fa-grid bd-choices">
+        ${this._tile('clone-endure', 'lightning', 'Let it endure', `${h.fmt(c.xp)} XP${c.bonus ? ` · ${h.esc(c.bonus)}` : ''}<br><span class="bd-odds">${this.pct(o.chance)} clean</span> · else it shatters: no XP, −${c.shatterHealth} Health to you, ${h.fmtTime(c.restSec)} before you can form it again · no scar`, '', 'grave')}
+        ${this._tile('clone-ease', 'yield', 'Call it to ease off', `${h.fmt(c.easeXp)} XP · no risk, no bonus`)}
+        ${this._tile('clone-qi', 'qi', 'Lend it your Qi', `${h.fmt(c.xp)} XP${c.bonus ? ' + the bonus' : ''} · safe · costs ${h.fmt(c.qiCost)} Qi`, c.qiOk ? '' : `Needs ${h.fmt(c.qiCost)} Qi`)}
+      </div><button class="bd-why" data-bd="ordeal"><i data-icon="why"></i>Why ${this.pct(o.chance)} to endure cleanly?</button></div>`
+  },
+
   _endureShort(e) {
     if (e.rootBoost) return `${ART_ELEMENTS[e.rootBoost.element]?.name}-root ×${e.rootBoost.mult}`
     if (e.btBonus) return `+${Math.round(e.btBonus * 100)}% breakthrough`
@@ -213,5 +294,21 @@ const BodyView = {
     }
     if (act === 'mend') return say(gs.mendScar(+b.dataset.i))
     if (act === 'auto') return say(gs.setAutomation('autoTemper', b.dataset.on === '1'))
+    // Your other self
+    const csay = r => { if (!r?.ok) h.flash({ items: 'Not enough to pay for it', qi: 'Not enough Qi to form it', busy: 'Your other self is busy', yours: 'You are doing this one yourself', once: 'Done this life', rest: 'It is still shattered', no_beast: 'Needs a tamed spirit beast' }[r?.reason] || 'Not now', 'negative') }
+    if (act === 'clone-begin') {
+      const m = TEMPERING_METHODS.find(x => x.id === b.dataset.id)
+      if (m?.group === 'ordeal') return h.confirm(`Send your other self into ${m.name}?`, `It pays the cost and ${h.fmt(this.ci?.qiCost || 0)} Qi to form. At the peak you choose: if it endures and fails, it shatters (Health −${Math.round(SOUL_TECH.clone.shatterHealth * 100)}% of your max, a ${h.fmtTime(SOUL_TECH.clone.restSec)} wait), but you take no scar.`, () => csay(gs.startCloneTempering(m.id)), 'Send it')
+      return csay(gs.startCloneTempering(b.dataset.id))
+    }
+    if (act === 'clone-recall') return h.confirm('Call your other self back?', 'What it cost is spent and the XP is lost.', () => csay(gs.recallClone()), 'Call it back')
+    if (act === 'clone-endure' || act === 'clone-ease' || act === 'clone-qi') {
+      const r = gs.answerCloneOrdeal(act.slice(6))
+      if (r?.ok && r.shattered) h.flash('Your other self shatters.', 'negative')
+      return csay(r)
+    }
+    if (act === 'clone-absorb') return csay(gs.answerCloneLinger('absorb'))
+    if (act === 'clone-release') return h.confirm('Let your other self go?', `It becomes a person of its own, with your face and your root${this.ci?.temperXp > 0 ? ', and the body it trained for you' : ''}, and you cannot form another this life.`, () => csay(gs.answerCloneLinger('release')), 'Let it go')
+    if (act === 'clone-duty') return csay(gs.setCloneDuty(b.dataset.duty))
   },
 }

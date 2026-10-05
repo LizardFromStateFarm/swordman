@@ -1183,18 +1183,29 @@
     const ci = gameState.cloneInfo?.()
     if (!ci) return null
     const box = document.createElement('div')
-    box.className = 'exp-status clone' + (ci.exp ? ' exp-status-active' : '') + (ci.linger ? ' linger' : '')
+    box.className = 'exp-status clone' + (ci.busy ? ' exp-status-active' : '') + (ci.linger || ci.crisis ? ' linger' : '')
     const pct = v => `${Math.round(v * 100)}%`
     const head = `<div class="exp-status-label">${Icon('split')} Your other self <small>${escHtml(ci.name)}</small></div>`
-    if (ci.linger) {
-      box.innerHTML = `${head}<div class="clone-line">It sits on a stone at ${escHtml(ci.linger.place)} and looks back at you with your own eyes. What it found waits on your answer.</div>
+    // "On its own" (2026-10-05): Off / Explore / Temper — the clone's delegated duty (the drill is picked on Path → Body)
+    const duty = ci.auto ? ci.autoDuty : 'off'
+    const dutySeg = `<div class="clone-duty"><span class="clone-duty-k">On its own</span><div class="set-seg bdx-auto-seg">${['off', 'explore', 'temper'].map(d => `<button class="set-opt${duty === d ? ' active' + (d !== 'off' ? ' is-on' : '') : ''}" data-clone-duty="${d}">${{ off: 'Off', explore: 'Explore', temper: 'Temper' }[d]}</button>`).join('')}</div></div>`
+    const toBody = '<button class="exp-auto-where" data-clone="body">Path → Body</button>'
+    if (ci.crisis) {
+      box.innerHTML = `${head}<div class="clone-line">It has reached the peak of ${escHtml(ci.crisis.name)} and looks to you. Answer it on Path → Body.</div><div class="clone-meta">${toBody}</div>`
+    } else if (ci.temper) {
+      const total = Math.max(1, ci.temper.endsAt - ci.temper.startedAt), done = Math.max(0, Math.min(100, 100 * (1 - ci.temper.left * 1000 / total)))
+      box.innerHTML = `${head}<div>Tempering your body: ${escHtml(ci.temper.name)} — <span data-beast-left="${ci.temper.endsAt}">${fmtTime(ci.temper.left)}</span> remaining</div>
+        <div class="exp-timer-bar-wrap"><div class="exp-timer-bar clone-bar" data-w="${done.toFixed(1)}"></div></div>
+        <div class="clone-meta">+${fmt(ci.temper.xp)} body XP, all yours · your Qi/s ×${ci.qiMult} while it works · its will: <b>${escHtml(ci.willWord)}</b> ${toBody}</div>${dutySeg}`
+    } else if (ci.linger) {
+      box.innerHTML = `${head}<div class="clone-line">${ci.linger.kind === 'temper' ? `It finished ${escHtml(ci.linger.place)} and did not come back to you. It flexes hands that are yours, and looks at you with your own eyes. The body XP it earned waits on your answer.` : `It sits on a stone at ${escHtml(ci.linger.place)} and looks back at you with your own eyes. What it found waits on your answer.`}</div>
         <div class="clone-acts"><button class="sect-btn gold" data-clone="absorb">Draw it back in<small>its finds, a deeper grasp of one art; its will resets</small></button>
         <button class="sect-btn" data-clone="release">Let it walk its own road<small>a person with your face joins the world; no other self this life</small></button></div>`
     } else if (ci.exp) {
       const total = Math.max(1, ci.exp.endsAt - ci.exp.startedAt), done = Math.max(0, Math.min(100, 100 * (1 - ci.exp.left * 1000 / total)))
       box.innerHTML = `${head}<div>${escHtml(ci.exp.name)} — <span data-beast-left="${ci.exp.endsAt}">${fmtTime(ci.exp.left)}</span> remaining${ci.exp.shatter ? ` · <span class="down">${pct(ci.exp.shatter)} it shatters</span>` : ''}</div>
         <div class="exp-timer-bar-wrap"><div class="exp-timer-bar clone-bar" data-w="${done.toFixed(1)}"></div></div>
-        <div class="clone-meta">Your Qi/s ×${ci.qiMult} while it is out · its will: <b>${escHtml(ci.willWord)}</b> <button class="exp-auto-where" data-clone="recall">Recall</button></div>`
+        <div class="clone-meta">Your Qi/s ×${ci.qiMult} while it is out · its will: <b>${escHtml(ci.willWord)}</b> <button class="exp-auto-where" data-clone="recall">Recall</button></div>${dutySeg}`
     } else if (ci.lock) {
       box.innerHTML = `${head}<div class="exp-idle">${Icon('lock')} ${ci.lock === 'rest' ? `Shattered. It can be formed again in <span data-beast-left="${Date.now() + ci.restLeft * 1000}">${fmtTime(ci.restLeft)}</span>` : escHtml(ci.lock)}</div>`
     } else {
@@ -1202,8 +1213,7 @@
       const opts = ci.places.map(p => `<option value="${escHtml(p.id)}"${p.id === last ? ' selected' : ''}>${escHtml(p.name)} · ${fmtTime(p.duration)}${p.shatter ? ` · ${pct(p.shatter)} shatter` : ' · safe'}</option>`).join('')
       box.innerHTML = `${head}<div class="clone-pick"><select class="clone-sel" aria-label="Where your other self goes">${opts}</select>
         <button class="sect-btn gold" data-clone="send" ${ci.canPay ? '' : 'disabled'}>Send it<small>−${fmt(ci.qiCost)} Qi now · your Qi/s ×${ci.qiMult} while it is out</small></button></div>
-        <div class="clone-meta">${ci.canPay ? '' : `<span class="down">Needs ${fmt(ci.qiCost)} Qi. </span>`}Its will: <b>${escHtml(ci.willWord)}</b> (${pct(ci.will)} it lingers next time) · places near your limit may shatter it ·
-          <label class="clone-auto"><input type="checkbox" data-clone-auto ${ci.auto ? 'checked' : ''}> send it out again on its own</label></div>`
+        <div class="clone-meta">${ci.canPay ? '' : `<span class="down">Needs ${fmt(ci.qiCost)} Qi. </span>`}Its will: <b>${escHtml(ci.willWord)}</b> (${pct(ci.will)} it lingers next time) · places near your limit may shatter it · or set it to temper your body on ${toBody}</div>${dutySeg}`
     }
     box.querySelectorAll('[data-w]').forEach(b => { b.style.width = b.dataset.w + '%' })
     box.addEventListener('click', e => {
@@ -1213,10 +1223,11 @@
         const r = gameState.startCloneExpedition(box.querySelector('.clone-sel').value)
         flashMessage(r.ok ? `Your other self sets out for ${r.loc.name}.` : r.reason === 'qi' ? 'Not enough Qi to form it.' : r.lock || 'It cannot go now.', r.ok ? 'special' : 'negative')
       } else if (k === 'recall') gameState.recallClone()
+      else if (k === 'body') NavUI.go('physique')
       else if (k === 'absorb') { const r = gameState.answerCloneLinger('absorb'); if (r.ok) flashMessage('Its road becomes yours.', 'special') }
       else if (k === 'release') showConfirm('Let your other self go?', 'It becomes a person of its own, with your face and your root, and you cannot form another this life.', () => gameState.answerCloneLinger('release'), 'Let it go')
     })
-    box.querySelector('[data-clone-auto]')?.addEventListener('change', e => gameState.setCloneAuto(e.target.checked))
+    box.querySelectorAll('[data-clone-duty]').forEach(b => b.addEventListener('click', () => gameState.setCloneDuty(b.dataset.cloneDuty)))
     return box
   }
 

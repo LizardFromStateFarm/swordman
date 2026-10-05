@@ -88,6 +88,9 @@ const MinigameUI = {
       this.el.setAttribute('role', 'dialog'); this.el.setAttribute('aria-modal', 'true')
       document.body.appendChild(this.el)
       this.el.addEventListener('click', e => this._click(e))
+      // Strikes score on pointerdown, at the event's own time: a touch 'click' only fires on finger-up, 80-150 ms
+      // late, which pushed every on-the-seal tap past the perfect window on phones (v1 mobile fix 2026-10-05)
+      this.el.addEventListener('pointerdown', e => this._pointerDown(e))
       document.addEventListener('keydown', e => this._key(e))
     }
     this.el.classList.remove('hidden')
@@ -143,10 +146,12 @@ const MinigameUI = {
       bar.style.setProperty('--near', Math.max(0, 1 - d / (w * 1.5)).toFixed(2))
     }
   },
-  _strike() {
+  // at — the moment of the strike (an input event's timeStamp, same clock as performance.now()); defaults to now
+  _strike(at) {
     const st = this.st
     if (!st || st.done) return
-    const p = this._pos(performance.now()), w = this._sealW(), d = Math.abs(p - st.center)
+    const now = performance.now(), t = at > 0 && at <= now && now - at < 500 ? at : now
+    const p = this._pos(t), w = this._sealW(), d = Math.abs(p - st.center)
     const hit = d <= w * STRIKES.perfectFrac / 2 ? 'perfect' : d <= w / 2 ? 'good' : 'miss'
     st.hits.push(hit)
     const pip = this.el.querySelectorAll('.mg-pips i')[st.i]
@@ -242,17 +247,23 @@ const MinigameUI = {
     const b = e.target.closest('[data-mg]')
     if (!b) return
     const a = b.dataset.mg
-    if (a === 'strike') this._strike()
+    if (a === 'strike') { if (performance.now() - (this._ptrAt || -1e9) > 700) this._strike(e.timeStamp) }   // already struck on pointerdown
     else if (a === 'turn') this._turn(+b.dataset.i)
     else if (a === 'take-xp') this._takeStrikes('xp')
     else if (a === 'take-cut') this._takeStrikes('cut')
     else if (a === 'close') this.close()
     else if (a === 'quit') this._quit()
   },
+  _pointerDown(e) {
+    if (this.kind !== 'strikes' || !this.st || this.st.done || e.button > 0) return
+    if (!e.target.closest('[data-mg="strike"]')) return
+    this._ptrAt = performance.now()
+    this._strike(e.timeStamp)
+  },
   _key(e) {
     if (!this.kind || !this.el || this.el.classList.contains('hidden')) return
     if (e.key === 'Escape') { e.preventDefault(); this._quit(); return }
-    if (this.kind === 'strikes' && (e.key === ' ' || e.key === 'Enter') && !this.st?.done) { e.preventDefault(); this._strike(); return }
+    if (this.kind === 'strikes' && (e.key === ' ' || e.key === 'Enter') && !this.st?.done) { e.preventDefault(); if (!e.repeat) this._strike(e.timeStamp); return }
     if (this.kind === 'flow' && this.st && !this.st.done) {
       const n = this.st.p.n, f = this.st.focus
       const mv = { ArrowLeft: f % n ? -1 : 0, ArrowRight: f % n < n - 1 ? 1 : 0, ArrowUp: f >= n ? -n : 0, ArrowDown: f < n * (n - 1) ? n : 0 }[e.key]

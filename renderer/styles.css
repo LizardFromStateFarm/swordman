@@ -4451,11 +4451,11 @@ body[data-layout="overlay"] .sv-card.built .fa-btn.sv-go .fa-e { font-size: 9.5p
   body[data-layout="desktop"][data-narrow="1"] .att-min {
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     min-width: 42px; min-height: 36px; margin: -8px -4px -8px 0;
-    background: none; border: 1px solid var(--border); border-radius: 3px;
-    color: var(--dim-hi); font-family: var(--font); font-size: 13px; cursor: pointer;
+    background: none; border: 0; border-radius: 3px;   /* no box (user 2026-10-05: it overlapped the divider) — same 42×36 tap area */
+    color: color-mix(in srgb, var(--gold) 75%, var(--dim-hi)); font-family: var(--font); font-size: 13px; cursor: pointer;
   }
   body[data-layout="desktop"][data-narrow="1"] .att-min:hover,
-  body[data-layout="desktop"][data-narrow="1"] .att-min:focus-visible { color: var(--gold); border-color: var(--gold); }
+  body[data-layout="desktop"][data-narrow="1"] .att-min:focus-visible { color: var(--gold); outline: none; text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 60%, transparent); }
   body[data-layout="desktop"][data-narrow="1"] #attention.minimized .att-list { gap: 0; }
   body[data-layout="desktop"][data-narrow="1"] #attention.minimized .att-rest { display: none; }
   body[data-layout="desktop"][data-narrow="1"] #attention.minimized .att-item { padding-top: 3px; padding-bottom: 3px; }
@@ -5315,13 +5315,34 @@ body[data-layout="overlay"] .arts-view { display: flex; flex-direction: column; 
 .art-picking { display: flex; align-items: center; gap: 6px; padding: 5px 8px; margin-bottom: 6px; border: 1px solid var(--gold); border-radius: 3px; font-size: 10.5px; color: var(--gold); }
 .art-picking .art-btn { margin-left: auto; min-height: 24px; }
 .art-picking .ic { width: 11px; height: 11px; }
-.art-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
-.art-filters:empty { display: none; }
-.el-chip { display: inline-flex; align-items: center; gap: 3px; }
+/* UI review: 7.7 (2026-10-05) */
+/* The library's filter panel (2026-10-05 restyle): one framed box, a labelled row each for Kind / Grade / Element, every
+   chip carrying the count it would show (the other filters kept); "Clear filters" when any is on; a zero dims */
+.af-box { container-type: inline-size; display: flex; flex-direction: column; gap: 6px; padding: 8px 9px; margin-bottom: 8px; border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border)); background: linear-gradient(180deg, rgba(20,10,28,0.55), rgba(8,4,14,0.35)); }
+.af-row { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: start; gap: 6px; }
+.af-k { padding-top: 6px; font-size: 9.5px; color: var(--dim-hi); letter-spacing: .12em; text-transform: uppercase; }
+.af-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.af-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 2px 8px; border-radius: 13px; cursor: pointer;
+  font-family: var(--font); font-size: 10.5px; color: var(--dim-hi); background: rgba(0,0,0,0.25); border: 1px solid var(--border);
+  transition: border-color .12s, color .12s, background .12s; touch-action: manipulation; }
+.af-chip:hover:not(.active), .af-chip:focus-visible { color: var(--text); border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); outline: none; }
+.af-chip.active { color: var(--gold); border-color: var(--gold); background: color-mix(in srgb, var(--gold) 13%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 18%, transparent); }
+.af-chip.none:not(.active) { opacity: .45; }
+.af-n { font-weight: normal; font-size: 9.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.af-chip.active .af-n { color: color-mix(in srgb, var(--gold) 70%, var(--text)); }
+.af-clear { align-self: flex-end; margin-top: -2px; padding: 2px 0; min-height: 24px; font-family: var(--font); font-size: 10px; color: var(--dim-hi);
+  background: none; border: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.af-clear:hover, .af-clear:focus-visible { color: var(--gold); outline: none; }
 .el-chip .ic { width: 12px; height: 12px; color: var(--el); }
-body[data-layout="overlay"] .el-chip span { display: none; }   /* icon-only in the 300px pane; the title names it */
+body[data-layout="overlay"] .el-chip .af-l { display: none; }   /* icon + count in the 300px pane; the title names it */
+body[data-layout="overlay"] .af-row { grid-template-columns: 1fr; gap: 3px; } body[data-layout="overlay"] .af-k { padding-top: 0; }
+@media (max-width: 420px) { .af-row { grid-template-columns: 1fr; gap: 3px; } .af-k { padding-top: 0; } }
+@container (max-width: 340px) { .af-row { grid-template-columns: 1fr; gap: 3px; } .af-k { padding-top: 0; } }   /* review: a narrow pane in a wide window (Expanded) */
+@media (pointer: coarse) { .af-chip { min-height: 34px; padding: 4px 10px; } }
 /* grade chips (library filter, 2026-09-30): each carries its grade's colour, so the filter reads like the art names */
 .rar-chip { --grade: var(--dim-hi); color: var(--grade); border-color: color-mix(in srgb, var(--grade) 42%, var(--border)); }
+.rar-chip.active { box-shadow: 0 0 8px color-mix(in srgb, var(--grade) 25%, transparent); } .rar-chip.active .af-n { color: var(--grade); }
 .rar-chip:hover:not(.active) { color: var(--grade); border-color: color-mix(in srgb, var(--grade) 70%, var(--border)); }
 .rar-chip.active { color: var(--grade); border-color: var(--grade); background: color-mix(in srgb, var(--grade) 15%, transparent); }
 .rar-chip.g-yellow { --grade: var(--r-yellow); } .rar-chip.g-profound { --grade: var(--r-profound); }
@@ -5405,17 +5426,35 @@ body[data-layout="overlay"] .el-chip span { display: none; }   /* icon-only in t
 .cb-log.lines li { display: flex; align-items: flex-start; gap: 6px; margin: 2px 0; }
 .cb-log.lines li.up { color: color-mix(in srgb, var(--jade) 55%, var(--dim-hi)); } .cb-log.lines li.down { color: color-mix(in srgb, var(--red-text) 60%, var(--dim-hi)); }
 /* the parry prompt — on the field between you and it (user 2026-09-29); the closing ring is on the canvas around you */
-/* UI review: 7.75 (2026-09-29) */
-#combat-parry { position: absolute; left: 46%; top: 54%; transform: translate(-50%, -50%); z-index: 3; zoom: var(--cz, 1);
+/* UI review: 8.0 (2026-10-05, the parry cue + tap anywhere; was 7.75 2026-09-29) */
+#combat-parry { touch-action: manipulation; position: absolute; left: 46%; top: 54%; transform: translate(-50%, -50%); z-index: 3; zoom: var(--cz, 1);
   display: flex; flex-direction: column; align-items: center; gap: 5px; max-width: 46%; padding: 6px 10px 8px; border-radius: 10px;
   background: radial-gradient(ellipse at center, rgba(8,4,14,0.78), rgba(8,4,14,0.4) 70%, rgba(8,4,14,0));
   cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 #combat-parry.hidden { display: none; }
 #combat-parry .cb-parry-h { font-size: 11.5px; color: var(--red-text); }
 #combat-parry .cb-parry-sub { font-size: 10px; max-width: 200px; }
-#combat-parry .cb-parry-ring { width: auto; height: auto; margin: 0; }
-#combat-parry .cb-parry-ring:not(.calm) { display: none; }
-#combat-parry .cb-parry-ring.calm .cb-ring-bar { position: static; display: block; width: 120px; }
+/* the timing track (user 2026-10-05: "easier to tell when to hit parry"): the marker slides into the gold zone, the
+   button flips Wait… → PARRY NOW (label + weight + border, not only colour), and the whole stage edge glows gold */
+#combat-parry .cb-pt { position: relative; width: 150px; height: 12px; border-radius: 6px; background: rgba(0,0,0,0.55);
+  border: 1px solid color-mix(in srgb, var(--text) 22%, transparent); overflow: hidden; }
+#combat-parry .cb-pt-zone { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--gold) 45%, transparent);
+  border-left: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+#combat-parry .cb-pt-mark { position: absolute; top: -1px; bottom: -1px; width: 6px; margin-left: -3px; border-radius: 2px;
+  background: #FF8A7A; box-shadow: 0 0 8px var(--red); }
+#combat-parry.hot .cb-pt { border-color: var(--gold); box-shadow: 0 0 12px color-mix(in srgb, var(--gold) 60%, transparent); }
+#combat-parry.hot .cb-pt-mark { background: #FFF4D0; box-shadow: 0 0 8px #FFF4D0; }
+#combat-parry .cb-parry-btn { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+#combat-parry .cb-pb-l { letter-spacing: 1px; color: var(--dim-hi); }
+#combat-parry .cb-parry-btn small { font-size: 9.5px; color: var(--dim-hi); letter-spacing: 0; }
+#combat-parry.hot .cb-pb-l { color: #FFF4D0; font-weight: bold; letter-spacing: 2px; }
+#combat-parry.hot .cb-parry-btn { border-width: 2px; transform: scale(1.06); }
+:root[data-motion="reduced"] #combat-parry.hot .cb-parry-btn { transform: none; }
+#combat-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2; border-radius: inherit;
+  box-shadow: none; transition: box-shadow .08s; }
+#combat-stage.parry-live::after { box-shadow: inset 0 0 36px rgba(200, 48, 48, 0.32); }
+#combat-stage.parry-hot::after { box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 60px color-mix(in srgb, var(--gold) 50%, transparent); }
+#combat-overlay:has(#combat-stage.parry-live) #combat-box { cursor: pointer; }
 #combat-parry .cb-parry-btn { min-width: 132px; min-height: 48px; padding: 6px 16px; font-size: 15px; transition: box-shadow .08s, border-color .08s, color .08s; }
 #combat-parry.hot .cb-parry-btn { color: #FFF4D0; border-color: #FFF4D0; box-shadow: 0 0 22px color-mix(in srgb, var(--gold) 75%, transparent), 0 0 4px #FFF4D0 inset; }
 #combat-parry.flash .cb-parry-btn { border-color: var(--jade); color: var(--jade); box-shadow: 0 0 20px color-mix(in srgb, var(--jade) 60%, transparent); }
@@ -5423,7 +5462,7 @@ body[data-layout="overlay"] .el-chip span { display: none; }   /* icon-only in t
 #combat-parry .cb-parry-fb { min-height: 14px; font-size: 11px; text-shadow: 0 1px 2px #000; }
 .cb-moves.locked .cb-mv-h, .cb-moves.locked .cb-mv-m { opacity: 0.45; }     /* locked by an incoming blow: the reason stays readable */
 .cb-moves.locked .cb-mt.lock { color: var(--red-text); opacity: 0.9; }
-@media (max-width: 420px) { #combat-parry { max-width: 40%; top: 56%; padding: 4px 6px 6px; gap: 3px; } #combat-parry .cb-parry-btn { min-width: 0; width: 100%; min-height: 44px; padding: 4px 10px; font-size: 13px; letter-spacing: 2px; } }
+@media (max-width: 420px) { #combat-parry { max-width: 46%; top: 56%; padding: 4px 6px 6px; gap: 3px; } #combat-parry .cb-pt { width: 120px; } #combat-parry .cb-parry-btn { min-width: 0; width: 100%; min-height: 44px; padding: 4px 10px; font-size: 13px; } }
 #combat-panel button:disabled.cb-retreat { opacity: 0.45; cursor: default; }
 .cb-parry { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px 4px; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .cb-parry-h { font-size: 12.5px; color: var(--red-text); text-align: center; } .cb-parry-h b { font-weight: normal; color: var(--text); }
@@ -5629,8 +5668,16 @@ body[data-layout="overlay"] .body-view .fam-col:last-child > .fam-sec { order: 1
 .bd-methods { display: flex; flex-direction: column; gap: 6px; }
 .bd-method { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 7px 8px; border-radius: 5px;
   border: 1px solid color-mix(in srgb, var(--purple) 22%, var(--border)); background: var(--fam-ink); }
-.bd-method > :not(.bd-begin):not(.bd-m-lock) { grid-column: 1; }
-.bd-method .bd-begin, .bd-method .bd-m-lock { grid-column: 2; grid-row: 1 / span 3; }
+.bd-method > :not(.bd-begin):not(.bd-m-lock):not(.bd-m-acts) { grid-column: 1; }
+.bd-method > .bd-begin, .bd-method > .bd-m-lock, .bd-method > .bd-m-acts { grid-column: 2; grid-row: 1 / span 3; }
+.bd-m-acts { display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+/* with the clone's button too, both sit on their own row under the details so the method name keeps its width */
+.bd-method:has(.bd-m-acts) { grid-template-columns: 1fr; }
+/* review cycle 1 blocker: wrap instead of clipping when the pane is narrow (Expanded) */
+.bd-method > .bd-m-acts { grid-column: 1; grid-row: auto; flex-direction: row; flex-wrap: wrap; margin-top: 4px; }
+.bd-method > .bd-m-acts > * { flex: 1 1 110px; min-width: 0; justify-content: center; }
+.bd-method > .bd-m-acts .fa-n { white-space: nowrap; }
+.bd-method > .bd-m-acts > .bd-m-lock { max-width: none; justify-content: flex-start; text-align: left; }
 .bd-method.locked { background: var(--fam-sunk); border-color: var(--border); }
 .bd-method.locked .bd-m-name { color: var(--dim-hi); }
 .bd-method.busy { opacity: .75; }
@@ -5648,7 +5695,25 @@ body[data-layout="overlay"] .body-view .fam-col:last-child > .fam-sec { order: 1
 .bd-g-demonic .bd-method { border-left: 2px solid color-mix(in srgb, var(--red) 55%, transparent); }
 body[data-layout="overlay"] .bd-m-desc { display: none; }
 body[data-layout="overlay"] .bd-method { grid-template-columns: 1fr; }
-body[data-layout="overlay"] .bd-method .bd-begin, body[data-layout="overlay"] .bd-method .bd-m-lock { grid-column: 1; grid-row: auto; max-width: none; text-align: left; }
+body[data-layout="overlay"] .bd-method > .bd-begin, body[data-layout="overlay"] .bd-method > .bd-m-lock, body[data-layout="overlay"] .bd-method > .bd-m-acts { grid-column: 1; grid-row: auto; max-width: none; text-align: left; }
+body[data-layout="overlay"] .bd-m-acts { flex-direction: row; flex-wrap: wrap; } body[data-layout="overlay"] .bd-m-acts > * { flex: 1 1 auto; }
+/* UI review: 7.9 (2026-10-05, clone tempering) */
+/* Your other self tempers (2026-10-05): its card, its Other self button (purple: the split spirit), "On its own" */
+.bd-clone-go { border-color: color-mix(in srgb, var(--purple) 55%, var(--border)); }
+.bd-clone-go .fa-n { color: color-mix(in srgb, var(--purple) 55%, var(--text)); }
+.bd-clone-go .fa-g { color: var(--purple); }
+.bd-clone-go:hover, .bd-clone-go:focus-visible { border-color: var(--purple); box-shadow: 0 0 10px color-mix(in srgb, var(--purple) 30%, transparent); }
+.bd-clone-lock .ic { color: var(--purple); }
+.bd-clone { border-color: color-mix(in srgb, var(--purple) 35%, var(--border)); }
+.bd-clone .fam-sec-title > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.bd-clone .fam-sec-title .ic { width: 13px; height: 13px; color: var(--purple); }
+.bd-clone .bd-act-meta b { color: var(--text); font-weight: normal; } .bd-clone .bd-act-meta b.bd-gold { color: color-mix(in srgb, var(--purple) 55%, var(--text)); }
+.bd-clone-prog > div { background: linear-gradient(90deg, color-mix(in srgb, var(--purple) 60%, transparent), var(--purple)); }
+.bd-clone-auto { margin-top: 8px; padding-top: 7px; border-top: 1px solid rgba(255,255,255,0.05); }
+.bd-clone-k { font-size: 10px; color: var(--dim-hi); letter-spacing: .6px; text-transform: uppercase; }
+.bd-clone-crisis .bd-card-title .ic { color: var(--purple); }
+.bd-clone .fa-quiet { margin-top: 6px; color: var(--text); border: 1px solid color-mix(in srgb, var(--purple) 45%, var(--border)); border-radius: 4px; }
+.bd-clone .fa-quiet:hover, .bd-clone .fa-quiet:focus-visible { border-color: var(--purple); }
 body[data-layout="overlay"] .bd-begin { width: 100%; }
 
 /* Character view: the Meridian Flow quick-play button under the Cultivation tiles */
@@ -5681,7 +5746,7 @@ body[data-layout="overlay"] .bd-begin { width: 100%; }
 .mg-strikes .mg-body { margin-bottom: 4px; }
 .mg-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 11px; color: var(--dim-hi); }
 .mg-foot .btn-primary, .mg-strike { min-height: 40px; padding: 6px 16px; }
-.mg-strike { width: 100%; font-size: 14px; }
+.mg-strike { width: 100%; font-size: 14px; touch-action: manipulation; }
 .mg-strike kbd { font-family: var(--font); font-size: 10px; color: var(--dim); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 6px; }
 /* Strikes: the brush bar, the gold seal, the marker */
 .mg-bar { position: relative; height: 46px; border-radius: 6px; cursor: pointer; touch-action: manipulation;
@@ -6331,3 +6396,40 @@ body[data-layout="overlay"] .er-answers { grid-template-columns: 1fr; }
 .rv-ranks > svg { width: 13px; height: 13px; color: var(--gold); }
 .rv-ranks-b { display: flex; flex-direction: column; gap: 1px; }
 .rv-ranks b { font-weight: normal; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* UI review: 7.8 (2026-10-05) */
+/* ── InkSelect (ink-select.js): the in-app picker that replaces every native <select> (v1 mobile fix 2026-10-05) ── */
+.ink-sel-src { display: none !important; }
+:where(button.ink-sel) { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 26px; padding: 3px 8px;
+  font-family: var(--font); font-size: 11px; color: var(--text); background: var(--btn-bg); border: 1px solid var(--border); border-radius: 4px;
+  cursor: pointer; text-align: left; touch-action: manipulation; }
+button.ink-sel { transition: border-color .15s, box-shadow .15s; }
+button.ink-sel:hover, button.ink-sel:focus-visible, button.ink-sel.open { border-color: color-mix(in srgb, var(--gold) 55%, var(--border)); outline: none; }
+button.ink-sel.open { box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 22%, transparent); }
+button.ink-sel:disabled { opacity: .5; cursor: default; }
+.ink-sel-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; }
+.ink-sel-caret { flex: none; width: 5px; height: 5px; margin: -3px 2px 0 0; border-right: 1.5px solid var(--gold); border-bottom: 1.5px solid var(--gold);
+  transform: rotate(45deg); transition: transform .18s, margin .18s; }
+.ink-sel.open .ink-sel-caret { transform: rotate(-135deg); margin-top: 3px; }
+.ink-sel-menu { position: fixed; z-index: 10000; display: flex; flex-direction: column; gap: 1px; padding: 4px; overflow-y: auto; overscroll-behavior: contain;
+  max-width: calc(100vw - 16px); font-family: var(--font); background: var(--panel); border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--border));
+  border-radius: 6px; box-shadow: 0 10px 28px rgba(0,0,0,.6), 0 0 14px color-mix(in srgb, var(--purple) 14%, transparent);
+  animation: ink-sel-in .14s ease-out; transform-origin: top center; }
+.ink-sel-menu.up { transform-origin: bottom center; }
+@keyframes ink-sel-in { from { opacity: 0; transform: translateY(-3px) scaleY(.96); } to { opacity: 1; transform: none; } }
+:root[data-motion="reduced"] .ink-sel-menu, :root[data-motion="reduced"] .ink-sel-caret { animation: none; transition: none; }
+.ink-sel-opt { display: grid; grid-template-columns: calc(14px * var(--isz, 1)) minmax(0, 1fr); align-items: center; gap: 6px; min-height: calc(30px * var(--isz, 1));
+  padding: 4px 12px 4px 8px; font-family: var(--font); font-size: calc(11.5px * var(--isz, 1)); color: var(--text); text-align: left; white-space: nowrap;
+  background: none; border: 0; border-radius: 4px; cursor: pointer; touch-action: manipulation; }
+.ink-sel-opt:hover, .ink-sel-opt:focus-visible { background: color-mix(in srgb, var(--gold) 9%, transparent); outline: none; }
+.ink-sel-opt:focus-visible { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, transparent); }
+.ink-sel-opt.on { color: var(--gold); }
+.ink-sel-opt:disabled { color: var(--dim); cursor: default; }
+.ink-sel-tick svg { display: block; width: calc(11px * var(--isz, 1)); height: calc(11px * var(--isz, 1)); color: var(--jade); }
+.ink-sel-t { overflow: hidden; text-overflow: ellipsis; }
+@media (pointer: coarse) { .ink-sel-opt { min-height: calc(44px * var(--isz, 1)); font-size: calc(13px * var(--isz, 1)); } button.ink-sel { min-height: 36px; } }
+.pp-sort .ink-sel { font-size: 11px; }
+
+/* The clone's "On its own" duty on Roam → Explore (2026-10-05; replaces the native checkbox) */
+.clone-duty { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.clone-duty-k { font-size: 10px; color: var(--dim-hi); letter-spacing: .6px; text-transform: uppercase; }

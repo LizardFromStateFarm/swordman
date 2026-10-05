@@ -17,6 +17,23 @@ newest first.
 > invented its own standard. **Scores recorded before this date used the old bar** — treat them as roughly 0.5 lower
 > than they'd score now.
 
+## 2026-10-05 — v1 mobile fixes: InkSelect (every native <select>) · the clone tempers · the parry cue
+- **InkSelect** (`renderer/game/ink-select.js`, styles "InkSelect"; World → People sort, Path → Body Auto-Temper + the clone's
+  drill, the clone's destination): **7.8 PASS** cycle 1 (aesthetic 8 · hierarchy 8 · clarity 7.5 · interaction 8 ·
+  consistency 8 · layout 7.5). Polish applied: the menu treats the phone's bottom tabs as its floor; `.pp-sort` duplicate
+  sizing dropped. Polish left: a slightly larger gap / notch when it flips up. Screens: `people-*-sort-open.png`.
+- **The clone tempers your body + the boxless attention caret** (body-view.js `_clone` / `_cloneAuto` / `_cloneCrisis` /
+  `_mActs`, game.js `renderClonePanel`, styles "Your other self tempers", `.att-min`): cycle 1 **7.5 FAIL** (blocker: the
+  "Other self" label clipped in Expanded) → cycle 2 **7.9 PASS** (8 · 7.5 · 8.5 · 8 · 7.5 · 8). Fixed: the action row wraps;
+  the Explore duty switch uses the pill `.bdx-auto-seg`; "Call it back" reads enabled. Polish left (UX debt): the long
+  "free" explainer, the Explore header wrap in Expanded, a fainter-than-ideal clone progress fill at the start, the
+  endure tile's four lines. Screens: `scripts/smoke/scenarios/clone-temper.js` → `out/clone-temper-*.png`.
+- **Arts library filters** (arts-view.js `fbox` / `_keepPlace`, styles `.af-box`): **7.7 PASS** cycle 1 (8 · 8 · 8 · 7.5 · 8 ·
+  6.5). Polish applied: a container query stacks the labels in a narrow pane (Expanded had one chip per row). Polish left:
+  Overlay element chips are icon-only (title names them); "Clear filters" could sit on the Kind row. Screens:
+  `arts-filters-*.png` (scenarios/arts.js, which now also checks the filter keeps your place, in Overlay and on a phone).
+- **The parry cue + tap anywhere** (combat.js `_renderParry` / `_stageCue` / `_parryTarget`, `#combat-parry`, `#combat-stage.parry-*`): **8.0 PASS** cycle 1 (8 · 8.5 · 8 · 8.5 · 8 · 7). Polish applied: the short hint at ≤ 420px / touch, a 6px brighter marker. Polish left: the prompt sits over your figure's upper body in Overlay / phone. Screens: `combat-parry-*.png`, `combat-parry-now-*.png` (the NOW shots hold the window wide on purpose).
+
 ## 2026-10-03 — Phase 28 / task 4.7: 世 World → People, pins, tappable log names
 `renderer/game/people-view.js`, `renderer/game/person-card.js` (the star, inline mode), `renderer/styles.css` ("Phase 28 (4.7)", `.pp-*`, `.pc-pin`), `renderer/game.js` (`evText`), `class-view.js` (whole row taps). Screenshots: `scripts/smoke/scenarios/people.js` → `out/people-*.png` (Overlay · Expanded · Desktop · phone; list, search, inline card, a log name's popover).
 

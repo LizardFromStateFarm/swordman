@@ -92,6 +92,12 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ## UX Debt — known gaps in what the player can see / do (add here; remove when fixed)
 
+- **Clone tempering (7.9 PASS) / parry cue (8.0) / InkSelect (7.8):** the clone's "free" explainer is long (a "?" card
+  would do); Roam → Explore's clone header wraps in Expanded; the clone's progress fill is faint at the start; the endure
+  tile packs four lines; the parry prompt sits over your figure's upper body in Overlay / on a phone; InkSelect could use
+  a bigger gap / notch when it flips up; the phone's bottom tabs let scrolled content show through (app-wide).
+  Arts filters (7.7): Overlay element chips are icon-only; "Clear filters" could sit on the Kind row.
+
 - **Interactive tutorial (1.23, 7.8 PASS):** the older per-system first-time hints (road, deeds, rival, rankings, people…)
   still exist beside the coach marks — fold them into TUTORIAL_LESSONS; the "Tips are off" toast draws over Settings for a
   moment (app-wide toast layer above overlays); "Turn tips off" is a small 10px link; lesson text is a first draft (no
@@ -303,6 +309,37 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ---
 
 ## Last Session — UPDATE THIS EVERY SESSION
+
+```
+Date: 2026-10-05 (user present, testing the v1 build on phone / iOS) — part 104
+Agent: **Mobile fixes, the clone tempers, the parry cue, faster checks.**
+  - Tempering Strikes on mobile: perfects scored as misses (a touch 'click' fires on finger-up, 80–150 ms late) → strikes
+    are judged on pointerdown at the event's timeStamp (minigames.js). Parry on iOS: one tap counted twice + timing off
+    (the late click missed the window, then counted "Too soon" on the next hit) → pointerdown + timeStamp, presses older
+    than the last resolved hit dropped, "It lands" waits parryGraceMs 120 (combat.js, arts.js MOVE_COMBAT).
+  - InkSelect (new renderer/game/ink-select.js): every native <select> → an in-app picker (People sort, Auto-Temper, the
+    clone's drill + destination); auto-enhanced, the select stays the source of truth. UI **7.8 PASS**.
+  - Attention strip (phone): the expand caret lost its box.
+  - **The clone tempers your body** (user: automate the body work with the body double; picks: full XP, ordeals allowed
+    with the risk on the clone): s.clone.temper / temperXp / autoDuty / autoTemperId; one duty at a time; full XP; its
+    ordeal holds for your answer (failed endure → it shatters, no scar on you); "On its own" Off / Explore / Temper on Path →
+    Body + Roam → Explore; It Lingers keeps its XP; a released tempered clone keeps your body tier. UI 7.5 → **7.9 PASS**.
+  - **Parry cue + tap anywhere** (user): a timing track (marker → gold zone), Wait… → PARRY NOW, the stage edge red → gold;
+    any tap on the battle page parries (not Leave / Retreat / Yield / why). UI **8.0 PASS**.
+  - **Checks ~80 s → ~26–31 s:** run-all.js runs files in parallel (cores − 1, max 12; CHECKS_JOBS), slow files first;
+    succession.js / succession-2.js and combat.js / combat-2.js split; the 60-seed bet loop skips the world sim (fastWorld).
+  - Tests: npm test clean · checks **1818 ok** (bosses.js +20 clone tempering) · smoke people (+ the picker), body,
+    clone-temper (new), combat (parry through a canvas pointerdown + the NOW shot), fights pass.
+  Docs: bosses.md ("The clone tempers your body"), body-constitution.md, arts.md (parry input + cue), automation.md,
+    qa-sim.md (parallel runner, splits, clone-temper smoke), ui-review.md, CLAUDE.md tree, final-qa-changelog.md (#24–29).
+  Not done: the sim bot does not use clone tempering yet; build:web / cap sync not re-run (the iOS build needs it to see
+    these fixes). Uncommitted.
+  Later the same session: **Arts library filters** — a filter kept throwing you to the top (fixed: ArtsView._keepPlace keeps
+    the panel where it was) + restyled into one labelled panel with per-chip counts + Clear (UI **7.7 PASS**); **the Arena
+    rest** now follows only a run you chose (an answered call-out never starts it; checks/arena.js +2). checks 1820 ok ·
+    smoke arts + arena pass.
+  Next: the user re-tests on the phone (rebuild the iOS web bundle first) → commit → release.
+```
 
 ```
 Date: 2026-10-05 (user present) — part 103

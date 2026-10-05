@@ -49,6 +49,16 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
     assert(await noHScroll(), `${tag}: no sideways scroll`)
     await shot(`people-${tag}-list`)
 
+    // the sort is the in-app InkSelect picker, not the native <select> (iOS drew its system wheel; v1 fix 2026-10-05)
+    assert(await ev('!!document.querySelector("#tab-people .pp-sort button.ink-sel") && getComputedStyle(document.querySelector("#tab-people .pp-sort select")).display === "none"'), `${tag}: the sort is the in-app picker`)
+    await click('#tab-people .pp-sort .ink-sel'); await sleep(250)
+    assert(await ev('document.querySelectorAll(".ink-sel-menu .ink-sel-opt").length === 4 && !!document.querySelector(".ink-sel-menu .ink-sel-opt.on svg")'), `${tag}: the sort menu opens with the current choice ticked`)
+    assert(await ev('(() => { const r = document.querySelector(".ink-sel-menu").getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1 && r.top >= 0 && r.bottom <= innerHeight + 1 })()'), `${tag}: the sort menu stays inside the window`)
+    await shot(`people-${tag}-sort-open`)
+    await ev('[...document.querySelectorAll(".ink-sel-menu .ink-sel-opt")].find(b => b.textContent.trim() === "Name").click()'); await sleep(250)
+    assert(await ev('!document.querySelector(".ink-sel-menu") && PeopleView.sort === "name" && document.querySelector("#tab-people .pp-sort .ink-sel-v").textContent === "Name"'), `${tag}: picking a sort applies it and closes the menu`)
+    await ev('(() => { const s = document.querySelector("#tab-people [data-pp-sort]"); s.value = "relevance"; s.dispatchEvent(new Event("change", { bubbles: true })) })()'); await sleep(150)
+
     await click('#tab-people [data-pp-f="grudge"]'); await sleep(200)
     assert(await ev('(() => { const r = document.querySelectorAll("#tab-people .pp-row"); return r.length >= 1 && /Sworn against you|Hunts you/.test(r[0].textContent) && /Cold|Hateful/.test(r[0].textContent) })()'), `${tag}: Grudges lists who hunts you, and how they feel`)
     await click('#tab-people [data-pp-f="all"]'); await sleep(150)

@@ -288,7 +288,7 @@ const MOVE_COMBAT = {
   circulateQi: 35,                       // Circulate: skip the attack, gather Qi
   parryQi: 25, parryCirculateMult: 2,    // a parried hit: 0 damage + Qi back (double on a Circulate turn)
   parryWindowMs: 300, parryWideMult: 1.6, parryMinMs: 120, parryMaxMs: 650,   // user pick: "fair, ~300 ms"
-  parryLeadMs: [700, 1100], parryTutorialLead: 1.8, parryGapMs: 420,
+  parryLeadMs: [700, 1100], parryTutorialLead: 1.8, parryGapMs: 420, parryGraceMs: 120,
   parryPromptChance: 0.35, parryBigShare: 0.9,   // user 2026-09-29: fewer prompts — charges, finishers and a beast's strongest
                                                  // arts always telegraph; other blows 35% of the time (the rest just land)
   parryMult: { multi: 0.8, priority: 0.8, charge: 1.4, finisher: 0.75 },     // windows by the attack's kind

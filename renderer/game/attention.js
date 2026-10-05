@@ -110,7 +110,8 @@ function collectAttention(s, gs) {
     add('urgent', 'mirror-turn', 'mask', `${c?.given || 'Your mirror child'} wants your seat`, 'It wears your face, and your ambition. Yield, face it, or send it away.', 'family')
   }
   if (f.seedCrisis) add('urgent', 'seed-crisis', 'broken', `${f.seedCrisis.spouse} is hurt`, 'A child made without them. Reassure them, defend your choice, or dismiss it.', 'family')
-  if (s.clone?.linger) add('urgent', 'clone-linger', 'split', 'Your other self does not come home', `It sits at ${s.clone.linger.place}, with your own eyes. Draw it back in, or let it go.`, 'explore')
+  if (s.clone?.linger) add('urgent', 'clone-linger', 'split', 'Your other self does not come home', s.clone.linger.kind === 'temper' ? `It finished ${s.clone.linger.place} and stayed, with your own eyes. Draw it back in, or let it go.` : `It sits at ${s.clone.linger.place}, with your own eyes. Draw it back in, or let it go.`, s.clone.linger.kind === 'temper' ? 'physique' : 'explore')
+  if (s.clone?.temper?.crisis) add('urgent', 'clone-crisis', 'split', 'Your other self at the peak', `${TEMPERING_METHODS.find(m => m.id === s.clone.temper.id)?.name || 'Its ordeal'}: endure, ease off, or lend it your Qi. The risk is its body.`, 'physique')
   const road = f.encounters || []
   if (road.length) {
     const hasRecipe = road.some(e => e.kind === 'recipe')   // Phase 44: a stranger carrying a formula

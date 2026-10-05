@@ -32,6 +32,10 @@ function fight(sim, gs, how) {
 }
 
 ;(async () => {
+  // Split in two so npm run checks runs them in parallel (2026-10-05, test speed): this file = part a (everything but
+  // the real-play-vs-estimate block); combat-2.js = part b. COMBAT_PART=all node scripts/sim/checks/combat.js runs both.
+  const PART = process.env.COMBAT_PART || 'a'
+  if (PART !== 'b') {
   // ── The estimate (a Monte Carlo of the move fight) ──
   { const pct = async (stage, type, hp = 100) => { const { gs, s } = await setup(1, stage, type); s.health = hp; return gs.beastFightPreview('e1').chance }
     const fox0 = await pct(0, 'spirit_fox'), fox1 = await pct(2, 'spirit_fox')
@@ -48,6 +52,8 @@ function fight(sim, gs, how) {
   { const { gs } = await setup(3, 16, 'black_tortoise', { traits: ['iron_skin', 'swift', 'soul_bond'] })
     const { gs: g2 } = await setup(3, 16, 'black_tortoise')
     assert(gs.beastFightPreview('e1').it.total === g2.beastFightPreview('e1').it.total + BEAST_TRAIT_POWER_IRON(), 'Iron Skin makes it stronger') }
+  }
+  if (PART !== 'a') {   // part b: real play vs the estimate (300 fights; the slow part — combat-2.js)
   { // Real play with the default policy (parrying off) wins about as often as the estimate says
     for (const [stage, type] of [[1, 'spirit_fox'], [6, 'thunder_eagle']]) {
       let wins = 0, shown = 0; const n = 150   // shown = the average estimate over the same seeds
@@ -60,6 +66,8 @@ function fight(sim, gs, how) {
       }
       assert(Math.abs(wins / n - shown) < 0.12, `${type} at stage ${stage}: real play wins ${(wins / n * 100).toFixed(0)}% vs ${(shown * 100).toFixed(0)}% estimated (n=${n})`)
     } }
+  }
+  if (PART !== 'b') {
 
   // ── Locks ──
   { const { gs, s } = await setup(4, 5, 'spirit_fox')
@@ -307,6 +315,7 @@ function fight(sim, gs, how) {
       if (v !== BEAST_KARMA_(choice, nature) || r.karma !== expect || s.karma - k0 !== expect) bad.push(`${type} ${choice} @${k0}: card ${v}, got ${r.karma}`)
     }
     assert(!bad.length, `the card's karma matches the result for all natures (clamped at 0/100)${bad.length ? ' — ' + bad.join('; ') : ''}`) }
+  }
 })()
 
 function BEAST_TRAIT_POWER_IRON() { return 25 }

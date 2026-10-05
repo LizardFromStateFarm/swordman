@@ -142,6 +142,11 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 >    expedition at once). ✅ **Built 2026-10-04** (docs/systems/bosses.md → "As built"; checks/bosses.js 56; smoke
 >    scenarios/bosses.js; UI 7.2 → **7.6 PASS**). The Bird's real art ✅ baked 2026-10-04 from the user's picture
 >    (asset gate 8.2). Banter ✅ (final QA, 2026-10-04): `boss_awake` + `boss_won`, 4 lines per personality + 2 generic each.
+>    ✅ **The clone tempers your body (2026-10-05, user):** a second tempering at full XP, its own ordeal peak (a failed
+>    endure shatters it, no scar on you), "On its own" Off / Explore / Temper (bosses.md; checks +20; smoke clone-temper.js;
+>    UI 7.9). Not taught to the sim bot yet. Same session (v1 mobile fixes): Strikes + parry judged on pointerdown,
+>    InkSelect for every dropdown (7.8), the parry cue + tap anywhere (8.0), parallel scenario checks (~80 s → ~30 s),
+>    the Arts library filters keep your place + a labelled filter panel (7.7), the Arena rests only after a run you chose.
 > 5. **Interactive tutorial (task 1.23, user 2026-10-04)** — skippable coach marks that walk the player through each
 >    mechanic and key stat as it unlocks, with a replayable Guide list. ✅ **Built 2026-10-04** (docs/systems/tutorial.md;
 >    user picks: neutral text · a dismissable spotlight · seen-state across all saves · the Guide in ⚙ Settings). 36 lessons

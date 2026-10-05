@@ -392,7 +392,9 @@ a run waiting between bouts (ready), a newly opened ring (nudge). First visit: a
   `arena`, and so does the family load guard (a bug found by the smoke test: it dropped arena bouts on the next recalc).
   Humbling in the arena gives renown instead of cowing the clan; finishing costs `ARENA_KILL_KARMA`.
 - **Balance (sim:quick, active bot):** the first numbers made arena purses 97% of all stones (726k / 24h) → prizes cut
-  ~20×, and after every run the whole Arena rests `ARENA_REST_SECONDS` (30 min, real time) → arena ≈ 54% of an active
+  ~20×, and after every run **you chose** the whole Arena rests `ARENA_REST_SECONDS` (30 min, real time; user 2026-10-05: a
+  grudge call-out you only answered never starts or extends it — `_arenaRest(run)` skips `run.callout && !run.chosen`; a bout
+  you pick sets `run.chosen`, so fighting on after a call-out makes the run yours; the call-out card says so) → arena ≈ 54% of an active
   min-maxer's stones (21k / 24h vs ~11k before the Arena). Still generous: tune in 2.8 QA.
 - UI: renderer/game/arena-view.js (`ArenaView.render` / `tickInPlace` for the rest countdown), `#tab-arena`, NAV_GROUPS
   Roam → Arena, breakdown kinds `arena` (the purse) + `personfight:<id>:arena`, attention `arena-callout` / `arena-run` /

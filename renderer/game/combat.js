@@ -60,13 +60,16 @@ class CombatView {
     this.bindGrade = null              // Phase 41: the talisman grade chosen for the end-of-battle bind
     this.lockUntil = 0
     this.box.addEventListener('click', e => this._click(e))
+    // Parry scores on pointerdown at the event's own time: iOS sends 'click' on finger-up, so a tap on the mark landed
+    // after the window ("It lands") and then counted again against the next hit (v1 mobile fix 2026-10-05)
+    this.box.addEventListener('pointerdown', e => { if (e.button <= 0 && this._parryTarget(e)) { this._ptrAt = performance.now(); this._parryPress(e.timeStamp) } })
     document.getElementById('combat-close').addEventListener('click', () => this.close())
     document.addEventListener('keydown', e => {
       if (!this.isOpen()) return
       if (e.key === 'Escape' && !document.getElementById('breakdown-overlay').classList.contains('hidden')) return
       if (e.key === 'Escape') { e.preventDefault(); this.close(); return }
       if (this.step === 'fight') {                                  // Phase 42b (people since 1.14a): moves 1–4, C circulate, Space parry
-        if (e.key === ' ' || e.key === 'p' || e.key === 'P') { if (this.qte) { e.preventDefault(); this._parryPress() } return }
+        if (e.key === ' ' || e.key === 'p' || e.key === 'P') { if (this.qte) { e.preventDefault(); if (!e.repeat) this._parryPress(e.timeStamp) } return }
         const slot = { '1': 0, '2': 1, '3': 2, '4': 3 }[e.key]
         if (slot != null) this.panel.querySelectorAll('.cb-moves > *')[slot]?.click?.()
         if (e.key === 'c' || e.key === 'C') this.panel.querySelector('[data-move="circulate"]')?.click()
@@ -145,7 +148,7 @@ class CombatView {
     this.step = null
     this.qte = null                                              // a parry prompt restarts when you come back
     this.scene.telegraph(null)
-    this.parryEl.classList.add('hidden'); this._parryKey = null
+    this.parryEl.classList.add('hidden'); this._parryKey = null; this._stageCue(false, false)
     const fi = this.gs.get()?.family?.fight
     if (fi && !fi.over) this.h.flash(fi.kind === 'beast' || fi.kind === 'boss' ? 'The beast waits. Return to the fight from the strip above.' : 'Your opponent waits. Return to the fight from the strip above.', 'neutral')
   }
@@ -370,7 +373,7 @@ class CombatView {
         <span class="cb-mv-m">${x.release ? 'lands now · no cost' : `${x.cost} Qi · ${pw}`}${x.affinity ? ' · your root' : ''}</span>
         <span class="cb-mv-f">${lock ? `<span class="cb-mt lock">${lock}</span>` : tag}</span></button>`
     }
-    const incoming = pend ? `<div class="cb-last down">${esc(The)} uses <b>${esc(m.pending.name)}</b>${m.pending.hits > 1 ? ` · ${m.pending.hits} hits` : ''}. ${this.gs.get().arts?.parryTaught ? 'Parry it on the field, or take the blow.' : 'Press Parry on the field (or Space) as the ring closes on you. Too soon and you are open; too late and it lands.'}</div>` : ''
+    const incoming = pend ? `<div class="cb-last down">${esc(The)} uses <b>${esc(m.pending.name)}</b>${m.pending.hits > 1 ? ` · ${m.pending.hits} hits` : ''}. ${this.gs.get().arts?.parryTaught ? 'Tap anywhere when the marker meets the gold, or take the blow.' : 'Watch the marker on the field: when it meets the gold and the stage glows, tap anywhere (or Space). Too soon and you are open; too late and it lands.'}</div>` : ''
     const grid = `<div class="cb-moves${pend ? ' locked' : ''}">${mv.slots.map((x, i) => btn(x, i)).join('')}</div>`
     const bi = B ? info.boss : null, ROMAN = ['I', 'II', 'III', 'IV']
     const bossNote = bi ? (bi.egg ? `The egg hatches in ${bi.egg} turn${bi.egg === 1 ? '' : 's'}: break it first.` : bi.split ? `Two faces: your blows find the true one ${Math.round(bi.read * 100)}% of the time.` : bi.stolen ? `It wields your ${ARTS[bi.stolen]?.name || 'art'} against you.` : bi.phases[bi.phase + 1] ? `Next: ${bi.phases[bi.phase + 1].name} at ${Math.round(bi.phases[bi.phase + 1].at * 100)}%.` : '') : ''
@@ -435,7 +438,7 @@ class CombatView {
   // the canvas around you (BattleScene.telegraph); the button glows when the window is open. Reduced motion: a filling bar.
   _renderParry() {
     const fi = this.gs.get()?.family?.fight, p = this.step === 'fight' ? fi?.m?.pending : null
-    if (!p) { this.parryEl.classList.add('hidden'); this.parryEl.innerHTML = ''; this._parryKey = null; return }
+    if (!p) { this.parryEl.classList.add('hidden'); this.parryEl.innerHTML = ''; this._parryKey = null; this._stageCue(false, false); return }
     const key = `${fi.m.turn}:${p.id}`
     if (key === this._parryKey) return                            // keep the live pips / feedback
     this._parryKey = key
@@ -443,13 +446,21 @@ class CombatView {
     const tut = !this.gs.get().arts?.parryTaught
     this.parryEl.innerHTML = `
       <div class="cb-parry-h"><b>${esc(p.name)}</b>${p.hits > 1 ? ` · ${p.hits} hits` : ''}${p.type === 'charge' ? ' · slow, heavy' : ''}</div>
-      <div class="cb-parry-ring${this.h.settings().reducedMotion ? ' calm' : ''}"><i class="cb-ring-bar"><b></b></i></div>
-      <button class="cb-parry-btn" data-parry>Parry<small>Space</small></button>
+      <div class="cb-pt" aria-hidden="true"><i class="cb-pt-zone"></i><i class="cb-pt-mark"></i></div>
+      <button class="cb-parry-btn" data-parry><span class="cb-pb-l">Wait…</span><small>${this._parryHint()}</small></button>
       ${p.hits > 1 ? `<div class="cb-parry-hits">${Array.from({ length: p.hits }, (_, i) => `<i class="${i < done ? (q.results[i] ? 'ok' : 'no') : ''}"></i>`).join('')}</div>` : ''}
       <div class="cb-parry-fb" aria-live="polite"></div>`
     this.parryEl.classList.remove('flash', 'miss', 'hot')
     this.parryEl.classList.toggle('tut', tut)
     this.parryEl.classList.remove('hidden')
+  }
+  // The edge glow on the whole stage: a faint red while a blow comes, gold inside the window (cleared with the prompt)
+  // short at narrow widths (review: the 3-line hint covered your face in Overlay / on a phone)
+  _parryHint() { return innerWidth <= 420 || matchMedia('(pointer: coarse)').matches ? 'then tap anywhere' : 'for the gold · then tap anywhere or Space' }
+  _stageCue(live, hot) {
+    const st = document.getElementById('combat-stage')
+    if (!st) return
+    st.classList.toggle('parry-live', !!live); st.classList.toggle('parry-hot', !!hot)
   }
 
   // The parry QTE: each hit gets a window of p.windowMs centred on its moment of impact
@@ -463,15 +474,22 @@ class CombatView {
     const loop = () => {
       if (this.qte !== q || q.sent) return
       const now = performance.now(), i = q.results.length
-      if (i < q.p.hits && now > q.due[i] + q.w / 2) this._parryHit(false, 'It lands')
-      const el = this.parryEl.querySelector('.cb-parry-ring'), j = q.results.length
-      if (el && j < q.p.hits) {
-        const start = j === 0 ? q.t0 : q.due[j - 1] + q.w / 2, span = q.due[j] - start
-        const k = Math.max(0, (q.due[j] - now) / span)
-        el.querySelector('.cb-ring-bar b').style.width = `${Math.min(100, (1 - k) * 100).toFixed(1)}%`
-        el.classList.toggle('hot', Math.abs(now - q.due[j]) <= q.w / 2)
-        this.parryEl.classList.toggle('hot', Math.abs(now - q.due[j]) <= q.w / 2)
-      }
+      if (i < q.p.hits && now > q.due[i] + q.w / 2 + MOVE_COMBAT.parryGraceMs) this._parryHit(false, 'It lands')   // grace: a tap in flight is judged at its own time
+      const j = q.results.length
+      if (j < q.p.hits) {
+        // the track runs from this hit's start to just past its window, so the gold zone sits near (not at) the end
+        const start = j === 0 ? q.t0 : q.due[j - 1] + q.w / 2, end = q.due[j] + q.w, span = Math.max(1, end - start)
+        const hot = Math.abs(now - q.due[j]) <= q.w / 2
+        const zone = this.parryEl.querySelector('.cb-pt-zone'), mark = this.parryEl.querySelector('.cb-pt-mark')
+        if (zone) { zone.style.left = `${((q.due[j] - q.w / 2 - start) / span * 100).toFixed(2)}%`; zone.style.width = `${(q.w / span * 100).toFixed(2)}%` }
+        if (mark) mark.style.left = `${Math.min(100, Math.max(0, (now - start) / span * 100)).toFixed(2)}%`
+        if (hot !== this.parryEl.classList.contains('hot')) {
+          this.parryEl.classList.toggle('hot', hot)
+          const l = this.parryEl.querySelector('.cb-pb-l'); if (l) l.textContent = hot ? 'PARRY NOW' : 'Wait…'
+          const sm = this.parryEl.querySelector('.cb-parry-btn small'); if (sm) sm.textContent = hot ? 'tap anywhere' : this._parryHint()
+        }
+        this._stageCue(true, hot)
+      } else this._stageCue(false, false)
       if (j < q.p.hits) {                                          // 1.13b: the same ring, on the field
         const start = j === 0 ? q.t0 : q.due[j - 1] + q.w / 2
         this.scene.telegraph({ k: Math.max(0, (q.due[j] - now) / (q.due[j] - start)), hot: Math.abs(now - q.due[j]) <= q.w / 2, el: q.p.element })
@@ -485,21 +503,29 @@ class CombatView {
   _parryHit(ok, text) {
     const q = this.qte
     if (!q || q.sent || q.results.length >= q.p.hits) return
-    q.results.push(ok)
+    q.results.push(ok); q.lastAt = performance.now()
     const fb = this.parryEl.querySelector('.cb-parry-fb')
     if (fb) { fb.textContent = text; fb.className = 'cb-parry-fb ' + (ok ? 'ok' : 'no') }
     const pip = this.parryEl.querySelectorAll('.cb-parry-hits i')[q.results.length - 1]
     if (pip) pip.className = ok ? 'ok' : 'no'
     const pe = this.parryEl
     pe.classList.remove('flash', 'miss', 'hot'); void pe.offsetWidth; pe.classList.add(ok ? 'flash' : 'miss')
-    if (q.results.length >= q.p.hits) { q.sent = true; this.scene.telegraph(null); setTimeout(() => this._sendParry(q), 380) }
+    if (q.results.length >= q.p.hits) { q.sent = true; this.scene.telegraph(null); this._stageCue(false, false); setTimeout(() => this._sendParry(q), 380) }
+    else { const l = this.parryEl.querySelector('.cb-pb-l'); if (l) l.textContent = 'Wait…' }
   }
-  _parryPress() {
+  // A tap / click on the parry prompt (pointer taps are taken on pointerdown; their trailing click is skipped)
+  // Tap ANYWHERE on the battle page while a blow comes (user 2026-10-05: "the user should be able to hit anywhere"); only
+  // Leave, Retreat / Yield and a "why" card keep their own meaning (your moves are locked meanwhile anyway)
+  _parryTarget(e) { return !!this.qte && !this.qte.sent && !e.target.closest('#combat-close, [data-tac], [data-bd], .bd-why, #breakdown-overlay') }
+  // at — the press's event timeStamp (same clock as performance.now()); a press from before the last resolved hit is dropped
+  _parryPress(at) {
     const q = this.qte
     if (!q || q.sent) return
-    const now = performance.now(), i = q.results.length, d = q.due[i]
-    if (Math.abs(now - d) <= q.w / 2) { this.scene.parryFlash(true); this._parryHit(true, 'Parried!') }
-    else if (now < d - q.w / 2) { this.scene.parryFlash(false); this._parryHit(false, 'Too soon') }
+    const now = performance.now(), t = at > 0 && at <= now && now - at < 500 ? at : now
+    if (q.lastAt && t <= q.lastAt) return
+    const i = q.results.length, d = q.due[i]
+    if (Math.abs(t - d) <= q.w / 2) { this.scene.parryFlash(true); this._parryHit(true, 'Parried!') }
+    else if (t < d - q.w / 2) { this.scene.parryFlash(false); this._parryHit(false, 'Too soon') }
   }
   _sendParry(q) {
     if (this.qte === q) this.qte = null
@@ -708,7 +734,7 @@ class CombatView {
   }
 
   _click(e) {
-    if (this.qte && e.target.closest('[data-parry-zone]') && !e.target.closest('button')) return this._parryPress()   // tap anywhere on the prompt
+    if (this._parryTarget(e)) { if (performance.now() - (this._ptrAt || -1e9) > 700) this._parryPress(e.timeStamp); return }   // tap anywhere on the prompt (already pressed on pointerdown)
     const t = e.target.closest('button')
     if (!t || t.disabled || t.dataset.bd != null) return
     if (t.dataset.leave != null) return this.close()
@@ -733,7 +759,6 @@ class CombatView {
       this.step = 'fight'
       return this.render()
     }
-    if (t.dataset.parry != null) return this._parryPress()
     if (t.dataset.parrymode) { this.gs.setParryMode(t.dataset.parrymode); return this.render() }
     if (t.dataset.move) {                                         // Phase 42b: one of your moves
       if (performance.now() < this.lockUntil || this.qte) return
