@@ -6,8 +6,8 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --inspect",
-    "dist": "npx electron-packager . \"Cultivator Idle\" --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"(\\.git|3d[\\\\/])\"",
-    "dist:mac": "npx electron-packager . \"Cultivator Idle\" --platform=darwin --arch=x64,arm64 --out=dist --overwrite --ignore=\"(\\.git|3d[\\\\/])\"",
+    "dist": "npx electron-packager . \"Cultivator Idle\" --platform=win32 --arch=x64 --out=dist --overwrite --ignore=\"^/(?!(main\\.js|preload\\.js|package\\.json|renderer|assets)(/|$))\"",
+    "dist:mac": "npx electron-packager . \"Cultivator Idle\" --platform=darwin --arch=x64,arm64 --out=dist --overwrite --ignore=\"^/(?!(main\\.js|preload\\.js|package\\.json|renderer|assets)(/|$))\"",
     "build:web": "node scripts/build-ios-web.js",
     "cap:sync": "npm run build:web && npx cap sync ios",
     "ios:open": "npm run cap:sync && npx cap open ios",
@@ -19,6 +19,7 @@
     "sim": "node scripts/sim/run.js",
     "sim:quick": "node scripts/sim/run.js --profiles=active,afk --hours=24 --seeds=1 --out=scripts/sim/out/quick",
     "checks": "node scripts/sim/checks/run-all.js",
+    "smoke": "node scripts/smoke/run-all.js",
     "export:data": "node scripts/export-sim-data.js",
     "export:data:check": "node scripts/export-sim-data.js --check",
     "release": "node scripts/release.js"

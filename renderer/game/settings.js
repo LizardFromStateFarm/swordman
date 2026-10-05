@@ -7,6 +7,7 @@ class SettingsUI {
     this.renderer = renderer
     this._applied = {}
     this._palette = null
+    this.guide    = null   // 1.23: (el) => draws the Guide section first (TutorialUI.renderGuide, set by game.js)
     this.overlay  = document.getElementById('settings-overlay')
     this.body     = document.getElementById('settings-body')
     document.getElementById('settings-close').addEventListener('click', () => this.close())
@@ -60,6 +61,7 @@ class SettingsUI {
     const set = this.gs.getSettings()
     const el  = this.body
     el.innerHTML = ''
+    this.guide?.(el)
     let group = null
     for (const def of SETTINGS_DEFS) {
       if (def.group !== group) {

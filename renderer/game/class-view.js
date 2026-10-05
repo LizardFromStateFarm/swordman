@@ -66,7 +66,7 @@ const ClassView = {
     const dead = m => `<div class="cls-row dead tap" data-pid="${esc(m.pid)}">
         <span class="cls-n">${m.ascended ? Icon.g('rise') : Icon.g('lineage')}</span>
         <span class="cls-body"><span class="cls-who">${PersonCard.link(m.pid, m.name)}${m.chosen ? '<span class="pc-chip gold">Chosen</span>' : ''}</span>
-          <span class="cls-meta"><span class="cls-cause">${m.ascended ? 'Ascended' : esc(m.cause || 'Passed on')}</span> · year ${m.diedYear ?? "?"} · <span class="cls-realm dim">${realm(m.stage)}, at ${m.age}</span></span></span>
+          <span class="cls-meta"><span class="cls-cause">${m.ascended ? 'Ascended' : esc(m.cause || 'Passed on')}</span>&nbsp;· year ${m.diedYear ?? "?"}&nbsp;· <span class="cls-realm dim">${realm(m.stage)}, at ${m.age}</span></span></span>
       </div>`
     const sec = (title, body, cls = '') => `<div class="bd-sec-title cls-sec ${cls}">${title}</div><div class="cls-list">${body}</div>`
     el.innerHTML = `<div class="cls-view">${head}${lives}${stats}

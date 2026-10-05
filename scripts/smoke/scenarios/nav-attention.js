@@ -85,7 +85,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep }) => {
   // ── Mode panel ──
   await click('#btn-mode'); await sleep(200)
   assert(await visible('mode-overlay'), 'titlebar 閒 opens the Mode panel')
-  assert(await ev('document.querySelectorAll("#mode-auto .auto-row").length') === 4, 'Mode panel lists all 4 automations')
+  assert(await ev('document.querySelectorAll("#mode-auto .auto-row").length >= Object.keys(AUTOMATION_UNLOCKS).length'), 'Mode panel lists every automation')
   await shot('nav-mode-idle')
   await click('.mode-card[data-mode="active"]'); await sleep(200)
   assert(await ev('gameState.get().playMode') === 'active' && await ev('document.getElementById("btn-mode").textContent') === 'Active' && await ev('!!document.querySelector("#btn-mode .ic-active")'), 'Active card switches mode; titlebar shows the Active flame')

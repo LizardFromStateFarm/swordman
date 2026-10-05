@@ -1859,6 +1859,134 @@ body[data-layout="desktop"] .craft-subtab { font-size: 12px; padding: 5px 12px; 
 .set-opt:hover  { color: var(--text); border-color: var(--dim); }
 .set-opt.active { color: var(--gold); border-color: var(--gold); background: rgba(237,208,80,0.12); }
 
+/* UI review: 7.8 (2026-10-04) */
+/* ── 1.23 Tutorial: coach marks (spotlight + card) and the Guide in Settings (renderer/game/tutorial.js) ── */
+#tut-overlay { position: fixed; inset: 0; z-index: 450; cursor: pointer; }
+#tut-overlay.hidden { display: none; }
+/* The hole: a ring around the real control; its giant shadow is the scrim. No target → a plain scrim. */
+.tut-hole {
+  position: fixed; border-radius: 7px; pointer-events: none;
+  border: 1px solid var(--gold);
+  box-shadow: 0 0 0 200vmax rgba(4,2,8,0.74), 0 0 14px 2px rgba(237,208,80,0.35), inset 0 0 10px rgba(237,208,80,0.18);
+  transition: left .22s ease, top .22s ease, width .22s ease, height .22s ease;
+}
+.tut-hole.none { left: 50% !important; top: 50% !important; width: 0 !important; height: 0 !important; border: 0; box-shadow: 0 0 0 200vmax rgba(4,2,8,0.78); }
+.tut-card {
+  position: fixed; cursor: default; outline: none;
+  background: linear-gradient(180deg, rgba(30,16,40,0.98), rgba(16,8,24,0.98));
+  border: 1px solid var(--gold); border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(237,208,80,0.12) inset;
+  padding: 10px 12px 9px; font-family: var(--font); color: var(--text);
+}
+.tut-card.tut-in { animation: tut-in .22s ease-out; }
+@keyframes tut-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+:root[data-motion="reduced"] .tut-card.tut-in { animation: none; }
+:root[data-motion="reduced"] .tut-hole, .tut-hole.snap { transition: none; }
+.tut-head { display: flex; align-items: baseline; gap: 8px; padding-right: 22px; margin-bottom: 5px; }
+.tut-title { font-size: 13px; color: var(--gold); letter-spacing: .5px; line-height: 1.25; }
+.tut-count { margin-left: auto; font-size: 10px; color: var(--dim-hi); white-space: nowrap; }
+.tut-text { font-size: 12px; line-height: 1.5; color: var(--text); }
+.tut-btns { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.tut-sp { flex: 1; }
+.tut-btn {
+  min-height: 30px; min-width: 56px; padding: 4px 12px; cursor: pointer;
+  font-family: var(--font); font-size: 11px; color: var(--text);
+  background: var(--btn-bg); border: 1px solid var(--border); border-radius: 4px;
+}
+.tut-btn:hover { border-color: var(--dim); }
+.tut-btn.hidden { display: none; }
+.tut-next { color: var(--gold); border-color: var(--gold); background: rgba(237,208,80,0.12); }
+.tut-next:hover { background: rgba(237,208,80,0.2); border-color: var(--gold); }
+.tut-off { background: none; border: 0; padding: 4px 0; cursor: pointer; font-family: var(--font); font-size: 10px; color: var(--dim-hi); text-decoration: underline; text-underline-offset: 2px; }
+.tut-off:hover { color: var(--text); }
+.tut-skip {
+  position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; padding: 4px; cursor: pointer;
+  background: none; border: 0; color: var(--dim-hi); border-radius: 3px;
+}
+.tut-skip svg { width: 14px; height: 14px; }
+.tut-skip:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+.tut-card :focus-visible { outline: 1px solid var(--gold); outline-offset: 1px; }
+
+/* UI review: 7.9 (2026-10-05) */
+/* ── The intro ink scroll (renderer/game/intro.js, 2026-10-05): five cards over a dotted night, before the HUD tour ── */
+#intro-overlay {
+  position: fixed; inset: 0; z-index: 460; cursor: pointer; --intro-tint: var(--gold);
+  background: radial-gradient(ellipse 80% 60% at 50% 38%, #1E102C, #06030A 75%) #06030A;   /* opaque: the game must not ghost through */
+  display: flex; align-items: center; justify-content: center; font-family: var(--font); color: var(--text);
+}
+#intro-overlay.hidden { display: none; }
+.intro-bg { position: absolute; inset: 0; pointer-events: none; }
+.intro-col {
+  position: relative; width: min(440px, calc(100vw - 32px)); margin-top: -8vh; text-align: center; cursor: default;
+  padding: 18px 16px 14px;
+}
+.intro-col.intro-in { animation: intro-in .45s ease-out; }
+@keyframes intro-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+:root[data-motion="reduced"] .intro-col.intro-in { animation: none; }
+.intro-orn { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; }
+.intro-orn i { width: 46px; height: 1px; background: linear-gradient(90deg, transparent, var(--intro-tint)); }
+.intro-orn i:last-child { transform: scaleX(-1); }
+.intro-orn b { width: 5px; height: 5px; transform: rotate(45deg); border: 1px solid var(--intro-tint); box-shadow: 0 0 8px var(--intro-tint); }
+.intro-title { font-size: 17px; font-weight: normal; color: var(--gold); letter-spacing: 1.5px; text-shadow: 0 0 12px rgba(237,208,80,0.35); margin-bottom: 12px; }
+.intro-text { font-size: 13px; line-height: 1.75; color: var(--text); min-height: 7.2em; }
+.intro-pips { display: flex; justify-content: center; gap: 7px; margin: 16px 0 12px; }
+.intro-pips span { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--dim); }
+.intro-pips span.past { background: var(--dim); }
+.intro-pips span.on { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 6px rgba(237,208,80,0.6); }
+.intro-btns { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.intro-count { font-size: 10px; color: var(--dim-hi); min-width: 34px; }
+.intro-btn {
+  min-height: 34px; min-width: 84px; padding: 5px 14px; cursor: pointer; font-family: var(--font); font-size: 12px; color: var(--text);
+  background: var(--btn-bg); border: 1px solid var(--border); border-radius: 4px;
+}
+.intro-btn { border-color: var(--dim); }   /* review polish: Back reads as a live control */
+.intro-btn:hover { border-color: var(--text); }
+.intro-btn.hidden { visibility: hidden; }
+.intro-next { color: var(--gold); border-color: var(--gold); background: rgba(237,208,80,0.12); }
+.intro-next:hover { background: rgba(237,208,80,0.22); }
+.intro-skip {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); right: 12px; z-index: 1; min-height: 30px; padding: 4px 10px;
+  cursor: pointer; font-family: var(--font); font-size: 11px; color: var(--dim-hi); background: none; border: 1px solid transparent; border-radius: 4px;
+}
+.intro-skip:hover { color: var(--text); border-color: var(--border); }
+.intro-skip.hidden { visibility: hidden; }
+#intro-overlay :focus-visible { outline: 1px solid var(--gold); outline-offset: 2px; }
+body[data-layout="overlay"] .intro-col, body[data-narrow] .intro-col { margin-top: 0; }   /* review polish: less empty sky below on tall narrow windows */
+body[data-layout="overlay"] .intro-title { font-size: 15px; }
+body[data-layout="overlay"] .intro-text { font-size: 12px; line-height: 1.65; min-height: 9.9em; }
+body[data-layout="overlay"] .intro-btn { min-width: 70px; }
+
+/* The Guide (top of Settings) */
+.tut-guide-toggle {
+  display: flex; align-items: center; gap: 6px; width: 100%; margin: 4px 0 2px; min-height: 26px; padding: 3px 8px;
+  cursor: pointer; font-family: var(--font); font-size: 11px; color: var(--text);
+  background: var(--btn-bg); border: 1px solid var(--border); border-radius: 3px;
+}
+.tut-guide-toggle:hover { border-color: var(--dim); }
+.tut-g-n { margin-left: auto; font-size: 10px; color: var(--dim-hi); }
+.tut-g-caret { color: var(--gold); font-size: 10px; }
+.tut-guide { margin-top: 2px; }
+.tut-g-h { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold); opacity: .8; margin: 8px 0 2px; }
+.tut-row {
+  display: flex; align-items: center; gap: 6px; width: 100%; min-height: 26px; padding: 2px 4px; text-align: left;
+  cursor: pointer; font-family: var(--font); background: none; border: 0; border-bottom: 1px solid rgba(42,26,16,0.7); color: var(--text);
+}
+.tut-row:hover:not(:disabled) { background: rgba(237,208,80,0.06); }
+.tut-r-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; background: transparent; }
+.tut-row.new .tut-r-dot { background: var(--gold); box-shadow: 0 0 4px var(--gold); }
+.tut-r-t { font-size: 11px; flex: 1 1 auto; min-width: 0; }
+.tut-r-s { margin-left: auto; font-size: 9.5px; line-height: 1.25; color: var(--dim-hi); text-align: right; flex: 0 1 auto; max-width: 70%; padding: 2px 0; }
+.tut-row.new .tut-r-s { color: var(--dim-hi); }   /* the gold dot alone marks New (review 1.23: a wall of gold) */
+.tut-row.seen .tut-r-s { color: var(--jade); }
+.tut-row.locked { cursor: default; color: var(--dim-hi); }
+.tut-row.locked svg { width: 11px; height: 11px; color: var(--dim); flex: none; }
+.tut-r-go { color: var(--gold); font-size: 12px; flex: none; }
+.tut-reset {
+  display: block; margin: 8px auto 2px; padding: 4px 10px; min-height: 26px; cursor: pointer;
+  font-family: var(--font); font-size: 10px; color: var(--dim-hi); background: none; border: 1px dashed var(--border); border-radius: 3px;
+}
+.tut-reset:hover { color: var(--text); border-color: var(--dim); }
+
 .set-range { display: flex; align-items: center; gap: 6px; }
 .set-range input[type=range] { width: 110px; accent-color: var(--gold); cursor: pointer; }
 .set-range-val { font-size: 10px; color: var(--gold); width: 32px; text-align: right; }
@@ -3236,6 +3364,12 @@ body[data-layout="overlay"] .fam-card.court .fc-head .fc-sub { display: none; }
 .cb-choice .fa-n { white-space: normal; }
 .fa-pill.gold { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
 .fa-pill.row { flex-direction: row; justify-content: center; gap: 5px; white-space: nowrap; }
+/* v1 add-on (bosses.md): a choice of three (The Mirror Turns, the spouse's hurt) stacks as full-width rows that wrap */
+.fw-acts.three { flex-direction: column; }
+.fw-acts.three .fa-pill { flex: none; min-height: 40px; }   /* (review cycle 1: flex:1 stretched them tall in a column) */
+.fw-acts.three .fa-pill.row { flex-direction: row; align-items: baseline; justify-content: space-between; white-space: normal; text-align: left; flex-wrap: wrap; }
+.fw-acts.three .fa-pill.row span { text-align: right; white-space: normal; min-width: 0; flex: 1 1 120px; }
+.fam-wish.urgent { border-color: color-mix(in srgb, var(--red) 55%, transparent); }
 .fam-wish { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; }
 .fam-wish .fw-body { display: contents; }
 .fam-wish .fw-title, .fam-wish .fw-text { grid-column: 2; }
@@ -4060,7 +4194,8 @@ body[data-layout="overlay"] .sv-card.sv-cand { padding: 4px 8px; }
    standing orders sized like the rest, the hall as a card, fame on the founder overview */
 #subtabs { container-type: inline-size; }
 .subtab { white-space: nowrap; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-@container (max-width: 380px) {
+body[data-narrow] #subtabs { gap: 3px; }   /* final QA: a phone's Sect strip (5 tabs + the chip) fits without sideways scroll */
+@container (max-width: 420px) {   /* final QA: was 380px — a 390px phone's strip is 382px, and Base made it 5 tabs + the chip */
   #subtabs .subtab[data-in="sect"] { padding: 3px 7px; }
   #subtabs .auto-chip { padding: 2px 7px; }
   #subtabs .auto-chip .ac-label { display: none; }
@@ -4908,6 +5043,68 @@ body:not([data-layout="overlay"]):not([data-layout="banner"]):not([data-narrow="
 .hunt-acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .hunt-found-art { flex: none; }
 
+/* ── v1 add-on: Roam → Hunt → Legendary + the battle page's boss mode (docs/systems/bosses.md) ──────────────────────
+   The boss card is the hunt-card surface in vermilion/gold; gates as a checklist (icons + words, not colour alone);
+   the phase script as a numbered list; the foe's HP bar carries a mark at each phase threshold.
+   UI review: 7.6 (2026-10-04) */
+.hunt-sec { margin: 10px 0 5px; color: var(--gold); }
+.boss-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 4px; }
+body:not([data-layout="overlay"]):not([data-layout="banner"]):not([data-narrow="1"]) .boss-grid { grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); }
+.boss-card { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; min-width: 0; padding: 10px 11px; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--gold) 38%, var(--border));
+  background: radial-gradient(120% 90% at 0% 0%, rgba(90,34,12,0.42), rgba(16,8,6,0.6) 70%); box-shadow: inset 0 0 18px rgba(255,120,40,0.06); }
+.boss-card.boss-wraith { border-color: color-mix(in srgb, var(--purple) 45%, var(--border)); background: radial-gradient(120% 90% at 0% 0%, rgba(40,30,80,0.45), rgba(10,8,18,0.6) 70%); }
+.boss-card.locked { opacity: .72; }
+.boss-art { flex: none; width: 108px; height: 84px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: rgba(4,2,8,0.5); overflow: hidden; }
+.boss-sil { font-size: 42px; color: color-mix(in srgb, var(--gold) 30%, transparent); }
+.boss-wraith .boss-sil { color: color-mix(in srgb, var(--purple) 45%, transparent); }
+.boss-body { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 5px; }
+.boss-head { display: flex; align-items: baseline; gap: 6px; }
+.boss-name { font-size: 13px; color: var(--gold); letter-spacing: .4px; }
+.boss-head .cb-el { margin-left: auto; }
+.boss-line { font-size: 10.5px; line-height: 1.45; color: var(--dim-hi); font-style: italic; }
+.boss-gates { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.boss-gates li { font-size: 10.5px; display: inline-flex; align-items: center; gap: 4px; color: var(--text); }
+.boss-gates li small { color: var(--dim); font-size: 9.5px; margin-left: 2px; }
+.boss-gates li.ok [data-icon] { color: var(--jade); }
+.boss-gates li.no { color: var(--dim-hi); } .boss-gates li.no [data-icon] { color: var(--dim); }
+.boss-phases { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.boss-phases li { font-size: 10.5px; line-height: 1.4; color: var(--dim-hi); }
+.boss-phases li b { color: var(--text); font-weight: normal; margin-right: 4px; }
+.boss-phases.cb { margin-top: 3px; }
+.boss-tech { display: flex; gap: 6px; align-items: flex-start; font-size: 10.5px; padding: 5px 7px; border-radius: 4px; border: 1px dashed color-mix(in srgb, var(--purple) 45%, transparent); }
+.boss-tech b { color: var(--purple); font-weight: normal; }
+.boss-tech small { display: block; color: var(--dim-hi); font-size: 10px; margin-top: 1px; }
+.boss-tech.known { border-style: solid; border-color: color-mix(in srgb, var(--jade) 40%, transparent); } .boss-tech.known b { color: var(--jade); }
+.boss-rec { font-size: 10.5px; color: var(--dim-hi); }
+.boss-rec .up, .cb-st-l.up, .cb-note.up { color: var(--jade); }
+.boss-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.boss-lock { font-size: 10.5px; color: var(--dim-hi); display: inline-flex; gap: 5px; align-items: center; font-variant-numeric: tabular-nums; }
+.cb-stances.one { grid-template-columns: 1fr; }
+.cb-stance.boss { border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); }
+.cb-hpbar.boss-bar { position: relative; }
+.boss-mark { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--gold); opacity: .8; box-shadow: 0 0 4px rgba(237,208,80,.6); }
+.cb-boss-line { font-size: 11px; line-height: 1.45; color: var(--text); margin: 2px 0 5px; }
+.cb-boss-line b { color: var(--gold); font-weight: normal; margin-right: 4px; }
+.cb-st.phase { color: var(--gold); } .cb-st.egg { color: var(--el-fire); } .cb-st.split { color: var(--purple); }
+/* Roam → Explore: your other self's slot (Body Beyond the Body) — purple, beside your own expedition */
+.exp-status.clone { border-color: color-mix(in srgb, var(--purple) 45%, var(--border)); background: linear-gradient(180deg, rgba(40,26,70,0.28), rgba(12,8,20,0.4)); }
+.exp-status.clone.exp-status-active { color: var(--text); border-color: var(--purple); }
+.exp-status.clone.linger { border-color: color-mix(in srgb, var(--red) 55%, var(--border)); box-shadow: 0 0 10px rgba(200,60,60,0.15); }
+.exp-status.clone .exp-status-label { display: flex; align-items: center; gap: 5px; color: var(--purple); }
+.exp-status.clone .exp-status-label small { text-transform: none; letter-spacing: 0; color: var(--dim); font-size: 10px; }
+.exp-timer-bar.clone-bar { background: var(--purple); }
+.clone-pick { display: flex; gap: 6px; flex-wrap: wrap; align-items: stretch; margin: 3px 0; }
+.clone-sel { flex: 1 1 160px; min-width: 0; min-height: 34px; font-family: var(--font); font-size: 11px; background: var(--btn-bg); color: var(--text); border: 1px solid var(--border); border-radius: 3px; padding: 2px 6px; }
+.clone-acts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; margin-top: 5px; }
+.exp-status.clone .sect-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 36px; padding: 5px 10px; font-size: 11px; color: var(--text); text-align: left; }
+.exp-status.clone .sect-btn small { font-size: 9.5px; color: var(--dim-hi); }
+.exp-status.clone .sect-btn.gold { border-color: color-mix(in srgb, var(--gold) 55%, var(--border)); color: var(--gold); }
+.clone-line { font-size: 11px; line-height: 1.45; }
+.clone-meta { font-size: 10px; color: var(--dim-hi); margin-top: 3px; line-height: 1.5; }
+.clone-meta .down, .exp-status.clone .down { color: var(--red-text); }
+.clone-auto { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+
 .bst-card { flex-direction: row; flex-wrap: wrap; gap: 10px; align-items: flex-start; }   /* wrap: the rare-colour footer spans the card */
 .bst-card.unseen { opacity: .72; border-style: dashed; }   /* .72 = the house "locked" fade (hunt/sect/arena cards), still readable */
 .bst-art { flex: none; width: 108px; height: 78px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: rgba(4,2,8,0.45); overflow: hidden; }
@@ -5701,7 +5898,8 @@ body[data-layout="overlay"] .ft-card .ft-go, body[data-narrow="1"] .ft-card .ft-
 .cls-sect { font-size: 9.5px; color: var(--purple); letter-spacing: .3px; }
 .cls-cause { font-size: 10px; color: var(--dim-hi); font-style: italic; }
 .cls-realm { color: var(--text); white-space: nowrap; }
-.cls-sect, .cls-meta .cls-cause { white-space: nowrap; }
+/* UI review: 7.75 (2026-10-04) */ .cls-sect { white-space: nowrap; }   /* final QA: a long cause ("…the master's seat") wraps instead of scrolling the pane sideways */
+.cls-meta .cls-cause { overflow-wrap: anywhere; }
 .pc-sub + .pc-chips { margin-top: 4px; }
 .cls-fallen summary { cursor: pointer; list-style: none; }
 .cls-fallen summary::-webkit-details-marker { display: none; }

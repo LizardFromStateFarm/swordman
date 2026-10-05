@@ -53,7 +53,10 @@ Hand-typed polygon beasts read as "awkward and childish" (user); beasts are now 
    `{ id, src, crop: [x0 y0 x1 y1] (source px, aim for ~1.37:1), width: 200 (dots across), detail: 0.028, lift: 0.12,
    minL, close, minArea, erase: [[poly]], keep: [[poly]] }` (polygons in map px). Background removal = texture detail
    (fur/feathers are textured, a painted glow backdrop is smooth) + brightness above the local backdrop, then close
-   gaps, fill holes, drop specks. Writes **the dot map** `assets/sprites/beasts/<id>.png` (1 px = 1 dot, alpha 0 = no
+   gaps, fill holes, drop specks. A source painted inside a soft halo (the Vermilion Bird, 2026-10-04) takes
+   `pale: { sat, Y, detail }` (inside the alpha cut, drop pixels that are pale, bright and smooth: the halo, not the
+   feathers) + `erode: 1` (shave the coloured rim the halo leaves); `flipX: true` mirrors the source so the beast faces
+   the cultivator (beasts are never mirrored in battle, so the source's facing is the battle facing). Writes **the dot map** `assets/sprites/beasts/<id>.png` (1 px = 1 dot, alpha 0 = no
    dot; rows are stretched 1/0.866 for the hex grid) and a cut-out preview `scripts/art/out/<id>.mask.png`.
 3. **Edit (optional)** the dot map in any pixel editor (Paint.NET, Aseprite, Photoshop): erase stray dots (alpha 0),
    recolour, brighten eyes. Re-baking overwrites hand edits, so either fix the bake with `erase` / `keep` polygons or

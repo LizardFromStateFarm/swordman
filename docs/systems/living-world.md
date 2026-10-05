@@ -435,6 +435,12 @@ began), `stageYear`, `ascended`. The kept dead are compacted (`_compactDead`).
   Ascension. A Chosen's death and any Ascension also toast (`world_news`, game.js `showToast`).
 - `_pruneDead`: the dead 200+ years are deleted unless a past life, a clan member, a sect seat, a parent/spouse of the
   living, a classmate (any life), pinned, |rel| ≥ 50, or ascended. Kept dead are compacted.
+  **Final QA (2026-10-04, save size):** a dead *stranger* — no `fam`, no `rel`, no `mem`, no feud, not sworn — goes after
+  `NPC_LIVES.pruneStrangerAfter` (40) years instead of 200 (the world's churn of sect masters/elders, ~2.3 deaths a year,
+  had filled saves to 1.1 MB at 120 open hours); `_compactDead` also drops `act`, `ties`, `mentorUntil`, `actAt`.
+- **Seats on death (final QA):** `_killPerson` calls `_vacateSeat` — any death (yours by duel/deed/road, or the world's)
+  seats the senior elder at once or drops a dead elder from the bench. `{ seat: false }` for the callers that reseat
+  the sect themselves (leader churn, a hidden master's seizure, your won challenge for the master's seat).
 - `_mintPerson` never reuses a living or remembered full name (6 tries, then accepts).
 
 **UI.** 世 World → **Class** (`renderer/game/class-view.js`, `ClassView`; pane `#tab-class`): your class (or an earlier
@@ -896,7 +902,7 @@ locks with reasons, the hint, Why, swear → countdown + Sworn chip + Friends, t
 Character → Your name + its card). `npm run checks` 1569 ok. Visual Review Gate **7.75 PASS** (cycle 1).
 
 **Gotchas.**
-- The sim bot does not use the card deeds yet (the QA pass teaches it).
+- The sim bot uses the card deeds since the final QA pass (bot.js `deeds()`).
 - Family members (spouse / children / lovers / clan) keep their own bond on Kin → Family; the card's deeds lock for kin.
 - A rumour names its subject by the victim's full name; a hearer who died before the year tick is skipped.
 - Rel toward you is per person, not per life: `_inheritRepute` is what scales it at each rebirth.
@@ -1101,7 +1107,7 @@ errors) · `sim:quick` healthy: rankings cards ≈ 1.5 per open hour after tunin
 
 **Gotchas / for QA.**
 - Total road cards ≈ 8 per open hour with the rival + rankings: watch the queue in the final QA pass.
-- The sim bot answers by its bearing; `bold` / `ruthless` accepts every invitation (it sect-hops). Teach it in QA.
+- The sim bot answers by its bearing, except invitations (final QA): accepted only with no sect or from Outer rank, never by a founder-path bot that can found (no more sect-hopping).
 - `_rankHunter` mints with the publication's seeded rng; a check that calls it directly passes Math.random.
 - The spec's ad-hoc power formulas (5B, 17D, 28I) still use their own math; `Persons.powerScore` is unchanged.
 

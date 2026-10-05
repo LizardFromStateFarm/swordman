@@ -8,5 +8,6 @@
   { "id": "void_hound",    "src": "example_art/void wolf.png" },
   { "id": "black_tortoise","src": "example_art/black tortise.png" },
   { "id": "azure_dragon",  "src": "example_art/azurdragon.png" },
-  { "id": "golden_dragon", "src": "example_art/golddragon.png" }
+  { "id": "golden_dragon", "src": "example_art/golddragon.png" },
+  { "id": "vermilion_bird", "src": "example_art/vermabird.png", "pale": { "sat": 0.32, "Y": 0.5, "detail": 0.035 }, "erode": 1, "minArea": 40, "width": 175, "flipX": true }
 ]

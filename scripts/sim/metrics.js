@@ -40,7 +40,7 @@ class Recorder {
     this.deathsByCause = {}
     this.roadDeaths = {}
     this.lifeLengths = []            // Phase 30 (M2 task 2.3): [{cause, openHours, ageAtDeath, married, children, ...}]
-    this.fightTurns = { beast: { n: 0, sum: 0 }, person: { n: 0, sum: 0 } }   // arts.md fight-length target (4–8 turns)
+    this.fightTurns = { beast: { n: 0, sum: 0 }, person: { n: 0, sum: 0 }, boss: { n: 0, sum: 0 } }   // (v1 add-on: boss)   // arts.md fight-length target (4–8 turns)
   }
 
   // ── Hooks from the bot ───────────────────────────────────────────────────
@@ -176,7 +176,8 @@ class Recorder {
       if (!(q > 0) || !Number.isInteger(q)) this.violate('inventory_bad_count', `${id}=${q}`)
     const integ = s.realmIntegrity
     if (!(integ >= 0 && integ <= 100)) this.violate('integrity_out_of_range', integ)
-    if (!(s.health >= 0 && s.health <= 100)) this.violate('health_out_of_range', s.health)
+    // Phase 14: max Health is the body tier's (above 100 from tier E up), less scars — not a flat 100.
+    if (!(s.health >= 0 && s.health <= (d.maxHealth ?? 100))) this.violate('health_out_of_range', `${s.health} > ${d.maxHealth}`)
     if (!(s.bloodlineQuality >= 0 && s.bloodlineQuality <= this.D.BLOODLINE_CAP)) this.violate('bloodline_out_of_range', s.bloodlineQuality)
     if (!(s.generation >= 1)) this.violate('generation_invalid', s.generation)
     // Phase 35: Health only goes below 0 in a Slay battle, and that ends the life at once
@@ -351,7 +352,9 @@ class Recorder {
     if (d.breakthroughChance > 0.98 || d.breakthroughChanceDisplay > 0.98) this.violate('bt_chance_over_0.98', d.breakthroughChanceDisplay)
     if (s.stageIndex < 0 || s.stageIndex >= this.D.CULTIVATION_STAGES.length) this.violate('stage_out_of_range', s.stageIndex)
     if (s.beasts.length > d.maxBeasts) this.violate('beasts_over_cap', `${s.beasts.length}/${d.maxBeasts}`)
-    if (s.ownSect.founded && s.ownSect.disciples.length > d.discipleCap) this.violate('disciples_over_cap', s.ownSect.disciples.length)
+    // Phase 45: the Hall cap seats your own hall only — branch members (d.branchId) live in their branch's seats
+    const mainHall = s.ownSect.disciples.filter(x => !x.branchId).length
+    if (s.ownSect.founded && mainHall > d.discipleCap) this.violate('disciples_over_cap', `${mainHall} > ${d.discipleCap}`)
     if (!['none', 'scouting', 'preparing'].includes(s.sectWar.phase)) this.violate('war_phase_invalid', s.sectWar.phase)
     if (s.sect.id && (s.sect.rank < 0 || s.sect.rank >= this.D.SECT_RANKS.length)) this.violate('sect_rank_out_of_range', s.sect.rank)
     if (s.sect.id && s.ownSect.founded) this.violate('joined_and_founded', s.sect.id)
@@ -387,7 +390,12 @@ class Recorder {
       ...(after.family?.encounters || []).map(e => e.person?.id).filter(Boolean)])
     // (final QA: a road *brush* — met, not queued — stamps p.roadY with no card; anyone whose roadY moved was met on load.)
     for (const [id, p] of Object.entries(after.world?.persons || {})) if (p.roadY !== before.world?.persons?.[id]?.roadY) met.add(id)
-    const strip = ps => ps && Object.fromEntries(Object.entries(ps).filter(([id]) => !met.has(id) || before.road?.cards?.some(c => c.pid === id)))
+    // (final QA: a log line written during the catch-up that names someone grows them familiar — fam + seenY, 4.5. Only
+    // those two fields are left out for them; the rest of the person is still compared.)
+    const named = new Set(Object.entries(after.world?.persons || {}).filter(([id, p]) => { const b = before.world?.persons?.[id]; return b && (p.seenY !== b.seenY || p.fam !== b.fam) }).map(([id]) => id))   // (fam alone: a bump in the same game year)
+    const unseen = p => { const { fam, seenY, ...rest } = p; return rest }
+    const strip = ps => ps && Object.fromEntries(Object.entries(ps).filter(([id]) => !met.has(id) || before.road?.cards?.some(c => c.pid === id))
+      .map(([id, p]) => [id, named.has(id) ? unseen(p) : p]))
     for (const k of ['year', 'clans', 'persons', 'pastLives', 'playerClanId', 'playerLineId']) {
       const a = k === 'persons' ? strip(before.world?.persons) : before.world?.[k], b = k === 'persons' ? strip(after.world?.persons) : after.world?.[k]
       if (JSON.stringify(a) !== JSON.stringify(b)) this.violate('save_roundtrip_world', k + (k === 'persons' ? ' ' + this._personsDiff(a, b) : ''))
@@ -449,12 +457,20 @@ class Recorder {
                        studies: (s.arts.studies || []).length } : null,
       // Phase 42 (arts.md, task 1.15): mean fight length in turns (target 4–8). A win or a loss at the ending move.
       fightTurns: { beast: this.fightTurns.beast.n ? +(this.fightTurns.beast.sum / this.fightTurns.beast.n).toFixed(1) : null,
-                    person: this.fightTurns.person.n ? +(this.fightTurns.person.sum / this.fightTurns.person.n).toFixed(1) : null },
+                    person: this.fightTurns.person.n ? +(this.fightTurns.person.sum / this.fightTurns.person.n).toFixed(1) : null,
+                    boss: this.fightTurns.boss.n ? +(this.fightTurns.boss.sum / this.fightTurns.boss.n).toFixed(1) : null },
+      // v1 add-on (bosses.md): each boss's record across the run + which soul techniques the save learned
+      legends: s.world?.bosses ? { bosses: JSON.parse(JSON.stringify(s.world.bosses)), soulTech: { ...(s.world.soulTech || {}) },
+        clone: s.clone ? { gone: !!s.clone.gone, outH: +((s.clone.outSec || 0) / 3600).toFixed(2) } : null,
+        clones: Object.values(s.world.persons || {}).filter(p => p.cloneOf).length, mirrorHouses: Object.values(s.world.rivalHouses || {}).filter(h => h.end === 'mirror').length } : null,
+      // Phase 14 (final QA): the body at the end of the run (the current life's — tiers start at F each life)
+      body: s.body ? { tier: s.body.tier, scars: s.body.scars.length, taint: s.body.taint, cleanEndures: s.body.cleanEndures } : null,
       wars: warSummary(this.wars.own),
       memberWars: { ...warSummary(this.wars.member), ignored: this.wars.member.ignored, unseen: this.wars.member.unseen, contribNet: this.wars.member.contribNet },
       // Cumulative across the whole run (not final s.stats, which is per-life and resets on reincarnation).
       lineage: { generation: s.generation, deaths: s.deaths, bloodlineQuality: Math.round(s.bloodlineQuality || 0),
                  ascensionAttempts: this.actions.ascend || 0, ascensions: this.milestones.first_ascend_success != null ? 1 : 0,
+                 immortalGen: this.immortalGen ?? null,   // final QA: the generation (life number) that became Immortal
                  deathsByCause: this.deathsByCause, roadDeaths: this.roadDeaths },
       // Phase 30 (M2 task 2.3): per-life length. Heir kind/marriages/children/Merit/legacies land 2.5-2.7.
       lifeLoop: { lifeLengths: this.lifeLengths,

@@ -330,6 +330,7 @@
     function loop(now) {
       if (!tickRunning) return
       step(now)
+      tutorialUI?.tick()   // 1.23: a tip on screen follows its target; otherwise look for the next one
       requestAnimationFrame(loop)
     }
     requestAnimationFrame(loop)
@@ -507,7 +508,7 @@
 
   const ALL_VIEWS = NAV_GROUPS.flatMap(g => g.views.map(v => v[0]))
   // A6-2 (Roam → Hunt / Bestiary, renderer/game/hunt-view.js)
-  const huntHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmtTime, fight: id => combatView.open(id), go: v => nav.go(v) }
+  const huntHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmtTime, fight: id => combatView.open(id), fightBoss: id => combatView.openBoss(id), go: v => nav.go(v) }   // v1 add-on: a legendary boss
   const arenaHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmt, fmtTime, fight: () => combatView.resume() }   // A6-3b
   // Phase 14 (body-constitution.md): Path → Body + the two mini-games (any [data-mg-open] button opens one)
   const mgHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmt, fmtTime }
@@ -735,6 +736,7 @@
       rename: openRename,
       confirm: showConfirm, flash: flashMessage, wire: wireKinButtons, endText: SPOUSE_END_TEXT, pendingKey: familyPendingKey,
       go: view => nav.go(view),   // the family tree's door (family-tree.js)
+      fight: () => combatView.resume(),   // v1 add-on: facing your mirror child for the seat
     })
     familyView.render(s)
   }
@@ -1175,6 +1177,49 @@
 
   // ── Explore tab ───────────────────────────────────────────────────────────
 
+  // v1 add-on (docs/systems/bosses.md): your other self's expedition slot — where it is, what it costs (Qi now, Qi/s while
+  // it is out), the shatter odds per place, its growing will, Recall; or, when it lingers, the choice that waits on you.
+  function renderClonePanel(s) {
+    const ci = gameState.cloneInfo?.()
+    if (!ci) return null
+    const box = document.createElement('div')
+    box.className = 'exp-status clone' + (ci.exp ? ' exp-status-active' : '') + (ci.linger ? ' linger' : '')
+    const pct = v => `${Math.round(v * 100)}%`
+    const head = `<div class="exp-status-label">${Icon('split')} Your other self <small>${escHtml(ci.name)}</small></div>`
+    if (ci.linger) {
+      box.innerHTML = `${head}<div class="clone-line">It sits on a stone at ${escHtml(ci.linger.place)} and looks back at you with your own eyes. What it found waits on your answer.</div>
+        <div class="clone-acts"><button class="sect-btn gold" data-clone="absorb">Draw it back in<small>its finds, a deeper grasp of one art; its will resets</small></button>
+        <button class="sect-btn" data-clone="release">Let it walk its own road<small>a person with your face joins the world; no other self this life</small></button></div>`
+    } else if (ci.exp) {
+      const total = Math.max(1, ci.exp.endsAt - ci.exp.startedAt), done = Math.max(0, Math.min(100, 100 * (1 - ci.exp.left * 1000 / total)))
+      box.innerHTML = `${head}<div>${escHtml(ci.exp.name)} — <span data-beast-left="${ci.exp.endsAt}">${fmtTime(ci.exp.left)}</span> remaining${ci.exp.shatter ? ` · <span class="down">${pct(ci.exp.shatter)} it shatters</span>` : ''}</div>
+        <div class="exp-timer-bar-wrap"><div class="exp-timer-bar clone-bar" data-w="${done.toFixed(1)}"></div></div>
+        <div class="clone-meta">Your Qi/s ×${ci.qiMult} while it is out · its will: <b>${escHtml(ci.willWord)}</b> <button class="exp-auto-where" data-clone="recall">Recall</button></div>`
+    } else if (ci.lock) {
+      box.innerHTML = `${head}<div class="exp-idle">${Icon('lock')} ${ci.lock === 'rest' ? `Shattered. It can be formed again in <span data-beast-left="${Date.now() + ci.restLeft * 1000}">${fmtTime(ci.restLeft)}</span>` : escHtml(ci.lock)}</div>`
+    } else {
+      const last = s.clone?.lastLocationId
+      const opts = ci.places.map(p => `<option value="${escHtml(p.id)}"${p.id === last ? ' selected' : ''}>${escHtml(p.name)} · ${fmtTime(p.duration)}${p.shatter ? ` · ${pct(p.shatter)} shatter` : ' · safe'}</option>`).join('')
+      box.innerHTML = `${head}<div class="clone-pick"><select class="clone-sel" aria-label="Where your other self goes">${opts}</select>
+        <button class="sect-btn gold" data-clone="send" ${ci.canPay ? '' : 'disabled'}>Send it<small>−${fmt(ci.qiCost)} Qi now · your Qi/s ×${ci.qiMult} while it is out</small></button></div>
+        <div class="clone-meta">${ci.canPay ? '' : `<span class="down">Needs ${fmt(ci.qiCost)} Qi. </span>`}Its will: <b>${escHtml(ci.willWord)}</b> (${pct(ci.will)} it lingers next time) · places near your limit may shatter it ·
+          <label class="clone-auto"><input type="checkbox" data-clone-auto ${ci.auto ? 'checked' : ''}> send it out again on its own</label></div>`
+    }
+    box.querySelectorAll('[data-w]').forEach(b => { b.style.width = b.dataset.w + '%' })
+    box.addEventListener('click', e => {
+      const b = e.target.closest('[data-clone]'); if (!b || b.disabled) return
+      const k = b.dataset.clone
+      if (k === 'send') {
+        const r = gameState.startCloneExpedition(box.querySelector('.clone-sel').value)
+        flashMessage(r.ok ? `Your other self sets out for ${r.loc.name}.` : r.reason === 'qi' ? 'Not enough Qi to form it.' : r.lock || 'It cannot go now.', r.ok ? 'special' : 'negative')
+      } else if (k === 'recall') gameState.recallClone()
+      else if (k === 'absorb') { const r = gameState.answerCloneLinger('absorb'); if (r.ok) flashMessage('Its road becomes yours.', 'special') }
+      else if (k === 'release') showConfirm('Let your other self go?', 'It becomes a person of its own, with your face and your root, and you cannot form another this life.', () => gameState.answerCloneLinger('release'), 'Let it go')
+    })
+    box.querySelector('[data-clone-auto]')?.addEventListener('change', e => gameState.setCloneAuto(e.target.checked))
+    return box
+  }
+
   function renderExplore(s) {
     const el = document.getElementById('tab-explore')
     el.innerHTML = ''
@@ -1298,6 +1343,8 @@
 
     // Expedition status (below any pending encounter — a decision outranks the timer)
     el.appendChild(statusDiv)
+    const clonePanel = renderClonePanel(s)   // v1 add-on (bosses.md): Body Beyond the Body — a second expedition at once
+    if (clonePanel) el.appendChild(clonePanel)
     document.getElementById('_exp_push')?.addEventListener('click', () => {
       const r = gameState.pushExpedition()
       if (r.ok) flashMessage('Pushed harder — an extra roll awaits at return.', 'positive')
@@ -1641,6 +1688,7 @@
     for (const [key, label, icon] of [['pills','Pills','pill'],['elixirs','Elixirs','furnace'],['weapons','Weapons','sword'],['artifacts','Artifacts','pendant'],['talismans','Talismans','scroll']]) {
       const btn = document.createElement('button')
       btn.className = 'craft-subtab' + (key === _craftSubTab ? ' active' : '')
+      btn.dataset.sub = key   // (tutorial: the Craft lesson spotlights the Elixirs tab)
       btn.innerHTML = `${Icon(icon)}<span>${label}</span>`
       btn.addEventListener('click', () => {
         _craftSubTab = key
@@ -2688,7 +2736,14 @@
 
 
   // ── Navigation + attention (1.8b-1) ─────────────────────────────────────────
-  const nav = new NavUI({ onShow: view => { if (view === 'people') PeopleView.enter(); renderView(view, gameState.get()) }, onMode: openModePanel })
+  let tutorialUI = null   // 1.23: built just below, once nav exists
+  const nav = new NavUI({ onShow: view => { if (view === 'people') PeopleView.enter(); renderView(view, gameState.get()); tutorialUI?.onView(view) }, onMode: openModePanel })
+  // 1.23: coach marks + the Guide in Settings (renderer/game/tutorial.js; lessons in assets/data/tutorial.js)
+  const introUI = new IntroUI()   // the intro ink scroll (2026-10-05): played by the tutorial before the HUD tour
+  window.introUI = introUI        // smoke tests (scripts/smoke/scenarios/intro.js)
+  tutorialUI = new TutorialUI({ gameState, nav, layout: layoutUI, flash: (m, t) => flashMessage(m, t), closeSettings: () => settingsUI.close(), intro: introUI })
+  settingsUI.guide = el => tutorialUI.renderGuide(el)
+  window.tutorialUI = tutorialUI   // smoke tests (scripts/smoke/scenarios/tutorial.js)
   const attentionUI = new AttentionUI(item => {
     if (layoutUI.mode === 'banner' && !item.open) layoutUI.peek(false)   // a nav target needs the full window
     const s = gameState.get()

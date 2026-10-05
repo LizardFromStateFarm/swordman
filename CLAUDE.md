@@ -143,6 +143,7 @@ PLAN.md                 ← Phase roadmap with implementation detail
 GAMEDESIGN.md           ← Mechanics, pacing, lore style
 docs/
   index.md              ← System doc index + new-doc template
+  final-qa-changelog.md ← Final QA & Balance pass (2026-10-04): every change made unattended, old → new + why, for the user to review
   commands.html         ← Human quick reference: npm dev/test/sim-bot/smoke/build/Android commands (keep in sync with package.json scripts)
   systems/
     core-loop.md        ← Qi, stages, roots, breakthroughs, techniques
@@ -153,6 +154,8 @@ docs/
     sect-war.md         ← Sect wars: own-sect (5B) + member wars for joined sects (5C)
     npc-sects.md        ← Phase 43 Living Sects (43a + 43b built: levelled halls; s.world.sects registry, growth sim, stance memory, world-sect events, the "Sects of the world" ledger; 43c wars read the real rival's Might + "Their mountain"; 43d the joined blessing scales with the sect: fund its halls, the levy, the court; 43e the sect master: challenge / petition, the takeover, the old guard, an exiled master's splinter; 43h sect relations: a sect's page + declare war, diplomacy, pressure, trade); next razing
     living-world.md     ← Phase 28 (spec approved 2026-10-03; 4.2 built — the registry + person card; 4.3 built — the light world sim + World → Class; 4.6 built — the replacement controller + World → Chronicle; 4.4/4.5 built — the heavy tier, NPC goals, known-first casting; 4.7 built — World → People, pins, tappable log names; 4.9 built — encounters: NPC intents, the "Met on the road" card queue, the bearing, road fights; 4.10 built — memory + Honour/Infamy + rumours, grudges to heirs, the person card's deeds; 4.10b built — Your Rival: World → Rival, rival cards, heat, houses across lives; 4.8 built — the Heavenly Rankings: World → Rankings, rank power, Veil, challengers, genius hunters, invitations, the Class duel): one person registry (family/sects/arena/strangers via pid write-through), heavy/light lives on game time, ~60 classmates per life, queued encounter cards, memory, Your Rival, slot-size budget, build order 4.2→4.8
+    bosses.md           ← v1 add-on: two legendary Hunt bosses (phase scripts, never lethal, life ≥ 3 / ≥ 6) teaching soul-kept techniques — Seed of the Self (a mirror heir) + Body Beyond the Body (a clone's second expedition)
+    tutorial.md         ← Task 1.23: coach marks (spotlight + card) on a new cultivator, each view's first open, unlocks + the first battle; seen-state across saves (soul record); the Guide in ⚙ Settings
     sect-branches.md    ← Phase 45: sub-leaders (分舵) — appoint a Branch Head, their branch recruits its own; rivalry + promotion; the Tournament of Branches; recruit your children free
     lineage-sect.md     ← Phase 46: a player-owned sect outlives the player (inherited by a branch head, lives on as a world sect); ancestral catch-up removed, Bloodline Quality → Qi/s; the next life is recruited back at Core Formation; the world sim ages/kills sect leaders
     qa-sim.md           ← QA sim harness: flags, metrics, profiles, how to extend
@@ -207,9 +210,11 @@ scripts/
     probe-beast-fights.js ← tuning probe: move-fight estimate + mean turns vs every beast at its gate realm (not a check)
     probe-npc-pace.js   ← tuning probe: years an NPC needs to reach each realm by root × talent (Phase 28 4.3 lifespans)
     probe-world-perf.js ← perf probe (4.11): times each piece of the game-year turn, a heavy season, the save stringify, UI reads + the generation jump on a matured world
+    probe-boss-fights.js ← tuning probe: each legendary boss's estimate by stage + past tries vs the gate beast (v1 add-on)
+    probe-road-lethality.js ← tuning probe: lethal road cards the bot answers — shown odds vs deaths, avengers inherited vs made (final QA)
     probe-world-lives.js ← tuning probe: runs the light world sim N years — living by realm, deaths by cause, births, save size
     checks/             ← Scenario checks (`npm run checks`) — force exact situations, print ok/FAIL; run-all.js + one file per system
-  smoke/                ← Real-app smoke tests over CDP: cdp.js driver + scenarios/*.js (screenshots → smoke/out/, gitignored); fight-ui.js = play a fight through the real move buttons
+  smoke/                ← Real-app smoke tests over CDP: cdp.js driver + scenarios/*.js (screenshots → smoke/out/, gitignored); fight-ui.js = play a fight through the real move buttons; run-all.js = every scenario in turn → a pass/fail table (`npm run smoke`)
 example_art/            ← The user's own source art for the bake pipeline (reference + bake input; not loaded by the game)
 renderer/
   index.html            ← All HTML — charselect + app, 7 tabs
@@ -232,6 +237,8 @@ renderer/
     sect.js             ← SectSystem — resolves timed sect missions (Phase 4)
     sect-war.js         ← SectWarSystem — advances the sect war state machine, own + member wars (Phase 5B/5C)
     settings.js         ← SettingsUI — ⚙ overlay rendered from SETTINGS_DEFS + applies prefs (Phase 20C, UI only)
+    intro.js            ← IntroUI — the intro ink scroll (2026-10-05): 5 full-window cards over a dotted night, played by TutorialUI before the HUD tour + replayable from the Guide
+    tutorial.js         ← TutorialUI — coach marks (#tut-overlay: spotlight + card, placement, when to play) + the Guide section of ⚙ Settings (task 1.23)
     banter.js           ← BanterSystem — picks lines on game events + idle timer, DOM-free (Phase 29)
     notifications.js    ← NotificationSystem — opt-in desktop notification triggers + cooldowns, DOM-free (Phase 9A-B)
     layout.js           ← LayoutUI — window layout modes: layout picker, body[data-layout], canvas sizing, banner peek (Phase 6E)
@@ -291,12 +298,14 @@ assets/
     family-events.js    ← A father's hand (2026-10-01): the rare beating by a bad father, its three answers + the grown-up reckoning
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
+    tutorial.js         ← TUTORIAL_LESSONS + TUTORIAL_GROUPS — the coach-mark lessons: trigger (start / view / el), selectors to spotlight, text, Guide lines (task 1.23)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)
-    banter-lines.js     ← BANTER_LINES — 2,217 lines, personality × trigger + generic pool (Phase 29)
+    banter-lines.js     ← BANTER_LINES — 2,684 lines, personality × trigger + generic pool (Phase 29)
     names.js            ← SURNAMES (60) + GIVEN_NAMES (205) — pinyin, gender-neutral (Phase 30/31, M2 task 2.2)
     soul.js             ← SOUL_* — Soul Points grants + Soul Resonance rank cost/bonus/cap (Phase 40a)
     dev-presets.js      ← DEV_PRESETS — late-game test characters, shown on charselect only in `npm start`
     crates.js           ← SPEC (Phase 36): CRATES — themed crate costs + weighted contents (item/beast/person)
+    bosses.js           ← BOSSES / BOSS_MOVES / BOSS_FIGHT / SOUL_TECH — the legendary bosses' phases + the soul techniques' tuning (v1 add-on)
     arts.js             ← ARTS / ARTS_LIST — 79 combat arts (moves + passives, 5 grades, Five Elements, beast + arena signatures) + study/slot/offer/drop tuning (Phase 42)
     arena.js            ← ARENA_RINGS + ARENA_* — the Arena's six rings (fees, prizes, titles, bands) + purse/streak/renown/rest/call-out tuning (A6-3b)
     talismans.js        ← TALISMAN_GRADES + TAME_* — graded Beast Taming Talismans (tame chance, item id) + tame-attempt fight/flee tuning (Phase 41)

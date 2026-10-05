@@ -96,6 +96,48 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
     assert(typeof p1.feud !== 'string', 'a registry person never gets the string feud of the old fights')
   }
 
+  // ── The blood price (final QA, user 2026-10-04): an avenger's lethal ambush can be bought off ──
+  {
+    clear()
+    const REP = sim.ev('NPC_REP')
+    const mk = (pers) => {
+      for (const o of Object.values(w.persons)) if (o.feud?.pid === s.self.id) delete o.feud   // only this one is sworn against you
+      const p = fresh(); p.personality = pers; p.feud = { pid: s.self.id, why: 'you robbed them', y: Math.floor(w.year) }; p.roadY = -99
+      R().avN = 0; E.avengerChance = 1; const c = gs._roadRoll('expedition', loc); E.avengerChance = 0.35
+      return { p, c }
+    }
+    const { p, c } = mk('stoic')
+    assert(c?.kind === 'ambush' && c.avenger && c.lethal, 'an avenger comes back (setup)')
+    const info = gs.roadCardInfo(c.id), price = info.answers.find(a => a.id === 'price')
+    const want = Math.round(E.bloodPrice.stones * ((p.stageIndex || 0) + 1) / 4 * (1 + Math.max(0, (p.stageIndex || 0) - s.stageIndex) * E.bloodPrice.perGap))
+    assert(price && !price.lock && new RegExp(`^${want} Spirit Stones`).test(price.note), `a lethal avenger card offers "Pay the blood price" (${price?.note})`)
+    gs.setRoadStance('wary')
+    assert(gs.roadCardInfo(c.id).pre === 'price', `Wary pre-selects the blood price, never Fight (${gs.roadCardInfo(c.id).pre})`)
+    gs.setRoadStance('courteous')
+    assert(gs.roadCardInfo(c.id).pre === 'price', 'Courteous pre-selects the blood price too')
+    gs.setRoadStance('bold')
+    assert(gs.roadCardInfo(c.id).pre === 'fight', 'Bold still meets them head on')
+    const st0 = s.spiritStones; s.spiritStones = want - 1
+    assert(/do not have/.test(gs.roadCardInfo(c.id).answers.find(a => a.id === 'price').lock || ''), 'too poor to pay: the answer is locked with the reason')
+    s.spiritStones = st0
+    gs._rep().h = 2
+    const r0 = p.rel || 0, res = gs.answerRoadCard(c.id, 'price')
+    assert(res.ok && !res.fight && s.spiritStones === st0 - want, `paying costs ${want} stones and starts no fight`)
+    assert(!p.feud && p.alive !== false && p.rel > r0, `the feud ends, they live, and they think better of you (rel ${r0} → ${p.rel})`)
+    assert(/blood price/.test(p.mem.slice(-1)[0]?.text || ''), `they keep the line: "${p.mem.slice(-1)[0]?.text}"`)
+    assert(gs._rep().h === 0, `it costs Honour, never below 0 (${gs._rep().h}; deed ${REP.deeds.bloodPaid.h})`)
+    const q = mk('psycho')
+    const qa = q.c && gs.roadCardInfo(q.c.id).answers.find(a => a.id === 'price')
+    assert(qa?.lock && /blood/.test(qa.lock), `a psycho will not take silver (locked: "${qa?.lock}")`)
+    assert(gs.answerRoadCard(q.c.id, 'price').ok === false && q.p.feud, 'a locked price cannot be forced')
+    clear()
+    const plain = fresh(); plain.rel = -70; E.avengerChance = 0; E.chance.expedition = 1
+    let pc = null; for (let i = 0; i < 60 && !pc; i++) { const x = gs._roadRoll('expedition', loc); if (x?.kind === 'ambush' && !x.avenger) pc = x; else if (x?.id) gs._roadClose(x, null) }
+    E.avengerChance = 0.35
+    if (pc) assert(!gs.roadCardInfo(pc.id).answers.some(a => a.id === 'price'), 'a stranger\'s ambush (no feud) has no blood price')
+    clear()
+  }
+
   // ── Every kind's answers resolve ──
   clear()
   const tried = []

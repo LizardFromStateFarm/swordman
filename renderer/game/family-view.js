@@ -49,7 +49,7 @@ class FamilyView {
     const f = s.family || {}
     // Two columns in Expanded/Desktop (you + your partner · your children); Overlay stacks them in `order`.
     this.el.innerHTML = `<div class="fam-view">
-      <div class="fam-col">${this._treeLink()}${this._ultimatum(s)}${this._wish(s)}${this._partner(s)}${this._plan(s)}${this._others(s)}${this._heir(s)}</div>
+      <div class="fam-col">${this._treeLink()}${this._ultimatum(s)}${this._wish(s)}${this._partner(s)}${this._plan(s)}${this._seed(s)}${this._others(s)}${this._heir(s)}</div>
       <div class="fam-col">${(s.family.lovers || []).map(l => this._loverCard(s, l)).join('')}${this._children(s)}</div></div>`
     // Bar widths/colors through CSSOM (CSP blocks inline style attributes)
     this.el.querySelectorAll('[data-w]').forEach(b => { b.style.width = b.dataset.w + '%' })
@@ -127,6 +127,46 @@ class FamilyView {
           <button class="fa-pill row" data-fa="wish-no">Not now<span>${decline ? `affection ${this._signed(decline)}` : 'the wish passes'}</span></button>
         </div>
       </div></section>`
+  }
+
+  // v1 add-on (docs/systems/bosses.md): Seed of the Self — the mirror heir (once a life), the spouse's hurt, The Mirror Turns
+  _seed(s) {
+    const gs = this.gs, h = this.h, f = s.family, si = gs.seedInfo?.(), mt = gs.mirrorTurnInfo?.()
+    let out = ''
+    if (mt) out += `<section class="fam-wish urgent">
+      <div class="fw-g" data-icon="mask"></div>
+      <div class="fw-body">
+        <div class="fw-title">${h.esc(mt.name)} wears your face, and wants your seat</div>
+        <div class="fw-text">Your mirror child grew up with your heart, ambition and all${mt.wronged ? ', and remembers how you wronged it' : ` (bond ${mt.bond})`}. It waits on your answer.</div>
+        <div class="fw-acts three">
+          <button class="fa-pill row" data-fa="mt-yield">Yield the seat<span>they lead the clan</span></button>
+          <button class="fa-pill row" data-fa="mt-face">Face it<span>${mt.odds != null ? `${Math.round(mt.odds * 100)}% to win · ` : ''}its temper decides the stakes</span></button>
+          <button class="fa-pill row" data-fa="mt-send">Send it away<span>its house: your next rival</span></button>
+        </div>
+      </div></section>`
+    if (f.seedCrisis) out += `<section class="fam-wish urgent">
+      <div class="fw-g" data-icon="broken"></div>
+      <div class="fw-body">
+        <div class="fw-title">${h.esc(f.seedCrisis.spouse)} asks: was I not enough?</div>
+        <div class="fw-text">A child made of you alone. They wait for you to say something.</div>
+        <div class="fw-acts three">
+          <button class="fa-pill yes row" data-fa="seed-reassure">Reassure them<span>affection +8</span></button>
+          <button class="fa-pill row" data-fa="seed-defend">Defend your choice<span>no change</span></button>
+          <button class="fa-pill row" data-fa="seed-dismiss">Dismiss it<span>affection −12</span></button>
+        </div>
+      </div></section>`
+    if (!si) return out
+    const sp = si.spouse ? `<div class="fc-hint">${h.esc(si.spouse.name)} ${si.spouse.reacts === 'hurt' ? 'will be hurt by it.' : si.spouse.reacts === 'accept' ? 'would welcome the child as their own.' : 'may take it well, or may not.'}</div>` : ''
+    const ess = si.essenceLeft ? `<div class="fc-flags"><span class="fc-flag">Essence spent · Qi/s ×${si.qiMult} · Qi recovers in <span class="fa-ess" data-at="${gs._cdNow() + si.essenceLeft}">${this._clock(si.essenceLeft)}</span></span></div>` : ''
+    return out + `<section class="fam-card seed">
+      <div class="fc-head"><span class="fc-glyph" data-icon="soul"></span>
+        <div class="fc-id"><div class="fc-name">${h.esc(si.name)}</div><div class="fc-sub">Taught by the Vermilion Bird · your soul keeps it</div></div></div>
+      <div class="fc-hint">${h.esc(si.desc)} The child has your root and your temper. Treat it well: it shares your ambition too.</div>
+      ${sp}${ess}
+      <div class="fa-grid"><button class="fa-btn${si.lock ? ' locked' : ''}" data-fa="seed" ${si.lock ? 'disabled' : ''}>
+        <span class="fa-g">${Icon.g('child')}</span><span class="fa-t"><span class="fa-n">Plant the seed</span>
+        <span class="fa-e">${si.lock ? `<span class="fa-lock"><i class="fa-lock-ic" data-icon="lock"></i>${h.esc(si.lock)}</span>` : this._eff([[`−${si.healthCost} Health`, 'cost'], [`Qi/s ×${si.qiMult} for ${this._clock(si.essenceSec)}`, 'cost'], ['an heir of your essence', 'up']])}</span></span></button></div>
+    </section>`
   }
 
   _partner(s) {
@@ -326,7 +366,8 @@ class FamilyView {
     const stage = age >= AWAKENING_AGE ? h.stageLabel(c.stageIndex) : c.xp > 0 ? 'Not yet awakened · a head start' : 'Not yet awakened'
     const heir = f.heirId === c.id
     const rootName = c.root ? h.latinOnly(c.root.name || '') : ''
-    const rootChip = rootName ? `<span class="kid-root tone-${ROOT_TONE[c.root.type] || 'dim'}${best ? ' best' : ''}" title="${best ? 'Highest potential of your children — ' : ''}spiritual root · Qi and stage growth ×${c.root.mult}"><b data-icon="${best ? 'crown' : 'root'}"></b>${h.esc(rootName)} ×${c.root.mult}</span>` : ''
+    const rootChip = (rootName ? `<span class="kid-root tone-${ROOT_TONE[c.root.type] || 'dim'}${best ? ' best' : ''}" title="${best ? 'Highest potential of your children — ' : ''}spiritual root · Qi and stage growth ×${c.root.mult}"><b data-icon="${best ? 'crown' : 'root'}"></b>${h.esc(rootName)} ×${c.root.mult}</span>` : '')
+      + (c.mirror ? `<span class="kid-root tone-purple" title="Born of your own essence (Seed of the Self): your root, your temper, your ambition"><b data-icon="mask"></b>Mirror${c.mirrorFate === 'ally' ? ' · stands with you' : ''}</span>` : '')
     const other = c.parents?.find(id => id !== s.self.id)
     const parent = other ? [f.spouse, ...f.formerSpouses, ...f.lovers.map(l => l.person)].find(p => p?.id === other) : null
     let acts = ''
@@ -443,6 +484,23 @@ class FamilyView {
     switch (b.dataset.fa) {
       case 'tree': h.go?.('tree'); break   // the family tree (family-tree.js)
       case 'wish-yes': gs.answerChildWish(true); break
+      // v1 add-on (bosses.md): Seed of the Self + its two choices
+      case 'seed': {
+        const si = gs.seedInfo()
+        h.confirm('Plant a seed of your own essence?', `It costs ${si.healthCost} Health and slows your Qi for ${this._clock(si.essenceSec)} (real time). Once a life.${si.spouse ? ` ${si.spouse.name} will learn of it.` : ''}`, () => {
+          const r = gs.useSeedOfSelf()
+          if (r.ok) h.flash(`${r.child}: your root, your heart.${r.crisis ? ' Your spouse is hurt.' : ''}`, 'special')
+          else h.flash(r.lock || 'Not now', 'negative')
+        }, 'Plant it')
+        break
+      }
+      case 'seed-reassure': case 'seed-defend': case 'seed-dismiss': gs.answerSeedCrisis(b.dataset.fa.slice(5)); break
+      case 'mt-yield': case 'mt-send': {
+        const yes = b.dataset.fa === 'mt-yield'
+        h.confirm(yes ? 'Yield the seat to your mirror?' : 'Send your mirror child away?', yes ? 'They lead the clan. You keep your cultivation.' : 'They take another name and leave. Their house will give your next life its rival.', () => gs.answerMirrorTurn(yes ? 'yield' : 'send'), yes ? 'Yield' : 'Send away')
+        break
+      }
+      case 'mt-face': { const r = gs.answerMirrorTurn('face'); if (r.fight) h.fight?.(); break }
       case 'wish-no':  gs.answerChildWish(false); break
       case 'sp-time':  gs.spouseAction('time'); break
       case 'sp-gift':  gs.spouseAction('gift'); break

@@ -90,12 +90,38 @@ class CombatView {
     this.render()
   }
 
+  // v1 add-on (docs/systems/bosses.md): a legendary boss from Roam → Hunt → Legendary — its prepare step first
+  openBoss(id) {
+    const fi = this.gs.get().family?.fight
+    if (fi) return this.resume()
+    this.mode = 'boss'; this.bossId = id
+    this.result = null; this.snap = null; this.bindGrade = null
+    this._show()
+    this._setupBoss(id)
+    this.step = 'prepare'
+    this.render()
+  }
+  // The Bird draws as an ink beast; the Wraith wears your own figure and robe, mirrored, with a cold glow.
+  _setupBoss(id) {
+    const def = BOSSES[id], set = this.h.settings(), you = this._youState()
+    if (!def) return
+    if (id === 'wraith') {
+      const yi = this.scene.you.ink, slots = yi?.slotSel ? { ...yi.slotSel } : null
+      this.scene.setup({ ...you, foePerson: true, foeArt: you.youState, foeGlow: '#8A7AE8', foeSlots: slots, reducedMotion: !!set.reducedMotion, speed: set.animSpeed || 1 })
+    } else this.scene.setup({ ...you, foeArt: def.art, foeGlow: def.glow, reducedMotion: !!set.reducedMotion, speed: set.animSpeed || 1 })
+    this.scene.start()
+  }
+
   // A fight underway (attention item, the family card, a reload mid-fight) — a beast or a person
   resume() {
     const fi = this.gs.get().family?.fight
     if (!fi) return
     this.result = null; this.bindGrade = null
-    if (fi.kind === 'beast') {
+    if (fi.kind === 'boss') {
+      this.mode = 'boss'; this.bossId = fi.boss.id; this.snap = null
+      this._show()
+      this._setupBoss(fi.boss.id)
+    } else if (fi.kind === 'beast') {
       this.mode = 'beast'
       this.encId = fi.beast.encId
       this._show()
@@ -121,7 +147,7 @@ class CombatView {
     this.scene.telegraph(null)
     this.parryEl.classList.add('hidden'); this._parryKey = null
     const fi = this.gs.get()?.family?.fight
-    if (fi && !fi.over) this.h.flash(fi.kind === 'beast' ? 'The beast waits. Return to the fight from the strip above.' : 'Your opponent waits. Return to the fight from the strip above.', 'neutral')
+    if (fi && !fi.over) this.h.flash(fi.kind === 'beast' || fi.kind === 'boss' ? 'The beast waits. Return to the fight from the strip above.' : 'Your opponent waits. Return to the fight from the strip above.', 'neutral')
   }
 
   _show() {
@@ -175,9 +201,10 @@ class CombatView {
     const fi = s.family?.fight
     if (this.step === 'fight' && fi?.over === 'won') this.step = 'end'
     const P = this.mode === 'person'
-    const html = this.step === 'prepare' ? this._prepare()
+    const Bm = this.mode === 'boss'
+    const html = this.step === 'prepare' ? (Bm ? this._prepareBoss() : this._prepare())
       : this.step === 'fight' ? this._fight()
-      : this.step === 'end' ? (P ? this._endPerson() : this._end())
+      : this.step === 'end' ? (P ? this._endPerson() : Bm ? this._endBoss() : this._end())
       : this._result()
     this.panel.innerHTML = html
     this._renderParry()
@@ -198,10 +225,12 @@ class CombatView {
       return (PERSON_FIGHT_TITLE[this.kind] || 'A Fight') + (this.kind === 'stepdown' && br ? ` · Round ${br.round}` : '')
     }
     const n = this._name()
+    if (this.mode === 'boss') return this.step === 'prepare' ? `Face the ${n}` : this.step === 'result' ? 'After the Battle' : `Legendary · ${n}`
     return this.step === 'prepare' ? `Face the ${n}` : this.step === 'result' || this.step === 'died' ? 'After the Battle' : `Battle · ${n}`
   }
   _name() {
     if (this.mode === 'person') return this._opp()?.given || this.result?.name || 'your opponent'
+    if (this.mode === 'boss') return BOSSES[this.bossId]?.short || 'beast'
     const s = this.gs.get(), fi = s.family?.fight
     const rec = fi?.kind === 'beast' ? fi.beast : (s.beastEncounters || []).find(e => e.id === this.encId)
     return rec ? this.gs.beastProfile(rec).name + (rec.mood === 'cub' ? ' cub' : '') : (this.result?.name || 'beast')
@@ -210,6 +239,7 @@ class CombatView {
   // ── Name plates (Phase 42b; people since 1.14a): HP + your combat Qi + status chips + their element ──
   // A beast's plate carries its tier; a person's their realm and a feud chip (they owe you / hold a grudge).
   _plates() {
+    if (this.mode === 'boss') return this._platesBoss()
     const s = this.gs.get(), fi = s.family?.fight, esc = this.h.esc, P = this.mode === 'person'
     // (a step-down bracket may already hold your next bout while the result card still speaks of the last one)
     // _settling: the engine notifies mid-call (refresh → here) before this view has moved on to the result step
@@ -320,7 +350,7 @@ class CombatView {
   _fight() {
     const info = this.gs.fightInfo(), esc = this.h.esc
     if (!info || !info.m) return this._result()
-    const P = info.kind !== 'beast'
+    const B = info.kind === 'boss', P = info.kind !== 'beast' && !B   // v1 add-on: a boss plays like a beast (Retreat, no scouting)
     const m = info.m, name = P ? (info.opp?.given || 'Your opponent') : info.opp.name, mv = this.gs.fightMoves()
     const The = P ? name : `The ${name}`
     const pct = v => `${Math.round(v * 100)}%`
@@ -342,10 +372,13 @@ class CombatView {
     }
     const incoming = pend ? `<div class="cb-last down">${esc(The)} uses <b>${esc(m.pending.name)}</b>${m.pending.hits > 1 ? ` · ${m.pending.hits} hits` : ''}. ${this.gs.get().arts?.parryTaught ? 'Parry it on the field, or take the blow.' : 'Press Parry on the field (or Space) as the ring closes on you. Too soon and you are open; too late and it lands.'}</div>` : ''
     const grid = `<div class="cb-moves${pend ? ' locked' : ''}">${mv.slots.map((x, i) => btn(x, i)).join('')}</div>`
-    const note = P ? '' : `<span class="cb-note cb-flex">${m.foe.element ? `It is ${ART_ELEMENTS[m.foe.element].name}.` : ''} ${info.habitsKnown ? esc(info.hint) + '.' : 'Its arts are unknown until it uses them.'}</span>`
+    const bi = B ? info.boss : null, ROMAN = ['I', 'II', 'III', 'IV']
+    const bossNote = bi ? (bi.egg ? `The egg hatches in ${bi.egg} turn${bi.egg === 1 ? '' : 's'}: break it first.` : bi.split ? `Two faces: your blows find the true one ${Math.round(bi.read * 100)}% of the time.` : bi.stolen ? `It wields your ${ARTS[bi.stolen]?.name || 'art'} against you.` : bi.phases[bi.phase + 1] ? `Next: ${bi.phases[bi.phase + 1].name} at ${Math.round(bi.phases[bi.phase + 1].at * 100)}%.` : '') : ''
+    const note = P ? '' : B ? '<span class="cb-flex"></span>'
+      : `<span class="cb-note cb-flex">${m.foe.element ? `It is ${ART_ELEMENTS[m.foe.element].name}.` : ''} ${info.habitsKnown ? esc(info.hint) + '.' : 'Its arts are unknown until it uses them.'}</span>`
     const out = P
       ? `<button class="cb-retreat" data-tac="yield" ${pend ? 'disabled' : ''}><span data-icon="yield"></span>Yield<small>${info.lethal ? `accepted ~${pct(info.yieldAccept)} · ` : ''}${esc(PERSON_FIGHT_YIELD[info.kind] || 'you lose')}</small></button>`
-      : `<button class="cb-retreat" data-tac="retreat" ${pend ? 'disabled' : ''}><span data-icon="yield"></span>Retreat<small>it gets a parting blow</small></button>`
+      : `<button class="cb-retreat" data-tac="retreat" ${pend ? 'disabled' : ''}><span data-icon="yield"></span>Retreat<small>${B ? 'no parting blow; it rests, you learn' : 'it gets a parting blow'}</small></button>`
     const extra = `<div class="cb-row2">
         <button class="cb-retreat qi" data-move="circulate" ${mv.charging || pend ? 'disabled' : ''}>Circulate<small>+${MOVE_COMBAT.circulateQi} Qi, no attack</small></button>
         ${mv.palm ? `<button class="cb-retreat qi" data-move="palm_strike" ${mv.palm.lock || pend ? 'disabled' : ''}>Palm Strike<small>free · ${mv.palm.power} power</small></button>` : ''}
@@ -364,10 +397,13 @@ class CombatView {
       foot = `<div class="cb-foot"><span class="cb-chip${info.lethal ? ' lethal' : ''}">${stake}</span>${side}${ar || br ? '' : yieldAt}
         <span class="cb-note">Turn ${m.turn}${br ? '' : ' · keys 1–4, C'}</span>
         <button class="cb-why" data-bd="personfight:${esc(info.opp?.id || '')}:${info.kind}"><span data-icon="why"></span>Why</button></div>`
-    } else foot = `<div class="cb-foot"><span class="cb-chip${info.stance === 'slay' ? ' lethal' : ''}">${info.stance === 'slay' ? 'Slay: a loss can kill you' : 'Drive off: never below 1 Health'}</span>
+    } else if (B) foot = `<div class="cb-foot"><span class="cb-chip">Never death: at 1 Health you are thrown down</span>${bi.learn ? `<span class="cb-note up">+${Math.round(bi.learn * 100)}% might: you know its rhythm</span>` : ''}
+        <span class="cb-note">Turn ${m.turn} · keys 1–4, C to circulate</span></div>`
+    else foot = `<div class="cb-foot"><span class="cb-chip${info.stance === 'slay' ? ' lethal' : ''}">${info.stance === 'slay' ? 'Slay: a loss can kill you' : 'Drive off: never below 1 Health'}</span>
         <span class="cb-note">Turn ${m.turn} · keys 1–4, C to circulate</span>
         <button class="cb-why" data-bd="beastfight:${esc(info.beast.encId)}:${info.stance}"><span data-icon="why"></span>Why</button></div>`
-    return `${pend ? incoming : last}${grid}${extra}${P ? this._scout(info, name) : ''}
+    const bossLine = B ? `<div class="cb-boss-line"><b>${ROMAN[bi.phase]} · ${esc(bi.phases[bi.phase].name)}</b> ${esc(bossNote)}</div>` : ''
+    return `${pend ? incoming : last}${bossLine}${grid}${extra}${P ? this._scout(info, name) : ''}
       ${foot}
       ${log ? `<ol class="cb-log lines">${log}</ol>` : ''}`
   }
@@ -482,6 +518,11 @@ class CombatView {
     this.lockUntil = performance.now() + (this.h.settings().reducedMotion ? 250 : 500)
     for (const ev of r.events || []) this.scene.play(this._sceneEv(ev))
     if (r.over === 'won') { this.scene.play({ type: 'won' }); this.step = 'end' }
+    if (this.mode === 'boss' && r.shift > (this._shift || 0) && !r.over && !r.done) {   // v1 add-on: a boss changes
+      this._shift = r.shift
+      const bi = this.gs.fightInfo()?.boss
+      if (bi) { this.h.flash(bi.hatched && !bi.egg && bi.phase === 2 ? 'The egg hatches.' : bi.phases[bi.phase].name, 'special') }
+    }
     if (r.done) (this.mode === 'person' ? this._endedPerson(r, name) : this._ended(r, name))
     this.render()
     if (r.pending) this._startParry(r.pending)
@@ -538,6 +579,87 @@ class CombatView {
         + opt('spare', 'Spare it', 'Let it limp away. It may come back one day.', kWhy(ch.spareKarma, WHY.spare)) + bind
       : opt('flee', 'Let it flee', 'It runs, and may come back one day.', kWhy(ch.spareKarma, WHY.spare)) + bind
     return `<div class="cb-last up">The ${esc(name)} is down. What happens now is yours to decide.</div>${gradeRow}<div class="cb-ends${ch.ids.length === 3 ? ' three' : ''}">${opts}</div>`
+  }
+
+  // ── v1 add-on (docs/systems/bosses.md): a legendary boss — the prepare step, its plates + phase bar, the end choice ──
+  _prepareBoss() {
+    const id = this.bossId, pv = this.gs.bossFightPreview(id), info = (this.gs.bossInfo() || []).find(b => b.id === id), esc = this.h.esc
+    if (!pv || !info) return `<div class="cb-line">It is gone.</div>`
+    const pct = v => v < 0.01 ? '<1%' : v > 0.99 ? '>99%' : `${Math.round(v * 100)}%`, mode = this.gs.get().arts?.parryMode || 'normal'
+    const ROMAN = ['I', 'II', 'III', 'IV']
+    const phases = info.phases.map((p, i) => `<li><b>${ROMAN[i]} · ${esc(p.name)}</b> ${esc(p.text)}</li>`).join('')
+    const LOCK = { life: 'Not in this life.', stage: 'Your realm is not yet high enough.', won: 'You beat it this life. It wakes again in your next.', rest: `It rests (${this.h.fmtTime?.(info.restLeft) || ''}).`, busy: COMBAT_REASON.busy, wounded: COMBAT_REASON.wounded }
+    const parry = `<div class="cb-parry-mode"><span class="cb-k">Parry window</span>${['normal', 'wide', 'off'].map(v => `<button class="pack-chip${mode === v ? ' active' : ''}" data-parrymode="${v}">${{ normal: 'Normal', wide: 'Wide', off: 'Off' }[v]}</button>`).join('')}</div>`
+    return `
+      <div class="cb-prep">
+        <div class="cb-intro">${esc(info.name)}. ${esc(info.lore)}</div>
+        <div class="cb-mood">${esc(info.line)}</div>
+        <div class="cb-read"><span class="cb-k">How it fights</span><ol class="boss-phases cb">${phases}</ol></div>
+        <div class="cb-stances one">
+          <button class="cb-stance boss" data-boss-start="${esc(id)}" ${pv.lock ? 'disabled' : ''}>
+            <span class="cb-st-h"><span class="cb-st-n">Face it</span><span class="cb-st-p">${pct(pv.chance)}<small>to win (estimate)</small></span></span>
+            <span class="cb-st-sub">A fight of about ${Math.round(pv.turns)} turns. You would lose about ${pv.hurt} Health.</span>
+            <span class="cb-st-l">Win: ${esc(info.technique.known ? 'its drop and renown' : `${info.technique.name}, kept by your soul in every life`)}</span>
+            <span class="cb-st-l">Lose: never death. You are left at ${pv.lossHealth} Health, and it rests ${Math.round(pv.restSec / 60)}:00 (real time).</span>
+            ${pv.learn ? `<span class="cb-st-l up">You know its rhythm: +${Math.round(pv.learn * 100)}% might from ${info.tries} past ${info.tries === 1 ? 'try' : 'tries'}</span>` : `<span class="cb-st-l">Each failed try teaches you its rhythm (+${Math.round(BOSS_FIGHT.learnPerTry * 100)}% might, up to +${Math.round(BOSS_FIGHT.learnMax * 100)}%)</span>`}
+          </button>
+        </div>
+        ${parry}
+        <div class="cb-foot">
+          ${pv.lock ? `<span class="cb-lock"><span data-icon="lock"></span>${esc(LOCK[pv.lock] || 'You cannot fight now.')}</span>` : `<span class="cb-note">The estimate assumes you parry ${pct(pv.parryRate)} and plays its phases. Retreat is open every turn. Nothing happens until you choose.</span>`}
+        </div>
+      </div>`
+  }
+  _platesBoss() {
+    const s = this.gs.get(), fi = s.family?.fight, esc = this.h.esc, def = BOSSES[this.bossId]
+    const live = fi?.kind === 'boss' && this.step !== 'result' ? fi : null, going = live && !live.over
+    if (live) this.snap = { m: JSON.parse(JSON.stringify(live.m)), foeGone: this.snap?.foeGone || null }
+    const M = live?.m || this.snap?.m || null, pv = !M ? this.gs.bossFightPreview(this.bossId) : null
+    const hp = Math.max(0, Math.ceil(s.health ?? 100)), hpMax = this.gs.maxHealth?.() || 100
+    const fHp = M ? Math.max(0, this.snap?.foeGone === 'slain' ? 0 : M.foe.hp) : pv?.foeHp || 0, fMax = M ? M.foe.max : fHp || 1
+    const B = M?.boss || { phase: 0 }, el = M?.foe.element || def.element
+    const qi = M ? Math.round(M.you.qi) : null, pool = M ? M.you.pool : 0
+    const chips = F => Object.entries(F?.st || {}).map(([k, n]) => `<span class="cb-st ${k}" title="${esc(ART_STATUS[k].desc)}">${esc(ART_STATUS[k].name)} <b>${n}</b></span>`).join('')
+      + (F?.charging ? `<span class="cb-st charge">Gathering</span>` : '')
+    const aura = F => F ? { ...F.st, ...(F.charging ? { charge: ARTS[F.charging]?.element || F.element || 'neutral' } : {}) } : {}
+    this.scene.setStatus('you', M && live ? aura(M.you) : {}); this.scene.setStatus('foe', M && live ? aura(M.foe) : {})
+    const sig = [hp, qi, fHp, B.phase, B.egg, B.split, JSON.stringify(M?.you.st), JSON.stringify(M?.foe.st), this.step].join('|')
+    if (sig === this._plateSig) return
+    this._plateSig = sig
+    // the phase bar: a mark at each phase's threshold, the current phase named (labels, not colour alone)
+    const marks = def.phases.slice(1).map(p => `<i class="boss-mark" style="left:${Math.round(p.at * 100)}%" title="${esc(p.name)} at ${Math.round(p.at * 100)}%"></i>`).join('')
+    const ROMAN = ['I', 'II', 'III', 'IV']
+    this.plates.innerHTML = `
+      <div class="cb-plate you"><div class="cb-pn">${esc(s.name || 'You')}</div>
+        <div class="cb-hp${hp < 30 ? ' low' : ''}" title="Your Health (${hp} / ${hpMax})"><span data-icon="health"></span><span class="cb-hpbar"><b style="width:${Math.min(100, hp / hpMax * 100)}%"></b></span><span class="cb-hpv">${hp}</span></div>
+        ${M ? `<div class="cb-qi" title="Combat Qi"><span data-icon="qi"></span><span class="cb-qibar"><b style="width:${Math.round(100 * qi / pool)}%"></b></span><span class="cb-hpv">${qi}</span></div>` : ''}
+        <div class="cb-sts">${chips(M?.you)}</div></div>
+      <div class="cb-plate foe boss"><div class="cb-pn"><span class="cb-el el-${el}">${Icon(ART_ELEMENTS[el].icon)}</span>${esc(def.short)}</div>
+        <div class="cb-hp foe" title="Its strength · the marks are where it changes"><span class="cb-hpv">${Math.ceil(fHp)}</span><span class="cb-hpbar boss-bar"><b style="width:${Math.round(100 * fHp / fMax)}%"></b>${marks}</span></div>
+        <div class="cb-sts"><span class="cb-st phase">${ROMAN[B.phase]} · ${esc(def.phases[B.phase].name)}</span>${B.egg && going ? `<span class="cb-st egg">Hatches in <b>${B.egg}</b></span>` : ''}${B.split && going ? `<span class="cb-st split">Two faces · ${Math.round(B.read * 100)}% true</span>` : ''}${chips(M?.foe)}</div>
+        <div class="cb-tier"><span class="tier-chip tier-legendary">Legendary</span></div></div>`
+    Icon.hydrate?.(this.plates)
+  }
+  _endBoss() {
+    const ch = this.gs.bossFightChoices(), esc = this.h.esc
+    if (!ch) return this._result()
+    const tech = `<span class="cb-st-l good">${ch.technique.isNew ? `You learn ${esc(ch.technique.name)}: your soul keeps it in every life` : `${esc(ch.technique.name)} is already yours`}</span>`
+    return `<div class="cb-last up">The ${esc(ch.name)} is down. What you take from it is yours to decide.</div><div class="cb-ends">
+      <button class="cb-end finish" data-end="heart"><span class="cb-st-n">Take its heart</span><span class="cb-st-sub">${esc(ch.heart.drop)}, and renown under Heaven.</span>${tech}<span class="cb-st-l">+${ch.heart.renown} renown${ch.heart.recipe ? ` · the formula for the ${esc(ch.heart.recipe)}` : ''}</span></button>
+      <button class="cb-end spare" data-end="mercy"><span class="cb-st-n">Let it return to the wild</span><span class="cb-st-sub">No drop. It will remember, and come back stronger, and richer.</span>${tech}<span class="cb-st-l">+${ch.mercy.karma} karma · +${ch.mercy.honour} Honour</span></button>
+    </div>`
+  }
+  _finishBoss(choice) {
+    const name = this._name(), r = this.gs.bossFightFinish(choice)
+    if (!r.ok) return this.render()
+    this.scene.play({ type: choice === 'heart' ? 'finish' : 'spare' })
+    if (this.snap) this.snap.foeGone = choice === 'heart' ? 'slain' : 'spared'
+    const learned = r.learned ? ` ${r.technique} is yours now: your soul will carry it into every life.` : ''
+    this.result = { name, tone: choice === 'heart' ? 'gold' : 'jade', karma: choice === 'mercy' ? BOSS_FIGHT.mercyKarma : 0, loot: r.drop || null,
+      head: choice === 'heart' ? `You take the ${name}'s heart` : `You let the ${name} go`,
+      text: (choice === 'heart' ? `It will wake again in your next life.${r.recipe ? ` You learn the formula for the ${r.recipe}.` : ''}` : 'It looks back once before it goes. It will remember.') + learned }
+    this.step = 'result'
+    this.render()
   }
 
   // ── Step 3: the end choice (a person, A6-3a) — the reaction each choice leaves is read from their temper ──
@@ -597,6 +719,14 @@ class CombatView {
       if (r.ok) this.h.flash(`You walk away with ${this.h.fmt(r.purse)} Spirit Stones.`, 'positive')
       return this.close()
     }
+    if (t.dataset.bossStart) {                                      // v1 add-on: face a legendary boss
+      const r = this.gs.startBossFight(t.dataset.bossStart)
+      if (!r.ok) { this.h.flash(COMBAT_REASON[r.reason] || 'You cannot face it now.', 'negative'); return this.render() }
+      this._shift = 0
+      this.step = 'fight'
+      return this.render()
+    }
+    if (t.dataset.end && this.mode === 'boss') return this._finishBoss(t.dataset.end)
     if (t.dataset.stance) {
       const r = this.gs.startBeastFight(this.encId, t.dataset.stance)
       if (!r.ok) { this.h.flash(COMBAT_REASON[r.reason] || 'You cannot fight now.', 'negative'); return this.render() }
@@ -653,6 +783,13 @@ class CombatView {
 
   // The battle ended without a win to decide on: lost, retreated, or you died
   _ended(r, name) {
+    if (this.mode === 'boss') {                                    // v1 add-on: never death — thrown down, or broken away
+      this.scene.play({ type: r.retreated ? 'retreat' : 'lost' })
+      this.result = { name, tone: r.retreated ? 'dim' : 'red', head: r.retreated ? 'You break away' : `The ${name} throws you down`,
+        text: `${r.retreated ? 'No parting blow: it lets you go.' : 'You live, barely.'} It rests ${Math.round(BOSS_FIGHT.restSec / 60)} minutes before it will face you again, and you know its rhythm a little better now.` }
+      this.step = 'result'
+      return
+    }
     if (this.snap && !r.retreated) this.snap.them = this.snap.to
     if (r.outcome === 'died') return this._fall(name, `The ${name} was stronger. Your path ends on this field.`)
     if (r.retreated) {

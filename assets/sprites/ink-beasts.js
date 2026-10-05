@@ -71,6 +71,23 @@ const INK_BEASTS = {
     bolts: { n: 3, area: [76, 10, 226, 90], avoid: [150, 180], color: 'bolt', every: 2.1 },
     motes: { count: 10, btCount: 18, x0: 76, x1: 226, speed: 0.18, color: 'bolt', y0: 118, rise: 100 },
   },
+  // Review score: 8.2 (2026-10-04, asset gate)
+  // v1 add-on (bosses.md): the Self-Born Vermilion Bird, baked from the user's picture (example_art/vermabird.png; the
+  // painted halo cut by the bake's `pale` + `erode` knobs). Wings beat from their roots, the long tail sways, embers rise.
+  vermilion_bird: {
+    extends: '_base', id: 'beast_vermilion_bird', glow: '#FF6A2A', edgeGlow: 'ember',
+    layerOrder: ['tail', 'wingL', 'wingR', 'body'],
+    motion: { wingL: { map: [68, 80], amp: -0.07, speed: 1.1 }, wingR: { map: [51, 82], amp: 0.07, speed: 1.1 },
+      tail: { map: [63, 130], amp: 0.035, speed: 0.7 } },
+    palette: { ember: '#FFB060' },
+    raster: { map: 'sprites/beasts/vermilion_bird.png', box: [72, 8, 228, 122], minL: 0.06, gain: 1.3, sat: 1.2, tone: 0.8,
+      regions: [
+        { layer: 'wingL', mask: [[174, 0], [77, 0], [70, 36], [65, 68], [68, 87], [99, 116], [174, 123]] },
+        { layer: 'wingR', mask: [[48, 22], [-1, 22], [-1, 126], [32, 118], [48, 97], [46, 60]] },
+        { layer: 'tail', mask: [[150, 135], [-1, 135], [-1, 202], [150, 202]] },
+      ] },
+    motes: { count: 20, btCount: 32, x0: 90, x1: 210, speed: 0.16, color: 'ember', y0: 118, rise: 110 },
+  },
   thunder_eagle__violet: { extends: 'thunder_eagle', glow: '#C09AFF', palette: { bolt: '#E0C8FF' }, raster: { hue: -60 } },
 
   spectral_bear: {

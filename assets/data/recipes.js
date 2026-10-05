@@ -135,6 +135,11 @@ const RECIPES = [
     id: 'recipe_artifact_lotus_seat', category: 'artifacts', productId: 'artifact_lotus_seat', hidden: true,
     ingredients: [{ itemId: 'void_crystal', qty: 3 }, { itemId: 'ancient_script', qty: 2 }],
   },
+  // v1 add-on (bosses.md): taught by the Mirror Wraith's heart (bossFightFinish 'heart'), never by RECIPE_DISCOVERY
+  {
+    id: 'recipe_artifact_mirror_soul_plate', category: 'artifacts', productId: 'artifact_mirror_soul_plate', hidden: true,
+    ingredients: [{ itemId: 'mirror_shard', qty: 2 }, { itemId: 'void_crystal', qty: 2 }],
+  },
 
   // ── Talismans ─────────────────────────────────────────────────────────────────
   {
@@ -175,6 +180,7 @@ const RECIPE_DISCOVERY = {
     lotus:  'recipe_artifact_lotus_seat',
     heaven: 'recipe_pill_nine_turn',
   },
+  boss: ['recipe_artifact_mirror_soul_plate'],   // v1 add-on: taught only by a legendary boss's heart (bosses.md)
   encounterChance: 0.06,   // per expedition return: a stranger carrying a formula (only if one is still unknown)
   arenaWinChance:  0.10,   // per Arena win: a random unknown formula turns up (the champion's is guaranteed)
   robStones:       25,     // robbing the stranger instead: quick Spirit Stones, the formula is lost

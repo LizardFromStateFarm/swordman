@@ -40,6 +40,7 @@ _Covers: assets/data/settings.js · renderer/game/settings.js · game-state.js (
 - ⚙ `#btn-settings` (titlebar) → `settingsUI.open()` → `#settings-overlay`, rendered from `SETTINGS_DEFS`.
 - A control change calls `gameState.setSetting()`; the `subscribe()` in `bootGame()` then calls `settingsUI.apply(s.settings)` on every notify. `apply` diffs against the last applied values, so it's cheap to run every time.
 - `settingsUI.palette()` → `{ red:[r,g,b], jade:[r,g,b] }` read from the computed CSS vars. The health-bar lerp and the toast colors use it, so color-blind mode reaches those inline-styled elements too.
+- 1.23: the panel opens on the **Guide** section (tips on/off, replay a lesson, show every tip again): `settingsUI.guide` → `TutorialUI.renderGuide`. It is **not** a SETTINGS_DEFS entry, because its state is per install (the soul record), not per slot. See tutorial.md.
 - The sim loads `assets/data/settings.js` (for migration defaults) but not `renderer/game/settings.js` (UI only).
 
 ## Invariants

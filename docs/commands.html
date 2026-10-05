@@ -149,12 +149,18 @@
     <div class="cmd"><div class="cmd-head"><code>$env:CULTIVATOR_SMOKE_DISPLAY=2; node scripts/smoke/cdp.js scripts/smoke/scenarios/layout-modes.js</code><button class="copy">Copy</button></div>
       <p>Pins the smoke window to a chosen display (1-based: <code>1</code> = the primary, <code>2</code> = your second
       monitor). Leave it off and the harness uses the first secondary display it finds.</p></div>
+    <div class="cmd"><div class="cmd-head"><code>npm run smoke</code><button class="copy">Copy</button></div>
+      <p>Runs every smoke scenario one after another (about 25 minutes) and prints a pass/fail table, also saved to
+      <code>scripts/smoke/out/run-all.txt</code>. Name scenarios to run only those: <code>npm run smoke -- class sect</code>.</p></div>
   </section>
 
   <section id="build">
     <h2>Desktop builds <span class="tag t-build">build</span></h2>
     <div class="cmd"><div class="cmd-head"><code>npm run dist</code><button class="copy">Copy</button></div>
-      <p>Builds the Windows x64 portable app into <code>dist/Cultivator Idle-win32-x64/</code>.</p></div>
+      <p>Builds the Windows x64 portable app into <code>dist/Cultivator Idle-win32-x64/</code>. The package holds only
+        <code>main.js</code>, <code>preload.js</code>, <code>package.json</code>, <code>renderer/</code> and <code>assets/</code>
+        (an allow-list in the <code>--ignore</code> regex, about 3.6 MB), so keystores, <code>android/</code>, <code>scripts/</code> and dev
+        files never ship. A new top-level runtime file must be added to that list in both dist scripts.</p></div>
     <div class="cmd"><div class="cmd-head"><code>npm run dist:mac</code><button class="copy">Copy</button></div>
       <p>Builds the macOS app for x64 and arm64.</p></div>
     <div class="cmd"><div class="cmd-head"><code>npm run build:web</code><button class="copy">Copy</button></div>

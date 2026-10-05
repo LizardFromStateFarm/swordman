@@ -131,4 +131,51 @@ const fresh = async (seed, sectId = 'thunder_palace') => {
   const T = M.takeover
   assert(ps.success && s.ownSect.founded && s.ownSect.takenOver.how === 'peaceful' && s.ownSect.oldGuard.n <= T.oldGuardPeaceful[1], 'a granted petition: a peaceful takeover, a smaller old guard')
   assert(!s.world.sects.list.some(r => r.origin === 'exiled'), 'a peaceful master raises no splinter')
+
+  // ── Final QA (user 2026-10-04: "it should definitely come back"): a sect you used to own always comes back ──
+  const takenDef = s.ownSect.takenOver.defId, W = s.world.sects
+  assert(!gs._wsByDef(takenDef) && gs._wsKeepGates().length === 0, 'while it is yours, the gate keeps no other record')
+  // (a) the life ends holding it: the lineage record keeps its gate, and the next life joins that very record
+  const lrec = gs._wsFromOwnSect(s.ownSect, s.world)
+  assert(lrec && lrec.kind === 'lineage' && lrec.defId === takenDef && gs._wsByDef(takenDef) === lrec, 'dying with a taken sect: the lineage record keeps its gate')
+  s.ownSect = gs._blankOwnSect(); s.sect = { id: null, rank: 0, contribution: 0, activeMissions: [] }
+  assert(gs.joinSect(takenDef).ok && gs._wsMine() === lrec, 'joining its gate later joins the sect you left behind')
+  let bi = null, threw = null
+  try { bi = gs.sectBlessingInfo() } catch (e) { threw = e.message }
+  assert(!threw && bi && bi.halls.length > 0, `its blessing card draws, with halls to fund${threw ? ': ' + threw : ''}`)
+  // (b) a save from before the fix: the lineage record lost its gate → the migration hands it back by name
+  lrec.defId = null
+  gs._ensurePhase46Fields()
+  assert(lrec.defId === takenDef && gs._wsMine() === lrec, 'migration: a lineage record that lost its gate gets it back')
+  assert(gs._wsKeepGates().length === 0, 'keeping the gates is idempotent')
+  // (c) no record at all (lost before the fix): the gate raises a fresh one, with no Math.random
+  lrec.alive = false; W.list = W.list.filter(r => r.alive)
+  const M2 = sim.ev('Math'), rnd0 = M2.random; let draws = 0; M2.random = () => { draws++; return rnd0() }
+  const back = gs._wsKeepGates(); M2.random = rnd0
+  assert(back.length === 1 && back[0].defId === takenDef && back[0].kind === 'joinable' && gs._wsMine() === back[0] && draws === 0, 'a lost gate rises again as a joinable sect (no Math.random)')
+  // (d) a burned gate-holder always returns from its ashes, whatever its kind
+  const g = gs._wsMine(); g.kind = 'lineage'
+  gs.leaveSect()
+  W.ashes = [{ name: g.name, defId: g.defId, kind: 'lineage', tier: 1, temper: g.temper, leader: g.leader, maxBuildingLevel: 2, maxHall: 2,
+               year: 1, survivors: 0, provoked: false, state: 'smoking', returnYear: 0, rebornId: null }]
+  g.alive = false; W.list = W.list.filter(r => r.alive)
+  assert(gs.sectInAshes(takenDef) && gs._wsKeepGates().length === 0, 'smoking ashes: the gate waits (no early rebirth)')
+  force(sim, 0.999, () => gs._tickAshes(Math.floor(s.world.year)))
+  assert(gs._wsByDef(takenDef) && W.ashes[0].state === 'reborn', 'a burned lineage sect that held a gate always rises again')
+  // (e) disbanding a sect you took over: its gate opens again without you
+  ;({ sim, gs, s } = await fresh(4357))
+  s.sect.rank = RANKS.length - 1
+  force(sim, 0, () => gs.petitionSectMaster())
+  const dDef = s.ownSect.takenOver.defId
+  assert(gs.disbandOwnSect().ok && gs._wsByDef(dDef), 'disbanding a taken sect: its gate opens again under a new master')
+
+  // ── Final QA: a death by your hand (a duel, a deed, the road → _killPerson) frees the sect seat at once ──
+  ;({ sim, gs, s } = await fresh(4359))
+  const ws = s.world.sects.list.find(r => r.alive && r.kind === 'joinable'); gs._wsEnsurePeople(ws)
+  const oldM = ws.leaderId, el = (ws.elderIds || [])[0], yrK = Math.floor(s.world.year)
+  gs._killPerson(oldM, yrK, 'duel')
+  const newM = s.world.persons[ws.leaderId]
+  assert(ws.leaderId !== oldM && newM && newM.alive !== false && newM.sectRole === 'master', 'a slain master: the senior elder (or someone new) takes the seat at once')
+  const el2 = (ws.elderIds || []).find(id => id !== ws.leaderId) || el
+  if (el2 && s.world.persons[el2]?.alive !== false) { gs._killPerson(el2, yrK, 'road'); assert(!(ws.elderIds || []).includes(el2), 'a slain elder leaves the bench') }
 })().catch(e => { console.log('FAIL crashed (43e):', e.stack); process.exitCode = 1 })

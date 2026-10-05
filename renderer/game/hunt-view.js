@@ -53,7 +53,7 @@ const HuntView = {
       </div>`
     }).join('')
     el.innerHTML = `<div class="view-lede">Go looking for a beast instead of waiting for one to cross your path. When the search ends, the beast waits in Roam → Beasts: fight it, tame it, or leave it.</div>
-      ${status}<div class="hunt-grid">${cards}</div>`
+      ${status}${this._legendary(gs, h)}<div class="hunt-k hunt-sec">Hunting grounds</div><div class="hunt-grid">${cards}</div>`
     BeastPortraits.mount(el, gs.getSettings())
     el.onclick = e => {
       const b = e.target.closest('button'); if (!b || b.disabled) return
@@ -65,7 +65,39 @@ const HuntView = {
       if (b.dataset.huntCancel != null) gs.cancelHunt()
       if (b.dataset.huntFight) h.fight(b.dataset.huntFight)
       if (b.dataset.huntGo) h.go(b.dataset.huntGo)
+      if (b.dataset.bossFight) { gs.markBossSeen(b.dataset.bossFight); h.fightBoss?.(b.dataset.bossFight) }
     }
+  },
+
+  // v1 add-on (docs/systems/bosses.md): the Legendary section — two bosses, their gates as a checklist, the phase script,
+  // your record (tries / wins / mercy, what you have learned), the technique each teaches, the rest countdown, Face it.
+  _legendary(gs, h) {
+    const esc = h.esc, list = gs.bossInfo?.() || []
+    if (!list.length) return ''
+    const LOCK = { life: 'Not in this life', stage: 'Not yet: your realm', won: 'Beaten this life: it wakes again in your next', rest: 'It rests' }
+    const ROMAN = ['I', 'II', 'III', 'IV']
+    const cards = list.map(b => {
+      const known = b.seen || !b.lock || b.lock === 'rest' || b.wins
+      const gates = b.gates.map(g => `<li class="${g.ok ? 'ok' : 'no'}"><span data-icon="${g.ok ? 'check' : 'lock'}"></span>${esc(g.text)}<small>${esc(g.now)}</small></li>`).join('')
+      const phases = b.phases.map((p, i) => `<li><b>${ROMAN[i]} · ${esc(p.name)}</b><span>${esc(p.text)}</span></li>`).join('')
+      const rec = b.tries || b.wins ? `<div class="boss-rec">Faced ${b.tries + b.wins} · beaten ${b.wins}${b.mercy ? ` · spared ${b.mercy}` : ''}${b.learn ? ` · <span class="up">you know its rhythm: +${Math.round(b.learn * 100)}% might</span>` : ''}</div>` : ''
+      const tech = `<div class="boss-tech${b.technique.known ? ' known' : ''}"><span data-icon="soul"></span><span><b>${esc(b.technique.name)}</b>${b.technique.known ? ' · your soul keeps it' : ' · taught once, kept in every life'}${b.technique.desc ? `<small>${esc(b.technique.desc)}</small>` : ''}</span></div>`
+      const act = !b.lock ? `<button class="hunt-btn gold" data-boss-fight="${esc(b.id)}"><span data-icon="sword"></span>Face it</button>`
+        : b.lock === 'rest' ? `<span class="boss-lock"><span data-icon="lock"></span>It rests: <span data-hunt-left="${Date.now() + b.restLeft * 1000}">${h.fmtTime(b.restLeft)}</span></span>`
+        : `<span class="boss-lock"><span data-icon="lock"></span>${esc(LOCK[b.lock] || 'Not now')}</span>`
+      const art = known && b.art ? BeastPortraits.html('boss:' + b.id, b.art) : `<span class="boss-sil" data-icon="${b.id === 'wraith' ? 'mask' : 'beast'}"></span>`
+      return `<div class="boss-card boss-${esc(b.id)}${b.lock && b.lock !== 'rest' ? ' locked' : ''}">
+        <div class="boss-art">${art}</div>
+        <div class="boss-body">
+          <div class="boss-head"><span class="boss-name">${esc(known ? b.name : 'A legend, unseen')}</span><span class="cb-el el-${esc(b.element)}">${Icon(ART_ELEMENTS[b.element]?.icon || 'el_neutral')}</span></div>
+          <div class="boss-line">${esc(known ? b.line : b.lore)}</div>
+          <ul class="boss-gates">${gates}</ul>
+          ${known ? `<ol class="boss-phases">${phases}</ol>` : ''}
+          ${tech}${rec}
+          <div class="boss-foot"><span class="hunt-meta">Win: ${esc(b.drop.n + ' ' + b.drop.name)} or mercy · lose: never death, a real-time rest</span>${act}</div>
+        </div></div>`
+    }).join('')
+    return `<div class="hunt-k hunt-sec">Legendary</div><div class="boss-grid">${cards}</div>`
   },
 
   // every tick while the Hunt view is open: the countdown + bar, without a re-render

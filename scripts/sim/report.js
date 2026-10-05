@@ -1,7 +1,7 @@
 // Turns raw sim runs into a compact markdown report (+ summary object) with auto-generated balance/fun flags.
 // Used by: scripts/sim/run.js. Thresholds live in scripts/sim/profiles.js. See docs/systems/qa-sim.md.
 
-const { PROFILES, THRESHOLDS: T, PACING_TARGETS_MIN, PACING_PROFILE, LIFE_TARGETS_H } = require('./profiles')
+const { PROFILES, THRESHOLDS: T, PACING_TARGETS_MIN, PACING_PROFILE, LIFE_TARGETS_H, FIRST_ASCENSION_H, GENERATIONS_TO_ASCEND } = require('./profiles')
 
 const med = xs => { const a = xs.filter(x => x != null && !isNaN(x)).sort((x, y) => x - y); return a.length ? a[Math.floor((a.length - 1) / 2)] : null }
 const rng = xs => { const a = xs.filter(x => x != null); if (!a.length) return '—'; const lo = Math.min(...a), hi = Math.max(...a), m = med(a); return lo === hi ? f(m) : `${f(m)} (${f(lo)}–${f(hi)})` }
@@ -15,7 +15,9 @@ const FEATURES = ['expedition', 'craft_equipment', 'craft_pill', 'use_elixir', '
   'war_answer_call', 'war_chest', 'war_beast', 'ascend', 'buy_legacy',
   // Phase 42 (arts.md, task 1.15): the arts systems the bot now plays
   'choose_art', 'study_art', 'set_loadout', 'sell', 'buy_sect_art', 'write_clan_art', 'study_clan_art', 'donate_manual',
-  'lineage_join']   // Phase 46: rejoining the sect your line founded at Core Formation
+  'lineage_join',   // Phase 46: rejoining the sect your line founded at Core Formation
+  // Final QA (step 2): the body, sect relations, the person card's deeds
+  'temper', 'minigame_strikes', 'minigame_flow', 'sect_gift', 'deed_spar']
 
 const KEY_MILESTONES = [
   ['Qi Condensation L1', r => r.stageTimes.find(x => x.stage === 1)?.atH],
@@ -119,7 +121,10 @@ function buildReport(runs, args) {
     // mastered-spare gift only ever happen for 'active' (see bot.js arts()). Both would be false "never used" flags.
     const memberOnly = ['buy_sect_art']
     const activeOnly = ['write_clan_art', 'study_clan_art', 'donate_manual']
+    // afk never plays the mini-games (an 8-hours-away player) and spars rarely (bot.js body() / deeds())
+    const notAfk = ['minigame_strikes', 'minigame_flow', 'deed_spar']
     const unused = FEATURES.filter(ft => !(args.path === 'member' && founderOnly.includes(ft)) &&
+      !(p === 'afk' && notAfk.includes(ft)) &&
       !(args.path === 'founder' && memberOnly.includes(ft)) &&
       !(p !== 'active' && (orderDriven.includes(ft) || activeOnly.includes(ft))) && g.every(r => !r.actions[ft]))
     if (T.unusedFeature && unused.length) flags.push(`${tag} Never used: ${unused.join(', ')}`)
@@ -360,6 +365,29 @@ function buildReport(runs, args) {
     L.push(`| ${p} | ${lives.length} | ${lives.filter(l => l.wasHead).length} | ${bets.length} (${bets.filter(x => x.betWon).length}) | ${cnt(b, 'successorKind', ['chosen', 'tournament', 'clan', 'regency'])} | ${cnt(b, 'style', ['nurturing', 'strict', 'neglectful', 'ruthless'])} | ${cnt(b, 'position', ['eldest', 'younger', 'branch', 'rival', 'orphan'])} | ${cnt(b, 'sectFate', ['grow', 'hold', 'decline', 'lost'])} | ${b.filter(x => x.extinct).length} |`)
   }
   L.push(``)
+  // Final QA (step 2): the systems the bot learned last — the body (Phase 14), sect politics (43d–f, 43h), the person
+  // card's deeds (4.10) and the rankings (4.8). Action counts are the median per run.
+  L.push(`## Body, sect politics, deeds, rankings — final QA coverage (${longest}h runs; median per run)`)
+  L.push(`| Profile | Temperings (ordeal · blood) | Crisis (qi · endure · ease) | Tier trials (marrow · bitter) | Body tier end | Strikes · Flow | Halls funded | Master (petition · challenge) | Sect acts | Deeds | Rank duels · invites (yes · no) |`)
+  L.push(`|---|---|---|---|---|---|---|---|---|---|---|`)
+  for (const p of profiles) {
+    const g = group(p, longest), a = k => med(g.map(r => r.actions?.[k] || 0))
+    const pre = x => med(g.map(r => Object.entries(r.actions || {}).filter(([k]) => k.startsWith(x)).reduce((t, [, v]) => t + v, 0)))
+    L.push(`| ${p} | ${f(a('temper'))} (${f(a('temper_ordeal'))} · ${f(a('temper_blood'))}) | ${f(a('ordeal_qi'))} · ${f(a('ordeal_endure'))} · ${f(a('ordeal_ease'))} | ${f(a('body_trial_marrow'))} · ${f(a('body_trial_bitter'))} | ${f(med(g.map(r => r.body?.tier ?? null)))} | ${f(a('minigame_strikes'))} · ${f(a('minigame_flow'))} | ${f(a('fund_sect_hall'))} | ${f(a('petition_master'))} · ${f(a('challenge_master'))} | ${f(pre('sect_'))} | ${f(pre('deed_'))} | ${f(a('rank_duel'))} · ${f(a('road_invite_accept'))} · ${f(a('road_invite_decline'))} |`)
+  }
+  // Immortality pace (user-accepted 2026-10-04: ~37 casual lives / ~430–475 h) — only checked on runs long enough to get there
+  const imm = profiles.map(p => ({ p, g: group(p, longest).filter(r => r.milestones?.first_ascend_success != null) }))
+  L.push(``)
+  // (a run that never got there counts as "after the horizon" in the median — leaving it out would bias the pace fast)
+  const medAll = (g, all, k) => { const v = all.map(r => r.milestones?.first_ascend_success != null ? k(r) : Infinity).sort((a, b) => a - b); const lo = v[Math.floor((v.length - 1) / 2)], hi = v[Math.floor(v.length / 2)], m = (lo + hi) / 2; return m === Infinity ? null : m }   // (even count: the mean of the middle pair; Infinity if either is a non-finisher)
+  L.push(`- Immortality: ${imm.map(({ p, g }) => { const all = group(p, longest); return `${p} ${g.length}/${all.length} runs` + (g.length ? ` · median ${medAll(g, all, r => r.milestones.first_ascend_success) == null ? 'after ' + longest + 'h' : fmtH(medAll(g, all, r => r.milestones.first_ascend_success))}, life ${f(medAll(g, all, r => r.lineage?.immortalGen))} (range ${fmtH(Math.min(...g.map(r => r.milestones.first_ascend_success)))}–${fmtH(Math.max(...g.map(r => r.milestones.first_ascend_success)))})` : '') }).join(' · ')} (casual target ${FIRST_ASCENSION_H.casual[0]}–${FIRST_ASCENSION_H.casual[1]} h, ${GENERATIONS_TO_ASCEND[0]}–${GENERATIONS_TO_ASCEND[1]} lives; runs that never got there count as after the horizon)`)
+  const ci = imm.find(x => x.p === 'casual')
+  if (ci?.g.length) {
+    const allC = group('casual', longest), h = medAll(ci.g, allC, r => r.milestones.first_ascend_success) ?? Infinity, lv = medAll(ci.g, allC, r => r.lineage?.immortalGen)
+    if (h < FIRST_ASCENSION_H.casual[0] || h > FIRST_ASCENSION_H.casual[1]) flags.push(`[casual ${longest}h] Immortality at ${fmtH(h)}, outside the accepted ${FIRST_ASCENSION_H.casual[0]}–${FIRST_ASCENSION_H.casual[1]} h`)
+    if (lv != null && (lv < GENERATIONS_TO_ASCEND[0] || lv > GENERATIONS_TO_ASCEND[1])) flags.push(`[casual ${longest}h] Immortality on life ${lv}, outside the accepted ${GENERATIONS_TO_ASCEND[0]}–${GENERATIONS_TO_ASCEND[1]}`)
+  } else if (ci && longest >= FIRST_ASCENSION_H.casual[1]) flags.push(`[casual ${longest}h] No casual run reached Immortality within ${longest}h (accepted ${FIRST_ASCENSION_H.casual[0]}–${FIRST_ASCENSION_H.casual[1]} h)`)
+  L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)
   for (const p of profiles) {
     const g = group(p, longest), by = {}
@@ -393,6 +421,13 @@ function buildReport(runs, args) {
       const oh = runs.reduce((a, r) => a + r.people.cast.openHours, 0), tot = k => runs.reduce((a, r) => a + (r.people.road?.[k] || 0), 0)
       const kinds = sum('byKind'), ans = sum('byAnswer'), per = v => oh ? (v / oh).toFixed(2) : '0'
       L.push(`- Encounters (4.9): ${per(tot('cards'))} cards per open hour (${Object.entries(kinds).sort((a, b) => b[1] - a[1]).map(([x, v]) => `${x} ${per(v)}`).join(' · ') || 'none'}) · ${tot('brushes')} brushes, ${tot('waited')} waited, ${tot('gone')} died first · answers: ${Object.entries(ans).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([x, v]) => `${x} ${v}`).join(' · ') || 'none'}`)
+      // v1 add-on (bosses.md): legendary bosses + soul techniques — tries / wins / mercy per boss, techniques learned, the bot's uses
+      const LG = runs.filter(r => r.legends), sumA = k => runs.reduce((t, r) => t + (r.actions?.[k] || 0), 0)
+      if (LG.length) {
+        const b = id => { const x = LG.map(r => r.legends.bosses?.[id] || {}); return `${id} tries ${x.reduce((t, y) => t + (y.tries || 0), 0)} · wins ${x.reduce((t, y) => t + (y.wins || 0), 0)} · mercy ${x.reduce((t, y) => t + (y.mercy || 0), 0)}` }
+        const turns = med(runs.map(r => r.fightTurns?.boss ?? null))
+        L.push(`- Legendary bosses (v1 add-on): ${b('bird')} · ${b('wraith')} · Seed learned in ${LG.filter(r => r.legends.soulTech.seed).length}/${LG.length} runs, Clone in ${LG.filter(r => r.legends.soulTech.clone).length}/${LG.length} · boss fight ${turns ?? '—'} turns (median) · seeds planted ${sumA('seed_plant')}, mirror turns faced/sent/yielded ${sumA('mirror_face')}/${sumA('mirror_send')}/${sumA('mirror_yield')} · clone trips ${sumA('clone_send')}, lingered ${sumA('clone_linger')}, released clones ${LG.reduce((t, r) => t + (r.legends.clones || 0), 0)}`)
+      }
       // final QA: which card killed a life (kind:answer, grouped over stages) — lethal road tuning
       const rd = {}; for (const r of runs) for (const [x, v] of Object.entries(r.lineage?.roadDeaths || {})) { const [ka, st] = x.split('@'); (rd[ka] ||= { n: 0, st: [] }).n += v; for (let i = 0; i < v; i++) rd[ka].st.push(+st) }
       if (Object.keys(rd).length) L.push(`- Road deaths by card (kind:answer × lives · median stage at death): ${Object.entries(rd).sort((a, b) => b[1].n - a[1].n).map(([x, o]) => `${x} ${o.n} · st ${med(o.st)}`).join(' · ')}`)

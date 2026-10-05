@@ -417,3 +417,57 @@ genius-hunter road cards. Shots: `scripts/smoke/out/rankings-*.png` (Overlay / E
 - **Cycle 2: 8.0 PASS** (8 / 8 / 8.5 / 8 / 8 / 7.5). Applied after: a "scores as published in year N; yours now is X"
   caption (the board's snapshot vs your live pill). Polish → UX Debt: the Overlay hint + standing card push the board below
   the fold for a first-time player; the gold accent on row #1 looks like the You row's.
+
+## Legendary bosses + soul techniques (v1 add-on, docs/systems/bosses.md, 2026-10-04)
+
+Roam → Hunt → Legendary, the battle page's boss mode (prepare · phase bar · end choice · result), Kin → Family's Seed of the
+Self + The Mirror Turns, Roam → Explore's "Your other self" slot. Overlay / Expanded / Desktop / phone (smoke
+`scenarios/bosses.js`).
+- **Cycle 1: 7.2 FAIL** (aesthetic 8 · hierarchy 7 · clarity 7 · interaction 7.5 · consistency 7.5 · layout 6). Blockers: "undefined"
+  under Body Beyond the Body (no `desc`); the Mirror Turns answers stretched ~150 px tall (`.fw-acts .fa-pill { flex: 1 }` in a
+  column + the non-Overlay `.fa-pill.row` column rule). Fixed both; the phase note moved to its own line above the moves.
+- **Cycle 2: 7.6 PASS** (8 · 7.5 · 7.5 · 7.5 · 7.5 · 7.5). Polish applied after: the Two-faces chip hides on the end step; "Ready in"
+  → "Qi recovers in". Polish logged as UX debt: the phone gate checklist wraps its right column; Overlay's Mirror Turns card hides
+  the bond line's context. Not scored: the Vermilion Bird's placeholder portrait (asset gate pending the user's picture).
+
+## Interactive tutorial: coach marks + the Guide (task 1.23, docs/systems/tutorial.md, 2026-10-04)
+- **Cycle 1: 7.8 PASS** (aesthetic 8 / hierarchy 8 / clarity 8 / interaction 7.5 / consistency 8 / layout 7.5). Screens:
+  `scripts/smoke/out/tutorial-*.png` (the HUD tour, a view lesson, the battle lesson, the Guide; Overlay / Expanded / Desktop / phone).
+- Applied after: Guide row status text gets more room (the title flexes, status up to 70%), so lock reasons wrap less;
+  "New" in --dim-hi with only the gold dot marking it (it read as a wall of gold).
+- Logged as UX debt: the "Tips are off" toast draws over the Settings modal for a moment (the app-wide toast layer
+  sits above overlays); "Turn tips off" is a small 10px link; one smoke shot caught the card mid fade-in.
+
+## The Vermilion Bird's art (v1 add-on asset, bosses.md, 2026-10-04)
+- **Asset gate cycle 1: 8.2 PASS** (clarity 8 / wuxia 9 / animation 7 / colour 8.5 / uniqueness 8.5), from the user's
+  picture baked into a dot map (the halo cut away, mirrored to face you). Screens: `scripts/smoke/out/ink-beasts-sheet.png`
+  + `bosses-*-bird*.png` (all four modes).
+- Applied after: the wing beat is 1.75× larger (0.04 → 0.07). A larger tail sway was tried and reverted because it
+  opened a seam at the tail's edge.
+- Logged: at 300px Overlay the head and crest blur into the near wing; the teal tail ribbons nearly vanish at small sizes.
+
+### Final QA layout fixes (2026-10-04) — **7.75 PASS** (cycle 1)
+- World → Class "The fallen": a long death cause wraps instead of scrolling the pane sideways (Expanded); the Sect sub-tab
+  strip fits a 390px phone (5 tabs + the chip). Scores: atmosphere 8 · hierarchy 7.5 · clarity 8 · ergonomics 7.5 ·
+  consistency 8 · fit 7.5. Shots: `class-{expanded,overlay,phone}-fallen.png`, `subtabs-phone.png`.
+- Applied after (polish): the "·" separators are glued to the word before them (`&nbsp;·`), so a wrapped line never starts with one.
+- Logged: rows break at different points (a fixed two-line cause · year / realm, age layout would even them); the phone
+  bottom nav is translucent over scrolled content (pre-existing).
+
+### Tutorial: the Spiritual Root steps (2026-10-05) — **7.9 PASS** (cycle 1)
+- Path → Character's lesson gains "Your Spiritual Root" (the root chip spotlit; ×1 / ×1.4 / ×1.8 / ×3, elements shape arts)
+  and "A better root" (brew a root elixir in Pack → Craft → Elixirs); the Craft lesson gains "Root elixirs" (the Elixirs
+  tab spotlit). Coach marks now scroll the target to the centre of its pane (an Overlay root chip sat clipped at the edge).
+  Scores: atmosphere 8 · hierarchy 8 · clarity 7.5 · ergonomics 7.5 · consistency 8.5 · fit 8. Shots: `tutorial-root-*.png`.
+- Applied after (polish): "Root elixirs" names what each elixir does (Cleansing: Mixed → Dual half the time; Pure: mostly
+  Pure, rarely Heavenly; Heavenly: 40% Heavenly).
+- Logged: the root card could name *your* root in its scale; "A better root" could offer a "Take me there" link; on phone
+  the Elixirs card covers the second row of craft sub-tabs.
+
+### The intro ink scroll (2026-10-05) — **7.9 PASS** (cycle 1)
+- Five full-window cards (the user's text) over a dotted night, before the HUD tour; replay from the Guide. Scores: atmosphere
+  8.5 · hierarchy 8 · clarity 8 · ergonomics 7.5 · consistency 8 · fit 7.5. Shots: `intro-{overlay,expanded,desktop,phone}-{1..5}.png`, `intro-guide.png`.
+- Applied after (polish): the column follows ⚙ Text size (the panels' zoom); Back has a `--dim` border (it read as disabled);
+  Overlay / phone drop the −8vh lift (less empty sky below).
+- Before review (self-caught): the backdrop was 97–99% opaque and the game ghosted through on Desktop — now opaque.
+- Logged: Skip is a quiet low-contrast link (deliberate).

@@ -274,7 +274,7 @@ Enemy strength: own `(fame+20) × ratio × U(0.6,1.4)`, member `ratio × U(0.6,1
 ### Gotchas (43d)
 - This **re-balances live saves**: an early member's blessing drops (Myriad Herb Outer: k 0.56). Tune in 43g.
 - The 43c member-war check resets your own sect each round now (a lost war raids it).
-- The sim bot answers the new events (it may defect) but does not fund halls yet — teach it in 43g.
+- The sim bot answers the new events (it may defect); since the final QA pass (2026-10-04) it also funds halls (bot.js `sectPolitics()`).
 
 ---
 
@@ -333,8 +333,18 @@ Enemy strength: own `(fame+20) × ratio × U(0.6,1.4)`, member `ratio × U(0.6,1
 ### Gotchas (43e)
 - A taken joinable sect's record is removed, so in a later life that sect can still be joined (`SECTS`) with the ×1
   blessing fallback (no record). 43f did **not** add this (it re-seeds only *razed* sects, via the ashes), so it is still open for 43g.
+  **Fixed in the final QA pass (2026-10-04; user: "it should definitely come back for sects you used to own"):**
+  - The cause: `_lineageRecord()` always minted `defId: null`, so a taken sect that lived on as a lineage sect lost its
+    gate. `_wsFromOwnSect` now keeps `ownSect.takenOver.defId` on the record (unless another living record holds it).
+  - **The world keeps its gates** — `_wsKeepGates()`: every SECTS gate has a living record unless it is yours right now
+    or its ashes are smoking. A lineage record that lost its gate gets it back by name; otherwise the gate raises a fresh
+    `joinable` record in its seed shape (origin `regated`, hash-seeded, no Math.random) + a chronicle line. Runs each
+    world year (after `_tickAshes`), in `_ensurePhase46Fields` (old saves), in `joinSect` and after `disbandOwnSect`
+    of a taken sect ("its gate opens again under a new master").
+  - Ashes: any record that held a gate (a lineage sect too) always rises again (`_tickAshes`).
+  - `sectBlessingInfo()` no longer throws on a missing record (×1, no halls). Checks: sect-takeover.js (+10).
 - `canChallengeSectMaster()` mints a missing master (random draws); attention calls it only for a Grand Elder.
-- The sim bot does not challenge or petition yet (43g).
+- The sim bot petitions (≥ 50%) or challenges (≥ 65%, rarely lethal) as a Grand Elder and answers the old guard since the final QA pass (bot.js `sectPolitics()`).
 
 ---
 
@@ -403,7 +413,7 @@ Enemy strength: own `(fame+20) × ratio × U(0.6,1.4)`, member `ratio × U(0.6,1
   `world.clans` (the save round-trip check).
 - The dread turn-back returns before `w.enemyId` is set and reschedules the next war; it never fires for a member war.
 - A taken-over sect (43e) is still not re-seeded in a later life (see 43e's gotcha).
-- The sim bot never vows (43g).
+- The sim bot vows to raze since the final QA pass (active when provoked, casual 1 in 3; afk leaves it to the standing order).
 
 ---
 
@@ -469,7 +479,7 @@ Enemy strength: own `(fame+20) × ratio × U(0.6,1.4)`, member `ratio × U(0.6,1
 - The spar foe lives on the fight (`fi.foe`), like a road stranger; `_ensure…` keeps a `spar` fight alive only with its foe.
 - A spar / master fight that ends in "humble" no longer cows your clan (that rule is for clan fights).
 - The founder Overview in Overlay drops the Fame breakdown and the chronicle to stay ≤ 3 screens (2.89).
-- The sim bot does not use relations yet (43g).
+- The sim bot uses relations since the final QA pass (bot.js `sectPolitics()`: trade, alliance, war, tribute, spy, poach, gift · spar, urge).
 
 ### Phase 46 — a player's sect outlives them + the world's leaders age out (built 2026-10-03)
 

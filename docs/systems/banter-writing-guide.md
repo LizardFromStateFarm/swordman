@@ -60,6 +60,8 @@ Use tokens in maybe 1 of 5 lines. Lines must read fine with any value substitute
 | `ambushed` | Phase 28 (4.9): someone met on the road attacks you, or an avenger comes for you (token `{enemy}`, their full name) | 4 |
 | `rival_rise` | Phase 28 (4.10b): your rival broke into a new realm (token `{rival}`, their given name) | 4 |
 | `rank_rise` | Phase 28 (4.8): you entered the top ten of a ranking (tokens `{board}` e.g. "the Heaven Ranking", `{place}` e.g. "#7") | 4 |
+| `boss_awake` | v1 add-on (bosses.md): a legendary boss wakes in the Hunt (token `{beast}`: "Vermilion Bird" / "Mirror Wraith" — keep lines true for both, no feathers) | 4 |
+| `boss_won` | v1 add-on: you beat a legendary boss (token `{beast}`) | 4 |
 
 ## The 14 personalities
 Each one is: id · name · voice in one line · what drives the jokes · two sample lines.

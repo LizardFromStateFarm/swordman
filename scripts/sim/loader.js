@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..', '..')
 // Load order mirrors renderer/index.html (sprites, platform-storage, ascii-renderer, game.js skipped:
 // they're UI/Node-bridge only and the logic never references them).
 const DATA_FILES = ['stages', 'techniques', 'events', 'items', 'locations', 'enemies', 'recipes',
-                    'beasts', 'talismans', 'arena', 'arts', 'sects', 'sect-buildings', 'sect-war', 'sect-branches', 'npc-sects', 'bloodline', 'tempering', 'lifespan', 'family', 'succession', 'family-events', 'clan-legacies', 'automation', 'settings', 'personalities', 'banter-lines', 'names', 'soul', 'world-population', 'npc-lives']
+                    'beasts', 'talismans', 'arena', 'arts', 'bosses', 'sects', 'sect-buildings', 'sect-war', 'sect-branches', 'npc-sects', 'bloodline', 'tempering', 'lifespan', 'family', 'succession', 'family-events', 'clan-legacies', 'automation', 'settings', 'personalities', 'banter-lines', 'names', 'soul', 'world-population', 'npc-lives', 'tutorial']
   .map(f => `assets/data/${f}.js`).concat(['assets/scenes/sect-base-scene.js'])
 const LOGIC_FILES = ['renderer/engine/persons.js', 'renderer/engine/game-state.js',
   ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war', 'banter', 'notifications', 'minigames'].map(f => `renderer/game/${f}.js`),

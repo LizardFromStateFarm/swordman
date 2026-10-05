@@ -284,5 +284,5 @@ derived.maxHealth, derived.healthRegenSeconds, derived.btQiKeepBody
   writes a reward. `FlowPuzzle` lives in minigames.js, which the sim loader now loads (it is DOM-free at load).
 - A Strikes run faster than `strikes × sweepMs × 0.25` scores 0 (anti-script); a result array longer than 8 is clamped.
 - Starting a mini-game spends its charge; giving up (✕ / Esc) keeps it spent (said on the ✕ title).
-- The sim bot does not temper or play the mini-games yet (QA & Balance).
+- The sim bot tempers, answers the crisis + tier trials, uses Auto-Temper (idle profiles) and plays both mini-games (active + casual) since the final QA pass (bot.js `body()` / `minigames()`).
 - Smoke: `scripts/smoke/scenarios/body.js` (4 modes, both games played through the real overlay).

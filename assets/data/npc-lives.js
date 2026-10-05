@@ -83,6 +83,7 @@ const NPC_LIVES = {
   // ── Upkeep
   pruneEvery: 10,             // years between prunes of the long dead
   pruneAfter: 200,            // a forgettable dead person is forgotten this long after death
+  pruneStrangerAfter: 40,     // …and one you never knew (no fam / rel / memory of you) this soon (final QA: save size)
   logFromStage: 10,           // a classmate's breakthrough is news from Foundation Building on
 }
 
@@ -335,6 +336,9 @@ const NPC_ENC = {
   flee: { base: 0.55, perStage: 0.07, body: 0.04, coward: 0.15, min: 0.1, max: 0.9 },   // + (your stage − theirs) × perStage + your body tier × body
   yieldStones: [0.15, 40],     // hand over 15% of your stones (at least 40, never more than you have)
   lossStones: 0.25,            // beaten in an ambush they meant as a robbery: they take a quarter
+  // Final QA (user 2026-10-04): an avenger's lethal ambush can be ended with a blood price — stones × (their stage + 1) / 4
+  // × (1 + gap × perGap when they outclass you), and Honour (the deed bloodPaid). Tempers in `refuse` want blood, not silver.
+  bloodPrice: { stones: 180, perGap: 0.25, refuse: ['psycho', 'demonking'] },
   rescueHealth: [8, 22],       // what helping costs you (more where the place outclasses you)
   rescueGift: 0.5,             // chance a rescued one presses a reward on you (stones, or one of their arts if they can teach it)
   rescueKarma: 3, walkKarma: -1, robKarma: -6, robStones: [60, 260],   // stones × (their stage + 1) / 4
@@ -346,12 +350,13 @@ const NPC_ENC = {
   // How a card moves their feeling toward you (rel, −100..100), and the line they keep (mem).
   rel: { helped: 40, robbed: -70, walked: -10, teamup: 20, betrayed: -60, split: 10, yielded: 12, contestWon: -10, contestLost: 6,
          talked: 10, favour: 6, favourRefused: -5, declined: -8, declinedProud: -18, invited: 30, pointed: 20, passed: 0, paid: 8, fled: -6,
-         spared: 30, raised: 25, humbled: -35, beatYou: 4, lostTo: -8, sparred: 8 },
+         spared: 30, raised: 25, humbled: -35, beatYou: 4, lostTo: -8, sparred: 8, bloodPaid: 45 },
   memMax: 6,
   // A wrong deep enough that they swear to repay it (p.feud → you): robbed while wounded, betrayed on the road, humbled
   // by a proud heart. They may come back as an ambush.
   feudOn: ['robbed', 'betrayed'],
   // The stance (the player's bearing on the road): pre-selects an answer per card. Never answers for you.
+  // A list = fallbacks in order (a lethal ambush locks "yield", so Wary falls to the blood price, then flight).
   stances: [
     { id: 'wary',      label: 'Wary',      hint: 'Avoid trouble: yield or flee, decline, walk on.' },
     { id: 'courteous', label: 'Courteous', hint: 'Keep the peace: share, help, talk.' },
@@ -360,7 +365,7 @@ const NPC_ENC = {
   ],
   stanceDefault: 'courteous',
   preselect: {
-    ambush:    { wary: 'yield', courteous: 'flee', bold: 'fight', ruthless: 'fight' },
+    ambush:    { wary: ['yield', 'price', 'flee'], courteous: ['price', 'flee'], bold: 'fight', ruthless: 'fight' },
     challenge: { wary: 'decline', courteous: 'spar', bold: 'spar', ruthless: 'blood' },
     rescue:    { wary: 'walk', courteous: 'help', bold: 'help', ruthless: 'rob' },
     contest:   { wary: 'yield', courteous: 'split', bold: 'fight', ruthless: 'fight' },
@@ -426,6 +431,7 @@ const NPC_ENC_TEXT = {
     fled: 'You ran from me at {place}.', spared: 'You spared my life at {place}.', raised: 'You beat me at {place} and helped me up.',
     humbled: 'You shamed me in the dust at {place}.', beatYou: 'I beat you at {place}.', lostTo: 'You beat me at {place}.',
     sparred: 'We crossed blades at {place}.',
+    bloodPaid: 'You paid the blood price at {place}. It is ended.',
   },
 }
 
@@ -441,6 +447,7 @@ const NPC_REP = {
     robbed: { i: 8 }, betrayed: { i: 8 }, humbled: { i: 2 }, walked: { i: 1 }, denounced: { i: 5 }, murdered: { i: 6 },
     betrayedSworn: { i: 15 },
     slewHunter: { h: 4 },        // 4.8: you cut down a genius hunter
+    bloodPaid: { h: -3 },        // final QA: you bought off an avenger (silver for blood is no glory)
   },
   max: 100,
   fadePerYear: 0.012,        // both scores fade toward 0 by this share per game year (deeds are forgotten slowly)

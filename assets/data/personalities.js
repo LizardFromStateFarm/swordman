@@ -28,7 +28,8 @@ const BANTER_TRIGGERS = ['idle', 'bt_success', 'bt_fail', 'bt_fail_streak', 'rar
   'hidden_master',   // Phase 28 (4.6): an old monster breaks seclusion
   'ambushed',   // Phase 28 (4.9): someone met on the road attacks you
   'rival_rise',   // Phase 28 (4.10b): your rival broke into a new realm
-  'rank_rise']   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+  'rank_rise',   // Phase 28 (4.8): you entered the top ten of a ranking ({board} {place})
+  'boss_awake', 'boss_won']   // v1 add-on (bosses.md): a legendary boss wakes / is beaten ({beast})
 const BANTER_MIN_LINES = { idle: 25, other: 4, genericIdle: 20, genericOther: 2 }
 
 // Idle chatter interval (seconds, min–max) per banterFreq setting. 'off' = silent (no contextual lines either).

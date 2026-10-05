@@ -102,6 +102,15 @@ function collectAttention(s, gs) {
       : 'They came to you with something in mind. Each waits until you answer.'
     add(urgent ? 'urgent' : 'ready', 'met-road', urgent ? 'sword' : rival ? 'duel' : 'explore', title, sub, 'explore')
   }
+  // v1 add-on (docs/systems/bosses.md): a legendary boss wakes (once a life), and the soul techniques' choices
+  const freshBoss = Object.entries(s.world?.bosses || {}).find(([id, b]) => b.fresh && gs?._bossLock?.(id) == null)
+  if (freshBoss) add('ready', 'boss-awake', 'beast', `Something legendary stirs`, `The ${(typeof BOSSES !== 'undefined' && BOSSES[freshBoss[0]]?.name) || 'legend'} can be faced in Roam → Hunt. It never kills, and it teaches a secret your soul will keep.`, 'hunt')
+  if (f.mirrorTurn) {
+    const c = (f.children || []).find(x => x.id === f.mirrorTurn.childId)
+    add('urgent', 'mirror-turn', 'mask', `${c?.given || 'Your mirror child'} wants your seat`, 'It wears your face, and your ambition. Yield, face it, or send it away.', 'family')
+  }
+  if (f.seedCrisis) add('urgent', 'seed-crisis', 'broken', `${f.seedCrisis.spouse} is hurt`, 'A child made without them. Reassure them, defend your choice, or dismiss it.', 'family')
+  if (s.clone?.linger) add('urgent', 'clone-linger', 'split', 'Your other self does not come home', `It sits at ${s.clone.linger.place}, with your own eyes. Draw it back in, or let it go.`, 'explore')
   const road = f.encounters || []
   if (road.length) {
     const hasRecipe = road.some(e => e.kind === 'recipe')   // Phase 44: a stranger carrying a formula

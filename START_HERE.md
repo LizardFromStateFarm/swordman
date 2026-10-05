@@ -70,6 +70,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Immortal Island (仙岛) + ascension petitions | ⬜ Phase 26 (planned) |
 | Deep Sect Management (offices, Recruiter, manual recruiting) | ⬜ Phase 27 (planned) |
 | Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ◐ Phase 28: spec approved 2026-10-03 (docs/systems/living-world.md); **4.2 ✅** one registry of persons (family/arena/disciples mirrored, real sect masters + elders, senior-elder succession) + the person card (UI 7.7); **4.3 ✅** the light world sim (people age, break through or fall to backlash, the road and feuds, wed, have children, die of old age as a backstop, Ascend) + ~60 classmates per life + 世 World → Class (UI 7.8); **4.6 ✅** the replacement controller (realm bands refilled by awakening waves, wanderers, the band below breaking through faster and hidden masters who seize or found a sect; the elder draft) + the merged 世 World → Chronicle with "The world by realm" (UI 7.8); **4.4 + 4.5 ✅** the heavy tier (≤ 150, your class reserved) living 12 seasonal goals (duels, feuds with one avenger, betrayals that seat / kill / split, sworn brotherhood, weddings, joins, founding) + known-first casting of suitors, strangers, arena duelists and gate recruits with the "known face" pill + the card's "Their life now" (UI 7.7); **4.7 ✅** 世 World → People (search, filters, sort, ★ pins capped at 12 — a pinned life runs in full and is never forgotten — news of the pinned, the card inline) + tappable names in the Events log (UI 7.75); **4.9 ✅** encounters: Roam → Explore → "Met on the road", 7 NPC intents + gate visitors, a never-expiring queue of 6, your bearing (pre-selects only), every answer writes rel + a memory line, avengers return as lethal ambushes, road fights on the battle page (UI 7.7); **4.10 ✅** memory (each memory's +/− behind a "Why"), Honour / Infamy + rumours, grudges whole / debts halved into the next life, the person card's 8 deeds (gift · spar · duel · teach · invite · swear · denounce · court) on a real-time per-person wait, sworn siblings in your wars, Path → Character "Your name" (UI 7.75); **4.10b ✅** Your Rival (UI 7.9); **4.8 ✅** the Heavenly Rankings (2026-10-04): World → Rankings (Your Class / Rising Dragon / Under Heaven, rank power + why, Veil your name, titles, honour roll), challengers from below, genius hunters, sect invitations, the Class duel (UI 8.0); **4.11 ✅** perf pass (year turn spread over frames: worst frame 21.5 → 11.6 ms); next the final QA & Balance pass |
+| **Interactive tutorial** (coach marks + the Guide) | ✅ **Task 1.23** (2026-10-04): a spotlight + short card the first time you meet each system (a 10-step HUD tour, every view, 5 unlocks incl. the first battle); seen-state across all saves (soul record); the Guide in ⚙ Settings (replay, tips on/off, show every tip again); veterans skip it once with a toast (UI 7.8; docs/systems/tutorial.md) |
 
 > **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
 > era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
@@ -91,16 +92,25 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ## UX Debt — known gaps in what the player can see / do (add here; remove when fixed)
 
+- **Interactive tutorial (1.23, 7.8 PASS):** the older per-system first-time hints (road, deeds, rival, rankings, people…)
+  still exist beside the coach marks — fold them into TUTORIAL_LESSONS; the "Tips are off" toast draws over Settings for a
+  moment (app-wide toast layer above overlays); "Turn tips off" is a small 10px link; lesson text is a first draft (no
+  per-lesson art); the sim bot does not touch tips (UI only).
+
+- **Legendary bosses + soul techniques (v1 add-on, 7.6 PASS):** the Bird's real art is in (asset 8.2), but at Overlay size
+  its head and crest blur into the near wing and the teal tail ribbons fade; on phone the boss gate checklist wraps its right column to 2–3 lines; Overlay's Mirror Turns card
+  is long; the Essence countdown on the Seed card updates on re-render, not every second; mirror_born / clone_shattered /
+  clone_lingers have no banter (boss_awake + boss_won do since the final QA pass).
+
 - **Heavenly Rankings (4.8, 8.0 PASS):** in Overlay the first-time hint + standing card push the board below the fold; the
-  gold accent on row #1 reads like the You row's highlight; the sim bot never uses the Veil or the Class duel, and accepts
-  every invitation on a bold bearing (QA pass).
+  gold accent on row #1 reads like the You row's highlight; (the sim bot uses the Veil, the Class duel and judges
+  invitations since the final QA pass).
 
 - **Your Rival (4.10b, 7.9 PASS):** the sim bot never starts deeds from World → Rival; the phone bottom nav is translucent over
   scrolled content (pre-existing); a blood feud with no grown child or spouse never brings a kin card (by design, but untold).
 
 - **Memory + reputation + card deeds (4.10, 7.75 PASS):** no reviewed shot of the closed "Your name" tile; the success toast
-  can sit over the card header on phone; in Overlay the deeds sit below a long card (a scroll); the sim bot never uses the
-  card deeds (QA pass); a friend's gift / an enemy's slander is a log line only (no attention item).
+  can sit over the card header on phone; in Overlay the deeds sit below a long card (a scroll); a friend's gift / an enemy's slander is a log line only (no attention item).
 
 - **Met on the road (4.9, 7.7 PASS):** the lover / formula stranger cards still use the old suitor-card look in the same
   list (give them the encounter row shell); the bearing chips are small in Expanded / Desktop; in Overlay the open card's
@@ -293,6 +303,149 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ---
 
 ## Last Session — UPDATE THIS EVERY SESSION
+
+```
+Date: 2026-10-05 (user present) — part 103
+Agent: **The intro scene** (user: a little intro explaining what you do + the theme; picks: ink scroll cards · first game +
+  replayable · "grand with a wink, a bit sarcastic about the genre, no forced comedy"; the user wrote the 5 cards' text).
+  - The `intro` lesson (first in TUTORIAL_LESSONS, `intro: true`) → new renderer/game/intro.js (IntroUI): an opaque dotted
+    night (stars, a dotted ridge, motes tinted per card), title + text + pips + Back / n of 5 / Next → Begin, Skip; tap / keys;
+    Reduced motion; follows ⚙ Text size. Plays before the HUD tour on a new game; Settings → Guide replays it; veterans skip it.
+  - Tests: npm test clean · checks **1798 ok** (tutorial.js: two start lessons, 5 cards) · smoke intro.js (new) + tutorial.js
+    (now skips the intro first) pass · build:web OK. Visual Review Gate **7.9 PASS** (+ 3 polish applied).
+  Docs: tutorial.md ("The intro"), qa-sim.md, ui-review.md, CLAUDE.md tree, final-qa-changelog.md (#23). Uncommitted.
+  Next: unchanged (the user reviews docs/final-qa-changelog.md → commit → release).
+```
+
+```
+Date: 2026-10-05 (user present) — part 102
+Agent: **Tutorial: the Spiritual Root** (user: highlight and explain the root in Character, tell them elixirs in Pack make
+  it better). assets/data/tutorial.js: Path → Character gains "Your Spiritual Root" (the root chip spotlit; ×1/×1.4/×1.8/×3,
+  elements) + "A better root" (Pack → Craft → Elixirs); Craft gains "Root elixirs" (the Elixirs tab spotlit; what each
+  elixir does). game.js: craft sub-tabs carry data-sub. tutorial.js (UI): targets scroll to the centre of their pane.
+  New smoke scenarios/tutorial-root.js (4 modes). Tests: npm test clean · checks 1797 ok · smoke tutorial + tutorial-root
+  pass. Visual Review Gate **7.9 PASS** (+ 1 polish applied). Docs: tutorial.md, qa-sim.md, ui-review.md. Uncommitted.
+  Next: unchanged (the user reviews docs/final-qa-changelog.md → commit → release).
+```
+
+```
+Date: 2026-10-04 → 05 (overnight; user away: "dont prompt me just finish testing and make changes on your own. keep a
+  list of the old values and the new values") — part 101
+Agent: **Final QA & Balance pass, step 3 and wrap-up.** Every change, old → new + why: **docs/final-qa-changelog.md**
+  (read it first). Nothing is committed.
+  - Sims: 500 h × 3 profiles × 6 seeds. Casual Immortality median **399.5 h, life 35** (4/6 runs by 500 h) — inside the
+    accepted band, so **no balance knobs were turned**. Health clean after the fixes below.
+  - Bugs fixed (all pinned by checks): a former sect always comes back (`_wsKeepGates`, user call); dead people kept sect
+    seats (`_vacateSeat` in `_killPerson` + a yearly safety net); a stale branch head made a lost branch war kill the
+    clan head (`_repairLines`); dev presets crashed a running game (listeners muted); save size (dead strangers pruned after
+    40 years; worst casual 722 KB); two layout overflows (World → Class causes wrap; the phone Sect strip fits) — UI review
+    **7.75 PASS**; stale smoke assertions; harness false positives (fam bump, Immortality median).
+  - Content: banter for `boss_awake` / `boss_won` (116 lines). Tools: `npm run smoke` (scripts/smoke/run-all.js),
+    checks/final-qa.js.
+  - Tests: npm test clean · npm run checks **1797 ok** · npm run smoke **55/55** · dist + build:web OK · sim:quick healthy.
+  Docs: final-qa-changelog.md (new), qa-sim.md, living-world.md, npc-sects.md, lineage-sect.md, bosses.md,
+  banter-writing-guide.md, ui-review.md, commands.html, CLAUDE.md tree, PLAN (43g ✅, wrap-up step 6), this file.
+  **For the user:** the changelog's "Not changed — for you to decide" list (7 items: active save size, ordeal costs,
+  member-war gap, casual FB pacing, old-age share, two stale sim flags, three silent banter moments).
+  Next: the user's review of the changelog → commit → v1 release steps (Android internal testing via `npm run
+  release:android`, needs the user).
+```
+
+```
+Date: 2026-10-04 (user present) — part 100
+Agent: **Final QA & Balance pass, step 2: sim bot coverage + targets** (no balance changes).
+  - bot.js learns the last systems (each throttle rolls once per check-in, `once()`): body() — tempering (best XP/s,
+    ordeals now and then, rare Blood Forging), the crisis, tier trials, scar mending, Auto-Temper for idle profiles;
+    minigames() — Strikes + Meridian Flow (solved from FlowPuzzle; started one check-in, finished the next);
+    sectPolitics() — old guard, raze vow, fund a joined sect's halls, petition/challenge the master, relations
+    (trade/alliance/war/tribute/spy/poach/gift · spar/urge); deeds() — the person card's deeds; ranks() — the Class
+    duel, afk Veil. Invitations: accepted only with no sect / Outer rank and not by a founder who can found (no sect-hop).
+  - Targets (profiles.js): FIRST_ASCENSION_H.casual [380,540], GENERATIONS_TO_ASCEND [30,45] — now checked (report
+    "Immortality" line + flags); LIFE_TARGETS_H casual [8,20] / active [1,5] (were [20,40] / [5,15]; re-banded to the
+    accepted ~37-life pace). Report: "Body, sect politics, deeds, rankings — final QA coverage" table; FEATURES +5.
+  - Fixes the coverage surfaced: **game** — sectBlessingInfo() crashed on a joined sect with no world record (a sect taken
+    over in an earlier life, joined again; the 43e open gotcha) → ×1 fallback, no halls (checks/sect-takeover.js +2).
+    **harness** — health invariant reads derived.maxHealth (body tiers > 100); disciples_over_cap counts the main hall
+    only (branches); the save round-trip ignores fam/seenY of people a catch-up log line named.
+  - Tests: npm test clean · npm run checks **1780 ok** · 24 h + 200 h sims (3 profiles, 1 seed) **healthy**
+    (0 errors / violations, 25 save round-trips).
+  - Seen, not acted on: ordeals almost never start (2 in 200 h active; their item costs, e.g. 6 celestial herbs, are
+    rarely on hand) and the crisis never fired, so that path is still unexercised; active reached Immortality at
+    65 h (life 22) in the one 200 h seed; casual didn't reach it within 200 h.
+  Docs: qa-sim.md (Final QA pass → step 2), npc-sects.md, living-world.md, body-constitution.md, PLAN, this file. Uncommitted.
+  - **User: "it should definitely come back for sects you used to own" (just fix the bug, no new reclaim rules).** Cause:
+    `_lineageRecord()` always minted `defId: null`, so a sect taken over and left behind at death lost its gate. Fixed:
+    `_wsFromOwnSect` keeps `takenOver.defId`; new `_wsKeepGates()` (every world year, the 46 migration, joinSect, after
+    disbanding a taken sect) restores any gate with no living record; any gate-holder's ashes always rise. checks +10
+    (sect-takeover.js) → **1788 ok**. Docs: npc-sects.md (43e gotchas), lineage-sect.md, qa-sim.md.
+  Next: step 3 — the full multi-seed sim (500 h+) + tuning against the targets; then save-size pruning, checks, smoke,
+  the UX walkthrough.
+```
+
+```
+Date: 2026-10-04 (user present) — part 99
+Agent: **Packaging fix + the Vermilion Bird's real art** (user: "the art is in example_art/vermabird.png and can you do
+  the packaging fix now").
+  - Packaging: package.json dist + dist:mac --ignore is now an allow-list (main.js, preload.js, package.json, renderer/,
+    assets/). Rebuilt: dist/Cultivator Idle-win32-x64 = 3.6 MB, no keystore / android / scripts / node_modules; the exe
+    boots (CDP page loads). docs/commands.html notes the list. **Found: the old dist/*.zip builds (build15,
+    Idlebuild16, idlebuild17) and dist/win-unpacked contain the upload keystore files** — reported to the user, not deleted.
+  - Bird: scripts/art/ink-bake.js gains pale / erode / flipX knobs; ink-bake.json spec (width 175); new dot map
+    assets/sprites/beasts/vermilion_bird.png; INK_BEASTS.vermilion_bird is its own raster beast (wing + tail regions,
+    embers), facing the cultivator. Asset gate **8.2 PASS**; wing beat raised after review (a bigger tail sway opened a seam:
+    reverted). bosses.js smoke now shoots the Bird (prepare + fight) in all 4 modes.
+  - Tests: npm test clean · npm run checks pass · smoke bosses.js + ink-beasts-sheet.js zero console errors.
+  Docs: art-engine.md (bake knobs), bosses.md, ui-review.md, commands.html, PLAN, this file. Uncommitted.
+  Next: the final QA & Balance pass at step 2. The old dist zips stay (user 2026-10-04: no need to delete them).
+```
+
+```
+Date: 2026-10-04 (user present) — part 98
+Agent: **Task 1.23: the interactive tutorial** (user picks: neutral guide text · a dismissable spotlight that plays only
+  when nothing else is open · seen-state across all saves · the Guide inside ⚙ Settings).
+  - Data: new assets/data/tutorial.js (TUTORIAL_LESSONS 36 + TUTORIAL_GROUPS): the 10-step HUD tour, one lesson per
+    NAV view (30), unlocks (Breakthrough ready, attention, Meridian Flow, automation) + the first battle (inBattle).
+  - Engine (soul section): soul.tut { seen, off, init } + tutorialInfo / markTutorialSeen / setTutorialsOff /
+    resetTutorials / initTutorials; _normSoul migrates pre-1.23 files. Nothing touches _s.
+  - UI: new renderer/game/tutorial.js (TutorialUI: #tut-overlay spotlight + card, below/above/beside placement, keyboard
+    capture so no key reaches a fight, the Guide via settingsUI.guide). Veteran saves (stage ≥ 3 or gen > 1) mark all
+    seen once + a toast. cdp.js holds tips in every smoke scenario (localStorage ci:smoke-no-tips).
+  - Tests: npm test clean · npm run checks **1778 ok** (new checks/tutorial.js 25) · smoke scenarios/tutorial.js (new; 4
+    modes) zero console errors · Visual Review Gate **7.8 PASS** (cycle 1; 2 polish fixes applied).
+  - Fixed on the way: smoke nav-attention.js expected 4 automations (Auto-Temper made 5).
+  Docs: tutorial.md (new), index.md, qa-sim.md, ui-review.md, PLAN (step 5 ✅), CLAUDE tree, this file. Uncommitted.
+  Next: resume **the final QA & Balance pass** at step 2 (sim bot coverage) with the targets update.
+  Waiting on the user: the dist allow-list edit; the Vermilion Bird picture.
+```
+
+```
+Date: 2026-10-04 (user present) — part 97
+Agent: **Final QA pass started → paused (user) for two v1 add-ons; task 1.22 Legendary Bosses + Soul Techniques built.**
+  - QA step 1 (baseline): npm test clean · checks pass · build:web + dist build · 27-run sim + a 1000 h long run.
+    Findings → user: (a) **dist ships the Android upload keystore + keystore.properties** (+ ~370 MB of dev files): the
+    package.json `--ignore` must become an allow-list (my edit was blocked by the permission classifier — **user to apply**:
+    `--ignore="^/(?!(main.js|preload.js|package.json|renderer|assets)(/|$))"` on dist + dist:mac; delete dist/);
+    (b) casual Immortality ≈ 37 lives / ~430–475 h — **user accepted** (sim targets to update in the QA pass);
+    (c) road deaths ≈ half of casual lives, caused by an **in-life avenger chain** (killing an ambusher makes kin avengers),
+    not by inheritance (1 in 43). User-approved fix: **Pay the blood price** on a lethal avenger card (stones by realm +
+    gap, Honour −3, feud ends; psycho / demon-king tempers refuse; Wary/Courteous pre-select it; a preselect list =
+    fallbacks — Wary no longer pre-selects Fight). Casual road deaths 25/51 → 20/46 lives. The "fewer cross-life feuds"
+    option was **not** built (data showed no effect) — told the user.
+    Harness: save-roundtrip false positive fixed (road brushes); road deaths by card in the report; probe-road-lethality.js.
+    (d) save size grows unbounded with lives (2.6 MB after 650 active lives; ~600 KB at 37) — prune long-dead strangers
+    in the QA pass.
+  - **1.22 (user: "2 techniques and 2 boss fights"; picks: Hunt bosses, soul-kept, life 3 / life 6, never lethal, mirror
+    heir with risks, the user supplies the Bird's picture, the clone = two expeditions at once).** Spec → as built:
+    docs/systems/bosses.md. New: assets/data/bosses.js, checks/bosses.js (56), probe-boss-fights.js, smoke
+    scenarios/bosses.js; items vermilion_ash_pill / mirror_shard / artifact_mirror_soul_plate (+ boss-only recipe);
+    placeholder INK_BEASTS.vermilion_bird. Tuned: ~30% at the gate, ~85% three stages up, 9–10 turns. Sim bot fights
+    bosses, plants seeds, runs the clone. Visual Review Gate 7.2 FAIL → **7.6 PASS**.
+  - Tests: npm test clean · npm run checks all pass · smoke bosses.js zero console errors · 60 h active sim healthy.
+  Docs: bosses.md, qa-sim.md, ui-review.md, index.md, PLAN (wrap-up steps 4–6), CLAUDE tree, this file. Uncommitted.
+  Next: **1.23 Interactive tutorial** (coach marks on unlock, skippable, replayable Guide) — spec + assessment first;
+  then resume the final QA pass at step 2 (sim bot coverage) with the targets update.
+  Waiting on the user: the dist allow-list edit; the Vermilion Bird picture (example_art/ → bake → asset gate ≥ 8.0).
+```
 
 ```
 Date: 2026-10-04 (user present) — part 96

@@ -127,7 +127,9 @@ Three linked changes to the reincarnation ↔ sect ↔ bloodline loop, requested
 5. `clan.sect` (stipend/enemy snapshot) and its world record never disagree on `hallLevel` after `_beginLife`.
 
 ## Gotchas
-- `ownSect` stores no `defId`; a lineage sect synthesizes its def from the record (name + neutral effects).
+- `ownSect` stores no `defId`; a lineage sect synthesizes its def from the record (name + neutral effects). A taken-over
+  sect's gate is `ownSect.takenOver.defId` — since the final QA pass (2026-10-04) `_wsFromOwnSect` really keeps it on the
+  record (it was documented but never built), and `_wsKeepGates()` restores any gate left without a record (npc-sects.md → 43e gotchas).
 - `_wsByDef` is used by `_wsMine`; a lineage membership must resolve by record id, so `_wsMine` gains an id fallback.
 - Removing catch-up speeds the re-climb only through BQ → 2.8-style tuning lives in the QA pass (46e).
 - The interlude is already busy (bet, bequest, chronicle); the inheritance is a **log line in the chronicle**, not a

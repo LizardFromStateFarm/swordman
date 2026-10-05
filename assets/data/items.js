@@ -34,6 +34,11 @@ const ITEMS = {
     desc: 'Distilled malice, taken from a slain demon.',
     type: 'resource', stackable: true, category: 'mat',
   },
+  mirror_shard: {   // v1 add-on (bosses.md): the Mirror Wraith's only remains — a craft material for the Mirror-Soul Plate
+    id: 'mirror_shard', name: 'Mirror Shard', nameCN: '镜魅碎片',
+    desc: 'A sliver of the Wraith. Look into it and something looks back, wearing your face.',
+    type: 'resource', stackable: true, category: 'mat',
+  },
   poison_herb: {
     id: 'poison_herb', name: 'Poison Herb', nameCN: '毒草',
     desc: 'A herb that kills as readily as it heals.',
@@ -138,6 +143,13 @@ const ITEMS = {
   pill_nine_turn: {
     id: 'pill_nine_turn', name: 'Nine-Turn Restoration Pill', nameCN: '九转还魂丹',
     desc: 'Restores Health and Realm Integrity to their fullest.',
+    type: 'pill', stackable: true, category: 'pill',
+    effect: { type: 'heal', health: 999, integrity: 999 },
+  },
+  // v1 add-on (bosses.md): the Vermilion Bird's heart, pressed into a pill — only from the boss
+  vermilion_ash_pill: {
+    id: 'vermilion_ash_pill', name: 'Vermilion Ash Pill', nameCN: '朱雀灰丹',
+    desc: 'Ash from a bird that will not stay dead. Restores Health and Realm Integrity to their fullest.',
     type: 'pill', stackable: true, category: 'pill',
     effect: { type: 'heal', health: 999, integrity: 999 },
   },
@@ -289,6 +301,13 @@ const ITEMS = {
     desc: 'Qi/s ×1.4.',
     type: 'artifact', stackable: false, category: 'equip',
     effect: { type: 'qps_mult', value: 1.4 },
+  },
+  // v1 add-on (bosses.md): crafted from the Mirror Wraith's shards; its formula is learned by taking the Wraith's heart
+  artifact_mirror_soul_plate: {
+    id: 'artifact_mirror_soul_plate', name: 'Mirror-Soul Plate', nameCN: '镜魂盘',
+    desc: 'Qi/s ×1.5. A second self sits in it, cultivating when you do.',
+    type: 'artifact', stackable: false, category: 'equip',
+    effect: { type: 'qps_mult', value: 1.5 },
   },
 }
 

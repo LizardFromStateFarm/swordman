@@ -31,6 +31,7 @@ class Bot {
 
   // One check-in: keep acting until nothing more to do.
   checkIn() {
+    this._ci = (this._ci || 0) + 1   // check-in counter: once() throttles roll at most once per check-in
     this.interlude()   // 2.6d: a life that ended between check-ins (or during the last one) is resolved first
     this.rec.checkIn(this.s)
     this.warOrders()
@@ -40,7 +41,7 @@ class Bot {
       this.interlude()   // an action this check-in may have ended the life — never act on an unborn one
       const before = this.s.spiritStones
       const acted = this.family() || this.legacies() || this.soul() || this.arts() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
-        this.elixirs() || this.heal() || this.memberWar() || this.beasts() || this.hunt() || this.arena() || this.sect() || this.ownSect() || this.war() ||
+        this.elixirs() || this.heal() || this.memberWar() || this.beasts() || this.legends() || this.body() || this.sectPolitics() || this.deeds() || this.ranks() || this.hunt() || this.arena() || this.sect() || this.ownSect() || this.war() ||
         this.pushExpedition() || this.expedition()
       if (!acted) break
       // A life-ending action (pass_mantle / a death) books the life-reset purse delta too — the metrics
@@ -70,7 +71,7 @@ class Bot {
     if (this.profile === 'active') return false
     const s = this.s, a = s.automation
     let did = false
-    for (const key of ['autoExplore', 'autoSectMissions', 'autoCraft', 'autoBreakthrough']) {
+    for (const key of ['autoExplore', 'autoSectMissions', 'autoCraft', 'autoBreakthrough', 'autoTemper']) {
       if (!a[key] && this.gs.automationUnlocked(key)) { this.gs.setAutomation(key, true); did = true }
     }
     if (a.autoCraft) {
@@ -325,6 +326,7 @@ class Bot {
     // 1.8b-3b / 1.14a: a fight you're in is played on moves (the default policy, like beast battles) and the parry QTE
     // lands at a per-profile rate; 'active' yields a hopeless lethal fight when they'd likely accept.
     if (f.fight?.kind === 'beast') return this.battle()   // Phase 35: beast battles have their own end choice
+    if (f.fight?.kind === 'boss') return this.bossBattle()   // v1 add-on: a legendary boss (bosses.md)
     if (f.fight?.over === 'won') {       // A6-3a: a won fight waits for the end choice. 'active' makes friends where it can
       const ch = this.gs.personFightChoices()   // (a debt), and finishes / humbles the rest; casual/afk pick at random.
       const pick = this.profile === 'active'
@@ -486,7 +488,11 @@ class Bot {
       const st = this.rand() < 0.1 ? 'ruthless' : want
       if (road.stance !== st) this.gs.setRoadStance(st)
       const c = this.gs.roadCardInfo(road.cards[0].id)
-      const a = c.answers.find(x => x.id === c.pre && !x.lock) || c.answers.find(x => !x.lock)
+      // 4.8 invitations (final QA): the bearing alone made bold/ruthless accept every one and sect-hop. Accept only
+      // without a sect, or from a low rank in it, and never on the founder path once founding is within reach.
+      let pre = c.pre
+      if (c.kind === 'invite') pre = (!this.s.sect.id || (this.s.sect.rank || 0) < 1) && !(this.path === 'founder' && this.canFound()) ? 'accept' : 'decline'
+      const a = c.answers.find(x => x.id === pre && !x.lock) || c.answers.find(x => !x.lock)
       if (a) return this.do('road_' + c.kind + '_' + a.id, this.gs.answerRoadCard(c.id, a.id))
     }
     // Encounters: a formula-carrier → help to learn it (mostly) or rob; a lover encounter → seduce 1 in 4
@@ -582,7 +588,7 @@ class Bot {
     }
     const res = this.gs.attemptAscension()
     this.rec.act('ascend', true)
-    if (res.success) this.rec.milestone('first_ascend_success')
+    if (res.success) { this.rec.milestone('first_ascend_success'); this.rec.immortalGen ??= this.s.generation }   // final QA: lives to Immortality
     return true
   }
 
@@ -770,6 +776,256 @@ class Bot {
       return this.do('beast_move', res)
     }
     return this.do('beast_retreat', this.gs.fightExchange('retreat'))
+  }
+
+  // ── v1 add-on (docs/systems/bosses.md → "Sim bot"): legendary bosses + the soul techniques ──
+  // A boss fight: parry at the profile's rate, the default policy, retreat when nearly thrown down (active only, so the
+  // try still counts). A win: active takes its heart; casual/afk show mercy 1 in 3 (exercises the stronger return).
+  bossBattle() {
+    const s = this.s, fi = s.family.fight
+    if (fi.over === 'won') {
+      const pick = this.profile === 'active' ? 'heart' : this.rand() < 0.33 ? 'mercy' : 'heart'
+      return this.do('boss_' + pick, this.gs.bossFightFinish(pick))
+    }
+    const m = fi.m
+    if (m?.pending) {
+      const rate = { active: 0.6, casual: 0.25 }[this.profile] ?? 0.1
+      return this.do('boss_parry', this.gs.fightParry(Array.from({ length: m.pending.hits }, () => this.rand() < rate)))
+    }
+    if (this.profile === 'active' && (s.health ?? 100) <= 8) return this.do('boss_retreat', this.gs.fightExchange('retreat'))
+    const res = this.gs.fightMove(this.gs._mbPolicy(m))
+    if (res?.over || res?.done) this.rec.fightLen('boss', res.turn)
+    return this.do('boss_move', res)
+  }
+  // Face a woken boss when healthy and the estimate is fair (active ≥ 40%, casual ≥ 50%; afk never climbs). Seed of the
+  // Self: casual/active plant it once a life (the child is an heir candidate); the spouse's hurt is answered; a turning
+  // mirror child is faced when favoured, else sent away (active) or yielded to. The clone: sent to the safest place it
+  // can reach when Qi allows; a lingering clone is drawn back (released 1 in 10, so the world gains your other self).
+  legends() {
+    const s = this.s, f = s.family
+    if (f.seedCrisis) return this.do('seed_crisis', this.gs.answerSeedCrisis(this.profile === 'active' ? 'reassure' : ['reassure', 'defend', 'dismiss'][Math.floor(this.rand() * 3)]))
+    const mt = this.gs.mirrorTurnInfo?.()
+    if (mt && !f.fight) {
+      const pick = (mt.odds ?? 0) >= 0.6 ? 'face' : this.profile === 'active' ? 'send' : 'yield'
+      return this.do('mirror_' + pick, this.gs.answerMirrorTurn(pick))
+    }
+    if (s.clone?.linger) return this.do('clone_linger', this.gs.answerCloneLinger(this.rand() < 0.1 ? 'release' : 'absorb'))
+    if (this.profile === 'afk' || f.fight) return false
+    const want = this.profile === 'active' ? 0.4 : 0.5
+    for (const b of this.gs.bossInfo?.() || []) {
+      if (b.lock || (s.health ?? 100) < this.gs.maxHealth() * 0.9) continue
+      const pv = this.gs.bossFightPreview(b.id)
+      if (pv && !pv.lock && pv.chance >= want) return this.do('boss_face', this.gs.startBossFight(b.id))
+    }
+    const si = this.gs.seedInfo?.()
+    if (si && !si.lock && this.rand() < 0.5) return this.do('seed_plant', this.gs.useSeedOfSelf())
+    const ci = this.gs.cloneInfo?.()
+    if (ci && !ci.lock && !ci.exp && !ci.linger && ci.canPay && s.qi >= ci.qiCost * 2) {
+      const place = [...ci.places].filter(p => p.shatter <= 0.1).pop() || ci.places[0]
+      if (place) return this.do('clone_send', this.gs.startCloneExpedition(place.id))
+    }
+    return false
+  }
+
+  // A throttle that rolls at most once per check-in (the check-in loop calls every method up to 40 times).
+  once(key, p) {
+    this._rolled ||= {}
+    if (this._rolled[key] === this._ci) return false
+    this._rolled[key] = this._ci
+    return this.rand() < p
+  }
+
+  // ── Phase 14 (body-constitution.md → "Sim bot"; final QA): the body ──────────────────────────────────────
+  // The ordeal crisis: 'active' pays Qi when it can, endures at good odds, else eases; casual/afk answer at random.
+  // A ready tier trial: the marrow way when affordable, else the bitter way while healthy ('afk' only takes the marrow).
+  // Tempering: the best XP per second among open drill/spirit methods; 'active' and casual take on an ordeal now and
+  // then, and casual tries the Blood Forging rarely (taint, karma). afk leans on Auto-Temper (automation()).
+  // Mini-games (active + casual): a game started this check-in is finished at the next (the clock must move, or the
+  // Strikes score as unplayed); Strikes hit at the profile's skill, Meridian Flow is solved from the seeded puzzle.
+  body() {
+    const s = this.s, gs = this.gs, b = s.body
+    if (!b || s.family?.fight) return false
+    const crisis = gs.crisisInfo()
+    if (crisis) {
+      const pick = this.profile === 'active' ? (crisis.qiOk ? 'qi' : crisis.odds.chance >= 0.6 ? 'endure' : 'ease')
+        : ['endure', 'ease', crisis.qiOk ? 'qi' : 'ease'][Math.floor(this.rand() * 3)]
+      return this.do('ordeal_' + pick, gs.answerOrdeal(pick))
+    }
+    const tr = gs.tierTrialInfo()
+    if (tr.ready) {
+      if (tr.marrow.ok && tr.marrow.chance >= 0.5) return this.do('body_trial_marrow', gs.attemptTierTrial('marrow'))
+      if (this.profile !== 'afk' && tr.bitter.ok && (s.health ?? 100) >= gs.maxHealth() * 0.8) return this.do('body_trial_bitter', gs.attemptTierTrial('bitter'))
+    }
+    if (b.scars.length && gs.bodyInfo().mendHave > 0) return this.do('mend_scar', gs.mendScar(0))
+    if (this.profile !== 'afk' && this.minigames()) return true
+    if (b.active) return false
+    const list = gs.temperingList().filter(m => m.ok)
+    if (!list.length) return false
+    const blood = list.find(m => m.group === 'demonic')
+    if (blood && this.profile === 'casual' && this.once('blood', 0.02)) return this.do('temper_blood', gs.startTempering(blood.id))
+    const ordeal = list.filter(m => m.group === 'ordeal').sort((a, b) => b.xp - a.xp)[0]
+    if (ordeal && this.profile !== 'afk' && (s.health ?? 100) >= gs.maxHealth() * 0.8 && this.once('ordeal', this.profile === 'active' ? 0.02 : 0.3))
+      return this.do('temper_ordeal', gs.startTempering(ordeal.id))
+    const safe = list.filter(m => m.group === 'drill' || m.group === 'spirit').sort((a, b) => b.xp / b.secs - a.xp / a.secs)[0]
+    if (!safe) return false
+    // afk only starts one by hand while Auto-Temper is still locked (it repeats the last one once unlocked)
+    if (this.profile === 'afk' && s.automation.autoTemper) return false
+    return this.do('temper', gs.startTempering(safe.id))
+  }
+  minigames() {
+    const s = this.s, gs = this.gs, M = s.minigames
+    if (!M) return false
+    const skill = this.profile === 'active' ? 0.6 : 0.3
+    // (the check-in a game was started in is kept on the bot, never on the game's state)
+    this._mg ||= {}
+    if (M.strikes.session && this._mg.strikes !== this._ci) {
+      const n = this.sim.ev('STRIKES.strikes')
+      const hits = Array.from({ length: n }, () => { const r = this.rand(); return r < skill ? 'perfect' : r < skill + 0.3 ? 'good' : 'miss' })
+      const cut = !!(s.body.active && !s.body.active.crisis && this.rand() < 0.5)
+      return this.do('minigame_strikes', gs.finishMinigame('strikes', { hits, use: cut ? 'cut' : 'xp' }))
+    }
+    if (M.flow.session && this._mg.flow !== this._ci) {
+      const ses = M.flow.session
+      const p = this.sim.ev(`FlowPuzzle.generate(${ses.seed}, ${ses.n})`)
+      const rot = (m, t) => this.sim.ev(`FlowPuzzle.rot(${m}, ${t})`)
+      const solve = this.rand() < (this.profile === 'active' ? 0.95 : 0.8)   // now and then a player gives up on one
+      if (!solve) return this.do('minigame_flow_abandon', gs.finishMinigame('flow', { abandon: true }), false)
+      const rotations = p.shown.map((m, i) => [0, 1, 2, 3].find(t => rot(m, t) === p.solved[i]) ?? 0)
+      return this.do('minigame_flow', gs.finishMinigame('flow', { rotations }))
+    }
+    if (M.strikes.session || M.flow.session) return false
+    const info = gs.minigameInfo()
+    const play = this.profile === 'active' ? 1 : 0.5
+    if (info.flow.charges > 0 && !info.flow.tired && s.qi < s.derived.qiCap * 0.7 && this.once('flow', play)) {
+      const r = gs.startMinigame('flow')
+      if (r.ok) { this._mg.flow = this._ci; this.rec.act('minigame_start', false); return true }
+    }
+    if (info.strikes.charges > 0 && this.once('strikes', play)) {
+      const r = gs.startMinigame('strikes')
+      if (r.ok) { this._mg.strikes = this._ci; this.rec.act('minigame_start', false); return true }
+    }
+    return false
+  }
+
+  // ── Phase 43 (npc-sects.md → "Sim bot", 43g): sect politics ───────────────────────────────────────────────
+  // Old guard after a takeover: 'active' wins them over when it can afford it, else lets them go; others at random.
+  // Raze vow in an own war: 'active' vows when the war was provoked; casual 1 in 3 (afk relies on the standing order).
+  // A joined sect's halls: the 'member' path (and any bot with a big surplus) funds the cheapest open hall.
+  // The sect master (Grand Elder): petition at ≥ 50%, else challenge at ≥ 65% when they'd rarely make it lethal.
+  // Relations toward other sects: a few acts per open hour, chosen by what is open and how the odds stand.
+  sectPolitics() {
+    const s = this.s, gs = this.gs
+    const og = gs.oldGuardInfo?.()
+    if (og) {
+      const open = og.choices.filter(c => !c.lock)
+      const pick = this.profile === 'active' ? (open.find(c => c.id === 'win') || open.find(c => c.id === 'go')) : open[Math.floor(this.rand() * open.length)]
+      return this.do('old_guard_' + pick.id, gs.answerOldGuard(pick.id))
+    }
+    const rz = gs.razeInfo?.()
+    if (rz?.ok && !rz.byHand && this.profile !== 'afk') {
+      const vow = this.profile === 'active' ? rz.provoked : this.rand() < 0.33
+      return this.do(vow ? 'raze_vow' : 'raze_spare', gs.setRazeVow(vow), vow)
+    }
+    if (s.family?.fight) return false
+    if (s.sect.id && !s.ownSect.founded) {
+      const rich = this.path === 'member' ? 600 : 3 * this.D.SECT_FOUNDING.stones + 1000
+      if (s.spiritStones > rich && this.once('fund', this.profile === 'active' ? 0.05 : 0.5)) {
+        const h = (gs.sectBlessingInfo()?.halls || []).filter(x => !x.lock && x.cost != null && x.cost <= s.spiritStones - rich / 2).sort((a, b) => a.cost - b.cost)[0]
+        if (h) return this.do('fund_sect_hall', gs.fundSectHall(h.id))
+      }
+      const mi = gs.sectMasterInfo?.()
+      if (mi?.grand && this.once('master', this.profile === 'active' ? 0.02 : this.profile === 'casual' ? 0.2 : 0.05)) {
+        if (mi.petition.ok && mi.petition.odds >= 0.5) return this.do('petition_master', gs.petitionSectMaster())
+        if (mi.challenge.ok && mi.challenge.odds >= 0.65 && mi.challenge.lethalPct <= 40 && (s.health ?? 100) >= gs.maxHealth() * 0.9)
+          return this.do('challenge_master', gs.challengeSectMaster())
+        if (this.profile !== 'active' && mi.petition.ok && this.rand() < 0.2) return this.do('petition_master', gs.petitionSectMaster())
+      }
+    }
+    if (!(s.ownSect.founded || s.sect.id) || !this.once('relations', this.profile === 'active' ? 0.01 : this.profile === 'casual' ? 0.25 : 0.05)) return false
+    const rows = (gs.worldSectsInfo()?.rows || []).filter(r => !r.own)
+    if (!rows.length) return false
+    const rec = rows[Math.floor(this.rand() * rows.length)]
+    const info = gs.sectRelationsInfo(rec.id)
+    if (!info || info.isMine) return false
+    const open = id => info.actions.find(a => a.id === id && !a.lock)
+    const r = this.rand()
+    if (info.role === 'leader') {
+      const trade = open('trade')
+      if (trade && !trade.offer?.known) {
+        const give = trade.yours.filter(y => y.ok && this.s.arts?.known?.[y.id]).sort((a, b) => this.D.ART_RARITY_ORDER.indexOf(a.rarity) - this.D.ART_RARITY_ORDER.indexOf(b.rarity))[0]
+        if (give) return this.do('sect_trade', gs.sectAct(rec.id, 'trade', give.id))
+      }
+      const al = open('alliance')
+      if (al && al.odds >= 0.5) return this.do('sect_alliance', gs.sectAct(rec.id, 'alliance'))
+      const war = open('war')
+      if (war && this.profile === 'active' && info.ratio <= 0.7 && info.sect.stance < 0 && r < 0.3) return this.do('sect_declare_war', gs.sectAct(rec.id, 'war'))
+      const tr = open('tribute')
+      if (tr && tr.odds >= 0.7 && r < 0.3) return this.do('sect_tribute', gs.sectAct(rec.id, 'tribute'))
+      const spy = open('spy')
+      if (spy && spy.odds >= 0.6 && r < 0.2) return this.do('sect_spy', gs.sectAct(rec.id, 'spy'))
+      if (open('poach') && r < 0.4) {
+        const d = (gs.poachRoster(rec.id)?.list || []).filter(x => !x.lock && x.odds >= 0.5 && x.cost <= s.spiritStones * 0.2).sort((a, b) => b.talent - a.talent)[0]
+        if (d) return this.do('sect_poach', gs.poachDisciple(rec.id, d.id))
+      }
+    } else if (info.role === 'member') {
+      const sp = open('spar')
+      if (sp && sp.odds >= 0.6 && (s.health ?? 100) >= gs.maxHealth() * 0.8) return this.do('sect_spar', gs.sectAct(rec.id, 'spar'))
+      const ur = open('urge')
+      if (ur && ur.odds >= 0.5 && info.sect.stance < -20 && r < 0.3) return this.do('sect_urge', gs.sectAct(rec.id, 'urge'))
+    }
+    const gift = open('gift')
+    if (gift && info.sect.stance < 20 && s.spiritStones >= gift.cost * 10) return this.do('sect_gift', gs.sectAct(rec.id, 'gift'))
+    return false
+  }
+
+  // ── Phase 28 4.10 (living-world.md → "Sim bot"; final QA): the person card's deeds ────────────────────────
+  // A few times per open hour it looks at someone it knows and does the first deed that fits: swear brotherhood with
+  // someone who holds it dear, invite a fit recruit, teach someone far below, court when single, spar at good odds,
+  // gift the cool, duel a sworn foe only when heavily favoured ('active'), denounce a true villain.
+  deeds() {
+    const s = this.s, gs = this.gs
+    if (s.family?.fight || !gs.knownPeople || !this.once('deeds', this.profile === 'active' ? 0.01 : this.profile === 'casual' ? 0.25 : 0.04)) return false
+    const rows = gs.knownPeople({ filter: 'all', sort: 'relevance', limit: 30 }).rows.filter(x => x.alive)
+    if (!rows.length) return false
+    const pid = rows[Math.floor(this.rand() * rows.length)].pid
+    const info = gs.personActions(pid)
+    if (!info || info.gone || info.cd) return false
+    const p = s.world.persons[pid], rel = p?.rel || 0
+    const act = id => info.acts.find(a => a.id === id && !a.lock)
+    const healthy = (s.health ?? 100) >= gs.maxHealth() * 0.8
+    const tries = [
+      ['swear', a => a.chance >= 40],
+      ['recruit', a => a.chance >= 40],
+      ['mentor', () => true],
+      ['court', () => this.profile !== 'afk' && this.rand() < 0.3],
+      ['duel', a => this.profile === 'active' && healthy && a.odds >= 85],
+      ['denounce', () => (p?.morality ?? 0) <= -2 && this.rand() < 0.3],
+      ['spar', a => healthy && a.odds >= 60],
+      ['gift', a => rel < 30 && s.spiritStones >= a.cost * 10],
+    ]
+    for (const [id, ok] of tries) {
+      const a = act(id)
+      if (a && ok(a)) return this.do('deed_' + id, gs.personAct(pid, id))
+    }
+    return false
+  }
+
+  // ── Phase 28 4.8 (living-world.md → "Sim bot"; final QA): the Heavenly Rankings ───────────────────────────
+  // The Class duel: call out the classmate just above when the odds are fair (active ≥ 55%, casual ≥ 65%).
+  // The Veil: 'afk' (wary) veils its name once genius hunters have come; the others stay public.
+  ranks() {
+    const s = this.s, gs = this.gs
+    if (!gs.rankingsInfo || s.family?.fight) return false
+    if (this.profile === 'afk') {
+      const st = gs.rankStats()
+      if (st && !st.veil && (st.hunters || 0) > 0) return this.do('rank_veil', gs.setRankVeil(true), false)
+      return false
+    }
+    if (!this.once('rankduel', this.profile === 'active' ? 0.02 : 0.5)) return false
+    const d = gs.rankingsInfo('class')?.rows?.find(x => x.duel)?.duel
+    if (d && !d.lock && d.odds >= (this.profile === 'active' ? 55 : 65) && (s.health ?? 100) >= gs.maxHealth() * 0.8)
+      return this.do('rank_duel', gs.challengeRanked(d.pid))
+    return false
   }
 
   // Hunt when idle, healthy and no beast is waiting: the deepest open ground whose cost is under a fifth of its stones.

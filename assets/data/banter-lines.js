@@ -21,6 +21,14 @@ const BANTER_LINES = {
       "{board} names me {place}. Somewhere, someone is sharpening a sword because of it.",
       "{place}. The world is watching now. I had better be worth watching.",
     ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "Something old just opened its eyes. I can feel it in my teeth.",
+      "The {beast} stirs. Every sensible cultivator is packing. I am not sensible.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "The {beast} kneels. Legends are just beasts nobody has punched yet.",
+      "I beat a legend. My dantian is shaking. That's pride. Mostly pride.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} awakened the same morning I did. The road is shorter for some.",
       "Another name from my year, gone. I should burn incense, and then cultivate harder.",
@@ -193,6 +201,18 @@ const BANTER_LINES = {
       "Only {place}. The scribes must have run out of ink before they reached the truth.",
       "{board} finally notices me. The rest of the list should start apologising.",
       "{place}. Let those above me enjoy the view while it lasts.",
+    ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} wakes? Good. It should see me before it dies of envy.",
+      "A legend stirs. Finally, an opponent with a reputation worth stealing.",
+      "Heaven sends a monster to test this Young Master. Heaven misjudged again.",
+      "Old beast, you slept ten thousand years just to lose to me. Tragic timing.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "The {beast} bows. As it should. As everything eventually should.",
+      "A legend falls to me. Write it in gold. No, bigger. Bigger.",
+      "Ten thousand years of legend, ended by my sleeve. You had eyes but couldn't see Mount Tai.",
+      "Kneel, ancient one. Your hide will make a fine rug for my feet.",
     ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is dead? I always said they lacked the fortune to walk this path.",
@@ -436,6 +456,18 @@ const BANTER_LINES = {
       "{board} put me at {place}. I preferred being nobody. Nobody is never challenged.",
       "{place}. Wonderful. I will be cultivating behind three locked doors from now on.",
     ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} is awake. I am also awake. Only one of us is running.",
+      "A legend stirs. My legs have already left. I'm just catching up.",
+      "Nope. A heavenly beast? I have a very urgent appointment elsewhere. Forever.",
+      "If the {beast} asks, I'm a rock. A small, flavorless rock.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "I beat the {beast}?! By accident, mostly. Don't tell it that.",
+      "A legend lost to a man with three escape routes. Fleeing is also a Dao.",
+      "I won! I'm still shaking. Is it still behind me? Check for me.",
+      "Victory. Now let's leave before its mother wakes up.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} died? They were braver than me. That is exactly what killed them.",
       "Note to self: whatever {classmate} did, do the opposite.",
@@ -677,6 +709,18 @@ const BANTER_LINES = {
       "{place}! My blood is boiling. Give me the name of whoever is next.",
       "The list says {place}. My fists say we are not done counting.",
       "{board}, {place}! Ha! Now every challenger knows where to find me. Good.",
+    ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "THE {beast} IS AWAKE! FINALLY! SOMETHING WORTH PUNCHING!",
+      "A legend stirs! My blood is boiling! Possibly literally! Let's GO!",
+      "Ten thousand years asleep? I'll wake it up PROPERLY! With my FISTS!",
+      "Heaven sent me a monster! HEAVEN UNDERSTANDS ME!",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "I PUNCHED A LEGEND! IT PUNCHED BACK! I PUNCHED HARDER!",
+      "THE {beast} FALLS! WHO'S NEXT?! HEAVEN?! COME DOWN HERE!",
+      "My knuckles are broken and I have NEVER BEEN HAPPIER!",
+      "Legendary beast defeated! Now I need a nap! A LOUD NAP!",
     ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate}! NO! Who did it?! Point me at them!",
@@ -920,6 +964,18 @@ const BANTER_LINES = {
       "{board} rank {place}. Sects will bid for me now. Let them bid high.",
       "Fame is a currency. {place} on {board} is a very full purse.",
     ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} stirs. Legendary beasts drop legendary loot. Sharpen everything.",
+      "A legend wakes. How many spirit stones is one scale worth? Asking for me.",
+      "Fighting a legend is free. Losing to one is expensive. Calculating…",
+      "Old beast, I'll give you a fair price for your hoard. Zero. Final offer.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "The {beast} is beaten. Now: does it have pockets?",
+      "I beat a legend and kept every pill I brought. Profit on both ends.",
+      "Every scale counts. Every claw counts. Nobody touch anything, I'm counting.",
+      "A legendary victory, and not one stone wasted. My ancestors weep with joy.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is dead, and they still owed me three spirit stones. Heaven owes me now.",
       "A funeral means gifts. I will bring incense. The cheap kind. They would understand.",
@@ -1161,6 +1217,18 @@ const BANTER_LINES = {
       "They ranked me {place}. I will celebrate with roast duck, and then another roast duck.",
       "{board} says {place}. My stomach says dumplings. Both are right.",
       "{place}! A rank like that deserves a feast the size of a mountain.",
+    ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} wakes. Is it the roasting kind or the stewing kind?",
+      "A legend stirs. Ten thousand years of marinating. Must be tender by now.",
+      "I hear the {beast} is legendary. I hear legends are delicious.",
+      "Something ancient wakes up hungry. Rude. That's my job.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "The {beast} falls! Quick, someone fetch the big pot!",
+      "I fought a legend for an hour and all I could think about was dumplings.",
+      "Victory tastes like… nothing yet. Fix that. Fetch the spices.",
+      "A legendary beast. A legendary appetite. Only one of us lost.",
     ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} never got to try the crab at the river inn. That is the real tragedy.",
@@ -1404,6 +1472,18 @@ const BANTER_LINES = {
       "The heavens wrote my name at {place}. I will write them a poem in reply.",
       "{board} is a river of names. Mine floats at {place}, for this one season.",
       "{place}. Even the plum blossom does not ask where it ranks among the trees.",
+    ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "Hark, the {beast} stirs, as autumn wakes the dying leaf. Also I'm terrified.",
+      "A legend rises from the ash of ages. I shall write an elegy. Probably mine.",
+      "Ten thousand years it slept, and woke to find me. Oh, cruel, beautiful fate.",
+      "The sky trembles. My heart trembles. My brush trembles. Everything trembles.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "The {beast} lies still, a sunset folded into silence. I weep. Gloriously.",
+      "I have slain a legend. The moon will never look at me the same way.",
+      "Victory, bittersweet as plum wine spilled on a grave. Pass the plum wine.",
+      "Ode to the fallen beast, verse one hundred and eight: still won.",
     ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "The willow by the gate has lost a leaf, and its name was {classmate}.",
@@ -1649,6 +1729,18 @@ const BANTER_LINES = {
       "{board} measures what was. I cultivate what will be.",
       "A place on a list is a shadow of the Dao. {place}. Continue.",
     ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} is awake. Noted.",
+      "A legend stirs. My eyebrow did not move. Neither did my plan.",
+      "Ancient beast. Ancient problem. Same solution.",
+      "Something legendary woke up. I will be legendary at it.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "The {beast} is defeated. I feel nothing. My hair is on fire.",
+      "Legend beaten. Next.",
+      "It was a good fight. I can tell because I'm bleeding from the face.",
+      "I won. My expression remains unchanged. My knees do not.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is dead. Noted.",
       "The road takes who it takes. I will keep walking it.",
@@ -1892,6 +1984,18 @@ const BANTER_LINES = {
       "Let them rank me {place}. Every name above mine is a throat.",
       "{board}, {place}. Write it in blood next year. It reads better.",
       "{place}. Delightful. Now they know whom to fear, and they are still too slow to run.",
+    ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} wakes to greet its new Demon Sovereign. KNEEL.",
+      "A legend stirs? There can only be one legend in these mountains. ME.",
+      "Ancient beast, this Venerable permits you to serve as my mount. Be honored.",
+      "The heavens shake! Ahahaha! Yes! They know I'm coming!",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "The {beast} kneels before the Demon Sovereign! As written in my diary!",
+      "Even legends bow to this Venerable! Somebody record that! SOMEBODY!",
+      "Ahahaha! The ancient terror is mine! I'll name it Fluffy!",
+      "Another legend crushed beneath my heel. Ow. Wait. Still crushed.",
     ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} has fallen before I could make them my general. Unforgivable, Heaven!",
@@ -2137,6 +2241,18 @@ const BANTER_LINES = {
       "{board} at {place}. Now every hunter knows my realm, my face, my road. Change the road.",
       "{place}. Too high to hide, too low to be safe. Someone planned this.",
     ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} woke up the same day I came by. Coincidence? No such thing.",
+      "A legend stirs. Who woke it? Who benefits? Why is that crane watching me?",
+      "Ten thousand years asleep and it chooses NOW. Someone paid it.",
+      "The {beast} is awake. It's a trap. Everything's a trap. Bring the spare pills.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "The {beast} is beaten. Too easy. The real fight hasn't started.",
+      "I won. Which is exactly what they wanted me to think.",
+      "A legend fell. Now everyone knows my power. Now everyone wants me dead. Great.",
+      "Victory. Check its corpse for listening talismans.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} died. Officially. I want to see the body.",
       "Too convenient. {classmate} knew something. Now nobody can ask them.",
@@ -2380,6 +2496,18 @@ const BANTER_LINES = {
       "They ranked me {place}. Do they rank the noise, too? I win that.",
       "{board}. {place}. Fine. Leave me alone now.",
       "{place}. Congratulations to me. Now go away.",
+    ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "Back in my day, legendary beasts stayed asleep. Respect, that's what it was.",
+      "The {beast} is awake. Of course. Nobody lets an old soul meditate.",
+      "Ten thousand years asleep and it STILL got up before me. Show-off.",
+      "Legends these days. All noise and glow.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "Beat the {beast}. Back in my day we did that before breakfast. Uphill.",
+      "Legend, schmegend. Took an hour. My back took the worst of it.",
+      "There. It's beaten. Can I go back to complaining now?",
+      "Young beasts think ten thousand years makes them tough. Hah.",
     ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is dead. Young people, always in a hurry. Even to the grave.",
@@ -2625,6 +2753,18 @@ const BANTER_LINES = {
       "{board} says {place}. If I close my eyes, it still says {place}. Perfect.",
       "{place}. Someone else can climb the rest. I will supervise.",
     ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} is awake? Someone should handle it. Me. Later. Much later.",
+      "A legend stirs. I also stirred. Then I went back to sleep.",
+      "Ugh. Ancient terror. Do I have to? Fine. After this nap.",
+      "It slept ten thousand years. Amateur. I could do twenty.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "Beat the {beast} in one fight. Efficient. I've earned a century of nap.",
+      "Legend down. Minimal effort. Maximum glory. This is the way.",
+      "I won by doing the least possible. Napping is a cultivation technique.",
+      "Victory. Wake me when the next legend is closer.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} worked so hard. And now they get to rest forever. Hm.",
       "Rest well, {classmate}. You earned the nap I keep stealing.",
@@ -2869,6 +3009,18 @@ const BANTER_LINES = {
       "{board} put me at {place}. I will try to be worthy of it, and kind with it.",
       "{place}. A good name is a promise. I mean to keep it.",
     ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} is awake! I hope it slept well. Ten thousand years is a long nap.",
+      "A legend stirs. Maybe it's just lonely? Maybe I'll bring snacks.",
+      "Oh no, it sounds upset. Should I knock first?",
+      "Everyone's panicking about the {beast}. Has anyone tried saying hello?",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "I beat the {beast}. Sorry! I'm so sorry! Are you okay? Here, have a pill.",
+      "We fought, and now I think we're friends? Legends are people too.",
+      "Victory! Okay, now everybody hug. Including the beast. Especially the beast.",
+      "I won, but I feel bad. Good fight, old friend. Good fight.",
+    ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} is gone. I hope someone held their hand at the end.",
       "I will write to their family. They should know {classmate} was kind to me once.",
@@ -3110,6 +3262,18 @@ const BANTER_LINES = {
       "They ranked me {place}. I wonder how fast the names above me can run.",
       "{board}, {place}. Let us thin the list a little before next year.",
       "{place}! So many challengers coming. I hope they bring friends.",
+    ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} is awake. Hehe. I'll remember its face. All of them.",
+      "A legend stirs. Oh, I do love waking things up. Hehehe.",
+      "Ten thousand years of sleep. Let's see how it screams. Hehe.",
+      "It's awake. I'm awake. Only one of us will be awake tomorrow. Hehe.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "The {beast} stopped moving. Aww. Move again. Hehe. Please?",
+      "A legend, beaten. I'm keeping a souvenir. Maybe a tooth. Hehe.",
+      "It looked so scared at the end. I'll never forget that face. Ever.",
+      "Victory smells like scorched legend. My favorite perfume. Hehehe.",
     ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} died without me? Rude. Hehe.",
@@ -3353,6 +3517,18 @@ const BANTER_LINES = {
       "They ranked me {place}. I am going to steal the ranking stone and ring it like a bell.",
       "{board} says {place}. I say we hold a party in the scribes' library. Uninvited.",
       "{place}! Quick, someone carve my name bigger than everyone else's.",
+    ],
+    boss_awake: [   // v1 add-on (bosses.md): a legendary boss wakes ({beast})
+      "The {beast} woke up. Legend time. Borgin. Gorgin. The Dao is beans.",
+      "Legend stirs. I stirred my soup. Same energy.",
+      "Big beast awake. Big me awake. Big beans.",
+      "Ten thousand years of sleep. Imagine the morning breath. Hehh.",
+    ],
+    boss_won: [   // v1 add-on (bosses.md): you beat a legendary boss ({beast})
+      "Beat the {beast}! It said boo. I said boo back. I win boo.",
+      "Legend down. I'm wearing it as a hat. Hat Dao.",
+      "Victory! Beans for everyone! Legend beans! Wait. No. Normal beans.",
+      "I fought a legend and found a pebble. Best day of my life.",
     ],
     classmate_fell: [   // Phase 28 (4.3): a classmate (awakened the year you did) has died
       "{classmate} has gone to the big soup. Borgin.",

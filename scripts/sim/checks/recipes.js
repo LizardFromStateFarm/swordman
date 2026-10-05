@@ -20,12 +20,15 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
 
   // ── hidden formulas are locked at the start ──
   const hidden = RECIPES.filter(r => r.hidden).map(r => r.id)
-  assert(hidden.length === 10, `10 discovery-gated formulas (${hidden.length})`)
+  assert(hidden.length === 11, `11 discovery-gated formulas (${hidden.length}; v1 add-on: + the Mirror-Soul Plate)`)
   assert(hidden.every(id => !gs.recipeKnown(id)), 'no hidden formula is known before it is found')
 
   // every hidden recipe has a finder, and every finder id is a real hidden recipe
-  const sourced = [...DISC.encounter, ...Object.values(DISC.arena)]
-  assert(sourced.length === hidden.length && sourced.every(id => hidden.includes(id)), 'every hidden formula is reachable (encounter or arena)')
+  const sourced = [...DISC.encounter, ...Object.values(DISC.arena), ...(DISC.boss || [])]
+  assert(sourced.length === hidden.length && sourced.every(id => hidden.includes(id)), 'every hidden formula is reachable (encounter, arena or a boss)')
+  assert(gs.recipeSource('recipe_artifact_mirror_soul_plate') === 'boss', 'the Mirror-Soul Plate comes only from a boss')
+  let bossRolled = false; for (let i = 0; i < 200; i++) if (gs._rollHiddenRecipe() === 'recipe_artifact_mirror_soul_plate') bossRolled = true
+  assert(!bossRolled, 'a boss formula never turns up by chance (Arena luck, strangers)')
   assert(gs.recipeSource(DISC.arena.heaven) === 'arena' && gs.recipeSource(DISC.encounter[0]) === 'encounter', 'recipeSource names where a formula comes from')
 
   // ── a locked formula can't be crafted / auto-crafted, even with the materials ──

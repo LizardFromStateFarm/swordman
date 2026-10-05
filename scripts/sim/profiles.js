@@ -58,12 +58,18 @@ const PACING_PROFILE = 'casual'   // flags are raised for this profile only (the
 // every death is still a fresh soul with no ancestral catch-up (tasks 2.5-2.8 build that), so there is
 // no "later generation" or "generations to first Ascension" signal to check against yet. Kept here as
 // the constants task 2.8's tuning pass expects to find, per life-loop.md §8's build-order table.
+// Final QA (2026-10-04): re-banded to the accepted Immortality pace — ~37 casual lives in ~430 h is ~12 h a life (the
+// 200 h baseline measured 11.5 h casual, 2.0 h active: road deaths, Pass the Mantle at the peak below BQ 100). Was
+// casual [20, 40] (2026-09-26, one life per Ascension) and active [5, 15].
 const LIFE_TARGETS_H = {
-  casual: { gen1: [20, 40], later: [8, 16] },   // gen1 widened 2026-09-26: no old age → ~30h casual lives accepted
-  active:  { gen1: [5, 15] },
+  casual: { gen1: [8, 20], later: [8, 16] },
+  active:  { gen1: [1, 5] },
 }
-const FIRST_ASCENSION_H = { casual: [40, 80] }     // not yet checked — needs task 2.6-2.8 generation continuity
-const GENERATIONS_TO_ASCEND = [3, 5]               // not yet checked — same reason
+// Immortality pace — checked since the final QA pass (report.js "Immortality" line; flags casual only). The user accepted
+// the measured pace on 2026-10-04: casual Immortality ≈ 37 lives / ~430–475 open hours (Phase 47's BQ-100 gate). Old
+// targets (task 2.8 draft, before Phase 47): 40–80 h, 3–5 generations. Bands are ±~15% around the accepted numbers.
+const FIRST_ASCENSION_H = { casual: [380, 540] }
+const GENERATIONS_TO_ASCEND = [30, 45]
 
 module.exports = { PROFILES, DEFAULT_PATH, THRESHOLDS, PACING_TARGETS_MIN, PACING_PROFILE,
                     LIFE_TARGETS_H, FIRST_ASCENSION_H, GENERATIONS_TO_ASCEND }

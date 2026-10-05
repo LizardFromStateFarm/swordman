@@ -22,6 +22,10 @@ function bake(spec) {
   const img = src.crop({ x: x0, y: y0, width: x1 - x0, height: y1 - y0 }).resize({ width: W, height: H, quality: 'best' })
   const bgra = img.toBitmap()                                   // BGRA (premultiplied where transparent)
   for (let i = 0; i < W * H; i++) { const a = bgra[i * 4 + 3]; if (a > 0 && a < 255) for (let j = 0; j < 3; j++) bgra[i * 4 + j] = Math.min(255, bgra[i * 4 + j] * 255 / a) }
+  if (spec.flipX) for (let y = 0; y < H; y++) for (let x = 0; x < W >> 1; x++) {   // face the cultivator (beasts aren't mirrored in battle)
+    const a = (y * W + x) * 4, b = (y * W + W - 1 - x) * 4
+    for (let j = 0; j < 4; j++) { const t = bgra[a + j]; bgra[a + j] = bgra[b + j]; bgra[b + j] = t }
+  }
   const N = W * H, Y = new Float32Array(N)
   for (let i = 0; i < N; i++) Y[i] = (0.11 * bgra[i * 4] + 0.59 * bgra[i * 4 + 1] + 0.3 * bgra[i * 4 + 2]) / 255
 
@@ -52,6 +56,17 @@ function bake(spec) {
   const byAlpha = spec.alpha ?? clear > N * 0.05
   if (byAlpha) for (let i = 0; i < N; i++) M[i] = bgra[i * 4 + 3] >= (spec.alphaMin ?? 128) && Y[i] > (spec.minL ?? 0.03) ? 1 : 0
   else for (let i = 0; i < N; i++) M[i] = (detail[i] > t || Y[i] - back[i] > lift) && Y[i] > (spec.minL ?? 0.08) ? 1 : 0
+  // pale: a source painted INSIDE a soft glow (the Vermilion Bird) — drop pixels that are pale (low saturation), bright and
+  // smooth: the halo, not the feathers. { sat: max saturation, Y: min brightness, detail: max texture }
+  if (spec.pale) {
+    const P = spec.pale
+    for (let i = 0; i < N; i++) {
+      if (!M[i]) continue
+      const b = bgra[i * 4], g = bgra[i * 4 + 1], r = bgra[i * 4 + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b)
+      const sat = mx ? (mx - mn) / mx : 0
+      if (sat < (P.sat ?? 0.3) && Y[i] > (P.Y ?? 0.55) && detail[i] < (P.detail ?? 0.04)) M[i] = 0
+    }
+  }
 
   // 2 · close small gaps (dilate → erode), fill holes (whatever the border can't reach is inside), drop specks
   const morph = (A, r, grow) => {
@@ -69,6 +84,7 @@ function bake(spec) {
   }
   const close = spec.close ?? (byAlpha ? 0 : 2)
   if (close) M = morph(morph(M, close, true), close, false)
+  if (spec.erode) M = morph(M, spec.erode, false)   // shave a coloured rim the source's glow left on the silhouette
   const outside = new Uint8Array(N), stack = []
   for (let x = 0; x < W; x++) stack.push(x, (H - 1) * W + x)
   for (let y = 0; y < H; y++) stack.push(y * W, y * W + W - 1)

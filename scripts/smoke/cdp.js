@@ -82,6 +82,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
       await sleep(200)
     }
     await wait('document.readyState === "complete" && typeof gameState !== "undefined"', 15000)
+    // 1.23: coach marks would sit over every scenario's clicks — hold them for the whole (throwaway) profile. Only
+    // scenarios/tutorial.js removes this key. See docs/systems/tutorial.md.
+    await ev('localStorage.setItem("ci:smoke-no-tips", "1")')
     await require(scenarioPath)({ ev, click, wait, shot, assert, sleep, send, emulate, clearEmulation })
     await sleep(300)
     if (shots.length) console.log('screenshots:\n  ' + shots.join('\n  '))

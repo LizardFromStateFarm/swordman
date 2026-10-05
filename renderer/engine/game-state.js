@@ -1181,17 +1181,20 @@ class GameState {
 
   // A world person dies: the registry, the stats, any seat they held. `news` collects what the player hears.
   _npcDies(p, yr, cause, news = null) {
-    this._killPerson(p.id, yr, cause)
+    this._killPerson(p.id, yr, cause)   // (frees their sect seat: _vacateSeat)
     delete p.twilight; delete p.injuredUntil
-    if (p.sectId && p.sectId !== 'own') {
-      const r = this._wsRec(p.sectId)
-      if (r?.alive && r.leaderId === p.id) this._wsSeatHeir(r, yr, `buries its master: ${Persons.fullName(p)} is gone (${(PERSON_CAUSE_TEXT[cause] || 'passed on').toLowerCase()})`, true, p.id)
-      else if (r?.alive && (r.elderIds || []).includes(p.id)) {
-        r.elderIds = r.elderIds.filter(id => id !== p.id)
-        this._wsChron(this._lifeText('elderFell', p, { sect: r.name, cause }), r.id, [p.id], (p.stageIndex || 0) >= NPC_WORLD.notableStage)
-      }
-    }
     news?.push({ k: 'died', p, cause })
+  }
+  // A dead master's seat goes to the senior elder (else someone new is raised); a dead elder leaves the bench. Was only in
+  // _npcDies — a death by your hand (a duel, a card deed, the road) left a dead person seated (final QA: sect_master_dead).
+  _vacateSeat(p, yr, cause) {
+    if (!p.sectId || p.sectId === 'own') return
+    const r = this._wsRec(p.sectId)
+    if (r?.alive && r.leaderId === p.id) this._wsSeatHeir(r, yr, `buries its master: ${Persons.fullName(p)} is gone (${(PERSON_CAUSE_TEXT[cause] || 'passed on').toLowerCase()})`, true, p.id)
+    else if (r?.alive && (r.elderIds || []).includes(p.id)) {
+      r.elderIds = r.elderIds.filter(id => id !== p.id)
+      this._wsChron(this._lifeText('elderFell', p, { sect: r.name, cause }), r.id, [p.id], (p.stageIndex || 0) >= NPC_WORLD.notableStage)
+    }
   }
 
   _lifeText(key, p, extra = {}) {
@@ -1439,7 +1442,7 @@ class GameState {
     if (fate === 'seize') {
       const { r, m } = prey[Math.floor(rng() * Math.min(2, prey.length))]
       const old = Persons.fullName(m), kills = rng() < W6.seizeKills
-      if (kills) this._killPerson(m.id, yr, 'seat_struggle')
+      if (kills) this._killPerson(m.id, yr, 'seat_struggle', { seat: false })
       else { m.role = 'retired_master'; m.sectRole = null }
       if (WORLD_SECT_TEMPERS.includes(p.personality)) r.temper = p.personality
       this._wsSeat(r, p)
@@ -2170,6 +2173,11 @@ class GameState {
       add('fight', 'Fight', `${odds(card.lethal)}% to win${card.lethal ? ' · to the death: lose, and this life ends' : ` · lose, and they take ${Math.round(E.lossStones * 100)}% of your stones`}`, { odds: odds(card.lethal), lock: fightLock, tone: 'red' })
       add('flee', 'Flee', `${Math.round(this._roadFleeChance(p) * 100)}% to slip away · fail, and the fight starts here`, { odds: Math.round(this._roadFleeChance(p) * 100), lock: fight ? 'Another fight is underway' : null })
       add('yield', 'Hand over stones', card.lethal ? '' : `They take ${stoneYield} Spirit Stones and go`, { lock: card.lethal ? 'They came for your life, not your purse' : null })
+      if (card.lethal && card.avenger) {   // final QA (user 2026-10-04): an avenger can be bought off — the feud ends
+        const bp = this._roadBloodPrice(p), refuse = E.bloodPrice.refuse.includes(p.personality)
+        add('price', 'Pay the blood price', `${bp} Spirit Stones · Honour ${NPC_REP.deeds.bloodPaid.h} · the feud ends`,
+          { lock: refuse ? 'Nothing but blood will answer this' : s.spiritStones < bp ? `You do not have ${bp} Spirit Stones` : null })
+      }
     } else if (card.kind === 'challenge') {
       add('spar', 'Accept: a spar', `${odds(false)}% to win · until one yields`, { odds: odds(false), lock: fightLock })
       add('blood', 'Accept: to the death', `${odds(true)}% to win · lose, and this life ends`, { odds: odds(true), lock: fightLock, tone: 'red' })
@@ -2205,13 +2213,19 @@ class GameState {
       add('favour', 'Ask a favour', will ? `They think well enough of you to help` : 'They owe you nothing, and will likely refuse')
     }
     const pre = (card.rival ? NPC_RIVAL.preselect : card.rank ? NPC_RANK.preselect : E.preselect)[card.kind]?.[this.roadStance()]
-    const pick = A.find(a => a.id === pre && !a.lock) ? pre : (A.find(a => !a.lock)?.id || null)
+    const pick = [].concat(pre || []).find(id => A.some(a => a.id === id && !a.lock)) || (A.find(a => !a.lock)?.id || null)   // a list = fallbacks in order
     const pers = PERSONALITIES.find(x => x.id === p.personality)
     const title = card.rank ? NPC_RANK_TEXT.title[card.kind] : card.rival ? (card.blood ? NPC_RIVAL_TEXT.bloodTitle : NPC_RIVAL_TEXT.title[card.kind]) : (card.gate && NPC_ENC_TEXT.gateTitle[card.kind]) || NPC_ENC_TEXT.title[card.kind]
     const rv = card.rival ? this._rivalRec() : null
     return { ...card, answers: A, pre: pick, title, heat: rv ? rv.heat : null, heatWord: rv ? this._rivalWord(rv.heat).w : null,
       urgent: card.kind === 'ambush' || card.avenger || card.kind === 'rivalKin' || !!card.blood || card.kind === 'hunter' || card.kind === 'hunterKin', alive: p.alive !== false, stage: p.stageIndex || 0, temper: pers?.name || null,
       morality: (MORALITY_WORDS.find(m => (p.morality || 0) >= m.min) || {}).word || null, rel: p.rel || 0, ago: yr - card.y }
+  }
+
+  // Final QA: what an avenger takes to end the feud — scales with their realm, and more when they outclass you.
+  _roadBloodPrice(p) {
+    const B = NPC_ENC.bloodPrice, gap = Math.max(0, (p.stageIndex || 0) - (this._s.stageIndex || 0))
+    return Math.round(B.stones * ((p.stageIndex || 0) + 1) / 4 * (1 + gap * B.perGap))
   }
 
   _roadFleeChance(p) {
@@ -2261,6 +2275,13 @@ class GameState {
       case 'ambush:flee': {
         if (Math.random() < this._roadFleeChance(p)) { this._roadRemember(p, 'fled', place); text = `You slip away from ${name} at ${place}.`; break }
         return fight(card.lethal, `You run, and ${name} runs you down at ${place}.`)
+      }
+      case 'ambush:price': {   // final QA: the blood price ends an avenger's feud
+        if (!card.lethal || !card.avenger || E.bloodPrice.refuse.includes(p.personality)) return { ok: false, reason: 'refused' }
+        const n = this._roadBloodPrice(p)
+        if (s.spiritStones < n) return { ok: false, reason: 'stones' }
+        s.spiritStones -= n; delete p.feud; this._roadRemember(p, 'bloodPaid', place)
+        text = `You pay ${name} the blood price: ${n} Spirit Stones. They take it, and the feud between you is ended.`; type = 'neutral'; break
       }
       case 'ambush:yield': {
         const n = Math.min(s.spiritStones, Math.max(E.yieldStones[1], Math.round(s.spiritStones * E.yieldStones[0])))
@@ -2442,8 +2463,8 @@ class GameState {
     if (['robbed', 'betrayed', 'denounced', 'murdered'].includes(key) && me && p?.sworn === me) { key = 'betrayedSworn'; p.sworn = null }
     const d = R.deeds[key]
     if (!d) return key
-    if (d.h) rep.h = Math.min(R.max, rep.h + d.h)
-    if (d.i) rep.i = Math.min(R.max, rep.i + d.i)
+    if (d.h) rep.h = Math.max(0, Math.min(R.max, rep.h + d.h))   // (final QA: a deed can now cost Honour — never below 0)
+    if (d.i) rep.i = Math.max(0, Math.min(R.max, rep.i + d.i))
     rep.log.push({ y: Math.floor(this._s.world.year), k: key, h: d.h || 0, i: d.i || 0, pid: p?.id || null, n: p ? Persons.fullName(p) : '' })
     if (rep.log.length > R.logMax) rep.log.splice(0, rep.log.length - R.logMax)
     return key
@@ -2553,7 +2574,9 @@ class GameState {
   _swornWar() {
     const s = this._s, me = s.self?.id, A = NPC_ACTS.swear
     const ps = Object.values(s.world?.persons || {}).filter(p => p.sworn === me && p.alive !== false)
-    return { people: ps, names: ps.map(p => Persons.fullName(p)), bonus: Math.min(A.warMax, ps.length * A.warEach) }
+    // v1 add-on (bosses.md): a mirror child who stands with you ("Two hearts, one path") fights in every war too
+    const mk = (s.family?.children || []).find(c => c.alive && c.mirrorFate === 'ally'), mb = mk ? SOUL_TECH.seed.allyWarBonus : 0
+    return { people: ps, names: [...ps.map(p => Persons.fullName(p)), ...(mk ? [`${mk.given}, your mirror`] : [])], bonus: Math.min(A.warMax, ps.length * A.warEach) + mb }
   }
 
   // Takes a registry person into your own sect as a disciple (they ARE the disciple: pid kept). Shared with the road's
@@ -3943,6 +3966,9 @@ class GameState {
   // strong feelings, pins, the parents + spouses of the living, the seats of sects.
   _pruneDead(yr) {
     const s = this._s, w = s.world, keep = new Set(), cut = yr - NPC_LIVES.pruneAfter
+    // final QA (save size): a stranger you never knew (no familiarity, regard or memory of you) is forgotten sooner
+    const cutStranger = yr - (NPC_LIVES.pruneStrangerAfter ?? NPC_LIVES.pruneAfter)
+    const stranger = p => !p.fam && !p.rel && !(p.mem && p.mem.length) && !p.feud && !p.sworn
     for (const l of w.pastLives || []) keep.add(l.personId)
     for (const c of Object.values(w.clans || {})) { keep.add(c.headId); for (const l of c.lines || []) for (const id of l.memberIds || []) keep.add(id) }
     for (const r of this._wsAll()) { keep.add(r.leaderId); for (const id of r.elderIds || []) keep.add(id) }
@@ -3950,13 +3976,13 @@ class GameState {
     for (const p of Object.values(w.persons)) if (p.alive !== false) { for (const id of p.parents || []) keep.add(id); for (const id of p.spouseIds || []) keep.add(id) }
     for (const [id, p] of Object.entries(w.persons)) {
       if (p.alive !== false || (p.owner && p.owner !== 'world')) continue
-      if (keep.has(id) || p.cohort != null || p.pin || Math.abs(p.rel || 0) >= 50 || p.ascended || (p.diedYear ?? yr) > cut) { this._compactDead(p); continue }
+      if (keep.has(id) || p.cohort != null || p.pin || Math.abs(p.rel || 0) >= 50 || p.ascended || (p.diedYear ?? yr) > (stranger(p) ? cutStranger : cut)) { this._compactDead(p); continue }
       delete w.persons[id]
     }
   }
   // The dead the world keeps shed what only the living use (readers default every one of these keys).
   _compactDead(p) {
-    for (const k of ['npcXp', 'grownYear', 'injuredUntil', 'stageYear', 'twilight', 'talent', 'tier', 'arts']) delete p[k]
+    for (const k of ['npcXp', 'grownYear', 'injuredUntil', 'stageYear', 'twilight', 'talent', 'tier', 'arts', 'act', 'ties', 'mentorUntil', 'actAt']) delete p[k]   // act/ties/mentorUntil/actAt: final QA (save size)
     if (!p.fam) delete p.fam
     if (!p.pin) delete p.pin
     if (!p.rel) delete p.rel
@@ -4211,6 +4237,7 @@ class GameState {
       : f.fight.kind === 'beast' ? !(typeof BEAST_TYPES !== 'undefined' && BEAST_TYPES.some(b => b.id === f.fight.beast?.typeId))
       : f.fight.kind === 'arena' ? !s.arena?.duelists?.[f.fight.oppId]            // A6-3b: the Arena's own duelists
       : f.fight.kind === 'slaughter' || f.fight.kind === 'spar' ? !f.fight.foe   // A6-3a / 43h: the foe lives on the fight itself
+      : f.fight.kind === 'boss' ? !(typeof BOSSES !== 'undefined' && BOSSES[f.fight.boss?.id])   // v1 add-on: a legendary boss
       : !this.person(f.fight.oppId)))) f.fight = null
     for (const c of f.children) {
       if (!c.cd || typeof c.cd !== 'object') c.cd = {}
@@ -4761,6 +4788,7 @@ class GameState {
     this._ensurePhase44Fields()   // Phase 44: known recipes (a new field, so old saves gain the basic formulas)
     this._ensureBeatingFields()   // family-events.js — a bad father's hand + the grown-up reckoning
     this._ensurePhase28Fields()   // Phase 28 (4.2): one registry of persons — needs world.sects (43b), arena (35), family (16)
+    this._ensureBossFields()      // v1 add-on (bosses.md): legendary bosses + soul techniques — needs s.world
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -4891,6 +4919,9 @@ class GameState {
     bAdd('Thunder-tempered body', body.btBonus || 0)
     // Phase 40: Soul Resonance — cross-save, every slot and every life (docs/systems/soul-points.md)
     qMul(`Soul Resonance (rank ${this._soul.resonance})`, this.soulQiMult())
+    // v1 add-on (bosses.md): the soul techniques' costs — a spent seed, a spirit split with your other self
+    if ((s.soulUse?.essenceUntil || 0) > Date.now()) qMul('Essence spent (Seed of the Self)', SOUL_TECH.seed.essenceQiMult)
+    if (s.clone?.exp) qMul('Your other self is out (Body Beyond the Body)', SOUL_TECH.clone.qiMult)
 
     // Family (docs/systems/family.md): a Devoted spouse steadies your breakthroughs; a betrayed one
     // sabotages the next attempt (cleared by attemptBreakthrough()).
@@ -4963,7 +4994,7 @@ class GameState {
   _queueYear(yr) {
     const s = this._s, J = this._yearJobs ||= []
     J.push(() => this._tickFamily(), () => this._tickArena(), () => this._tickBranches(), () => this._tickWorldSects(),
-      () => this._tickWorldLives(), () => this._tickRepute(yr), () => this._tickRival(yr), () => this._tickRanks(yr),
+      () => this._tickWorldLives(), () => this._tickRepute(yr), () => this._tickRival(yr), () => this._tickRanks(yr), () => this._tickSoulTech(),
       () => { this._syncPersons(); if (s.ownSect?.founded && !s.interlude) this._roadRoll('gate', null, `the gate of ${s.ownSect.name}`) })
   }
   _drainYear(dt) {
@@ -5063,6 +5094,7 @@ class GameState {
     if (s.hunt && !s.hunt.found && Date.now() >= s.hunt.endsAt) this._resolveHunt()   // Phase 35 (A6-2)
     if (s.arts?.studies?.length) this._finishStudies()      // Phase 42 (arts.md): study runs on real time, closed or open (1.14b: desks)
     this._tickBody()                                         // Phase 14: tempering + mini-game charges run on real time
+    this._tickClone()                                        // v1 add-on: the clone's expedition (bosses.md)
 
     const gain = s.derived.qiPerSecondBoosted * dt
     s.qi = Math.min(s.qi + gain, s.derived.qiCap)
@@ -6103,6 +6135,7 @@ class GameState {
     const f = this._s.family, fi = f.fight
     if (!fi) return null
     if (fi.kind === 'beast') return this._beastOpp(fi.beast, fi.oppId)
+    if (fi.kind === 'boss') return this._bossOpp(fi)   // v1 add-on
     if (fi.kind === 'arena') return this._s.arena?.duelists?.[fi.oppId] || null   // A6-3b: the Arena's own duelists
     if (fi.kind === 'slaughter') return fi.foe || null                            // A6-3a: a road stranger (never in the world registry)
     if (fi.kind === 'spar') return fi.foe || null                                 // 43h: a disciple of another sect
@@ -6161,6 +6194,12 @@ class GameState {
   fightInfo() {
     const f = this._s.family, fi = f.fight
     if (!fi) return null
+    if (fi.kind === 'boss') {   // v1 add-on: a legendary boss — its phase, the Wraith's read, what you know of it
+      const def = BOSSES[fi.boss.id], B = fi.m?.boss || {}
+      return { kind: 'boss', opp: this._bossOpp(fi), lethal: false, m: fi.m || null, over: fi.over || null, health: this._s.health ?? 100, habitsKnown: true,
+        boss: { id: def.id, name: def.name, short: def.short, phase: B.phase || 0, phases: def.phases.map(p => ({ name: p.name, text: p.text, at: p.at })),
+          egg: B.egg || 0, split: !!B.split, read: B.read || 0, hatched: !!B.hatched, stolen: B.stolen || null, learn: B.learn || 0 }, log: [...(fi.log || [])] }
+    }
     const opp = this._fightOpp(), style = this._fightStyle(opp)
     const beast = fi.kind === 'beast'
     if (!beast && !fi.m && !fi.over && opp) this._personFightM(fi)       // an old-engine fight restarts on moves
@@ -6192,6 +6231,11 @@ class GameState {
     // Phase 42b/c: every fight is on moves (fightMove / fightParry); this call only ends one — a beast's Retreat, a Yield.
     if (fi.kind === 'beast') {
       if (tactic === 'retreat' || tactic === 'yield') return this._beastRetreat(fi, opp)
+      return { ok: false, reason: 'moves' }
+    }
+    if (fi.kind === 'boss') {   // v1 add-on: break away — no parting blow, it rests and you learn
+      if (fi.m?.pending) return { ok: false, reason: 'parry' }
+      if (tactic === 'retreat' || tactic === 'yield') return { ok: true, done: true, retreated: true, outcome: this._bossLost(fi, true) }
       return { ok: false, reason: 'moves' }
     }
     if (fi.m?.pending) return { ok: false, reason: 'parry' }
@@ -6646,6 +6690,7 @@ class GameState {
   _mbArtMake(id) {
     if (id === 'circulate') return { id, name: 'Circulate', element: null, kind: 'move', move: { type: 'circulate', power: 0, cost: 0, desc: `Gather ${MOVE_COMBAT.circulateQi} Qi instead of attacking.` } }
     if (id === 'beast_rake') return { id, name: BEAST_BASIC.name, element: null, kind: 'move', move: BEAST_BASIC.move }
+    if (BOSS_MOVES[id]) return BOSS_MOVES[id]   // v1 add-on: a legendary boss's own moves
     return ARTS[id] || null
   }
   _mbPassives() { return this._mbPassivesOf((this._s.arts?.loadout?.passives || []).slice(0, this.passiveSlots())) }
@@ -6859,7 +6904,7 @@ class GameState {
     if (D.side === 'you' && b.stance !== 'slay') D.hp = Math.max(1, D.hp)
     return dmg
   }
-  _mbThrownHp(b) { return b.stance === 'drive' ? MOVE_COMBAT.driveThrownHp : b.stance === 'yield' ? PERSON_FIGHT.yieldThrownHp : 0 }
+  _mbThrownHp(b) { return b.stance === 'drive' ? MOVE_COMBAT.driveThrownHp : b.stance === 'yield' ? PERSON_FIGHT.yieldThrownHp : b.stance === 'boss' ? 1 : 0 }
   // One side's action. `parry` = [bool per hit] for an attack on you (the parry QTE's results); beasts parry by a roll.
   _mbAct(b, A, D, id, rng, parry = null) {
     const MC = MOVE_COMBAT, art = this._mbArt(id), m = art.move, W = A.side === 'you' ? 'You' : A.the[0].toUpperCase() + A.the.slice(1)
@@ -6888,6 +6933,11 @@ class GameState {
       return ev
     }
     // attacks: strike / multi / charge (released) / finisher / drain
+    if (A.side === 'you' && b.boss?.split && rng() >= b.boss.read) {   // v1 add-on: the Wraith's Two Faces — you struck the false one
+      ev.falseFace = true; ev.total = 0
+      this._mbLine(b, 'you', `You use ${art.name} on the false face. It ripples, and is gone, and the true one smiles.`, 'down')
+      return ev
+    }
     const hits = m.hits || 1
     let total = 0, parried = 0, status = null
     for (let h = 0; h < hits && D.hp > 0 && A.hp > 0; h++) {
@@ -6921,6 +6971,7 @@ class GameState {
     return ev
   }
   _mbCheck(b) {
+    if (b.boss) this._mbBossPhase(b)   // v1 add-on: a boss's phase script runs before a win is declared
     if (b.foe.hp <= 0 || (b.stance === 'yield' && b.foe.hp <= b.foe.max * PERSON_FIGHT.yieldFoeFrac)) b.over = 'won'
     else if (b.you.hp <= 0) b.over = b.stance === 'slay' ? 'died' : 'lost'
     else if (b.stance !== 'slay' && b.you.hp <= this._mbThrownHp(b)) b.over = 'lost'
@@ -6936,6 +6987,7 @@ class GameState {
       F.qi = Math.min(F.pool, F.qi + F.regen)
       F.ward = 0; F.reflect = 0; F.counterPow = 0; F.circ = false
     }
+    if (b.boss) this._mbBossTurn(b)   // v1 add-on: the Bird's egg
     b.turn++
   }
   // Who acts first: wards/counters, then priority, then Swift (Chilled acts last); ties go to you.
@@ -7069,7 +7121,7 @@ class GameState {
   // are read-only), which is ~5× cheaper than a JSON round trip.
   _mbClone(b0) {
     const F = x => ({ ...x, st: { ...x.st }, buffs: x.buffs.map(y => ({ ...y })) })
-    return { ...b0, you: F(b0.you), foe: F(b0.foe), plan: b0.plan ? b0.plan.map(e => [...e]) : null, pending: b0.pending ? { ...b0.pending } : null, lines: [], events: [] }
+    return { ...b0, you: F(b0.you), foe: F(b0.foe), boss: b0.boss ? { ...b0.boss } : undefined, plan: b0.plan ? b0.plan.map(e => [...e]) : null, pending: b0.pending ? { ...b0.pending } : null, lines: [], events: [] }
   }
   // What each of your buttons does now (the battle page's 2×2 grid + Circulate + Palm Strike if it's not equipped).
   // 1.14a: every fight is on moves; beastMoves / beastMove / beastParry stay as names for the same calls.
@@ -7096,7 +7148,7 @@ class GameState {
   // Your move. Plays the turn until an attack on you opens a parry window (pending) or the turn ends.
   fightMove(id) {
     const s = this._s, fi = s.family?.fight
-    if (fi && !fi.m && !fi.over && fi.kind !== 'beast') this._personFightM(fi)
+    if (fi && !fi.m && !fi.over && fi.kind !== 'beast' && fi.kind !== 'boss') this._personFightM(fi)
     const b = fi?.m
     if (!b) return { ok: false, reason: 'no_battle' }
     if (fi.over || b.over) return { ok: false, reason: 'decide' }
@@ -7134,6 +7186,7 @@ class GameState {
     if (b.stance !== 'slay') s.health = Math.max(1, s.health)
     const events = (b.events || []).slice(evStart)
     const out = { ok: true, events, lines: b.lines.slice(n0), pending: r === 'pending' ? b.pending : null, turn: b.turn }
+    if (fi.kind === 'boss') return this._mbLiveBoss(b, fi, r, out)   // v1 add-on
     if (fi.kind !== 'beast') return this._mbLivePerson(b, fi, r, out)
     if (r === 'over') {
       const opp = this._fightOpp()
@@ -7364,6 +7417,447 @@ class GameState {
 
   // Hidden from the player except on the Ascension screen and after the first attempt (Phase 23B).
   // 1.8b-2: the Ascension Trial's terms, same math as ascensionChance() (checks/breakdowns.js pins the sum).
+  // ══ v1 add-on: Legendary bosses + soul techniques (docs/systems/bosses.md; data assets/data/bosses.js) ══════════════
+  // World (kept across lives in this save): w.bosses[id] = { tries, wins, mercy, seen, wonLife, restUntil }, w.soulTech =
+  // { seed, clone }. Per life: s.soulUse = { seedUsed, essenceUntil }, s.clone = { exp, outSec, linger, gone, restUntil, auto }.
+  _ensureBossFields() {
+    const s = this._s, w = s?.world
+    if (!w) return
+    if (!w.bosses || typeof w.bosses !== 'object') w.bosses = {}
+    for (const id of BOSS_ORDER) {
+      const b = w.bosses[id] ||= {}
+      for (const [k, v] of Object.entries({ tries: 0, wins: 0, mercy: 0, seen: false, wonLife: 0, restUntil: 0, awakeLife: 0 })) if (b[k] === undefined) b[k] = v
+    }
+    if (!w.soulTech || typeof w.soulTech !== 'object') w.soulTech = { seed: false, clone: false }
+    if (!s.soulUse || typeof s.soulUse !== 'object') s.soulUse = { seedUsed: false, essenceUntil: 0 }
+    if (!s.clone || typeof s.clone !== 'object') s.clone = { exp: null, outSec: 0, linger: null, gone: false, restUntil: 0, auto: false }
+  }
+  _stName(i) { return typeof stageShortName === 'function' ? stageShortName(i) : (CULTIVATION_STAGES[i]?.realm || 'stage ' + i) }
+  soulTechKnown(id) { return !!this._s.world?.soulTech?.[id] }
+
+  // ── The bosses ──
+  // Why a boss can't be fought now (null = it can): 'life' / 'stage' gates, 'won' (beaten this life), 'rest' (real time).
+  _bossLock(id) {
+    const s = this._s, def = BOSSES[id], rec = s.world.bosses[id], life = this._lifeNo()
+    if (life < def.gates.life) return 'life'
+    if (s.stageIndex < def.gates.stage) return 'stage'
+    if (rec.wonLife === life) return 'won'
+    if (Date.now() < (rec.restUntil || 0)) return 'rest'
+    return null
+  }
+  _bossPower(def, rec) {
+    const B = BOSS_FIGHT, s = this._s, over = Math.max(0, s.stageIndex - def.gates.stage), mercy = Math.min(B.mercyMax, rec.mercy || 0)
+    const parts = [{ label: `Its might (${this._stName(def.gates.stage)} and beyond)`, value: def.gates.stage * 100 + def.power }]
+    if (over) parts.push({ label: 'It meets you where you stand', value: over * 60 })
+    if (mercy) parts.push({ label: `It remembers your mercy (×${mercy})`, value: mercy * B.mercyRealm })
+    return { parts, total: parts.reduce((a, p) => a + p.value, 0) }
+  }
+  _mbFoeBoss(def, rec, you) {
+    const MC = MOVE_COMBAT, B = BOSS_FIGHT, s = this._s, ph = def.phases[0]
+    const over = Math.max(0, s.stageIndex - def.gates.stage), mercy = Math.min(B.mercyMax, rec.mercy || 0)
+    const max = Math.round(MC.beastHpBase * MC.foeHpMult * def.hpMult * (1 + over * B.stageScale) * (1 + mercy * B.mercyHp))
+    const moves = ph.mirror ? [...new Set([...(you.moves || []), ...ph.moves])] : [...ph.moves]
+    const P = { might: 0, ward: 0, swift: 0, qiPool: 0, qiRegen: 0, crit: 0, statusResist: 0.2, lifesteal: 0, parry: 1, heal: 0, el: {}, parryChance: def.parryChance }
+    return { side: 'foe', name: def.short, the: `the ${def.short}`, dmgMult: MC.foeDmgMult * (ph.dmgMult || 1), hp: max, max, qi: MC.qiPool, pool: MC.qiPool, regen: MC.qiRegen,
+      power: this._bossPower(def, rec).total, element: def.element, elements: [def.element], swift: def.swift, moves, mastery: ph.mirror ? { ...you.mastery } : {}, P,
+      style: { press: 1, guard: 0.7, feint: 0.7 }, st: {}, burn: 0, buffs: [], ward: 0, reflect: 0, counterPow: 0, charging: null, circ: false, sealed: null, boss: def.id }
+  }
+  // A fresh boss battle. `you.P.might` carries what your past attempts taught you (+3% per try, max +15%).
+  _mbNewBoss(id) {
+    const def = BOSSES[id], rec = this._s.world.bosses[id], B = BOSS_FIGHT
+    const you = this._mbYou('boss'), learn = Math.min(B.learnMax, (rec.tries || 0) * B.learnPerTry)
+    if (learn) you.P = { ...you.P, might: (you.P.might || 0) + learn }
+    const read = Math.min(B.readMax, B.readBase + (rec.tries || 0) * B.readPerTry)
+    return { stance: 'boss', turn: 1, you, foe: this._mbFoeBoss(def, rec, you), plan: null, planIdx: 0, pending: null, over: null, lines: [],
+      boss: { id, phase: 0, egg: 0, split: false, read, hatched: false, learn } }
+  }
+  // The phase script: called from _mbCheck before a win is declared (so a rebirth can catch a killing blow).
+  _mbBossPhase(b) {
+    const B = b.boss, def = BOSSES[B.id], F = b.foe
+    for (let i = B.phase + 1; i < def.phases.length; i++) {
+      const ph = def.phases[i]
+      if (F.hp > F.max * ph.at) break
+      if (F.hp <= 0 && !ph.heal) break                     // a blow that kills it outright ends it (only a rebirth stops death)
+      B.phase = i; B.shift = (B.shift || 0) + 1
+      if (ph.heal) F.hp = Math.max(F.hp, Math.round(F.max * ph.heal))
+      if (ph.elements) { F.element = ph.element || F.element; F.elements = [...ph.elements] }
+      let moves = [...ph.moves]
+      if (ph.steal) {                                      // the Wraith turns your strongest art back on you
+        const top = (b.you.moves || []).map(id => this._mbArt(id)).filter(a => a && MOVE_ATTACKS.includes(a.move.type))
+          .sort((x, y) => (y.move.power || 0) * (y.move.hits || 1) - (x.move.power || 0) * (x.move.hits || 1))[0]
+        if (top) { moves = [top.id, ...moves]; F.mastery = { ...F.mastery, [top.id]: b.you.mastery?.[top.id] || 1 }; B.stolen = top.id }
+      }
+      F.moves = moves; F.charging = null; F.sealed = null
+      if (ph.dmgMult) F.dmgMult = MOVE_COMBAT.foeDmgMult * ph.dmgMult
+      if (ph.egg) B.egg = ph.egg
+      if (ph.split) B.split = true
+      if (ph.unsplit) B.split = false
+      if (ph.line) this._mbLine(b, 'foe', ph.line, 'down')
+      if (ph.heal) break                                   // a rebirth lifts it above the next mark
+    }
+  }
+  // End of a turn: the Bird's egg counts down, and hatches if it still lives.
+  _mbBossTurn(b) {
+    const B = b.boss, def = BOSSES[B.id], F = b.foe
+    if (!B.egg || F.hp <= 0) return
+    if (--B.egg > 0) return
+    const ph = def.phases[B.phase]
+    F.hp = Math.min(F.max, F.hp + Math.round(F.max * (ph.hatchHeal || 0)))
+    F.moves = [...(def.phases[Math.max(0, B.phase - 1)].moves || [])]
+    B.hatched = true; B.shift = (B.shift || 0) + 1
+    this._mbLine(b, 'foe', def.hatchLine || 'It hatches.', 'down')
+  }
+
+  // Public (UI + bot): every boss — its gates as a checklist, your record with it, the rest countdown, what it teaches.
+  bossInfo() {
+    const s = this._s, w = s.world, life = this._lifeNo()
+    return BOSS_ORDER.map(id => {
+      const def = BOSSES[id], rec = w.bosses[id], lock = this._bossLock(id), T = SOUL_TECH[def.technique]
+      return { id, name: def.name, short: def.short, lore: def.lore, element: def.element, art: def.art || null,
+        technique: { id: T.id, name: T.name, desc: T.desc, known: !!w.soulTech[T.id] },
+        gates: [{ k: 'life', ok: life >= def.gates.life, text: `Your ${this._ordinal(def.gates.life)} life or later`, now: `this is your ${this._ordinal(life)}` },
+                { k: 'stage', ok: s.stageIndex >= def.gates.stage, text: `${this._stName(def.gates.stage)} or higher`, now: this._stName(s.stageIndex) }],
+        lock, restLeft: lock === 'rest' ? Math.ceil((rec.restUntil - Date.now()) / 1000) : 0,
+        seen: !!rec.seen, tries: rec.tries || 0, wins: rec.wins || 0, mercy: rec.mercy || 0, wonThisLife: rec.wonLife === life,
+        learn: Math.min(BOSS_FIGHT.learnMax, (rec.tries || 0) * BOSS_FIGHT.learnPerTry),
+        phases: def.phases.map(p => ({ name: p.name, text: p.text, at: p.at })),
+        line: rec.mercy ? def.lines.mercy : (rec.tries || rec.wins) ? def.lines.again.replace('{n}', this._ordinal((rec.tries || 0) + (rec.wins || 0) + 1)) : def.lines.first,
+        drop: { name: ITEMS[def.drop.item]?.name || def.drop.item, n: def.drop.n + Math.min(BOSS_FIGHT.mercyMax, rec.mercy || 0) * BOSS_FIGHT.mercyDropBonus } }
+    })
+  }
+  _ordinal(n) { const v = n % 100; return n + (['th', 'st', 'nd', 'rd'][(v - 20) % 10] || ['th', 'st', 'nd', 'rd'][v] || 'th') }
+  // The prepare step: the estimate (a Monte Carlo of the phased fight, like a beast's), what a loss costs.
+  bossFightPreview(id) {
+    const def = BOSSES[id]
+    if (!def) return null
+    const s = this._s, lock = this._bossLock(id) || (s.family?.fight ? 'busy' : (s.health ?? 100) < BEAST_FIGHT_MIN_HEALTH ? 'wounded' : null)
+    const b0 = this._mbNewBoss(id), est = this._mbEstimate(b0)
+    return { id, name: def.name, lock, chance: est.chance, turns: est.turns, hurt: Math.round(est.hurt), parryRate: est.parryRate,
+      foeHp: b0.foe.max, power: this._bossPower(def, this._s.world.bosses[id]), learn: b0.boss.learn, read: b0.boss.read,
+      lossHealth: Math.round(this.maxHealth() * BOSS_FIGHT.lossHealth), restSec: BOSS_FIGHT.restSec }
+  }
+  startBossFight(id) {
+    const pv = this.bossFightPreview(id)
+    if (!pv) return { ok: false, reason: 'unknown' }
+    if (pv.lock) return { ok: false, reason: pv.lock }
+    const s = this._s, rec = s.world.bosses[id]
+    rec.seen = true
+    this._startFight('boss', { id: 'boss:' + id }, false, { boss: { id }, m: this._mbNewBoss(id) })
+    this.addEvent({ text: `You climb to face the ${BOSSES[id].name}.`, type: 'special' })
+    return { ok: true, fight: true, chance: pv.chance }
+  }
+  _bossOpp(fi) { const def = BOSSES[fi.boss?.id]; return def ? { id: fi.oppId, name: def.short, boss: def.id } : null }
+  _mbLiveBoss(b, fi, r, out) {
+    const s = this._s, def = BOSSES[fi.boss.id]
+    out.phase = b.boss.phase; out.shift = b.boss.shift || 0
+    if (r === 'over') {
+      if (b.over === 'won') {
+        fi.over = 'won'
+        this.addEvent({ text: `The ${def.short} falls, and does not rise. What you take from it is yours to decide.`, type: 'positive' })
+        out.over = 'won'
+      } else { out.done = true; out.outcome = this._bossLost(fi, false) }
+    }
+    if (!out.done) { this._recalc(); this._notify() }
+    return out
+  }
+  // A loss or a retreat: never death. A loss leaves you at 10% Health; either way it rests (real time) and you learn.
+  _bossLost(fi, retreated) {
+    const s = this._s, def = BOSSES[fi.boss.id], rec = s.world.bosses[def.id], B = BOSS_FIGHT
+    rec.tries = (rec.tries || 0) + 1
+    rec.restUntil = Date.now() + B.restSec * 1000
+    if (!retreated) s.health = Math.max(1, Math.round(this.maxHealth() * B.lossHealth))
+    s.family.fight = null
+    this.addEvent({ text: retreated ? `You break away from the ${def.short}. It returns to its slumber; you know its rhythm a little better now.`
+      : `The ${def.short} throws you down the mountain. You live, barely. You know its rhythm a little better now.`, type: 'negative' })
+    this._emit('battle_lost', { beast: def.short, retreated })
+    this._recalc(); this._notify()
+    return retreated ? 'retreated' : 'lost'
+  }
+  // The end choice after a win: take its heart (the drop) or let it return to the wild (mercy). Both teach the technique once.
+  bossFightChoices() {
+    const fi = this._s.family?.fight
+    if (fi?.kind !== 'boss' || fi.over !== 'won') return null
+    const def = BOSSES[fi.boss.id], rec = this._s.world.bosses[def.id], T = SOUL_TECH[def.technique], B = BOSS_FIGHT
+    const n = def.drop.n + Math.min(B.mercyMax, rec.mercy || 0) * B.mercyDropBonus
+    return { id: def.id, name: def.short, technique: { name: T.name, desc: T.desc, isNew: !this._s.world.soulTech[T.id] },
+      heart: { drop: `${n} ${ITEMS[def.drop.item]?.name || def.drop.item}`, renown: def.renown, recipe: def.id === 'wraith' ? ITEMS.artifact_mirror_soul_plate.name : null },
+      mercy: { karma: B.mercyKarma, honour: B.mercyHonour } }
+  }
+  bossFightFinish(choice) {
+    const s = this._s, fi = s.family?.fight
+    if (fi?.kind !== 'boss' || fi.over !== 'won') return { ok: false, reason: 'none' }
+    if (choice !== 'heart' && choice !== 'mercy') return { ok: false, reason: 'bad_choice' }
+    const def = BOSSES[fi.boss.id], rec = s.world.bosses[def.id], T = SOUL_TECH[def.technique], B = BOSS_FIGHT, w = s.world
+    const n = def.drop.n + Math.min(B.mercyMax, rec.mercy || 0) * B.mercyDropBonus
+    rec.wins = (rec.wins || 0) + 1; rec.wonLife = this._lifeNo()
+    const learned = !w.soulTech[T.id]
+    w.soulTech[T.id] = true
+    let drop = null, recipe = null
+    if (choice === 'heart') {
+      s.inventory[def.drop.item] = (s.inventory[def.drop.item] || 0) + n; drop = { [def.drop.item]: n }
+      this._ranks().renown = (this._ranks().renown || 0) + def.renown   // the Heavenly Rankings' renown (4.8)
+      if (def.id === 'wraith' && this._learnRecipe('recipe_artifact_mirror_soul_plate', 'boss')) recipe = ITEMS.artifact_mirror_soul_plate.name
+      this.addEvent({ text: `You take the ${def.short}'s heart: ${n} ${ITEMS[def.drop.item]?.name}.`, type: 'positive' })
+    } else {
+      rec.mercy = (rec.mercy || 0) + 1
+      s.karma = Math.min(100, (s.karma ?? 50) + B.mercyKarma)
+      const rep = this._rep(); rep.h = Math.min(NPC_REP.max, rep.h + B.mercyHonour)
+      this.addEvent({ text: `You let the ${def.short} return to the wild. It will remember, and grow.`, type: 'special' })
+    }
+    if (learned) this.addEvent({ text: `Its secret is yours, and your soul will keep it in every life to come: ${T.name}.`, type: 'special' })
+    s.family.fight = null
+    this._emit('boss_won', { beast: def.short, technique: T.name, learned })
+    this._recalc(); this._notify()
+    return { ok: true, choice, learned, technique: T.name, drop, recipe }
+  }
+  // Yearly (the year-turn queue): a boss whose gates are newly met this life is announced once (toast + attention).
+  _tickSoulTech() {
+    const s = this._s, w = s.world, life = this._lifeNo()
+    if (s.interlude) return
+    for (const id of BOSS_ORDER) {
+      const rec = w.bosses[id], lock = this._bossLock(id)
+      if ((lock === null || lock === 'rest') && rec.awakeLife !== life) {
+        rec.awakeLife = life; rec.fresh = true
+        this.addEvent({ text: `Something legendary stirs. The ${BOSSES[id].name} can be faced in Roam → Hunt.`, type: 'special' })
+        this._emit('boss_awake', { beast: BOSSES[id].short })
+      }
+    }
+    this._tickMirrorChildren()
+  }
+  markBossSeen(id) { const r = this._s.world.bosses?.[id]; if (r) r.fresh = false }
+
+  // ── Seed of the Self: the mirror heir ──
+  seedInfo() {
+    const s = this._s, T = SOUL_TECH.seed
+    if (!this.soulTechKnown('seed')) return null
+    const max = this.maxHealth(), cost = Math.round(max * T.healthCost)
+    const lock = s.soulUse.seedUsed ? 'Once a life: your seed is already spent'
+      : s.stageIndex < T.minStage ? `Reach ${this._stName(T.minStage)} first`
+      : (s.health ?? 100) < max * T.minHealthFrac ? `Needs ${Math.ceil(max * T.minHealthFrac)} Health (you have ${Math.floor(s.health ?? 100)})`
+      : s.interlude ? 'Not between lives' : null
+    const sp = s.family?.spouse
+    return { name: T.name, desc: T.desc, lock, used: !!s.soulUse.seedUsed, healthCost: cost, essenceSec: T.essenceSec, qiMult: T.essenceQiMult,
+      essenceLeft: Math.max(0, Math.ceil(((s.soulUse.essenceUntil || 0) - Date.now()) / 1000)),
+      spouse: sp ? { name: sp.given, reacts: this._seedSpouseReact(sp) } : null }
+  }
+  _seedSpouseReact(sp) { return ['jealous', 'proud', 'hothead', 'tyrant', 'arrogant'].includes(sp.personality) ? 'hurt' : ['gentle', 'niceguy', 'scholar', 'stoic', 'monk'].includes(sp.personality) ? 'accept' : 'unsure' }
+  useSeedOfSelf() {
+    const s = this._s, T = SOUL_TECH.seed, info = this.seedInfo()
+    if (!info) return { ok: false, reason: 'unknown' }
+    if (info.lock) return { ok: false, reason: 'locked', lock: info.lock }
+    s.health = Math.max(1, (s.health ?? 100) - info.healthCost)
+    s.soulUse.seedUsed = true; s.soulUse.essenceUntil = Date.now() + T.essenceSec * 1000
+    const child = this._makeMirrorChild()
+    const sp = s.family.spouse
+    let react = null
+    if (sp) {
+      react = this._seedSpouseReact(sp)
+      if (react === 'accept') this._changeAffection(6, `${child.given}, a child of your own essence`)
+      else if (react === 'hurt') { this._changeAffection(-10, 'a child made without them'); s.family.seedCrisis = { childId: child.id, spouse: sp.given } }
+      else if (Math.random() < 0.5) { this._changeAffection(-6, 'a child made without them'); s.family.seedCrisis = { childId: child.id, spouse: sp.given } }
+    }
+    this._emit('mirror_born', { child: child.given })
+    this._recalc(); this._notify()
+    return { ok: true, child: child.given, childId: child.id, react, crisis: !!s.family.seedCrisis }
+  }
+  _makeMirrorChild() {
+    const s = this._s, f = s.family, yr = Math.floor(s.world.year), T = SOUL_TECH.seed
+    const taken = new Set(f.children.map(c => c.given))
+    let given = Persons.rollGiven()
+    for (let i = 0; i < 3 && taken.has(given); i++) given = Persons.rollGiven()
+    const child = Persons.make({ id: this._newPersonId(), given, family: this._clanSurname(), bornYear: yr,
+      root: { ...s.root }, personality: s.personality?.id || Persons.rollPersonality(), role: 'child', alive: true, parents: [s.self.id] })
+    child.mirror = true
+    child.bond = T.bond
+    child.morality = this._rollMorality(child.personality, (s.karma - 50) * MORALITY_KARMA_WEIGHT)
+    child.xp = 0; child.cd = {}; child.raised = { time: 0, teach: 0, gift: 0 }
+    f.children.push(child)
+    this.addEvent({ text: `Year ${yr}: from a seed of your own essence, a child — ${Persons.fullName(child)} (${child.root.name}). It has your eyes, and your heart.`, type: 'special' })
+    this._claimFirst('first_child')
+    this._emit('child_born', { child: child.given })
+    return child
+  }
+  // The spouse's hurt (a crisis you answer): reassure (affection back, costs a gift's worth of time) · defend (neutral) · dismiss.
+  answerSeedCrisis(choice) {
+    const f = this._s.family, c = f?.seedCrisis
+    if (!c) return { ok: false, reason: 'none' }
+    if (!['reassure', 'defend', 'dismiss'].includes(choice)) return { ok: false, reason: 'bad_choice' }
+    const d = { reassure: 8, defend: 0, dismiss: -12 }[choice]
+    if (d) this._changeAffection(d, { reassure: 'you reassured them', dismiss: 'you dismissed their hurt' }[choice])
+    const text = { reassure: `You hold ${c.spouse}'s hands and tell them the child is theirs too. Slowly, they believe it.`,
+      defend: `You tell ${c.spouse} the path asked it of you. They say nothing more of it.`,
+      dismiss: `You tell ${c.spouse} it is not their concern. Something closes in their face.` }[choice]
+    f.seedCrisis = null
+    this.addEvent({ text, type: choice === 'dismiss' ? 'negative' : 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, text }
+  }
+  // Yearly: a grown mirror child turns (bond < turnBond, or wronged) or stands with you (bond ≥ allyBond). Once each.
+  _tickMirrorChildren() {
+    const s = this._s, f = s.family, T = SOUL_TECH.seed, yr = Math.floor(s.world.year)
+    if (!f?.children || f.mirrorTurn) return
+    for (const c of f.children) {
+      if (!c.mirror || !c.alive || c.estranged || c.mirrorFate || yr - c.bornYear < ADULT_AGE) continue
+      if ((c.bond ?? 50) < T.turnBond || c.wronged) { f.mirrorTurn = { childId: c.id, y: yr }; c.mirrorFate = 'turning'
+        this.addEvent({ text: `${c.given} wears your face, and wants your seat.`, type: 'negative', pid: c.id }); return }
+      if ((c.bond ?? 50) >= T.allyBond) { c.mirrorFate = 'ally'
+        this.addEvent({ text: `${c.given} kneels beside you: two hearts, one path. Your mirror child will stand with you in every war.`, type: 'positive', pid: c.id }) }
+    }
+  }
+  mirrorAllyBonus() { return (this._s.family?.children || []).some(c => c.alive && c.mirrorFate === 'ally') ? SOUL_TECH.seed.allyWarBonus : 0 }
+  mirrorTurnInfo() {
+    const f = this._s.family, t = f?.mirrorTurn, c = t && f.children.find(x => x.id === t.childId)
+    if (!c) return null
+    return { childId: c.id, name: c.given, stage: c.stageIndex || 0, bond: Math.round(c.bond ?? 50), wronged: !!c.wronged, odds: this.personFightOdds?.(c, 'defend', null)?.chance ?? null }
+  }
+  // Your answer: yield (they lead the clan, you keep cultivating) · face (a fight for the seat on the battle page) · send away
+  // (they renounce the clan name and found a house — the next life's rival comes from it).
+  answerMirrorTurn(choice) {
+    const s = this._s, f = s.family, info = this.mirrorTurnInfo()
+    if (!info) return { ok: false, reason: 'none' }
+    const c = f.children.find(x => x.id === info.childId), yr = Math.floor(s.world.year)
+    if (choice === 'face') {
+      if (f.fight) return { ok: false, reason: 'busy' }
+      f.mirrorTurn = null; c.mirrorFate = 'faced'
+      this._startFight('defend', c, this._headDecidesLethal(c, this._playerClan?.(), c.bond ?? 50))   // the child's temper decides (2.6e)
+      return { ok: true, fight: true }
+    }
+    if (choice === 'yield') {
+      f.mirrorTurn = null; c.mirrorFate = 'yielded'
+      const clan = this._playerClan?.()
+      if (clan && clan.headId === s.self.id) clan.headId = c.id
+      c.bond = Math.min(100, (c.bond ?? 50) + 20)
+      this.addEvent({ text: `You bow to ${c.given}. Your mirror leads the clan now; you keep to your cultivation.`, type: 'neutral', pid: c.id })
+    } else if (choice === 'send') {
+      f.mirrorTurn = null; c.mirrorFate = 'sent'
+      const old = this._clanSurname()
+      let sur = SURNAMES[Math.floor(Math.random() * SURNAMES.length)]
+      for (let i = 0; i < 8 && (sur === old || s.world.rivalHouses?.[sur]); i++) sur = SURNAMES[Math.floor(Math.random() * SURNAMES.length)]
+      f.children = f.children.filter(x => x.id !== c.id)
+      for (const cl of Object.values(s.world.clans || {})) for (const l of cl.lines || []) l.memberIds = (l.memberIds || []).filter(id => id !== c.id)
+      const p = s.world.persons[c.id] || c
+      Object.assign(p, { ...c, family: sur, role: 'wanderer', owner: 'world', estranged: true, mirrorOf: s.self.id })
+      s.world.persons[p.id] = p
+      s.world.rivalHouses ||= {}
+      s.world.rivalHouses[sur] = { surname: sur, pid: p.id, fromLife: this._lifeNo(), fromName: Persons.fullName(p), heat: -50, end: 'mirror', y: yr, used: null }
+      this._noteEnemy?.({ kind: 'rival', personId: p.id, name: Persons.fullName(p), surname: sur, why: 'your mirror child' })
+      this.addEvent({ text: `${c.given} walks out of the gate and takes the name ${sur}. A house of your own blood will be your rival.`, type: 'negative', pid: p.id })
+    } else return { ok: false, reason: 'bad_choice' }
+    this._recalc(); this._notify()
+    return { ok: true, choice }
+  }
+
+  // ── Body Beyond the Body: the clone's own expedition slot ──
+  _cloneShatter(loc) { const T = SOUL_TECH.clone; return Math.min(T.shatterMax, T.shatterPerStage * Math.max(0, (loc.minStage || 0) - (this._s.stageIndex - 3))) }
+  _cloneWillChance() { const T = SOUL_TECH.clone; return Math.max(0, Math.min(T.willMax, (this._s.clone.outSec || 0) / 3600 * T.willPerHour)) }
+  cloneInfo() {
+    const s = this._s, T = SOUL_TECH.clone, c = s.clone
+    if (!this.soulTechKnown('clone')) return null
+    const cost = Math.round(this._qiCapValue() * T.qiCost), will = this._cloneWillChance()
+    const lock = c.gone ? 'Your other self walks its own road now (this life)'
+      : s.stageIndex < T.minStage ? `Reach ${this._stName(T.minStage)} first`
+      : Date.now() < (c.restUntil || 0) ? 'rest' : null
+    const exp = c.exp ? { ...c.exp, name: LOCATIONS.find(l => l.id === c.exp.locationId)?.name || '', left: Math.max(0, Math.ceil((c.exp.endsAt - Date.now()) / 1000)) } : null
+    return { name: T.name, lock, restLeft: lock === 'rest' ? Math.ceil((c.restUntil - Date.now()) / 1000) : 0, qiCost: cost, qiMult: T.qiMult,
+      canPay: s.qi >= cost, exp, linger: c.linger ? { ...c.linger } : null, auto: !!c.auto,
+      will, willWord: T.willWords.find(x => will >= x.min).w,
+      places: LOCATIONS.filter(l => s.stageIndex >= l.minStage).map(l => ({ id: l.id, name: l.name, duration: l.duration, shatter: this._cloneShatter(l) })) }
+  }
+  _qiCapValue() { return this._s.derived?.qiCap || this._stage().qiCap || 0 }
+  startCloneExpedition(locationId) {
+    const s = this._s, info = this.cloneInfo()
+    if (!info) return { ok: false, reason: 'unknown' }
+    if (info.lock) return { ok: false, reason: 'locked', lock: info.lock }
+    if (s.clone.exp) return { ok: false, reason: 'active' }
+    if (s.clone.linger) return { ok: false, reason: 'linger' }
+    const loc = LOCATIONS.find(l => l.id === locationId)
+    if (!loc || s.stageIndex < loc.minStage) return { ok: false, reason: 'stage' }
+    if (s.qi < info.qiCost) return { ok: false, reason: 'qi' }
+    s.qi -= info.qiCost
+    s.clone.exp = { locationId, startedAt: Date.now(), endsAt: Date.now() + loc.duration * 1000 * this._activeTimeMult('expedition'), shatter: this._cloneShatter(loc) }
+    s.clone.lastLocationId = locationId
+    this._recalc(); this._notify()
+    return { ok: true, loc }
+  }
+  recallClone() {
+    const c = this._s.clone
+    if (!c.exp) return { ok: false, reason: 'none' }
+    c.exp = null
+    this.addEvent({ text: 'You call your other self home before it arrives. It brings nothing back.', type: 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+  setCloneAuto(on) { this._s.clone.auto = !!on; this._notify(); return { ok: true } }
+  _tickClone() {
+    const s = this._s, c = s.clone
+    if (!c || s.interlude) return
+    if (c.exp && Date.now() >= c.exp.endsAt) this._resolveClone()
+    if (c.auto && !c.exp && !c.linger && c.lastLocationId) {   // the player's delegated chore (off by default), never above your realm
+      const info = this.cloneInfo()
+      if (info && !info.lock && s.qi >= info.qiCost) this.startCloneExpedition(c.lastLocationId)
+    }
+  }
+  _resolveClone() {
+    const s = this._s, c = s.clone, T = SOUL_TECH.clone, exp = c.exp, loc = LOCATIONS.find(l => l.id === exp.locationId)
+    c.exp = null
+    if (!loc) return
+    c.outSec = (c.outSec || 0) + Math.max(0, (exp.endsAt - exp.startedAt) / 1000)
+    if (Math.random() < (exp.shatter || 0)) {
+      s.health = Math.max(1, (s.health ?? 100) - Math.round(this.maxHealth() * T.shatterHealth))
+      c.restUntil = Date.now() + T.restSec * 1000
+      this.addEvent({ text: `Your other self shatters at ${loc.name}. The backlash tears through you (−${Math.round(this.maxHealth() * T.shatterHealth)} Health).`, type: 'negative' })
+      this._emit('clone_shattered', {})
+      this._recalc(); this._notify(); return
+    }
+    const drops = this._rollDrops(loc)
+    if (Math.random() < this._cloneWillChance()) {   // It lingers: the drops wait on your answer
+      c.linger = { locationId: loc.id, place: loc.name, drops }
+      this.addEvent({ text: `Your other self does not come home from ${loc.name}. It sits on a stone and looks back at you with your own eyes.`, type: 'special' })
+      this._emit('clone_lingers', {})
+      this._recalc(); this._notify(); return
+    }
+    const got = this._cloneGive(drops)
+    this.addEvent({ text: `Your other self returns from ${loc.name}: ${got || 'little of worth'}.`, type: 'positive' })
+    this._roadRoll('expedition', loc, `${loc.name}, where your other self walked`)
+    this._recalc(); this._notify()
+  }
+  _cloneGive(drops) {
+    const s = this._s, parts = []
+    for (const [id, q] of Object.entries(drops || {})) {
+      if (ITEMS[id]?.type === 'currency') s.spiritStones += q; else s.inventory[id] = (s.inventory[id] || 0) + q
+      parts.push(`${q}× ${ITEMS[id]?.name || id}`)
+    }
+    return parts.join(', ')
+  }
+  // It Lingers: draw it back in (its drops + mastery on one of your arts; its will resets) or let it walk its own road
+  // (a real person with your face and root joins the world; the technique's slot is closed for the rest of this life).
+  answerCloneLinger(choice) {
+    const s = this._s, c = s.clone, L = c.linger
+    if (!L) return { ok: false, reason: 'none' }
+    if (choice === 'absorb') {
+      const got = this._cloneGive(L.drops)
+      const ids = (s.arts?.loadout?.moves || []).filter(id => id && s.arts.known?.[id] && (s.arts.known[id].mastery || 1) < ART_MASTERY_MAX)
+      const art = ids.length ? ids[Math.floor(Math.random() * ids.length)] : null
+      if (art) s.arts.known[art].mastery = (s.arts.known[art].mastery || 1) + 1
+      c.linger = null; c.outSec = 0
+      this.addEvent({ text: `You draw your other self back in. Its road becomes yours: ${got || 'little of worth'}${art ? `, and a deeper grasp of ${ARTS[art]?.name}` : ''}.`, type: 'positive' })
+      this._recalc(); this._notify()
+      return { ok: true, choice, art }
+    }
+    if (choice === 'release') {
+      const me = s.self, yr = Math.floor(s.world.year)
+      const p = this._mintPerson({ family: me.family || null, given: `${me.given || s.name}`, stage: Math.max(0, s.stageIndex - 3), age: [s.age || 20, s.age || 20],
+        personality: s.personality?.id || null, root: { ...s.root }, role: 'wanderer' }, Math.random)
+      p.cloneOf = me.id; p.rel = 20; p.fam = 1; p.seenY = yr
+      p.mem = [{ y: yr, k: 'cloneFreed', text: `You let me go at ${L.place}. I have your face, and my own road.`, d: 20, life: this._lifeNo() }]
+      c.linger = null; c.gone = true; c.exp = null
+      this.addEvent({ text: `You let your other self go. It walks away from ${L.place} with your face, and your name, and a road of its own.`, type: 'special', pid: p.id })
+      this._recalc(); this._notify()
+      return { ok: true, choice, pid: p.id }
+    }
+    return { ok: false, reason: 'bad_choice' }
+  }
+
   ascensionBreakdown() {
     const s = this._s
     const bq = s.bloodlineQuality || 0
@@ -7902,7 +8396,8 @@ class GameState {
   // One record per INSTALL, shared by every slot: soul.json via window.electron.loadSoul/saveSoul, never inside _s.
 
   _blankSoul() {
-    return { v: 1, points: 0, earned: 0, resonance: 0, failedAscensions: 0, immortals: 0, v1Finished: null, log: [], seen: false }
+    return { v: 1, points: 0, earned: 0, resonance: 0, failedAscensions: 0, immortals: 0, v1Finished: null, log: [], seen: false,
+      tut: { seen: {}, off: false, init: false } }   // 1.23: tutorial lessons seen + tips on/off — per install, like the rest of the soul
   }
 
   // Missing/corrupt → blank; every field clamped so a hand-edited file can't break the invariants.
@@ -7918,6 +8413,10 @@ class GameState {
     b.v1Finished       = raw.v1Finished && typeof raw.v1Finished === 'object' ? raw.v1Finished : null
     b.log              = Array.isArray(raw.log) ? raw.log.slice(0, SOUL_LOG_MAX) : []
     b.seen             = !!raw.seen
+    const t = raw.tut && typeof raw.tut === 'object' ? raw.tut : {}
+    b.tut.off = !!t.off
+    b.tut.init = !!t.init
+    if (t.seen && typeof t.seen === 'object') for (const [k, v] of Object.entries(t.seen)) if (Number.isFinite(+v)) b.tut.seen[k] = +v
     return b
   }
 
@@ -7970,6 +8469,39 @@ class GameState {
     this._soul.seen = true
     this._saveSoul()
     if (this._s) this._notify()
+  }
+
+  // ── 1.23: Tutorial seen-state (docs/systems/tutorial.md) — rides in the soul record so a new slot or a new life never
+  // re-teaches what this install has already seen. Presentation only: nothing here touches _s or balance.
+  tutorialInfo() { return { off: this._soul.tut.off, init: this._soul.tut.init, seen: { ...this._soul.tut.seen } } }
+
+  // Once per install, the first time a game is on screen with this build. An established player (passed in as
+  // markIds = every lesson id) is not walked through basics they already know; the Guide can still replay any of it.
+  initTutorials(markIds = []) {
+    if (this._soul.tut.init) return false
+    const now = Date.now()
+    for (const id of markIds) this._soul.tut.seen[id] ??= now
+    this._soul.tut.init = true
+    this._saveSoul()
+    return true
+  }
+
+  markTutorialSeen(id) {
+    if (!id || this._soul.tut.seen[id]) return false
+    this._soul.tut.seen[id] = Date.now()
+    this._saveSoul()
+    return true
+  }
+
+  setTutorialsOff(off) {
+    this._soul.tut.off = !!off
+    this._saveSoul()
+  }
+
+  // Forget every lesson (the Guide's "Show every tip again"); tips switch back on.
+  resetTutorials() {
+    this._soul.tut = { seen: {}, off: false, init: true }
+    this._saveSoul()
   }
 
   _soulWho() {
@@ -8727,10 +9259,11 @@ class GameState {
     return (s.birth && s.birth.headId === head?.id && s.birth.headBond != null) ? s.birth.headBond : 50
   }
 
-  _killPerson(id, yr, cause) {
+  _killPerson(id, yr, cause, { seat = true } = {}) {
     const w = this._s.world, p = w.persons[id]
     if (!p || p.alive === false) return
     p.alive = false; p.diedYear = yr; p.cause = cause
+    if (seat) this._vacateSeat(p, yr, cause)   // final QA: any death (a duel, a deed, the road) frees a sect seat at once
     if (p.roadCard) this._roadForget(p, cause)   // 4.9: a card waiting on them goes
     const rv = this._rivalRec()
     if (rv && !rv.end && rv.pid === id) this._rivalEnds(rv, p, cause, yr)   // 4.10b: your rival is gone
@@ -8773,7 +9306,25 @@ class GameState {
       if (!p.parentingStyle) p.parentingStyle = this._rollStyle(p).style
       p.headSince = Math.floor(w.year)
     }
+    this._repairLines(clan)
     return old
+  }
+  // Final QA: a branch's head must be one of its own members (a head moved into the main line could leave a branch still
+  // naming them — a later branch war then killed the clan head as that branch's "loser", clan_head_invalid). A branch
+  // whose head is not its own living member passes to its strongest living member, else none. The main line keeps the
+  // clan head. Deterministic (no Math.random), so it is safe in migrations.
+  _repairLines(clan) {
+    const w = this._s.world, self = this._s.self?.id
+    if (!clan?.lines?.length) return
+    clan.lines.forEach((l, i) => {
+      if (i === 0) { if (clan.headId && l.memberIds.includes(clan.headId)) l.headId = clan.headId; return }
+      const ok = id => id && l.memberIds.includes(id) && (id === self || (w.persons[id] && w.persons[id].alive !== false))
+      if (ok(l.headId)) return
+      const next = l.memberIds.map(id => w.persons[id]).filter(p => p && p.id !== self && p.alive !== false && !p.estranged)
+        .sort((a, b) => (b.stageIndex || 0) - (a.stageIndex || 0) || String(a.id).localeCompare(String(b.id)))[0]
+      l.headId = next ? next.id : null
+      if (next && next.role !== 'head') next.role = 'branch_head'
+    })
   }
 
   // Public (UI): can you challenge the sitting head right now?
@@ -9250,6 +9801,7 @@ class GameState {
   // death roll hits, in which case they die (you: _die('branch_war'); an NPC: killed outright). The winning
   // line becomes the new main line; the old main line is simply relabeled as a branch.
   _resolveBranchWar(clan, attackerLine) {
+    this._repairLines(clan)   // final QA: the heads that fight are the heads the lines really have
     const s = this._s, w = s.world, yr = Math.floor(w.year), f = s.family, mainLine = clan.lines[0]
     const atkBase = this._lineStrength(clan, attackerLine), defBase = this._lineStrength(clan, mainLine)
     const allies = this._branchAllies(clan, attackerLine, mainLine)
@@ -9739,6 +10291,7 @@ class GameState {
   recipeSource(recipeId) {
     if (RECIPE_DISCOVERY.encounter.includes(recipeId)) return 'encounter'
     for (const ring of Object.keys(RECIPE_DISCOVERY.arena)) if (RECIPE_DISCOVERY.arena[ring] === recipeId) return 'arena'
+    if ((RECIPE_DISCOVERY.boss || []).includes(recipeId)) return 'boss'   // v1 add-on: a legendary boss's heart
     return null
   }
   // The lock line the Craft tab shows on an unknown-formula card.
@@ -9746,6 +10299,7 @@ class GameState {
     const src = this.recipeSource(recipeId)
     return src === 'encounter' ? 'A stranger on the road (Roam → Explore) may teach this one.'
       : src === 'arena' ? 'A ring champion (Roam → Arena) guards this formula.'
+      : src === 'boss' ? 'A legendary beast (Roam → Hunt → Legendary) carries what it is made from.'
       : 'Its formula is not yet known.'
   }
   _learnRecipe(recipeId, how) {
@@ -9761,7 +10315,7 @@ class GameState {
   // A random still-unknown formula from a source group ('encounter' | 'arena' | null = any hidden one).
   _rollHiddenRecipe(source = null) {
     const s = this._s
-    let pool = RECIPES.filter(r => r.hidden && !s.recipes.known[r.id])
+    let pool = RECIPES.filter(r => r.hidden && !s.recipes.known[r.id] && this.recipeSource(r.id) !== 'boss')   // (a boss's formula never turns up by chance)
     if (source) pool = pool.filter(r => this.recipeSource(r.id) === source)
     if (!pool.length) return null
     return pool[Math.floor(Math.random() * pool.length)].id
@@ -10521,6 +11075,7 @@ class GameState {
     if (s.ownSect?.founded)       return { ok: false, reason: 'own_sect' }
     if (s.stageIndex < def.minStage) return { ok: false, reason: 'stage' }
     if (this.sectInAshes(def.id)) return { ok: false, reason: 'ashes' }   // Phase 43f: burned, not yet risen
+    if (!this._wsByDef(def.id)) this._wsKeepGates()   // final QA: a gate always leads to a living record
     s.sect = { id: def.id, rank: 0, contribution: 0, activeMissions: [] }
     s.sectWar = this._blankSectWar('member')   // first call to arms is scheduled on the next tick
     this.addEvent({ text: `You joined the ${def.name} (${def.nameCN}) as an Outer Disciple.`, type: 'special' })
@@ -10830,11 +11385,13 @@ class GameState {
   disbandOwnSect() {
     const s = this._s
     if (!s.ownSect.founded) return { ok: false, reason: 'no_sect' }
-    const n = s.ownSect.name
+    const n = s.ownSect.name, gate = s.ownSect.takenOver?.defId
     s.ownSect = this._blankOwnSect()
     s.sectWar = this._blankSectWar()
     s.karma   = Math.max(0, s.karma - 10)
     this.addEvent({ text: `You disbanded the ${n}. Its halls fall silent.`, type: 'negative' })
+    // final QA: a sect you took over is older than you — its gate opens again without you
+    if (gate && s.world?.sects && this._wsKeepGates().some(r => r.defId === gate)) this.addEvent({ text: `The ${n} was here before you, and outlasts you: its gate opens again under a new master.`, type: 'neutral' })
     this._recalc(); this._notify()
     return { ok: true }
   }
@@ -11176,6 +11733,8 @@ class GameState {
       const rec = this._wsFromClanSect(cs, clan, w)
       if (rec) cs.worldSectId = rec.id
     }
+    this._wsKeepGates()   // final QA: a save whose taken-over sect lost its gate gets it back (idempotent)
+    for (const clan of Object.values(w.clans)) this._repairLines(clan)   // final QA: no branch names a head it does not hold
   }
 
   // The world's first sects. A hash-seeded RNG (no Math.random draws, so existing sim seeds don't shift).
@@ -11404,7 +11963,7 @@ class GameState {
     // forces the master out, and some masters die in it) or a retirement.
     const dies = wsRng(`${r.id}|${yr}|succession`)() < WORLD_PEOPLE.masterDiesShare
     if (oldP) {
-      if (dies) this._killPerson(oldP.id, yr, 'seat_struggle')
+      if (dies) this._killPerson(oldP.id, yr, 'seat_struggle', { seat: false })
       else { oldP.role = 'retired_master'; oldP.sectRole = null }
     }
     if (Math.random() < L.temperSwitchChance) r.temper = WORLD_SECT_TEMPERS[Math.floor(Math.random() * WORLD_SECT_TEMPERS.length)]
@@ -11435,6 +11994,13 @@ class GameState {
     const bName = id => SECT_BUILDINGS.find(b => b.id === id)?.name || 'hall'
     const alive = () => W.list.filter(r => r.alive)
     const mine = this._wsMine()
+    // Final QA: no dead person keeps a seat, whatever path seated or killed them (a lineage inheritor who had died as a
+    // disciple, a death that bypassed _killPerson): the senior elder takes a dead master's seat, dead elders leave the bench.
+    for (const r of alive()) {
+      const lp = r.leaderId ? s.world.persons?.[r.leaderId] : null
+      if (lp && lp.alive === false) this._wsSeatHeir(r, yr, `buries its master: ${Persons.fullName(lp)} is gone`, true, lp.id)
+      if (r.elderIds?.length) r.elderIds = r.elderIds.filter(id => s.world.persons?.[id]?.alive !== false)
+    }
     for (const r of alive()) this._wsEnsurePeople(r, true)   // Phase 28 (4.2): a newborn sect's master + elders become real people (4.6: the bench drafts the living)
     for (const r of alive()) {
       if (Math.random() < (S.growChance + S.growPerTier * (r.tier || 1)) * (r.grudge ? SECT_RAZE.remnant.growMult : 1)) {   // 43f: a remnant rebuilds in anger
@@ -11485,6 +12051,7 @@ class GameState {
     }
     W.list = W.list.filter(r => r.alive)
     this._tickAshes(yr)   // Phase 43f: dread fades; the ashes may stir
+    this._wsKeepGates()   // final QA: a gate with no living record raises it again
     const rivals = W.list.filter(r => r.kind !== 'joinable').length
     if (rivals < S.rivalsTarget && W.list.length < S.maxAlive && Math.random() < S.birthChance) {
       const r = this._wsNewRival()
@@ -11752,6 +12319,10 @@ class GameState {
     const W = w?.sects
     if (!W || !o?.founded) return null
     const rec = this._lineageRecord(w, o.name, o.buildings, o.hallLevel, (o.disciples || []).length, this._s.stageIndex || 0)
+    // A sect you took over keeps its gate (lineage-sect.md 46b): joining that sect later finds this record (final QA fix —
+    // it was always minted with defId null, so the gate led to a sect with no record).
+    const gate = o.takenOver?.defId
+    if (gate && !this._wsByDef(gate)) rec.defId = gate
     const inh = this._lineageInheritor(o)
     if (inh) {
       rec.leader = inh.name
@@ -11769,7 +12340,7 @@ class GameState {
         p.sectId = rec.id; p.sectRole = d.role === 'head' ? 'elder' : 'disciple'; if (p.owner === 'sect') p.owner = 'world'
       }
       const hp = inh?.d ? w.persons[inh.d.kin ? inh.d.childId : inh.d.pid] : null
-      if (hp && Persons.fullName(hp) === rec.leader) this._wsSeat(rec, hp)
+      if (hp && hp.alive !== false && Persons.fullName(hp) === rec.leader) this._wsSeat(rec, hp)   // (final QA: never a dead inheritor)
       rec.elderIds = ds.filter(d => d.role === 'head' && d !== inh?.d).map(d => d.kin ? d.childId : d.pid).filter(id => w.persons[id])
     }
     this._wsChron(`The ${rec.name} bows its head: ${rec.founderName} is gone, and ${rec.leader} takes the master's seat.`, rec.id)
@@ -11999,7 +12570,8 @@ class GameState {
                after: cost == null ? null : this._fundAfter(r, id), contrib: cost == null ? 0 : Math.max(1, Math.floor(cost * F.contribRate)),
                lock, lost: r.lastLost?.buildingId === id }
     }
-    const top = { ...r, buildings: Object.fromEntries(SECT_BUILDINGS.map(b => [b.id, r.maxBuildingLevel])), hallLevel: r.maxHall }
+    // (r is null when the joined sect has no world record — the card still draws, with no halls to fund; final QA fix)
+    const top = r ? { ...r, buildings: Object.fromEntries(SECT_BUILDINGS.map(b => [b.id, r.maxBuildingLevel])), hallLevel: r.maxHall } : null
     const nextRank = SECT_RANKS[rank + 1]
     return { name: def.name, factor: bl.factor, share: bl.share, k: bl.k, levels: bl.levels, hallLevel: (bl.hall || 0) + 1,
       parts: [{ label: 'Every sect blesses its own', val: B.base },
@@ -12007,7 +12579,7 @@ class GameState {
               { label: `Sect Hall Lv.${bl.hall + 1}`, val: B.perHall * bl.hall }],
       capped: bl.raw > B.max ? 'max' : bl.raw < B.min ? 'min' : null, min: B.min, max: B.max,
       rankName: SECT_RANKS[rank].name, nextRankName: nextRank?.name || null, nextShare: nextRank ? B.rankShare[rank + 1] : null,
-      reach: wsBlessingFactor(top).factor, effects: sectBlessingEffects(def.effects, bl.k), full: def.effects,
+      reach: top ? wsBlessingFactor(top).factor : bl.factor, effects: sectBlessingEffects(def.effects, bl.k), full: def.effects,
       suppressed: !!s.derived?.sectBuffSuppressed,
       halls: r ? [...SECT_BUILDINGS.map(b => fund(b.id)), fund('hall')] : [], stance: r ? this._wsRow(r) : null,
       lost: r?.lastLost ? { name: SECT_BUILDINGS.find(b => b.id === r.lastLost.buildingId)?.name || 'hall', year: r.lastLost.year } : null }
@@ -12162,7 +12734,7 @@ class GameState {
     this._applyLethalTrauma(res, lethal)
     if (res.winner.id === s.self.id) {
       let splinter = null
-      if (res.died) { this._killPerson(p.id, yr, 'sect_master'); s.karma = Math.max(0, s.karma + CHALLENGE_KARMA_DEATH) }
+      if (res.died) { this._killPerson(p.id, yr, 'sect_master', { seat: false }); s.karma = Math.max(0, s.karma + CHALLENGE_KARMA_DEATH) }
       else splinter = this._exileMaster(p, r)
       this.addEvent({ type: 'special', text: res.died
         ? `Year ${yr}: ${Persons.fullName(p)} falls on the floor of their own Sect Hall. The seat is yours.`
@@ -12844,13 +13416,36 @@ class GameState {
     this.addEvent({ type: 'special', text: `The ${r.name} burns. Its halls fall, its gate is ash, and its name is struck from the world (${bits.join(', ')}).` })
     return { razed: true, sect: r.name, might: 0, stones, herbs, manual, karma, cool, warm, survivors, provoked }
   }
+  // Final QA (2026-10-04): the world keeps its gates. Every joinable sect (SECTS) has a living record unless it is yours
+  // right now (taken over) or burned and not yet risen (smoking ashes). A sect you used to own always comes back: a lineage
+  // record made before lineage records kept their gate gets it back by name; otherwise the gate raises a fresh record in
+  // its seed shape (Lv.1 halls, a hash-seeded leader — no Math.random, so migrations and sim seeds don't shift).
+  _wsKeepGates() {
+    const s = this._s, W = s.world?.sects
+    if (!W) return []
+    const yr = Math.floor(s.world.year || 1), back = []
+    for (const def of SECTS) {
+      if (this._wsByDef(def.id)) continue
+      if (s.ownSect?.founded && s.ownSect.takenOver?.defId === def.id) continue
+      if ((W.ashes || []).some(a => a.defId === def.id && a.state === 'smoking')) continue
+      const named = W.list.find(r => r.alive && !r.defId && r.kind === 'lineage' && r.name === def.name)
+      if (named) { named.defId = def.id; back.push(named); continue }
+      const sd = WORLD_SECT_SEED.find(x => x.defId === def.id) || { tier: 1, maxBuildingLevel: 2, maxHall: 2, temper: WORLD_SECT_TEMPERS[0] }
+      const r = this._wsNewRival({ name: def.name, defId: def.id, kind: 'joinable', origin: 'regated', tier: sd.tier, temper: sd.temper,
+        maxBuildingLevel: sd.maxBuildingLevel, maxHall: sd.maxHall, rng: wsRng(`gate|${def.id}|${yr}`) })
+      this._wsChron(`The ${r.name} opens its gate again under ${r.leader}.`, r.id)
+      back.push(r)
+    }
+    return back
+  }
+
   // A world year: dread fades, and the ashes may stir. A joinable sect always returns (the world keeps its gates).
   _tickAshes(yr) {
     const W = this._s.world.sects, R = SECT_RAZE, P = R.remnant
     if (W.dread > 0) W.dread = Math.max(0, Math.round((W.dread - R.dread.decay) * 100) / 100)
     for (const a of W.ashes || []) {
       if (a.state !== 'smoking' || yr < a.returnYear) continue
-      const joinable = a.kind === 'joinable' && a.defId && !this._wsByDef(a.defId)
+      const joinable = !!a.defId && !this._wsByDef(a.defId)   // any record that held a gate (a lineage sect too) — final QA
       if (!joinable && Math.random() >= this._remnantChance(a)) {
         a.state = 'scattered'
         this._wsChron(`No one returns to the ashes of the ${a.name}. Grass grows over its gate.`, null)
@@ -12964,7 +13559,7 @@ class GameState {
       add(`Pills offered ×${w.pillsGiven}`, MEMBER_WAR_PILL_BONUS * w.pillsGiven)
       if (beast) add(`${beast.name} at the front`, Math.min(MEMBER_WAR_BEAST_MAX_BONUS, MEMBER_WAR_BEAST_BASE_BONUS + MEMBER_WAR_BEAST_LVL_BONUS * beast.level))
       const sw = this._swornWar()
-      if (sw.bonus) add(`Sworn siblings at your side (${sw.names.length})`, sw.bonus)
+      if (sw.bonus) add(`At your side: ${sw.names.join(', ')}`, sw.bonus)
       if (shelf) parts.push({ label: `Arts you gave the library (${s.sect.shelf.length})`, op: 'x', value: 1 + shelf })
       return { side: 'member', mult: power, chance: odds(power), parts, rankMult, vs,
                ifAnswered: w.answered ? null : odds((power / (1 + shelf) + MEMBER_WAR_ANSWER_BONUS * rankMult) * (1 + shelf)) }
@@ -12977,7 +13572,7 @@ class GameState {
       if (shelf) { m *= 1 + shelf; parts.push({ label: `Arts in your sect library (${s.ownSect.library.length})`, op: 'x', value: 1 + shelf }) }
       if (w.reinforced) { m *= 1 + WAR_REINFORCE_POWER_BONUS; parts.push({ label: 'Reinforced', op: 'x', value: 1 + WAR_REINFORCE_POWER_BONUS }) }
       const sw = this._swornWar()
-      if (sw.bonus) { m *= 1 + sw.bonus; parts.push({ label: `Sworn siblings at your side (${sw.names.length})`, op: 'x', value: 1 + sw.bonus }) }
+      if (sw.bonus) { m *= 1 + sw.bonus; parts.push({ label: `At your side: ${sw.names.join(', ')}`, op: 'x', value: 1 + sw.bonus }) }
       if (w.allyId) { m *= 1 + WAR_ALLY_POWER_BONUS; parts.push({ label: `${SECTS.find(x => x.id === w.allyId)?.name || 'Ally'} fights with you`, op: 'x', value: 1 + WAR_ALLY_POWER_BONUS }) }
       return { side: 'own', mult: m, chance: odds(m), parts, vs, arrayDamaged: !!d.arrayDamaged,
                reinforceCost: this._warReinforceCost(), allyCost: this._warAllyCost(),
@@ -13430,8 +14025,9 @@ class GameState {
     }
     if (p.warInMinutes && s.sectWar.side) s.sectWar.nextWarAt = now + p.warInMinutes * 60 * 1000
     // Qi as a fraction of the *effective* cap (techniques/artifacts multiply it) — run _recalc against the new save
-    const live = this._s
+    const live = this._s, subs = this._subs
     this._s = s
+    this._subs = []   // final QA: the half-built save must not reach the UI (a seeded rival's log line re-rendered the HUD on it)
     try {
       // 1.14a: a late-game test life fights people on moves, so it gets a kit for its realm (rolled like a person's arts, at
       // mastery 3) instead of the starter-only loadout a fresh save has
@@ -13442,7 +14038,7 @@ class GameState {
       s.arts.loadout.passives = [...kit.passives, null, null, null, null, null].slice(0, ART_PASSIVE_SLOTS_MAX)
       for (const id of Object.keys(s.arts.known)) s.arts.found[id] = true
       this._recalc()
-    } finally { this._s = live }
+    } finally { this._s = live; this._subs = subs }
     s.qi = s.derived.qiCap * p.qiFrac
     s.stats.breakthroughs = p.stageIndex
     s.lastSave = now
