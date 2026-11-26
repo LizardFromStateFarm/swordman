@@ -370,42 +370,61 @@
     const pct = Math.min(100, (s.qi / cap) * 100)
     document.getElementById('qi-fill').style.width    = pct + '%'
     document.getElementById('qi-numbers').textContent = `${fmt(s.qi)} / ${fmt(d.qiCap)}`
-    document.getElementById('qi-rate').textContent    =
-      d.meditBonus > 1
-        ? `+${fmt(d.qiPerSecondBoosted)} qi/s (${d.meditBonus}×) · ${d.meditSecondsLeft}s`
-        : `+${fmt(d.qiPerSecond)} qi/s`
+    // Phase 48 (active-cultivation.md): the rate readout shows the active rate and the idle trickle.
+    const cultRate = ((d.cultivateYield || 0) / CULTIVATE_DRAW_COOLDOWN) || d.qiPerSecond || 0
+    document.getElementById('qi-rate').textContent =
+      `+${fmt(cultRate)} qi/s cultivating · ${fmt(d.qiPerSecondPassive || 0)}/s away`
     breakdownUI.refresh(s)
 
-    const btnMed = document.getElementById('btn-meditate')
-    if (s.meditating) {
-      btnMed.classList.add('meditating')
-      btnMed.querySelector('.act-sub').textContent = `${d.meditSecondsLeft}s remaining`
-      btnMed.disabled = true
+    // Phase 48: the CULTIVATE action. While a mortal (meridians shut) the same button becomes AWAKEN.
+    const btnCult = document.getElementById('btn-cultivate')
+    const mortal  = gameState.mortalMeridiansShut()
+    const cdLeft  = Math.max(0, ((s.cultivate?.cdUntil || 0) - Date.now()) / 1000)
+    if (mortal) {
+      const aw = gameState.awakenInfo(), ready = !!aw?.canAwaken
+      btnCult.classList.remove('cultivating')
+      btnCult.classList.toggle('ready', ready)
+      btnCult.disabled = !ready
+      btnCult.querySelector('.act-name').textContent = 'Awaken'
+      btnCult.querySelector('.act-sub').textContent = ready
+        ? 'Open your meridians'
+        : `Body ${aw?.haveTier?.id || 'F'} / ${aw?.needTier?.id || 'D'}`
     } else {
-      btnMed.classList.remove('meditating')
-      btnMed.querySelector('.act-sub').textContent = '3× Qi · 30s'
-      btnMed.disabled = false
+      btnCult.classList.remove('ready')
+      btnCult.classList.toggle('cultivating', cdLeft > 0)
+      btnCult.disabled = cdLeft > 0
+      btnCult.querySelector('.act-name').textContent = 'Cultivate'
+      const combo = s.cultivate?.combo || 0
+      btnCult.querySelector('.act-sub').textContent = cdLeft > 0 ? `${cdLeft.toFixed(1)}s`
+        : combo > 1 ? `${combo}× combo` : 'Draw Qi'
     }
 
-    // Phase 14 follow-up: the Meridian Flow segment beside Meditate — charges, or "resume" for a puzzle set aside
-    const btnFlow = document.getElementById('btn-flow'), fl = s.minigames?.flow && gameState.minigameInfo().flow   // (refills charges first)
-    if (btnFlow && fl) {
-      const max = MINIGAME_CHARGES.max, waiting = !!fl.waiting, n = fl.charges || 0
-      btnFlow.disabled = !n && !waiting
+    // Phase 14 follow-up · Phase 48: the Meridian Flow segment beside Cultivate — now part of the active loop
+    // (no charge wall; a short cooldown + soft diminishing returns).
+    const btnFlow = document.getElementById('btn-flow')
+    if (btnFlow && gameState.minigameInfo) {
+      const fl = gameState.minigameInfo().flow
+      const waiting = !!fl.waiting, cd = fl.cdIn || 0
+      btnFlow.disabled = !waiting && cd > 0
       btnFlow.classList.toggle('waiting', waiting)
-      btnFlow.classList.toggle('full', n >= max && !waiting)
-      btnFlow.querySelector('.flow-n').innerHTML = waiting ? Icon('play') : n   // a set-aside puzzle: resume
+      btnFlow.classList.toggle('full', !waiting && cd <= 0)
+      btnFlow.querySelector('.flow-n').innerHTML = waiting ? Icon('play') : cd > 0 ? Math.ceil(cd) : ''
       const qi = fmt(fl.qi)
       btnFlow.title = waiting ? `Meridian Flow: your puzzle waits, as you left it. Finish it for +${qi} Qi.`
-        : n ? `Meridian Flow: turn the channels until the Qi flows, at your own pace. +${qi} Qi · ${n} of ${max} charges.`
-        : `Meridian Flow: no charges. One returns every 30 minutes, even while you are away.`
+        : cd > 0 ? `Meridian Flow: the channels are settling. Ready in ${Math.ceil(cd)}s.`
+        : `Meridian Flow: turn the channels until the Qi flows, at your own pace. +${qi} Qi.`
     }
 
     const btnBt  = document.getElementById('btn-breakthrough')
     const btPct  = Math.round(d.breakthroughChanceDisplay * 100)
     const pillName = s.activePill ? ITEMS[s.activePill]?.name : null
     const lastMortalIdx = CULTIVATION_STAGES.length - 2
-    if (st.id === 'ascension') {
+    if (mortal) {                                     // Phase 49: no breakthroughs until the meridians open
+      btnBt.disabled = true
+      btnBt.classList.remove('ready')
+      btnBt.querySelector('.act-name').textContent = 'Breakthrough'
+      btnBt.querySelector('.act-sub').textContent  = 'Awaken first'
+    } else if (st.id === 'ascension') {
       btnBt.disabled = true
       btnBt.querySelector('.act-name').textContent = 'Ascended'
       btnBt.querySelector('.act-sub').textContent  = ''
@@ -431,8 +450,6 @@
     _prevCanBreakthrough = d.canBreakthrough
     const inFocusWindow = s.playMode === 'active' && _btFocusReadyAt && (Date.now() - _btFocusReadyAt) <= ACTIVE_BT_FOCUS_WINDOW_SECONDS * 1000
     btnBt.classList.toggle('bt-focus', !!inFocusWindow)
-
-    document.getElementById('meditate-badge').classList.toggle('hidden', !s.meditating)
 
     // Integrity bar: lerp color from indigo (#6060C0) at 100 to red (#C83030) at 0
     const integ    = s.derived.realmIntegrity ?? 100
@@ -678,12 +695,12 @@
         <section>
           <div class="ch-sec-title"><span>Cultivation</span></div>
           <div class="ch-tiles">
-            ${tile('qps', 'Qi / second', 'qi', fmt(d.qiPerSecondBoosted), `${(d.breakdown?.qps || []).length} sources${d.meditBonus > 1 ? ' · meditating' : ''}`, 'jade')}
-            ${tile('cap', 'Qi capacity', 'dantian', fmt(d.qiCap), toFill > 0 && d.qiPerSecondBoosted > 0 ? `Ready in ${fmtTime(Math.ceil(toFill / d.qiPerSecondBoosted)).replace(/ /g, '\u00a0')}` : 'Ready to break through')}
+            ${tile('qps', 'Qi / second', 'qi', `≈${fmt(((d.cultivateYield || 0) / CULTIVATE_DRAW_COOLDOWN) || d.qiPerSecond)}`, `${(d.breakdown?.qps || []).length} sources · cultivating`, 'jade')}
+            ${tile('cap', 'Qi capacity', 'dantian', fmt(d.qiCap), toFill > 0 && (((d.cultivateYield || 0) / CULTIVATE_DRAW_COOLDOWN) || d.qiPerSecond) > 0 ? `Ready in ${fmtTime(Math.ceil(toFill / (((d.cultivateYield || 0) / CULTIVATE_DRAW_COOLDOWN) || d.qiPerSecond))).replace(/ /g, '\u00a0')}` : 'Ready to break through')}
             ${btTile}
           </div>
-          <button class="ch-play" data-mg-open="flow" ${mg.flow.charges || mg.flow.waiting ? '' : 'disabled'} title="Turn the meridian channels until the Qi flows: +${fmt(mg.flow.qi)} Qi, at your own pace. Charges refill one every 30 minutes, even while you are away.">
-            <i data-icon="vein"></i><span><b>Meridian Flow</b> · ${mg.flow.waiting ? 'resume · ' : ''}+${fmt(mg.flow.qi)} Qi</span><span class="ch-charges">${'<b class="on"></b>'.repeat(mg.flow.charges)}${'<b></b>'.repeat(mg.max - mg.flow.charges)}</span>${mg.flow.charges || mg.flow.waiting ? '' : `<em>${fmtTime(mg.flow.nextIn)}</em>`}</button>
+          <button class="ch-play" data-mg-open="flow" ${mg.flow.waiting || !(mg.flow.cdIn > 0) ? '' : 'disabled'} title="Turn the meridian channels until the Qi flows: +${fmt(mg.flow.qi)} Qi, at your own pace.">
+            <i data-icon="vein"></i><span><b>Meridian Flow</b> · ${mg.flow.waiting ? 'resume · ' : ''}+${fmt(mg.flow.qi)} Qi</span>${mg.flow.cdIn > 0 && !mg.flow.waiting ? `<em>${fmtTime(mg.flow.cdIn)}</em>` : ''}</button>
         </section>
         <section>
           <div class="ch-sec-title"><span>Foundation</span></div>
@@ -714,7 +731,7 @@
           <div class="ch-sec-title"><span>Record</span></div>
           <div class="ch-list">
             ${sr('Breakthroughs', `${s.stats.breakthroughs} · ${s.stats.failed} failed`)}
-            ${sr('Meditations', s.stats.meditationSessions)}
+            ${sr('Draws of Qi', fmt(s.stats.cultivateDraws || 0))}
             ${sr('Qi gathered', fmt(s.stats.totalQiGained))}
             ${sr('Time cultivating', fmtTime(s.stats.timePlayed))}
             ${(s.deaths || 0) > 0 ? sr('Lives ended', s.deaths) : ''}
@@ -1231,9 +1248,55 @@
     return box
   }
 
+  // Phase 49b (docs/systems/mortal-phase.md): the mortal arc's beat card — the village life lived before the Dao.
+  // A pending beat leads the view (a decision outranks the countdown); a mortal with no pending beat sees the goal.
+  function renderMortalBeat(s) {
+    const mi = gameState.mortalInfo?.()
+    if (!mi || !mi.isMortal) return null
+    const box = document.createElement('div')
+    box.className = 'mortal-card'
+    const goal = `<div class="mc-goal">Awaken — temper the body to <b>${escHtml(mi.needTier?.name || 'Hardened Body')}</b>: ` +
+      `${escHtml(mi.haveTier?.name || 'Frail Body')} · ${fmt(mi.haveXp || 0)} / ${fmt(mi.needXp || 0)} XP${mi.canAwaken ? ' — ready' : ''}</div>`
+    if (!mi.beat) {
+      box.innerHTML = `<div class="mc-h">${Icon('dantian')}<span class="mc-k">A mortal life</span></div>
+        <div class="mc-text">No one here will teach you the Dao. Only the body can be trained — and only the body matters yet.</div>${goal}`
+      return box
+    }
+    const ch = mi.beat.choices.map(c => `<button class="mc-choice" data-mortal="${escHtml(c.id)}"${c.ok ? '' : ' disabled'}>
+        <span class="mc-l">${escHtml(c.label)}</span><small class="mc-s">${escHtml(c.ok ? c.sub : (c.lock || c.sub))}</small></button>`).join('')
+    box.innerHTML = `<div class="mc-h">${Icon('dantian')}<span class="mc-k">A mortal life</span></div>
+      <div class="mc-title">${escHtml(mi.beat.title)}</div>
+      <div class="mc-text">${escHtml(mi.beat.text)}</div>
+      <div class="mc-choices">${ch}</div>${goal}`
+    box.querySelectorAll('[data-mortal]').forEach(b => b.addEventListener('click', () => {
+      if (b.disabled) return
+      const r = gameState.resolveMortalBeat(b.dataset.mortal)
+      if (r.ok) flashMessage(r.bodyXp ? `+${fmt(r.bodyXp)} body XP.` : 'The moment passes.', r.bodyXp ? 'positive' : 'neutral')
+    }))
+    return box
+  }
+
+  // Phase 49b: the Awakening moment — a card, not a cutscene. Plays once the meridians open.
+  function showAwakenMoment() {
+    const el = document.getElementById('awaken-overlay')
+    if (!el) return
+    const s = gameState.get()
+    const text = document.getElementById('awaken-text')
+    if (text) text.textContent =
+      `You are ${s?.name || 'a mortal'} no longer. The thread you chased through the cold mornings is a river now, and it ` +
+      `runs where your breath runs.\n\nThe body of a mortal could not hold it. Yours can. Qi Condensation opens before you.`
+    el.classList.remove('hidden')
+  }
+  document.getElementById('awaken-ok').addEventListener('click', () => {
+    document.getElementById('awaken-overlay').classList.add('hidden')
+  })
+
   function renderExplore(s) {
     const el = document.getElementById('tab-explore')
     el.innerHTML = ''
+
+    const mortalSec = renderMortalBeat(s)   // Phase 49b: a mortal beat leads the view
+    if (mortalSec) el.appendChild(mortalSec)
 
     // Expedition status block
     const statusDiv = document.createElement('div')
@@ -2143,8 +2206,28 @@
 
   // ── Game controls ─────────────────────────────────────────────────────────
 
-  document.getElementById('btn-meditate').addEventListener('click', () => {
-    gameState.startMeditation(30)
+  // Phase 48 (docs/systems/active-cultivation.md): the CULTIVATE action. While a mortal its meridians are shut,
+  // so the same button AWAKENS (Phase 49). A draw pops the Qi gained over the sprite and builds a combo.
+  let _cultPopT = 0
+  document.getElementById('btn-cultivate').addEventListener('click', () => {
+    const s = gameState.get()
+    if (!s) return
+    if (gameState.mortalMeridiansShut()) {
+      const r = gameState.awaken()
+      if (r.ok) { renderer.triggerBreakthroughBurst(); banterSys?.say?.('breakthrough'); showAwakenMoment() }
+      else if (r.reason === 'body_too_weak') flashMessage(`Your body is too weak (${r.have}); temper it to ${r.need} first.`, 'neutral')
+      return
+    }
+    const r = gameState.drawQi()
+    if (!r.ok) return   // on cooldown: the button is disabled anyway
+    const pop = document.getElementById('cult-pop')
+    if (pop) {
+      pop.textContent = `+${fmt(r.gained)} Qi${r.combo > 1 ? `  ·  ${r.combo}×` : ''}`
+      pop.classList.toggle('perfect', !!r.perfect)
+      pop.classList.remove('hidden')
+      clearTimeout(_cultPopT)
+      _cultPopT = setTimeout(() => pop.classList.add('hidden'), 700)
+    }
   })
 
   document.getElementById('btn-breakthrough').addEventListener('click', () => {
@@ -2716,13 +2799,12 @@
     body.innerHTML = `
       <div class="mode-intro">How you walk the path right now. Switch whenever you like; nothing is lost.</div>
       <div class="mode-cards">
-        ${card('idle', 'idle', 'Idle', '', 'Automation works while you are away.', ['For when you step away.', 'Unlocked automation runs for you.', 'Nothing is ever punished for your absence.'], !active, runsLine)}
-        ${card('active', 'active', 'Active', '', 'Faster journeys and focus bonuses while you play.', [
+        ${card('idle', 'idle', 'Idle', '', 'For when you step away.', ['Unlocked automation runs the timed jobs for you.', 'Qi keeps gathering as a slow trickle.', 'Nothing is ever punished for your absence.'], !active, runsLine)}
+        ${card('active', 'active', 'Active', '', 'You are playing: cultivate and act.', [
+          'Cultivate (Draw Qi) gathers Qi many times faster than the idle trickle.',
           `Expeditions ${pct(1 - ACTIVE_EXPEDITION_TIME_MULT)} faster, missions ${pct(1 - ACTIVE_SECT_MISSION_TIME_MULT)} faster.`,
           `Breakthrough focus: press within ${ACTIVE_BT_FOCUS_WINDOW_SECONDS}s of it lighting up for +${pct(ACTIVE_BT_FOCUS_BONUS)}.`,
           `A failed breakthrough keeps ${pct(ACTIVE_BT_QI_LOSS_BONUS)} more Qi.`,
-          `Push Harder near an expedition's end (${Icon('stone')} ${ACTIVE_PUSH_HARDER_COST}) for an extra roll.`,
-          `Master's Touch: ${pct(ACTIVE_CRAFT_TOUCH_CHANCE)} double crafts while you watch the furnace.`,
           `Body tempering earns ${pct(TEMPERING_XP_ACTIVE)} more XP.`,
           'Automation rests while you play.'], active)}
       </div>

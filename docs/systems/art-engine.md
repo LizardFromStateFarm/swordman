@@ -139,6 +139,22 @@ art's own `pillar` (which would be clipped by the figure canvas), so the figure 
 motes, rim light) composite cleanly over another scene. Everything else (clouds, gate, sea, bolts, flash) is drawn by the
 cinematic in the same ink-dot language. Full details, timings and tests: docs/systems/soul-points.md → "As-built (40b)".
 
+## Exercise scene: the practice mini-games' figure (Phase 52b, 2026-10-10)
+
+`renderer/engine/exercise-scene.js` → `ExerciseScene`: the animated figure that plays the practice exercises
+(docs/systems/minigames.md). The baked `INK_ART` cultivator has **no rig**, so this is not an `InkRenderer` subclass —
+it is a **purpose-built side-view cultivator on a bone rig** (re-rigged 2026-10-11): fixed bone lengths
+(`EXERCISE_BODY`), keyframes with two-bone IK (Push-Ups, Lift) or a gait cycle (Running) in `EXERCISE_POSES`; the body
+is filled as volumes into a per-layer mask canvas and inked as a hex dot grid (a warm up-left rim, a stage-coloured
+back-light, an occlusion line under the near arm), with verlet-chain cloth (sash tails, hair ribbon, hem), over a
+**stage-coloured glow + aura ring**. Full detail: docs/systems/minigames.md → "The animated figure".
+
+- **Driven by the game.** `MinigameUI` calls `setPress(0..1)` every frame and `kick(quality)` on a landed rep.
+- **Reduced motion** has no rAF loop; the frame stays under the **6 ms** art budget (asserted via
+  `scene.perf(40)` in `scripts/smoke/scenarios/body.js`). Contact sheet: `npx electron scripts/art/exercise-sheet.js`.
+- Uses the shared ink helpers (`inkRnd` / `inkRgba` / `inkMix` from ink-renderer.js). App-only (not loaded by the sim
+  loader, like `battle-scene.js`). Asset gate: see docs/systems/ui-review.md.
+
 ## Planned (PLAN.md Phase 39, user 2026-09-27)
 - A5: the player picks face / hair / robe at every creation and rebirth (live ink preview); robe + effect changeable
   in a Wardrobe. A8: effects unlocked by realm, Arts and cultivation path. A9: robes unlocked by family/clan head, sect

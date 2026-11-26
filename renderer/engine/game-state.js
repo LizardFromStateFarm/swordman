@@ -64,7 +64,9 @@ class GameState {
         this._recalc()
         // Phase 30 (M2 task 2.4): OFFLINE_QI_MULT tempers the afk lever. Age never passes offline (pillar 4),
         // so afk lives are cheap in Qi-per-open-hour unless offline gain is throttled relative to live Qi/s.
-        const gain = elapsed * (this._s.derived?.qiPerSecond || 0) * OFFLINE_QI_MULT
+        // Phase 48: offline credits only the PASSIVE share — you're away, so you don't cultivate, you just breathe.
+        // Phase 49: and a mortal's meridians are shut — no qi gathers at all until Awakening.
+        const gain = this.mortalMeridiansShut() ? 0 : elapsed * (this._s.derived?.qiPerSecondPassive || 0) * OFFLINE_QI_MULT
         this._s.qi = Math.min(this._s.qi + gain, this._s.derived?.qiCap || 100)
         // Integrity regen while offline: +1 per 30 s
         const intGain = Math.floor((elapsed / 30) * (this._s.derived?.integrityRegenMult || 1))
@@ -132,8 +134,10 @@ class GameState {
       karma:         50,
       techniques:    ['qi_breathing'],
       root:          this._rollRoot(),
-      meditating:    false,
-      meditationEnds:0,
+      // Phase 48 (active-cultivation.md): the Cultivate action's combo + cooldown. The active Qi loop.
+      cultivate:     { cdUntil: 0, combo: 0, lastAt: 0 },
+      // Phase 49 (mortal-phase.md): false until the body is trained enough to open the meridians (Awaken).
+      awakened:      false,
       // World (clan-succession.md 2.6a): clans, persons, the world clock — survives every death.
       world:            w,
       self,
@@ -145,6 +149,8 @@ class GameState {
       // family-events.js: a bad father's hand — rare beatings while you are young, the defiance they build, and
       // the grown-up reckoning. Filled for old saves by _ensureBeatingFields().
       abuse:            { nextCheck: 0, hits: 0, defiance: 0, event: null, reckon: false, avenged: false },
+      // Phase 49b (mortal-phase.md): the mortal arc — the village beats lived before the Dao. Per life.
+      mortal:           this._blankMortal(),
       // Phase 2
       expedition:    { active: false, locationId: null, endsAt: null, pushed: false },
       inventory:     {},
@@ -203,7 +209,7 @@ class GameState {
         totalQiGained:      0,
         breakthroughs:      0,
         failed:             0,
-        meditationSessions: 0,
+        cultivateDraws:     0,   // Phase 48: Draw Qi hits
         timePlayed:         0,
         ascensionAttempts:  0,
         ascensions:         0,
@@ -4562,6 +4568,8 @@ class GameState {
     }
     if (!ab.reckon && this.reckoningInfo()) ab.reckon = true
 
+    this._tickMortal(yr)   // Phase 49b: the mortal arc's next beat (fires only while the meridians are shut)
+
     // Spouse: gains a stage every SPOUSE_YEARS_PER_STAGE married years (never ascends, never dies of age).
     const sp = f.spouse
     if (sp) {
@@ -4789,6 +4797,9 @@ class GameState {
     this._ensureBeatingFields()   // family-events.js — a bad father's hand + the grown-up reckoning
     this._ensurePhase28Fields()   // Phase 28 (4.2): one registry of persons — needs world.sects (43b), arena (35), family (16)
     this._ensureBossFields()      // v1 add-on (bosses.md): legendary bosses + soul techniques — needs s.world
+    this._ensurePhase48Fields()   // Phase 48 (active-cultivation.md): the Cultivate combo/cooldown (a new field)
+    this._ensurePhase49Fields()   // Phase 49 (mortal-phase.md): the Awakening flag
+    this._ensurePhase49bFields()  // Phase 49b (mortal-phase.md): the mortal arc's per-life beat state
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -4836,8 +4847,8 @@ class GameState {
       if (ae.type === 'bt_bonus')    bAdd(ITEMS[artId].name, ae.value)
     }
 
-    const meditBonus = (s.meditating && Date.now() < s.meditationEnds) ? 3 : 1
-    if (s.meditating && Date.now() >= s.meditationEnds) s.meditating = false
+    // Phase 48 (active-cultivation.md): the 3× Meditate burst is retired — active Qi now comes from the Cultivate
+    // action, not a 30 s timer. The full rate is unchanged; only the passive tick is a share of it (see qiPerSecondPassive).
 
     // Beast passive bonuses
     let beastQpsMult   = 1
@@ -4942,14 +4953,14 @@ class GameState {
 
     s.derived = {
       qiPerSecond:              qps,
-      qiPerSecondBoosted:       qps * meditBonus,
+      qiPerSecondBoosted:       qps,                            // Phase 48: kept = the full rate (no Meditate burst)
+      qiPerSecondPassive:       qps * PASSIVE_QI_SHARE,          // Phase 48: the tick/offline trickle (12% of the rate)
+      cultivateYield:           qps * CULTIVATE_DRAW_SECONDS,    // Phase 48: Qi per Draw Qi hit, before the combo
       qiCap:                    st.qiCap * capMult,
       breakthroughChance:       baseChance,
       breakthroughChanceDisplay:Math.min(0.98, baseChance + pillBtPreview),
       stage:                    st,
       canBreakthrough:          s.qi >= st.qiCap * capMult * 0.90,
-      meditBonus,
-      meditSecondsLeft: s.meditating ? Math.max(0, Math.ceil((s.meditationEnds - Date.now()) / 1000)) : 0,
       lootMult:         (weapId && ITEMS[weapId]?.effect?.type === 'void_blade' ? ITEMS[weapId].effect.loot_mult : 1) * (sectFx.loot_mult || 1),
       hiddenLocations:  artId === 'artifact_void_compass' || !!sectFx.hidden_locations,
       sectHerbMult:     sectFx.herb_mult || 1,
@@ -5096,7 +5107,8 @@ class GameState {
     this._tickBody()                                         // Phase 14: tempering + mini-game charges run on real time
     this._tickClone()                                        // v1 add-on: the clone's expedition (bosses.md)
 
-    const gain = s.derived.qiPerSecondBoosted * dt
+    // Phase 48: the passive trickle. Phase 49: while a mortal's meridians are shut, qi does not flow at all.
+    const gain = this.mortalMeridiansShut() ? 0 : s.derived.qiPerSecondPassive * dt
     s.qi = Math.min(s.qi + gain, s.derived.qiCap)
     s.stats.totalQiGained += gain
     s.stats.timePlayed    += dt
@@ -5140,6 +5152,8 @@ class GameState {
   // opts.focusBonus adds ACTIVE_BT_FOCUS_BONUS to this one attempt only (Active Mode click-window, 22C).
   attemptBreakthrough(opts = {}) {
     const s = this._s
+    // Phase 49 (mortal-phase.md): a mortal's meridians are shut — you must Awaken first, not break through.
+    if (this.mortalMeridiansShut()) return { success: false, reason: 'awaken_required' }
     const minQiFrac = opts.minQiFrac ?? 0.90
     if (!(s.qi >= s.derived.qiCap * minQiFrac)) return { success: false, reason: 'insufficient_qi' }
     if (s.stageIndex >= CULTIVATION_STAGES.length - 1) return { success: false, reason: 'ascended' }
@@ -8045,8 +8059,9 @@ class GameState {
              rootBoost: null, bloodForgings: 0, history: [] }
   }
   _blankMinigames() {
-    return { strikes: { charges: MINIGAME_CHARGES.max, nextAt: null, best: 0, plays: 0, session: null },
-             flow:    { charges: MINIGAME_CHARGES.max, nextAt: null, best: null, plays: 0, hour: [], session: null } }
+    const m = {}
+    for (const g of MINIGAMES) m[g.id] = { cdUntil: 0, best: null, plays: 0, hour: [], session: null }
+    return m
   }
   _ensurePhase14Fields() {
     const s = this._s
@@ -8058,11 +8073,13 @@ class GameState {
     if (b.active && !this._temperMethod(b.active.id)) b.active = null
     if (!s.minigames || typeof s.minigames !== 'object') s.minigames = this._blankMinigames()
     const m = s.minigames, dm = this._blankMinigames()
-    for (const k of ['strikes', 'flow']) {
+    // Phase 52: the 'strikes' kind was retired — its Push-Ups replacement keeps your best/plays.
+    if (m.strikes && !m.pushups) { m.pushups = { ...dm.pushups, best: m.strikes.best || null, plays: m.strikes.plays || 0 }; delete m.strikes }
+    for (const k of Object.keys(dm)) {
       if (!m[k] || typeof m[k] !== 'object') m[k] = dm[k]
       for (const f of Object.keys(dm[k])) if (m[k][f] === undefined) m[k][f] = dm[k][f]
-      m[k].charges = Math.max(0, Math.min(MINIGAME_CHARGES.max, m[k].charges | 0))
     }
+    for (const k of Object.keys(m)) if (!dm[k]) delete m[k]   // a kind dropped from the registry
     if (s.health > this.maxHealth()) s.health = this.maxHealth()
   }
   _temperMethod(id) { return TEMPERING_METHODS.find(m => m.id === id) || null }
@@ -8183,10 +8200,9 @@ class GameState {
     this._recalc(); this._notify()
     return { ok: true }
   }
-  // Each tick (and on load): charges refill; a finished tempering pays out, or an ordeal reaches its crisis and holds.
+  // Each tick (and on load): a finished tempering pays out, or an ordeal reaches its crisis and holds.
   _tickBody() {
     const s = this._s, b = s.body
-    for (const k of ['strikes', 'flow']) this._refillCharges(s.minigames[k])
     let guard = 0
     while (b.active && !b.active.crisis && Date.now() >= b.active.endsAt && guard++ < 60) {
       const m = this._temperMethod(b.active.id)
@@ -8371,58 +8387,102 @@ class GameState {
              mendHave: s.inventory[SCAR_MEND_ITEM] || 0 }
   }
 
-  // ── Phase 14 mini-games: Tempering Strikes (body XP) + Meridian Flow (Qi). Charges refill on real time. ──
-  _refillCharges(g) {
-    const R = MINIGAME_CHARGES, now = Date.now()
-    if (g.charges >= R.max) { g.nextAt = null; return }
-    if (!g.nextAt) g.nextAt = now + R.refillSecs * 1000
-    while (g.charges < R.max && now >= g.nextAt) { g.charges++; g.nextAt += R.refillSecs * 1000 }
-    if (g.charges >= R.max) g.nextAt = null
-  }
+  // ── Phase 14 + 52 mini-games: the body exercises Push-Ups · Running · Lift (body XP) + the puzzles Meridian Flow
+  // and Memorization (Qi) — charge-free, cooldown-gated (registry in assets/data/minigames.js). ──
   _flowSize() { let z = FLOW.sizes[0]; for (const x of FLOW.sizes) if (this._s.stageIndex >= x.stage) z = x; return z }
-  strikesXp(points) {
-    const max = STRIKES.strikes * STRIKES.perfect
-    return Math.max(STRIKES.minXp, Math.round(points / max * STRIKES.xpHours * this._bestTemperRate() * this.temperXpMult().mult))
+  // Phase 52c: a timing game's reps for the current body — a flat `reps`, or `repsByTier` (Lift: fewer, heavier reps
+  // early; more at high tiers). The session freezes this at start so a mid-run change can't shift the score.
+  _timingReps(def) {
+    const t = def.timing || {}
+    if (Array.isArray(t.repsByTier)) return t.repsByTier[Math.max(0, Math.min(t.repsByTier.length - 1, this._s.body?.tier || 0))] || 1
+    return t.reps || STRIKES.strikes
   }
-  _flowHourCount() { const g = this._s.minigames.flow, now = Date.now(); g.hour = (g.hour || []).filter(t => now - t < 3600000); return g.hour.length }
+  // The merged timing config for a game (the registry's `timing` over the shared STRIKES defaults) — used by both the
+  // reward formula and finishMinigame's verification, so they can never disagree.
+  _timingCfg(def, reps = null) {
+    const t = def.timing || {}, n = reps || this._timingReps(def)
+    return { reps: n, sweepMs: t.sweepMs || STRIKES.sweepMs, perfectPts: t.perfectPts || STRIKES.perfect, goodPts: t.goodPts || STRIKES.good,
+      xpHours: t.xpHours != null ? t.xpHours : STRIKES.xpHours, minXp: t.minXp != null ? t.minXp : STRIKES.minXp,
+      minSecs: t.minSecs != null ? t.minSecs : n * STRIKES.sweepMs / 1000 * 0.25,
+      cutMax: t.cutMax != null ? t.cutMax : STRIKES.cutMax, cutPerPoint: t.cutPerPoint != null ? t.cutPerPoint : STRIKES.cutPerPoint }
+  }
+  // Phase 52: the body-XP a timing game's score is worth (mirrors the old strikesXp; each game sets its xpHours).
+  _exerciseXp(def, points) {
+    const c = this._timingCfg(def)
+    return Math.max(c.minXp, Math.round(points / (c.reps * c.perfectPts) * c.xpHours * this._bestTemperRate() * this.temperXpMult().mult))
+  }
+  exerciseXp(kind, points) { const g = MINIGAMES.find(x => x.id === kind) || MINIGAMES[0]; return this._exerciseXp(g, points) }
+  // Phase 52c: the ridiculous thing your body can lift (the Lift's load + the Path → Body chip).
+  liftItemInfo() { const tier = this._s.body?.tier || 0; return { tier, name: (typeof LIFT_ITEMS !== 'undefined' && LIFT_ITEMS[tier]) || 'a boulder' } }
+  // Is this game open yet (the Practice picker's lock)? A bodyTier/stage gate from the registry.
+  minigameUnlocked(id) {
+    const g = MINIGAMES.find(x => x.id === id); if (!g) return false
+    const s = this._s, u = g.unlock || {}
+    if (u.bodyTier != null && (s.body?.tier ?? 0) < u.bodyTier) return false
+    if (u.stage != null && s.stageIndex < u.stage) return false
+    return true
+  }
+  minigameLock(id) {
+    const g = MINIGAMES.find(x => x.id === id); if (!g) return null
+    const u = g.unlock || {}
+    if (u.bodyTier != null && (this._s.body?.tier ?? 0) < u.bodyTier) return `Unlocks at ${BODY_TIERS[u.bodyTier].name}`
+    if (u.stage != null && this._s.stageIndex < u.stage) return 'Unlocks once you cultivate'
+    return null
+  }
+  _mgHourCount(id) { const g = this._s.minigames[id], now = Date.now(); g.hour = (g.hour || []).filter(t => now - t < 3600000); return g.hour.length }
+  _flowHourCount() { return this._mgHourCount('flow') }
   flowQi() {
     const cap = this._s.derived?.qiCap || 0
     return Math.round(cap * FLOW.qiFrac * (this._flowHourCount() >= FLOW.hourFull ? FLOW.hourMult : 1))
   }
+  // Phase 52d — Memorization (the Acupoint Sequence): the stage's shape (round count + each round's light count) and
+  // the Qi a run pays (a share of the stage cap, proportional to the rounds cleared, softer past MEMORY.hourFull/hour).
+  _memorySize() { let z = MEMORY.sizes[0]; for (const x of MEMORY.sizes) if (this._s.stageIndex >= x.stage) z = x; return z }
+  memoryQi(frac = 1) {
+    const cap = this._s.derived?.qiCap || 0
+    return Math.round(cap * MEMORY.qiFrac * Math.max(0, Math.min(1, frac)) * (this._mgHourCount('memory') >= MEMORY.hourFull ? MEMORY.hourMult : 1))
+  }
   minigameInfo() {
     const s = this._s, M = s.minigames, b = s.body, z = this._flowSize()
-    for (const k of ['strikes', 'flow']) this._refillCharges(M[k])
-    const left = g => g.nextAt ? Math.max(0, Math.ceil((g.nextAt - Date.now()) / 1000)) : 0
     const canCut = !!(b.active && !b.active.crisis)
-    return {
-      max: MINIGAME_CHARGES.max, refillSecs: MINIGAME_CHARGES.refillSecs,
-      strikes: { charges: M.strikes.charges, nextIn: left(M.strikes), best: M.strikes.best, plays: M.strikes.plays, perfectXp: this.strikesXp(STRIKES.strikes * STRIKES.perfect),
-                 canCut, cutMax: STRIKES.cutMax, cutTarget: canCut ? this._temperMethod(b.active.id)?.name : null, live: !!M.strikes.session },
-      flow: { charges: M.flow.charges, nextIn: left(M.flow), n: z.n, points: z.points, qi: this.flowQi(), waiting: !!M.flow.session,
-              tired: this._flowHourCount() >= FLOW.hourFull, best: M.flow.best, plays: M.flow.plays, live: !!M.flow.session },
+    const cdIn = g => Math.max(0, Math.ceil(((g.cdUntil || 0) - Date.now()) / 1000))
+    const out = { canCut, cutMax: STRIKES.cutMax, cutTarget: canCut ? this._temperMethod(b.active.id)?.name : null, list: [] }
+    for (const def of MINIGAMES) {
+      const m = M[def.id] || (M[def.id] = { cdUntil: 0, best: null, plays: 0, hour: [], session: null })
+      const row = { id: def.id, name: def.name, glyph: def.glyph, reward: def.reward, blurb: def.blurb, mode: def.mode || 'beat',
+        unlocked: this.minigameUnlocked(def.id), lockReason: this.minigameLock(def.id),
+        cdIn: cdIn(m), best: m.best, plays: m.plays, live: !!m.session, waiting: def.id === 'flow' && !!m.session }
+      if (def.reward === 'body') { const c = this._timingCfg(def); row.reps = c.reps; row.perfectXp = this._exerciseXp(def, c.reps * c.perfectPts) }
+      if (def.id === 'flow') { row.qi = this.flowQi(); row.tired = this._flowHourCount() >= FLOW.hourFull; row.n = z.n; row.points = z.points }
+      if (def.id === 'memory') { const sz = this._memorySize(); row.qi = this.memoryQi(1); row.tired = this._mgHourCount('memory') >= MEMORY.hourFull; row.rounds = sz.rounds; row.lens = sz.lens; row.grid = MEMORY.grid }
+      out[def.id] = row
+      out.list.push(row)
     }
+    return out
   }
-  // Starts a game: spends a charge (said on the button) and returns its session. Abandoning keeps the charge spent.
+  // Starts a game. Charge-free (Phase 48); gated by the registry's cooldownSecs and its unlock.
   startMinigame(kind) {
     const s = this._s, g = s.minigames?.[kind]
-    if (!g) return { ok: false, reason: 'unknown' }
-    this._refillCharges(g)
-    if (kind === 'flow' && g.session) return { ok: true, session: g.session, resumed: true }   // a puzzle set aside: it waits, no new charge
-    if (g.charges <= 0) return { ok: false, reason: 'charges' }
-    if (g.charges >= MINIGAME_CHARGES.max) g.nextAt = Date.now() + MINIGAME_CHARGES.refillSecs * 1000
-    g.charges--
+    const def = MINIGAMES.find(x => x.id === kind)
+    if (!g || !def) return { ok: false, reason: 'unknown' }
+    if (!this.minigameUnlocked(kind)) return { ok: false, reason: 'locked', lock: this.minigameLock(kind) }
+    if (kind === 'flow' && g.session) return { ok: true, session: g.session, resumed: true }   // a Flow puzzle set aside waits, as you left it
+    if (Date.now() < (g.cdUntil || 0)) return { ok: false, reason: 'cooldown', leftMs: g.cdUntil - Date.now() }
+    g.cdUntil = Date.now() + (def.cooldownSecs || 30) * 1000
     const seed = Math.floor(Math.random() * 2 ** 31)
     const relaxed = !!s.settings?.relaxedTiming
     g.session = kind === 'flow' ? { seed, n: this._flowSize().n, points: this._flowSize().points, startedAt: Date.now() }
-                                : { seed, relaxed, startedAt: Date.now() }
+              : kind === 'memory' ? { seed, grid: MEMORY.grid, lens: this._memorySize().lens.slice(), startedAt: Date.now() }
+              : { seed, relaxed, reps: this._timingReps(def), startedAt: Date.now() }
     this._notify()
     return { ok: true, session: g.session }
   }
-  // result — strikes: { hits: ['perfect'|'good'|'miss', …], use: 'xp'|'cut' } · flow: { rotations: [0..3 per cell] } or { abandon: true }
+  // result — timing games: { hits: ['perfect'|'good'|'miss', …], use: 'xp'|'cut' } · flow: { rotations } or { setAside, turns } · memory: { answers: [[cell,…], …] } or { abandon }.
   finishMinigame(kind, result = {}) {
     const s = this._s, g = s.minigames?.[kind], ses = g?.session
     if (!ses) return { ok: false, reason: 'no_session' }
-    // Meridian Flow has no clock: closing it sets the puzzle aside with your turns, to finish later (the charge stays spent)
+    const def = MINIGAMES.find(x => x.id === kind)
+    // Meridian Flow has no clock: closing it sets the puzzle aside with your turns, to finish later.
     if (kind === 'flow' && result.setAside) {
       const n = ses.n * ses.n, t = Array.isArray(result.turns) ? result.turns : []
       ses.turns = Array.from({ length: n }, (_, i) => ((t[i] | 0) % 4 + 4) % 4)
@@ -8432,29 +8492,29 @@ class GameState {
     if (result.abandon) { this._notify(); return { ok: true, abandoned: true } }
     g.plays++
     const secs = (Date.now() - ses.startedAt) / 1000
-    if (kind === 'strikes') {
-      const hits = (Array.isArray(result.hits) ? result.hits : []).slice(0, STRIKES.strikes)
+    if (def?.family === 'timing') {
+      const c = this._timingCfg(def, ses.reps || null), maxHits = c.reps
+      const hits = (Array.isArray(result.hits) ? result.hits : []).slice(0, maxHits)
       // The marker needs time to cross the bar: a run faster than this was not played (scores as misses)
-      const minSecs = STRIKES.strikes * STRIKES.sweepMs / 1000 * 0.25
-      const pts = secs < minSecs ? 0 : hits.reduce((a, h) => a + (h === 'perfect' ? STRIKES.perfect : h === 'good' ? STRIKES.good : 0), 0)
+      const pts = secs < c.minSecs ? 0 : hits.reduce((a, h) => a + (h === 'perfect' ? c.perfectPts : h === 'good' ? c.goodPts : 0), 0)
       g.best = Math.max(g.best || 0, pts)
-      const perfect = pts === STRIKES.strikes * STRIKES.perfect
+      const perfect = pts === maxHits * c.perfectPts
       const b = s.body
       let res
       if (result.use === 'cut' && b.active && !b.active.crisis) {
-        const left = Math.max(0, b.active.endsAt - Date.now()), frac = Math.min(STRIKES.cutMax, pts * STRIKES.cutPerPoint)
+        const left = Math.max(0, b.active.endsAt - Date.now()), frac = Math.min(c.cutMax, pts * c.cutPerPoint)
         const cut = Math.round(left * frac)
         b.active.endsAt -= cut
         res = { ok: true, points: pts, cutSecs: Math.round(cut / 1000), frac }
-        this.addEvent({ text: `Tempering Strikes: ${pts} points. You drive ${this._temperMethod(b.active.id)?.name} on, ${fmtTime(res.cutSecs)} sooner.`, type: 'positive' })
+        this.addEvent({ text: `${def.name}: ${pts} points. You drive ${this._temperMethod(b.active.id)?.name} on, ${fmtTime(res.cutSecs)} sooner.`, type: 'positive' })
       } else {
-        const xp = this._gainBodyXp(this.strikesXp(pts))
+        const xp = this._gainBodyXp(this._exerciseXp(def, pts))
         res = { ok: true, points: pts, xp }
-        this.addEvent({ text: `Tempering Strikes: ${pts} points, +${fmtQi(xp)} body XP.`, type: pts ? 'positive' : 'neutral' })
+        this.addEvent({ text: `${def.name}: ${pts} points, +${fmtQi(xp)} body XP.`, type: pts ? 'positive' : 'neutral' })
       }
       if (perfect) this._emit('minigame_perfect', { kind })
       this._tickBody(); this._recalc(); this._notify()
-      return { ...res, perfect, max: STRIKES.strikes * STRIKES.perfect }
+      return { ...res, perfect, max: maxHits * c.perfectPts }
     }
     if (kind === 'flow') {
       const solved = typeof FlowPuzzle !== 'undefined' && FlowPuzzle.check(ses.seed, ses.n, result.rotations)
@@ -8466,6 +8526,34 @@ class GameState {
       this.addEvent({ text: `Meridian Flow: the channels open. +${fmtQi(gain)} Qi.`, type: 'positive' })
       this._recalc(); this._notify()
       return { ok: true, solved: true, qi: gain }
+    }
+    if (kind === 'memory') {
+      // The sequences live in the session; re-derive them from the seed and count the rounds that match exactly.
+      const plan = typeof MemoryPuzzle !== 'undefined' ? MemoryPuzzle.generate(ses.seed, ses.lens) : null
+      const answers = Array.isArray(result.answers) ? result.answers : []
+      let done = 0
+      if (plan) for (const seq of plan) {
+        const ans = answers[done]
+        if (Array.isArray(ans) && ans.length === seq.length && seq.every((c, i) => c === (ans[i] | 0))) done++
+        else break
+      }
+      const total = plan ? plan.length : ses.lens.length
+      const lights = (plan || ses.lens).reduce((a, seq) => a + (Array.isArray(seq) ? seq.length : seq), 0)
+      // Anti-script: the lights must have had time to play. A run faster than this was not watched.
+      const tooFast = (Date.now() - ses.startedAt) / 1000 < lights * MEMORY.paceMs / 1000 * MEMORY.minSecsPerLight
+      const cleared = tooFast ? 0 : done
+      g.best = Math.max(g.best || 0, cleared)
+      const qi = this.memoryQi(total ? cleared / total : 0), cap = s.derived?.qiCap || 0
+      const gain = Math.max(0, Math.min(qi, cap - s.qi))
+      if (gain > 0) { s.qi += gain; s.stats.totalQiGained += gain; g.hour.push(Date.now()) }
+      const perfect = total > 0 && cleared === total
+      this.addEvent({ text: perfect
+        ? `Memorization: every sequence held. +${fmtQi(gain)} Qi.`
+        : cleared ? `Memorization: ${cleared} of ${total} sequences held. +${fmtQi(gain)} Qi.`
+        : 'Memorization: the order slips away — the sequence is gone.', type: cleared ? 'positive' : 'neutral' })
+      if (perfect) this._emit('minigame_perfect', { kind })
+      this._recalc(); this._notify()
+      return { ok: true, completed: cleared, total, qi: gain, perfect, tooFast }
     }
     return { ok: false, reason: 'unknown' }
   }
@@ -8792,7 +8880,7 @@ class GameState {
     if (settings) this._s.settings = settings   // presentation prefs belong to the player, not the life
     if (warOrders) this._s.warOrders = warOrders
     if (playMode) this._s.playMode = playMode
-    if (minigames) { this._s.minigames = minigames; minigames.strikes.session = minigames.flow.session = null }
+    if (minigames) { this._s.minigames = minigames; for (const k of Object.keys(minigames)) if (minigames[k]) minigames[k].session = null }
     if (automation) this._s.automation = automation
     if (devSave) this._s.devSave = true
     this._beginInterlude(cause, deadId)
@@ -9228,6 +9316,7 @@ class GameState {
     this._applyBequest(it)                        // 2026-10-02: the arts + items passed down (rides an orphan rebirth too)
     this._pruneWorld(w)
     s.interlude = null
+    s.mortal = this._blankMortal()   // Phase 49b: every life begins a mortal with a fresh arc
     const pt = POSITION_TEXT[position]
     this.addEvent({ text: birthLine, type: 'special' })
     this.addEvent({ text: `You are ${s.name}${clan ? ` of the ${clan.name} clan` : ''} — ${this._fillClan(pt.name, { line: line?.name || '' }).toLowerCase()}.${stipend ? ` The clan sect grants you a stipend of ${stipend} Spirit Stones.` : ''}`, type: 'positive' })
@@ -10070,14 +10159,204 @@ class GameState {
     return { ok: true, clanId: newClan.id, relation }
   }
 
-  startMeditation(duration = 30) {
+  // ── Phase 48 (docs/systems/active-cultivation.md): the Cultivate action ───────────────────────────────────────
+  // Draw Qi — one timed hit of the main loop. `opts.perfect` (a well-timed tap) pays ×2 and builds the combo
+  // faster. Returns the Qi actually gained (0 when the sea of Qi is already full) so the UI can pop the number.
+  // `opts.at` (ms) is used only by the sim bot to replay a pressing player across a span of elapsed time; the
+  // renderer never passes it, and it skips the per-hit re-render (the tick does that each frame).
+  drawQi(opts = {}) {
     const s = this._s
-    if (s.meditating) return false
-    s.meditating     = true
-    s.meditationEnds = Date.now() + duration * 1000
-    s.stats.meditationSessions++
+    if (!s || s.interlude) return { ok: false, reason: 'no_state' }
+    if (this.mortalMeridiansShut()) return { ok: false, reason: 'mortal' }   // Phase 49: qi does not flow until Awakening
+    const c = (s.cultivate ||= { cdUntil: 0, combo: 0, lastAt: 0 })
+    const sim = opts.at != null
+    const now = sim ? opts.at : Date.now()
+    if (now < c.cdUntil) return { ok: false, reason: 'cooldown', leftMs: c.cdUntil - now }
+    // The combo lapses if you stop, and builds with each hit (a perfect hit counts double).
+    if (now - c.lastAt > CULTIVATE_COMBO_DECAY_MS) c.combo = 0
+    c.combo  = Math.min(CULTIVATE_COMBO_MAX_STEPS, c.combo + (opts.perfect ? 2 : 1))
+    c.lastAt = now
+    c.cdUntil = now + CULTIVATE_DRAW_COOLDOWN * 1000
+    const comboMult = Math.min(CULTIVATE_COMBO_MAX, 1 + c.combo * CULTIVATE_COMBO_STEP)
+    const base = s.derived?.cultivateYield || 0
+    const raw  = base * comboMult * (opts.perfect ? CULTIVATE_DRAW_PERFECT_MULT : 1)
+    const cap  = s.derived?.qiCap ?? s.qi
+    const before = s.qi
+    s.qi = Math.min(s.qi + raw, cap)
+    const gained = s.qi - before
+    s.stats.totalQiGained += gained
+    s.stats.cultivateDraws  = (s.stats.cultivateDraws || 0) + 1
+    if (!sim) { this._recalc(); this._notify() }
+    return { ok: true, gained, full: s.qi >= cap, perfect: !!opts.perfect, combo: c.combo, comboMult }
+  }
+
+  // Phase 49 (docs/systems/mortal-phase.md): true while a life has not yet Awakened — its meridians are shut.
+  mortalMeridiansShut() {
+    const s = this._s
+    return !!s && !s.interlude && s.stageIndex === 0 && !s.awakened
+  }
+  _awakenTierIndex() { return Math.max(0, BODY_TIERS.findIndex(t => t.id === BODY_AWAKEN_TIER)) }
+  canAwaken() {
+    const s = this._s
+    return !!s && s.stageIndex === 0 && !s.awakened && (s.body?.tier ?? 0) >= this._awakenTierIndex()
+  }
+  // The Mortal panel reads this: what the Awakening needs and whether it is ready.
+  awakenInfo() {
+    const s = this._s
+    if (!s) return null
+    const need = this._awakenTierIndex(), have = s.body?.tier ?? 0
+    return {
+      isMortal: s.stageIndex === 0 && !s.awakened,
+      needTier: BODY_TIERS[need], haveTier: BODY_TIERS[have],
+      canAwaken: this.canAwaken(),
+      needXp: BODY_TIERS[need].xp, haveXp: Math.min(s.body?.xp || 0, BODY_TIERS[need].xp),
+    }
+  }
+  // Awakening: a body trained to BODY_AWAKEN_TIER opens the meridians. Begins Qi Condensation and lets Qi flow.
+  // Below the gate it refuses with no roll and no loss (mirrors Phase 47's bloodline gate).
+  awaken() {
+    const s = this._s
+    if (!s || s.interlude) return { ok: false, reason: 'no_state' }
+    if (s.stageIndex !== 0 || s.awakened) return { ok: false, reason: 'not_mortal' }
+    if (!this.canAwaken()) return { ok: false, reason: 'body_too_weak', need: BODY_TIERS[this._awakenTierIndex()].name, have: BODY_TIERS[s.body?.tier ?? 0].name }
+    s.awakened = true
+    const prevRealm = CULTIVATION_STAGES[0].realm     // Mortal
+    s.stageIndex = 1                 // Qi Condensation, layer 1
+    s.qi = 0
+    s.stats.awakenings = (s.stats.awakenings || 0) + 1
+    // The Awakening is the first realm change, so it carries the same firsts + insight offer a breakthrough would.
+    const newRealm = CULTIVATION_STAGES[s.stageIndex].realm
+    if (newRealm !== prevRealm && REALM_FIRST_ID[newRealm]) this._claimFirst(REALM_FIRST_ID[newRealm])
+    if (newRealm !== prevRealm) this._offerArts(newRealm)
+    if (ART_STAGE_GRANTS[s.stageIndex]) this._learnArt(ART_STAGE_GRANTS[s.stageIndex], 'grant')
+    if (s.mortal) s.mortal.beat = null   // Phase 49b: the mortal arc ends when the meridians open
+    this.addEvent({ text: 'Your meridians open: qi rushes in for the first time. You have awakened.', type: 'special' })
     this._recalc(); this._notify()
+    this._emit('awakened', {})
+    return { ok: true }
+  }
+
+  // ── Phase 49b (docs/systems/mortal-phase.md): the mortal arc — the village life lived before the Dao ─────────
+  _blankMortal() { return { beat: null, done: [], nextYear: null, spark: 0, rivalId: null, deeds: [], beats: 0, hints: {} } }
+
+  // True while this life began with no house (an orphan) — a first life counts.
+  _mortalOrphan() { return !this._s.birth?.clanId }
+
+  // May a beat fire now? Its `when` reads the body, root, Stones, spark and past beats (mortal.js).
+  _mortalBeatOk(b) {
+    const s = this._s, m = s.mortal, w = b.when || {}
+    const tier = s.body?.tier ?? 0, idx = id => Math.max(0, BODY_TIERS.findIndex(t => t.id === id))
+    if (w.bodyMin != null && tier < idx(w.bodyMin)) return false
+    if (w.bodyMax != null && tier > idx(w.bodyMax)) return false
+    if (w.rootMultMin != null && (s.root?.mult || 1) < w.rootMultMin) return false
+    if (w.rootElement != null && !this.rootElements().includes(w.rootElement)) return false
+    if (w.orphan === true && !this._mortalOrphan()) return false
+    if (w.clanBorn === true && this._mortalOrphan()) return false
+    if (w.minStones != null && (s.spiritStones || 0) < w.minStones) return false
+    if (w.sparkMin != null && (m.spark || 0) < w.sparkMin) return false
+    if (w.after && !w.after.every(id => m.done.includes(id))) return false
+    if (w.notAfter && w.notAfter.some(id => m.done.includes(id))) return false
     return true
+  }
+  _pickMortalBeat() {
+    const s = this._s, m = s.mortal
+    const pool = MORTAL_BEATS.filter(b => !m.done.includes(b.id) && this._mortalBeatOk(b))
+    if (!pool.length) return null
+    const first = pool.filter(b => b.first)   // the opening beat leads a life's arc
+    if (!m.beats && first.length) return first[0]
+    const total = pool.reduce((a, b) => a + (b.weight || 1), 0)
+    let r = Math.random() * total
+    for (const b of pool) { r -= (b.weight || 1); if (r <= 0) return b }
+    return pool[pool.length - 1]
+  }
+  // Called on the game-year change (from _tickFamily): one pending beat at a time, only while the meridians are shut.
+  _tickMortal(yr) {
+    const s = this._s
+    if (!s || s.interlude || !this.mortalMeridiansShut()) return
+    const m = s.mortal || (s.mortal = this._blankMortal())
+    if (m.beat) return
+    if ((m.beats || 0) >= MORTAL_ARC.maxBeats) return
+    if (m.nextYear == null) { m.nextYear = yr + this._randRange(MORTAL_ARC.firstBeatYears); return }
+    if (yr < m.nextYear) return
+    m.nextYear = yr + this._randRange(MORTAL_ARC.beatGapYears)
+    const beat = this._pickMortalBeat()
+    if (!beat) return
+    m.beat = { id: beat.id, year: yr }
+    m.beats = (m.beats || 0) + 1
+    this.addEvent({ text: `Year ${yr}: ${beat.title}.`, type: 'neutral' })
+    this._emit('mortal_beat', { id: beat.id })
+  }
+  // The Explore card reads this; null-safe. Includes the Awaken gate so one call drives the whole mortal panel.
+  mortalInfo() {
+    const s = this._s
+    if (!s) return null
+    const m = s.mortal || (s.mortal = this._blankMortal())
+    const aw = this.awakenInfo()
+    const def = m.beat ? MORTAL_BEATS.find(b => b.id === m.beat.id) : null
+    const beat = def ? { id: def.id, title: def.title, text: def.text,
+      choices: def.choices.map(c => ({ id: c.id, label: c.label, sub: c.sub, ok: this._mortalChoiceOk(c), lock: c.lock || null })) } : null
+    return { ...(aw || {}), isMortal: !!aw?.isMortal, beat, spark: m.spark || 0, done: (m.done || []).slice(),
+             rivalId: m.rivalId || null, beats: m.beats || 0 }
+  }
+  _mortalVal(v) { return v == null ? 0 : typeof v === 'number' ? v : (v[this._s.personality?.id] ?? v.default ?? 0) }
+  _mortalChoiceOk(c) { const cost = this._mortalVal(c.effect?.stones); return !(cost < 0 && (this._s.spiritStones || 0) < -cost) }
+  _mortalText(str) {
+    const s = this._s, m = s.mortal
+    const vals = { name: s.name, element: this.rootElements()[0] || 'qi',
+                   elder: (m.hints && m.hints.elder) ? 'the elder' : 'no one' }
+    return String(str || '').replace(/\{(\w+)\}/g, (x, k) => vals[k] ?? x)
+  }
+  // Apply a choice. Body XP is HOURS of the best temper rate × the Active/ground multiplier, so a beat pays the
+  // same fraction of a tier as realms rise (the mini-game convention). Health floors at 1 — a mortal beat never kills.
+  _applyMortalEffect(ch) {
+    const s = this._s, m = s.mortal, fx = ch.effect || {}
+    const out = {}
+    if (fx.bodyHours) out.bodyXp = this._gainBodyXp(fx.bodyHours * this._bestTemperRate() * this.temperXpMult().mult)
+    if (fx.items) for (const [id, q] of Object.entries(fx.items)) s.inventory[id] = (s.inventory[id] || 0) + q
+    if (fx.stones) s.spiritStones = Math.max(0, s.spiritStones + this._mortalVal(fx.stones))
+    if (fx.karma) s.karma = Math.max(0, Math.min(100, s.karma + this._mortalVal(fx.karma)))
+    if (fx.health) s.health = Math.max(1, Math.min(this.maxHealth(), (s.health ?? 100) + fx.health))
+    if (fx.headBond && s.birth?.headBond != null) s.birth.headBond = Math.max(0, Math.min(100, s.birth.headBond + fx.headBond))
+    if (fx.spark) m.spark = (m.spark || 0) + fx.spark
+    if (fx.hint) m.hints = { ...(m.hints || {}), [fx.hint]: true }
+    if (fx.rival) { const p = this._mortalRival(ch.rel); if (p) out.rival = Persons.fullName(p) }
+    return out
+  }
+  // A childhood rival becomes a real person of the world (a 'youth' you may meet again as a grown classmate).
+  _mortalRival(rel) {
+    const s = this._s, m = s.mortal, w = s.world
+    if (!w || m.rivalId) return null
+    const p = this._mintPerson({ role: 'youth', stage: 0, age: [AWAKENING_AGE, AWAKENING_AGE] }, Math.random)
+    p.rel = rel != null ? this._mortalVal(rel) : MORTAL_ARC.rivalRel
+    p.mortalRival = true
+    m.rivalId = p.id
+    return p
+  }
+  // Answer the pending beat — the only way it clears (never auto-resolved).
+  resolveMortalBeat(choiceId) {
+    const s = this._s, m = s.mortal
+    if (!m?.beat || s.interlude) return { ok: false, reason: 'no_beat' }
+    const def = MORTAL_BEATS.find(b => b.id === m.beat.id)
+    const ch = def?.choices.find(c => c.id === choiceId)
+    if (!ch) return { ok: false, reason: 'bad_choice' }
+    if (!this._mortalChoiceOk(ch)) return { ok: false, reason: 'locked' }
+    const out = this._applyMortalEffect(ch)
+    if (!m.done.includes(def.id)) m.done.push(def.id)
+    m.deeds.push(`${def.id}:${ch.id}`)
+    m.beat = null
+    this.addEvent({ text: this._mortalText(ch.result), type: 'neutral' })
+    if (out.bodyXp) this.addEvent({ text: `+${fmtQi(out.bodyXp)} body XP.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true, ...out }
+  }
+  // A mortal's Explore feeds the body work: a guaranteed drill material + extra drop rolls. Applied only while
+  // mortal, so a Qi Condensation life sees no change.
+  _mortalForage(drops, loc) {
+    for (const [id, q] of Object.entries(MORTAL_ARC.exploreDrop || {})) drops[id] = (drops[id] || 0) + q
+    for (let i = 0; i < (MORTAL_ARC.exploreBonusPick || 0); i++) {
+      const extra = this._rollDrops(loc)
+      for (const [id, q] of Object.entries(extra)) drops[id] = (drops[id] || 0) + q
+    }
   }
 
   learnTechnique(id) {
@@ -10152,6 +10431,7 @@ class GameState {
       const extra = this._rollDrops(loc)
       for (const [id, qty] of Object.entries(extra)) drops[id] = (drops[id] || 0) + qty
     }
+    if (this.mortalMeridiansShut()) this._mortalForage(drops, loc)   // Phase 49b: a mortal's Explore feeds the drills
 
     // Sect herb bonus (Myriad Herb Hall)
     const herbMult = s.derived?.sectHerbMult || 1
@@ -10453,6 +10733,35 @@ class GameState {
     if (!r.known || typeof r.known !== 'object') r.known = {}
     for (const id of Object.keys(r.known)) if (!RECIPES.some(x => x.id === id)) delete r.known[id]   // a formula dropped from the game
     for (const rec of RECIPES) if (!rec.hidden && !r.known[rec.id]) r.known[rec.id] = { how: 'basic', at: Date.now() }
+  }
+
+  // ── Phase 48 (docs/systems/active-cultivation.md): the Cultivate action's combo + cooldown ───────────────────
+  _ensurePhase48Fields() {
+    const s = this._s
+    if (!s) return
+    if (!s.cultivate || typeof s.cultivate !== 'object') s.cultivate = { cdUntil: 0, combo: 0, lastAt: 0 }
+    const c = s.cultivate
+    if (!(c.cdUntil >= 0)) c.cdUntil = 0
+    if (!(c.combo >= 0))   c.combo = 0
+    if (!(c.lastAt >= 0))  c.lastAt = 0
+    if (s.stats && !(s.stats.cultivateDraws >= 0)) s.stats.cultivateDraws = 0
+  }
+  // ── Phase 49 (docs/systems/mortal-phase.md): the Awakening flag ─────────────────────────────────────────────
+  _ensurePhase49Fields() {
+    const s = this._s
+    if (!s) return
+    // A save already past the Mortal stage (stageIndex > 0) has, by definition, awakened.
+    if (typeof s.awakened !== 'boolean') s.awakened = s.stageIndex > 0
+  }
+  // ── Phase 49b (docs/systems/mortal-phase.md): the mortal arc's per-life beat state ────────────────────────────
+  _ensurePhase49bFields() {
+    const s = this._s
+    if (!s) return
+    if (!s.mortal || typeof s.mortal !== 'object') s.mortal = this._blankMortal()
+    const m = s.mortal, d = this._blankMortal()
+    for (const k of Object.keys(d)) if (m[k] === undefined) m[k] = d[k]
+    // A save already past the Mortal stage never runs the arc — drop any stale pending beat.
+    if (s.stageIndex > 0 || s.awakened) m.beat = null
   }
   recipeKnown(recipeId) { return !!this._s?.recipes?.known?.[recipeId] }
   // Where an unknown formula comes from (null for a recipe that is never hidden).

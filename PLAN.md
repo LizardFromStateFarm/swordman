@@ -2,6 +2,17 @@
 
 **→ Always check START_HERE.md first for current build state and last session summary.**
 
+> **⚠ 2026-10-10 — DIRECTION CHANGE: the Active Rework (Phases 48–51).**
+> The game is no longer idle-first. It becomes an **active cultivation game with idle support**: you advance by
+> **playing** (Cultivate action, fights, exploration, tempering, choices), and **expeditions/missions collect
+> materials while you're away** (the small idle layer). Four new phases, built before the remaining v1 work:
+> **48** Active Cultivation (the loop flip) · **49** The Mortal Phase (body-gated awakening) ·
+> **50** Progressive Disclosure (start with Explore + Body; unlock the rest by milestone) ·
+> **51** The Long Climb (late-realm content + Qi-curve rebalance + world bands).
+> Pillar 4 is reframed: absence still progresses (slow trickle + materials) — nothing is lost, but active is
+> ~4–8× faster. **Plan: `~/.commandcode/plans/active-cultivation-rework.md`.** Phase numbers stay stable; 48–51
+> are new IDs placed into a new milestone **M0.5** (below), built before the rest of v1.
+
 ## Design pillars (decided 2026-09-25, full text in GAMEDESIGN.md)
 
 This is a single-player game made for the love of the game, not a live-service cash grab. Every phase below must fit:
@@ -117,6 +128,11 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 45 | **Sect Branches & Sub-leaders (分舵)**: appoint any disciple — or a grown child you bring into the sect — as a **Branch Head** who runs their own branch and gathers disciples of their own (beyond the Hall's seats); branch-vs-branch rivalry with brawls; promote members up into your own hall; a **Tournament of Branches** the sect leader holds and pays the winner (Qi / an art / Spirit Stones); recruit your children **for free, any time**; loyalty never decays on its own — only a direct wrong can sour a head into seceding (user 2026-10-02; spec docs/systems/sect-branches.md) | ✅ | M1 (sect-ownership depth) |
 | 46 | **Lineage Sects, Reincarnation Continuity & Bloodline Qi (承宗 · 血脉)**: a player-owned sect is inherited by a branch head on death and keeps living as a world sect (never lost by the reign sim); ancestral catch-up is **removed** and **Bloodline Quality gives extra Qi/s** instead; the next life can be **recruited back into that old sect at Core Formation**; the NPC world sim now ages/kills sect leaders and churns members over the generations (user 2026-10-03; spec docs/systems/lineage-sect.md) | ✅ | M1/M2 (tasks 1.20a–e; Visual Review Gate 7.6 PASS) |
 | 47 | **Bloodline → Immortality pacing (血脉 · 飞升)**: the Ascension Trial now requires the **full Bloodline Quality (100)** — immortality takes ~15 reincarnations, not ~4; the bloodline keeps nearly its full value between lives so it can climb to the cap, but each life adds **less**; and Bloodline Quality raises Qi/s **+1%/pt (×2 at BQ 100)**, up from +0.4%. No post-Immortal content: the game still ends at Immortality (user 2026-10-03; docs/systems/bloodline.md → "Phase 47") | ✅ | M1/M2 (task 1.21; the pre-Immortal endgame) |
+| 48 | **Active Cultivation (勤修)**: the loop flips from idle to active. Qi is earned mainly by the **Cultivate** action (Draw Qi timing tap + Meridian Flow puzzle, scaled off `qiPerSecond`); the tick/offline credits only a slow passive trickle (`PASSIVE_QI_SHARE`); **Active Mode becomes the default**; expeditions/missions/tempering stay as the small idle layer. Spec `docs/systems/active-cultivation.md` (user 2026-10-10: "active interaction constantly … small idle aspects like expeditions and missions") | ⬜ | M0.5 (v1) |
+| 49 | **The Mortal Phase (凡人)**: every life starts a mortal and **cannot cultivate** until the body is tempered to the **Hardened tier (D, 1000 XP)**; the opening verbs are **Explore + Body** (plus a first beast); Awakening opens Qi Condensation and the rest of the game. **49b built 2026-10-14** — the mortal arc: 11 mortal-only beats (+ the Awakening card), an Explore forage, the Awakening moment. Spec `docs/systems/mortal-phase.md` (user 2026-10-10: "stay a mortal until you level up your body to a certain extent") | ✅ | M0.5 (v1) — 49a–d built |
+| 50 | **Progressive Disclosure (循序)**: start with **only Explore + Body**; unlock each system by milestone (a data-driven `unlocks.js` + `NavUI.setAvailable` hiding groups); trim the forced opening from ~18 cards to ≤3 (HUD tour → the Guide); gate coach marks + attention to available systems. Spec `docs/systems/unlocks.md` (user 2026-10-10: "start simple and slowly introduce new mechanics") | ⬜ | M0.5 (v1) |
+| 51 | **The Long Climb (登高)**: close the late-stage dead zones — extend content past the stage-19/20 ceiling (arts 16–21, techniques past 10, late locations/hunt grounds), rebalance the Qi curve so no stage balloons (`cf_mid` ×3.11, SS-late ~245h), add a repeatable high-realm pursuit, and fix the world bands (NS 8 / SS 4). Spec `docs/systems/core-loop.md` (user 2026-10-10: "dead zones in the later stages where you can't do much besides wait") | ⬜ | M0.5 (v1) |
+| 52 | **Practice — fun mini-games (练功)**: a **registry-driven** set of optional active games — **Push-Ups** (timing; retires Tempering Strikes), **Running** (rhythm), **Lift** (hold/release; the "ridiculous items you can lift" ladder by body tier: water jar → boulder → pillar → gate → pagoda → mountain → island), plus **Memorization** (a Simon-style Qi puzzle); each exercise runs an **animated dot-silhouette** in the overlay; all short, forgiving ("designed for fun"), engine-verified. Spec `docs/systems/minigames.md` (user 2026-10-10) | ◐ **52a ✅** (registry + Strikes→Push-Ups); 52b–e ⬜ | M0.5 (v1) |
 | 10 | Cosmetics (titles, pet, cave) | ⬜ | M8 |
 | 11B–C | Heaven's Will, Scripture Lore | ⬜ | M8 |
 | 20A–B | Permadeath, Challenge modes | ⬜ | M8 |
@@ -125,6 +141,39 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 ---
 
 ## Development Roadmap
+
+### M0.5 — The Active Rework (2026-10-10) — v1
+
+> The direction change (top of this file). Built **before** the remaining v1 work. Order matters: 48 sets the
+> economy, 49 gates the start, 50 unlocks the world, 51 rebalances the late game against the new economy.
+> Full plan: `~/.commandcode/plans/active-cultivation-rework.md`.
+
+| # | Task | Phase | Needs | Done when |
+|---|---|---|---|---|
+| 48a ✅ | Active Cultivation economy: `assets/data/cultivation.js` (`PASSIVE_QI_SHARE`, cultivate params); `_recalc` splits the full rate from the passive share; `tick()` + `initSlot()` credit the trickle; `drawQi()`; the Qi/s breakdown gains the active + away rows; `_ensurePhase48Fields` | 48 | — | Active ≈ 4–8× idle; the "why" card names both rates; old saves load |
+| 48b ✅ | The Cultivate action + UI: the HUD **Cultivate** (Draw Qi) action replacing Meditate; the Meridian Flow puzzle charge-free (cooldown); combo feedback; HUD wiring (button in game.js, no separate file — see the plan deviation) | 48 | 48a | Always available while cultivating; no charge wall; UI gate pending |
+| 48c ✅ | Active is the default: `PLAY_MODE_DEFAULT = 'active'`; reworded the Mode panel (Idle = away/automated, Active = playing); retired the Meditate 3× burst + `startMeditation` | 48 | 48b | A fresh game plays active; automation still covers absence |
+| 48d ✅ | Timed jobs as the idle layer: offline catch-up credits the trickle only; the mortal gate zeroes it too; docs updated | 48 | 48a | Absence gives trickle + materials, never a stall |
+| 48e | QA & Balance: re-base `profiles.js` (active vs idle per stage — the life/pacing targets are **stale** after the economy flip); the bot already cultivates + awakens; new checks/active-cultivation.js; smoke | 48 | 48a–d | `npm run sim` healthy; targets re-based |
+| 49a ✅ | Mortal gate: `BODY_AWAKEN_TIER='D'`; Qi/cultivate locked at `stageIndex 0` (tick + offline zeroed, `drawQi` refused); `awaken()` (returns `body_too_weak` below the gate); `_ensurePhase49Fields` | 49 | 48a | A new game cannot cultivate until body D |
+| 49b ✅ | The mortal arc (2026-10-14): `assets/data/mortal.js` — 11 mortal-only beats (2–3 choices each, reading personality / root / body / birth / Stones / spark / past beats), the Explore forage (a guaranteed Beast Core + an extra roll while mortal), the `_tickMortal` game-clock scheduler, `mortalInfo`/`resolveMortalBeat`, a minted childhood rival; the Awakening card (`#awaken-overlay`); the arc is Health-gated (active ~10 min, afk ~45–90 open min) | 49 | 49a | Explore + Body reach Awakening in a target band (7–30 open min active) |
+| 49c ✅ | The Awakening moment (engine + HUD button + the first realm-change art offer); a bespoke card/scene still to add in 49b | 49 | 49a, 50a | The beat plays once; the first systems unlock |
+| 49d ✅ | QA (2026-10-14): `checks/mortal.js` (111) · `smoke/scenarios/mortal.js` (fresh game → Awaken, 4 modes, 0 console errors) · the bot answers beats + plays the body exercises while open · `MORTAL_AWAKEN_H` + the report "Mortal arc" section; d sim healthy; visual review handed to the user | 49 | 49a–c | Sim reaches Awakening; time-to-awaken in band |
+| 50a | Unlock table: `assets/data/unlocks.js` + `availableViews()`; `NavUI.setAvailable` hides whole groups; a "Locked because…" list | 50 | — | A fresh game shows only Explore + Body |
+| 50b | Trim the opening: intro 5→1 card; HUD tour → the Guide; every lesson gated by its unlock | 50 | 50a | ≤3 forced cards at start |
+| 50c | Attention + hint noise: suppress items/coach marks for locked systems; fold the per-system hints in | 50 | 50a | Start-of-game attention ≈ 0–1 |
+| 50d | QA: sim walks the unlock schedule; checks/unlocks.js; smoke the first hour; review | 50 | 50a–c | No system usable before its unlock |
+| 51a | Qi-curve rebalance: smooth cap/qps across FB–SS (kill the `cf_mid` ×3.11 jump + the SS-late ~245h); re-base targets | 51 | 48, 49 | No stage balloons; sim within tolerance |
+| 51b | Late-realm content: arts 16–21, techniques past 10, late locations/hunt grounds/arena | 51 | 51a | Every realm hands out new content |
+| 51c | Repeatable late activity (Secret Realm deltas / 7C tribulation transitions) | 51 | 51a | Stage 20–21 always has something to do |
+| 51d | World bands: sustain NS/SS so the late world stays populated | 51 | — | `probe-world-lives` holds at high realms |
+| 51e | QA: multi-seed sim; per-life dead-zone metrics; checks/late-game.js; smoke | 51 | 51a–d | Stalls within limits at stages 19–21 |
+| 52a ✅ | Practice registry: `assets/data/minigames.js` (MINIGAMES, LIFT_ITEMS, unlock/cooldown/reward); the engine (blank/migration/info/start/finish) is registry-driven; **Tempering Strikes retired → Push-Ups**; Flow kept | 52 | — | Flow still passes; a Strikes-era save migrates; checks 1820 ok |
+| 52b ✅ | `ExerciseScene` (animated dot-silhouette in the overlay) + **Push-Ups** animated + the Practice button | 52 | 52a | Real motion; asset gate **8.1 PASS** (cycle 1 6.4 FAIL → 8.1); Reduced-motion fallback; perf < 6 ms |
+| 52c ✅ | **Running** + **Lift** (reuse the scene) + the `LIFT_ITEMS` ladder + the Body chip. **As built 2026-10-10:** two new `timing` modes (`stride` — tap the due foot; `hold` — release in the gold), a far-limb rig + the load art in `ExerciseScene`, per-game `timing` config in the registry (Lift lifts `repsByTier`), `liftItemInfo()` + the hero chip, the `run`/`lift` icons; asset gate **8.2 PASS**, UI **7.7 PASS**, icons 3 cycles → **8.2 PASS** | 52 | 52b | Both play; the item grows with the tier |
+| 52d ✅ | **Memorization** (the Acupoint Sequence — a deterministic Qi puzzle) + engine verification | 52 | 52a | Forged answers rejected (the engine re-derives `MemoryPuzzle.generate` from the seed); a partial clear pays in proportion; the stage-1 lock; UI **7.6 → 7.8 PASS**; checks 1846 ok |
+| 52f ◐ | **Exercise figure re-rig** (user 2026-10-11: "you can do better"): `ExerciseScene` rebuilt on a bone rig — IK keyframes (Push-Ups plank, Lift squat → face → overhead + camera pull-back), a Running gait cycle (flight, sliding ground, counter-swing), body volumes inked from a layer mask, verlet cloth, featured top-tier loads; `scripts/art/exercise-sheet.js` contact sheet | 52 | 52b–c | Asset gate 7.5 → 7.8 → 7.7 (3 cycles, no blocker) → **awaiting the user's verdict**; smoke + checks green |
+| 52e | Unlock ladder + the Practice picker + the HUD Train segment + attention/banter + sim/checks/smoke/docs + the art gates | 52 | 52b–d | Every game plays in every layout; art gates pass |
 
 > **v1 wrap-up order (user 2026-10-03).** Post-Immortal play is cut for now (the game ends at the first Immortality).
 > Before the final QA pass, three systems are built, in this order:

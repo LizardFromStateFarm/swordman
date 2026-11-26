@@ -5,7 +5,10 @@
 // game.js (mode button, Automation panel, Push Harder, breakthrough focus window, Master's Touch),
 // scripts/sim/bot.js (idle profiles enable automation; active profile uses Active Mode).
 
-const PLAY_MODE_DEFAULT = 'idle'   // 'idle' | 'active' — idle is the default, first-class way to play (pillar 4)
+// Phase 48 (active-cultivation.md): ACTIVE is the default — you advance by playing (the Cultivate action, fights,
+// exploring). IDLE means you are away: automation runs the timed jobs and the passive qi trickle keeps gathering.
+// Absence is never punished (pillar 4) — it is just slower than playing.
+const PLAY_MODE_DEFAULT = 'active'   // 'active' | 'idle'
 
 // Unlock thresholds. stageIndex values are the actual CULTIVATION_STAGES indices for the named realm/layer
 // today: Core Formation Early = 13, Nascent Soul Early = 16, Spirit Severing Early = 19. sectRank 3 = Elder

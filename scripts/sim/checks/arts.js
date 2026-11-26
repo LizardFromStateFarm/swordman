@@ -102,11 +102,12 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
   assert(gs.setActiveLoadout(99).reason === 'bad_loadout', 'an unknown loadout index is refused')
 
   // ── breakthrough offers + grants ──
-  s.qi = s.derived.qiCap; s.stageIndex = 0
-  const origRandom = Math.random; Math.random = () => 0.0001   // force the breakthrough (and pick the lightest weights)
-  gs.attemptBreakthrough(); Math.random = origRandom
+  // Phase 49: leaving the Mortal stage is the Awakening (a body gate); it offers the first 3 arts.
+  s.stageIndex = 0; s.awakened = false; s.body.tier = gs._awakenTierIndex(); s.maxStageThisLife = 0
+  const origRandom = Math.random; Math.random = () => 0.0001   // pick the lightest weights
+  gs.awaken(); Math.random = origRandom
   const off = s.arts.offers[0]
-  assert(s.stageIndex === 1 && off && off.options.length === 3 && off.realm === 'Qi Condensation', 'entering Qi Condensation offers 3 arts')
+  assert(s.stageIndex === 1 && off && off.options.length === 3 && off.realm === 'Qi Condensation', 'Awakening into Qi Condensation offers 3 arts')
   assert(off.options.every(id => !s.arts.known[id] && !D.L.find(a => a.id === id).sig), '…none known, none signature')
   assert(off.options.some(id => s.root.elements.includes(D.L.find(a => a.id === id).element)), '…one of your root\'s element')
   assert(gs.chooseArtOffer(off.id, 'palm_strike').reason === 'bad_choice', 'only an offered art can be chosen')

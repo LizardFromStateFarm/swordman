@@ -16,7 +16,7 @@ secondary stroke is the family's "detail line" idiom.
 | Layout picker | layout-overlay · layout-expanded · layout-desktop (+ strip for Banner) |
 | Play mode | idle (moon) · active (flame) · auto (automation chip) |
 | HUD | meditate · qi (breath/wind) · lineage (ancestral tablet: catch-up) · integrity (stepped foundation altar) · health (blood drop) · stone (spirit stone) · age (hourglass) · breakthrough · why · explore |
-| Items/actions | lock (sealed rows) · crystal (Void Crystal) · sword (weapon slot) · pendant (artifact slot: jade bi disc) · duel (tournament) · token (sect missions) · furnace (craft) · scroll (techniques) · play · pause |
+| Items/actions | lock (sealed rows) · crystal (Void Crystal) · sword (weapon slot) · pendant (artifact slot: jade bi disc) · duel (tournament) · run (a running figure) · lift (a barbell) · token (sect missions) · furnace (craft) · scroll (techniques) · play · pause |
 | People, clan, sect, war (1.8d-2) | bond (red-thread knot: courting, matchmaker, ally) · rings (proposal) · heart (affection, spend time, lover) · couple · child · person · disciple · crown (head/leader) · branch · split (secede/leave) · unbond (end it/let go) · mantle · flag (war) · beast · frost (spouse cooling) · hall · gate (join/found) · rise (rank) · chest · pill (gourd) · shield · lotus (karma, mercy) · cloud (ascended) · lightning (Ascension Trial) · dantian (Qi capacity) · vein (bloodline) · mask (personality) · root (spiritual root) · tea (meeting) · gift · lantern (child wish) · alert · veil (cover tracks, feint) · eye · speech (confess) · skull · yield · broken · check · ring · heir (star) · strip-back |
 | Soul (Phase 40a) | soul (orb + ember core + rising wisps: Soul Points, the Soul screen, charselect door, death-card line) |
 | Ornament | taiji (charselect title) |
@@ -71,6 +71,10 @@ secondary stroke is the family's "detail line" idiom.
   `el_water` (drop + wave), `el_fire` (double flame), `el_earth` (mountain on a ground line), `el_neutral` (concentric
   rings). Distinct by **shape** (colour-blind safe); tinted in the UI by `--el-*` tokens (styles.css :root). Used by
   Path → Arts and later the battle page (1.13). Asset gate: see ui-review.md.
+- **Phase 52c (2026-10-10):** +2 Practice marks — `run` (a running figure) and `lift` (a barbell: a bar + four short
+  verticals). Used by the Practice rows (`Icon.g(glyph)`) and the "You can lift …" chip on Path → Body. Asset gate
+  **8.2 PASS** after 3 cycles (docs/systems/ui-review.md); `scenarios/icons.js` also renders a focused 14/18/28/44px
+  sheet of the Practice glyphs (`out/icons-practice.png`) for the gate.
 
 ## Lint
 `scripts/check-no-chrome-cjk.js --strict` runs in `npm test`: CJK in renderer/ code (comments skipped) fails, except the

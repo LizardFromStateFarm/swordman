@@ -44,6 +44,8 @@ const UI_ICONS = {
   sword:    '<path d="M20.5 3.5 10 14l-1.5-1.5L19 2z"/><path d="M6.5 11.5l6 6"/><path d="M9.5 14.5l-5 5"/><circle cx="3.9" cy="20.1" r="1"/>',
   pendant:  '<path d="M10.6 4.2a1.4 1.4 0 1 1 2.8 0"/><path d="M12 5.6v1.6"/><circle cx="12" cy="13.8" r="6.3"/><circle cx="12" cy="13.8" r="2.9"/>',
   duel:     '<path d="M4 4l10.5 10.5M20 4 9.5 14.5"/><path d="M12.8 16.4l3.2-3.2M11.2 16.4 8 13.2"/><path d="M15.8 15.8l4 4M8.2 15.8l-4 4"/>',
+  run:      '<circle cx="15" cy="4.6" r="2.05"/><path d="M13.6 6.8 10.4 12.2"/><path d="M13.6 6.8l3.2 2.4-1.2 2.8"/><path d="M13.6 6.8 10.2 8.8 7.8 10.2"/><path d="M10.4 12.2l4.2 2.2 4 1.6"/><path d="M10.4 12.2 7.6 14.8 4.6 17.6"/>',   // 52c: Practice — Running
+  lift:     '<path d="M3 12h18"/><path d="M3.4 7.8v8.4M6.6 9.4v5.2M20.6 7.8v8.4M17.4 9.4v5.2"/>',   // 52c: Practice — Lift (bar + plates + collars, drawn light)
   auto:     '<path d="M19.8 11a8 8 0 0 0-14-4.6M4.2 13a8 8 0 0 0 14 4.6"/><path d="M5.2 2.8v3.8H9M18.8 21.2v-3.8H15"/><circle class="f" cx="12" cy="12" r="1.5"/>',
   furnace:  '<path d="M4.5 9h15l-1.3 7.2a2.4 2.4 0 0 1-2.4 2H8.2a2.4 2.4 0 0 1-2.4-2z"/><path d="M7 9V6.2M17 9V6.2M5.5 6.2h3M15.5 6.2h3"/><path d="M8.3 18.2l-1 3.3M15.7 18.2l1 3.3"/>',
   scroll:   '<path d="M4.5 5v14M19.5 5v14" stroke-width="2.4"/><path d="M4.5 7h15M4.5 17h15"/><path d="M8 10.5h8M8 13.5h5"/>',

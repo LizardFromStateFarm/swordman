@@ -72,6 +72,10 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 | Persistent Living World (every NPC tracked, cohort, encounters, rankings) | ◐ Phase 28: spec approved 2026-10-03 (docs/systems/living-world.md); **4.2 ✅** one registry of persons (family/arena/disciples mirrored, real sect masters + elders, senior-elder succession) + the person card (UI 7.7); **4.3 ✅** the light world sim (people age, break through or fall to backlash, the road and feuds, wed, have children, die of old age as a backstop, Ascend) + ~60 classmates per life + 世 World → Class (UI 7.8); **4.6 ✅** the replacement controller (realm bands refilled by awakening waves, wanderers, the band below breaking through faster and hidden masters who seize or found a sect; the elder draft) + the merged 世 World → Chronicle with "The world by realm" (UI 7.8); **4.4 + 4.5 ✅** the heavy tier (≤ 150, your class reserved) living 12 seasonal goals (duels, feuds with one avenger, betrayals that seat / kill / split, sworn brotherhood, weddings, joins, founding) + known-first casting of suitors, strangers, arena duelists and gate recruits with the "known face" pill + the card's "Their life now" (UI 7.7); **4.7 ✅** 世 World → People (search, filters, sort, ★ pins capped at 12 — a pinned life runs in full and is never forgotten — news of the pinned, the card inline) + tappable names in the Events log (UI 7.75); **4.9 ✅** encounters: Roam → Explore → "Met on the road", 7 NPC intents + gate visitors, a never-expiring queue of 6, your bearing (pre-selects only), every answer writes rel + a memory line, avengers return as lethal ambushes, road fights on the battle page (UI 7.7); **4.10 ✅** memory (each memory's +/− behind a "Why"), Honour / Infamy + rumours, grudges whole / debts halved into the next life, the person card's 8 deeds (gift · spar · duel · teach · invite · swear · denounce · court) on a real-time per-person wait, sworn siblings in your wars, Path → Character "Your name" (UI 7.75); **4.10b ✅** Your Rival (UI 7.9); **4.8 ✅** the Heavenly Rankings (2026-10-04): World → Rankings (Your Class / Rising Dragon / Under Heaven, rank power + why, Veil your name, titles, honour roll), challengers from below, genius hunters, sect invitations, the Class duel (UI 8.0); **4.11 ✅** perf pass (year turn spread over frames: worst frame 21.5 → 11.6 ms); next the final QA & Balance pass |
 | **Interactive tutorial** (coach marks + the Guide) | ✅ **Task 1.23** (2026-10-04): a spotlight + short card the first time you meet each system (a 10-step HUD tour, every view, 5 unlocks incl. the first battle); seen-state across all saves (soul record); the Guide in ⚙ Settings (replay, tips on/off, show every tip again); veterans skip it once with a toast (UI 7.8; docs/systems/tutorial.md) |
 
+| **Active Rework — idle → active cultivation (direction change)** | ◐ **Phases 48–51** (2026-10-10): **48a–d ✅ built** — Qi now comes mainly from the **Cultivate** action (Draw Qi timing tap + a charge-free Meridian Flow / Tempering Strikes; `drawQi()` + combo), the tick/offline credit only a **12% passive trickle** (`PASSIVE_QI_SHARE`), **Active Mode is the default** (`PLAY_MODE_DEFAULT='active'`), the 3× Meditate burst is retired. **49a + 49c ✅ built** — every life starts a **mortal with shut meridians** (no Qi), **Awaken** at body tier **D** (the first realm-change art offer rides it). **49b + 49d ✅ built (2026-10-14)** — the **mortal arc**: 11 mortal-only beats (a village life with choices), an Explore forage (a guaranteed Beast Core + an extra roll while mortal), a minted childhood rival, and a bespoke **Awakening card**; the arc is **Health-gated** (active awakens ~10 min). Checks **1957 ok**; `sim:quick` healthy. Still to do: 48e bot/target QA, 50 progressive disclosure, 51 dead-zone pass. Plan: `~/.commandcode/plans/active-cultivation-rework.md`; docs `docs/systems/{active-cultivation,mortal-phase}.md`; roadmap PLAN.md → M0.5 |
+
+| **Practice — fun mini-games (Phase 52)** | ◐ **52a ✅ built** (2026-10-10): a **registry** (`assets/data/minigames.js`) drives every game; **Tempering Strikes was retired → Push-Ups**; Meridian Flow kept; charge-free, cooldown + unlock gated; the engine verifies rewards. **52b ✅ built** (2026-10-10): the **animated figure** (`renderer/engine/exercise-scene.js`, `ExerciseScene`) — a purpose-built ink dot-silhouette (jointed poses from `EXERCISE_POSES`) presses in step with the timing bar; asset gate **8.1 PASS**. **52c ✅ built** (2026-10-10): **Running** (a `stride` mode — tap the due foot) + **Lift** (a `hold` mode — release in the gold; lifts the body tier's **`LIFT_ITEMS`**, a water jar → an island) reuse the scene, plus the "You can lift …" chip on Path → Body and the `run`/`lift` icons; asset gate **8.2**, UI **7.7**, icons 3 cycles → **8.2 PASS**. **52d ✅ built** (2026-10-10): **Memorization** (the Acupoint Sequence — a 3×3 grid lights a seeded order to repeat; family `puzzle`, Qi, unlocks at Qi Condensation 1) — the engine re-derives `MemoryPuzzle.generate` from the session seed and counts the rounds held, a miss keeps what you held, a too-fast run scores 0; UI **7.6 → 7.8 PASS**. **52e ⬜** (the picker + HUD Train segment + attention/banter + the art gates). Spec `docs/systems/minigames.md`; plan `~/.commandcode/plans/minigames-practice.md` |
+
 > **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
 > era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
 
@@ -79,7 +83,7 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 > Sim/dist/build:web/smoke/new checks are batched into each feature's **QA & Balance** task (CLAUDE.md).
 > **UI/UX is first-class:** every player-facing task does the UX Pass (CLAUDE.md) and logs gaps under "UX Debt" below.
 
-> **Tools:** `npm test` (syntax) · `npm run checks` (790 scenario checks, ~30s: combat.js alone ~16s) · `npm run sim` (bot playtest) ·
+> **Tools:** `npm test` (syntax) · `npm run checks` (1957 scenario checks, ~26s, run in parallel) · `npm run sim` (bot playtest) ·
 > `node scripts/smoke/cdp.js scripts/smoke/scenarios/<name>.js` (real-app smoke over CDP, throwaway profile). Any
 > useful check script you write goes in `scripts/sim/checks/` and gets documented — never left in a temp folder
 > (CLAUDE.md → "Test scripts are project assets").
@@ -91,6 +95,37 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ---
 
 ## UX Debt — known gaps in what the player can see / do (add here; remove when fixed)
+
+- **The mortal arc (49b, 2026-10-14; visual review handed to the user):** the Awakening is a plain gold modal — no art
+  moment (a bespoke card/scene is a later polish); a beat's body-XP reward reads as "+1.2 h training" (no numeric
+  preview / "?" breakdown of what an hour is worth); a locked choice is a full-size `disabled` block with the reason in
+  its sub-line (a quieter locked row would scan better); the arc does not yet suppress the older per-system first-time
+  hints (Phase 50's job); in Overlay/phone the card (title + text + 3 answers) needs a scroll to reach the goal line; the
+  `the_element_dream` beat does not name which element your root carries (it reads generic); the minted childhood rival
+  has no dedicated "why" line on their person card (they show as a plain `youth`).
+
+- **Exercise figure (2026-10-11, asset gate polish):** the push-up head reads as a tall slab at the top of the press; the sash/ribbon trail is subtle at 1x; the growing-boulder loads (2026-10-11) were judged by the user, not a reviewer agent.
+
+- **Memorization (Phase 52d; UI 7.6 → 7.8 PASS):** the 3×3 board is capped at `min(100%, 216px)`, so in Desktop's 440px
+  card it reads smaller than Meridian Flow's pane-scaled grid; the sub runs to 3 lines at 300px / on a phone; the
+  `1–9` shortcut lives only on the turn line (the tiles carry no visible numbers); on the result card the how-to sub is
+  replaced by the tally, so a "?" explaining the partial-clear rule has nowhere to live. The partial-clear rule itself
+  is told by the result ("N of M sequences held") + the proportional payout, not before the run.
+
+- **Running + Lift (Phase 52c; assets 8.2 PASS, UI 7.7 PASS, icons 8.2 PASS):** Running's due-foot cue reads weakly —
+  the highlighted foot button is close to the other, so which foot is due isn't instant at a glance (a stronger cue /
+  a lane marker would help); on the result card the reward readout competes with the Continue button for weight; the
+  early `LIFT_ITEMS` rungs (water jar → boulder → gate pillar) are close in mass and footprint (a bolder silhouette
+  jump would read faster); on the Lift figure the held load sits near the torso mass, so body and load can merge on the
+  dark panel; the runner's rear arm is lower-contrast than the legs. Icon `run` crowds at 14px (legs converge); the
+  `run` / `lift` pair is uneven in optical mass. Path → Body top is cramped at 300px (stat grid + lift chip + a
+  multi-row Practice list).
+
+- **Practice figure (Phase 52b, asset 8.1 PASS):** the animated Push-Ups figure reads **mainly by its lit rim** — its
+  dark body separates from its own stage glow by only ~20 luminance, so at Overlay size the mass is faint; and the
+  **shoulder/upper-arm junction has no articulation break**, so the arm can misread as a wing at 300px. (Fix ideas:
+  darken the body a further step / thin the glow under the figure; damp the rim band at the shoulder.) The dot pitch
+  (1.35–1.9px) is coarser than the house ≤1.0, so it looks a touch more "wireframe" than the baked ink masses.
 
 - **Clone tempering (7.9 PASS) / parry cue (8.0) / InkSelect (7.8):** the clone's "free" explainer is long (a "?" card
   would do); Roam → Explore's clone header wraps in Expanded; the clone's progress fill is faint at the start; the endure
@@ -309,6 +344,244 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ---
 
 ## Last Session — UPDATE THIS EVERY SESSION
+
+```
+Date: 2026-10-14 (user present) — part 111
+Agent: **The Active Rework — Phase 49b+49d: the mortal arc** (user: "read start here and claude .md and continue work on
+  getting this game to be an active game if there is any left"). I mapped what was left of the rework (48 a–d ✅ · 49a+c ✅
+  · 48e/49b/49d · 50 · 51 · 52e), showed the assessment + a "which track next?" pick; the user chose **the mortal arc
+  (49b+49d)**. Built it straight through; wrote the Depth + UX pass into `docs/systems/mortal-phase.md` first.
+  - **Data — new `assets/data/mortal.js`:** `MORTAL_ARC` (gaps, `maxBeats` 5, the Explore forage drop/extra picks, the
+    rival's starting feeling) + **`MORTAL_BEATS` (11 beats × 2–3 choices)**: The First Breath (opening), the Smith's Forge,
+    the Boy From the Other End (a childhood rival), A Sword at the Well (the wandering cultivator), Something at the
+    Treeline (body E), The Black River, The Pedlar's Bottle, The Dream That Knows You (root ≥ 1.4), No One to Wake You
+    (orphan), The Head Takes You Aside (clan-born), The Thread Comes Back (the spark capstone). A beat's `when` reads
+    body tier / root mult / orphan-vs-clan / Stones / spark / past beats; a choice's effect reads personality (karma/rel
+    keyed by temper, like the beating's `bond`), pays body XP in **hours of `_bestTemperRate()`** (auto-scales), grants
+    items/stones/Health/secrets, can mint a rival, and **never kills** (Health floors at 1).
+  - **Engine (`game-state.js`):** `s.mortal` (`_blankMortal`/`_ensurePhase49bFields`, reset in `_newGame`+`_beginLife`);
+    `_tickMortal` from `_tickFamily` (game-clock, mortal-only, one at a time, capped); `_pickMortalBeat`/`_mortalBeatOk`
+    (weighted, the opening beat leads, no repeats); `mortalInfo`/`resolveMortalBeat`/`_applyMortalEffect`/`_mortalVal`/
+    `_mortalText`; `_mortalRival` mints a `role:'youth'` world person; `resolveExpedition` calls **`_mortalForage`** while
+    mortal (a guaranteed Beast Core + an extra roll) — a Qi Condensation life sees no change; `awaken()` clears any
+    pending beat.
+  - **UI:** `renderMortalBeat` (the beat card at the top of Roam → Explore: title, text, answers with their effects, an
+    "Awaken — body X / D" goal line, locked choices disabled with a reason) + a bespoke **`#awaken-overlay`** Awakening
+    card (`showAwakenMoment`, wired to a successful Awaken) + an attention item ("A mortal life waits on a choice").
+  - **Tuning (the interesting part):** the first sim showed **1.5 h to Awaken** — the bot waited for 80% Health before a
+    **bitter tier trial it could safely take** (flat 0.9, never lethal), stalling ~40 min; and life 1 often **died at
+    stage 0** on a road ambush (the mortal now explores for ~10 min, exposing road cards to a fresh mortal). Fixes (bot
+    policy, not rules): a mortal takes the bitter way at a **60% bar**, **every profile plays the body exercises while
+    the game is open** (the gate is active by design), and the beats fire every ~1.2–2.2 game years. Result: **active
+    awakens ~10 min** (target `MORTAL_AWAKEN_H.active = [0.12, 0.5]`), no stage-0 deaths, afk progresses slowly
+    (~24.8 h wall ≈ 45–90 open min — the designed 5–9× ratio). The arc is **Health-gated**, not XP-gated.
+  - **Tests:** `npm test` clean · `npm run checks` **1957 ok** (new `checks/mortal.js`, 111) · `npm run build:web` OK ·
+    smoke `scenarios/mortal.js` (new) **pass, zero console errors** (fresh game → Awaken, all 4 modes, no overflow) ·
+    `sim:quick` **healthy** (0 errors / violations; Mortal-arc report line: active 10m / 2 beats).
+  - **Visual Review Gate: handed to the user.** The reviewer sub-agent is blocked in this environment (the same
+    tool-permission error as 43f/46/45) and `vision` could not render the PNGs in my session — so the author-reviewed
+    screenshots (`scripts/smoke/out/mortal-*.png`) are handed to the user to score (ui-review.md).
+  Docs: mortal-phase.md (the full 49b spec + tuning + gotchas + "49d as built"), qa-sim.md (checks + smoke rows),
+  index.md, ui-review.md, PLAN.md (49 ✅, 49b/49d ✅), CLAUDE.md tree, this file. Uncommitted.
+  **Next:** 48e (re-base the stale life/pacing targets for the active economy), then **50** (progressive disclosure —
+  start with only Explore + Body) and **51** (dead zones). The user's sign-off on the mortal-arc screenshots is pending.
+```
+
+```
+Date: 2026-10-11 (user present) — part 110
+Agent: **Practice — the exercise figure re-rigged (user: "take a look at the push-up animation … you can do better").**
+  Assessment shown; user: "continue". The 52b/52c figure was a thin stick figure lerped between two joint sets (the
+  push-up body a single line, the runner's torso + back leg one straight stick, the lift a tangle).
+  - **Rig** (`assets/data/minigames.js`): new `EXERCISE_BODY` (bone lengths + far-side depth); `EXERCISE_POSES` is now
+    `kind:'keys'` (keyframes with two-bone IK targets/hints, planted toes, flat feet, a palm angle; `ease:'sine'`) or
+    `kind:'cycle'` (Running: leg/foot/arm tables by stride phase, the hip grounded on the lowest foot, flight, scroll).
+  - **Scene** (`renderer/engine/exercise-scene.js`, rewritten): body volumes swept into a per-layer mask canvas
+    (far · body · near arm + an accent mask) then inked as a hex dot grid (4-level up-left rim, stage back-light,
+    occlusion under the near arm), batched by colour; verlet cloth (sash tails, ribbon, hem); press easing + a spring;
+    Running turns the marker's travel into stride phase + slides the ground + speed streaks; kick() adds Qi motes and a
+    slump on a miss; Lift: squat → load before the face → overhead with a camera pull-back, tremble/shake; bigger loads
+    with features (pagoda eaves, snow-capped crag, a floating island with a hanging rock cone, pine + pavilion).
+  - Canvas 128 → 160px (Overlay 112 → 124, phone 120 → 144).
+  - New tool: `npx electron scripts/art/exercise-sheet.js` → a contact sheet of every pose (scripts/art/out/).
+  - Smoke body.js: stills now at 3 stride phases + the lift's squat/chest/overhead; ladder shots overhead.
+  - Tests: `npm test` clean · `npm run checks` **1846 ok** · smoke **body** pass, zero console errors, perf < 6 ms.
+  - **Asset gate (fresh reviewer per cycle): 7.5 FAIL (blocker: the load through the head — fixed) → 7.8 → 7.7**, no
+    blocker, every criterion ≥ 7.5; cycle-3 polish applied after. 3 cycles reached → **the user decides** (ui-review.md).
+  Docs: minigames.md (the ExerciseScene section rewritten), art-engine.md, ui-review.md, CLAUDE tree, PLAN.md (52f), this file.
+  **User follow-up:** "much better but the objects look a bit weird — just make it a boulder and it gets larger and larger"
+  → the Lift load is now ONE boulder per tier, growing (river stone → a boulder the size of a hill), cracks glowing with
+  spirit veins from tier B; `LIFT_ITEMS` renamed. Smoke + checks green. Not re-gated (the user is reviewing directly).
+  **Next:** the user's verdict on the figure; then **52e** (the Practice picker + HUD Train + attention/banter + the
+  art gates). Uncommitted.
+```
+
+```
+Date: 2026-10-10 (user present) — part 109
+Agent: **Practice (Phase 52d) — Memorization, the Acupoint Sequence.**
+  The user: "read claude.md and start here and continue work on this project" → assessment shown; user: **approved**.
+  Built 52d straight through on the 52a registry (no new files).
+  - **Data** (`assets/data/minigames.js`): the `memory` registry entry (family `puzzle`, Qi, unlock stage 1) + a
+    **`MEMORY`** block (grid 9 · `sizes` rows → rounds + each round's `lens`, 3 → 8 lights · pace/gap · qiFrac + soft DR ·
+    a `minSecsPerLight` anti-script floor).
+  - **Engine** (`game-state.js`): `_memorySize()` / `memoryQi(frac)` / a generic `_mgHourCount(id)`;
+    `startMinigame('memory')` mints `{ seed, grid, lens, startedAt }` (the Flow-only set-aside resume is now guarded
+    by `kind === 'flow'`); `finishMinigame('memory', { answers })` **re-derives `MemoryPuzzle.generate(seed, lens)`
+    and counts the rounds whose answer matches exactly** (a forged answer earns nothing; a partial clear pays in
+    proportion; a run shorter than `sum(lens) × paceMs × minSecsPerLight` scores 0); `minigameInfo()` gained the memory row.
+  - **UI** (`renderer/game/minigames.js`): the DOM-free **`MemoryPuzzle`** generator (like `FlowPuzzle`);
+    `MinigameUI._startMemory/_memoryRound/_memoryTurn/_acu/_endMemory` — a 3×3 `.mg-acu` grid that lights the order,
+    dims/inerts while watching, marks a wrong tap red + the due acupoint gold ("The order breaks"), and a result card
+    that leads with the score. `1–9` keys; `Esc` abandons (no set-aside). `body-view.js`'s Practice line now covers any
+    `reward:'qi'` puzzle.
+  - **Tests:** `npm test` clean · `npm run checks` **1846 ok** (checks/body.js +12: the sequence shape, the frozen
+    shape, the too-fast floor, full/partial/forged scoring, the cap, the soft DR, the lock) · `sim:quick` healthy (the
+    bot plays Memorization — 50 clears/run, report column "Push-Ups · Run · Lift · Flow · Memory") · smoke **body** pass
+    (a full clear, a miss, every layout, **each overlay opening asserted**), zero console errors.
+  - **Found + fixed a real smoke bug:** the Expanded/phone mini-game shots had **silently captured the Body view** — a
+    scenario set `cdUntil = 0` but did not re-render, so it clicked a button still `disabled` in the DOM (the 52b/52c
+    "Expanded" shots were affected too). The scenario now clears the cooldowns, `gameState._notify()`s, clicks, and
+    **asserts the overlay opened** per mode.
+  - **Visual Review Gate** (one fresh reviewer agent per cycle; both sessions reported the `vision` tool returning
+    cached images, so they worked from pixel measurements + the markup): **cycle 1 7.6 PASS** → **cycle 2 7.8 PASS**
+    (no blocker). Applied: dim only the idle tiles while watching, hold the miss cue ~1.2 s, and lead the result card
+    with the score. Recorded in ui-review.md.
+  Docs: minigames.md (52d + the Acupoint Sequence section + gotchas), body-constitution.md, qa-sim.md, ui-review.md,
+  index.md, CLAUDE tree, PLAN.md (52d ✅), this file. Uncommitted.
+  **Next: 52e** — the unlock ladder + the Practice picker + the HUD Train segment + attention/banter + the remaining
+  art gates. Then back to the Active Rework (48e/49b/49d/50/51).
+```
+
+```
+Date: 2026-10-10 (user present) — part 108
+Agent: **Practice (Phase 52c) — Running + Lift + the LIFT_ITEMS ladder + the Body chip.**
+  The user: "read calude.md and start here and continue work on this project" → assessment shown; user: **proceed as
+  planned**. Built 52c straight through on the 52b scene.
+  **Engine (registry-driven):**
+  - `assets/data/minigames.js`: two new timing games — **`run`** (mode `stride`, unlock body E) and **`lift`** (mode
+    `hold`, unlock body D) — plus a per-game **`timing`** block (`TIMING`), `EXERCISE_POSES.run` / `.lift`, and the
+    `lift` prop. Lift lifts **`repsByTier`** (1 heavy rep at D/E/F → 3 at A/S).
+  - `game-state.js`: `_timingReps` / `_timingCfg` (the reward formula and `finishMinigame`'s verification share one
+    config), `_exerciseXp`/`minigameInfo`/`finishMinigame` generalized off it, the session freezes `reps`, and new
+    **`liftItemInfo()`**. **Push-Ups behaviour is unchanged** (the STRIKES defaults are preserved).
+  **Scene (`ExerciseScene`):** a **far-limb rig** (`elbow2/hand2/knee2/foot2` drawn behind, cooler) so Running has a
+  real two-limbed stride (near foot forward in `up`, far foot forward in `down`), and **`_load`** inks the body tier's
+  `LIFT_ITEMS` rung at the hands (clamped to the dotted ground at press 0, rising as you strain). `_layout` now sizes
+  the figure from the pose set's **bounds** (each exercise differs). `play({ liftTier })`.
+  **UI:** `MinigameUI` dispatches on the registry `mode` → `_startBeat` (Push-Ups) / **`_startStride`** (two foot
+  buttons, the due side alternates + quickens) / **`_startHold`** (hold → the strain rises to the top then slips back;
+  release inside the gold). Timing scores on pointerdown at the event timeStamp; Space / ←→ / A-D keys; Esc quits.
+  Path → Body hero gains the **"You can lift …"** chip; the Practice list shows Run/Lift locked with a reason.
+  **Icons:** new `run` (a running figure) + `lift` (a barbell).
+  **Tests:** `npm test` clean · `npm run checks` **1836 ok** (checks/body.js +16: the ladder, per-tier reps, the
+  anti-script floor, the reward + cut for both) · smoke **body** pass (plays Run + Lift through the real overlay in
+  every mode, magnified stills of the runner + the whole ladder) + **icons** pass, zero console errors. The bot plays
+  the exercises (heaviest unlocked first) and the report labels them.
+  **Visual Review Gate (fresh reviewer each cycle):** assets (silhouettes + ladder) **8.2 PASS**, UI (the overlays)
+  **7.7 PASS**, the two icons 7.3 → 7.5 → **8.2 PASS** (cycles 1–2 redrew `lift` from a battery-read, heavy barbell to
+  a light bar + four verticals). Recorded in ui-review.md; polish → UX Debt below.
+  Docs: minigames.md (52c + the scene modes + the load), body-constitution.md, icons.md, qa-sim.md, CLAUDE.md tree,
+  PLAN.md (52c ✅), ui-review.md, this file. Uncommitted.
+  **Next: 52d** — Memorization (a deterministic Qi puzzle + engine verification); then **52e** (the unlock ladder +
+  the Practice picker + the HUD Train segment + attention/banter + sim/checks/smoke/docs + the art gates).
+```
+
+```
+Date: 2026-10-10 (user present) — part 107
+Agent: **Practice (Phase 52) — 52b: the animated ExerciseScene + Push-Ups.**
+  The user: "read claud.md and start here and continue work" → the plan's own note says 52b is the riskiest piece
+  (do it first to de-risk the animation). Assessment shown; user: **proceed as planned**.
+  **52b ✅ built (the animated figure):**
+  - New **`renderer/engine/exercise-scene.js`** (`ExerciseScene`): the baked `INK_ART` cultivator has no rig, so this
+    is a **purpose-built ink dot-silhouette** on its own small canvas (the BattleScene/AscensionCinematic pattern).
+    Limbs are tapered **capsules inked as a hex dot grid** (a lit up-left rim band, planted fist/toe blobs, contact
+    shadows, a dotted ground line) over a **stage-coloured glow + aura ring**. `setPress(0..1)` lerps the joints;
+    `kick(quality)` puffs dust on a rep. Reduced motion → one held pose, no rAF.
+  - **`assets/data/minigames.js`**: `EXERCISE_POSES.pushups` (the two key poses as named joint points) + `scene:'pushups'`
+    on the registry entry. **`MinigameUI`** gains `_startScene` / `_stopScene` (guarded for the headless sim), draws the
+    `<canvas class="mg-ex">` above the timing bar, drives `setPress(_pos(now))` every frame and `kick(hit)` on a strike.
+    CSS `.mg-ex`; index.html loads the new engine file. No engine/reward change — presentation only.
+  - Tests: `npm test` clean (430 files) · `npm run checks` **1820 ok** · smoke **body** pass, zero console errors —
+    new asserts: the figure canvas exists, the canvas has drawn pixels, `scene.perf(40) < 6` ms, magnified stills at
+    both ends of the press (`body-pushups-figure{,-low}.png`), the Reduced-motion still (`body-pushups-calm.png`).
+  - **Asset gate: cycle 1 6.4 FAIL → cycle 2 8.4 → cycle 3 8.1 PASS** (a fresh reviewer each cycle). Cycle 1 `[blocker]`:
+    **the head was detached** (`_figure` drew no neck→skull segment) — fixed by joining `sh→neck` and `neck→head`; also
+    redrew limbs as a dot capsule, darkened the body / dimmed the glow. Cycle-3 polish applied after: the aura ring is
+    clamped inside the panel. UI-review entry recorded.
+  - Docs: minigames.md (52b + the ExerciseScene section + gotchas), body-constitution.md, art-engine.md, ui-review.md,
+    CLAUDE.md tree, PLAN.md (52b ✅), this file.
+  **Next: 52c** — Running + Lift (reuse the scene) + the `LIFT_ITEMS` ladder + the Body chip; then 52d (Memorization),
+  52e (unlock ladder + the Practice picker + HUD Train + attention/banter + sim/checks/docs + the art gates).
+  Uncommitted.
+```
+
+```
+Date: 2026-10-10 (user present) — part 106
+Agent: **Practice (Phase 52) — plan + 52a: the mini-game registry.**
+  The user: "plan a couple different mini games to gain qi and body … fun and engaging. body should mostly be
+  timing or tap/click … animations for push up and running … when you rank up in body you can do squats and bench
+  … the stronger you are the more ridiculous the items you lift … qi … like flow, memorizations … none too
+  difficult, designed for fun."
+  Wrote `~/.commandcode/plans/minigames-practice.md`; user picked: **3 body + 1 qi** (Push-Ups/Running/Lift +
+  Memorization; keep Flow), **animated dot-silhouette in-canvas** (the BattleScene/Ascension pattern), **retire
+  Strikes / keep Flow**. This is **Phase 52**, under M0.5.
+  **52a ✅ built (registry + Strikes→Push-Ups):**
+  - New `assets/data/minigames.js` — `MINIGAMES` (id/family/reward/glyph/cooldownSecs/unlock/blurb) + `LIFT_ITEMS`
+    (the item ladder: water jar → boulder → pillar → gate → pagoda → mountain → island). Loaded in index.html + the
+    sim loader.
+  - Engine is registry-driven: `_blankMinigames`, `_ensurePhase14Fields` (migrates an old `strikes` entry → `pushups`),
+    `minigameInfo()` (a `list` of games + per-game rows), `startMinigame()` (cooldown from the registry + an unlock
+    gate), `finishMinigame()` (a `family` branch: timing = recompute points from hits with an anti-script floor;
+    puzzle = `FlowPuzzle.check`). New `exerciseXp()` / `_exerciseXp()`, `minigameUnlocked()`/`minigameLock()`. Removed
+    `_refillCharges`/`MINIGAME_CHARGES`.
+  - `MinigameUI` rewritten generically (family-aware); **Tempering Strikes → Push-Ups**; Flow kept. `body-view`
+    Practice section + `attention` nudge are registry-driven.
+  - Tests: `npm test` clean · `npm run checks` **1820 ok** (updated checks/body.js + smoke body.js) · smoke **body**
+    pass, zero console errors · `sim:quick` **healthy** (active reaches Spirit Severing ~12h; body tier S; 0 errors).
+  - Docs: new `docs/systems/minigames.md`; updated body-constitution.md, active-cultivation.md, index.md, CLAUDE tree,
+    PLAN.md (Phase 52 + M0.5 rows), this file.
+  **Next: 52b** — the `ExerciseScene` (an animated dot-silhouette in the mini-game overlay) + the animated Push-Ups +
+  the Practice button; then 52c (Running/Lift), 52d (Memorization), 52e (unlock ladder/picker/art gates). Uncommitted.
+```
+
+```
+Date: 2026-10-10 (user present) — part 105
+Agent: **The Active Rework — direction change, plan + roadmap (Phases 48–51).**
+  The user (verbatim): "I dont really want it to be idle focus game anymore I want it to be actiuve interaction
+  constantly. with smal idle sapects like being able to do expiditions and missions to collect meterials while
+  your gone. I also want to expand the mortal phase wher you stay a mortal until you level up your body …
+  there are a couple ded zones in the later stages where yuou cant do much besides jsut wait … its a bit
+  overwhileming at the begining … it shpould start simple and slowly introduce new mechanics."
+  Explored the loop (passive Qi in tick(), PLAY_MODE_DEFAULT 'idle', every verb = start-a-timer), the mortal
+  stage (one ~1–4 min row; body ticks gate nothing), onboarding (18 forced cards; 23/30 sub-tabs at frame 1),
+  and the dead zones (content ceiling at stage 19–20, a BQ-100 wall at 21, cf_mid ×3.1 / SS-late ~245h, world
+  bands NS 8 / SS 4). Wrote `~/.commandcode/plans/active-cultivation-rework.md`; user picked: **active Cultivate
+  action** (Qi mainly active + small passive trickle) · **idle = materials + slow trickle** · **mortal gate =
+  body tier D** · **late game = content + rebalance**.
+  Docs (in): GAMEDESIGN.md (concept + a new pillar 0 "you advance by playing" + pillar 4 reframed; new Active
+  Cultivation, Cultivate, Mortal Phase, Offline Progress sections), PLAN.md (a direction banner + Phase Index
+  48–51 + the **M0.5** roadmap block), this file (a build-state row).
+  Then **built 48a–d + 49a/c in the same session:**
+  - **`assets/data/cultivation.js`** (`PASSIVE_QI_SHARE` 0.12, `CULTIVATE_*`, `CULTIVATE_STRIKES/FLOW_COOLDOWN`);
+    `derived.qiPerSecondPassive` + `derived.cultivateYield`; `tick()`/`initSlot()` credit the passive trickle only;
+    `drawQi({perfect, at})` (combo + cooldown; the `at` path is the sim's "hands"); the Qi/s breakdown shows both rates.
+  - **The Cultivate HUD action** replaces Meditate (`#btn-cultivate`, `#cult-split`, `#cult-pop`); the button becomes
+    **Awaken** while mortal; Flow no longer spends charges. **Retired the 3× Meditate burst** (and `startMeditation`).
+  - **Active is the default** (`PLAY_MODE_DEFAULT='active'`) + reworded Mode panel.
+  - **The Mortal gate** (49a/c): `s.awakened` + `_ensurePhase49Fields`; `mortalMeridiansShut()` zeroes Qi (tick +
+    offline), refuses `drawQi`; `awaken()` at `BODY_AWAKEN_TIER` 'D' opens Qi Condensation and carries the first
+    realm-change art offer; the bot awakens.
+  - **Both mini-games are charge-free** (cooldown-gated) so Strikes is the active body-XP loop — this was needed to
+    make the body-gated mortal phase completable in active play, not a wall-clock grind.
+  - **Tests:** `npm test` clean · `npm run checks` **1820 ok** (updated checks/body.js + checks/arts.js for the
+    charge-free + mortal changes) · **`sim:quick` healthy** (active awakens ~37m, reaches Core Formation ~9h; 0 errors
+    / 0 violations) · smoke icons/body/family-tree pass, zero console errors.
+  - Docs: new `docs/systems/active-cultivation.md` + `docs/systems/mortal-phase.md`; updated core-loop.md,
+    automation.md, body-constitution.md, GAMEDESIGN.md, PLAN.md, CLAUDE.md tree pending.
+  **Next: 48e** (sim bot polish + re-base `scripts/sim/profiles.js` targets for the new economy — the life/pacing
+  targets are stale; the mortal phase is ~37m and the active profile hits Core Formation ~9h), then **49b/49d**
+  (the mortal arc + its checks/smoke), then **50** (progressive disclosure), then **51** (Qi-curve rebalance +
+  late content + world bands). Uncommitted.
+```
 
 ```
 Date: 2026-10-05 (user present, testing the v1 build on phone / iOS) — part 104

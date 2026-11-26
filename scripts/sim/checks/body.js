@@ -1,13 +1,17 @@
 // Scenario checks — Phase 14 Body Constitution & Tempering (docs/systems/body-constitution.md). Pins: every life starts
-// at F (a new game, and after a death) while the mini-game charges carry; tier effects (max Health / regen / failed-BT Qi
-// kept / fight power) and every Health cap reads maxHealth (pills, regen, the battle page); old saves migrate; the method
-// locks (stage, items, busy, beast, once, the Blood Forging gate); a drill pays out on real time (closed too) and cleanses
-// taint; an ordeal holds at its crisis offline and its three answers (Endure clean / hurt + scar, Ease off, Draw on Qi);
-// the crisis odds match a Monte Carlo; the bank cap; the tier trial (never automatic; marrow + bitter way; failure keeps
-// 70%); scars lower max Health and mend with a Golden Marrow Pill; Thunder Peak's edge caps; Blood Forging's costs;
-// Auto-Temper repeats only safe drills; the mini-games (charges refill offline + cap; Strikes rewards are clamped and a
-// too-fast run scores nothing; the cut option; Meridian Flow puzzles are always solvable and the engine rejects a wrong
-// answer; Flow Qi never crosses the cap); the child's Temper their body.
+// at F (a new game, and after a death) while the mini-games are charge-free (Phase 48) and cooldown-gated; tier effects
+// (max Health / regen / failed-BT Qi kept / fight power) and every Health cap reads maxHealth (pills, regen, the battle
+// page); old saves migrate; the method locks (stage, items, busy, beast, once, the Blood Forging gate); a drill pays out
+// on real time (closed too) and cleanses taint; an ordeal holds at its crisis offline and its three answers (Endure clean
+// / hurt + scar, Ease off, Draw on Qi); the crisis odds match a Monte Carlo; the bank cap; the tier trial (never
+// automatic; marrow + bitter way; failure keeps 70%); scars lower max Health and mend with a Golden Marrow Pill; Thunder
+// Peak's edge caps; Blood Forging's costs; Auto-Temper repeats only safe drills; the mini-games (Push-Ups rewards are
+// clamped and a too-fast run scores nothing; Running + Lift: the unlock ladder, per-tier reps, the anti-script floor,
+// the reward + the cut option; Meridian Flow puzzles are always solvable and the engine rejects a wrong
+// answer; Flow Qi never crosses the cap; Memorization sequences stay on the grid, the engine re-derives them (a forged
+// answer earns nothing), a too-fast run scores nothing, a partial clear pays in proportion and Qi never crosses the
+// cap); the child's Temper their body.
+// NOTE: setup() pins s.playMode='idle' so these pin the mode-neutral baseline (Active Mode adds +15% tempering XP).
 // Run: npm run checks · node scripts/sim/checks/body.js. Prints ok/FAIL lines.
 const { createSim } = require('../loader.js')
 const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 1 } else console.log('ok  ', m) }
@@ -16,9 +20,10 @@ const force = (sim, v, fn) => { const M = sim.ev('Math'), r = M.random; M.random
 const setup = async (seed = 1, stage = 10) => {
   const sim = await createSim({ seed }); await sim.boot(0); const gs = sim.gs, s = gs.get()
   s.stageIndex = stage; s.maxStageThisLife = stage; s.health = 100; s.spiritStones = 100000
+  s.playMode = 'idle'   // Phase 48: pin the mode-neutral baseline (Active Mode adds +15% tempering XP / BT qi-keep)
   s.inventory = { beast_core: 50, iron_ore: 50, celestial_herb: 20, demon_essence: 20, heavenly_ore: 200, void_crystal: 10, chaos_essence: 10, pill_golden_marrow: 2 }
   gs._recalc()
-  return { sim, gs, s, D: sim.ev('({ BODY_TIERS, TEMPERING_METHODS, ORDEAL_CRISIS, TIER_TRIAL, BODY_SCARS, BLOOD_FORGING, MINIGAME_CHARGES, STRIKES, FLOW, CHILD_BODY, TEMPERING_XP_ACTIVE, BODY_BANK_FRAC })') }
+  return { sim, gs, s, D: sim.ev('({ BODY_TIERS, TEMPERING_METHODS, ORDEAL_CRISIS, TIER_TRIAL, BODY_SCARS, BLOOD_FORGING, MINIGAMES, STRIKES, FLOW, LIFT_ITEMS, TIMING, CHILD_BODY, TEMPERING_XP_ACTIVE, BODY_BANK_FRAC })') }
 }
 const pass = (sim, secs) => { sim.clock.now += secs * 1000 }
 
@@ -46,7 +51,7 @@ const pass = (sim, secs) => { sim.clock.now += secs * 1000 }
     assert(Math.abs(fp.qiLossFrac - (0.5 - D.BODY_TIERS[3].btKeep)) < 1e-9, `a failed breakthrough loses less Qi (${Math.round(fp.qiLossFrac * 100)}%)`)
     // migration: an old save with no body
     delete s.body; delete s.minigames; s.health = 100; gs._recalc()
-    assert(s.body?.tier === 0 && s.minigames?.strikes?.charges === D.MINIGAME_CHARGES.max, 'an old save gains a Frail Body + full mini-game charges')
+    assert(s.body?.tier === 0 && !!s.minigames?.pushups && !!s.minigames?.flow, 'an old save gains a Frail Body + the registry of mini-games')
     s.body.tier = 4; s.health = 240; s.body.tier = 0; gs._recalc()
     assert(s.health === 100, 'Health above the body’s max is clamped on load')
   }
@@ -168,23 +173,25 @@ const pass = (sim, secs) => { sim.clock.now += secs * 1000 }
     assert(s.body.active?.crisis, 'an ordeal stops at its crisis even with Auto-Temper on (it never answers for you)')
   }
 
-  // ── Mini-games ──
+  // ── Mini-games (Phase 48/52: charge-free, registry-driven, gated by a short cooldown) ──
   { const { sim, gs, s, D } = await setup(8, 10)
-    const M = s.minigames
-    for (let i = 0; i < 3; i++) { const r = gs.startMinigame('strikes'); pass(sim, 10); gs.finishMinigame('strikes', { hits: Array(8).fill('good') }) }
-    assert(M.strikes.charges === 0 && gs.startMinigame('strikes').reason === 'charges', 'three charges, then none')
-    pass(sim, D.MINIGAME_CHARGES.refillSecs * 10); gs.tick(1)
-    assert(M.strikes.charges === D.MINIGAME_CHARGES.max, 'charges refill on real time (closed too) and cap at 3')
-    gs.startMinigame('strikes'); pass(sim, 0.5)
-    const fast = gs.finishMinigame('strikes', { hits: Array(D.STRIKES.strikes).fill('perfect') })
+    const M = s.minigames, def = id => D.MINIGAMES.find(x => x.id === id)
+    const ready = kind => pass(sim, def(kind).cooldownSecs + 1)
+    assert(gs.startMinigame('pushups').ok && M.pushups.cdUntil > sim.clock.now, 'a Push-Ups run starts (no charge) and sets its cooldown')
+    assert(gs.startMinigame('pushups').reason === 'cooldown', 'a second run waits out the cooldown')
+    gs.finishMinigame('pushups', { hits: Array(D.STRIKES.strikes).fill('good') })
+    // a too-fast run scores nothing
+    ready('pushups'); gs.startMinigame('pushups'); pass(sim, 0.5)
+    const fast = gs.finishMinigame('pushups', { hits: Array(D.STRIKES.strikes).fill('perfect') })
     assert(fast.points === 0, 'a run faster than the marker can cross scores nothing')
-    gs.startMinigame('strikes'); pass(sim, 10)
-    const forged = gs.finishMinigame('strikes', { hits: Array(50).fill('perfect') })
-    assert(forged.points === D.STRIKES.strikes * 3 && forged.xp <= gs.strikesXp(D.STRIKES.strikes * 3), 'a forged result is clamped to the strike count')
-    gs.startTempering('boulder'); pass(sim, 10); gs.tick(1)
+    ready('pushups'); gs.startMinigame('pushups'); pass(sim, 10)
+    const forged = gs.finishMinigame('pushups', { hits: Array(50).fill('perfect') })
+    assert(forged.points === D.STRIKES.strikes * 3 && forged.xp <= gs.exerciseXp('pushups', D.STRIKES.strikes * 3), 'a forged result is clamped to the rep count')
+    // the cut option
+    ready('pushups'); gs.startTempering('boulder'); pass(sim, 10); gs.tick(1)
     const left0 = s.body.active.endsAt - sim.clock.now
-    gs.startMinigame('strikes'); pass(sim, 10)
-    gs.finishMinigame('strikes', { hits: Array(D.STRIKES.strikes).fill('perfect'), use: 'cut' })
+    gs.startMinigame('pushups'); pass(sim, 10)
+    gs.finishMinigame('pushups', { hits: Array(D.STRIKES.strikes).fill('perfect'), use: 'cut' })
     const left1 = s.body.active.endsAt - sim.clock.now
     assert(left1 < left0 * 0.8 && left1 >= (left0 - 10000) * (1 - D.STRIKES.cutMax) - 1000, 'the cut option shortens a running tempering (to 24%)')
     // Flow: always solvable; the engine checks the answer
@@ -194,32 +201,126 @@ const pass = (sim, secs) => { sim.clock.now += secs * 1000 }
       if (!FP.isSolved(p.solved, n, p.source) || FP.isSolved(p.shown, n, p.source)) ok = false
     }
     assert(ok, 'every Meridian Flow puzzle is solvable and never dealt already solved (600 puzzles)')
-    const r = gs.startMinigame('flow'), p = FP.generate(r.session.seed, r.session.n)
+    ready('flow'); const r = gs.startMinigame('flow'), p = FP.generate(r.session.seed, r.session.n)
     const turns = p.shown.map((m, i) => [0, 1, 2, 3].find(t => FP.rot(m, t) === p.solved[i]))
     s.qi = 0; pass(sim, 30)
     const bad = gs.finishMinigame('flow', { rotations: turns.map(() => 0) })
     assert(!bad.solved && s.qi === 0, 'the engine rejects an unsolved grid (no Qi)')
-    const r2 = gs.startMinigame('flow'), p2 = FP.generate(r2.session.seed, r2.session.n)
+    ready('flow'); const r2 = gs.startMinigame('flow'), p2 = FP.generate(r2.session.seed, r2.session.n)
     s.qi = s.derived.qiCap - 5; pass(sim, 30)
     const good = gs.finishMinigame('flow', { rotations: p2.shown.map((m, i) => [0, 1, 2, 3].find(t => FP.rot(m, t) === p2.solved[i])) })
     assert(good.solved && s.qi <= s.derived.qiCap && good.qi <= 5, 'Flow Qi never crosses the cap')
-    // No clock (user 2026-10-03): set aside → resume with your turns, no new charge; the full reward however long it took
-    s.minigames.flow.charges = 2; s.minigames.flow.hour = []
-    const r3 = gs.startMinigame('flow'), p3 = FP.generate(r3.session.seed, r3.session.n)
+    // No clock (user 2026-10-03): set aside → resume with your turns; charge-free since Phase 48
+    s.minigames.flow.hour = []
+    ready('flow'); const r3 = gs.startMinigame('flow'), p3 = FP.generate(r3.session.seed, r3.session.n)
     const sol3 = p3.shown.map((m, i) => [0, 1, 2, 3].find(t => FP.rot(m, t) === p3.solved[i]))
     assert(gs.finishMinigame('flow', { setAside: true, turns: [1, 2, 3] }).setAside && s.minigames.flow.session, 'closing a Flow puzzle sets it aside')
     const r4 = gs.startMinigame('flow')
-    assert(r4.resumed && r4.session.seed === r3.session.seed && r4.session.turns[1] === 2 && s.minigames.flow.charges === 1, 'reopening resumes it, with your turns, for no new charge')
+    assert(r4.resumed && r4.session.seed === r3.session.seed && r4.session.turns[1] === 2, 'reopening resumes it, with your turns')
     s.qi = 0; pass(sim, 3600)
     const late = gs.finishMinigame('flow', { rotations: sol3 })
     assert(late.solved && late.qi === Math.round(s.derived.qiCap * D.FLOW.qiFrac), 'an hour later, a finished puzzle still pays the full Qi (no clock)')
   }
 
+  // ── Running + Lift (Phase 52c): the unlock ladder, per-tier reps, the anti-script floor, the reward ──
+  { const { sim, gs, s, D } = await setup(11, 10)
+    const def = id => D.MINIGAMES.find(x => x.id === id)
+    const ready = kind => pass(sim, def(kind).cooldownSecs + 1)
+    s.body.tier = 0; gs._recalc()
+    assert(!gs.minigameUnlocked('run') && gs.minigameLock('run') === `Unlocks at ${D.BODY_TIERS[1].name}`, 'Running unlocks at Mortal Body (E)')
+    assert(!gs.minigameUnlocked('lift') && gs.minigameLock('lift') === `Unlocks at ${D.BODY_TIERS[2].name}`, 'Lift unlocks at Hardened Body (D)')
+    assert(gs.liftItemInfo().name === D.LIFT_ITEMS[0], 'a Frail body lifts the first rung of the ladder')
+    assert(gs._timingReps(def('run')) === D.TIMING.run.reps && gs._timingReps(def('pushups')) === D.STRIKES.strikes, 'a flat game has a fixed rep count')
+    s.body.tier = 6; gs._recalc()
+    assert(gs.liftItemInfo().name === D.LIFT_ITEMS[6], 'a Heaven-Forged body lifts the last rung')
+    assert(gs._timingReps(def('lift')) === D.TIMING.lift.repsByTier[6], 'the Lift adds heavier reps as the body rises')
+    // Running: start + freeze reps, cooldown, the too-fast floor, a forged result clamped
+    s.body.tier = 2; gs._recalc()
+    assert(gs.startMinigame('run').ok && s.minigames.run.session.reps === D.TIMING.run.reps, 'a Running run starts and freezes its stride count')
+    assert(gs.startMinigame('run').reason === 'cooldown', 'Running waits out its cooldown')
+    ready('run'); gs.startMinigame('run'); pass(sim, 0.5)
+    assert(gs.finishMinigame('run', { hits: Array(D.TIMING.run.reps).fill('perfect') }).points === 0, 'a Running run faster than the strides can be tapped scores nothing')
+    ready('run'); gs.startMinigame('run'); pass(sim, 6)
+    const forged = gs.finishMinigame('run', { hits: Array(40).fill('perfect') })
+    assert(forged.points === D.TIMING.run.reps * D.TIMING.run.perfectPts && forged.xp <= gs.exerciseXp('run', forged.points), 'a forged Running result is clamped to the stride count')
+    // Lift: one heavy rep at D, three at S; the floor; the score
+    s.body.tier = 2; gs._recalc(); ready('lift')
+    const r1 = gs.startMinigame('lift')
+    assert(r1.ok && r1.session.reps === 1, 'a Hardened body lifts a single heavy rep')
+    pass(sim, 2)
+    const one = gs.finishMinigame('lift', { hits: ['perfect'] })
+    assert(one.points === D.TIMING.lift.perfectPts && one.max === D.TIMING.lift.perfectPts, 'one perfect lift fills the card')
+    ready('lift'); gs.startMinigame('lift'); pass(sim, 0.4)
+    assert(gs.finishMinigame('lift', { hits: ['perfect'] }).points === 0, 'letting go before the load can rise scores nothing')
+    s.body.tier = 6; gs._recalc(); ready('lift')
+    assert(gs.startMinigame('lift').session.reps === D.TIMING.lift.repsByTier[6], 'a Heaven-Forged body lifts three reps')
+    pass(sim, 8)
+    const three = gs.finishMinigame('lift', { hits: ['perfect', 'perfect', 'miss'] })
+    assert(three.max === D.TIMING.lift.repsByTier[6] * D.TIMING.lift.perfectPts && three.points === 2 * D.TIMING.lift.perfectPts, 'three Lift reps are scored against the heavier cap')
+    // The cut option works for the new games too (a running tempering is shortened)
+    s.body.tier = 2; gs._recalc(); ready('run'); gs.startTempering('boulder'); pass(sim, 10); gs.tick(1)
+    const left0 = s.body.active.endsAt - sim.clock.now
+    gs.startMinigame('run'); pass(sim, 6)
+    gs.finishMinigame('run', { hits: Array(D.TIMING.run.reps).fill('perfect'), use: 'cut' })
+    assert(s.body.active.endsAt - sim.clock.now < left0 * 0.8, 'a perfect Running run cuts a running tempering')
+  }
+
+  // ── Memorization (Phase 52d): a seeded acupoint sequence; the engine re-derives it and counts the rounds held ──
+  { const { sim, gs, s, D } = await setup(12, 10)
+    const MP = sim.ev('MemoryPuzzle'), memo = sim.ev('MEMORY')
+    const ready = () => pass(sim, sim.ev('MINIGAMES').find(g => g.id === 'memory').cooldownSecs + 1)
+    let shapes = true
+    for (let seed = 1; seed < 200; seed++) {
+      const lens = [3, 4, 5, 6, 8], plan = MP.generate(seed, lens)
+      if (plan.length !== lens.length || plan.some((seq, i) => seq.length !== lens[i]) ||
+          plan.some(seq => seq.some(c => c < 0 || c >= memo.grid) || seq.some((c, i) => i && c === seq[i - 1]))) shapes = false
+    }
+    assert(shapes, 'every Memorization sequence matches its length, stays on the grid and never lights the same cell twice in a row (1,000 sequences)')
+    assert(gs.startMinigame('memory').ok && s.minigames.memory.session.lens.join() === gs._memorySize().lens.join(), 'a Memorization run starts and freezes the stage’s shape')
+    assert(gs.startMinigame('memory').reason === 'cooldown', 'Memorization waits out its cooldown')
+    // A run faster than the lights can play scores nothing
+    ready(); const r0 = gs.startMinigame('memory'); const plan0 = MP.generate(r0.session.seed, r0.session.lens)
+    s.qi = 0; pass(sim, 0.5)
+    const fast = gs.finishMinigame('memory', { answers: plan0 })
+    assert(fast.completed === 0 && fast.tooFast && s.qi === 0, 'a run faster than the lights can play scores nothing')
+    // A full clear pays the stage’s share of the cap
+    ready(); const r1 = gs.startMinigame('memory'); const plan1 = MP.generate(r1.session.seed, r1.session.lens)
+    s.qi = 0; pass(sim, 30)
+    const full = gs.finishMinigame('memory', { answers: plan1 })
+    assert(full.perfect && full.completed === plan1.length && full.qi === gs.memoryQi(1) && s.qi === full.qi, 'a full Memorization clear pays the stage’s share of Qi')
+    // Only the first round kept → a proportional pay
+    s.minigames.memory.hour = []
+    ready(); const r2 = gs.startMinigame('memory'); const plan2 = MP.generate(r2.session.seed, r2.session.lens)
+    s.qi = 0; pass(sim, 30)
+    const part = gs.finishMinigame('memory', { answers: [plan2[0]] })
+    assert(part.completed === 1 && part.qi === gs.memoryQi(1 / plan2.length) && part.qi < full.qi, 'a run that keeps only the first round pays in proportion')
+    // Forged answers are re-checked against the seeded sequences
+    ready(); const r3 = gs.startMinigame('memory'); const plan3 = MP.generate(r3.session.seed, r3.session.lens)
+    s.qi = 0; pass(sim, 30)
+    const forged = gs.finishMinigame('memory', { answers: plan3.map(seq => seq.map(() => 0)) })
+    assert(forged.qi <= gs.memoryQi(1) && (forged.completed === 0 || plan3.every(seq => seq.every(c => c === 0))), 'forged Memorization answers are re-checked against the seed')
+    // Qi never crosses the cap
+    ready(); const r4 = gs.startMinigame('memory'); const plan4 = MP.generate(r4.session.seed, r4.session.lens)
+    s.qi = s.derived.qiCap - 3; pass(sim, 30)
+    const capped = gs.finishMinigame('memory', { answers: plan4 })
+    assert(capped.qi <= 3 && s.qi <= s.derived.qiCap, 'Memorization Qi never crosses the cap')
+    // The third clear in an hour pays less (soft DR)
+    s.minigames.memory.hour = []
+    for (let i = 0; i < 2; i++) { ready(); const r = gs.startMinigame('memory'), pl = MP.generate(r.session.seed, r.session.lens); s.qi = 0; pass(sim, 30); gs.finishMinigame('memory', { answers: pl }) }
+    ready(); const r5 = gs.startMinigame('memory'); const plan5 = MP.generate(r5.session.seed, r5.session.lens); s.qi = 0; pass(sim, 30)
+    const tired = gs.finishMinigame('memory', { answers: plan5 })
+    const fresh = Math.round(s.derived.qiCap * memo.qiFrac)
+    assert(tired.qi === Math.round(fresh * memo.hourMult) && tired.qi < fresh, 'the third Memorization clear in an hour pays less (soft DR)')
+    // Locked until you cultivate
+    s.stageIndex = 0; gs._recalc()
+    assert(!gs.minigameUnlocked('memory') && gs.minigameLock('memory') === 'Unlocks once you cultivate', 'Memorization unlocks once you cultivate (stage 1)')
+  }
+
   // ── Death resets the body; the charges carry ──
   { const { sim, gs, s } = await setup(9, 10)
-    s.body.tier = 5; s.body.xp = 90000; s.minigames.flow.charges = 1
+    s.body.tier = 5; s.body.xp = 90000; s.minigames.flow.best = 3; s.minigames.flow.plays = 7
     gs._die('test')
-    assert(gs.get().body.tier === 0 && gs.get().body.xp === 0 && gs.get().minigames.flow.charges === 1, 'a new life starts in a Frail Body; mini-game charges are the player’s and carry')
+    assert(gs.get().body.tier === 0 && gs.get().body.xp === 0 && gs.get().minigames.flow.plays === 7 && gs.get().minigames.flow.best === 3, 'a new life starts in a Frail Body; the mini-games are the player’s and carry')
   }
 
   // ── A child's body ──

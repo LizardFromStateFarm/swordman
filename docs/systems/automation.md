@@ -1,11 +1,14 @@
 # Active / Idle Mode + Automation — Reference
 _Covers: automation.js (data) · game-state.js (mode + automation dispatch, `_tickAutomation`, `attemptBreakthrough`/`craftItem` opts) · renderer/game/crafting.js (watched flag) · game.js (mode button, Automation panel, Push Harder, breakthrough focus window, Master's Touch) · Phase: 22 · Updated: 2026-09-26_
 
-Pillar 4 (never punish absence): **Idle Mode is the default, first-class way to play.** Automation unlocks
-progressively as you cultivate, so an idle/afk player's progress compounds without any manual attention.
-**Active Mode is an optional bonus for attentive players, not a requirement** — it trades all automation for
-modest timer reductions and click-timed bonuses. Nothing in Active Mode is stronger than idle+automation over
-the same wall-clock time; it only front-loads progress for players who are actually watching.
+> **Phase 48 (2026-10-10) reframes this.** `PLAY_MODE_DEFAULT` is now **'active'** — the game is active-first
+> (see docs/systems/active-cultivation.md). **Active = you are playing** (the Cultivate action, fights, exploring);
+> **Idle = you are away** — automation runs your timed jobs and the passive qi trickle keeps gathering. Absence is
+> still never punished (pillar 4), just slower. The automation *mechanics* below are unchanged.
+
+Pillar 4 (never punish absence): an idle/afk player's progress compounds without any manual attention.
+**Active Mode is the default now**, and the passive qi rate is a fraction of the active rate — but nothing in
+Active Mode is *required*; an absent player still progresses, more slowly.
 
 ## State
 ```

@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- Exercise figure contact sheet (scripts/art/exercise-sheet.js): every ExerciseScene pose frozen side by side. -->
+<html><head><meta charset="utf-8"><style>
+  body { margin: 0; background: #0B0814; color: #C8C0E0; font: 11px monospace; }
+  .grid { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; width: 1300px; }
+  figure { margin: 0; } figcaption { padding: 2px 4px; }
+  canvas { display: block; width: 420px; height: 168px; border-radius: 6px;
+    background: radial-gradient(120% 95% at 50% 22%, rgba(40,32,66,0.55), rgba(6,4,12,0.86) 72%), #06040C; }
+</style></head><body><div class="grid" id="g"></div>
+<script src="../../renderer/engine/ink-renderer.js"></script>
+<script src="../../assets/data/minigames.js"></script>
+<script src="../../renderer/engine/exercise-scene.js"></script>
+<script>
+  const q = new URLSearchParams(location.search), color = q.get('color') || '#E8C46A'
+  const cells = [
+    ['pushups', 0, 0], ['pushups', 0.5, 0], ['pushups', 1, 0],
+    ['run', 0, 0], ['run', 0.12, 0], ['run', 0.25, 0], ['run', 0.37, 0], ['run', 0.5, 0], ['run', 0.68, 0],
+    ['lift', 0, 3], ['lift', 0.45, 3], ['lift', 0.72, 3], ['lift', 1, 3], ['lift', 0, 6], ['lift', 0.45, 6],
+    ['lift', 1, 0], ['lift', 1, 1], ['lift', 1, 2], ['lift', 1, 4], ['lift', 1, 5], ['lift', 1, 6],
+  ]
+  const g = document.getElementById('g')
+  for (const [ex, p, lt] of cells) {
+    const f = document.createElement('figure'), c = document.createElement('canvas'), cap = document.createElement('figcaption')
+    cap.textContent = `${ex} ${p}${ex === 'lift' ? ' tier ' + lt : ''}`
+    f.append(c, cap); g.append(f)
+    const s = new ExerciseScene(c)
+    s.play({ exercise: ex, color, tier: 14, liftTier: lt, reducedMotion: true })
+    s.freeze(p)
+  }
+  document.title = 'ready'
+</script></body></html>

@@ -1,20 +1,32 @@
 # Cultivator Idle — Game Design Document
 
+> **2026-10-10 — direction change: an ACTIVE cultivation game with idle support.**
+> The game is no longer idle-first. You advance mainly by **playing** — actively cultivating and
+> choosing your way up the path — and you send **expeditions and missions out while you're away** to
+> gather materials (the small idle layer). See PLAN.md → "The Active Rework" (Phases 48–51) and
+> `docs/systems/active-cultivation.md`.
+
 ## Concept
 
-A desktop idle game that lives permanently on the edge of your screen.
-Your cultivator sits in lotus position, silently absorbing the qi of heaven and earth
-while you go about your day. Check in occasionally to trigger a breakthrough,
-learn a new technique, or read what the world has sent your way.
+An active wuxia cultivation game that lives on the edge of your screen.
+Your cultivator climbs the path of immortality by **cultivating — actively gathering qi**, fighting,
+exploring and tempering the body — while **expeditions and missions run in the background** and bring
+materials home whether you're watching or not. When you're present, you play: draw qi, hunt, duel,
+delve, breakthrough. When you step away, the world keeps gathering a slow trickle and your sent
+jobs finish. Nothing is lost by leaving — but a present player climbs far faster.
 
-Art style: Colored ASCII art on a dark transparent canvas. Wuxia aesthetic.
+Art style: Colored ASCII / ink art on a dark transparent canvas. Wuxia aesthetic.
 
 ---
 
-## Design Pillars (decided 2026-09-25 — every system must fit these)
+## Design Pillars (decided 2026-09-25, **revised 2026-10-10 — active-first** — every system must fit these)
 
 This is a single-player game made for the love of the game, not a monetized live-service idle game.
 
+0. **You advance by playing** (added 2026-10-10). The main loop is **active**: gathering qi, fighting,
+   exploring, tempering, choosing. There is no "wait for the bar to fill" as the primary verb — when you are
+   present there is always something to *do*, and doing it is clearly faster (target **~4–8×** over idling).
+   Idle is a **support** layer, not the game.
 1. **A mortal life is a run.** One character's mortal life should take roughly **20–40 hours of open play**
    (casual profile) before it ends: by a failed tribulation, a failed Ascension, a successful one, a violent
    death, or the player choosing to Pass the Mantle. **Age never ends a life** (user decision 2026-09-26): the
@@ -29,10 +41,12 @@ This is a single-player game made for the love of the game, not a monetized live
    Later generations replay the early realms faster, so the early game never becomes a grind.
    *Exception (user 2026-09-28, Phase 40):* **Soul Points** are a cross-save (every slot) Qi/s multiplier earned
    from failed Ascension Trials and Immortality: modest and capped (+100% max). See docs/systems/soul-points.md.
-4. **Never punish the player for being away.** There are no daily logins, no real-calendar events or seasons, no
-   time-of-day bonuses, no windows you miss while the game is closed, no streaks and no FOMO. Anything that
-   needs a decision while you're away uses a **standing order** you set in advance. Notifications are opt-in
-   conveniences.
+4. **Never punish the player for being away** (**reframed 2026-10-10 for active-first**: absence still
+   progresses, just slowly). There are no daily logins, no real-calendar events or seasons, no
+   time-of-day bonuses, no windows you miss while the game is closed, no streaks and no FOMO. While away you
+   keep a **slow passive qi trickle** and your **expeditions/missions finish** — so nothing is lost by leaving,
+   but active play is much faster. Anything that needs a decision while you're away uses a **standing order**
+   you set in advance. Notifications are opt-in conveniences.
 5. **Two clocks.** Idle jobs (expeditions, missions, crafting, study) use wall-clock timers and finish while
    the game is closed. **Age and world history use game time**, which passes **only while the game
    is open** (see Phase 30 in PLAN.md). Nothing is tied to the real calendar or the time of day. Those can
@@ -59,7 +73,15 @@ Mortal (凡人)
 ```
 
 Each "stage" in the code is one row of `CULTIVATION_STAGES` in `assets/data/stages.js`.
-Total stages: 25.
+Total stages: 23 (Mortal → Qi Condensation ×9 → Foundation → Core → Nascent Soul → Spirit Severing ×3 → an Ascension stub).
+
+### The Mortal Phase (added 2026-10-10, Phase 49)
+Every life **begins a mortal** — `stageIndex 0`, `mortal / Unawakened`. **Qi does not flow yet**: you cannot
+cultivate until you **open your meridians**, which takes a **trained body**. To **Awaken** (enter Qi Condensation)
+you must temper your body to the **Hardened tier (D, 1000 XP)** through the mortal loop — **Explore** and
+**Body tempering** are the only verbs at first (plus hunting a first beast). This makes the opening a real,
+active arc instead of a 1–4 minute formality, and it teaches the two core verbs before the rest of the game
+unlocks. See `docs/systems/mortal-phase.md`.
 
 ---
 
@@ -67,7 +89,7 @@ Total stages: 25.
 
 | Resource       | How gained                        | How spent                  |
 |----------------|-----------------------------------|----------------------------|
-| **Qi (气)**     | Passive over time                 | Consumed on breakthrough attempt |
+| **Qi (气)**     | **Actively cultivated** (the main action) + a slow passive trickle while away | Consumed on breakthrough attempt |
 | **Spirit Stones (灵石)** | Random events, world drops | Buy techniques |
 | **Karma (因果)** | Breakthroughs, special events     | Bonus to breakthrough chance |
 | **Comprehension** | Rare events                    | Future use (reserved)      |
@@ -76,8 +98,18 @@ Total stages: 25.
 
 ## Mechanics
 
-### Idle Qi Generation
+### Active Cultivation (the main loop)
+Qi has two rates, both off the same `qiPerSecond` figure (the "full cultivation rate"):
+
 `qiPerSecond = stage.baseQps × spiritualRoot.mult × (technique multipliers)`
+
+- **Playing (active).** The **Cultivate** action — **Draw Qi** (a quick repeatable timing tap) and
+  **Meridian Flow** (a puzzle for a bigger burst) — awards qi per interaction, scaled by `qiPerSecond`.
+  A present player climbs at roughly **4–8×** the idle rate. See `docs/systems/active-cultivation.md`.
+- **Away (passive).** The tick and offline catch-up credit only a **slow trickle** — a fraction of the full
+  rate (`PASSIVE_QI_SHARE`). Expedition and mission materials are the other thing you gain while away.
+
+Tuning lives in `assets/data/cultivation.js` (Phase 48). The Qi/s "why" card shows both rates.
 
 Spiritual root is randomly assigned at game start:
 - Heavenly Root (1% chance): ×3.0 — the chosen cultivator
@@ -85,9 +117,11 @@ Spiritual root is randomly assigned at game start:
 - Dual Root (20%): ×1.4 — two elements
 - Mixed Root (75%): ×1.0 — common talent
 
-### Meditation
-Click Meditate → 3× Qi gain for 30 seconds.
-One session at a time. Used for burst progress before a breakthrough.
+### Cultivate
+The main action. **Draw Qi** is a quick, repeatable timing tap that awards a qi chunk and builds a combo;
+**Meridian Flow** is a puzzle that awards a bigger chunk (with soft diminishing returns after several solves
+per hour). Always available while you're cultivating (qi flows from Qi Condensation on — before Awakening, your
+meridians are shut; see the Mortal Phase below).
 
 ### Breakthrough
 When Qi ≥ 90% of cap, the Breakthrough button becomes available.
@@ -110,12 +144,11 @@ inner demons, auspicious clouds, stray lightning.
 
 ## Offline Progress
 
-On load: `min(elapsed_seconds, 8_hours) × qiPerSecond` Qi is credited.
-Shown in the events log on next session.
+On load: `min(elapsed_seconds, 8_hours) × qiPerSecond × PASSIVE_QI_SHARE` Qi is credited — the **passive
+trickle only** (active play is not simulated; you're away). Your running **expeditions and missions also
+finish** while the game is closed, so coming back means materials + a small pile of qi. Shown in the events log.
 
-**Game time (age) does not pass offline** (pillar 5). Offline catch-up gives resources, not years. The life loop
-(PLAN.md M2) must check with the sim that this doesn't make afk lives too cheap. If it does, the fix is the
-offline Qi rate, not aging offline.
+**Game time (age) does not pass offline** (pillar 5). Offline catch-up gives resources, not years.
 
 ---
 

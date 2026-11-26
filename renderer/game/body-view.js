@@ -17,10 +17,10 @@ const BodyView = {
 
   render(s, el, gs, h) {
     this.gs = gs; this.h = h
-    const b = gs.bodyInfo(), mg = gs.minigameInfo(), list = gs.temperingList()
+    const b = gs.bodyInfo(), mg = gs.minigameInfo(), list = gs.temperingList(), lift = gs.liftItemInfo()
     this.ci = gs.cloneInfo?.() || null
     el.innerHTML = `<div class="fam-view body-view">
-      <div class="fam-col">${this._hero(b)}${this._crisis(b)}${this._cloneCrisis()}${this._trial(b, s)}${this._active(b)}${this._clone(list)}${this._games(mg)}${this._marks(b)}${this._auto(s, list)}</div>
+      <div class="fam-col">${this._hero(b, lift)}${this._crisis(b)}${this._cloneCrisis()}${this._trial(b, s)}${this._active(b)}${this._clone(list)}${this._games(mg)}${this._marks(b)}${this._auto(s, list)}</div>
       <div class="fam-col">${this._methods(list, s)}${this._history(b)}</div></div>`
     if (!this._wired) {
       this._wired = true
@@ -47,7 +47,7 @@ const BodyView = {
     return due
   },
 
-  _hero(b) {
+  _hero(b, lift) {
     const h = this.h, t = b.def, next = b.next
     const span = next ? next.xp - t.xp : 1, fill = next ? Math.min(1, (b.xp - t.xp) / span) : 1
     const capFrac = next ? Math.min(1.6, (b.cap - t.xp) / span) : 1
@@ -74,6 +74,7 @@ const BodyView = {
         ${chip('health', 'rise', 'Regen', `+1 / ${Math.round(b.regenSec)}s`, 'Health comes back this fast, open or closed.')}
         ${chip('', 'breakthrough', 'Failed BT keeps', `+${this.pct(b.btKeep)} Qi`, 'A failed breakthrough keeps this much more of your Qi (on top of the usual half).')}
         ${b.power ? chip('', 'duel', 'Fight power', `+${b.power}`, 'Added to your power in duels, challenges, the Arena and beast fights.') : ''}
+        ${lift ? chip('', 'lift', 'You can lift', h.esc(lift.name), 'The load the Lift exercise sets before you. It grows more ridiculous with every body tier.') : ''}
         ${b.btBonus ? chip('', 'lightning', 'Thunder-tempered', `+${this.pct(b.btBonus)} BT`, 'Breakthrough chance from enduring Thunder Peak this life.') : ''}
         ${b.rootBoost ? chip('', ART_ELEMENTS[b.rootBoost.element]?.icon || 'qi', `${ART_ELEMENTS[b.rootBoost.element]?.name}-root`, `×${b.rootBoost.mult} · <span data-bd-left="${b.rootBoost.until}">${h.fmtTime(b.rootBoost.left)}</span>`, 'Your root drinks what the ordeal left in you.') : ''}
       </div></div>`
@@ -120,16 +121,24 @@ const BodyView = {
   },
 
   _games(mg) {
-    const h = this.h, pips = n => `<span class="ch-charges">${'<b class="on"></b>'.repeat(n)}${'<b></b>'.repeat(mg.max - n)}</span>`
-    const g = (kind, icon, name, what, row) => `<button class="fa-btn bd-game" data-mg-open="${kind}" ${row.charges || row.waiting ? '' : 'disabled'}>
-      <span class="fa-g">${Icon.g(icon)}</span><span class="fa-t"><span class="fa-n">${name} ${pips(row.charges)}</span>
-      <span class="fa-e">${what}${row.charges || row.waiting ? '' : ` · next in <span data-bd-left="${Date.now() + row.nextIn * 1000}">${h.fmtTime(row.nextIn)}</span>`}</span></span></button>`
-    const st = mg.strikes, fl = mg.flow
+    const h = this.h
+    const what = row => {
+      if (row.reward === 'body') return `+up to ${h.fmt(row.perfectXp || 0)} body XP`
+      if (row.reward === 'qi') return `${row.waiting ? 'Resume your puzzle' : 'Puzzle'} · +${h.fmt(row.qi || 0)} Qi${row.tired ? ' · tired this hour' : ''}`
+      return row.blurb ? h.esc(row.blurb) : ''
+    }
+    const btn = row => {
+      const ready = row.waiting || !(row.cdIn > 0)
+      const off = !row.unlocked || (!ready && !row.waiting)
+      const sub = !row.unlocked ? ` · ${h.esc(row.lockReason || 'locked')}`
+        : (!ready && !row.waiting) ? ` · ready in <span data-bd-left="${Date.now() + row.cdIn * 1000}">${h.fmtTime(row.cdIn)}</span>` : ''
+      return `<button class="fa-btn bd-game" data-mg-open="${row.id}" ${off ? 'disabled' : ''} title="${h.esc(row.blurb || '')}">
+        <span class="fa-g">${Icon.g(row.glyph || 'duel')}</span><span class="fa-t"><span class="fa-n">${h.esc(row.name)}</span>
+        <span class="fa-e">${what(row)}${sub}</span></span></button>`
+    }
     return `<div class="fam-sec bd-games"><div class="fam-sec-title"><span>Practice</span><span class="fam-count">optional</span></div>
-      <div class="fa-grid">
-        ${g('strikes', 'duel', 'Tempering Strikes', `Timing · up to +${h.fmt(st.perfectXp)} body XP${st.canCut ? ` or ${this.pct(st.cutMax)} off ${h.esc(st.cutTarget)}` : ''}`, st)}
-        ${g('flow', 'vein', 'Meridian Flow', `${fl.waiting ? 'Resume your puzzle' : 'Puzzle, no clock'} · +${h.fmt(fl.qi)} Qi${fl.tired ? ' · tired this hour' : ''}`, fl)}
-      </div><div class="bd-foot">A charge returns every 30 minutes, even while you are away. Play when you like; nothing is lost if you don't.</div></div>`
+      <div class="fa-grid">${(mg.list || []).map(btn).join('')}</div>
+      <div class="bd-foot">Train as often as you like; a short cooldown keeps it from running away. Exercises earn body XP; the puzzles earn Qi.</div></div>`
   },
 
   _marks(b) {

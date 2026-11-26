@@ -1,7 +1,7 @@
 // Turns raw sim runs into a compact markdown report (+ summary object) with auto-generated balance/fun flags.
 // Used by: scripts/sim/run.js. Thresholds live in scripts/sim/profiles.js. See docs/systems/qa-sim.md.
 
-const { PROFILES, THRESHOLDS: T, PACING_TARGETS_MIN, PACING_PROFILE, LIFE_TARGETS_H, FIRST_ASCENSION_H, GENERATIONS_TO_ASCEND } = require('./profiles')
+const { PROFILES, THRESHOLDS: T, PACING_TARGETS_MIN, PACING_PROFILE, LIFE_TARGETS_H, FIRST_ASCENSION_H, GENERATIONS_TO_ASCEND, MORTAL_AWAKEN_H } = require('./profiles')
 
 const med = xs => { const a = xs.filter(x => x != null && !isNaN(x)).sort((x, y) => x - y); return a.length ? a[Math.floor((a.length - 1) / 2)] : null }
 const rng = xs => { const a = xs.filter(x => x != null); if (!a.length) return '—'; const lo = Math.min(...a), hi = Math.max(...a), m = med(a); return lo === hi ? f(m) : `${f(m)} (${f(lo)}–${f(hi)})` }
@@ -17,9 +17,12 @@ const FEATURES = ['expedition', 'craft_equipment', 'craft_pill', 'use_elixir', '
   'choose_art', 'study_art', 'set_loadout', 'sell', 'buy_sect_art', 'write_clan_art', 'study_clan_art', 'donate_manual',
   'lineage_join',   // Phase 46: rejoining the sect your line founded at Core Formation
   // Final QA (step 2): the body, sect relations, the person card's deeds
-  'temper', 'minigame_strikes', 'minigame_flow', 'sect_gift', 'deed_spar']
+  'temper', 'minigame_pushups', 'minigame_run', 'minigame_lift', 'minigame_flow', 'minigame_memory', 'sect_gift', 'deed_spar',
+  // Phase 49b (mortal-phase.md): the mortal arc — Awakening + the village beats
+  'awaken']
 
 const KEY_MILESTONES = [
+  ['Awakened (mortal)', r => r.milestones.awaken],
   ['Qi Condensation L1', r => r.stageTimes.find(x => x.stage === 1)?.atH],
   ['Foundation Building', r => stageAt(r, 'Foundation Building')],
   ['Core Formation', r => stageAt(r, 'Core Formation')],
@@ -122,7 +125,7 @@ function buildReport(runs, args) {
     const memberOnly = ['buy_sect_art']
     const activeOnly = ['write_clan_art', 'study_clan_art', 'donate_manual']
     // afk never plays the mini-games (an 8-hours-away player) and spars rarely (bot.js body() / deeds())
-    const notAfk = ['minigame_strikes', 'minigame_flow', 'deed_spar']
+    const notAfk = ['minigame_pushups', 'minigame_flow', 'minigame_memory', 'deed_spar']
     const unused = FEATURES.filter(ft => !(args.path === 'member' && founderOnly.includes(ft)) &&
       !(p === 'afk' && notAfk.includes(ft)) &&
       !(args.path === 'founder' && memberOnly.includes(ft)) &&
@@ -269,6 +272,22 @@ function buildReport(runs, args) {
       flags.push(`[${p} ${longest}h] Median life ${fmtH(medLife)} outside life-loop.md target ${target[0]}-${target[1]}h`)
   }
   L.push(``)
+  // Phase 49b (docs/systems/mortal-phase.md): the mortal arc — the opening's length (open hours to Awaken) and that
+  // the two verbs (Explore + Body) get a mortal there. The active band is the representative playing pace.
+  L.push(`## Mortal arc — Phase 49b (${longest}h runs; median per run)`)
+  L.push(`| Profile | Time to awaken | Beats answered | Temperings started |`)
+  L.push(`|---|---|---|---|`)
+  const mortalBeats = r => Object.entries(r.actions || {}).filter(([k]) => k.startsWith('mortal_')).reduce((a, [, n]) => a + n, 0)
+  for (const p of profiles) {
+    const g = group(p, longest), a = k => med(g.map(r => r.actions?.[k] || 0))
+    L.push(`| ${p} | ${fmtH(med(g.map(r => r.milestones?.awaken)))} | ${f(med(g.map(mortalBeats)))} | ${f(a('temper'))} |`)
+  }
+  {
+    const g = group('active', longest)
+    const aw = med(g.map(r => r.milestones?.awaken)), [lo, hi] = MORTAL_AWAKEN_H.active
+    if (aw != null && (aw < lo || aw > hi)) flags.push(`[active ${longest}h] Time to awaken ${fmtH(aw)} outside the mortal-arc target ${lo}-${hi} h`)
+  }
+  L.push('')
   // Phase 35 (A6-2, combat.md → "Sim bot"): beast battles + hunts (action counts summed over the run, median across seeds)
   L.push(`## Beast battles + hunts — Phase 35 (${longest}h runs; median per run)`)
   L.push(`| Profile | Hunts | Battles | Turns (avg) | Won (finish · bind · flee) | Retreats | Deaths by beast_hunt |`)
@@ -368,12 +387,12 @@ function buildReport(runs, args) {
   // Final QA (step 2): the systems the bot learned last — the body (Phase 14), sect politics (43d–f, 43h), the person
   // card's deeds (4.10) and the rankings (4.8). Action counts are the median per run.
   L.push(`## Body, sect politics, deeds, rankings — final QA coverage (${longest}h runs; median per run)`)
-  L.push(`| Profile | Temperings (ordeal · blood) | Crisis (qi · endure · ease) | Tier trials (marrow · bitter) | Body tier end | Strikes · Flow | Halls funded | Master (petition · challenge) | Sect acts | Deeds | Rank duels · invites (yes · no) |`)
+  L.push(`| Profile | Temperings (ordeal · blood) | Crisis (qi · endure · ease) | Tier trials (marrow · bitter) | Body tier end | Push-Ups · Run · Lift · Flow · Memory | Halls funded | Master (petition · challenge) | Sect acts | Deeds | Rank duels · invites (yes · no) |`)
   L.push(`|---|---|---|---|---|---|---|---|---|---|---|`)
   for (const p of profiles) {
     const g = group(p, longest), a = k => med(g.map(r => r.actions?.[k] || 0))
     const pre = x => med(g.map(r => Object.entries(r.actions || {}).filter(([k]) => k.startsWith(x)).reduce((t, [, v]) => t + v, 0)))
-    L.push(`| ${p} | ${f(a('temper'))} (${f(a('temper_ordeal'))} · ${f(a('temper_blood'))}) | ${f(a('ordeal_qi'))} · ${f(a('ordeal_endure'))} · ${f(a('ordeal_ease'))} | ${f(a('body_trial_marrow'))} · ${f(a('body_trial_bitter'))} | ${f(med(g.map(r => r.body?.tier ?? null)))} | ${f(a('minigame_strikes'))} · ${f(a('minigame_flow'))} | ${f(a('fund_sect_hall'))} | ${f(a('petition_master'))} · ${f(a('challenge_master'))} | ${f(pre('sect_'))} | ${f(pre('deed_'))} | ${f(a('rank_duel'))} · ${f(a('road_invite_accept'))} · ${f(a('road_invite_decline'))} |`)
+    L.push(`| ${p} | ${f(a('temper'))} (${f(a('temper_ordeal'))} · ${f(a('temper_blood'))}) | ${f(a('ordeal_qi'))} · ${f(a('ordeal_endure'))} · ${f(a('ordeal_ease'))} | ${f(a('body_trial_marrow'))} · ${f(a('body_trial_bitter'))} | ${f(med(g.map(r => r.body?.tier ?? null)))} | ${f(a('minigame_pushups'))} · ${f(a('minigame_run'))} · ${f(a('minigame_lift'))} · ${f(a('minigame_flow'))} · ${f(a('minigame_memory'))} | ${f(a('fund_sect_hall'))} | ${f(a('petition_master'))} · ${f(a('challenge_master'))} | ${f(pre('sect_'))} | ${f(pre('deed_'))} | ${f(a('rank_duel'))} · ${f(a('road_invite_accept'))} · ${f(a('road_invite_decline'))} |`)
   }
   // Immortality pace (user-accepted 2026-10-04: ~37 casual lives / ~430–475 h) — only checked on runs long enough to get there
   const imm = profiles.map(p => ({ p, g: group(p, longest).filter(r => r.milestones?.first_ascend_success != null) }))

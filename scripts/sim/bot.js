@@ -40,7 +40,7 @@ class Bot {
     for (let i = 0; i < 40; i++) {
       this.interlude()   // an action this check-in may have ended the life — never act on an unborn one
       const before = this.s.spiritStones
-      const acted = this.family() || this.legacies() || this.soul() || this.arts() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
+      const acted = this.family() || this.legacies() || this.soul() || this.arts() || this.mortal() || this.awaken() || this.tryBreakthrough() || this.learnTechnique() || this.craftAndEquip() ||
         this.elixirs() || this.heal() || this.memberWar() || this.beasts() || this.legends() || this.body() || this.sectPolitics() || this.deeds() || this.ranks() || this.hunt() || this.arena() || this.sect() || this.ownSect() || this.war() ||
         this.pushExpedition() || this.expedition()
       if (!acted) break
@@ -49,7 +49,47 @@ class Bot {
       this.rec.stones(this.rec.lastAction, this.s.spiritStones - before)
     }
     this.interlude()
-    if (!this.s.meditating) { this.gs.startMeditation(30); this.rec.act('meditate', false) }
+    this.cultivate()   // Phase 48 (active-cultivation.md): an attentive player keeps drawing Qi
+  }
+
+  // Phase 48: replay the Draw Qi presses an attentive player would make across the span since the last check-in.
+  // The sim has no hands, so we pass opts.at (a virtual timestamp) for each press, one per cooldown.
+  cultivate() {
+    const s = this.s
+    if (!s || s.interlude || this.gs.mortalMeridiansShut()) return false
+    const nowSec = this.rec.t
+    const cd = this.D.CULTIVATE_DRAW_COOLDOWN || 4
+    const nowMs = Date.now()
+    const toMs = t => nowMs - (nowSec - t) * 1000
+    const ready = s.cultivate?.cdUntil ? nowSec + (s.cultivate.cdUntil - nowMs) / 1000 : 0
+    let at = Math.max(0, this._lastCultT ?? (nowSec - this.actEverySec), ready)
+    let any = false
+    for (let n = 0; n < 2000 && at <= nowSec; n++) {
+      if (this.gs.drawQi({ at: toMs(at) }).ok) any = true
+      at += cd
+    }
+    this._lastCultT = nowSec
+    if (any) this.rec.act('cultivate', true)
+    return any
+  }
+
+  // Phase 49 (mortal-phase.md): a mortal tempers its body, then Awakens to open the meridians.
+  awaken() {
+    const s = this.s
+    if (!s || s.interlude || !this.gs.mortalMeridiansShut() || !this.gs.canAwaken()) return false
+    const ok = this.do('awaken', this.gs.awaken())
+    if (ok) this.rec.milestone('awaken')
+    return ok
+  }
+
+  // Phase 49b (mortal-phase.md): answer a pending mortal beat — a real player resolves it (Roam → Explore).
+  mortal() {
+    const s = this.s
+    if (!s || s.interlude || !s.mortal?.beat) return false
+    const mi = this.gs.mortalInfo?.()
+    const ch = mi?.beat?.choices?.find(c => c.ok)
+    if (!ch) return false
+    return this.do('mortal_' + ch.id, this.gs.resolveMortalBeat(ch.id))
   }
 
   // ── Phase 22: Active/Idle Mode + Automation ─────────────────────────────
@@ -550,6 +590,7 @@ class Bot {
   // ── Breakthrough ─────────────────────────────────────────────────────────
   tryBreakthrough() {
     const s = this.s, d = s.derived
+    if (this.gs.mortalMeridiansShut()) return false   // Phase 49: a mortal cannot cultivate or break through
     // The last mortal stage is a chance-based Ascension Trial, not a normal breakthrough (Phase 23C).
     if (s.stageIndex === this.D.CULTIVATION_STAGES.length - 2) return this.tryAscension()
     if (!d.canBreakthrough || s.stageIndex >= this.D.CULTIVATION_STAGES.length - 1) return false
@@ -841,7 +882,9 @@ class Bot {
   // Tempering: the best XP per second among open drill/spirit methods; 'active' and casual take on an ordeal now and
   // then, and casual tries the Blood Forging rarely (taint, karma). afk leans on Auto-Temper (automation()).
   // Mini-games (active + casual): a game started this check-in is finished at the next (the clock must move, or the
-  // Strikes score as unplayed); Strikes hit at the profile's skill, Meridian Flow is solved from the seeded puzzle.
+  // timing score reads as unplayed); each rep is graded at the profile's skill, Meridian Flow is solved from the seeded
+  // puzzle. Since 52c it plays the body exercises too (the heaviest unlocked: Lift > Running > Push-Ups); since 52d it
+  // plays Memorization (answering from the seeded sequences — a wrong round ends the run, which exercises partial pay).
   body() {
     const s = this.s, gs = this.gs, b = s.body
     if (!b || s.family?.fight) return false
@@ -854,10 +897,18 @@ class Bot {
     const tr = gs.tierTrialInfo()
     if (tr.ready) {
       if (tr.marrow.ok && tr.marrow.chance >= 0.5) return this.do('body_trial_marrow', gs.attemptTierTrial('marrow'))
-      if (this.profile !== 'afk' && tr.bitter.ok && (s.health ?? 100) >= gs.maxHealth() * 0.8) return this.do('body_trial_bitter', gs.attemptTierTrial('bitter'))
+      // The bitter way is a flat 0.9 and never lethal. A mortal takes it at a moderate bar (it is the road to
+      // Awakening, but pushing it at the edge leaves you bleeding on the road); after that it waits for a healthy
+      // body, since a scar is a real cost (Phase 49b).
+      // Idle profiles normally leave the bitter way alone (a scar), but a mortal must take it — it is the gate.
+      const bitterBar = gs.mortalMeridiansShut() ? gs.maxHealth() * 0.6 : gs.maxHealth() * 0.8
+      const bitterOk = gs.mortalMeridiansShut() || this.profile !== 'afk'
+      if (bitterOk && tr.bitter.ok && (s.health ?? 100) >= bitterBar) return this.do('body_trial_bitter', gs.attemptTierTrial('bitter'))
     }
     if (b.scars.length && gs.bodyInfo().mendHave > 0) return this.do('mend_scar', gs.mendScar(0))
-    if (this.profile !== 'afk' && this.minigames()) return true
+    // Phase 49b: the mortal gate is an ACTIVE gate — every profile plays the body exercises when the game is open
+    // (the game is active-first now; a returning player plays). Mid-game the idle profiles still lean on automation.
+    if (this.minigames()) return true
     if (b.active) return false
     const list = gs.temperingList().filter(m => m.ok)
     if (!list.length) return false
@@ -878,11 +929,16 @@ class Bot {
     const skill = this.profile === 'active' ? 0.6 : 0.3
     // (the check-in a game was started in is kept on the bot, never on the game's state)
     this._mg ||= {}
-    if (M.strikes.session && this._mg.strikes !== this._ci) {
-      const n = this.sim.ev('STRIKES.strikes')
-      const hits = Array.from({ length: n }, () => { const r = this.rand(); return r < skill ? 'perfect' : r < skill + 0.3 ? 'good' : 'miss' })
-      const cut = !!(s.body.active && !s.body.active.crisis && this.rand() < 0.5)
-      return this.do('minigame_strikes', gs.finishMinigame('strikes', { hits, use: cut ? 'cut' : 'xp' }))
+    const mortal = gs.mortalMeridiansShut()
+    // Finish any body exercise in flight (Push-Ups · Running · Lift): grade each rep, then bank or cut.
+    for (const kind of ['pushups', 'run', 'lift']) {
+      if (M[kind]?.session && this._mg[kind] !== this._ci) {
+        const n = M[kind].session.reps || this.sim.ev(`((MINIGAMES.find(g => g.id === '${kind}') || {}).timing || {}).reps`) || 6
+        const hits = Array.from({ length: n }, () => { const r = this.rand(); return r < skill ? 'perfect' : r < skill + 0.3 ? 'good' : 'miss' })
+        // Phase 49: while mortal, always bank the body XP (it is the road to Awakening) — never spend it cutting time.
+        const cut = !mortal && !!(s.body.active && !s.body.active.crisis && this.rand() < 0.5)
+        return this.do('minigame_' + kind, gs.finishMinigame(kind, { hits, use: cut ? 'cut' : 'xp' }))
+      }
     }
     if (M.flow.session && this._mg.flow !== this._ci) {
       const ses = M.flow.session
@@ -893,16 +949,37 @@ class Bot {
       const rotations = p.shown.map((m, i) => [0, 1, 2, 3].find(t => rot(m, t) === p.solved[i]) ?? 0)
       return this.do('minigame_flow', gs.finishMinigame('flow', { rotations }))
     }
-    if (M.strikes.session || M.flow.session) return false
+    if (M.memory?.session && this._mg.memory !== this._ci) {
+      // Re-derive the seeded sequences and answer them at the profile's skill (a wrong round ends the run early).
+      const ses = M.memory.session
+      const plan = this.sim.ev(`MemoryPuzzle.generate(${ses.seed}, ${JSON.stringify(ses.lens)})`)
+      const hold = this.profile === 'active' ? 0.9 : 0.6
+      const answers = plan.map(seq => this.rand() < hold ? seq.slice() : seq.slice(0, Math.floor(this.rand() * seq.length)))
+      return this.do('minigame_memory', gs.finishMinigame('memory', { answers }))
+    }
+    if (M.pushups?.session || M.run?.session || M.lift?.session || M.flow.session || M.memory?.session) return false
     const info = gs.minigameInfo()
     const play = this.profile === 'active' ? 1 : 0.5
-    if (info.flow.charges > 0 && !info.flow.tired && s.qi < s.derived.qiCap * 0.7 && this.once('flow', play)) {
+    // Phase 49: a mortal trains the body with Push-Ups as often as it can — that XP is the road to Awakening.
+    if (mortal && info.pushups.cdIn <= 0) {
+      const r = gs.startMinigame('pushups')
+      if (r.ok) { this._mg.pushups = this._ci; this.rec.act('minigame_start', false); return true }
+    }
+    // The heaviest body exercise that is unlocked and off cooldown (Lift > Running > Push-Ups), each throttled.
+    for (const kind of ['lift', 'run', 'pushups']) {
+      if (info[kind]?.unlocked && info[kind].cdIn <= 0 && this.once(kind, play)) {
+        const r = gs.startMinigame(kind)
+        if (r.ok) { this._mg[kind] = this._ci; this.rec.act('minigame_start', false); return true }
+      }
+    }
+    // Phase 52d: Memorization (Qi) once it is unlocked and off cooldown, when Qi has some room.
+    if (info.memory?.unlocked && info.memory.cdIn <= 0 && !info.memory.tired && !mortal && s.qi < s.derived.qiCap * 0.8 && this.once('memory', play)) {
+      const r = gs.startMinigame('memory')
+      if (r.ok) { this._mg.memory = this._ci; this.rec.act('minigame_start', false); return true }
+    }
+    if (info.flow.cdIn <= 0 && !info.flow.tired && !mortal && s.qi < s.derived.qiCap * 0.7 && this.once('flow', play)) {
       const r = gs.startMinigame('flow')
       if (r.ok) { this._mg.flow = this._ci; this.rec.act('minigame_start', false); return true }
-    }
-    if (info.strikes.charges > 0 && this.once('strikes', play)) {
-      const r = gs.startMinigame('strikes')
-      if (r.ok) { this._mg.strikes = this._ci; this.rec.act('minigame_start', false); return true }
     }
     return false
   }

@@ -29,6 +29,23 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   await sleep(300)
   await shot('icons-sheet')
   await ev(`document.getElementById('icon-sheet').remove()`)
+  // Phase 52c: a focused, magnified look at the two new Practice glyphs (run, lift) beside two set neighbours, so
+  // the asset gate can judge their legibility down to 14px (a new icon can be added to this list).
+  await ev(`(() => {
+    const box = document.createElement('div'); box.id = 'icon-practice'
+    box.style.cssText = 'position:fixed;left:0;top:0;z-index:10000;background:#08040E;padding:18px;font-family:var(--font);color:var(--text)'
+    const sizes = [44, 28, 18, 14]
+    box.innerHTML = '<div style="color:var(--gold);font-size:13px;letter-spacing:1px;margin-bottom:12px">Practice glyphs · 44 / 28 / 18 / 14 px</div>' +
+      ['run', 'lift', 'duel', 'vein'].map(n =>
+        '<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">' +
+          sizes.map(s => '<span style="font-size:' + s + 'px;line-height:0;color:var(--gold)">' + Icon(n) + '</span>').join('') +
+          '<span style="font-size:12px;color:var(--dim-hi)">' + n + '</span></div>').join('')
+    document.body.appendChild(box)
+  })()`)
+  await sleep(250)
+  const pracClip = await ev('(() => { const b = document.getElementById("icon-practice").getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height, scale: 1 } })()')
+  await shot('icons-practice', pracClip)
+  await ev(`document.getElementById('icon-practice').remove()`)
   await clearEmulation()
   await sleep(300)
 
@@ -40,7 +57,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   const leftovers = await ev(`(() => {
     const re = /[\\u3400-\\u9FFF\\u2600-\\u27BF\\u2B00-\\u2BFF\\u25A0-\\u25FF\\u2190-\\u21FF\\u22EF\\u{1F300}-\\u{1FAFF}]/u
     const out = []
-    for (const sel of ['#titlebar', '#meditate-badge', '#qi-labels', '#qi-rate-row', '#vitals', '#actions', '#banner-info', '#banner-btns', '#resize-grip', '#tb-menu', '#cs-titlebar']) {
+    for (const sel of ['#titlebar', '#cult-split', '#qi-labels', '#qi-rate-row', '#vitals', '#actions', '#banner-info', '#banner-btns', '#resize-grip', '#tb-menu', '#cs-titlebar']) {
       const el = document.querySelector(sel); if (!el) continue
       const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
       for (let n; (n = w.nextNode());) if (re.test(n.nodeValue)) out.push(sel + ': ' + n.nodeValue.trim())
@@ -60,7 +77,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
 
   await shot('icons-overlay')
   await click('#btn-more'); await sleep(200); await shot('icons-overlay-more-menu'); await click('#btn-more')
-  await ev(`document.getElementById('btn-meditate').click()`); await sleep(300)
+  await ev(`document.getElementById('btn-cultivate').click()`); await sleep(300)
   await ev(`document.querySelector('[data-group="pack"]')?.click()`); await sleep(400)
   await shot('icons-overlay-pack')
   await pick('expanded'); await shot('icons-expanded')

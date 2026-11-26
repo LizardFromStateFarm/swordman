@@ -70,6 +70,11 @@ const LIFE_TARGETS_H = {
 // targets (task 2.8 draft, before Phase 47): 40–80 h, 3–5 generations. Bands are ±~15% around the accepted numbers.
 const FIRST_ASCENSION_H = { casual: [380, 540] }
 const GENERATIONS_TO_ASCEND = [30, 45]
+// Phase 49b (docs/systems/mortal-phase.md): the mortal arc's length — the opening must be a short ACTIVE arc, not a
+// wall-clock grind. Target = open hours from a life's start to its Awakening (the bot's 'awaken' milestone). It is
+// Health-gated (the bitter trial's cost + regen), ~9–12 min for a mini-game-spamming min-maxer and longer for a
+// normal player. Checked on 'active'; casual's 30-min check-in cadence makes its number noisy.
+const MORTAL_AWAKEN_H = { active: [0.12, 0.5] }
 
 module.exports = { PROFILES, DEFAULT_PATH, THRESHOLDS, PACING_TARGETS_MIN, PACING_PROFILE,
-                    LIFE_TARGETS_H, FIRST_ASCENSION_H, GENERATIONS_TO_ASCEND }
+                    LIFE_TARGETS_H, FIRST_ASCENSION_H, GENERATIONS_TO_ASCEND, MORTAL_AWAKEN_H }

@@ -3,9 +3,10 @@ _Covers: assets/data/tempering.js (new) · game-state.js (`s.body`, `s.minigames
 
 **What it is.** The body is a second path that runs beside Qi. Every life starts in a **Frail Body (F)** and trains it up to a
 **Heaven-Forged Body (S)** through tempering on real-time timers (idle-friendly, like expeditions). A stronger body
-raises **max Health** and **Health regen**, softens failed breakthroughs, and carries you further in fights. Two optional
-**mini-games** speed things up: **Tempering Strikes** (a timing game, for body XP) and **Meridian Flow** (a path puzzle,
-for a chunk of Qi).
+raises **max Health** and **Health regen**, softens failed breakthroughs, and carries you further in fights. Optional
+**mini-games** speed things up: the body exercises **Push-Ups · Running · Lift** (timing games on an **animated
+figure**, Phase 52b/52c, each gated by body tier) for body XP, and the puzzles **Meridian Flow** + **Memorization**
+(Phase 52d) for a chunk of Qi. The registry is `docs/systems/minigames.md`.
 
 User decisions (2026-10-03): everyone starts at F and must train (no roll, no inheritance, Phase 12 regions not
 needed); real-time tempering; the tier raises max Health and regen; mini-games for body and Qi.
@@ -24,7 +25,7 @@ needed); real-time tempering; the tier raises max Health and regen; mini-games f
 
 1. **Memory.**
    - `s.body` keeps the tier, XP, ordeals done this life, **scars** (lasting marks from a failed ordeal), the Blood
-     Forging count, and the best Tempering Strikes score.
+     Forging count, and each mini-game's personal best + plays (the registry's `s.minigames`).
    - The body remembers abuse. Each Blood Forging adds **taint**, which makes later ordeals riskier until it is cleansed
      (a Mending pill or one quiet tempering).
    - A tier gained through an ordeal is logged with its cause ("Steel Body, forged under the Icy Waterfall, year 34").
@@ -160,7 +161,30 @@ needed); real-time tempering; the tier raises max Health and regen; mini-games f
 
 ### Mini-games (`s.minigames`)
 
-Both run on **charges**: 3 max, +1 every 30 real minutes, and they keep refilling while the game is closed, so absence
+> **Phase 48/52 (2026-10-10): the mini-games are charge-free and registry-driven.** The old 3-charge /
+> +1-per-30-min system is replaced by a short real-time **cooldown** (per game, in `assets/data/minigames.js`).
+> **Tempering Strikes was retired** — its timing bar is now **Push-Ups**; **Meridian Flow** is kept. The games are
+> the **active** body-XP / Qi loop, not a wall-clock wall (and the Mortal phase leans on Push-Ups). `minigameInfo()`
+> returns a `list` of every game; the Body/Character buttons gate on the cooldown. See **`docs/systems/minigames.md`**.
+> (The paragraphs below describe the old charge model and are kept for history.)
+>
+> **Phase 52b (2026-10-10): Push-Ups draws a figure.** A purpose-built animated ink dot-silhouette
+> (`renderer/engine/exercise-scene.js`, `ExerciseScene`) sits above the timing bar and presses in step with the
+> marker (its two key poses are data — `EXERCISE_POSES.pushups`); a landed rep puffs dust. Asset gate **8.1 PASS**.
+> Reduced motion holds a still pose. The engine and rewards are unchanged — this is presentation only.
+>
+> **Phase 52c (2026-10-10): Running + Lift.** Two more body exercises join Push-Ups (same figure, same body-XP
+> reward): **Running** (an alternating **stride** — tap the due foot on the beat; unlocks at Mortal Body/E) and
+> **Lift** (a **hold** — press, let go inside the gold; unlocks at Hardened Body/D; it lifts **`LIFT_ITEMS[tier]`**,
+> from a water jar to an island, one heavy rep → three at high tiers). The hero card gained a "You can lift …" chip.
+> Asset gate **8.2 PASS**, UI **7.7 PASS**. Details in **`docs/systems/minigames.md`**.
+>
+> **Phase 52d (2026-10-10): Memorization.** A second Qi puzzle beside Meridian Flow — the **Acupoint Sequence** (a 3×3
+> grid lights a seeded order; repeat it; unlocks at Qi Condensation 1). The engine re-derives the sequences from the
+> session seed and counts the rounds held, so a forged answer earns nothing; a miss ends the run but keeps the rounds
+> already held. UI **7.8 PASS**. Details in **`docs/systems/minigames.md`**.
+
+Both ran on **charges**: 3 max, +1 every 30 real minutes, and they keep refilling while the game is closed, so absence
 is never punished. Each play spends one charge. Neither is ever required.
 
 **Tempering Strikes (body).**
@@ -215,8 +239,9 @@ derived.maxHealth, derived.healthRegenSeconds, derived.btQiKeepBody
 ## Files
 
 - **New:** `assets/data/tempering.js`, `renderer/game/body-view.js` (BodyView), `renderer/game/minigames.js`
-  (StrikesGame + FlowGame + their DOM-free generators / scorers), `scripts/sim/checks/body.js`,
-  `scripts/smoke/scenarios/body.js`.
+  (MinigameUI + FlowPuzzle + their DOM-free generators / scorers; Phase 52 moved the registry to
+  `assets/data/minigames.js` and the animated figure to `renderer/engine/exercise-scene.js`),
+  `scripts/sim/checks/body.js`, `scripts/smoke/scenarios/body.js`.
 - **Touched:** game-state.js, nav.js, game.js, index.html, styles.css, breakdowns.js, attention.js, combat.js (HP max),
   family-view.js (Temper their body), personalities/banter-lines (triggers), settings.js (Relaxed timing),
   automation.js (Auto-Temper), sim bot (tempers; plays mini-games at a profile skill), CLAUDE.md tree, docs.

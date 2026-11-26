@@ -35,6 +35,11 @@ function collectAttention(s, gs) {
   } else if (s.upbringing?.event) add('urgent', 'upbringing', 'child', 'A matter from your youth', 'How you answer shapes your bond with the clan head.', 'family', 'family')
   // family-events.js: a bad father's hand — the beating waits on your answer; the grown-up reckoning, later.
   if (s.abuse?.event) add('urgent', 'beating', 'child', 'A father’s hand', `${gs.beatingInfo?.()?.why || 'Your father'} · he will not stop on his own.`, 'family', 'family')
+  // Phase 49b (docs/systems/mortal-phase.md): a mortal beat waits on your answer in Roam → Explore.
+  if (s.mortal?.beat) {
+    const def = (typeof MORTAL_BEATS !== 'undefined') ? MORTAL_BEATS.find(b => b.id === s.mortal.beat.id) : null
+    add('ready', 'mortal-beat', 'dantian', def?.title || 'A village matter', 'Your mortal life waits on a choice. Roam → Explore.', 'explore')
+  }
   const reck = s.abuse?.reckon ? gs.reckoningInfo?.() : null
   if (reck) add('ready', 'reckoning', 'sword', 'A reckoning waits', `${reck.headName} once beat you. You are grown now — and you stand above him.`, 'family', 'family')
   // family-events.js: the mirror — a child you beat, now grown and stronger, has come back for you.
@@ -198,8 +203,13 @@ function collectAttention(s, gs) {
   if (s.body && !s.body.active && !autoOn('autoTemper') && gs?.temperingList?.().some(x => x.ok && (x.group === 'drill' || x.group === 'spirit') && x.id !== 'morning'))
     add('idle', 'temper', 'shield', 'Your body rests', 'A tempering could be underway. Path → Body.', 'physique')
   const mg = s.minigames
-  if (mg && typeof MINIGAME_CHARGES !== 'undefined' && mg.strikes.charges >= MINIGAME_CHARGES.max && mg.flow.charges >= MINIGAME_CHARGES.max && (s.stats?.timePlayed || 0) > 300)
-    add('idle', 'minigames', 'vein', 'Practice is ready', 'Tempering Strikes and Meridian Flow: every charge is full. Optional.', 'physique')
+  if (mg && typeof MINIGAMES !== 'undefined' && (s.stats?.timePlayed || 0) > 300) {
+    const pushReady = !(mg.pushups?.cdUntil > Date.now()), flowReady = !(mg.flow?.cdUntil > Date.now())
+    if (gs.mortalMeridiansShut?.() && pushReady)
+      add('idle', 'minigames', 'duel', 'Temper your body', 'Push out some reps to train, then Awaken. Path → Body.', 'physique')
+    else if (flowReady && s.qi > (s.derived?.qiCap || 0) * 0.85)
+      add('idle', 'minigames', 'vein', 'Cultivate', 'Your Qi is nearly full. Draw Qi or work a Meridian Flow.', 'physique')
+  }
   if (!s.expedition?.active && !autoOn('autoExplore')) add('idle', 'expedition', 'explore', 'No expedition underway', 'Send one out: loot, stones and beast sightings.', 'explore')
   if (s.sect?.id && !autoOn('autoSectMissions') && typeof SECT_MAX_MISSIONS !== 'undefined' && (s.sect.activeMissions || []).length < SECT_MAX_MISSIONS)
     add('idle', 'missions', 'token', 'A mission slot is open', `${(s.sect.activeMissions || []).length} of ${SECT_MAX_MISSIONS} missions underway.`, 'sect-missions')

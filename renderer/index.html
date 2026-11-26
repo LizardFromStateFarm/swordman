@@ -58,7 +58,7 @@
 
     <div id="sprite-wrap">
       <canvas id="sprite-canvas" width="300" height="150"></canvas>
-      <div id="meditate-badge" class="hidden"><span data-icon="meditate"></span>3× Qi</div>
+      <div id="cult-pop" class="hidden" aria-hidden="true"></div>
     </div>
 
     <div id="stage-block">
@@ -118,12 +118,13 @@
     </div>
 
     <div id="actions">
-      <!-- Meditate + a slim Meridian Flow segment (user 2026-10-03: "a button next to meditate"), the same split as Breakthrough + ? -->
-      <div id="med-split">
-        <button id="btn-meditate" class="act-btn">
+      <!-- Phase 48 (docs/systems/active-cultivation.md): the CULTIVATE action — Draw Qi (the active loop) beside
+           Meridian Flow (the deeper puzzle). While a mortal (before Awakening) the same button reads Awaken. -->
+      <div id="cult-split">
+        <button id="btn-cultivate" class="act-btn">
           <span class="act-icon" data-icon="meditate"></span>
-          <span class="act-name">Meditate</span>
-          <span class="act-sub">3× Qi · 30s</span>
+          <span class="act-name">Cultivate</span>
+          <span class="act-sub">Draw Qi</span>
         </button>
         <button id="btn-flow" data-mg-open="flow" title="Meridian Flow" aria-label="Meridian Flow puzzle"><span data-icon="vein"></span><b class="flow-n"></b></button>
       </div>
@@ -343,6 +344,15 @@
   </div>
 </div>
 
+<!-- Awakening moment (Phase 49b, docs/systems/mortal-phase.md) — the meridians open; a moment, not a cutscene -->
+<div id="awaken-overlay" class="hidden">
+  <div id="awaken-box">
+    <div id="awaken-title">Awakened</div>
+    <div id="awaken-text"></div>
+    <button id="awaken-ok">Continue</button>
+  </div>
+</div>
+
 <!-- Heir overlay (clan-succession.md 2.6c) — name any adult child in the household as heir -->
 <div id="heir-overlay" class="hidden">
   <div id="heir-box" class="fam-modal-box">
@@ -416,6 +426,9 @@
 <script src="../assets/data/family-events.js"></script>
 <script src="../assets/data/clan-legacies.js"></script>
 <script src="../assets/data/automation.js"></script>
+<script src="../assets/data/cultivation.js"></script>
+<script src="../assets/data/minigames.js"></script>
+<script src="../assets/data/mortal.js"></script>
 <script src="../assets/data/settings.js"></script>
 <script src="../assets/data/tutorial.js"></script>
 <script src="../assets/data/personalities.js"></script>
@@ -441,6 +454,7 @@
 <script src="engine/sprite-renderer.js"></script>
 <script src="engine/ascension-cinematic.js"></script>
 <script src="engine/battle-scene.js"></script>
+<script src="engine/exercise-scene.js"></script>
 <script src="game/cultivation.js"></script>
 <script src="game/expedition.js"></script>
 <script src="game/crafting.js"></script>

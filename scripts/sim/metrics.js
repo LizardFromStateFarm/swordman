@@ -112,7 +112,11 @@ class Recorder {
       if (s.qi >= s.derived.qiCap * 0.999 && isFinite(s.derived.qiCap)) this.cappedSec += dt
       if (this.waitingIntegrity) this.integrityWaitSec += dt
       const f = this.fill[s.stageIndex] || (this.fill[s.stageIndex] = { q: 0, sec: 0, cap: 0 })
-      f.q += s.derived.qiPerSecond * dt; f.sec += dt; f.cap = s.derived.qiCap
+      // Phase 48: the effective rate — an active player draws Qi (yield ÷ cooldown); an idle one only trickles.
+      const rate = s.playMode === 'active'
+        ? ((s.derived.cultivateYield || 0) / (this.D.CULTIVATE_DRAW_COOLDOWN || 4))
+        : (s.derived.qiPerSecondPassive || s.derived.qiPerSecond || 0)
+      f.q += rate * dt; f.sec += dt; f.cap = s.derived.qiCap
     }
     if (s.stageIndex > this.maxStage) {
       for (let i = this.maxStage + 1; i <= s.stageIndex; i++) this.stageReached[i] = this.t

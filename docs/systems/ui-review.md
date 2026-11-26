@@ -17,6 +17,55 @@ newest first.
 > invented its own standard. **Scores recorded before this date used the old bar** — treat them as roughly 0.5 lower
 > than they'd score now.
 
+## 2026-10-14 — Phase 49b: the mortal arc (the Explore beat card + the Awakening card)
+`renderer/game.js` (`renderMortalBeat` — the beat card at the top of Roam → Explore; `showAwakenMoment` + the
+`#awaken-overlay`), `renderer/game/attention.js` (the pending-beat item), `renderer/styles.css` ("Phase 49b": `.mortal-card`
++ `#awaken-*`), `renderer/index.html` (the overlay markup). Screenshots: `scripts/smoke/scenarios/mortal.js` →
+`out/mortal-overlay-beat.png`, `mortal-overlay-locked.png`, `mortal-{expanded,desktop,phone}.png`, `mortal-awaken-ready.png`,
+`mortal-awaken.png` — a fresh game (the HUD reads Awaken, a beat leads Explore, its answers, a locked choice, the Awakening).
+
+**Status: handed to the user for sign-off.** The reviewer sub-agent is **blocked by a tool-permission error in this
+environment** (the same error that blocked 43f / 46 / 45), and the `vision` path could not render the PNGs in the author's
+session — so the **author-reviewed screenshots are handed to the user** to score (CLAUDE.md's 3-cycle fallback). The smoke
+scenario pins the objective parts: the card renders in every layout mode with **no horizontal overflow**, the answers work
+through the real buttons, a locked choice is disabled with its reason, and the Awakening card opens and closes cleanly.
+No blockers found by the author; polish items (if any) to be logged after the user's review.
+
+## 2026-10-10 — Phase 52d: Memorization (the Acupoint Sequence, a new Qi mini-game)
+`renderer/game/minigames.js` (MinigameUI: `_startMemory` / `_memoryRound` / `_memoryTurn` / `_acu` / `_endMemory`, the
+DOM-free `MemoryPuzzle.generate`), `assets/data/minigames.js` (`MEMORY`), `renderer/styles.css` ("Phase 52d": the
+`.mg-acu` / `.mg-acu-t` grid + the `.watching` / `.miss` / `.due-hint` states), `renderer/game/body-view.js` (the
+Practice reward line now covers any `reward:'qi'` puzzle). Screenshots: `scripts/smoke/scenarios/body.js` →
+`out/body-memory-play.png`, `body-memory-miss.png`, `body-memory-result.png`, `body-{expanded,desktop}-memory.png`,
+`body-phone-memory.png`. One fresh reviewer per cycle (a sibling of Meridian Flow / Push-Ups / Running / Lift on the
+shared `#mg-overlay` shell):
+
+| Cycle | Score | Result | Notes |
+|---|---|---|---|
+| 1 | **7.6** | **PASS** (8 · 7.5 · 7.5 · 7 · 8 · 7.5) | The 3×3 gold acupoint board reads as a xianxia meridian board; the lit acupoint is the clear focal point; no overflow in any mode. **Found a real gap: the `body-expanded-memory.png` (and its Push-Ups/Lift siblings) never contained the overlay** — a smoke race that clicked a still-disabled button (the scenario asserted nothing there). `[polish]`: no input feedback on a wrong tap; the partial-clear rule was unstated; the 1–9 keys were undisclosed. |
+| 2 | **7.8** | **PASS** (8 · 7.5 · 8 · 7.5 · 8 · 7.5) | Cycle-1 fixes landed and Expanded is now judgeable (the shot contains the overlay). Applied after: dim **only the idle tiles** while watching (the old whole-board dim muted the lit acupoint itself), hold the miss cue ~1.2 s (was 0.56 s), and lead the result card with the score (the how-to sub becomes the tally). |
+
+**PASS.** Polish (post-cycle-2, applied) — the watch-dim scope, the miss hold and the result-card lead are all in.
+Nothing open as a blocker. (Note: two reviewers reported the `vision` tool returning cached descriptions in their
+sessions, so both worked from pixel measurements + the markup; that is why the expanded-shot gap was caught by a pixel
+diff rather than by eye.)
+
+## 2026-10-10 — Phase 52c: the Running stride + the Lift strain (the Practice exercises)
+`renderer/game/minigames.js` (MinigameUI: the `_startBeat` / `_startStride` / `_startHold` modes), `renderer/engine/exercise-scene.js`
+(the far-limb rig, the stride, the `_load` art), `renderer/game/body-view.js` (the "You can lift" chip), `renderer/styles.css`
+("Phase 52c": `.mg-feet` / `.mg-foot.due` / `.mg-bar[data-due]` / `.mg-pips.mg-steps` / `.mg-strain*`), `assets/icons/ui-icons.js`
+(`run` / `lift`). Screenshots: `scripts/smoke/scenarios/body.js` → `out/body-run-*.png`, `body-lift-*.png`, `body-lift-item-0..6.png`,
+`body-{expanded,desktop}-lift.png`, `body-phone-run.png`; `scenarios/icons.js` → `out/icons-practice.png` (a focused 14–44px glyph sheet).
+Reviewed as three groups (one fresh reviewer per cycle):
+
+| Group | Cycle | Score | Result | Notes |
+|---|---|---|---|---|
+| Exercise silhouettes + the lift-item ladder (asset, gate ≥ 8.0) | 1 | **8.2** | **PASS** (8.5 · 8 · 8 · 8 · 8.5 · 8) | The runner reads (two legs/two arms, no floating limbs); every load reads as its own thing. Polish: the early rungs (jar/boulder/pillar) are close in mass; the load sits near the torso; the runner's rear arm is low-contrast. |
+| Running + Lift overlays (UI, gate ≥ 7.5) | 1 | **7.7** | **PASS** (8 · 7.5 · 7.5 · 7 · 8 · 8) | Panel borders intact in all four modes; no overflow. Polish: the due-foot cue isn't strongly differentiated; the result reward readout competes with the CTA; Path → Body top is cramped at 300px. |
+| New icons `run` / `lift` (asset, gate ≥ 8.0) | 1 → 2 → 3 | 7.3 → 7.5 → **8.2** | **PASS** | Cycle 1: `lift` read like a battery (double bar lines) + plates merged at 18/14px. Cycle 2: fixed the battery read, but plates were still heavy. Cycle 3: redrawn light (bar + four short verticals) — **8.4 · 7.6 · 8.3 · 8.2 · 8.2 · 8.3**. Polish left: `run` crowds at 14px; the pair's optical mass is uneven. |
+
+**All three groups pass** (assets ≥ 8.0, UI ≥ 7.5). Polish items logged in START_HERE.md → UX Debt.
+
 ## 2026-10-05 — v1 mobile fixes: InkSelect (every native <select>) · the clone tempers · the parry cue
 - **InkSelect** (`renderer/game/ink-select.js`, styles "InkSelect"; World → People sort, Path → Body Auto-Temper + the clone's
   drill, the clone's destination): **7.8 PASS** cycle 1 (aesthetic 8 · hierarchy 8 · clarity 7.5 · interaction 8 ·
@@ -488,3 +537,44 @@ Self + The Mirror Turns, Roam → Explore's "Your other self" slot. Overlay / Ex
   Overlay / phone drop the −8vh lift (less empty sky below).
 - Before review (self-caught): the backdrop was 97–99% opaque and the game ghosted through on Desktop — now opaque.
 - Logged: Skip is a quiet low-contrast link (deliberate).
+
+### Practice mini-games: the Push-Ups figure (Phase 52b asset, docs/systems/minigames.md, 2026-10-10) — **8.1 PASS** (cycle 3)
+The new animated ink figure above the Push-Ups timing bar (`ExerciseScene`, renderer/engine/exercise-scene.js), magnified
+stills of the top and bottom of the press + the full overlay in Overlay / Expanded / Desktop + the Reduced-motion still.
+Shots: `body-pushups-figure{,-low}.png`, `body-pushups-{play,calm}.png`, `body-{expanded,desktop}-pushups.png`.
+- **Cycle 1: 6.4 FAIL** (clarity 5 · wuxia 7 · animation 7 · colour 6 · consistency 7). `[blocker]` **the head was
+  detached** — `_figure` drew no segment from the neck to the skull, so the head floated free in every pose. Also
+  `[polish]` the body's mass dissolved into its own aura (fragmented rim) and the limb dots merged into solid tubes.
+- **Fixes:** added `_limb(sh, neck)` + `_limb(neck, head)` (a connected rig); darkened `_body`, dimmed the glow; redrew
+  `_limb` as a tapered **hex dot capsule** with a continuous lit rim band.
+- **Cycle 2: 8.4 PASS** (8 · 9 · 8 · 8 · 9). Its 3 `[polish]` items then applied: finer limb pitch/gaps, a darker body,
+  a larger skull. **Cycle 3: 8.1 PASS** (8 · 9 · 8 · 7.5 · 8), no criterion < 6, no `[blocker]`.
+- Applied after cycle 3: the aura ring is **clamped inside the panel** (in Overlay it had overrun the right edge and
+  read as a stray arc).
+- Logged as UX debt: figure-vs-glow mass separation is still weak (the figure reads mainly by its lit rim), and the
+  shoulder/upper-arm junction has no visible articulation break (the arm can misread as a wing at Overlay size).
+
+### Practice mini-games: the re-rigged exercise figure (Phase 52 asset, docs/systems/minigames.md, 2026-10-11) — **7.7, 3 cycles → handed to the user**
+The user asked for a better push-up/exercise animation than the 52b/52c stick figure. `ExerciseScene` was rebuilt on a
+bone rig (IK keyframes for Push-Ups/Lift, a gait cycle for Running), body volumes inked as dots from a per-layer mask,
+verlet-chain cloth, a lift that goes squat → before the face → overhead with a camera pull-back, and bigger, featured
+top-tier loads. Shots: `scripts/art/out/exercise-sheet.png` (every pose) + `body-{pushups,run,lift}-figure*.png`,
+`body-lift-item-{0..6}.png`, the overlays in Overlay / Expanded / Desktop / phone.
+- **Cycle 1: 7.5 FAIL** (clarity 7.5 · anatomy 7 · motion 7.5 · aesthetic 8 · integration 7.5). `[blocker]` the lift's
+  chest pose put the load through the head. Polish: a cramped squat, the overhead arm merging into the body, small
+  featureless pagoda/peak/island, a flat dark body, too upright a run.
+- **Fixes:** the load stays in front of the face until the hands pass the crown; an opened squat; a lean-back lockout
+  from a wider stance with a thicker arm; a 3-tier pagoda with upturned eaves, a snow-capped crag, an island with a hanging
+  rock cone + pine + pavilion; a wider lit band; the run leans 22°.
+- **Cycle 2: 7.8 FAIL** (7.5 · 7.5 · 8 · 8 · 8), no blocker — missed on the average. Polish: the squat still a muddle,
+  the island's underside like stacked plates, the far arm invisible overhead, weak cloth trail.
+- **Fixes:** hips back + up, the head lifted, both hands on the gate's lower bar; a jagged cone; a split two-handed grip;
+  longer, brighter sash tails + ribbon.
+- **Cycle 3: 7.7 FAIL** (7.5 · 7.5 · 8 · 8 · 7.5), no blocker, no criterion < 6. Polish: the island still read as bands,
+  the squat head touched the near post, the far arm barely separated, the push-up head is a tall slab.
+- **Applied after cycle 3 (not re-reviewed):** the island's underside rebuilt as vertical rock facets on a cone profile
+  tapering hard to one point with the slab + pine sitting on the lip; the gate set further forward so the squat head has
+  a gap; the far hand set further back + the far limbs dimmer. Three cycles reached → the user decides (rule).
+- **User verdict (2026-10-11):** "much better", but the objects looked weird → the load ladder replaced by one boulder that
+  grows with the tier (cracks glow with spirit veins from tier B).
+

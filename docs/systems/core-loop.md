@@ -9,24 +9,23 @@ spiritStones:   number   — currency; spent on techniques, earned from expediti
 karma:          number   — 0–100; small BT bonus (÷1000), regained on BT success, lost on failure
 root:           object   — { type, name, mult } — rolled once at new game, rerollable via elixirs
 techniques:     string[] — array of learned technique ids; always includes 'qi_breathing'
-meditating:     bool     — true while meditation boost is active
-meditationEnds: ms       — Date.now() timestamp when meditation expires
+cultivate:      object   — Phase 48: { cdUntil, combo, lastAt } — the active Draw Qi loop
+awakened:       bool     — Phase 49: false until the body opens the meridians (only then does Qi flow)
 derived:        object   — computed by _recalc(); NEVER write directly
 ```
 
 ## Derived (computed by _recalc every tick)
 ```
-qiPerSecond              — base Qi/s (stage × root × technique × equipment mults)
-qiPerSecondBoosted       — qiPerSecond × meditBonus (1 or 3)
+qiPerSecond              — the full cultivation rate (stage × root × technique × equipment mults)
+qiPerSecondBoosted       — = qiPerSecond (the 3× Meditate burst is retired, Phase 48)
+qiPerSecondPassive       — Phase 48: qiPerSecond × PASSIVE_QI_SHARE (the tick/offline trickle, 12%)
+cultivateYield           — Phase 48: qiPerSecond × CULTIVATE_DRAW_SECONDS (Qi per Draw Qi hit, before combo)
 qiCap                    — stage cap × capMult techniques × artifact cap mult
 breakthroughChance       — stage base + technique BT bonuses + equipment + karma/1000, capped 0.98
 breakthroughChanceDisplay — breakthroughChance + activePill preview (UI display only, not used in roll)
 canBreakthrough          — qi >= qiCap * 0.90
-meditBonus               — 1 or 3
-meditSecondsLeft         — seconds until meditation expires
 lootMult                 — 1.5 if void_blade weapon equipped, else 1
 hiddenLocations          — true if artifact_void_compass equipped
-catchUp / catchUpUntil   — Phase 31 ancestral catch-up active / the clan's bestStageIndex it runs to
 breakdown                — 1.8b-2: { qps, cap, bt, btFloor, btPill, btRaw } — the terms _recalc applied, in order
 ```
 
@@ -44,8 +43,9 @@ constants tick() and the injury sites use).
 ## API (game-state.js)
 ```
 tick(dt)                    — advance qi, karma, save timer; calls _recalc + _notify every frame
-attemptBreakthrough()       — consumes activePill, rolls BT chance; returns { success, reason/newStage }
-startMeditation(duration)   — sets meditating=true, meditationEnds; false if already meditating
+attemptBreakthrough()       — consumes activePill, rolls BT chance; returns { success, reason/newStage } (refused while mortal: 'awaken_required')
+drawQi({ perfect?, at? })   — Phase 48: one Draw Qi hit of the active loop (combo + cooldown); returns { ok, gained, full, combo } (refused while mortal: 'mortal')
+awaken()                    — Phase 49: BODY_AWAKEN_TIER opens the meridians → Qi Condensation; { ok } or { reason:'body_too_weak' }
 learnTechnique(id)          — deducts spiritStones, pushes to techniques; returns { ok, reason }
 addEvent({ text, type, ts}) — prepends to s.events (max 25), notifies
 setName(name)               — trims to 24 chars
@@ -72,7 +72,8 @@ color            — hex string for UI tinting
 1. `_recalc()` is always called before `_notify()` — derived is never stale at notify time
 2. Breakthrough chance is capped at 0.98 inside `_recalc`; do not apply it elsewhere
 3. Spirit stones live in `s.spiritStones`, not inventory — expedition drops of `spirit_stone` are routed there
-4. `s.meditating` is auto-cleared in `_recalc` when `meditationEnds` passes; don't clear it anywhere else
+4. `s.meditating` is gone (Phase 48) — active Qi comes from `drawQi()`, not a timer. The tick credits only
+   `qiPerSecondPassive`, and while `mortalMeridiansShut()` it credits 0.
 
 ## Gotchas
 - Stage `qiCap`s from Foundation Building on were tuned with `npm run sim` (2026-09-25) against the

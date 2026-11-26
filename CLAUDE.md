@@ -148,6 +148,9 @@ docs/
   systems/
     core-loop.md        ← Qi, stages, roots, breakthroughs, techniques
     expedition.md       ← Expedition timer, inventory, drops (Phase 2)
+    active-cultivation.md ← Phase 48 (the active rework): the active Qi loop — Cultivate/Draw Qi, the passive trickle, Active Mode default, both mini-games charge-free; the Mortal gate
+    mortal-phase.md     ← Phase 49: every life starts a mortal (meridians shut, no Qi); Awaken at body tier D opens Qi Condensation
+    minigames.md        ← Phase 52 (52a–d built): the practice mini-game registry — Push-Ups (beat) / Running (stride) / Lift (hold) + Meridian Flow + Memorization, the ExerciseScene figure, the reward/cooldown/unlock contract, how to add a game
     crafting.md         ← Recipes, equipment, pills, elixirs (Phase 2)
     sects.md            ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
@@ -201,6 +204,7 @@ scripts/
   art/ink-shapes.js     ← Ink art authoring helper: limb centreline / tapering Bezier / `sym` half → part `d` polygon (paste into assets/sprites/ink-*.js)
   art/ink-bake.js       ← Bake a source picture → editable dot map PNG (1 px = 1 dot, background removed): `npx electron scripts/art/ink-bake.js [id]`
   art/ink-bake.json     ← Bake specs per beast (src, crop, width, background-removal knobs, erase/keep polygons)
+  art/exercise-sheet.js ← Contact sheet of every ExerciseScene pose → scripts/art/out/exercise-sheet.png: `npx electron scripts/art/exercise-sheet.js` (+ exercise-sheet.html)
   check-no-emoji.js     ← Emoji inventory (file:line); --strict in npm test (sprites included since A4-4) — no-emoji rule
   check-no-chrome-cjk.js ← Chrome-CJK lint for renderer/ (allow: nav marks, `cjk-ok` flavour lines); --strict runs in npm test (1.8d-2)
   sim/                  ← QA sim harness (`npm run sim`) — bots play real game logic headless → report.md
@@ -227,6 +231,7 @@ renderer/
     ascii-renderer.js   ← Canvas renderer — sprites + particles + aura rings (classic grid ASCII)
     ink-renderer.js     ← InkRenderer — hybrid ink art engine (A3-1): cached ink-dot layers + brush strokes + clean effects; `bare` = figure only (40b)
     battle-scene.js     ← BattleScene — the battle page canvas: two bare ink figures on a dotted field + lunge/crescent/claw/ward/afterimage/stagger/dissolve/bind effects (Phase 35 / A6-1) + per-element move effects, status auras, parry wind-up (1.13b)
+    exercise-scene.js   ← ExerciseScene — the practice mini-games' animated figure (Phase 52b/52c): a side-view cultivator on a bone rig (IK keyframes / a gait cycle from `EXERCISE_POSES`, body volumes inked as dots from a layer mask, verlet-chain cloth, the `LIFT_ITEMS` load) moving over a stage-coloured glow, driven by MinigameUI (docs/systems/minigames.md)
     ascension-cinematic.js ← AscensionCinematic — the ~9 s full-window Immortal Ascension (storm, bolts, rise, heavenly gate, flash) (Phase 40b)
     sprite-renderer.js  ← SpriteRenderer — picks Classic ASCII or Ink per the Sprite art setting + available INK_ART
     scene-renderer.js   ← SceneRenderer (A7/38A): the Sect Base compound on the hybrid engine — an InkRenderer subclass with its own scene kinds (hall/pagoda/pen/ward/banners…), a ≥2× render, and the build-growth burst
@@ -267,7 +272,7 @@ renderer/
     ink-select.js       ← InkSelect — every native <select> becomes an in-app picker (button + popover listbox; the select stays hidden as the source of truth; auto-enhanced via MutationObserver; data-native opts out) (v1 mobile fix 2026-10-05)
     arts-view.js        ← ArtsView — Path → Arts: breakthrough offer, study desk, 2×2 moves + passive slots, the library (Phase 42 / 42a)
     body-view.js        ← BodyView — Path → Body (view id `physique`): the tier seal + XP bar, the ordeal crisis + tier trial cards, the running tempering, Practice (mini-games), scars/taint, Auto-Temper, every method (Phase 14)
-    minigames.js        ← FlowPuzzle (DOM-free, seeded — the engine verifies solutions) + MinigameUI: the Tempering Strikes + Meridian Flow overlay (Phase 14)
+    minigames.js        ← FlowPuzzle + MemoryPuzzle (DOM-free, seeded — the engine re-derives and verifies answers) + MinigameUI: the practice mini-game overlay (registry-driven, Phase 52: Push-Ups/Running/Lift by mode `beat`/`stride`/`hold` + Meridian Flow + Memorization)
     arena-view.js       ← ArenaView — Roam → Arena: rings, duelist rosters (odds, Fight / Blood), the run's purse + Walk away, grudge call-outs, the rest countdown (Phase 35 / A6-3b)
     hunt-view.js        ← HuntView + BestiaryView — Roam → Hunt (hunting grounds, track a beast, live countdown) and Roam → Bestiary (seen/unseen kinds, habits, record) (Phase 35 / A6-2)
     combat.js           ← CombatView — the battle page: prepare (beasts: stance estimate) → fight (2×2 arts, Circulate, parry prompt, Retreat/Yield; people: "What you know") → end choice (finish/spare/bind · raise/humble) → result; beasts (A6-1) + people (A6-3a), all on moves (1.13a/1.14a)
@@ -275,7 +280,7 @@ renderer/
 assets/
   icons/
     tray-icon.png       ← System tray icon (Phase 9A) — see scripts/gen-tray-icon.js
-    ui-icons.js         ← UI_ICONS — the custom UI icon set (1.8d): monochrome `currentColor` line-art SVG bodies (replaces emoji + chrome CJK)
+    ui-icons.js         ← UI_ICONS — the custom UI icon set (1.8d; +run/lift in 52c): monochrome `currentColor` line-art SVG bodies (replaces emoji + chrome CJK)
   data/
     stages.js           ← CULTIVATION_STAGES[23]
     techniques.js       ← TECHNIQUES
@@ -298,6 +303,9 @@ assets/
     succession.js       ← M2 2.6d: parenting styles, heir bet, reign/rebirth weights, rival rebirth, chronicle text, UPBRINGING_EVENTS
     family-events.js    ← A father's hand (2026-10-01): the rare beating by a bad father, its three answers + the grown-up reckoning
     automation.js       ← Active/Idle mode default, automation unlock thresholds, Active Mode bonus constants (Phase 22)
+    cultivation.js      ← Phase 48 (active-cultivation.md): the active/passive Qi economy — PASSIVE_QI_SHARE, the Cultivate-action params + cooldowns
+    minigames.js        ← Phase 52 (minigames.md): the practice mini-game registry (MINIGAMES, TIMING, LIFT_ITEMS, EXERCISE_POSES) — the games diverge from here
+    mortal.js           ← Phase 49b (mortal-phase.md): the mortal arc — MORTAL_ARC tuning + MORTAL_BEATS (11 mortal-only beats, the village life lived before the Dao)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     tutorial.js         ← TUTORIAL_LESSONS + TUTORIAL_GROUPS — the coach-mark lessons: trigger (start / view / el), selectors to spotlight, text, Guide lines (task 1.23)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)

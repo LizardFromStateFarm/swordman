@@ -36,19 +36,22 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
       op: p.op, tone: p.op === 'base' ? '' : (p.op === 'x' ? p.value < 1 : p.value < 0) ? 'down' : 'up',
     } }) }
   const lastMortal = CULTIVATION_STAGES.length - 2
+  // Phase 48 (active-cultivation.md): the effective rate while actively cultivating — a Draw Qi hit ÷ its cooldown.
+  const activeRate = ((d.cultivateYield || 0) / CULTIVATE_DRAW_COOLDOWN) || d.qiPerSecond || 0
 
   if (kind === 'qps') {
     const rows = mulRows(b.qps || [], '')
-    if (d.meditBonus > 1) rows.push({ label: `Meditation (${d.meditSecondsLeft}s left)`, val: `×${d.meditBonus}`, run: small(d.qiPerSecondBoosted), op: 'x', tone: 'up' })
+    rows.push({ label: `Cultivating · Draw Qi (≈${CULTIVATE_DRAW_SECONDS}s a hit ÷ ${CULTIVATE_DRAW_COOLDOWN}s)`, val: `≈${small(activeRate)} /s`, tone: 'up' })
+    rows.push({ label: `While away · idle trickle (×${PASSIVE_QI_SHARE})`, val: `${small(d.qiPerSecondPassive || 0)} /s`, tone: 'dim' })
     const notes = []
     if (d.sectBuffSuppressed) notes.push('Your sect lost a war. Its blessing is withheld for now.')
-    notes.push(OFFLINE_QI_MULT === 1 ? 'Qi keeps gathering while the game is closed, at the same rate.' : `While the game is closed, Qi gathers at ×${OFFLINE_QI_MULT}.`)
-    return { glyph: 'qi', title: 'Qi per second', total: `${small(d.qiPerSecondBoosted)} /s`, rows, notes }
+    notes.push('Qi gathers two ways: the CULTIVATE action pays per interaction, and a slow trickle keeps gathering even while the game is closed.')
+    return { glyph: 'qi', title: 'Cultivation rate', total: `≈${small(activeRate)} /s`, totalLabel: 'Cultivating', rows, notes }
   }
 
   if (kind === 'cap') {
     const left = Math.max(0, d.qiCap * 0.9 - s.qi)
-    const rate = d.qiPerSecondBoosted
+    const rate = activeRate
     const notes = [left <= 0 ? 'Your sea of Qi is full enough to attempt a breakthrough.'
       : `Breakthrough opens at 90% of the cap: ${fmt(left)} Qi to go${rate > 0 ? `, about ${fmtTime(Math.ceil(left / rate))} at this rate` : ''}.`]
     return { glyph: 'dantian', title: 'Qi capacity', total: fmt(d.qiCap), rows: mulRows(b.cap || [], ''), notes }
@@ -260,7 +263,7 @@ function buildBreakdown(kind, s, gs, fmt, fmtTime) {
     ]
     const notes = []
     if (s.playMode === 'active') notes.push(`Active Mode: strike within ${ACTIVE_BT_FOCUS_WINDOW_SECONDS}s of the bar filling for +${BD_PCT(ACTIVE_BT_FOCUS_BONUS)} on that attempt.`)
-    if (!d.canBreakthrough) { const left = Math.max(0, d.qiCap * 0.9 - s.qi); notes.push(`Opens once Qi reaches 90% of the cap. Now ${s.qi > 0 && s.qi / d.qiCap < 0.01 ? "<1" : Math.floor(s.qi / d.qiCap * 100)}%${d.qiPerSecondBoosted > 0 ? `, about ${fmtTime(Math.ceil(left / d.qiPerSecondBoosted))} to go` : ''}.`) }
+    if (!d.canBreakthrough) { const left = Math.max(0, d.qiCap * 0.9 - s.qi); notes.push(`Opens once Qi reaches 90% of the cap. Now ${s.qi > 0 && s.qi / d.qiCap < 0.01 ? "<1" : Math.floor(s.qi / d.qiCap * 100)}%${activeRate > 0 ? `, about ${fmtTime(Math.ceil(left / activeRate))} to go` : ''}.`) }
     return { glyph: 'breakthrough', title: 'Breakthrough chance', total: BD_PCT(d.breakthroughChanceDisplay), rows,
       sections: [{ title: 'If it fails', rows: fail }], notes }
   }

@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..', '..')
 // Load order mirrors renderer/index.html (sprites, platform-storage, ascii-renderer, game.js skipped:
 // they're UI/Node-bridge only and the logic never references them).
 const DATA_FILES = ['stages', 'techniques', 'events', 'items', 'locations', 'enemies', 'recipes',
-                    'beasts', 'talismans', 'arena', 'arts', 'bosses', 'sects', 'sect-buildings', 'sect-war', 'sect-branches', 'npc-sects', 'bloodline', 'tempering', 'lifespan', 'family', 'succession', 'family-events', 'clan-legacies', 'automation', 'settings', 'personalities', 'banter-lines', 'names', 'soul', 'world-population', 'npc-lives', 'tutorial']
+                    'beasts', 'talismans', 'arena', 'arts', 'bosses', 'sects', 'sect-buildings', 'sect-war', 'sect-branches', 'npc-sects', 'bloodline', 'tempering', 'lifespan', 'family', 'succession', 'family-events', 'clan-legacies', 'automation', 'cultivation', 'minigames', 'mortal', 'settings', 'personalities', 'banter-lines', 'names', 'soul', 'world-population', 'npc-lives', 'tutorial']
   .map(f => `assets/data/${f}.js`).concat(['assets/scenes/sect-base-scene.js'])
 const LOGIC_FILES = ['renderer/engine/persons.js', 'renderer/engine/game-state.js',
   ...['cultivation', 'expedition', 'crafting', 'beasts', 'sect', 'sect-war', 'banter', 'notifications', 'minigames'].map(f => `renderer/game/${f}.js`),
@@ -90,6 +90,7 @@ function createSim({ seed = 1, startMs = Date.UTC(2026, 0, 1), overrides = [] } 
       BANTER_RECENT_MAX, BANTER_LOG_MAX,
       WAR_ORDER_ANSWER_OPTIONS, WAR_ORDER_LEND_BEAST_OPTIONS, WAR_ORDER_REINFORCE_OPTIONS, WAR_ORDER_ALLY_OPTIONS, WAR_ORDER_RAZE_OPTIONS,
       AUTOMATION_UNLOCKS, AUTO_BREAKTHROUGH_THRESHOLD_MIN, AUTO_BREAKTHROUGH_THRESHOLD_MAX,
+      PASSIVE_QI_SHARE, CULTIVATE_DRAW_SECONDS, CULTIVATE_DRAW_COOLDOWN, CULTIVATE_FLOW_COOLDOWN, BODY_AWAKEN_TIER,
       GAME_YEARS_PER_OPEN_HOUR, AWAKENING_AGE, PROPOSAL_MIN_STAGE, ADULT_AGE, LOVER_ENCOUNTER_MAX, CHILD_INTERVAL_BY_PLAN, TOURNAMENT_TOP,
       MERIT_STAGE, MERIT_DEED_CAP, CLAN_FIRSTS, CLAN_LEGACIES, NPC_WORLD })`),
     // One frame of the real game loop (renderer/game.js), minus rendering.

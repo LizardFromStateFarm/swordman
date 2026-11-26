@@ -18,6 +18,10 @@ const BODY_TIERS = [
 // XP past the next tier's mark banks toward the trial, up to this share of the step after it (or of the last step).
 const BODY_BANK_FRAC = 0.5
 
+// Phase 49 (docs/systems/mortal-phase.md): the tier a mortal must temper the body to before the meridians open —
+// the Awakening that begins Qi Condensation. The player stays a mortal (and cannot cultivate) until then.
+const BODY_AWAKEN_TIER = 'D'   // Hardened Body (cumulative 1000 XP)
+
 // ── Tempering methods ── one at a time, real time (runs while the game is closed, like an expedition).
 // group: drill | spirit | ordeal | demonic | tribulation. minStage = CULTIVATION_STAGES index. cost: items (+ stones).
 // qiMult: Qi/s multiplier while it runs. Ordeals stop at their crisis (the player answers it). onEndure: the bonus a
@@ -104,9 +108,9 @@ const BLOOD_FORGING = {
   sectStance: -2,          // each righteous sect (master morality > 0) hears of it
 }
 
-// ── Mini-games ── both on charges that refill on real time (closed too), so absence never costs anything.
-const MINIGAME_CHARGES = { max: 3, refillSecs: 1800 }
-// Tempering Strikes (body): 6 strikes (user 2026-10-03: 8 → 6, a bit shorter); a marker sweeps the bar, strike when it crosses the seal. Points: perfect 3,
+// ── Mini-games ── both are charge-free since Phase 48 (gated by a cooldown in assets/data/minigames.js); the timing
+// games share the STRIKES bar config, and Flow the FLOW config. See docs/systems/minigames.md.
+// Tempering Strikes (body): 6 strikes, a marker sweeps the bar, strike when it crosses the seal. Points: perfect 3,
 // good 1. The seal narrows each strike. XP = points / maxPoints × xpHours × the best unlocked method's XP per hour
 // (at least minXp). Or, while a tempering runs, each point cuts cutPerPoint of its remaining time (to cutMax).
 const STRIKES = {

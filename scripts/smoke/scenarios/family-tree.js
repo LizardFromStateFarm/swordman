@@ -16,8 +16,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   await ev('document.getElementById("layout-tip")?.click()')
 
   // ── The Flow segment on the HUD ──
-  assert(await ev('!!document.querySelector("#med-split #btn-flow")'), 'the Meridian Flow button sits beside Meditate')
-  const c0 = await ev('gameState.get().minigames.flow.charges')
+  assert(await ev('!!document.querySelector("#cult-split #btn-flow")'), 'the Meridian Flow button sits beside Cultivate')
   await click('#btn-flow'); await sleep(400)
   assert(await ev('!document.getElementById("mg-overlay")?.classList.contains("hidden") && !!document.querySelector(".mg-grid")'), 'it opens the Meridian Flow puzzle')
   assert(await ev('!document.querySelector(".mg-timer") && !/swift|Under \\d+s/.test(document.querySelector("#mg-overlay")?.textContent || "")'), 'no timer and no par time on the puzzle')
@@ -25,7 +24,7 @@ module.exports = async ({ ev, click, wait, shot, assert, sleep, emulate, clearEm
   await click('#mg-overlay .mg-x'); await sleep(300)
   assert(await ev('!!gameState.get().minigames.flow.session && document.getElementById("btn-flow").classList.contains("waiting")'), 'closing sets it aside; the button reads resume')
   await click('#btn-flow'); await sleep(300)
-  assert(await ev(`gameState.get().minigames.flow.charges === ${c0} - 1`), 'reopening resumes it for no new charge')
+  assert(await ev('!!gameState.get().minigames.flow.session && !!document.querySelector(".mg-grid")'), 'reopening resumes it (charge-free since Phase 48)')
   await ev('document.querySelector("#mg-overlay .mg-x")?.click()'); await sleep(200)
 
   // ── A family: parents, siblings, a spouse, children, a grandchild, a past life up the line ──

@@ -79,7 +79,6 @@ body {
 #health-labels .lbl-ic { color: var(--jade); }
 #stones-labels .lbl-ic { color: var(--gold); }
 #age-labels .lbl-ic { color: var(--dim-hi); }
-#meditate-badge { display: inline-flex; align-items: center; gap: 4px; }
 .act-icon .ic { font-size: 17px; }
 .tbm-glyph { display: inline-flex; justify-content: center; }
 #layout-title, #mode-title, #settings-title { display: inline-flex; align-items: center; gap: 6px; }
@@ -379,17 +378,23 @@ body[data-narrow="1"] #btn-back, body[data-narrow="1"] #btn-layout:not(.peek) { 
 
 #sprite-canvas { display: block; }
 
-#meditate-badge {
+/* Phase 48 (active-cultivation.md): a Draw Qi hit pops "+N Qi" (and the combo) over the sprite. */
+#cult-pop {
   position: absolute;
   top: 5px; right: 6px;
   background: rgba(0,100,60,0.25);
   border: 1px solid var(--jade);
   color: var(--jade);
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: bold;
   padding: 2px 7px;
   border-radius: 3px;
-  animation: fadePulse 2s infinite;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s;
 }
+#cult-pop:not(.hidden) { opacity: 1; }
+#cult-pop.perfect { color: var(--gold); border-color: var(--gold); background: rgba(90,70,0,0.3); }
 
 @keyframes fadePulse {
   0%,100% { opacity: .7 }
@@ -612,7 +617,7 @@ body[data-narrow="1"] #btn-back, body[data-narrow="1"] #btn-layout:not(.peek) { 
 
 .act-btn:disabled { opacity: .38; cursor: not-allowed; }
 
-.act-btn.meditating {
+.act-btn.cultivating {
   border-color: var(--jade);
   color: var(--jade);
 }
@@ -642,15 +647,16 @@ body[data-narrow="1"] #btn-back, body[data-narrow="1"] #btn-layout:not(.peek) { 
 .act-icon { font-size: 15px; grid-row: 1 / 3; }
 
 /* UI review: 7.8 (2026-09-27, HUD fixes cycle 3) */
-#actions .act-btn { align-content: center; }   /* a taller neighbour (two-line Ascension Trial) keeps Meditate centred */
+#actions .act-btn { align-content: center; }   /* a taller neighbour (two-line Ascension Trial) keeps Cultivate centred */
 /* Breakthrough split control (user 2026-09-27): the button and its "?" are one card — the ? is a slim right segment
    behind a hairline divider, same surface and height, so it reads as part of the button, not a floating badge.
    Disabled: fade the button's content, not its box, so both halves keep the same surface. */
-/* Meditate + the Meridian Flow segment (Phase 14 follow-up, 2026-10-03): the same split card as Breakthrough + ? */
-#med-split { display: flex; min-width: 0; border-radius: 4px; }
-#med-split > #btn-meditate { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none;
+/* Phase 48 (active-cultivation.md): Cultivate (Draw Qi) + the Meridian Flow segment — the same split card as
+   Breakthrough + ?, here in the active-Jade tone. */
+#cult-split { display: flex; min-width: 0; border-radius: 4px; }
+#cult-split > #btn-cultivate { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none;
   grid-template-columns: auto minmax(0, 1fr); column-gap: 5px; padding-left: 5px; padding-right: 4px; }
-#med-split .act-name, #med-split .act-sub { min-width: 0; white-space: normal; line-height: 1.2; }
+#cult-split .act-name, #cult-split .act-sub { min-width: 0; white-space: normal; line-height: 1.2; }
 #btn-flow { flex: none; width: 30px; padding: 2px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
   font-family: var(--font); color: color-mix(in srgb, var(--jade) 80%, var(--dim)); cursor: pointer;
   background: rgba(24, 10, 4, 0.7); border: 1px solid var(--border); border-left: 1px solid color-mix(in srgb, var(--dim) 30%, transparent);
@@ -663,7 +669,7 @@ body[data-narrow="1"] #btn-back, body[data-narrow="1"] #btn-layout:not(.peek) { 
 #btn-flow.waiting { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); }
 #btn-flow:disabled { cursor: not-allowed; }
 #btn-flow:disabled > * { opacity: .38; }
-#med-split:has(#btn-meditate.meditating) #btn-flow { border-color: var(--jade); border-left-color: color-mix(in srgb, var(--jade) 35%, transparent); }
+#cult-split:has(#btn-cultivate.cultivating) #btn-flow { border-color: var(--jade); border-left-color: color-mix(in srgb, var(--jade) 35%, transparent); }
 body[data-layout="banner"] #btn-flow { width: 26px; }
 #bt-split { display: flex; min-width: 0; border-radius: 4px; }
 #bt-split > #btn-breakthrough { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none;
@@ -2232,6 +2238,50 @@ body[data-layout="overlay"] .intro-btn { min-width: 70px; }
 #family-choices button:disabled { opacity: 0.45; cursor: default; }
 .family-sub { display: block; font-size: 9px; color: var(--dim); margin-top: 2px; }
 
+/* ── Phase 49b: the mortal arc — the Explore beat card + the Awakening moment (docs/systems/mortal-phase.md) ── */
+.mortal-card {
+  border: 1px solid var(--gold);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(237,208,80,0.06), rgba(0,0,0,0) 62%), var(--bg2);
+  padding: 9px 10px 10px;
+  margin-bottom: 8px;
+}
+.mortal-card .mc-h { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.mortal-card .mc-h .ic { width: 13px; height: 13px; color: var(--gold); flex: none; }
+.mortal-card .mc-k { font-size: 9.5px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--gold); }
+.mortal-card .mc-title { font-size: 12px; color: var(--gold); margin-bottom: 4px; }
+.mortal-card .mc-text { font-size: 10.5px; color: var(--text); line-height: 1.5; margin-bottom: 8px; }
+.mortal-card .mc-choices { display: flex; flex-direction: column; gap: 6px; }
+.mortal-card .mc-choice {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  background: rgba(24,10,4,.9); border: 1px solid var(--border); color: var(--text);
+  font-family: var(--font); font-size: 11px; padding: 7px 8px; border-radius: 4px; cursor: pointer;
+}
+.mortal-card .mc-choice:hover { border-color: var(--gold); }
+.mortal-card .mc-choice:disabled { opacity: .55; cursor: default; }
+.mortal-card .mc-s { font-size: 9.5px; color: var(--dim); }
+.mortal-card .mc-choice:disabled .mc-s { color: var(--gold); }
+.mortal-card .mc-goal { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--border); font-size: 9.5px; color: var(--dim); line-height: 1.4; }
+.mortal-card .mc-goal b { color: var(--jade); }
+
+#awaken-overlay {
+  position: fixed; inset: 0; background: rgba(8,4,14,0.94);
+  display: flex; align-items: center; justify-content: center; z-index: 210;
+}
+#awaken-box {
+  background: var(--bg2); border: 1px solid var(--gold); border-radius: 5px;
+  padding: 16px; width: 264px; max-height: 100%; overflow-y: auto;
+  box-sizing: border-box; text-align: center;
+  box-shadow: 0 0 30px rgba(237,208,80,0.12);
+}
+#awaken-title { font-size: 14px; color: var(--gold); letter-spacing: 2px; margin-bottom: 8px; }
+#awaken-text { font-size: 10.5px; color: var(--dim-hi); line-height: 1.6; margin-bottom: 12px; white-space: pre-line; }
+#awaken-ok {
+  background: rgba(24,10,4,.9); border: 1px solid var(--gold); color: var(--gold);
+  font-family: var(--font); font-size: 11px; padding: 6px 20px; border-radius: 4px; cursor: pointer;
+}
+#awaken-ok:hover { background: rgba(237,208,80,0.12); }
+
 /* ── Heir + Tournament of Heirs overlays (clan-succession.md 2.6c) — same look as #family-overlay ── */
 
 #heir-overlay, #tournament-overlay {
@@ -2439,7 +2489,7 @@ body[data-layout="banner"] #titlebar,
 body[data-layout="banner"] #main-pane,
 body[data-layout="banner"] #vitals,
 body[data-layout="banner"] #stage-desc,
-body[data-layout="banner"] #meditate-badge { display: none; }
+body[data-layout="banner"] #cult-pop { display: none; }
 body[data-layout="banner"] #hud {
   flex: 1;
   height: 100%;
@@ -5743,7 +5793,12 @@ body[data-layout="overlay"] .bd-begin { width: 100%; }
   color: var(--dim-hi); cursor: pointer; }
 .mg-x:hover { color: var(--text); border-color: var(--dim); } .mg-x .ic { width: 14px; height: 14px; }
 .mg-body { margin: 12px 0 6px; }
-.mg-strikes .mg-body { margin-bottom: 4px; }
+.mg-pushups .mg-body { margin-bottom: 4px; }
+/* Phase 52b: the animated exercise figure (ExerciseScene) sits above the timing bar on a dark, recessed panel */
+.mg-ex { display: block; width: 100%; height: 160px; margin: 0 0 10px; border-radius: 6px;
+  background: radial-gradient(120% 95% at 50% 22%, rgba(40,32,66,0.55), rgba(6,4,12,0.86) 72%), #06040C; }
+body[data-layout="overlay"] .mg-ex { height: 124px; }
+body[data-narrow="1"]:not([data-layout="overlay"]) .mg-ex { height: 144px; }
 .mg-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; font-size: 11px; color: var(--dim-hi); }
 .mg-foot .btn-primary, .mg-strike { min-height: 40px; padding: 6px 16px; }
 .mg-strike { width: 100%; font-size: 14px; touch-action: manipulation; }
@@ -5806,6 +5861,44 @@ body[data-layout="overlay"] .mg-tile { min-width: 0; }
 .mg-btn .ic { width: 14px; height: 14px; }
 .mg-btn.ghost { color: var(--gold); background: var(--fam-sunk, rgba(10,6,14,0.4)); box-shadow: none; border-color: color-mix(in srgb, var(--gold) 50%, var(--border)); }
 .mg-strike kbd { color: #5A4310; border-color: color-mix(in srgb, #1A0E04 30%, transparent); }
+
+/* UI review: 7.7 asset 8.2 (2026-10-10, 52c) — the Running stride + the Lift strain (renderer/game/minigames.js) */
+.mg-feet { display: flex; gap: 8px; }
+.mg-feet .mg-foot { flex: 1; font-size: 14px; touch-action: manipulation; }
+.mg-foot.due { box-shadow: 0 0 0 2px var(--text), 0 0 12px color-mix(in srgb, var(--gold) 45%, transparent); }
+.mg-bar[data-due]::after { content: attr(data-due); position: absolute; top: 3px; left: 50%; transform: translateX(-50%); font-size: 11px; letter-spacing: 2px; color: var(--gold); pointer-events: none; }
+.mg-pips.mg-steps i { width: 18px; height: 15px; font-size: 9px; color: var(--dim); display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.mg-pips.mg-steps i.perfect, .mg-pips.mg-steps i.good { color: #1A0E04; }
+.mg-pips.mg-steps i.miss { color: var(--text); background: none; }
+.mg-strain { position: relative; height: 46px; border-radius: 6px; cursor: pointer; overflow: hidden; touch-action: manipulation;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 12%, transparent), color-mix(in srgb, var(--jade) 14%, transparent)); border: 1px solid var(--border); }
+.mg-strainfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(180deg, var(--gold), color-mix(in srgb, var(--gold) 52%, #000));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--gold) 45%, transparent); }
+.mg-gold { position: absolute; right: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--gold) 24%, transparent); border-left: 1px solid var(--gold); }
+.mg-strain::after { content: 'let go at the top'; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 9.5px; color: var(--gold); letter-spacing: .5px; pointer-events: none; }
+.mg-strain.flash-perfect { box-shadow: 0 0 18px color-mix(in srgb, var(--gold) 70%, transparent); border-color: var(--gold); }
+.mg-strain.flash-good { box-shadow: 0 0 10px color-mix(in srgb, var(--jade) 50%, transparent); }
+.mg-strain.flash-miss { border-color: var(--red); }
+.mg-foot .mg-lift { flex: 1; width: 100%; font-size: 14px; touch-action: manipulation; }
+
+/* UI review: 7.8 (2026-10-10, 52d) — Memorization (the Acupoint Sequence, renderer/game/minigames.js): cycle 1 7.6 PASS, cycle 2 7.8 PASS (a watch dim on the board, a red miss + gold due-hint on a wrong tap, the turn-key hint, and a result card that leads with the score) */
+.mg-acu { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(100%, 216px); margin: 0 auto; }
+.mg-acu-t { aspect-ratio: 1; min-width: 44px; padding: 0; border-radius: 8px; cursor: pointer; touch-action: manipulation;
+  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--text) 9%, transparent), transparent 62%), rgba(10, 6, 14, 0.5);
+  border: 1px solid var(--border); transition: border-color .12s, box-shadow .12s, background .12s, opacity .15s; }
+.mg-acu-t::after { content: ''; display: block; width: 34%; aspect-ratio: 1; margin: 33% auto; border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--gold) 42%, transparent); background: rgba(10, 5, 16, 0.7); transition: border-color .1s, background .1s; }
+.mg-acu-t:hover, .mg-acu-t:focus-visible { border-color: var(--gold); outline: none; }
+.mg-acu-t.lit { border-color: var(--gold); box-shadow: 0 0 16px color-mix(in srgb, var(--gold) 60%, transparent);
+  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--gold) 26%, transparent), transparent 66%), rgba(10, 6, 14, 0.5); }
+.mg-acu-t.lit::after { border-color: var(--gold); background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.mg-acu.watching { pointer-events: none; }   /* the order is playing: the board is not yours yet */
+.mg-acu.watching .mg-acu-t:not(.lit) { opacity: .5; }   /* dim only the idle tiles — the lit acupoint stays bright */
+.mg-acu-t.miss { border-color: var(--red); box-shadow: 0 0 14px color-mix(in srgb, var(--red) 60%, transparent); }
+.mg-acu-t.miss::after { border-color: var(--red); background: var(--red); }
+.mg-acu-t.due-hint { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.mg-acu-t.due-hint::after { border-color: var(--gold); }
+:root[data-motion="reduced"] .mg-acu-t, :root[data-motion="reduced"] .mg-acu-t::after, :root[data-motion="reduced"] .mg-acu { transition: none; }
 
 /* UI review: 7.7 (2026-10-03, cycle 2) */
 /* ── Kin → Tree: the family tree (2026-10-03, renderer/game/family-tree.js) ─────────────────────────────────
