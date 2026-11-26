@@ -6584,3 +6584,14 @@ body[data-tod="dusk"]  #app { filter: sepia(.06) saturate(1.04); }
 .exp-secret-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 6px; }
 .exp-secret-log { margin-top: 4px; font-size: 10px; color: var(--dim-hi); line-height: 1.4; max-height: 90px; overflow-y: auto; }
 .loc-req { font-size: 10px; color: var(--dim-hi); font-weight: normal; }
+
+/* M8 cleanup: cosmetic seasons (no bonuses) + the scripture codex */
+body[data-season="summer"] #view { box-shadow: inset 0 0 90px rgba(237, 208, 80, 0.05); }
+body[data-season="autumn"] #view { box-shadow: inset 0 0 90px rgba(204, 41, 54, 0.045); }
+body[data-season="winter"] #view { box-shadow: inset 0 0 90px rgba(135, 206, 235, 0.055); }
+.ev-lore { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+.ev-lore-h { font-size: 11px; color: var(--gold); letter-spacing: 1px; margin-bottom: 4px; }
+.ev-lore-row { padding: 4px 6px; border-bottom: 1px solid var(--border); opacity: .6; }
+.ev-lore-row.seen { opacity: 1; }
+.ev-lore-n { font-size: 11px; color: var(--text); }
+.ev-lore-t { font-size: 10px; color: var(--dim-hi); line-height: 1.4; margin-top: 1px; }

@@ -353,6 +353,9 @@
 
   function updateHUD(s, fromTick = false) {
     const d  = s.derived
+    // M8 (9C–D): a cosmetic season from the game clock.
+    const season = ['spring', 'summer', 'autumn', 'winter'][Math.floor((s.world?.year || 0) / 90) % 4]
+    if (document.body.dataset.season !== season) document.body.dataset.season = season
     const st = d.stage
 
     document.getElementById('cultivator-name').textContent = s.name
@@ -591,6 +594,19 @@
     }
   })
 
+  // M8 cleanup: challenge mode + cosmetics.
+  document.addEventListener('click', e => {
+    const c = e.target.closest('[data-challenge]')
+    if (c) {
+      const r = gameState.setChallenge(c.dataset.challenge)
+      if (!r.ok) flashMessage('The challenge is chosen before you awaken.', 'negative')
+      else renderView('stats', gameState.get())
+      return
+    }
+    const p = e.target.closest('[data-pet]'); if (p) { gameState.setPet(p.dataset.pet); renderView('stats', gameState.get()); return }
+    const v = e.target.closest('[data-cave]'); if (v) { gameState.setCave(v.dataset.cave); renderView('stats', gameState.get()) }
+  })
+
   // A7 (Phase 38A): the Sect → Base compound scene — its own view (it owns a canvas, so SectView.render must not rebuild it)
   const baseView = new BaseView(gameState, { esc: escHtml, fmt, fmtTime, go: v => nav.go(v) })
   // 1.8b-1: one entry point per view (NAV_GROUPS in renderer/game/nav.js)
@@ -750,7 +766,7 @@
           ${(() => { const o = gameState.originInfo(); return o ? `<span class="ch-tag" title="${escHtml(o.origin.desc)}"><b data-icon="root"></b>${escHtml(o.origin.name)} · ${escHtml(o.constitution.name)}</span>` : '' })()}
           ${(() => { const a = gameState.alignmentInfo(); return `<span class="ch-tag" title="Alignment: how you live tilts it over the years — your karma and Dao path pull it"><b data-icon="lotus"></b>${escHtml(a.tier.name)} ${a.value > 0 ? '+' : ''}${a.value}</span>` })()}
         </div>
-        <div class="ch-meta" title="Age passes only while the game is open. Nothing dies of age.">Age ${Math.floor(s.age)} · Year ${Math.floor(s.world.year)} · Gen ${s.generation || 1} · ${escHtml(gameState.epochInfo().name)}</div>
+        <div class="ch-meta" title="Age passes only while the game is open. Nothing dies of age.">Age ${Math.floor(s.age)} · Year ${Math.floor(s.world.year)} · Gen ${s.generation || 1} · ${escHtml(gameState.epochInfo().name)} · ${['Spring', 'Summer', 'Autumn', 'Winter'][Math.floor((s.world?.year || 0) / 90) % 4]}</div>
         ${persona ? `<div class="ch-persona">${escHtml(persona.blurb)}</div>` : ''}
       </div>
       ${(() => {
@@ -794,6 +810,9 @@
           <div class="ch-list">
             ${(() => { const o = gameState.originInfo(), a = gameState.alignmentInfo(), p = gameState.daoPathInfo(); return `${o ? sr('Birth', `${escHtml(o.origin.name)} · ${escHtml(o.region)}`) : ''}${o ? sr('Constitution', escHtml(o.constitution.name)) : ''}${sr('Alignment', `${escHtml(a.tier.name)} ${a.value > 0 ? '+' : ''}${a.value}`)}${sr('Dao path', escHtml(p.name))}${s.daoPath && !s.daoReversalUsed ? `<div class="ch-dao-rev">Turn your Dao (once per life): ${['virtuous', 'neutral', 'demonic'].filter(id => id !== s.daoPath).map(id => `<button data-daorevert="${id}">${escHtml((DAO_PATHS[id]?.name || id).replace('The ', ''))}</button>`).join(' ')}</div>` : s.daoReversalUsed ? sr('Dao Reversal', 'Spent this life') : ''}` })()}
             ${sr('Title', gameState.titleInfo().unlocked.map(t => `<button class="ch-title${t.active ? ' active' : ''}" data-title="${t.id}">${escHtml(t.name || 'None')}</button>`).join(' '))}
+            ${(() => { const c = gameState.challengeInfo(); return sr('Challenge', c.modes.map(m => `<button class="ch-title${m.active ? ' active' : ''}" data-challenge="${m.id}"${c.locked ? ' disabled title="Chosen at the start of a life"' : ` title="${escHtml(m.desc)}"`}>${escHtml(m.name)}</button>`).join(' ')) })()}
+            ${(() => { const c = gameState.cosmeticInfo(); return sr('Spirit pet', c.pets.map(p => `<button class="ch-title${p.active ? ' active' : ''}" data-pet="${p.id}" title="${escHtml(p.desc || '')}">${escHtml(p.name)}</button>`).join(' ')) })()}
+            ${(() => { const c = gameState.cosmeticInfo(); return sr('Cave', c.caves.map(p => `<button class="ch-title${p.active ? ' active' : ''}" data-cave="${p.id}" title="${escHtml(p.desc || '')}">${escHtml(p.name)}</button>`).join(' ')) })()}
             ${sr('Weapon', s.equipped.weapon ? escHtml(ITEMS[s.equipped.weapon]?.name || s.equipped.weapon) : none)}
             ${sr('Artifact', s.equipped.artifact ? escHtml(ITEMS[s.equipped.artifact]?.name || s.equipped.artifact) : none)}
             ${sr('Techniques', `${s.techniques.length} of ${TECHNIQUES.length}`)}
@@ -1259,14 +1278,22 @@
     el.innerHTML = ''
     if (!s.events?.length) {
       el.innerHTML = '<div style="color:var(--dim);font-size:11px;text-align:center;padding:14px">No events yet…</div>'
-      return
+    } else {
+      for (const ev of s.events) {
+        const row = document.createElement('div')
+        row.className = `ev-row ${ev.type || 'neutral'}`
+        row.innerHTML = `${evText(ev)}<div class="ev-time">${fmtAgo(ev.ts)}</div>`
+        el.appendChild(row)
+      }
     }
-    for (const ev of s.events) {
-      const row = document.createElement('div')
-      row.className = `ev-row ${ev.type || 'neutral'}`
-      row.innerHTML = `${evText(ev)}<div class="ev-time">${fmtAgo(ev.ts)}</div>`
-      el.appendChild(row)
-    }
+    // M8 (world-flavor.md 11B–C): the scripture codex, unlocked as you climb.
+    const lore = gameState.loreInfo()
+    const sec = document.createElement('section')
+    sec.className = 'ev-lore'
+    sec.innerHTML = `<div class="ev-lore-h">Scriptures</div>${lore.map(x => `<div class="ev-lore-row${x.seen ? ' seen' : ''}">
+      <div class="ev-lore-n">${x.seen ? escHtml(x.name) : '???'} <span class="dim">${escHtml(x.cn)}</span></div>
+      <div class="ev-lore-t">${x.seen ? escHtml(x.text) : (x.unlocked ? 'The words are within reach.' : `Locked until ${escHtml(stageShortName(x.minStage))}`)}</div></div>`).join('')}`
+    el.appendChild(sec)
   }
 
   // ── Explore tab ───────────────────────────────────────────────────────────

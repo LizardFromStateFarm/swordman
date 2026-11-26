@@ -146,6 +146,11 @@ class GameState {
       visionOffer:    null,
       // M8 (world-flavor.md): a Secret Realm run
       secretRealm:    this._blankSecretRealm(),
+      // M8 cleanup: challenge mode, cosmetics, scripture codex
+      challenge:      'normal',
+      pet:            null,
+      cave:           null,
+      lore:           {},
       techniques:    ['qi_breathing'],
       root:          this._rollRoot(),
       // Phase 48 (active-cultivation.md): the Cultivate action's combo + cooldown. The active Qi loop.
@@ -5044,6 +5049,70 @@ class GameState {
     return { ok: true }
   }
 
+  _ensureFlavorFields() {
+    const s = this._s
+    if (!s) return
+    if (!s.challenge) s.challenge = 'normal'
+    if (s.pet === undefined) s.pet = null
+    if (s.cave === undefined) s.cave = null
+    if (!s.lore || typeof s.lore !== 'object') s.lore = {}
+  }
+
+  challengeInfo() {
+    const s = this._s
+    const cur = CHALLENGES.find(c => c.id === (s?.challenge || 'normal')) || CHALLENGES[0]
+    return { current: cur, locked: (s?.stageIndex || 0) > 0 || !!s?.awakened, modes: CHALLENGES.map(c => ({ ...c, active: c.id === cur.id })) }
+  }
+
+  setChallenge(id) {
+    const s = this._s, c = CHALLENGES.find(x => x.id === id)
+    if (!c) return { ok: false, reason: 'unknown' }
+    if ((s.stageIndex || 0) > 0 || s.awakened) return { ok: false, reason: 'started' }
+    s.challenge = id
+    this.addEvent({ text: `You take up ${c.name}. ${c.desc}`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  cosmeticInfo() {
+    const s = this._s
+    return {
+      pets: COSMETIC_PETS.map(p => ({ ...p, active: (s?.pet || 'none') === p.id })),
+      caves: COSMETIC_CAVES.map(c => ({ ...c, active: (s?.cave || 'none') === c.id })),
+    }
+  }
+
+  setPet(id) {
+    if (!COSMETIC_PETS.some(p => p.id === id)) return { ok: false, reason: 'unknown' }
+    this._s.pet = id === 'none' ? null : id
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  setCave(id) {
+    if (!COSMETIC_CAVES.some(c => c.id === id)) return { ok: false, reason: 'unknown' }
+    this._s.cave = id === 'none' ? null : id
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  loreInfo() {
+    const s = this._s || {}, seen = s.lore || {}
+    return SCRIPTURES.map(x => ({ ...x, seen: !!seen[x.id], unlocked: (s.stageIndex || 0) >= x.minStage }))
+  }
+
+  _checkLore() {
+    const s = this._s
+    if (!s) return
+    s.lore = s.lore || {}
+    for (const x of SCRIPTURES) {
+      if (!s.lore[x.id] && (s.stageIndex || 0) >= x.minStage) {
+        s.lore[x.id] = true
+        this.addEvent({ text: `Scripture found: ${x.name}.`, type: 'special' })
+      }
+    }
+  }
+
   // ── M8 (world-flavor.md): Secret Realm Dungeons ──────────────────────────────────────────────────────────
 
   _blankSecretRealm() { return { active: false, id: null, room: 0, maxRooms: 0, log: [] } }
@@ -5162,6 +5231,7 @@ class GameState {
     this._ensurePhase18Fields()   // M6 (family-depth.md): the ancestral-vision fields
     this._ensurePhase19Fields()   // M8 (world-flavor.md): world epochs + the cosmetic title
     this._ensureSecretRealmFields()   // M8: the Secret Realm run state
+    this._ensureFlavorFields()        // M8 cleanup: challenge / cosmetics / lore
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -5202,6 +5272,9 @@ class GameState {
     if (s.daoPath) { const dp = this.daoPathInfo(); qMul(`Dao: ${dp.name}`, dp.qps); bAdd(`Dao: ${dp.name}`, dp.bt) }
     if (s.vision) { const v = FAMILY_VISIONS.find(x => x.id === s.vision); if (v?.qps) qMul('Ancestral vision', v.qps) }
     const ep = this.epochInfo(); if (ep.qi !== 1) qMul('Spiritual age', ep.qi)
+    const ch = CHALLENGES.find(c => c.id === (s.challenge || 'normal')) || CHALLENGES[0]
+    if (ch.qi !== 1) qMul(`Challenge: ${ch.name}`, ch.qi)
+    if (ch.bt) bAdd(`Challenge: ${ch.name}`, ch.bt)
 
     // Equipped weapon bonuses
     const weapId = s.equipped.weapon
@@ -5388,6 +5461,7 @@ class GameState {
     J.push(() => this._tickFamily(), () => this._tickAlignment(), () => this._tickArena(), () => this._tickBranches(), () => this._tickWorldSects(),
       () => this._tickWorldLives(), () => this._tickRepute(yr), () => this._tickRival(yr), () => this._tickRanks(yr), () => this._tickSoulTech(),
       () => this._tickEpoch(yr),
+      () => this._checkLore(),
       () => { this._syncPersons(); if (s.ownSect?.founded && !s.interlude) this._roadRoll('gate', null, `the gate of ${s.ownSect.name}`) })
   }
   _drainYear(dt) {
