@@ -90,14 +90,26 @@ class NavUI {
     if (sig === this._availSig) return
     this._availSig = sig
     this.avail = new Set(views)
+    // Phase 50: if the open view's whole group is now closed, fall back to the first open group's
+    // first offered view; otherwise within the group as before.
     const g = this.groupOf(this.view)
-    if (g && !this._offered(this.view)) return this.go(g.views.find(v => this._offered(v[0]))[0])
+    if (!g || !g.views.some(v => this._offered(v[0]))) {
+      const ng = NAV_GROUPS.find(x => x.views.some(v => this._offered(v[0])))
+      if (ng) return this.go(ng.views.find(v => this._offered(v[0]))[0])
+    } else if (!this._offered(this.view)) {
+      return this.go(g.views.find(v => this._offered(v[0]))[0])
+    }
     this._showPanel()
   }
 
   _showPanel() {
     const g = this._groupDef(this.group)
-    this.tabs.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.group === this.group))
+    // Phase 50: a group with no offered view is hidden entirely (progressive disclosure).
+    this.tabs.querySelectorAll('.tab').forEach(b => {
+      const gd = this._groupDef(b.dataset.group)
+      b.classList.toggle('hidden', !gd.views.some(v => this._offered(v[0])))
+      b.classList.toggle('active', b.dataset.group === this.group)
+    })
     this.subs.querySelectorAll('.subtab').forEach(b => {
       b.classList.toggle('hidden', b.dataset.in !== this.group || !this._offered(b.dataset.tab))
       b.classList.toggle('active', b.dataset.tab === this.view)

@@ -73,6 +73,7 @@ class TutorialUI {
   onView(view) {
     const info = this.gs.tutorialInfo()
     if (info.off) return
+    if (this.nav && !this.nav._offered(view)) return   // Phase 50: no lesson for a locked system
     const l = TUTORIAL_LESSONS.find(x => x.trigger.view === view)
     if (!l || info.seen[l.id] || this.queue.includes(l.id) || this.cur?.lesson.id === l.id) return
     this.queue.push(l.id)
@@ -91,14 +92,15 @@ class TutorialUI {
     if (info.off) { this.queue.length = 0; return }
     const inBattle = this._busy() === 'battle'
     if (this._busy() && !inBattle) return
-    // 1) the HUD tour, 2) a view lesson for the view that's open, 3) an unlock on screen. One at a time.
+    // 1) the opening lessons, 2) a view lesson for the view that's open, 3) an unlock on screen. One at a time.
+    // Phase 50: a guided-only lesson (the HUD tour) never auto-plays — it lives in the Guide.
     const pick = () => {
       if (inBattle) return TUTORIAL_LESSONS.find(l => l.inBattle && !info.seen[l.id] && this._visible(l.trigger.el))
-      const start = TUTORIAL_LESSONS.find(l => l.trigger.start && !info.seen[l.id])
+      const start = TUTORIAL_LESSONS.find(l => l.trigger.start && !l.guideOnly && !info.seen[l.id])
       if (start) return start
-      this.queue = this.queue.filter(id => !info.seen[id] && this._lesson(id).trigger.view === this.nav.view)
+      this.queue = this.queue.filter(id => !info.seen[id] && this._lesson(id).trigger.view === this.nav.view && this.nav._offered(this.nav.view))
       if (this.queue.length) return this._lesson(this.queue.shift())
-      return TUTORIAL_LESSONS.find(l => l.trigger.el && !l.inBattle && !info.seen[l.id] && this._visible(l.trigger.el))
+      return TUTORIAL_LESSONS.find(l => l.trigger.el && !l.guideOnly && !l.inBattle && !info.seen[l.id] && this._visible(l.trigger.el))
     }
     const l = pick()
     if (l) this.play(l.id)
@@ -292,6 +294,16 @@ class TutorialUI {
           html += `<button class="tut-row ${st.cls}" data-tut-play="${l.id}"${locked ? ' disabled' : ''} title="${esc(locked ? st.text : 'Show this tip')}">
             <span class="tut-r-dot"></span><span class="tut-r-t">${esc(l.title)}</span><span class="tut-r-s">${esc(st.text)}</span>
             ${locked ? Icon('lock') : '<span class="tut-r-go">›</span>'}</button>`
+        }
+      }
+      // Phase 50: what is still closed, and why — the player can see the road ahead without guessing.
+      if (typeof lockedGroups === 'function') {
+        const locked = lockedGroups(this.gs.get())
+        if (locked.length) {
+          html += `<div class="tut-g-h">Still locked</div>`
+          for (const g of locked) {
+            html += `<div class="tut-row locked" title="${esc(g.reason)}"><span class="tut-r-dot"></span><span class="tut-r-t">${esc(g.name)}</span><span class="tut-r-s">${esc(g.reason)}</span>${Icon('lock')}</div>`
+          }
         }
       }
       html += `<button class="tut-reset" data-tut-set="reset">Show every tip again</button></div>`

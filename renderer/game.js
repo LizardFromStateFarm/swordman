@@ -496,9 +496,13 @@
     if (layoutUI.mode === 'banner') bannerMenus.update(s, fromTick)   // 1.7b: quick-action buttons + open menu
 
     // 1.8b-1: the attention list feeds the strip, the group badges and the banner summary
-    const att = collectAttention(s, gameState)
+    // Phase 50 (progressive disclosure): only unlocked views are navigable, and the "needs you" layer
+    // never points at a system the player cannot reach yet. Sect sub-views still follow your standing.
+    const unlocked = (typeof availableViews === 'function' ? availableViews(s) : ALL_VIEWS)
+      .filter(v => !v.startsWith('sect') || SectView.viewsFor(s).includes(v))
+    nav.setAvailable(unlocked)
+    const att = collectAttention(s, gameState).filter(i => nav._offered(i.view))
     attentionUI.render(att)
-    nav.setAvailable(ALL_VIEWS.filter(v => !v.startsWith('sect') || SectView.viewsFor(s).includes(v)))   // 1.8b-5
     nav.update(s, att, k => gameState.automationUnlocked(k))
     // A banter bubble never sits on top of a popup (1.8c bug: it covered the death + ascension cards)
     if (isPopupOpen()) document.getElementById('banter-bubble').classList.add('hidden')

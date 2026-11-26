@@ -59,10 +59,14 @@ const assert = (c, m) => { if (!c) { console.log('FAIL', m); process.exitCode = 
   assert(new Set(ids).size === ids.length, `${ids.length} lessons, unique ids`)
   const groups = new Set(G.map(g => g.id))
   assert(L.every(l => groups.has(l.group)), 'every lesson is in a real group')
-  assert(L.every(l => ['start', 'view', 'el'].filter(k => l.trigger[k]).length === 1), 'every lesson has exactly one trigger kind')
-  assert(L.filter(l => l.trigger.start).map(l => l.id).join() === 'intro,hud', 'two start lessons, in order: the intro scroll, then the HUD tour')
+  // Phase 50: a guideOnly lesson (the HUD tour) never auto-plays and carries no trigger; every other lesson
+  // has exactly one trigger kind.
+  assert(L.every(l => l.guideOnly ? !['start', 'view', 'el'].some(k => l.trigger[k]) : ['start', 'view', 'el'].filter(k => l.trigger[k]).length === 1),
+    'every lesson has exactly one trigger kind (guideOnly lessons have none)')
+  assert(L.filter(l => l.trigger.start && !l.guideOnly).map(l => l.id).join() === 'intro', 'the only auto-played opening is the intro scroll')
+  assert(L.find(l => l.id === 'hud')?.guideOnly === true, 'the HUD tour lives in the Guide (guideOnly)')
   const intro = L.find(l => l.intro)
-  assert(intro && intro.steps.length === 5 && intro.steps.every(s => s.title && s.text && s.text.length <= 260 && !s.at), 'the intro: 5 titled cards (≤ 260 chars, no spotlight)')
+  assert(intro && intro.steps.length === 1 && intro.steps.every(s => s.title && s.text && s.text.length <= 260 && !s.at), 'the intro: 1 titled card (≤ 260 chars, no spotlight)')
   assert(L.filter(l => !l.intro).every(l => l.steps.length && l.steps.every(s => s.text && s.text.length <= 200 && Array.isArray(s.at) && s.at.length)),
     'every step has text (≤ 200 chars) and a selector')
   assert(L.every(l => !l.trigger.el || l.opens), 'every unlock lesson says when it appears (the Guide line)')

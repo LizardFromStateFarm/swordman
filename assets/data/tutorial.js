@@ -29,17 +29,11 @@ const TUTORIAL_LESSONS = [
   { id: 'intro', group: 'basics', title: 'The story so far', trigger: { start: true }, intro: true,
     steps: [
       { title: 'The Nine Provinces',
-        text: 'Mortals are born, spend most of their lives working, and die like hot garbage in about eighty years. Most consider this a life well lived.' },
-      { title: 'An awakening',
-        text: 'One morning, your spiritual root stirs, and suddenly you can feel the Qi in the world. Naturally, you conclude this means you are destined for greatness. You are probably wrong. But for now, confidence is free.' },
-      { title: 'The path',
-        text: 'Sit. Breathe. Gather Qi until your dantian can hold no more, then break through to the next realm. Fail, and half of it scatters. Succeed, and become slightly insufferable.' },
-      { title: 'No one climbs alone',
-        text: 'Join a sect, or found your own. Marry, raise heirs, build a clan that remembers you, because you will die. Probably more than once.' },
-      { title: 'The peak',
-        text: 'At the summit waits Immortality. Each life carries your bloodline a little higher, until one of you walks through the heavenly gate. Everything else is face-slapping along the way.' },
+        text: 'You are born a mortal; one morning your root stirs and the climb begins. Sit, breathe, gather Qi — break through, or scatter half of it. Join or found a sect, marry, raise an heir, and carry the bloodline higher each life. The peak is Immortality.' },
     ] },
-  { id: 'hud', group: 'basics', title: 'Your first steps', trigger: { start: true },
+  // Phase 50b: the 10-step HUD tour no longer auto-plays at the start — the opening is the intro card
+  // plus the first view's own lesson. The tour lives in Settings → Guide as a replayable lesson.
+  { id: 'hud', group: 'basics', title: 'Your first steps', guideOnly: true, trigger: {}, opens: 'Your first steps',
     steps: [
       { at: ['#sprite-wrap'], title: 'Your cultivator',
         text: 'This is you. Send expeditions and missions out to gather materials while you are away; cultivate yourself to climb.' },

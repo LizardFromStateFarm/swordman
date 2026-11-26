@@ -151,6 +151,7 @@ docs/
     active-cultivation.md ← Phase 48 (the active rework): the active Qi loop — Cultivate/Draw Qi, the passive trickle, Active Mode default, both mini-games charge-free; the Mortal gate
     mortal-phase.md     ← Phase 49: every life starts a mortal (meridians shut, no Qi); Awaken at body tier D opens Qi Condensation
     minigames.md        ← Phase 52 (52a–d built): the practice mini-game registry — Push-Ups (beat) / Running (stride) / Lift (hold) + Meridian Flow + Memorization, the ExerciseScene figure, the reward/cooldown/unlock contract, how to add a game
+    unlocks.md          ← Phase 50: progressive disclosure — the unlock schedule, availableViews/lockedGroups, nav groups that hide, attention filtered to unlocked views, the trimmed opening
     crafting.md         ← Recipes, equipment, pills, elixirs (Phase 2)
     sects.md            ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
@@ -249,6 +250,7 @@ renderer/
     layout.js           ← LayoutUI — window layout modes: layout picker, body[data-layout], canvas sizing, banner peek (Phase 6E)
     banner-menus.js     ← BannerMenus — banner strip quick-action dropdowns: missions/explore/craft/learn (1.7b)
     nav.js              ← NavUI + NAV_GROUPS — six nav groups → sub-tab views, badges, automation chip (1.8b-1)
+    unlocks.js          ← Phase 50: viewUnlocked / availableViews / unlockReason / lockedGroups — which views a save may see (DOM-free)
     attention.js        ← collectAttention() (DOM-free) + AttentionUI — the "needs you" strip/cards (1.8b-1)
     breakdowns.js       ← buildBreakdown() (DOM-free) + BreakdownUI — "why" popovers for any [data-bd] number, stageShortName() (1.8b-2)
     person-card.js      ← PersonCard — tap any [data-pid] name for that person's card: realm, root, temper, character, what they think of you, kin (tap through, Back), where to act (Phase 28 / 4.2)
@@ -306,6 +308,7 @@ assets/
     cultivation.js      ← Phase 48 (active-cultivation.md): the active/passive Qi economy — PASSIVE_QI_SHARE, the Cultivate-action params + cooldowns
     minigames.js        ← Phase 52 (minigames.md): the practice mini-game registry (MINIGAMES, TIMING, LIFT_ITEMS, EXERCISE_POSES) — the games diverge from here
     mortal.js           ← Phase 49b (mortal-phase.md): the mortal arc — MORTAL_ARC tuning + MORTAL_BEATS (11 mortal-only beats, the village life lived before the Dao)
+    unlocks.js          ← Phase 50 (unlocks.md): UNLOCK_GROUPS / UNLOCK_VIEWS / UNLOCK_RULES — the progressive-disclosure schedule (what opens at each stage)
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     tutorial.js         ← TUTORIAL_LESSONS + TUTORIAL_GROUPS — the coach-mark lessons: trigger (start / view / el), selectors to spotlight, text, Guide lines (task 1.23)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)
