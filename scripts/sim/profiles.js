@@ -54,8 +54,8 @@ const LIFE_TARGETS_H = {
 // Immortality pace — ACTIVE-FIRST and shorter (user 2026-11-26: "an active game now … push to a shorter completion
 // time"). The old casual 380–540h target was measured on the idle economy and is stale. These are the bands the
 // simulator flags; casual is looser because it acts only every 30 min.
-const FIRST_ASCENSION_H = { active: [150, 260], casual: [300, 480] }
-const GENERATIONS_TO_ASCEND = [12, 22]
+const FIRST_ASCENSION_H = { active: [180, 300], casual: [320, 520] }
+const GENERATIONS_TO_ASCEND = [12, 24]
 // Phase 49b (docs/systems/mortal-phase.md): the mortal arc's length — the opening must be a short ACTIVE arc, not a
 // wall-clock grind. Target = open hours from a life's start to its Awakening (the bot's 'awaken' milestone). It is
 // Health-gated (the bitter trial's cost + regen), ~9–12 min for a mini-game-spamming min-maxer and longer for a

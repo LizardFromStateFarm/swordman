@@ -18,7 +18,7 @@ const WAR_INJURY_AMOUNT = 12
 // ── 23B: Bloodline Quality ───────────────────────────────────────────────────
 const BLOODLINE_CAP            = 100
 const BLOODLINE_G_BASE         = 3     // QA 2026-11-26: active-first, shorter completion — every life adds a floor
-const BLOODLINE_G_SELF         = 14    // QA 2026-11-26: was 8 → 14 (~9 full lives / ~200h active to the 100 gate)
+const BLOODLINE_G_SELF         = 16    // QA 2026-11-26: was 8 → 16 (~11–13 lives / ~230–260h active to the 100 gate)
 const BLOODLINE_G_PARTNER      = 2.5     // Phase 16-lite (M2 task 2.5): spouse's maxStage this life (current or last)
 const BLOODLINE_G_HEIR         = 2.5     // 2.6c: × (heir stage / 22)² — the heir who takes over the clan
 const BLOODLINE_G_TRAUMA_HEIR  = 1       // 2.6c: flat, if that heir won their place through trauma (user, 2026-09-26)

@@ -136,7 +136,8 @@ function readyTrial(sim) {
       gains.push(+(now - last).toFixed(3)); last = now
     }
     assert(last >= cap, `the bloodline reaches the cap within 40 full lives (${gains.length} lives)`)
-    assert(gains.length >= 8, `reaching the cap takes many reincarnations, not a handful (${gains.length} lives)`)
+    // QA 2026-11-26: active-first, shorter completion — a full-realm life adds ~16 BQ, so ~7 full lives reach the cap.
+    assert(gains.length >= 6, `reaching the cap takes many reincarnations, not a handful (${gains.length} lives)`)
     assert(gains[0] > gains[gains.length - 1], `each life adds less as the bloodline thickens (${gains[0]} → ${gains[gains.length - 1]})`)
   }
 })()

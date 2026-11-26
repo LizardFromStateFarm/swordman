@@ -51,9 +51,10 @@ Three linked changes (user 2026-10-03) turn the pre-Immortal game into a long bl
 instead of a ~4-life gamble. There is **no post-Immortal content** — the game still ends at the first Immortality.
 
 > **QA re-base 2026-11-26 (active-first, shorter completion — user):** `BLOODLINE_G_BASE` 1 → 3 and
-> `BLOODLINE_G_SELF` 8 → 14, so a full-realm life adds ~15 BQ (~9 full lives / a normal active run ~200h to the
-> 100 gate). The BQ-100 requirement and its ×2 Qi at cap are unchanged. The sim's Immortality bands were re-based
-> too (active 150–260h, 12–22 lives; see `docs/systems/qa-sim.md`).
+> `BLOODLINE_G_SELF` 8 → 16, so a full-realm life adds ~16 BQ and ~11–13 lives reach the 100 gate (~230–260h active).
+> Confirmed by a 260h active run: BQ reached 100 by life 13, but the run ended before that final life climbed back to
+> the peak to attempt — so real completion is ~260–300h. The BQ-100 requirement and its ×2 Qi at cap are unchanged.
+> The sim's Immortality bands were re-based too (active 180–300h, 12–24 lives; see `docs/systems/qa-sim.md`).
 - **`ASCENSION_MIN_BLOODLINE = 100`** — `attemptAscension()` is refused below it (`reason: 'bloodline_too_low'`, no
   roll, no death). `ascensionBreakdown()` returns `req: { need, have, met }`, and the UI (the Character tile, the
   Trial overlay's lock note + refused button, the Ascension + Bloodline breakdown cards) explains the lock.

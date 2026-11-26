@@ -103,10 +103,11 @@ invariant violations, 2 = harness crashed / bad `--set`.
   (`active.gen1 [1,5]`, `casual.gen1 [8,24]` — active-first 2026-11-26) — flags if a profile's median life falls
   outside its band. **Immortality pace**: the line under the "Body, sect politics, deeds, rankings" table prints
   each profile's runs that reached Immortality, the hour and the life number (`lineage.immortalGen`); the
-  **representative profile (`active`)** is flagged outside `FIRST_ASCENSION_H.active [150,260]` h or
-  `GENERATIONS_TO_ASCEND [12,22]` lives, or when a run of ≥ its band never gets there. Casual's looser band is
-  `[300,480]` h. (2026-11-26: shorter active completion; the old casual 380–540h / 30–45 lives target was measured
-  on the idle economy and retired.)
+  **representative profile (`active`)** is flagged outside `FIRST_ASCENSION_H.active [180,300]` h or
+  `GENERATIONS_TO_ASCEND [12,24]` lives, or when a run of ≥ its band never gets there. Casual's looser band is
+  `[320,520]` h. (2026-11-26: shorter active completion; the old casual 380–540h / 30–45 lives target was measured
+  on the idle economy and retired. A 260h active run confirmed BQ reaches 100 by life 13; the final climb adds
+  ~30–40h.)
   A **Family** table (family.md) follows it: marriage events / crises, spouses lost, duels won/lost/fled, affairs +
   discoveries, reaction mix, children born/lost per life (from `lastReincarnation.familyTally`).
   **M2 task 2.5** added three family columns to the same table (share of lives married, mean children per life, share
