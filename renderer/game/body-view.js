@@ -18,9 +18,10 @@ const BodyView = {
   render(s, el, gs, h) {
     this.gs = gs; this.h = h
     const b = gs.bodyInfo(), mg = gs.minigameInfo(), list = gs.temperingList(), lift = gs.liftItemInfo()
+    const sp = gs.sparringInfo ? gs.sparringInfo() : null
     this.ci = gs.cloneInfo?.() || null
     el.innerHTML = `<div class="fam-view body-view">
-      <div class="fam-col">${this._hero(b, lift)}${this._crisis(b)}${this._cloneCrisis()}${this._trial(b, s)}${this._active(b)}${this._clone(list)}${this._games(mg)}${this._marks(b)}${this._auto(s, list)}</div>
+      <div class="fam-col">${this._hero(b, lift)}${this._crisis(b)}${this._cloneCrisis()}${this._trial(b, s)}${this._active(b)}${this._clone(list)}${this._sparring(sp)}${this._games(mg)}${this._marks(b)}${this._auto(s, list)}</div>
       <div class="fam-col">${this._methods(list, s)}${this._history(b)}</div></div>`
     if (!this._wired) {
       this._wired = true
@@ -118,6 +119,18 @@ const BodyView = {
       <div class="bd-prog"><div data-bd-prog="${a.startedAt}:${a.endsAt}" style="width:${Math.min(100, (Date.now() - a.startedAt) / (a.endsAt - a.startedAt) * 100)}%"></div></div>
       <div class="bd-act-meta">+${h.fmt(a.xp)} body XP${m.qiMult && m.qiMult < 1 ? ` · <span class="down">Qi/s ×${m.qiMult} while it runs</span>` : ''}${m.group === 'ordeal' ? ' · stops at its peak for your answer' : ''}</div>
       <button class="fa-quiet" data-bd-act="cancel">Break off (what it cost is spent)</button></div>`
+  },
+
+  // Sparring (no-Qi body training, user 2026-11-26): non-lethal bouts with villagers/peers from the first life.
+  _sparring(sp) {
+    if (!sp) return ''
+    const h = this.h
+    const card = o => `<button class="fa-btn bd-game bd-spar-btn" data-bd-act="spar" data-id="${h.esc(o.id)}" ${o.lock ? 'disabled' : ''} title="${h.esc(o.desc)}">
+      <span class="fa-g">${Icon.g('duel')}</span><span class="fa-t"><span class="fa-n">${h.esc(o.name)}</span>
+      <span class="fa-e">+${h.fmt(o.xp)} body XP · ${this.pct(o.chance)} to win${o.lock ? ` · ${h.esc(o.lock)}` : ''}</span></span></button>`
+    return `<div class="fam-sec bd-spar"><div class="fam-sec-title"><span>Sparring</span><span class="fam-count">no Qi</span></div>
+      <div class="fa-grid">${sp.list.map(card).join('')}</div>
+      <div class="bd-foot">A non-lethal bout: a little Health, body XP win or lose, never kills. Won ${sp.wins} · lost ${sp.losses}${sp.cdIn > 0 ? ` · catching your breath <span data-bd-left="${Date.now() + sp.cdIn * 1000}">${h.fmtTime(sp.cdIn)}</span>` : ''}.</div></div>`
   },
 
   _games(mg) {
@@ -303,6 +316,13 @@ const BodyView = {
     }
     if (act === 'mend') return say(gs.mendScar(+b.dataset.i))
     if (act === 'auto') return say(gs.setAutomation('autoTemper', b.dataset.on === '1'))
+    // Sparring (no Qi)
+    if (act === 'spar') {
+      const r = gs.spar(b.dataset.id)
+      if (r?.ok) h.flash(r.win ? `Spar won · +${h.fmt(r.xp)} body XP` : `Spar lost, lesson kept · +${h.fmt(r.xp)} body XP`, r.win ? 'positive' : 'neutral')
+      else h.flash({ locked: 'Train your body higher first', cooldown: 'Catch your breath', hurt: 'Too hurt to spar' }[r?.reason] || 'Not now', 'negative')
+      return
+    }
     // Your other self
     const csay = r => { if (!r?.ok) h.flash({ items: 'Not enough to pay for it', qi: 'Not enough Qi to form it', busy: 'Your other self is busy', yours: 'You are doing this one yourself', once: 'Done this life', rest: 'It is still shattered', no_beast: 'Needs a tamed spirit beast' }[r?.reason] || 'Not now', 'negative') }
     if (act === 'clone-begin') {

@@ -111,6 +111,8 @@ const TUTORIAL_LESSONS = [
         text: 'You begin a mortal. Qi will not flow until you Awaken, and that needs a Hardened body (tier D): more Health, faster healing, stronger fists.' },
       { at: ['#tab-physique .bd-games', '#tab-physique .fa-grid', '#tab-physique'], title: 'Practice',
         text: 'Push-Ups are the fastest early body XP. Start a tempering method too — it runs on a timer, even while you are away.' },
+      { at: ['#tab-physique .bd-spar', '#tab-physique'], title: 'Spar',
+        text: 'Spar with the village youths: no Qi needed, a little Health, body XP win or lose. It is the quickest early way to toughen up.' },
       { at: ['#btn-cultivate', '#sprite-wrap'], title: 'Awaken',
         text: 'When the body reaches Hardened (D), the Awaken button opens your meridians and Qi Condensation begins.' },
     ] },

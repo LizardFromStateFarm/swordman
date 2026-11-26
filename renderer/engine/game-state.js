@@ -148,6 +148,8 @@ class GameState {
       secretRealm:    this._blankSecretRealm(),
       // Free edition: active-time counter for the optional rewarded-ad prompt (never in the paid edition)
       ad:             { sec: 0, next: (typeof AD_PROMPT_ACTIVE_SECONDS !== 'undefined' ? AD_PROMPT_ACTIVE_SECONDS : 1800) },
+      // No-Qi body training: sparring with the village/peers (available from the first life)
+      sparring:       this._blankSparring(),
       // M8 cleanup: challenge mode, cosmetics, scripture codex
       challenge:      'normal',
       pet:            null,
@@ -5295,6 +5297,7 @@ class GameState {
     this._ensureSecretRealmFields()   // M8: the Secret Realm run state
     this._ensureFlavorFields()        // M8 cleanup: challenge / cosmetics / lore
     this._ensureAdFields()            // monetization: the rewarded-ad cadence
+    this._ensureSparringFields()      // no-Qi body training
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -8949,6 +8952,69 @@ class GameState {
     if (u.bodyTier != null && (this._s.body?.tier ?? 0) < u.bodyTier) return `Unlocks at ${BODY_TIERS[u.bodyTier].name}`
     if (u.stage != null && this._s.stageIndex < u.stage) return 'Unlocks once you cultivate'
     return null
+  }
+
+  // ── Sparring (no-Qi body training; user 2026-11-26) ────────────────────────────────────────────────────────
+  // A non-lethal bout with a villager/peer: no cultivation Qi, a little Health, body XP win or lose, never kills.
+
+  _blankSparring() { return { cdUntil: 0, wins: 0, losses: 0 } }
+
+  _ensureSparringFields() {
+    const s = this._s
+    if (!s) return
+    if (!s.sparring || typeof s.sparring !== 'object') s.sparring = this._blankSparring()
+    if (typeof s.sparring.cdUntil !== 'number') s.sparring.cdUntil = 0
+    if (typeof s.sparring.wins !== 'number') s.sparring.wins = 0
+    if (typeof s.sparring.losses !== 'number') s.sparring.losses = 0
+  }
+
+  _sparChance(o) {
+    const tier = this._s.body?.tier ?? 0
+    const S = typeof SPARRING !== 'undefined' ? SPARRING : { healthCost: 6 }
+    const base = o.chance ?? 0.5
+    return Math.max(0.15, Math.min(0.95, base + (tier - (o.minTier || 0)) * 0.08))
+  }
+  _sparXp(o, win = true) {
+    const S = typeof SPARRING !== 'undefined' ? SPARRING : {}
+    const tier = this._s.body?.tier ?? 0
+    return Math.round((win ? (S.winXp || 24) : (S.loseXp || 10)) * (o.xpMult || 1) * (1 + 0.25 * tier))
+  }
+
+  sparringInfo() {
+    const s = this._s, sp = s.sparring || this._blankSparring()
+    const S = typeof SPARRING !== 'undefined' ? SPARRING : { healthCost: 6, cooldownSecs: 45, opponents: [] }
+    const cdIn = Math.max(0, Math.ceil(((sp.cdUntil || 0) - Date.now()) / 1000))
+    const tier = s.body?.tier ?? 0
+    const list = (S.opponents || []).map(o => {
+      const stageLock = tier < (o.minTier || 0)
+      const hurtLock = (s.health ?? 100) <= (S.healthCost || 6) + 1
+      const lock = stageLock ? `Train to ${BODY_TIERS[o.minTier].name} first` : hurtLock ? 'Too hurt to spar' : cdIn > 0 ? 'Catch your breath' : null
+      return { id: o.id, name: o.name, desc: o.desc, xp: this._sparXp(o, true), chance: this._sparChance(o), lock, ok: !lock }
+    })
+    return { cdIn, list, healthCost: S.healthCost || 6, wins: sp.wins || 0, losses: sp.losses || 0 }
+  }
+
+  spar(id) {
+    const s = this._s, S = typeof SPARRING !== 'undefined' ? SPARRING : null
+    if (!S) return { ok: false, reason: 'unknown' }
+    const o = S.opponents.find(x => x.id === id)
+    if (!o) return { ok: false, reason: 'unknown' }
+    if ((s.body?.tier ?? 0) < (o.minTier || 0)) return { ok: false, reason: 'locked' }
+    const sp = s.sparring || (s.sparring = this._blankSparring())
+    if (Date.now() < (sp.cdUntil || 0)) return { ok: false, reason: 'cooldown' }
+    if ((s.health ?? 100) <= (S.healthCost || 6) + 1) return { ok: false, reason: 'hurt' }
+    sp.cdUntil = Date.now() + (S.cooldownSecs || 45) * 1000
+    const chance = this._sparChance(o)
+    const win = Math.random() < chance
+    const dmg = this._randInt(o.hurt || [3, 7])
+    s.health = Math.max(1, (s.health ?? 100) - dmg)   // never kills
+    const got = this._gainBodyXp(this._sparXp(o, win))
+    if (win) sp.wins = (sp.wins || 0) + 1; else sp.losses = (sp.losses || 0) + 1
+    this.addEvent({ text: win
+      ? `You win the spar with the ${o.name.toLowerCase()} — +${fmtQi(got)} body XP.`
+      : `You lose the spar with the ${o.name.toLowerCase()}, but learn from it — +${fmtQi(got)} body XP.`, type: win ? 'positive' : 'neutral' })
+    this._recalc(); this._notify()
+    return { ok: true, win, xp: got, damage: dmg, chance }
   }
   _mgHourCount(id) { const g = this._s.minigames[id], now = Date.now(); g.hour = (g.hour || []).filter(t => now - t < 3600000); return g.hour.length }
   _flowHourCount() { return this._mgHourCount('flow') }

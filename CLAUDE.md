@@ -320,6 +320,7 @@ assets/
     family-depth.js     ← M6 (family-depth.md): FAMILY_VISIONS — the Ancestral Visions offered to a clan heir
     world-epochs.js     ← M8 (world-flavor.md): WORLD_EPOCHS — the ages that cycle on the game clock and scale Qi/s
     dungeons.js         ← M8 (world-flavor.md): SECRET_REALMS — the push-your-luck dungeon runs
+    sparring.js         ← no-Qi body training (SPARRING): opponents, chance/XP/hurt tuning; Path → Body
     variant.js          ← Phase 53 (monetization.md): APP_VARIANT — free (optional rewarded ads) vs paid (ad-free); build-ios-web rewrites it
     monetization.js     ← Phase 53: AD_PROMPT_ACTIVE_SECONDS / AD_REWARD / AD_UNIT_IDS — the optional rewarded-ad tuning
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)

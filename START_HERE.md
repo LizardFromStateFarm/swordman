@@ -360,6 +360,18 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-11-26 — part 121
+Agent: **Sparring — no-Qi body training** (user: "for the beginning and for training body we should add sparring with no qi").
+  - New `assets/data/sparring.js`: 4 tier-gated opponents (Village Youths F → Old Hunter E → Drill Master D →
+    Passing Cultivator C), 45 s cooldown, small Health cushion, win/lose body XP.
+  - Engine: `s.sparring = { cdUntil, wins, losses }`; `sparringInfo()` + `spar(id)` — **no cultivation Qi**,
+    Health floors at 1 (never kills), a loss still pays XP, chance = base + 8%/tier above the gate.
+  - UI: a **Sparring** section on Path → Body ("no Qi", chance + projected XP, won/lost, cooldown), wired through
+    the BodyView click handler; a tutorial step in `v_physique` (after Practice, before Awaken).
+  - Tests: `npm test` clean · `npm run checks` **2415 ok** (new `checks/sparring.js`, 12). Docs:
+    body-constitution.md → "Sparring"; PLAN Phase 54.
+  Next: re-test the mortal opening; then mobile device pass + store assets.
+
 Date: 2026-11-26 — part 120
 Agent: **Mortal-loop clarity + Secret Realm polish** (user playtest feedback).
   - **The confusion (user):** "before awakening how do you get Qi?" — you don't; Awakening is body tier D. The real

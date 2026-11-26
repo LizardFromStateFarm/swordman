@@ -315,3 +315,22 @@ derived.maxHealth, derived.healthRegenSeconds, derived.btQiKeepBody
 - Starting a mini-game spends its charge; giving up (✕ / Esc) keeps it spent (said on the ✕ title).
 - The sim bot tempers, answers the crisis + tier trials, uses Auto-Temper (idle profiles) and plays both mini-games (active + casual) since the final QA pass (bot.js `body()` / `minigames()`).
 - Smoke: `scripts/smoke/scenarios/body.js` (4 modes, both games played through the real overlay).
+
+## Sparring (no-Qi body training — user 2026-11-26)
+
+A second, **combat-flavoured** body-training action for the opening: a non-lethal bout with a villager/peer.
+Available from the **first life** (mortal, no Qi), it costs a little Health and pays **body XP win or lose**.
+
+- Data: `assets/data/sparring.js` — `SPARRING` (cooldown 45 s, health cushion 6, win/lose XP, four opponents gated
+  by body tier: Village Youths F → Old Hunter E → Drill Master D → Passing Cultivator C).
+- State: `s.sparring = { cdUntil, wins, losses }`, filled by `_ensureSparringFields()`; per life.
+- API: `sparringInfo()` (each opponent + chance + projected XP + lock) and `spar(id)`.
+  - **No cultivation Qi** is spent or gained; Health floors at **1** (never kills); a loss still pays XP.
+  - Win chance = the opponent's base + 8% per body tier above its gate (0.15–0.95).
+  - XP scales with the opponent and the body tier, then `_gainBodyXp` (bank/cap rules apply).
+- UI: a **Sparring** section on Path → Body ("no Qi", each opponent's chance + XP, won/lost record, cooldown);
+  a step in the Body tutorial.
+- Checks: `scripts/sim/checks/sparring.js` (12).
+
+Why: the mortal opening should offer an **active, physical** way to train the body (and a taste of combat) that is
+clearly separate from the Qi loop — the player fights with fists, not Qi, until the Awakening.

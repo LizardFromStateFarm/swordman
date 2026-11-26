@@ -138,6 +138,7 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 20A–B | Permadeath, Challenge modes | ⬜ | M8 |
 | 9C–D | Day/night + seasons, **cosmetic ambience only** (no bonuses) | ◐ 2026-11-26 (day/night built; seasons pending) | M8 |
 | 53 | **Monetization — free & paid editions (发行)**: a free app with **optional rewarded ads** (ask every 30 min of active play, small boon, declining free) and a **$2 paid app with no ads**; build-time `APP_VARIANT`; AdMob/consent/store prep (user 2026-11-26) | ◐ 2026-11-26 (game-side framework + variant build + docs; AdMob plugin/ids + store records are human setup) | Release |
+| 54 | **Sparring (无气对练)**: a non-lethal, **no-Qi** body-training bout from the first life — costs a little Health, pays body XP win or lose, four tier-gated opponents (Village Youths → Old Hunter → Drill Master → Passing Cultivator), 45 s cooldown, never kills; shown on Path → Body + a tutorial step (user 2026-11-26) | ✅ 2026-11-26 | M3/v1 (body) |
 
 ---
 
