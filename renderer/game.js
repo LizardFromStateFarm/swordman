@@ -551,6 +551,15 @@
       renderView('stats', gameState.get())
     }
   })
+  // M6 (family-depth.md): an ancestor's vision.
+  document.addEventListener('click', e => {
+    const v = e.target.closest('[data-vision]')
+    if (!v) return
+    const r = gameState.chooseVision(v.dataset.vision)
+    flashMessage(r.ok ? 'The vision settles into you.' : 'That vision has passed.', r.ok ? 'special' : 'negative')
+    if (r.ok) renderView('hall', gameState.get())
+  })
+
   // A7 (Phase 38A): the Sect → Base compound scene — its own view (it owns a canvas, so SectView.render must not rebuild it)
   const baseView = new BaseView(gameState, { esc: escHtml, fmt, fmtTime, go: v => nav.go(v) })
   // 1.8b-1: one entry point per view (NAV_GROUPS in renderer/game/nav.js)

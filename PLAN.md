@@ -103,9 +103,9 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 7A, 7C | Dao Paths, Heavenly Tribulation | ◐ 7A ✅ folded into 39A (2026-11-26) · 7C engine ✅ (animation pending) | M3 |
 | 28 | Persistent Living World (supersedes 15 and 11A) | ◐ spec ✅ (living-world.md) | M4 |
 | 15 | NPC World Simulation | ↪ superseded by 28 (kept as design input) | M4 |
-| 27 | Deep Sect Management | ⬜ | M5 |
-| 16 (full) | Courtship & family with living-world persons | ⬜ | M6 |
-| 18A, 18D–E | Lineage tree view, Family Technique, Ancestral Visions | ⬜ | M6 |
+| 27 | Deep Sect Management | ✅ 2026-11-26 (M5) | M5 |
+| 16 (full) | Courtship & family with living-world persons | ✅ 2026-11-26 (already built + M6 Visions/Hall) | M6 |
+| 18A, 18D–E | Lineage tree view, Family Technique, Ancestral Visions | ✅ 2026-11-26 (tree + Family Manual already built; Visions + Hall of the Fallen added, M6) | M6 |
 | 23D | Immortal Realms | ⬜ | M7 (v2) |
 | 24 | Immortal Paths (Tyrant / Devourer / Deity / Executioner) | ⬜ | M7 (v2) |
 | 26 | Immortal Island + ascension petitions | ⬜ | M7 (v2) |
@@ -417,10 +417,10 @@ Trials + Immortality; they buy Qi gathering only (Soul Resonance); after the v1 
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
-| 6.1 | Courtship with living-world persons (relationship, proposals, rejection), with the spouse as a full person | 16A–B | M4, 2.5 | M2 lite marriages migrate cleanly |
-| 6.2 | Children as world persons: they grow, cultivate, join sects, and can become rivals or allies. Adopted heirs, sworn siblings | 16C | 6.1 | Heirs have a history when you take them over |
-| 6.3 | Family Technique + Ancestral Visions | 18D–E | 2.7 | — |
-| 6.4 | Cross-slot **Hall of the Fallen** (tombstones of lines that ended) | 18A, 20A | 2.7 | IPC on both platforms (Rule 7) |
+| 6.1 ✅ | Courtship with living-world persons. **Already built** (1.8b-3a): seek a match → candidates → meetings read temperament → propose with shown odds; a refusal is remembered | 16A–B | M4, 2.5 | M2 lite marriages migrate cleanly |
+| 6.2 ✅ | Children as world persons. **Already built** (2.6b + living world): children grow/cultivate, can meet you as classmates, and sworn siblings exist (4.10) | 16C | 6.1 | Heirs have a history when you take them over |
+| 6.3 ✅ | Family Technique + Ancestral Visions. **Family Technique already built** (2.7c: `clan.manualTechId` → `inheritedManual`, free). **Ancestral Visions built 2026-11-26:** a deterministic choose-one boon at rebirth (Qi/body/Integrity/stones) on Kin → Hall | 18D–E | 2.7 | — |
+| 6.4 ✅ | Cross-slot **Hall of the Fallen**. **Built 2026-11-26:** every death records a tombstone in the soul (`soul.fallen`, cap 60); Kin → Hall lists them across all slots | 18A, 20A | 2.7 | IPC on both platforms (Rule 7) — rides the existing soul file |
 
 ### M7 — The Immortal Era (where long play belongs) — **v2**
 

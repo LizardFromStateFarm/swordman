@@ -6562,3 +6562,11 @@ body[data-narrow="1"] .ch-dao-opts { grid-template-columns: 1fr; }
 .sv-policy { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sv-pol-k { font-size: 10px; color: var(--dim-hi); letter-spacing: .6px; text-transform: uppercase; }
 body[data-narrow="1"] .sv-offices { grid-template-columns: 1fr; }
+
+/* M6 (docs/systems/family-depth.md): the cross-save Hall of the Fallen */
+.hall-fallen { display: flex; flex-direction: column; gap: 3px; }
+.hf-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 6px; align-items: baseline; padding: 4px 6px; border-bottom: 1px solid var(--border); font-size: 10.5px; }
+.hf-n { color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+.hf-m { color: var(--dim-hi); overflow: hidden; text-overflow: ellipsis; }
+.hf-c { color: var(--dim); text-align: right; }
+body[data-narrow="1"] .hf-row { grid-template-columns: 1fr; }

@@ -80,6 +80,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 | **Deep sect management (M5)** | ✅ **Phase 27 (built 2026-11-26)**: `assets/data/sect-management.js` — four **offices** (Steward = income, Trainer = XP, Warden = war defense, Recruiter = candidate talent) with a holder's **personality fit** ×1.2; a **recruitment policy** (Open / Selective / Exacting: min talent + rerolls + refresh) and an **auto-recruit** delegation; **inner-disciple promotions** (+10% yield); **loyalty** that only moves on a wrong (losing an office −15), with defection at zero; a derived **sect tier** (Humble → Heavenly, from fame). UI inside Sect → Disciples; `checks/sect-management.js` (17). 5.5 is covered by 43c's real-sect wars. Docs `docs/systems/sect-management.md` |
 
+| **Family depth (M6)** | ✅ **Phases 16 full · 18A · 18D–E (built 2026-11-26)**: courtship, children-as-persons and the Family Technique already rode existing systems; added **Ancestral Visions** (`assets/data/family-depth.js` — a deterministic choose-one boon at rebirth: +10% Qi/s · body XP · Integrity · stones, on Kin → Hall) and the **cross-save Hall of the Fallen** (`soul.fallen`, cap 60, recorded on every death, listed in Kin → Hall across all slots). `checks/family-depth.js` (12). Docs `docs/systems/family-depth.md` |
+
 > **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
 > era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
 
@@ -350,6 +352,19 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-11-26 — part 116
+Agent: **M6 — Family depth** (user: rush M5/M6/M8).
+  - New `assets/data/family-depth.js`: FAMILY_VISIONS (qi / body / integrity / stones) + FAMILY_VISION_COUNT.
+  - **Ancestral Visions (18E):** `s.vision` + `s.visionOffer`; `_beginLife` offers one when the clan has Merit or an
+    Ascended Ancestor; `_visionOptions()` is deterministic (no RNG); `chooseVision()` applies the boon; a `qi` vision
+    adds +10% Qi/s in `_recalc`; a card on Kin → Hall + an attention item.
+  - **Hall of the Fallen (18A):** `soul.fallen` (cap 60) recorded in `_die` while the life still exists, saved to the
+    soul file; `fallenInfo()`; Kin → Hall (and the orphan Hall) lists tombstones across every slot.
+  - 6.1/6.2/6.3-Family-Technique were already built (courtship, children as persons, Family Manual → inheritedManual);
+    recorded in PLAN and `docs/systems/family-depth.md`.
+  - Tests: `npm test` clean · `npm run checks` **2359 ok** (new `checks/family-depth.js`, 12).
+  Next: M8 (world flavor), then the cleanup + QA pass.
+
 Date: 2026-11-26 — part 115
 Agent: **M5 — Deep Sect Management** (user: rush through M5/M6/M8, clean up + QA later).
   - New `assets/data/sect-management.js`: SECT_OFFICES (Steward income / Trainer XP / Warden defense / Recruiter

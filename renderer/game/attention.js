@@ -42,6 +42,8 @@ function collectAttention(s, gs) {
   }
   // M3 (character.md): the Core Formation path choice waits on the player (never rolled).
   if (s.pathOffer) add('urgent', 'dao-path', 'root', 'The Dao forks before you', 'Virtuous, Neutral or Demonic — the choice waits on you. Path → Character.', 'stats')
+  // M6 (family-depth.md): an ancestor's vision waits in Kin → Hall.
+  if (s.visionOffer) add('ready', 'vision', 'lineage', 'An ancestral vision', 'An ancestor offers a boon. Kin → Hall.', 'hall')
   const reck = s.abuse?.reckon ? gs.reckoningInfo?.() : null
   if (reck) add('ready', 'reckoning', 'sword', 'A reckoning waits', `${reck.headName} once beat you. You are grown now — and you stand above him.`, 'family', 'family')
   // family-events.js: the mirror — a child you beat, now grown and stronger, has come back for you.

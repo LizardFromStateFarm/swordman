@@ -141,6 +141,9 @@ class GameState {
       daoReversalUsed: false,
       daoSealed:      false,
       tribulations:   0,
+      // M6 (family-depth.md): an ancestor's vision — a choose-one boon offered to a clan heir.
+      vision:         null,
+      visionOffer:    null,
       techniques:    ['qi_breathing'],
       root:          this._rollRoot(),
       // Phase 48 (active-cultivation.md): the Cultivate action's combo + cooldown. The active Qi loop.
@@ -4945,6 +4948,48 @@ class GameState {
     if (clan && s.origin?.id) clan.originId = s.origin.id
   }
 
+  // ── M6 (family-depth.md): Ancestral Visions + the cross-save Hall of the Fallen ───────────────────────────
+
+  _visionOptions() {
+    const key = String(this._s?.self?.id || 'vision')
+    return FAMILY_VISIONS.map((v, i) => ({ id: v.id, k: this._hashStr(key + '|vi' + i) }))
+      .sort((a, b) => a.k - b.k).slice(0, FAMILY_VISION_COUNT).map(x => x.id)
+  }
+
+  visionOfferInfo() {
+    const s = this._s
+    if (!s?.visionOffer) return null
+    const ids = (Array.isArray(s.visionOffer.options) && s.visionOffer.options.length) ? s.visionOffer.options : this._visionOptions()
+    return { options: ids.map(id => FAMILY_VISIONS.find(v => v.id === id)).filter(Boolean) }
+  }
+
+  chooseVision(id) {
+    const s = this._s, v = FAMILY_VISIONS.find(x => x.id === id)
+    if (!s?.visionOffer) return { ok: false, reason: 'none' }
+    if (!v) return { ok: false, reason: 'unknown' }
+    const ids = (Array.isArray(s.visionOffer.options) && s.visionOffer.options.length) ? s.visionOffer.options : this._visionOptions()
+    if (!ids.includes(id)) return { ok: false, reason: 'not_offered' }
+    s.vision = id
+    s.visionOffer = null
+    if (v.bodyXp) this._gainBodyXp(v.bodyXp)
+    if (v.integrity) s.realmIntegrity = Math.min(100, (s.realmIntegrity ?? 100) + v.integrity)
+    if (v.stones) s.spiritStones += v.stones
+    this.addEvent({ text: `An ancestor's vision settles into you: ${v.name}. ${v.desc}`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true, vision: id }
+  }
+
+  fallenInfo() { return Array.isArray(this._soul?.fallen) ? this._soul.fallen : [] }
+
+  _ensurePhase18Fields() {
+    const s = this._s
+    if (!s) return
+    if (s.vision === undefined) s.vision = null
+    if (s.visionOffer === undefined) s.visionOffer = null
+    if (s.visionOffer && !Array.isArray(s.visionOffer.options)) s.visionOffer.options = this._visionOptions()
+    if (!Array.isArray(this._soul.fallen)) this._soul.fallen = []
+  }
+
   _recalc() {
     const s  = this._s
     this._ensurePhase2Fields()
@@ -4976,6 +5021,7 @@ class GameState {
     this._ensurePhase49Fields()   // Phase 49 (mortal-phase.md): the Awakening flag
     this._ensurePhase49bFields()  // Phase 49b (mortal-phase.md): the mortal arc's per-life beat state
     this._ensurePhase12Fields()   // M3 (character.md): birth origin, alignment, Dao path (a new field set)
+    this._ensurePhase18Fields()   // M6 (family-depth.md): the ancestral-vision fields
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -5014,6 +5060,7 @@ class GameState {
       cMul(`Origin: ${oi.constitution.name}`, oi.constitution.cap || 1)
     }
     if (s.daoPath) { const dp = this.daoPathInfo(); qMul(`Dao: ${dp.name}`, dp.qps); bAdd(`Dao: ${dp.name}`, dp.bt) }
+    if (s.vision) { const v = FAMILY_VISIONS.find(x => x.id === s.vision); if (v?.qps) qMul('Ancestral vision', v.qps) }
 
     // Equipped weapon bonuses
     const weapId = s.equipped.weapon
@@ -8847,7 +8894,8 @@ class GameState {
 
   _blankSoul() {
     return { v: 1, points: 0, earned: 0, resonance: 0, failedAscensions: 0, immortals: 0, v1Finished: null, log: [], seen: false,
-      tut: { seen: {}, off: false, init: false } }   // 1.23: tutorial lessons seen + tips on/off — per install, like the rest of the soul
+      tut: { seen: {}, off: false, init: false },   // 1.23: tutorial lessons seen + tips on/off — per install, like the rest of the soul
+      fallen: [] }   // M6: the Hall of the Fallen — every life that ended on this install
   }
 
   // Missing/corrupt → blank; every field clamped so a hand-edited file can't break the invariants.
@@ -8867,6 +8915,7 @@ class GameState {
     b.tut.off = !!t.off
     b.tut.init = !!t.init
     if (t.seen && typeof t.seen === 'object') for (const [k, v] of Object.entries(t.seen)) if (Number.isFinite(+v)) b.tut.seen[k] = +v
+    b.fallen = Array.isArray(raw.fallen) ? raw.fallen.filter(x => x && typeof x.name === 'string').slice(0, 60) : []
     return b
   }
 
@@ -9010,6 +9059,14 @@ class GameState {
     const maxStage  = Math.max(s.maxStageThisLife || 0, s.stageIndex)
     // Phase 9B: fired before this._s is replaced so a listener can still read the dying life's stage.
     this._emit('death', { cause, maxStage })
+    // M6 (family-depth.md): the cross-save Hall of the Fallen. Recorded while this life's state still exists.
+    try {
+      const clanNow = this._playerClan()
+      const stg = CULTIVATION_STAGES[Math.min(maxStage, CULTIVATION_STAGES.length - 1)]
+      const rec = { name: s.name, clan: clanNow?.name || '', gen: s.generation || 1, stage: maxStage, realm: stg.realm, cause, year: Math.floor(s.world?.year || 0), ts: Date.now() }
+      this._soul.fallen = [rec, ...(this._soul.fallen || [])].slice(0, 60)
+      this._saveSoul()
+    } catch {}
     const selfTerm  = Math.pow(maxStage / (CULTIVATION_STAGES.length - 1), 2)
     // Phase 16-lite: partner term — the current spouse, else the last former spouse this life (family.md).
     const fam       = s.family || {}
@@ -9518,6 +9575,9 @@ class GameState {
     s.daoReversalUsed = false
     s.daoSealed = false
     s.tribulations = 0
+    // M6 (family-depth.md): an heir into a clan that has earned Merit may receive an ancestor's vision.
+    s.vision = null
+    s.visionOffer = (clan && (((clan.meritEarned || 0) > 0) || ((clan.ascendedAncestors || 0) > 0))) ? { at: Date.now() } : null
     const pt = POSITION_TEXT[position]
     this.addEvent({ text: birthLine, type: 'special' })
     this.addEvent({ text: `You are ${s.name}${clan ? ` of the ${clan.name} clan` : ''} — ${this._fillClan(pt.name, { line: line?.name || '' }).toLowerCase()}.${stipend ? ` The clan sect grants you a stipend of ${stipend} Spirit Stones.` : ''}`, type: 'positive' })

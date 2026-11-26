@@ -208,14 +208,32 @@ class HallView extends KinViewBase {
     if (!clan) {
       this.el.innerHTML = `<div class="fam-view kin-view"><div class="fam-col"><section class="fam-card alone">
         <div class="fc-head"><span class="fc-glyph dim" data-icon="lineage"></span><div class="fc-id"><div class="fc-name">No hall stands for you</div>
-        <div class="fc-sub">An orphan has no ancestors to honor, and no clan to leave anything to.</div></div></div></section>${this._soul()}</div></div>`
+        <div class="fc-sub">An orphan has no ancestors to honor, and no clan to leave anything to.</div></div></div></section>${this._soul()}${this._fallen()}</div></div>`
       return
     }
     const own = clan === this._clan(s)
     this.el.innerHTML = `<div class="fam-view kin-view">
-      <div class="fam-col">${this._records(s, clan)}${this._soul()}${own ? this._thisLife(s) + this._firsts(clan) : ''}${this._tree(s, clan)}${this._chronicle(clan)}</div>
-      <div class="fam-col">${own ? this._library(s) + this._legacies(clan) : ''}</div></div>`
+      <div class="fam-col">${own ? this._visions(s) : ''}${this._records(s, clan)}${this._soul()}${own ? this._thisLife(s) + this._firsts(clan) : ''}${this._tree(s, clan)}${this._chronicle(clan)}</div>
+      <div class="fam-col">${own ? this._library(s) + this._legacies(clan) : ''}${this._fallen()}</div></div>`
     this._paint()
+  }
+
+  // M6 (family-depth.md): an ancestor's vision — a choose-one boon for the life.
+  _visions(s) {
+    const off = this.gs.visionOfferInfo(); if (!off) return ''
+    const h = this.h
+    return `<section class="fam-sec sv-halls"><div class="fam-sec-h"><span>An ancestral vision</span></div>
+      <div class="fk-note">An ancestor's memory surfaces. Choose the boon it leaves this life.</div>
+      <div class="sv-grid tight">${off.options.map(o => `<button class="sv-card" data-vision="${o.id}" title="${h.esc(o.desc)}"><span class="sv-card-h">${h.esc(o.name)}</span><span class="sv-card-d">${h.esc(o.desc)}</span></button>`).join('')}</div></section>`
+  }
+
+  // M6: the Hall of the Fallen — cross-save tombstones (soul record).
+  _fallen() {
+    const list = this.gs.fallenInfo(); if (!list.length) return ''
+    const h = this.h, word = c => String(c || '').replace(/_/g, ' ')
+    return `<section class="fam-sec"><div class="fam-sec-title"><span>Hall of the Fallen</span><span class="fam-count">${list.length}</span></div>
+      <div class="hall-fallen">${list.slice(0, 30).map(f => `<div class="hf-row"><span class="hf-n">${h.esc(f.name)}</span><span class="hf-m">${h.esc(f.clan || '—')} · gen ${f.gen || 1} · ${h.esc(f.realm || '')}</span><span class="hf-c">${h.esc(word(f.cause))} · year ${f.year ?? '?'}</span></div>`).join('')}</div>
+      <div class="fk-note">Every life that ended on this install, across every save slot.</div></section>`
   }
 
   _records(s, clan) {
