@@ -544,7 +544,16 @@ class Bot {
       // without a sect, or from a low rank in it, and never on the founder path once founding is within reach.
       let pre = c.pre
       if (c.kind === 'invite') pre = (!this.s.sect.id || (this.s.sect.rank || 0) < 1) && !(this.path === 'founder' && this.canFound()) ? 'accept' : 'decline'
-      const a = c.answers.find(x => x.id === pre && !x.lock) || c.answers.find(x => !x.lock)
+      const a0 = c.answers.find(x => x.id === pre && !x.lock) || c.answers.find(x => !x.lock)
+      // QA 2026-11-26: a wounded cultivator does not pick a killing fight. Below half Health take a safe answer
+      // (flee / yield / pay) instead of fight/blood. The old policy fought regardless and died on the road at ~1.8h,
+      // which suppressed the bloodline climb and made the Immortality measurement pessimistic.
+      let a = a0
+      const maxH = this.s.derived?.maxHealth || 100
+      if (a0 && (this.s.health ?? maxH) < maxH * 0.5) {
+        const safe = c.answers.find(x => !x.lock && x.id !== 'fight' && x.id !== 'blood')
+        if (safe) a = safe
+      }
       if (a) return this.do('road_' + c.kind + '_' + a.id, this.gs.answerRoadCard(c.id, a.id))
     }
     // Encounters: a formula-carrier → help to learn it (mostly) or rob; a lover encounter → seduce 1 in 4
