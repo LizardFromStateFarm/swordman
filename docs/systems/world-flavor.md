@@ -27,6 +27,9 @@ A short push-your-luck run, entered from **Roam → Explore**.
   its final reward; leaving ends it.
 - UI: a Secret Realms block at the top of Explore with entry cards, or the active room + Press/Rest/Leave buttons and
   a short log.
+- **Progress lock + theme (QA 2026-11-26):** the whole block is **hidden until the first realm's gate** (stage 3)
+  unless a run is already open; each realm still shows its own lock reason. It is styled as a themed ink/gold/violet
+  panel (`.secret-*`) rather than the generic location cards.
 
 ## 8.3 Animation & visual overhaul
 

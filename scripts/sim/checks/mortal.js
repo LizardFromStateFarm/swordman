@@ -30,6 +30,7 @@ const beatDef = (D, id) => D.MORTAL_BEATS.find(b => b.id === id)
     sim.clock.now += 10000; gs.tick(10)
     assert(s.qi === 0, 'no Qi accrues while the meridians are shut (the tick credits 0)')
     assert(gs.drawQi().reason === 'mortal', 'drawQi refuses while mortal')
+    assert(!gs.minigameUnlocked('flow') && gs.minigameLock('flow') === 'Unlocks once you cultivate', 'Meridian Flow is locked while mortal — the opening is Body training, not Qi')
     assert(gs.attemptBreakthrough().reason === 'awaken_required', 'a mortal cannot break through — they must Awaken')
     const before = s.health
     const r = gs.awaken()
@@ -47,6 +48,7 @@ const beatDef = (D, id) => D.MORTAL_BEATS.find(b => b.id === id)
     assert(gs.awaken().reason === 'not_mortal', 'the Awakening happens once')
     sim.clock.now += 10000; gs.tick(10)
     assert(s.qi > 0, 'Qi flows after the Awakening')
+    assert(gs.minigameUnlocked('flow'), 'Meridian Flow unlocks once the meridians open')
   }
 
   // ── The arc: mortal-only, one at a time, no repeats, capped, the opening beat leads ──

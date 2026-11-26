@@ -38,8 +38,10 @@ const MINIGAMES = [
   { id: 'lift', family: 'timing', mode: 'hold', name: 'Lift', glyph: 'lift', reward: 'body', cooldownSecs: 60,
     scene: 'lift', unlock: { bodyTier: 2 }, timing: TIMING.lift,
     blurb: 'Hold, and let go inside the gold: the load you can raise grows more ridiculous with every tier.' },
+  // QA 2026-11-26: Meridian Flow is a QI game, so it unlocks AFTER the Awakening (stage 1). While a mortal there
+  // is no Qi to flow — the opening loop is Body training + Explore, and the Awakening is body-tier D.
   { id: 'flow', family: 'puzzle', name: 'Meridian Flow', glyph: 'vein', reward: 'qi', cooldownSecs: 20,
-    unlock: { stage: 0 }, blurb: 'Turn the channels until Qi reaches every acupoint.' },
+    unlock: { stage: 1 }, blurb: 'Turn the channels until Qi reaches every acupoint.' },
   { id: 'memory', family: 'puzzle', name: 'Memorization', glyph: 'dantian', reward: 'qi', cooldownSecs: 25,
     unlock: { stage: 1 }, blurb: 'Acupoints light in a seeded order — repeat the sequence back. It grows with your realm.' },
 ]

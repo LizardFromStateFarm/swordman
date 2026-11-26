@@ -106,6 +106,10 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 ## UX Debt — known gaps in what the player can see / do (add here; remove when fixed)
 
+- **Meridian Flow as a Qi source (user 2026-11-26):** "I don't really like the mini game that gives Qi." It is now
+  locked until Awakening and optional (Draw Qi/Cultivate is primary), and hidden while mortal. Whether to
+  de-emphasize or rework it into a non-Qi reward is an open design decision for the next pass.
+
 - **The mortal arc (49b, 2026-10-14; visual review handed to the user):** the Awakening is a plain gold modal — no art
   moment (a bespoke card/scene is a later polish); a beat's body-XP reward reads as "+1.2 h training" (no numeric
   preview / "?" breakdown of what an hour is worth); a locked choice is a full-size `disabled` block with the reason in
@@ -356,6 +360,23 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-11-26 — part 120
+Agent: **Mortal-loop clarity + Secret Realm polish** (user playtest feedback).
+  - **The confusion (user):** "before awakening how do you get Qi?" — you don't; Awakening is body tier D. The real
+    bug was **Meridian Flow unlocking at stage 0 and paying Qi while mortal**. Fixed: Flow/Memory unlock at `stage: 1`,
+    `finishMinigame` refuses their Qi while `mortalMeridiansShut()`, and the HUD Flow segment is hidden while mortal.
+    The opening is now unambiguously **Body training + Explore → Awaken**.
+  - **Tutorial:** `v_physique` leads with the mortal gate (Qi won't flow until Awaken), a Practice step (Push-Ups =
+    fastest early body XP) and an Awaken step; `v_explore` notes the mortal forage; the `flow` tip says "once you
+    awaken" and that Draw Qi is the main source.
+  - **Secret Realms UI:** restyled as a themed ink/gold/violet panel (`.secret-*`) with chamber pips + log, and the
+    whole block is **hidden until the first realm's stage gate** (each realm still shows its lock reason).
+  - Tests: `npm test` clean · `npm run checks` **2403 ok** (mortal.js +2: Flow locked while mortal, unlocks after).
+  - **Open design question (UX Debt):** the user dislikes Meridian Flow as a Qi source ("rework that"). It is now
+    optional and post-Awakening, with Draw Qi (Cultivate) primary — but whether to de-emphasize/remove Flow further
+    is a design call for the next pass.
+  Next: restart the app for a re-test; then mobile device pass + store assets.
+
 Date: 2026-11-26 — part 119
 Agent: **Monetization prep — free & paid editions + optional rewarded ads** (user: separate $2 paid / free-with-ads).
   - Data: `assets/data/variant.js` (`APP_VARIANT = 'free'`; build rewrites it) + `assets/data/monetization.js`

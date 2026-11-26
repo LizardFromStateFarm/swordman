@@ -430,7 +430,10 @@
     // Phase 14 follow-up · Phase 48: the Meridian Flow segment beside Cultivate — now part of the active loop
     // (no charge wall; a short cooldown + soft diminishing returns).
     const btnFlow = document.getElementById('btn-flow')
-    if (btnFlow && gameState.minigameInfo) {
+    // QA 2026-11-26: Meridian Flow is a Qi game and unlocks after Awakening — hide it while mortal so the opening
+    // reads as Body training -> Awaken, not "solve a puzzle for Qi".
+    if (btnFlow) btnFlow.classList.toggle('hidden', mortal)
+    if (btnFlow && !mortal && gameState.minigameInfo) {
       const fl = gameState.minigameInfo().flow
       const waiting = !!fl.waiting, cd = fl.cdIn || 0
       btnFlow.disabled = !waiting && cd > 0
@@ -1417,25 +1420,28 @@
   // M8 (world-flavor.md): Secret Realm Dungeons in Roam → Explore.
   function renderSecretRealms(s) {
     const info = gameState.secretRealmInfo()
+    // Progress lock: hide the whole block until the first realm's realm gate is met (it is not a mortal-verb).
+    if (!info.active && !info.list.some(r => !r.stageLocked)) return null
     const sec = document.createElement('section')
-    sec.className = 'exp-secret'
+    sec.className = 'secret-block'
     if (info.active) {
       const a = info.active
-      sec.innerHTML = `<div class="exp-status-label">Secret realm · ${escHtml(a.name)}</div>
-        <div class="exp-idle">Room ${a.room} of ${a.maxRooms} · Health ${Math.round(s.health ?? 0)} · ${escHtml(a.desc)}</div>
-        <div class="exp-secret-acts">
-          <button class="loc-btn" data-secret-step="advance">Press deeper</button>
-          <button class="loc-btn" data-secret-step="rest">Rest a moment</button>
-          <button class="loc-btn" data-secret-step="leave">Leave</button>
-        </div>
-        ${a.log.length ? `<div class="exp-secret-log">${a.log.slice(-5).map(l => `<div>${escHtml(l)}</div>`).join('')}</div>` : ''}`
+      const pips = Array.from({ length: a.maxRooms }, (_, i) => `<i class="${i < a.room ? 'done' : ''}"></i>`).join('')
+      sec.innerHTML = `<div class="secret-h">${Icon('veil')}<span>Secret realm</span><small>${escHtml(a.name)}</small></div>
+        <div class="secret-run">
+          <div class="secret-desc">${escHtml(a.desc)}</div>
+          <div class="secret-pips">${pips}<span class="secret-room">Chamber ${a.room} of ${a.maxRooms}</span><span class="secret-hp">Health ${Math.round(s.health ?? 0)}</span></div>
+          <div class="secret-acts"><button class="secret-btn gold" data-secret-step="advance">Press deeper</button><button class="secret-btn" data-secret-step="rest">Rest a moment</button><button class="secret-btn quiet" data-secret-step="leave">Leave</button></div>
+          ${a.log.length ? `<div class="secret-log">${a.log.slice(-5).map(l => `<div>${escHtml(l)}</div>`).join('')}</div>` : ''}
+        </div>`
     } else {
-      sec.innerHTML = `<div class="exp-status-label">Secret realms</div>
-        <div class="exp-idle">Places the world hides. Enter one, press deeper, and take what you find — or leave while you still can.</div>
-        <div class="exp-secret-list">${info.list.map(r => `<button class="loc-card" data-secret-enter="${r.id}" ${r.ok ? '' : 'disabled'} title="${escHtml(r.lock || r.desc)}">
-          <span class="loc-name">${escHtml(r.name)} <span class="loc-req">${r.rooms} rooms · ${fmt(r.cost)} stones</span></span>
-          <span class="loc-desc">${escHtml(r.desc)}</span>
-          ${r.lock ? `<span class="loc-lock">${Icon('lock')} ${escHtml(r.lock)}</span>` : ''}</button>`).join('')}</div>`
+      const rows = info.list.map(r => `<button class="secret-card${r.stageLocked ? ' sealed' : ''}" data-secret-enter="${r.id}" ${r.ok ? '' : 'disabled'} title="${escHtml(r.lock || r.desc)}">
+        <span class="secret-card-h"><span class="secret-name">${escHtml(r.name)}</span><span class="secret-meta">${r.rooms} chambers · ${fmt(r.cost)} stones</span></span>
+        <span class="secret-desc">${escHtml(r.desc)}</span>
+        ${r.lock ? `<span class="secret-lock">${Icon('lock')} ${escHtml(r.lock)}</span>` : ''}</button>`).join('')
+      sec.innerHTML = `<div class="secret-h">${Icon('veil')}<span>Secret realms</span><small>places the world hides</small></div>
+        <div class="secret-desc secret-lede">Enter, press deeper for relics and risk, or leave while you still can.</div>
+        <div class="secret-grid">${rows}</div>`
     }
     return sec
   }

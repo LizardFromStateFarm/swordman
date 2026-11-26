@@ -6578,12 +6578,38 @@ body[data-tod="dusk"]  #app { filter: sepia(.06) saturate(1.04); }
 .ch-title { font-family: var(--font); font-size: 10px; color: var(--dim-hi); background: var(--bg2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 7px; cursor: pointer; min-height: 22px; }
 .ch-title.active { color: var(--gold); border-color: var(--gold); }
 
-/* M8 (docs/systems/world-flavor.md): Secret Realm Dungeons in Roam → Explore */
-.exp-secret { margin-bottom: 8px; }
-.exp-secret-acts { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
-.exp-secret-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 6px; }
-.exp-secret-log { margin-top: 4px; font-size: 10px; color: var(--dim-hi); line-height: 1.4; max-height: 90px; overflow-y: auto; }
-.loc-req { font-size: 10px; color: var(--dim-hi); font-weight: normal; }
+/* M8 (docs/systems/world-flavor.md): Secret Realm Dungeons in Roam → Explore (themed; hidden until its realm gate) */
+.secret-block { margin-bottom: 10px; border: 1px solid var(--border); border-radius: 6px;
+  background: linear-gradient(180deg, rgba(144,112,200,0.06), rgba(237,208,80,0.03)); padding: 10px 12px; }
+.secret-h { display: flex; align-items: center; gap: 8px; color: var(--gold); font-size: 12px; letter-spacing: 1px; }
+.secret-h .ic { width: 15px; height: 15px; color: var(--purple); }
+.secret-h small { margin-left: auto; font-size: 9.5px; color: var(--dim-hi); letter-spacing: .5px; text-transform: uppercase; }
+.secret-desc { font-size: 10.5px; color: var(--dim-hi); line-height: 1.45; margin-top: 4px; }
+.secret-lede { margin-bottom: 8px; }
+.secret-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 8px; }
+.secret-card { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 9px 10px; border: 1px solid var(--border);
+  border-radius: 5px; background: var(--bg2); color: var(--text); font-family: var(--font); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.secret-card:hover:not(:disabled) { border-color: var(--gold); box-shadow: 0 0 14px rgba(237,208,80,0.10); }
+.secret-card.sealed, .secret-card:disabled { opacity: .55; cursor: default; }
+.secret-card-h { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.secret-name { color: var(--gold); font-size: 12px; }
+.secret-meta { color: var(--dim-hi); font-size: 9.5px; white-space: nowrap; }
+.secret-lock { color: var(--dim-hi); font-size: 9.5px; display: flex; gap: 4px; align-items: center; margin-top: 2px; }
+.secret-lock .ic { width: 11px; height: 11px; }
+.secret-run { margin-top: 6px; }
+.secret-pips { display: flex; align-items: center; gap: 5px; margin: 8px 0 6px; }
+.secret-pips i { width: 12px; height: 4px; border-radius: 2px; background: var(--border); }
+.secret-pips i.done { background: var(--gold); box-shadow: 0 0 6px rgba(237,208,80,0.5); }
+.secret-room { font-size: 10px; color: var(--dim-hi); margin-left: 6px; }
+.secret-hp { margin-left: auto; font-size: 10px; color: var(--jade); }
+.secret-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.secret-btn { font-family: var(--font); font-size: 11px; min-height: 32px; padding: 4px 12px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; }
+.secret-btn.gold { color: var(--gold); border-color: var(--gold); }
+.secret-btn.quiet { color: var(--dim-hi); }
+.secret-log { margin-top: 6px; font-size: 10px; color: var(--dim-hi); line-height: 1.45; max-height: 92px; overflow-y: auto;
+  border-top: 1px solid var(--border); padding-top: 5px; }
+body[data-narrow="1"] .secret-grid { grid-template-columns: 1fr; }
 
 /* M8 cleanup: cosmetic seasons (no bonuses) + the scripture codex */
 body[data-season="summer"] #view { box-shadow: inset 0 0 90px rgba(237, 208, 80, 0.05); }

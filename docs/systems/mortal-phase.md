@@ -153,3 +153,14 @@ absence still progresses, just slowly (pillar 4).
   render for an awakened life.
 - **49b (bot):** the mortal bitter-trial bar and the "all profiles play the exercises while open" change are
   **bot** policy, not game rules — a real player may take the bitter way at any Health above its cost.
+
+## QA 2026-11-26 — the mortal loop reads clearly (user feedback)
+
+- **No Qi game before Awakening.** Meridian Flow (and Memorization) are **Qi** games and now unlock at
+  `stage: 1`; they cannot pay Qi while `mortalMeridiansShut()` (a stale session is refused too). The HUD's Flow
+  segment is hidden while mortal. The opening is explicitly **Body training + Explore → Awaken**.
+- **Awakening is body-driven:** temper/practice the body to **Hardened (D)**; Qi is not the goal and does not flow
+  yet. The Body view + HUD Awaken button show the F/D progress; the Awaken card explains it.
+- **Tutorial:** `v_physique` now opens with "You begin a mortal. Qi will not flow until you Awaken…", a Practice
+  step (Push-Ups are the fastest early body XP) and an Awaken step; `v_explore` notes the mortal forage. The intro
+  is still one card and the HUD tour stays in the Guide.

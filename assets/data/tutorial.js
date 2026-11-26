@@ -71,10 +71,10 @@ const TUTORIAL_LESSONS = [
         text: 'Choices, finished timers and visitors wait here. Nothing is lost while it waits. Tap a row to go there.' },
     ] },
   { id: 'flow', group: 'basics', title: 'Meridian Flow', trigger: { el: '#btn-flow:not(.hidden)' },
-    opens: 'Once body training starts',
+    opens: 'Once you awaken',
     steps: [
-      { at: ['#btn-flow'], title: 'A puzzle for Qi',
-        text: 'Meridian Flow is an optional puzzle. Solve it for a chunk of Qi. Its charges refill over time.' },
+      { at: ['#btn-flow'], title: 'An optional Qi puzzle',
+        text: 'Meridian Flow is unlocked after you Awaken. It is an optional puzzle for a chunk of Qi; Draw Qi (Cultivate) is your main source.' },
     ] },
   { id: 'mode', group: 'basics', title: 'Idle and Active modes', trigger: { el: '#auto-chip:not(.hidden)' },
     opens: 'When automation unlocks',
@@ -107,17 +107,19 @@ const TUTORIAL_LESSONS = [
     ] },
   { id: 'v_physique', group: 'cultivate', title: 'Body', trigger: { view: 'physique' },
     steps: [
-      { at: ['#tab-physique'], title: 'Temper your body',
-        text: 'Every life starts with a frail body. Tempering raises your tier from F to S: more Health, faster healing, stronger fists.' },
-      { at: ['#tab-physique .fa-grid', '#tab-physique .fam-card', '#tab-physique'], title: 'Methods',
-        text: 'Pick a method and let it run. Ordeals are faster but can hurt you. The mini-games are an optional boost.' },
+      { at: ['#tab-physique'], title: 'Train the body first',
+        text: 'You begin a mortal. Qi will not flow until you Awaken, and that needs a Hardened body (tier D): more Health, faster healing, stronger fists.' },
+      { at: ['#tab-physique .bd-games', '#tab-physique .fa-grid', '#tab-physique'], title: 'Practice',
+        text: 'Push-Ups are the fastest early body XP. Start a tempering method too — it runs on a timer, even while you are away.' },
+      { at: ['#btn-cultivate', '#sprite-wrap'], title: 'Awaken',
+        text: 'When the body reaches Hardened (D), the Awaken button opens your meridians and Qi Condensation begins.' },
     ] },
 
   // ── Roam ────────────────────────────────────────────────────────────────
   { id: 'v_explore', group: 'adventure', title: 'Expeditions', trigger: { view: 'explore' },
     steps: [
       { at: ['#tab-explore .loc-btn', '#tab-explore'], title: 'Set out',
-        text: 'Send yourself on an expedition. It runs on a real-time timer and brings back herbs, ores and stones.' },
+        text: 'Send yourself out. It runs on a real-time timer and brings back herbs, ores and stones — and while a mortal, the cores and herbs your body drills need.' },
       { at: ['#tab-explore .er-card', '#tab-explore .section-title', '#tab-explore'], title: 'Met on the road',
         text: 'People you meet on the road wait here as cards. Each answer shows its odds, and they remember what you chose.' },
     ] },

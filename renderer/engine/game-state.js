@@ -5190,10 +5190,11 @@ class GameState {
     const def = r.active ? SECRET_REALMS.find(x => x.id === r.id) : null
     const active = def ? { id: def.id, name: def.name, desc: def.desc, room: r.room, maxRooms: r.maxRooms, log: r.log || [] } : null
     const list = SECRET_REALMS.map(d => {
-      const lock = (s.stageIndex || 0) < d.minStage ? `Reach ${this._stName(d.minStage)} first`
+      const stageLocked = (s.stageIndex || 0) < d.minStage
+      const lock = stageLocked ? `Reach ${this._stName(d.minStage)} first`
         : r.active ? 'You are already inside a realm'
         : s.spiritStones < d.cost ? `Costs ${d.cost} Spirit Stones` : null
-      return { id: d.id, name: d.name, desc: d.desc, rooms: d.rooms, cost: d.cost, lock, ok: !lock }
+      return { id: d.id, name: d.name, desc: d.desc, rooms: d.rooms, cost: d.cost, lock, ok: !lock, stageLocked }
     })
     return { active, list }
   }
@@ -9037,6 +9038,8 @@ class GameState {
       return { ...res, perfect, max: maxHits * c.perfectPts }
     }
     if (kind === 'flow') {
+      // QA 2026-11-26: Qi does not flow while the meridians are shut — a stale session can never pay Qi pre-Awakening.
+      if (this.mortalMeridiansShut()) { this.addEvent({ text: 'Your meridians are shut; there is no Qi to flow yet.', type: 'neutral' }); this._notify(); return { ok: true, solved: false, mortal: true } }
       const solved = typeof FlowPuzzle !== 'undefined' && FlowPuzzle.check(ses.seed, ses.n, result.rotations)
       if (!solved) { this.addEvent({ text: 'The Qi stalls in a broken channel and disperses.', type: 'neutral' }); this._notify(); return { ok: true, solved: false } }
       const qi = this.flowQi(), cap = s.derived?.qiCap || 0
@@ -9048,6 +9051,7 @@ class GameState {
       return { ok: true, solved: true, qi: gain }
     }
     if (kind === 'memory') {
+      if (this.mortalMeridiansShut()) { this.addEvent({ text: 'Your meridians are shut; there is no Qi to gather yet.', type: 'neutral' }); this._notify(); return { ok: true, completed: 0, qi: 0, mortal: true } }
       // The sequences live in the session; re-derive them from the seed and count the rounds that match exactly.
       const plan = typeof MemoryPuzzle !== 'undefined' ? MemoryPuzzle.generate(ses.seed, ses.lens) : null
       const answers = Array.isArray(result.answers) ? result.answers : []
