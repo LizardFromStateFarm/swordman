@@ -106,6 +106,15 @@ never write the soul file (existing rule), so a dev session's tips are in memory
 - Smoke: `scenarios/tutorial-root.js` (all 4 modes, spotlight on the right control, card in the window + off it). UI 7.9 PASS.
 
 ## Gotchas
+- **A materially changed opening → bump `TUTORIAL_VERSION`** (`assets/data/tutorial.js`). `ensureTutorialVersion()` clears the
+  install's seen-state once when the soul's stored version differs, so an update re-shows the lessons instead of
+  inheriting the old "seen" record (QA 2026-11-26: the opening became Explore + Body + Awaken; version 2 re-shows it).
+  The player's Tips On/Off is kept.
+- **The first-launch layout tip must not block the tutorial forever.** Coach marks wait while `#layout-tip` is on
+  screen; the tip now auto-dismisses after 8 s (and on a phone/native shell it is never created). Put a new
+  first-launch tip anywhere else and you re-create the stall.
+- On leaving to the character select, `TutorialUI.close()` + `closeGameOverlays()` hide the `#tut-overlay`/`#intro-overlay`
+  layers — they live on `<body>` at a high z-index and would otherwise cover the menu and swallow clicks.
 - A new view: add a `{ view }` lesson, or `checks/tutorial.js` fails ("every view has a lesson").
 - Targets are CSS selectors into live markup. When a view's classes change, the step falls back to the next selector,
   then to the panel or a centred card. It never breaks, but re-check the lesson.

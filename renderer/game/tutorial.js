@@ -87,6 +87,7 @@ class TutorialUI {
     if (now < this.nextCheck || now < this.readyAt) return
     this.nextCheck = now + 250
     if (!this.gs.get() || this._held()) return
+    try { this.gs.ensureTutorialVersion?.(TUTORIAL_VERSION) } catch {}   // a materially changed opening re-shows lessons once
     const info = this.gs.tutorialInfo()
     if (!info.init) return this._init()
     if (info.off) { this.queue.length = 0; return }
@@ -212,6 +213,15 @@ class TutorialUI {
     this.target = null
     this.el.classList.add('hidden')
     this.readyAt = Date.now() + 700   // a breath before the next tip
+  }
+
+  // Leave the game (back to character select): drop any open tip, stop queueing, hide the layer. Without this the
+  // full-screen coach-mark layer (z-index 450) stayed over the menu and ate every click (mobile playtest 2026-11-26).
+  close() {
+    this.cur = null
+    this.target = null
+    this.queue.length = 0
+    this.el.classList.add('hidden')
   }
 
   // Spotlight the target (or nothing) and dock the card beside it: below if it fits, else above, else the side of the

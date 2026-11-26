@@ -360,6 +360,23 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-11-26 — part 122
+Agent: **Mobile bug sweep** (user playtest on the TestFlight build).
+  - **Menu unclickable after Back / Delete:** the intro (`#intro-overlay`, z 460) and coach-mark (`#tut-overlay`, z 450)
+    layers live on `<body>` and were never closed when returning to character select, so an open one covered the menu.
+    Added `TutorialUI.close()`, `closeGameOverlays()` (hides every `body > *-overlay`, clears the pending confirm) called
+    from `startGame`, `#btn-back` and the delete callback. `AdPromptUI.close()` is included.
+  - **No starting tutorial:** two gates — the first-launch `#layout-tip` never auto-dismissed and coach marks wait for it
+    (now auto-dismisses after 8 s), and an install that had already seen the old opening never re-shows it. Added
+    `TUTORIAL_VERSION` (2) + `ensureTutorialVersion()` — a changed opening re-shows lessons once per install (Tips
+    On/Off kept). The smoke driver's `ci:smoke-no-tips` held tips, so the new scenario clears it.
+  - **Dead X on mobile:** the titlebar Close/Pin and the charselect X are no desktop window to control on iOS/Android —
+    now hidden (`body[data-native]`/`[data-narrow]`).
+  - **Guard:** the game loop wraps `tutorialUI.tick()` / `AdPromptUI.tick()` in try/catch so a tip can never freeze play.
+  - **Tests:** new real-app smoke `scenarios/charselect.js` (intro opens → back closes layers → menu clickable → delete
+    → empty slot clickable; zero console errors) · `npm test` clean · `npm run checks` **2415 ok**.
+  Next: rebuild iOS (push → Codemagic) and re-test on the phone.
+
 Date: 2026-11-26 — part 121
 Agent: **Sparring — no-Qi body training** (user: "for the beginning and for training body we should add sparring with no qi").
   - New `assets/data/sparring.js`: 4 tier-gated opponents (Village Youths F → Old Hunter E → Drill Master D →

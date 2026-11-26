@@ -21,6 +21,21 @@
   // Dev builds (npm start) can create late-game test characters — see assets/data/dev-presets.js
   let isDev = false
   try { isDev = !!(await window.electron.isDev?.()) } catch {}
+  // Native shell (Capacitor iOS/Android)? A full-screen app has no desktop close/pin window controls, and a
+  // body-level overlay left open would cover the menu — both are handled below (mobile playtest 2026-11-26).
+  const cap = window.Capacitor
+  const isNative = !!(cap && (cap.isNativePlatform ? cap.isNativePlatform() : cap.isNative))
+  document.body.dataset.native = isNative ? '1' : '0'
+
+  // Clear every body-level popup (settings/soul/mode/death/combat/confirm/layout/ad/intro/tutorial) so the
+  // character select is interactive after leaving a game. Game views live inside #app; these are true overlays.
+  function closeGameOverlays() {
+    try { tutorialUI?.close?.() } catch {}
+    try { introUI?.close?.() } catch {}
+    try { AdPromptUI?.close?.() } catch {}
+    _pendingConfirm = null
+    document.querySelectorAll('body > [id$="-overlay"]').forEach(o => o.classList.add('hidden'))
+  }
 
   function renderCharSelect() {
     const container = document.getElementById('cs-slots')
@@ -153,6 +168,7 @@
     showConfirm('Delete this cultivator?', 'This cannot be undone.', async () => {
       await window.electron.deleteSlot(slotIndex)
       slots[slotIndex] = null
+      closeGameOverlays()   // guarantee no stale layer blocks the menu after a delete
       renderCharSelect()
     })
   }
@@ -177,6 +193,7 @@
 
   async function startGame(slotIndex) {
     await gameState.initSlot(slotIndex)
+    closeGameOverlays()   // a previous session's tip/intro must not sit over this one
     document.getElementById('charselect').classList.add('hidden')
     document.getElementById('app').classList.remove('hidden')
     layoutUI.enterGame()
@@ -186,6 +203,7 @@
   document.getElementById('btn-back').addEventListener('click', async () => {
     gameState.forceSave()
     tickRunning = false
+    closeGameOverlays()   // the tutorial/intro layers are on <body>: without this the menu is unclickable
     slots = await window.electron.loadAllSlots()
     soulView.close()
     document.getElementById('app').classList.add('hidden')
@@ -354,8 +372,8 @@
     function loop(now) {
       if (!tickRunning) return
       step(now)
-      tutorialUI?.tick()   // 1.23: a tip on screen follows its target; otherwise look for the next one
-      AdPromptUI.tick(gameState)   // free edition: the optional rewarded-ad prompt (no-op on the paid/desktop build)
+      try { tutorialUI?.tick() } catch (e) { console.error('tutorial tick failed', e) }   // never freeze the game on a tip
+      try { AdPromptUI.tick(gameState) } catch (e) { console.error('ad prompt tick failed', e) }
       requestAnimationFrame(loop)
     }
     requestAnimationFrame(loop)

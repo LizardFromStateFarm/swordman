@@ -259,6 +259,9 @@ class LayoutUI {
     tip.innerHTML = `New: ${Icon('window')} Window layouts${this.mode === 'overlay' ? ` (under ${Icon('more')} in the titlebar)` : ''}: a wider two-column view, a resizable desktop window, or a slim banner across the top of your screen while you game.`
     tip.addEventListener('click', () => this._dismissTip())
     document.body.appendChild(tip)
+    // Don't let the first-launch tip block the tutorial forever: it dismisses itself after a few seconds
+    // (mobile playtest 2026-11-26 — coach marks wait while it is on screen, so it must not persist).
+    setTimeout(() => this._dismissTip(), 8000)
   }
 
   _dismissTip() {

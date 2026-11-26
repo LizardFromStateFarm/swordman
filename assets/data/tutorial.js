@@ -12,6 +12,10 @@
 //   steps.at — CSS selectors tried in order; the first one visible gets the spotlight. None visible → the card
 //              sits in the middle with no cutout (it still reads). Keep each text to one or two short sentences.
 
+// Bump when the opening/tour changes materially: a new install, or an update carrying a newer version, re-shows
+// the lessons once. QA 2026-11-26: the opening became Explore + Body + Awaken, so version 2 re-shows it.
+const TUTORIAL_VERSION = 2
+
 const TUTORIAL_GROUPS = [
   { id: 'basics',    name: 'Basics' },
   { id: 'cultivate', name: 'Path' },

@@ -6611,6 +6611,11 @@ body[data-tod="dusk"]  #app { filter: sepia(.06) saturate(1.04); }
   border-top: 1px solid var(--border); padding-top: 5px; }
 body[data-narrow="1"] .secret-grid { grid-template-columns: 1fr; }
 
+/* Mobile shells (Capacitor iOS/Android): a full-screen app has no desktop window controls. Close (X) and pin are
+   no-ops there, so hide them rather than leave a dead button (mobile playtest 2026-11-26). */
+body[data-native="1"] #btn-quit, body[data-native="1"] #btn-pin, body[data-native="1"] #cs-quit,
+body[data-narrow="1"] #btn-quit, body[data-narrow="1"] #btn-pin, body[data-narrow="1"] #cs-quit { display: none !important; }
+
 /* M8 cleanup: cosmetic seasons (no bonuses) + the scripture codex */
 body[data-season="summer"] #view { box-shadow: inset 0 0 90px rgba(237, 208, 80, 0.05); }
 body[data-season="autumn"] #view { box-shadow: inset 0 0 90px rgba(204, 41, 54, 0.045); }

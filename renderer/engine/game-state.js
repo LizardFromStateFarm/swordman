@@ -9243,7 +9243,7 @@ class GameState {
 
   _blankSoul() {
     return { v: 1, points: 0, earned: 0, resonance: 0, failedAscensions: 0, immortals: 0, v1Finished: null, log: [], seen: false,
-      tut: { seen: {}, off: false, init: false },   // 1.23: tutorial lessons seen + tips on/off — per install, like the rest of the soul
+      tut: { seen: {}, off: false, init: false, v: (typeof TUTORIAL_VERSION !== 'undefined' ? TUTORIAL_VERSION : 1) },   // 1.23: tutorial lessons seen + tips on/off — per install, like the rest of the soul
       fallen: [] }   // M6: the Hall of the Fallen — every life that ended on this install
   }
 
@@ -9263,6 +9263,7 @@ class GameState {
     const t = raw.tut && typeof raw.tut === 'object' ? raw.tut : {}
     b.tut.off = !!t.off
     b.tut.init = !!t.init
+    b.tut.v = Number.isFinite(+t.v) ? +t.v : 1
     if (t.seen && typeof t.seen === 'object') for (const [k, v] of Object.entries(t.seen)) if (Number.isFinite(+v)) b.tut.seen[k] = +v
     b.fallen = Array.isArray(raw.fallen) ? raw.fallen.filter(x => x && typeof x.name === 'string').slice(0, 60) : []
     return b
@@ -9321,7 +9322,19 @@ class GameState {
 
   // ── 1.23: Tutorial seen-state (docs/systems/tutorial.md) — rides in the soul record so a new slot or a new life never
   // re-teaches what this install has already seen. Presentation only: nothing here touches _s or balance.
-  tutorialInfo() { return { off: this._soul.tut.off, init: this._soul.tut.init, seen: { ...this._soul.tut.seen } } }
+  tutorialInfo() { return { off: this._soul.tut.off, init: this._soul.tut.init, v: this._soul.tut.v || 1, seen: { ...this._soul.tut.seen } } }
+
+  // A materially changed opening (a new TUTORIAL_VERSION) re-shows the lessons once per install — otherwise a
+  // build update keeps the old seen-state and the "new player" tutorial never appears for a tester (QA 2026-11-26).
+  // The player's tips On/Off is kept as they set it.
+  ensureTutorialVersion(v) {
+    const t = this._soul?.tut
+    if (!t || (t.v || 1) === v) return false
+    t.v = v
+    t.seen = {}
+    this._saveSoul()
+    return true
+  }
 
   // Once per install, the first time a game is on screen with this build. An established player (passed in as
   // markIds = every lesson id) is not walked through basics they already know; the Guide can still replay any of it.
@@ -9348,7 +9361,7 @@ class GameState {
 
   // Forget every lesson (the Guide's "Show every tip again"); tips switch back on.
   resetTutorials() {
-    this._soul.tut = { seen: {}, off: false, init: true }
+    this._soul.tut = { seen: {}, off: false, init: true, v: (typeof TUTORIAL_VERSION !== 'undefined' ? TUTORIAL_VERSION : 1) }
     this._saveSoul()
   }
 
