@@ -188,8 +188,20 @@ class Bot {
   // sells what it can never use. Kept "reasonable, not optimal" like the rest of the bot. A duplicate manual of a
   // known art is given to the sect before it is studied, so the sect is fed and one copy is kept to study.
   arts() {
-    return this.artOffers() || this.giveManuals() || this.studyManuals() || this.setLoadout() || this.sectLibraryBuy() ||
+    return this.daoPathChoice() || this.artOffers() || this.giveManuals() || this.studyManuals() || this.setLoadout() || this.sectLibraryBuy() ||
       this.clanArts() || this.sellSurplus()
+  }
+
+  // M3 (character.md): take the Core Formation Dao-path offer. 'active' picks Neutral (the steady middle);
+  // casual/afk pick any open path at random, so Virtuous/Demonic are exercised too.
+  daoPathChoice() {
+    const off = this.gs.pathOfferInfo()
+    if (!off) return false
+    const open = off.options.filter(o => !o.lock)
+    if (!open.length) return false
+    const pick = this.profile === 'active' ? (open.find(o => o.id === 'neutral') || open[0])
+      : open[Math.floor(this.rand() * open.length)]
+    return this.do('dao_path', this.gs.chooseDaoPath(pick.id))
   }
 
   // The 4 moves it would wear right now, best-first: raw damage at its mastery, its root element worth +20%

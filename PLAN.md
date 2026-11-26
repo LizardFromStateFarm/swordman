@@ -97,10 +97,10 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 16 (lite) | Marriage & children, lite version (spouse/child as person records) | ⬜ | M2 |
 | 18C | Heir selection at death | ⬜ | M2 |
 | 8 | Ascension & Reincarnation (New Game+) | ↪ superseded by 23 + 31 (Dao Seeds cut) | M2 |
-| 12 | Birth Origin | ⬜ | M3 |
-| 13 | Alignment & Karmic Path | ⬜ | M3 |
+| 12 | Birth Origin | ✅ 2026-11-26 (M3) | M3 |
+| 13 | Alignment & Karmic Path | ✅ 2026-11-26 (M3) | M3 |
 | 14 | Body Constitution & Tempering (supersedes 7B) | ✅ 2026-10-03 (revised: everyone starts at F; + max Health/regen; + the Strikes / Meridian Flow mini-games; docs/systems/body-constitution.md; follow-up 2026-10-03: Strikes 6 hits, Flow has no clock + a HUD button, and Kin → Tree, the family tree, docs/systems/family.md) | M3 |
-| 7A, 7C | Dao Paths, Heavenly Tribulation | ⬜ | M3 |
+| 7A, 7C | Dao Paths, Heavenly Tribulation | ◐ 7A ✅ folded into 39A (2026-11-26) · 7C engine ✅ (animation pending) | M3 |
 | 28 | Persistent Living World (supersedes 15 and 11A) | ◐ spec ✅ (living-world.md) | M4 |
 | 15 | NPC World Simulation | ↪ superseded by 28 (kept as design input) | M4 |
 | 27 | Deep Sect Management | ⬜ | M5 |
@@ -119,7 +119,7 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 36 | **Auction House & Crates (拍卖行)**: buy themed crates, open for a random-quality beast or a person (user 2026-09-27) | ⬜ | M4 |
 | 37 | **Party & Party Combat (结伴 · 群战)**: a party of up to 6; fights become 6 vs N (user 2026-09-27) | ⬜ | M4 (after 35/36) |
 | 38 | **Sect Base & Immortal Island scenes (宗门场景 · 仙岛图)**: large-area art that grows/upgrades as you build (user 2026-09-27) | ◐ | 38A ✅ M1 (art track, after A4; v1); 38B ⬜ M7 (v2) |
-| 39 | **Cultivation Path & Appearance (修途 · 仪容)**: Basic method until Core, then Virtuous / Neutral / Demonic (changes arts + look, anchors the alignment meter, one costly Dao Reversal per life); appearance chosen at every creation/rebirth; effects unlocked by realm, arts and path; robes unlocked by positions + in-world rankings; NPC portraits (user 2026-09-27) | ⬜ | 39A–B M3 (tasks 3.2b–c; v1); 39C–F art track A5, A8–A10 (**v2**, user 2026-09-28) |
+| 39 | **Cultivation Path & Appearance (修途 · 仪容)**: Basic method until Core, then Virtuous / Neutral / Demonic (changes arts + look, anchors the alignment meter, one costly Dao Reversal per life); appearance chosen at every creation/rebirth; effects unlocked by realm, arts and path; robes unlocked by positions + in-world rankings; NPC portraits (user 2026-09-27) | ◐ 39A–B ✅ 2026-11-26 (v1; docs/systems/character.md) · 39C–F ⬜ | 39A–B M3 (tasks 3.2b–c; v1); 39C–F art track A5, A8–A10 (**v2**, user 2026-09-28) |
 | 40 | **Soul Points & the v1 finish (魂)**: cross-save Soul Points from failed Ascension Trials + a big grant on first Immortality; spent on Soul Resonance (+Qi/s); a full-window Immortal Ascension cinematic; the "you have finished v1" screen (user 2026-09-28; spec docs/systems/soul-points.md) | ✅ | v1 finish (tasks 40a–b) |
 | 41 | **Tame Talisman Grades & Tame Attempts (驯兽符)**: four graded Beast Taming Talismans with escalating tame chances (Crude 40% → Fine 55% → Superior 70% → Pristine 90%, none guaranteed); a failed direct tame turns the beast hostile (a battle) or lets it escape, weighted by its nature; the post-battle bind rolls too (user 2026-09-29; spec docs/systems/combat.md) | ✅ | M1 (combat follow-up) |
 | 42 | **Arts & Move Combat (功法)**: collectible arts as study-able martial art manuals (72 combat arts at launch, 5 rarity grades, Five Elements), 4 equipped move arts + passive slots by realm, arts from breakthroughs (pick 1 of 3) / expeditions / slain beasts / Arena champions / duelists / sect library / events / clan library; a Pokemon-like move combat engine (HP = Health, combat Qi with no cooldowns (spam until out of Qi), a parry quick-time event (0 damage + Qi back), element matchups, statuses, temper-driven opponent AI) **replacing Press/Guard/Feint** in every fight; plus **selling items** in Pack (user 2026-09-29; spec docs/systems/arts.md) | ⬜ | M1 (**next**, tasks 1.11–1.15) |
@@ -376,13 +376,13 @@ Trials + Immortality; they buy Qi gathering only (Soul Resonance); after the v1 
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
-| 3.1 | Birth Origin: regions, family types, special constitutions. An heir's origin comes from the clan | 12 | 2.2, 2.6 | Regions become the world map for M4 |
-| 3.2 | Alignment meter, tiers, shift sources, gating table | 13 | 2.2 | Choice events shift alignment; gates enforced |
+| 3.1 ✅ | Birth Origin: regions, family types, special constitutions. An heir's origin comes from the clan. **Built 2026-11-26** (`assets/data/character.js` BIRTH_ORIGINS/CONSTITUTIONS; deterministic roll from the life id; clan.originId inheritance; `docs/systems/character.md`) | 12 | 2.2, 2.6 | Regions become the world map for M4 (regions stored; not yet a world-map dimension) |
+| 3.2 ✅ | Alignment meter, tiers, shift sources, gating table. **Built 2026-11-26:** `s.alignment` −100…100, five tiers, yearly drift toward karma + the Dao path's pull; path locks read it | 13 | 2.2 | Choice events shift alignment; gates enforced (path locks now; sect/event gates later) |
 | 3.3 ✅ | Body Constitution & tempering (built 2026-10-03, ahead of 3.1: everyone starts at F, so regions are not needed) | 14 | — | Parallel track, one tempering at a time. As built: body-constitution.md; checks/body.js (62); smoke scenarios/body.js |
-| 3.2b | **Cultivation Path choice at Core Formation** (Phase 39A): everyone cultivates the Basic Method until the first Core Formation breakthrough, then chooses **Virtuous / Neutral / Demonic** on a choice card (offer follows the alignment meter; locked options say why). The path gates Arts, sects and Phase 24 Immortal Paths, pulls alignment toward itself, and changes the cultivator's look | 39 | 3.2 | The choice is the player's, every option shows its trade-offs; path-locked Arts gate correctly; look changes in every layout mode |
-| 3.2c | **Dao Reversal** (Phase 39B): once per life, a costly, risky switch (fall into the demonic / repent and purify). Success seals the old path's Arts; failure cripples. Family, clan and sect react | 39 | 3.2b | Once-per-life enforced; success/failure both play; NPC reactions fire |
-| 3.4 | Dao Paths | 7A | 3.2 | Path chosen at Foundation Building |
-| 3.5 | Heavenly Tribulation (+ wire it as a 23A health-damage source) | 7C | — | Tribulation animation passes Asset Pipeline; bot faces it |
+| 3.2b ✅ | **Cultivation Path choice at Core Formation** (Phase 39A). **Built 2026-11-26:** the offer is set on the first Core Formation breakthrough; a card on Path → Character (Virtuous / Neutral / Demonic), each with its effects, trade-offs and alignment lock; the choice is the player's and waits | 39 | 3.2 | The choice is the player's, every option shows its trade-offs; path effects on Qi/s + breakthrough ✅ |
+| 3.2c ✅ | **Dao Reversal** (Phase 39B). **Built 2026-11-26:** once per life, a risky switch (55% base ± alignment); success seals the old path's arts, failure costs 40% max Health (never kills) | 39 | 3.2b | Once-per-life enforced; success/failure both play; NPC reactions still to add |
+| 3.4 ✅ | Dao Paths | 7A | 3.2 | Path chosen at Core Formation (folded into 39A's coherent system) |
+| 3.5 ◐ | Heavenly Tribulation (+ wire it as a 23A health-damage source). **Built 2026-11-26 (engine):** damage on each realm crossing (stages 10/13/16/19), reduced by body tier + Integrity, floored at 1 Health; log + `tribulation` event. **Still open:** the dedicated animation and brace/endure choices | 7C | — | Tribulation animation passes Asset Pipeline; bot faces it (bot reaches it now; animation pending) |
 
 ### M4 — The Living World (foundation for M5–M7) — v1
 

@@ -6526,3 +6526,24 @@ button.ink-sel:disabled { opacity: .5; cursor: default; }
 /* The clone's "On its own" duty on Roam → Explore (2026-10-05; replaces the native checkbox) */
 .clone-duty { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .clone-duty-k { font-size: 10px; color: var(--dim-hi); letter-spacing: .6px; text-transform: uppercase; }
+
+/* M3 character foundation (docs/systems/character.md): the Core Formation Dao-path offer + the reversal row */
+.ch-dao-offer { margin: 8px 0 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 5px; background: rgba(237,208,80,0.04); }
+.ch-dao-title { color: var(--gold); font-size: 13px; letter-spacing: 1px; }
+.ch-dao-sub { color: var(--dim-hi); font-size: 11px; margin: 2px 0 8px; line-height: 1.4; }
+.ch-dao-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ch-dao-opt { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg2); color: var(--text); font-family: var(--font); cursor: pointer; }
+.ch-dao-opt:hover:not(:disabled) { border-color: var(--gold); }
+.ch-dao-opt:disabled { opacity: .55; cursor: not-allowed; }
+.ch-dao-opt.jade { border-color: color-mix(in srgb, var(--jade) 45%, var(--border)); }
+.ch-dao-opt.gold { border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); }
+.ch-dao-opt.red  { border-color: color-mix(in srgb, var(--red) 45%, var(--border)); }
+.ch-dao-name { font-size: 12px; color: var(--gold); }
+.ch-dao-cn { font-size: 10px; color: var(--dim-hi); }
+.ch-dao-desc { font-size: 10.5px; color: var(--text); line-height: 1.35; }
+.ch-dao-tr { font-size: 10px; color: var(--dim-hi); line-height: 1.35; }
+.ch-dao-lock { font-size: 9.5px; color: var(--red); }
+.ch-dao-rev { margin-top: 6px; font-size: 10.5px; color: var(--dim-hi); }
+.ch-dao-rev button { font-family: var(--font); font-size: 10.5px; color: var(--text); background: var(--bg2); border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; cursor: pointer; min-height: 24px; }
+.ch-dao-rev button:hover { border-color: var(--gold); color: var(--gold); }
+body[data-narrow="1"] .ch-dao-opts { grid-template-columns: 1fr; }

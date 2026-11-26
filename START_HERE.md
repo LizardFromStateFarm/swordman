@@ -76,6 +76,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 | **Practice — fun mini-games (Phase 52)** | ◐ **52a ✅ built** (2026-10-10): a **registry** (`assets/data/minigames.js`) drives every game; **Tempering Strikes was retired → Push-Ups**; Meridian Flow kept; charge-free, cooldown + unlock gated; the engine verifies rewards. **52b ✅ built** (2026-10-10): the **animated figure** (`renderer/engine/exercise-scene.js`, `ExerciseScene`) — a purpose-built ink dot-silhouette (jointed poses from `EXERCISE_POSES`) presses in step with the timing bar; asset gate **8.1 PASS**. **52c ✅ built** (2026-10-10): **Running** (a `stride` mode — tap the due foot) + **Lift** (a `hold` mode — release in the gold; lifts the body tier's **`LIFT_ITEMS`**, a water jar → an island) reuse the scene, plus the "You can lift …" chip on Path → Body and the `run`/`lift` icons; asset gate **8.2**, UI **7.7**, icons 3 cycles → **8.2 PASS**. **52d ✅ built** (2026-10-10): **Memorization** (the Acupoint Sequence — a 3×3 grid lights a seeded order to repeat; family `puzzle`, Qi, unlocks at Qi Condensation 1) — the engine re-derives `MemoryPuzzle.generate` from the session seed and counts the rounds held, a miss keeps what you held, a too-fast run scores 0; UI **7.6 → 7.8 PASS**. **52e ⬜** (the picker + HUD Train segment + attention/banter + the art gates). Spec `docs/systems/minigames.md`; plan `~/.commandcode/plans/minigames-practice.md` |
 
+| **Character foundation (M3)** | ✅ **Phases 12 · 13 · 39A–B · 7A · 7C (built 2026-11-26)**: `assets/data/character.js` — **birth origins** (6 provinces/families) + **constitutions** (6), rolled deterministically from the life id and inherited by heirs; an **alignment** meter (−100…100, five tiers) that drifts toward your karma + Dao path; the **Core Formation Dao-path choice** (Virtuous / Neutral / Demonic, with alignment locks and trade-offs) on Path → Character; a once-per-life **Dao Reversal** (success seals the old arts, failure costs 40% Health); a **Heavenly Tribulation** on each realm crossing (damage reduced by body + Integrity). UI + attention + a bot answer (`checks/character.js`, 27). Still open: the tribulation animation/choices, alignment gates on sects/events, origins as a world-map dimension. Docs `docs/systems/character.md` |
+
 > **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
 > era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
 
@@ -346,6 +348,25 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-11-26 — part 114
+Agent: **M3 — Character foundation** (continued; user: finish every remaining v1 feature, one QA pass at the end).
+  - **Phase 12 Birth Origin:** new `assets/data/character.js` (BIRTH_ORIGINS + CONSTITUTIONS). `s.origin` rolled
+    deterministically from the life id (so seeded sims/tests keep their draw order — an earlier Math.random roll
+    shifted every later roll and broke 8 checks); heirs inherit `clan.originId`. Small qps/bt/cap + starting stones.
+  - **Phase 13 Alignment:** `s.alignment` −100…100, five tiers; `_tickAlignment()` drifts it each game year toward
+    `(karma−50)×1.6` plus the Dao path's pull.
+  - **Phase 39A Cultivation Path:** the first Core Formation breakthrough sets `s.pathOffer`; a card on Path →
+    Character offers Virtuous / Neutral / Demonic with effects, trade-offs and alignment locks; `chooseDaoPath()`.
+  - **Phase 39B Dao Reversal:** once per life, 55% ± alignment; success seals the old path, failure costs 40% max Health.
+  - **Phase 7C Tribulation:** `_crossRealmM3()` damages Health on stages 10/13/16/19 (reduced by body tier + Integrity,
+    floored at 1). 7A is folded into 39A.
+  - **UI:** origin/constitution/alignment tags + a Dao-path row on Character, the offer card, a Turn-your-Dao row; an
+    urgent attention item while the offer waits. Bot answers the offer (Neutral for active).
+  - **Tests:** `npm test` clean · `npm run checks` **2329 ok** (new `checks/character.js`, 27; one flaky perf guard
+    loosened 20→40 ms for parallel runs) · `sim:quick` **healthy** (0 violations; the M3 qi_over_cap edge fixed with a
+    central cap rail in `_recalc`). Docs `docs/systems/character.md`.
+  Next: M5 (deep sect management), then M6 (family depth), M8 (world flavor).
+
 Date: 2026-11-26 — part 113
 Agent: **Phase 51 — The Long Climb** (continued from part 112; user: finish every remaining v1 feature, one QA pass at the end).
   - **51a Qi curve:** `assets/data/stages.js` — qiCaps retuned so cap:baseQps grows ≤1.5× within a realm and ≤2× across a

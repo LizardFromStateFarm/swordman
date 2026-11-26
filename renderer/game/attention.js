@@ -40,6 +40,8 @@ function collectAttention(s, gs) {
     const def = (typeof MORTAL_BEATS !== 'undefined') ? MORTAL_BEATS.find(b => b.id === s.mortal.beat.id) : null
     add('ready', 'mortal-beat', 'dantian', def?.title || 'A village matter', 'Your mortal life waits on a choice. Roam → Explore.', 'explore')
   }
+  // M3 (character.md): the Core Formation path choice waits on the player (never rolled).
+  if (s.pathOffer) add('urgent', 'dao-path', 'root', 'The Dao forks before you', 'Virtuous, Neutral or Demonic — the choice waits on you. Path → Character.', 'stats')
   const reck = s.abuse?.reckon ? gs.reckoningInfo?.() : null
   if (reck) add('ready', 'reckoning', 'sword', 'A reckoning waits', `${reck.headName} once beat you. You are grown now — and you stand above him.`, 'family', 'family')
   // family-events.js: the mirror — a child you beat, now grown and stronger, has come back for you.

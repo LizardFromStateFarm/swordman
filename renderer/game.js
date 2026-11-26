@@ -535,6 +535,22 @@
   const mgHelpers = { esc: escHtml, flash: (m, t) => flashMessage(m, t), fmt, fmtTime }
   const bodyHelpers = { ...mgHelpers, confirm: showConfirm }
   document.addEventListener('click', e => { const b = e.target.closest('[data-mg-open]'); if (b && !b.disabled) MinigameUI.open(b.dataset.mgOpen, gameState, mgHelpers) })
+  // M3 (character.md): the Dao path choice + a once-per-life Dao Reversal.
+  document.addEventListener('click', e => {
+    const p = e.target.closest('[data-daopath]')
+    if (p) {
+      const r = gameState.chooseDaoPath(p.dataset.daopath)
+      flashMessage(r.ok ? `You walk ${gameState.daoPathInfo().name}.` : ({ stage: 'The path opens at Core Formation', already: 'Your Dao is already set', alignment: 'Your alignment is not ready for that path' }[r.reason] || 'The Dao refuses'), r.ok ? 'special' : 'negative')
+      if (r.ok) renderView('stats', gameState.get())
+      return
+    }
+    const rv = e.target.closest('[data-daorevert]')
+    if (rv) {
+      const r = gameState.revertDaoPath(rv.dataset.daorevert)
+      flashMessage(r.ok ? 'Your Dao is reversed. The old arts are sealed.' : r.reason === 'failed' ? 'The reversal fails — the backlash cripples you.' : 'You cannot reverse your Dao now.', r.ok ? 'special' : 'negative')
+      renderView('stats', gameState.get())
+    }
+  })
   // A7 (Phase 38A): the Sect → Base compound scene — its own view (it owns a canvas, so SectView.render must not rebuild it)
   const baseView = new BaseView(gameState, { esc: escHtml, fmt, fmtTime, go: v => nav.go(v) })
   // 1.8b-1: one entry point per view (NAV_GROUPS in renderer/game/nav.js)
@@ -691,10 +707,25 @@
         <div class="ch-tags">
           <span class="ch-tag root" title="Spiritual root: multiplies all Qi"><b data-icon="root"></b>${escHtml(latinOnly(s.root.name))} ×${s.root.mult}</span>
           ${persona ? `<span class="ch-tag" title="${escHtml(persona.blurb)}"><b data-icon="mask"></b>${escHtml(persona.name)}</span>` : ''}
+          ${(() => { const o = gameState.originInfo(); return o ? `<span class="ch-tag" title="${escHtml(o.origin.desc)}"><b data-icon="root"></b>${escHtml(o.origin.name)} · ${escHtml(o.constitution.name)}</span>` : '' })()}
+          ${(() => { const a = gameState.alignmentInfo(); return `<span class="ch-tag" title="Alignment: how you live tilts it over the years — your karma and Dao path pull it"><b data-icon="lotus"></b>${escHtml(a.tier.name)} ${a.value > 0 ? '+' : ''}${a.value}</span>` })()}
         </div>
         <div class="ch-meta" title="Age passes only while the game is open. Nothing dies of age.">Age ${Math.floor(s.age)} · Year ${Math.floor(s.world.year)} · Gen ${s.generation || 1}</div>
         ${persona ? `<div class="ch-persona">${escHtml(persona.blurb)}</div>` : ''}
       </div>
+      ${(() => {
+        // M3 (character.md): the Core Formation path choice — a real decision that waits for the player.
+        const off = gameState.pathOfferInfo()
+        if (!off) return ''
+        return `<div class="ch-dao-offer">
+          <div class="ch-dao-title">The Dao forks before you</div>
+          <div class="ch-dao-sub">Choose the road this life will take. Only a Dao Reversal can change it later.</div>
+          <div class="ch-dao-opts">${off.options.map(o => `<button class="ch-dao-opt ${o.tone || ''}" data-daopath="${o.id}" ${o.lock ? 'disabled' : ''} title="${escHtml(o.lock || o.desc)}">
+            <span class="ch-dao-name">${escHtml(o.name)}</span><span class="ch-dao-cn">${escHtml(o.cn)}</span>
+            <span class="ch-dao-desc">${escHtml(o.desc)}</span><span class="ch-dao-tr">${escHtml(o.tradeoff)}</span>
+            ${o.lock ? `<span class="ch-dao-lock">${escHtml(o.lock)}</span>` : ''}</button>`).join('')}</div>
+        </div>`
+      })()}
       <div class="ch-grid">
         <section>
           <div class="ch-sec-title"><span>Cultivation</span></div>
@@ -721,6 +752,7 @@
         <section>
           <div class="ch-sec-title"><span>Belongings &amp; Bonds</span></div>
           <div class="ch-list">
+            ${(() => { const o = gameState.originInfo(), a = gameState.alignmentInfo(), p = gameState.daoPathInfo(); return `${o ? sr('Birth', `${escHtml(o.origin.name)} · ${escHtml(o.region)}`) : ''}${o ? sr('Constitution', escHtml(o.constitution.name)) : ''}${sr('Alignment', `${escHtml(a.tier.name)} ${a.value > 0 ? '+' : ''}${a.value}`)}${sr('Dao path', escHtml(p.name))}${s.daoPath && !s.daoReversalUsed ? `<div class="ch-dao-rev">Turn your Dao (once per life): ${['virtuous', 'neutral', 'demonic'].filter(id => id !== s.daoPath).map(id => `<button data-daorevert="${id}">${escHtml((DAO_PATHS[id]?.name || id).replace('The ', ''))}</button>`).join(' ')}</div>` : s.daoReversalUsed ? sr('Dao Reversal', 'Spent this life') : ''}` })()}
             ${sr('Weapon', s.equipped.weapon ? escHtml(ITEMS[s.equipped.weapon]?.name || s.equipped.weapon) : none)}
             ${sr('Artifact', s.equipped.artifact ? escHtml(ITEMS[s.equipped.artifact]?.name || s.equipped.artifact) : none)}
             ${sr('Techniques', `${s.techniques.length} of ${TECHNIQUES.length}`)}

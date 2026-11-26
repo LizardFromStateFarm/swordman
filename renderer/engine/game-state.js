@@ -132,6 +132,15 @@ class GameState {
       spiritStones:  10,
       comprehension: 0,
       karma:         50,
+      // M3 character foundation (character.md): birth origin + constitution, alignment, and the Dao path.
+      // The path is chosen at the first Core Formation breakthrough; `pathOffer` waits on the player.
+      origin:         this._rollOrigin(clan, self.id),
+      alignment:      0,
+      daoPath:        null,
+      pathOffer:      null,
+      daoReversalUsed: false,
+      daoSealed:      false,
+      tribulations:   0,
       techniques:    ['qi_breathing'],
       root:          this._rollRoot(),
       // Phase 48 (active-cultivation.md): the Cultivate action's combo + cooldown. The active Qi loop.
@@ -4770,6 +4779,162 @@ class GameState {
     return CULTIVATION_STAGES[Math.min(this._s.stageIndex, CULTIVATION_STAGES.length - 1)]
   }
 
+  // ── M3 character foundation (character.md) ──────────────────────────────────────────────────────────────
+  // Birth origin (+ constitution), alignment, the Dao path and its Reversal, and the Heavenly Tribulation.
+
+  _hashStr(str) {
+    let h = 2166136261
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) }
+    return h >>> 0
+  }
+
+  // The origin is picked from a hash of the life's id (NOT Math.random), so it never perturbs the seeded
+  // draw order that the rest of character creation and the sim rely on. An heir reuses the clan's origin.
+  _rollOrigin(clan, seed) {
+    const inherit = clan && clan.originId ? BIRTH_ORIGINS.find(o => o.id === clan.originId) : null
+    const key = String(seed ?? this._s?.self?.id ?? 'origin')
+    const pickWeighted = (map, salt) => {
+      const entries = Object.entries(map).filter(([, w]) => w > 0)
+      const total = entries.reduce((a, [, w]) => a + w, 0)
+      let roll = this._hashStr(key + salt) % total
+      for (const [k, w] of entries) { if ((roll -= w) < 0) return k }
+      return entries[0]?.[0]
+    }
+    let def = inherit
+    if (!def) {
+      const map = Object.fromEntries(BIRTH_ORIGINS.map(o => [o.id, o.weight]))
+      def = BIRTH_ORIGINS.find(o => o.id === pickWeighted(map, '|origin')) || BIRTH_ORIGINS[0]
+    }
+    const con = pickWeighted(def.constitutions, '|con')
+    return { id: def.id, region: def.region, family: def.family, constitution: con }
+  }
+
+  originInfo() {
+    const o = this._s?.origin
+    const def = o && BIRTH_ORIGINS.find(x => x.id === o.id)
+    if (!def) return null
+    return { id: def.id, origin: def, constitution: CONSTITUTIONS[o.constitution] || CONSTITUTIONS.plain,
+      region: def.region, family: def.family }
+  }
+
+  alignmentInfo() {
+    const v = Math.round(this._s?.alignment || 0)
+    const tier = ALIGNMENT_TIERS.filter(t => v >= t.min).pop() || ALIGNMENT_TIERS[2]
+    return { value: v, tier }
+  }
+
+  daoPathInfo() {
+    const id = this._s?.daoPath || 'basic'
+    return { id, ...DAO_PATHS[id] }
+  }
+
+  pathOfferInfo() {
+    const s = this._s
+    if (!s?.pathOffer) return null
+    const a = Math.round(s.alignment || 0)
+    const options = ['virtuous', 'neutral', 'demonic'].map(id => {
+      const p = DAO_PATHS[id]
+      const lock = p.minAlign != null && a < p.minAlign ? `Alignment ${a} / ${p.minAlign} needed`
+        : p.maxAlign != null && a > p.maxAlign ? `Alignment ${a} / ${p.maxAlign} or lower needed` : null
+      return { id, name: p.name, cn: p.cn, tone: p.tone, desc: p.desc, tradeoff: p.tradeoff, qps: p.qps, bt: p.bt, lock }
+    })
+    return { year: s.pathOffer.year, options }
+  }
+
+  chooseDaoPath(id) {
+    const s = this._s, p = DAO_PATHS[id]
+    if (!p || id === 'basic') return { ok: false, reason: 'unknown' }
+    if ((s.stageIndex || 0) < DAO_PATH_CORE_STAGE) return { ok: false, reason: 'stage' }
+    if (s.daoPath) return { ok: false, reason: 'already' }
+    const a = Math.round(s.alignment || 0)
+    if (p.minAlign != null && a < p.minAlign) return { ok: false, reason: 'alignment', need: p.minAlign, have: a }
+    if (p.maxAlign != null && a > p.maxAlign) return { ok: false, reason: 'alignment', need: p.maxAlign, have: a }
+    s.daoPath = id
+    s.pathOffer = null
+    s.alignment = Math.max(-100, Math.min(100, a + (p.alignPull || 0)))
+    s.karma = Math.max(0, Math.min(100, (s.karma ?? 50) + (id === 'demonic' ? -5 : id === 'virtuous' ? 5 : 0)))
+    this.addEvent({ text: `You take up ${p.name}. ${p.desc}`, type: 'special' })
+    this._recalc(); this._notify()
+    this._emit('dao_path', { id })
+    return { ok: true, path: id }
+  }
+
+  // Once per life: a costly, risky turn to another path. A failure maims (Health), never kills.
+  revertDaoPath(id) {
+    const s = this._s, p = DAO_PATHS[id]
+    if (!p || id === 'basic') return { ok: false, reason: 'unknown' }
+    if (!s.daoPath) return { ok: false, reason: 'no_path' }
+    if (id === s.daoPath) return { ok: false, reason: 'same' }
+    if (s.daoReversalUsed) return { ok: false, reason: 'once' }
+    const a = Math.round(s.alignment || 0)
+    if (p.minAlign != null && a < p.minAlign) return { ok: false, reason: 'alignment', need: p.minAlign, have: a }
+    if (p.maxAlign != null && a > p.maxAlign) return { ok: false, reason: 'alignment', need: p.maxAlign, have: a }
+    s.daoReversalUsed = true
+    const chance = Math.max(0.1, Math.min(0.9, DAO_REVERSAL.baseChance + (a / 400) * (p.tone === 'jade' ? 1 : -1)))
+    if (Math.random() <= chance) {
+      const from = s.daoPath
+      s.daoPath = id
+      s.daoSealed = !!DAO_REVERSAL.sealArts
+      s.alignment = Math.max(-100, Math.min(100, a + (p.alignPull || 0)))
+      this.addEvent({ text: `You reverse your Dao from ${DAO_PATHS[from].name} to ${p.name}. The old arts are sealed; the new road opens.`, type: 'special' })
+      this._recalc(); this._notify()
+      this._emit('dao_reversal', { from, to: id, ok: true })
+      return { ok: true, path: id, chance }
+    }
+    const maxH = this.maxHealth()
+    s.health = Math.max(1, (s.health ?? maxH) - Math.round(maxH * DAO_REVERSAL.failHealthFrac))
+    this.addEvent({ text: `Your Dao Reversal fails. The backlash cripples you for a season (${Math.round(DAO_REVERSAL.failHealthFrac * 100)}% Health lost).`, type: 'negative' })
+    this._recalc(); this._notify()
+    this._emit('dao_reversal', { from: s.daoPath, to: id, ok: false })
+    return { ok: false, reason: 'failed', chance }
+  }
+
+  // Crossing into a new realm: a tribulation scars the body, and at Core Formation the Dao path is offered.
+  _crossRealmM3(prevRealm, newRealm) {
+    const s = this._s
+    const frac = TRIBULATION.damageByStage[s.stageIndex]
+    if (frac) {
+      const maxH = this.maxHealth()
+      const body = Math.min(1, (s.body?.tier || 0) / 6)
+      const integ = Math.max(0, Math.min(100, s.realmIntegrity ?? 100)) / 100
+      const dmg = Math.max(1, Math.round(maxH * frac * (1 - body * TRIBULATION.bodyReduce) * (1 - integ * TRIBULATION.integrityReduce)))
+      s.health = Math.max(TRIBULATION.floorHealth, (s.health ?? maxH) - dmg)
+      s.tribulations = (s.tribulations || 0) + 1
+      this.addEvent({ text: `Heavenly tribulation — the crossing into ${newRealm} costs you ${dmg} Health.`, type: 'negative' })
+      this._emit('tribulation', { realm: newRealm, damage: dmg })
+    }
+    if (s.stageIndex >= DAO_PATH_CORE_STAGE && !s.daoPath && !s.pathOffer) {
+      s.pathOffer = { year: Math.floor(s.world?.year || 0), at: Date.now() }
+      this.addEvent({ text: 'The Dao forks before you. Choose your path on Path → Character.', type: 'special' })
+      this._emit('path_offer', {})
+    }
+  }
+
+  // Alignment drifts over the years toward how you actually live (karma), pulled by your Dao path.
+  _tickAlignment() {
+    const s = this._s
+    if (!s) return
+    const p = s.daoPath ? DAO_PATHS[s.daoPath] : null
+    let target = ((s.karma ?? 50) - 50) * ALIGNMENT_DRIFT.karmaWeight + (p ? p.alignPull : 0)
+    target = Math.max(-100, Math.min(100, target))
+    const step = Math.max(-ALIGNMENT_DRIFT.maxStep, Math.min(ALIGNMENT_DRIFT.maxStep, target - (s.alignment || 0)))
+    if (step) s.alignment = Math.max(-100, Math.min(100, Math.round((s.alignment || 0) + step)))
+  }
+
+  _ensurePhase12Fields() {
+    const s = this._s
+    if (!s) return
+    if (!s.origin || !s.origin.id) s.origin = this._rollOrigin(this._playerClan(), s.self?.id || 'save')
+    if (s.alignment === undefined) s.alignment = Math.max(-100, Math.min(100, Math.round(((s.karma ?? 50) - 50) * 2)))
+    if (s.daoPath === undefined) s.daoPath = null
+    if (s.pathOffer === undefined) s.pathOffer = null
+    if (s.daoReversalUsed === undefined) s.daoReversalUsed = false
+    if (s.daoSealed === undefined) s.daoSealed = false
+    if (s.tribulations === undefined) s.tribulations = 0
+    const clan = this._playerClan && this._playerClan()   // the clan remembers its origin for heirs
+    if (clan && s.origin?.id) clan.originId = s.origin.id
+  }
+
   _recalc() {
     const s  = this._s
     this._ensurePhase2Fields()
@@ -4800,6 +4965,7 @@ class GameState {
     this._ensurePhase48Fields()   // Phase 48 (active-cultivation.md): the Cultivate combo/cooldown (a new field)
     this._ensurePhase49Fields()   // Phase 49 (mortal-phase.md): the Awakening flag
     this._ensurePhase49bFields()  // Phase 49b (mortal-phase.md): the mortal arc's per-life beat state
+    this._ensurePhase12Fields()   // M3 (character.md): birth origin, alignment, Dao path (a new field set)
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -4829,6 +4995,15 @@ class GameState {
       const t = TECHNIQUES.find(t => t.id === id)
       if (t?.effect?.type === 'qi_cap_mult') cMul(t.name, t.effect.value)
     }
+
+    // M3 (character.md): birth origin + constitution, and the Dao path, scale the same numbers as everything else.
+    const oi = this.originInfo()
+    if (oi) {
+      qMul(`Origin: ${oi.origin.name}`, oi.origin.qps * oi.constitution.qps)
+      bAdd(`Origin: ${oi.constitution.name}`, (oi.origin.bt || 0) + (oi.constitution.bt || 0))
+      cMul(`Origin: ${oi.constitution.name}`, oi.constitution.cap || 1)
+    }
+    if (s.daoPath) { const dp = this.daoPathInfo(); qMul(`Dao: ${dp.name}`, dp.qps); bAdd(`Dao: ${dp.name}`, dp.bt) }
 
     // Equipped weapon bonuses
     const weapId = s.equipped.weapon
@@ -4988,6 +5163,9 @@ class GameState {
         btFloor: sectFx.bt_floor || 0, btPill: pillBtPreview, btRaw: st.breakthroughChance + btBonus + s.karma / 1000,
       },
     }
+    // Safety rail: Qi never exceeds the cap. Every gain path clamps, but a stage change / rebirth race can
+    // leave a stale value for a frame; this keeps the sim's qi_over_cap invariant true by construction.
+    if (isFinite(s.derived.qiCap) && s.qi > s.derived.qiCap) s.qi = s.derived.qiCap
     this._maybeLineageRecruit()   // Phase 46 (1.20d): the old line-sect offers you a place at Core Formation
   }
 
@@ -5004,7 +5182,7 @@ class GameState {
   // rankings catch up on the next turn).
   _queueYear(yr) {
     const s = this._s, J = this._yearJobs ||= []
-    J.push(() => this._tickFamily(), () => this._tickArena(), () => this._tickBranches(), () => this._tickWorldSects(),
+    J.push(() => this._tickFamily(), () => this._tickAlignment(), () => this._tickArena(), () => this._tickBranches(), () => this._tickWorldSects(),
       () => this._tickWorldLives(), () => this._tickRepute(yr), () => this._tickRival(yr), () => this._tickRanks(yr), () => this._tickSoulTech(),
       () => { this._syncPersons(); if (s.ownSect?.founded && !s.interlude) this._roadRoll('gate', null, `the gate of ${s.ownSect.name}`) })
   }
@@ -5226,6 +5404,7 @@ class GameState {
     const newRealm = CULTIVATION_STAGES[s.stageIndex].realm
     if (newRealm !== prevRealm && REALM_FIRST_ID[newRealm]) this._claimFirst(REALM_FIRST_ID[newRealm])
     if (newRealm !== prevRealm) this._offerArts(newRealm)          // Phase 42: breakthrough insight — pick 1 of 3
+    if (newRealm !== prevRealm) this._crossRealmM3(prevRealm, newRealm)   // M3: tribulation + the Dao path offer at Core
     if (ART_STAGE_GRANTS[s.stageIndex]) this._learnArt(ART_STAGE_GRANTS[s.stageIndex], 'grant')
     const clan = this._playerClan()
     if (clan) clan.bestStageIndex = Math.max(clan.bestStageIndex, s.stageIndex)
@@ -9317,6 +9496,13 @@ class GameState {
     this._pruneWorld(w)
     s.interlude = null
     s.mortal = this._blankMortal()   // Phase 49b: every life begins a mortal with a fresh arc
+    s.origin = this._rollOrigin(clan, s.self.id + '|' + newYear)   // M3 (character.md): an heir's origin comes from the clan
+    s.alignment = 0
+    s.daoPath = null
+    s.pathOffer = null
+    s.daoReversalUsed = false
+    s.daoSealed = false
+    s.tribulations = 0
     const pt = POSITION_TEXT[position]
     this.addEvent({ text: birthLine, type: 'special' })
     this.addEvent({ text: `You are ${s.name}${clan ? ` of the ${clan.name} clan` : ''} — ${this._fillClan(pt.name, { line: line?.name || '' }).toLowerCase()}.${stipend ? ` The clan sect grants you a stipend of ${stipend} Spirit Stones.` : ''}`, type: 'positive' })
