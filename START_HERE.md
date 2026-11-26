@@ -78,6 +78,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 | **Character foundation (M3)** | ✅ **Phases 12 · 13 · 39A–B · 7A · 7C (built 2026-11-26)**: `assets/data/character.js` — **birth origins** (6 provinces/families) + **constitutions** (6), rolled deterministically from the life id and inherited by heirs; an **alignment** meter (−100…100, five tiers) that drifts toward your karma + Dao path; the **Core Formation Dao-path choice** (Virtuous / Neutral / Demonic, with alignment locks and trade-offs) on Path → Character; a once-per-life **Dao Reversal** (success seals the old arts, failure costs 40% Health); a **Heavenly Tribulation** on each realm crossing (damage reduced by body + Integrity). UI + attention + a bot answer (`checks/character.js`, 27). Still open: the tribulation animation/choices, alignment gates on sects/events, origins as a world-map dimension. Docs `docs/systems/character.md` |
 
+| **Deep sect management (M5)** | ✅ **Phase 27 (built 2026-11-26)**: `assets/data/sect-management.js` — four **offices** (Steward = income, Trainer = XP, Warden = war defense, Recruiter = candidate talent) with a holder's **personality fit** ×1.2; a **recruitment policy** (Open / Selective / Exacting: min talent + rerolls + refresh) and an **auto-recruit** delegation; **inner-disciple promotions** (+10% yield); **loyalty** that only moves on a wrong (losing an office −15), with defection at zero; a derived **sect tier** (Humble → Heavenly, from fame). UI inside Sect → Disciples; `checks/sect-management.js` (17). 5.5 is covered by 43c's real-sect wars. Docs `docs/systems/sect-management.md` |
+
 > **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
 > era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
 
@@ -348,6 +350,19 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-11-26 — part 115
+Agent: **M5 — Deep Sect Management** (user: rush through M5/M6/M8, clean up + QA later).
+  - New `assets/data/sect-management.js`: SECT_OFFICES (Steward income / Trainer XP / Warden defense / Recruiter
+    talent), SECT_TIERS (fame-derived), RECRUIT_STRICTNESS, loyalty + inner-yield constants.
+  - Engine: `s.ownSect.offices` + `.policy`; `_officeBonuses` feeds `_recalc`; `appointOffice`/`clearOffice`
+    (replacing a holder −15 loyalty → possible defection), `promoteDisciple` (inner, +10% yield), `sectTierInfo`,
+    `recruitPolicyInfo`/`setRecruitPolicy`, auto-recruit in `tickOwnSect`, Recruiter +1 candidate talent.
+  - UI: Sect → Disciples "Offices & discipline" (office cards + appoint/clear, strictness segment, auto toggle,
+    tier), a raise button per disciple. Default policy = Open gate (seeds unchanged).
+  - Tests: `npm test` clean · `npm run checks` **2347 ok** (new `checks/sect-management.js`, 17). Docs
+    `docs/systems/sect-management.md`.
+  Next: M6 (family depth), then M8 (world flavor).
+
 Date: 2026-11-26 — part 114
 Agent: **M3 — Character foundation** (continued; user: finish every remaining v1 feature, one QA pass at the end).
   - **Phase 12 Birth Origin:** new `assets/data/character.js` (BIRTH_ORIGINS + CONSTITUTIONS). `s.origin` rolled

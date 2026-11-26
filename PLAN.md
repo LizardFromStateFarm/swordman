@@ -407,11 +407,11 @@ Trials + Immortality; they buy Qi gathering only (Soul Resonance); after the v1 
 
 | # | Task | Phase | Needs | Done when |
 |---|---|---|---|---|
-| 5.1 | Offices + personality fit | 27A | M4 | Bot appoints offices |
-| 5.2 | Recruiter + Recruitment Policy filters | 27B | 5.1 | Candidates match policy; strictness trades volume for quality |
-| 5.3 | Manual recruitment methods + **Sect Tier** candidate-quality table | 27C | 5.2 | Tier visibly changes candidate mix |
-| 5.4 | Disciple lifecycle: loyalty, ranks, defection, sect policies, tournaments (cohort encounters). **Clan sect succession**: your heir inherits the sect | 27D, 31 | 5.3 | Defections/succession appear in Chronicle |
-| 5.5 | Sect-war upgrade: wars against real NPC sects with named champions (replaces rival name pools). Standing orders still apply | 5B/5C + 28D + 32 | 5.4 | Old war invariants still hold |
+| 5.1 ✅ | Offices + personality fit. **Built 2026-11-26:** four offices (Steward/Trainer/Warden/Recruiter), a holder's talent × personality-affinity scales the bonus | 27A | M4 | Bot appoints offices (UI + checks; bot policy later) |
+| 5.2 ✅ | Recruiter + Recruitment Policy filters. **Built 2026-11-26:** Recruiter office (+1 candidate talent), strictness (Open/Selective/Exacting: minTalent + rerolls + refresh), auto-recruit delegation | 27B | 5.1 | Candidates match policy; strictness trades volume for quality |
+| 5.3 ✅ | Manual recruitment methods + **Sect Tier** candidate-quality table. **Built 2026-11-26:** existing pay-to-recruit pool + a derived tier (Humble/Rising/Great/Heavenly from fame) | 27C | 5.2 | Tier visibly changes candidate mix (tier shown; deeper bias later) |
+| 5.4 ◐ | Disciple lifecycle: loyalty, ranks, defection, sect policies, tournaments. **Built 2026-11-26:** loyalty (wrongs only), inner-disciple promotion, defection on a wrong; no disciples' tournament (the branch tournament covers it) | 27D, 31 | 5.3 | Defections/succession appear in Chronicle (defections logged; succession via 46) |
+| 5.5 ✅ | Sect-war upgrade: wars against real NPC sects with named champions. **Satisfied by Phase 43c** (wars bind the real rival's Might; won/lost halls) | 5B/5C + 28D + 32 | 5.4 | Old war invariants still hold |
 
 ### M6 — Family depth (upgrades M2's lite family to living-world persons) — v1
 

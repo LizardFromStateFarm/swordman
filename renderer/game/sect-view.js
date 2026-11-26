@@ -569,7 +569,7 @@ class SectView {
     const bFull = !!this.gs.branchInfo()?.full   // at SECT_BRANCH.maxBranches the "branch" button locks and says why
     const roster = main.map(x => `<div class="sv-disc" title="+${(x.qi * 100).toFixed(2)}% Qi/s · ${x.stonesMin.toFixed(2)} stones/min · ${x.herbsMin.toFixed(2)} herbs/min">
         <div class="sv-disc-h"><span class="sv-disc-n">${x.kin ? '<b class="sv-kin" data-icon="heir" title="Your child"></b>' : ''}${PersonCard.link(x.d.pid || x.d.id, x.d.name)}</span>${SV_STARS(x.d.talent)}<span class="sv-lv">Lv.${x.d.level}${x.max ? ' <b>max</b>' : ''}</span>
-          <span class="sv-disc-act"><button class="sv-branch-btn" data-sa="branch-appoint" data-id="${h.esc(x.d.id)}" ${bFull ? `disabled title="Your sect already holds ${SECT_BRANCH.maxBranches} branches, the most it can. Dissolve one to raise another."` : `title="Raise ${h.esc(x.d.name)} to head their own branch"`} aria-label="branch">${Icon('branch')}<span class="sv-act-l">branch</span></button>
+          <span class="sv-disc-act">${x.d.role !== 'inner' ? `<button class="sv-branch-btn" data-sa="promote" data-id="${h.esc(x.d.id)}" title="Raise ${h.esc(x.d.name)} to an inner disciple (+10% output)">${Icon.g('rise')}<span class="sv-act-l">raise</span></button>` : ''}<button class="sv-branch-btn" data-sa="branch-appoint" data-id="${h.esc(x.d.id)}" ${bFull ? `disabled title="Your sect already holds ${SECT_BRANCH.maxBranches} branches, the most it can. Dissolve one to raise another."` : `title="Raise ${h.esc(x.d.name)} to head their own branch"`} aria-label="branch">${Icon('branch')}<span class="sv-act-l">branch</span></button>
           <button class="sv-dismiss" data-sa="dismiss" data-id="${h.esc(x.d.id)}" title="Send ${h.esc(x.d.name)} away" aria-label="dismiss">${Icon('close')}<span class="sv-act-l">dismiss</span></button></span></div>
         <span class="fam-bar thin"><i class="tone-gold" data-w="${Math.round(x.xpFrac * 100)}"></i></span>
         <div class="sv-disc-y"><span class="up">+${(x.qi * 100).toFixed(2)}% Qi/s</span><span>${x.stonesMin.toFixed(2)} stones/min</span><span>${x.herbsMin.toFixed(2)} herbs/min</span>
@@ -579,11 +579,38 @@ class SectView {
         <div class="sv-gains"><span class="sv-gain up">+${(x.qi * 100).toFixed(2)}% Qi/s</span><span class="sv-gain">${x.stonesMin.toFixed(2)} stones/min</span><span class="sv-gain dim">at Lv.1, more as they grow</span></div>
         ${this._tile('recruit', 'disciple', 'Take <span class="sv-long">them </span>in', this._cost(x.cost, s.spiritStones), x.reason === 'full' ? 'Every hall seat is taken: raise the Sect Hall' : x.reason === 'stones' ? `${h.fmt(x.cost - Math.floor(s.spiritStones))} stones short` : '', 'wide sv-go', ` data-id="${h.esc(x.c.id)}"`)}</div>`).join('')
     return `<div class="fam-view sect-view sv-disc-view">
-      <div class="fam-col">${this._branches(s)}${this._sec('Your disciples', (roster || '<div class="fk-note">No one has taken your teaching yet. Candidates wait at the gate.</div>') +
+      <div class="fam-col">${this._offices(s)}${this._branches(s)}${this._sec('Your disciples', (roster || '<div class="fk-note">No one has taken your teaching yet. Candidates wait at the gate.</div>') +
         (main.length ? `<div class="fk-note sv-together">Your own hall: +${(info.totals.qi * 100).toFixed(1)}% Qi/s · ${info.totals.stonesMin.toFixed(1)} stones and ${info.totals.herbsMin.toFixed(1)} herbs a minute. Talent and level raise all three.</div>` : ''),
         `${main.length} / ${info.hall.cap}`)}</div>
       <div class="fam-col">${this.poachView ? this._poach(s) : this._sec(`At the gate <button class="fa-quiet sv-poach-open" data-sa="poachopen" title="Lure a trained disciple away from another sect: choose the sect, then the disciple">${Icon('disciple')} Poach recruits</button>`, `<div class="sv-grid tight">${pool}</div>
         ${this._tile('reroll', 'auto', 'Call others to the gate', `${this._cost(RECRUIT_REROLL_COST, s.spiritStones)} · or wait: new faces in <span data-pooltimer>${h.fmtTime(Math.max(0, Math.ceil((o.poolRefreshAt - Date.now()) / 1000)))}</span>`, s.spiritStones < RECRUIT_REROLL_COST ? `Costs ${RECRUIT_REROLL_COST} stones` : '', 'wide sv-call')}`, o.recruitPool.length)}</div></div>`
+  }
+
+  // M5 (sect-management.md): offices + recruitment policy, inside Disciples.
+  _offices(s) {
+    const h = this.h, o = s.ownSect
+    const offices = this.gs.sectOfficeInfo(), tier = this.gs.sectTierInfo(), pol = this.gs.recruitPolicyInfo()
+    const main = o.disciples.filter(d => !d.branchId)
+    const pct = v => `+${Math.round(v * 100)}%`
+    const bonus = off => off.effect === 'recruit' ? (off.bonus > 0 ? '+1 talent' : '') : pct(off.bonus)
+    const rows = offices.map(off => {
+      const holder = off.holder
+      const picks = main.filter(d => d.id !== holder?.id).sort((a, b) => b.talent - a.talent).slice(0, 3)
+      return `<div class="sv-office">
+        <div class="sv-off-h"><span class="sv-off-n">${h.esc(off.name)} <span class="dim">${h.esc(off.cn)}</span></span><span class="sv-off-b">${bonus(off)}</span></div>
+        <div class="sv-off-d">${h.esc(off.desc)}</div>
+        <div class="sv-off-hold">${holder
+          ? `${Icon('crown')} ${h.esc(holder.name)}${holder.fit ? ' · <span class="tone-gold">fit</span>' : ''} <button class="fa-quiet" data-sa="office-clear" data-off="${off.id}">clear</button>`
+          : '<span class="dim">vacant</span>'}</div>
+        ${!holder && picks.length ? `<div class="sv-off-pick">${picks.map(d => `<button class="pack-chip" data-sa="office-appoint" data-off="${off.id}" data-id="${h.esc(d.id)}">${h.esc(d.name)} ${'★'.repeat(d.talent)}</button>`).join('')}</div>` : ''}
+      </div>`
+    }).join('')
+    const strict = pol.tiers.map(t => `<button class="set-opt${pol.strictness === t.id ? ' active' : ''}" data-sa="policy" data-on="${t.id}" title="Candidates need ${t.minTalent}★ or better">${h.esc(t.name)}</button>`).join('')
+    return `<section class="fam-sec sv-halls"><div class="fam-sec-h"><span>Offices &amp; discipline</span><span class="fam-count">${h.esc(tier.name)}</span></div>
+      <div class="sv-offices">${rows}</div>
+      <div class="sv-policy"><span class="sv-pol-k">Recruitment</span><span class="set-seg">${strict}</span>
+        <button class="set-opt${pol.autoRecruit ? ' active' : ''}" data-sa="autorecruit" data-on="${pol.autoRecruit ? 0 : 1}">Auto ${pol.autoRecruit ? 'On' : 'Off'}</button></div>
+    </section>`
   }
 
   // Phase 45 (sect-branches.md): the sub-leaders' branches + the Tournament of Branches. Lives inside Disciples
@@ -924,6 +951,12 @@ class SectView {
       case 'upgrade': return say(gs.upgradeSectBuilding(id), r => `The ${SECT_BUILDINGS.find(b => b.id === id)?.name} deepens to Lv.${r.level}`, { ...stones, not_built: 'Raise it first', max_level: 'Already at its full height' })
       case 'recruit': return say(gs.recruitDisciple(id), r => `${r.disciple.name} joins your sect`, { ...stones, full: 'Every seat is taken', not_found: 'They have gone' })
       case 'reroll': return say(gs.rerollRecruitPool(), () => 'New faces arrive at the gate', stones)
+      // M5: offices, the recruitment policy, promotions
+      case 'office-appoint': return say(gs.appointOffice(b.dataset.off, id), () => 'The office is filled', { no_sect: 'No sect', unknown: 'Unknown office', not_found: 'They are gone', in_branch: 'They lead a branch' })
+      case 'office-clear': { const r = gs.clearOffice(b.dataset.off); return r.ok ? h.flash('The office is vacant', 'neutral') : h.flash('No one holds it', 'negative') }
+      case 'policy': { const r = gs.setRecruitPolicy({ strictness: +b.dataset.on }); return r.ok ? null : h.flash('No sect', 'negative') }
+      case 'autorecruit': { const r = gs.setRecruitPolicy({ autoRecruit: b.dataset.on === '1' }); return r.ok ? null : h.flash('No sect', 'negative') }
+      case 'promote': { const r = gs.promoteDisciple(id); return r.ok ? h.flash('Raised to an inner disciple', 'positive') : h.flash({ already: 'Already an inner disciple', not_found: 'They are gone' }[r.reason] || 'Not now', 'negative') }
       case 'dismiss': { const d = gs.get().ownSect.disciples.find(x => x.id === id)
         return h.confirm(`Dismiss ${d?.name || 'this disciple'}?`, 'They leave for good, with every level they earned. There is no refund.', () => gs.dismissDisciple(id), 'Dismiss') }
       // Phase 45: branches (分舵) — sub-leaders, loyalty on a wrong, the Tournament of Branches

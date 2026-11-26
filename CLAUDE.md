@@ -153,6 +153,7 @@ docs/
     minigames.md        ← Phase 52 (52a–d built): the practice mini-game registry — Push-Ups (beat) / Running (stride) / Lift (hold) + Meridian Flow + Memorization, the ExerciseScene figure, the reward/cooldown/unlock contract, how to add a game
     unlocks.md          ← Phase 50: progressive disclosure — the unlock schedule, availableViews/lockedGroups, nav groups that hide, attention filtered to unlocked views, the trimmed opening
     character.md        ← M3: birth origin + constitution (inherited), alignment, the Core Formation Dao-path choice + Dao Reversal, the Heavenly Tribulation
+    sect-management.md  ← M5: offices + personality fit, recruitment policy + auto-recruit, promotions, loyalty on a wrong, the derived sect tier
     crafting.md         ← Recipes, equipment, pills, elixirs (Phase 2)
     sects.md            ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
@@ -311,6 +312,7 @@ assets/
     mortal.js           ← Phase 49b (mortal-phase.md): the mortal arc — MORTAL_ARC tuning + MORTAL_BEATS (11 mortal-only beats, the village life lived before the Dao)
     unlocks.js          ← Phase 50 (unlocks.md): UNLOCK_GROUPS / UNLOCK_VIEWS / UNLOCK_RULES — the progressive-disclosure schedule (what opens at each stage)
     character.js        ← M3 (character.md): BIRTH_ORIGINS + CONSTITUTIONS, ALIGNMENT_TIERS, DAO_PATHS + DAO_REVERSAL, TRIBULATION
+    sect-management.js  ← M5 (sect-management.md): SECT_OFFICES + personality fit, SECT_TIERS, RECRUIT_STRICTNESS, loyalty/inner-yield constants
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     tutorial.js         ← TUTORIAL_LESSONS + TUTORIAL_GROUPS — the coach-mark lessons: trigger (start / view / el), selectors to spotlight, text, Guide lines (task 1.23)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)

@@ -6547,3 +6547,18 @@ button.ink-sel:disabled { opacity: .5; cursor: default; }
 .ch-dao-rev button { font-family: var(--font); font-size: 10.5px; color: var(--text); background: var(--bg2); border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; cursor: pointer; min-height: 24px; }
 .ch-dao-rev button:hover { border-color: var(--gold); color: var(--gold); }
 body[data-narrow="1"] .ch-dao-opts { grid-template-columns: 1fr; }
+
+/* M5 (docs/systems/sect-management.md): offices + recruitment policy inside Sect → Disciples */
+.sv-offices { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr)); gap: 6px; margin: 4px 0 8px; }
+.sv-office { border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; background: var(--bg2); }
+.sv-off-h { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; }
+.sv-off-n { font-size: 11.5px; color: var(--gold); }
+.sv-off-b { font-size: 10px; color: var(--jade); white-space: nowrap; }
+.sv-off-d { font-size: 9.5px; color: var(--dim-hi); line-height: 1.35; margin: 2px 0 4px; }
+.sv-off-hold { font-size: 10.5px; color: var(--text); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sv-off-hold .ic { width: 12px; height: 12px; color: var(--gold); }
+.sv-off-pick { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.sv-off-pick .pack-chip { font-size: 9.5px; min-height: 24px; padding: 2px 6px; }
+.sv-policy { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sv-pol-k { font-size: 10px; color: var(--dim-hi); letter-spacing: .6px; text-transform: uppercase; }
+body[data-narrow="1"] .sv-offices { grid-template-columns: 1fr; }

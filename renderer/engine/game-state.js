@@ -286,7 +286,9 @@ class GameState {
              // Phase 45 (sect-branches.md): sub-leaders + their branches + the Tournament of Branches
              branches: [], branchSeq: 1, tourneyAt: 0, lastTourney: null,
              // Phase 43e (npc-sects.md): a sect taken from its master, and its old guard waiting on your word
-             takenOver: null, oldGuard: null, razed: [] }
+             takenOver: null, oldGuard: null, razed: [],
+             // M5 (sect-management.md): offices + the recruitment policy
+             offices: {}, policy: { ...RECRUIT_POLICY_DEFAULT } }
   }
 
   _ensurePhase5Fields() {
@@ -302,6 +304,14 @@ class GameState {
     if (o.takenOver === undefined) o.takenOver = null   // Phase 43e
     if (!Array.isArray(o.razed)) o.razed = []            // Phase 43f: the sects you burned [{ name, year, tier }]
     if (o.oldGuard === undefined)  o.oldGuard = null
+    // M5 (sect-management.md): offices + the recruitment policy; every disciple has loyalty (only wrongs move it)
+    if (!o.offices || typeof o.offices !== 'object') o.offices = {}
+    if (!o.policy || typeof o.policy !== 'object') o.policy = { ...RECRUIT_POLICY_DEFAULT }
+    for (const d of o.disciples) {
+      if (typeof d.loyalty !== 'number') d.loyalty = DISCIPLE_LOYALTY_START
+      if (!d.role) d.role = 'disciple'
+      if (!d.personality) d.personality = disciplePersonality(d.id)
+    }
   }
 
   // Phase 43: buildings gained levels. An old save stores `true` for a raised building — make it level 1 (the value
@@ -5073,6 +5083,11 @@ class GameState {
         if (!(id === 'defensive_array' && arrayDamaged)) warDefense += e.war_defense || 0
         incomeMult *= e.income_mult || 1
       }
+      // M5 (sect-management.md): seated offices add on top of the buildings.
+      const ob = this._officeBonuses()
+      incomeMult *= 1 + ob.income
+      xpMult     *= 1 + ob.xp
+      warDefense += ob.defense
       for (const d of own.disciples) {
         discQi += DISCIPLE_QI_FRAC * d.talent * (1 + 0.1 * (d.level - 1)) * this._discipleYieldMult(d)   // Phase 45: branch members feed a share
         fame   += d.talent * d.level
@@ -11909,21 +11924,36 @@ class GameState {
     const known = cast && this._s.world?.persons ? this._castKnown('recruit', { stage: [0, 9], age: NPC_CAST.recruitAge, exclude }) : null
     if (known) {
       const t = known.root?.type, talent = t === 'heavenly' ? 5 : t === 'pure' ? 4 : t === 'dual' ? 3 : (known.talent || 1) >= 1 ? 2 : 1
-      return { id: `d${Date.now()}_${Math.floor(Math.random() * 99999)}`, pid: known.id, name: Persons.fullName(known), talent }
+      return { id: `d${Date.now()}_${Math.floor(Math.random() * 99999)}`, pid: known.id, name: Persons.fullName(known), talent: this._recruitTalentBonus(talent) }
     }
     if (cast && this._s.world?.persons) this._castFresh()
     const w = RECRUIT_TALENT_WEIGHTS
     let r = Math.random() * w.reduce((a, b) => a + b, 0), talent = 1
     for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) { talent = i + 1; break } }
     const pick = a => a[Math.floor(Math.random() * a.length)]
-    return { id: `d${Date.now()}_${Math.floor(Math.random() * 99999)}`, name: `${pick(DISCIPLE_SURNAMES)} ${pick(DISCIPLE_GIVEN)}`, talent }
+    return { id: `d${Date.now()}_${Math.floor(Math.random() * 99999)}`, name: `${pick(DISCIPLE_SURNAMES)} ${pick(DISCIPLE_GIVEN)}`, talent: this._recruitTalentBonus(talent) }
+  }
+
+  // M5: a seated Recruiter brings in a better class of candidate (+1 talent, deterministic so seeds don't shift
+  // unless an office is actually filled).
+  _recruitTalentBonus(talent) {
+    const o = this._s.ownSect
+    if (!o?.founded || !o.offices?.recruiter) return talent
+    return Math.min(5, talent + 1)
   }
 
   _refreshRecruitPool() {
     const o = this._s.ownSect
+    const pol = o.policy || RECRUIT_POLICY_DEFAULT
+    const strict = RECRUIT_STRICTNESS.find(x => x.strictness === pol.strictness) || RECRUIT_STRICTNESS[0]
+    const minT = Math.max(strict.minTalent, pol.minTalent || 1)
     o.recruitPool = []
-    for (let i = 0; i < RECRUIT_POOL_SIZE; i++) o.recruitPool.push(this._genRecruit(o.recruitPool.map(c => c.pid), true))
-    o.poolRefreshAt = Date.now() + RECRUIT_REFRESH_SECONDS * 1000
+    for (let i = 0; i < RECRUIT_POOL_SIZE; i++) {
+      let c = this._genRecruit(o.recruitPool.map(x => x.pid), true)
+      for (let k = 0; k < strict.rerolls && c.talent < minT; k++) c = this._genRecruit(o.recruitPool.map(x => x.pid), true)
+      o.recruitPool.push(c)
+    }
+    o.poolRefreshAt = Date.now() + strict.refreshSeconds * 1000
   }
 
   foundOwnSect(name) {
@@ -12072,9 +12102,11 @@ class GameState {
 
   // A disciple's output multiplier: 1 in your own hall, the branch's yield × loyalty inside a branch.
   _discipleYieldMult(d) {
-    if (!d?.branchId) return 1
+    if (!d) return 1
+    const inner = d.role === 'inner' ? DISCIPLE_INNER_YIELD : 1   // M5: a promoted inner disciple feeds more
+    if (!d.branchId) return inner
     const b = this._branchById(d.branchId)
-    return b ? branchYieldMult(b) : 1
+    return b ? branchYieldMult(b) * inner : inner
   }
 
   // Move a head's loyalty by `delta` (negative = a wrong); a drop to secedeAt makes them take the branch and go.
@@ -12314,6 +12346,107 @@ class GameState {
   }
 
   // Income, disciple XP and recruit-pool refresh. dt in seconds (also used for offline catch-up).
+  // ── M5 (sect-management.md): offices, the recruitment policy, promotions ───────────────────────────────────
+
+  _officeBonuses() {
+    const o = this._s?.ownSect
+    const out = { income: 0, xp: 0, defense: 0, recruit: 0 }
+    if (!o?.founded) return out
+    for (const off of SECT_OFFICES) {
+      const id = o.offices?.[off.id]
+      if (!id) continue
+      const d = o.disciples.find(x => x.id === id)
+      if (!d) continue
+      const fit = (off.affinity || []).includes(d.personality) ? 1.2 : 1
+      out[off.effect] = (out[off.effect] || 0) + off.value * (d.talent / 5) * fit
+    }
+    return out
+  }
+
+  sectOfficeInfo() {
+    const o = this._s?.ownSect
+    const b = this._officeBonuses()
+    return SECT_OFFICES.map(off => {
+      const id = o?.offices?.[off.id], d = id ? o.disciples.find(x => x.id === id) : null
+      return { id: off.id, name: off.name, cn: off.cn, desc: off.desc, effect: off.effect,
+        holder: d ? { id: d.id, name: d.name, talent: d.talent, personality: d.personality, fit: (off.affinity || []).includes(d.personality) } : null,
+        bonus: b[off.effect] || 0 }
+    })
+  }
+
+  appointOffice(officeId, discipleId) {
+    const s = this._s, o = s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const off = SECT_OFFICES.find(x => x.id === officeId)
+    if (!off) return { ok: false, reason: 'unknown' }
+    const d = o.disciples.find(x => x.id === discipleId)
+    if (!d) return { ok: false, reason: 'not_found' }
+    if (d.branchId) return { ok: false, reason: 'in_branch' }
+    const prev = o.offices[officeId]
+    o.offices[officeId] = discipleId
+    if (prev && prev !== discipleId) {
+      const pd = o.disciples.find(x => x.id === prev)
+      if (pd) { pd.loyalty = (pd.loyalty ?? DISCIPLE_LOYALTY_START) - DISCIPLE_WRONG_REPLACED; this._maybeDiscipleLeaves(pd, `lost the ${off.name}'s seat`) }
+    }
+    this.addEvent({ text: `${d.name} takes the office of ${off.name} in ${o.name}.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  clearOffice(officeId) {
+    const o = this._s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    if (!o.offices?.[officeId]) return { ok: false, reason: 'empty' }
+    delete o.offices[officeId]
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  // A wrong (losing an office) can sour a disciple out of the sect. Loyalty never decays on its own.
+  _maybeDiscipleLeaves(d, why) {
+    const o = this._s.ownSect
+    if ((d.loyalty ?? DISCIPLE_LOYALTY_START) > DISCIPLE_LEAVE_AT) return false
+    o.disciples = o.disciples.filter(x => x.id !== d.id)
+    for (const k of Object.keys(o.offices || {})) if (o.offices[k] === d.id) delete o.offices[k]
+    this.addEvent({ text: `${d.name} left ${o.name} — ${why}.`, type: 'negative' })
+    return true
+  }
+
+  promoteDisciple(id) {
+    const o = this._s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const d = o.disciples.find(x => x.id === id)
+    if (!d) return { ok: false, reason: 'not_found' }
+    if (d.role === 'inner') return { ok: false, reason: 'already' }
+    d.role = 'inner'
+    d.loyalty = Math.min(100, (d.loyalty ?? DISCIPLE_LOYALTY_START) + 10)
+    this.addEvent({ text: `${d.name} is raised to an inner disciple of ${o.name}.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  sectTierInfo() {
+    const fame = this._s?.derived?.sectFame || 0
+    return SECT_TIERS.filter(t => fame >= t.minFame).pop() || SECT_TIERS[0]
+  }
+
+  recruitPolicyInfo() {
+    const pol = this._s?.ownSect?.policy || RECRUIT_POLICY_DEFAULT
+    return { ...pol, tiers: RECRUIT_STRICTNESS.map(x => ({ id: x.strictness, name: x.name, minTalent: x.minTalent })) }
+  }
+
+  setRecruitPolicy(patch = {}) {
+    const o = this._s.ownSect
+    if (!o.founded) return { ok: false, reason: 'no_sect' }
+    const p = o.policy || (o.policy = { ...RECRUIT_POLICY_DEFAULT })
+    let changed = false
+    if (patch.strictness != null) { p.strictness = Math.max(0, Math.min(2, patch.strictness | 0)); changed = true }
+    if (patch.minTalent != null)  { p.minTalent = Math.max(1, Math.min(5, patch.minTalent | 0)); changed = true }
+    if (patch.autoRecruit != null) { p.autoRecruit = !!patch.autoRecruit; changed = true }
+    if (changed) { this._recalc(); this._notify() }
+    return { ok: true }
+  }
+
   tickOwnSect(dt) {
     const s = this._s
     const o = s?.ownSect
@@ -12343,6 +12476,16 @@ class GameState {
     const wholeHerbs  = Math.floor(o._incomeAcc.spirit_herb)
     if (wholeStones > 0) { s.spiritStones += wholeStones; o._incomeAcc.spirit_stone -= wholeStones }
     if (wholeHerbs  > 0) { s.inventory.spirit_herb = (s.inventory.spirit_herb || 0) + wholeHerbs; o._incomeAcc.spirit_herb -= wholeHerbs }
+
+    // M5: the Recruiter's standing order — take the best waiting candidate you can afford (a delegation the player set).
+    if (o.policy?.autoRecruit && Date.now() >= (o._autoNext || 0)) {
+      o._autoNext = Date.now() + 5000
+      if (this._mainRoster().length < (s.derived?.discipleCap || 0)) {
+        const minT = o.policy.minTalent || 1
+        const cand = [...o.recruitPool].filter(c => c.talent >= minT).sort((a, b) => b.talent - a.talent)[0]
+        if (cand) { const cost = DISCIPLE_RECRUIT_COST * cand.talent * cand.talent; if (s.spiritStones >= cost) this.recruitDisciple(cand.id) }
+      }
+    }
 
     if (Date.now() >= o.poolRefreshAt) {
       this._refreshRecruitPool()
