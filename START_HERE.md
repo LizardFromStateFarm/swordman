@@ -370,7 +370,15 @@ Agent: **Cleanup + QA round 1** (user: start cleanup and qa).
   - **Open for the tuning round (needs a target-hours call):** re-base `PACING_TARGETS_MIN`/`FIRST_ASCENSION_H`
     for the active economy (casual Immortality now ~700h+ vs the stale 380–540h); shave the QC-Late/NS-Mid walls;
     the casual mortal arc (6h to Awaken at a 30-min glance cadence).
-  Next: decide target hours → re-base pacing + tune the walls; then a real-device pass + store assets.
+  - **QA re-base done (active-first, shorter completion — user 2026-11-26):** `PACING_PROFILE = 'active'`; pacing
+    bands re-based to the active economy (Mortal 1–3m, QC 2–12m, FB 4–10m, CF 6–14m, NS 6–16m, SS 8–22m);
+    Immortality target active **150–260h / 12–22 lives** (casual 300–480h); bloodline growth `G_BASE` 1→3,
+    `G_SELF` 8→14 (a full life adds ~15 BQ). Checks green (2388).
+  - **Verification (in progress / finding):** 180h active (dt=1) reached BQ 64 / 12 lives; 220h active (dt=2)
+    reached only BQ 45 / 8 lives. The variance is driven by **road deaths at ~1.8h** killing lives before they
+    reach SS — the bot takes lethal road fights. Next lever: tune the bot's road survival (or road lethality), then
+    re-measure; the bloodline formula itself is no longer the bottleneck.
+  Next: road-survival/bot tuning → confirm Immortality in the 150–260h band; then a real-device pass + store assets.
 
 Date: 2026-11-26 — part 117
 Agent: **M8 — World flavor** (user: rush M5/M6/M8, cleanup + QA later).

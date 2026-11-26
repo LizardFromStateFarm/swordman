@@ -95,21 +95,18 @@ invariant violations, 2 = harness crashed / bad `--set`.
   the war's reward/penalty was gated on it.
 - **Time to reach**: realm entries + key milestones (median hours; `k/n` if only some seeds got there).
 - **Pacing vs GAMEDESIGN.md**: per realm, unboosted idle minutes to fill the Qi cap (qiCap ÷ the stage's
-  time-averaged Qi/s) vs `PACING_TARGETS_MIN` in profiles.js. Flag only for `PACING_PROFILE` (casual), and
-  only when >2× outside the band. Tuning recipe used 2026-09-25: newCap = cap × target ÷ measured fill,
-  via `--set`, 2–3 iterations to converge (multipliers shift as later stages arrive at different times).
-  **Retuned 2026-09-26 (M2 task 2.4, life-loop.md §6):** bands tightened for FB/CF/NS/SS (FB 15–30m,
-  CF 30–60m, NS 45–90m, SS 60–120m — was 20–45/60–180/180–480/480–1200) now that the Phase 30 game clock
-  ended a casual life by old age (removed 2026-09-26 — lives now end at the Ascension Trial, so casual's median
-  life rose to ~29.5h; see life-loop.md §15), so a casual mortal life needed to clear these realms much faster.
-- **Life Loop pacing (Phase 30/M2 task 2.4)**: median per-life open-hours per profile (from the "Life Loop"
-  section) vs `LIFE_TARGETS_H` in profiles.js (`casual.gen1 [8,20]`, `active.gen1 [1,5]` since the final QA pass, 2026-10-04 —
-  re-banded to the accepted Immortality pace of ~37 casual lives; was [20,40] / [5,15]) — flags if a profile's median
-  life falls outside its band. `later` is still unchecked. **Immortality pace** (final QA): the line under the
-  "Body, sect politics, deeds, rankings" table prints each profile's runs that reached Immortality, the hour and the
-  life number (`lineage.immortalGen`); casual is flagged outside `FIRST_ASCENSION_H.casual [380,540]` h or
-  `GENERATIONS_TO_ASCEND [30,45]` lives, or when a run of ≥ 540 h never gets there (user-accepted 2026-10-04: ~37
-  lives / ~430–475 h).
+  time-averaged Qi/s) vs `PACING_TARGETS_MIN` in profiles.js. Flag only for `PACING_PROFILE`, and only when >2×
+  outside the band. **Re-based 2026-11-26 for the active game** (`PACING_PROFILE = 'active'`; the old casual idle
+  bands were stale after Phase 48): Mortal 1–3m, QC 2–12m, FB 4–10m, CF 6–14m, NS 6–16m, SS 8–22m.
+  Tuning recipe: newCap = cap × target ÷ measured fill, via `--set`, 2–3 iterations to converge.
+- **Life Loop pacing**: median per-life open-hours per profile vs `LIFE_TARGETS_H` in profiles.js
+  (`active.gen1 [1,5]`, `casual.gen1 [8,24]` — active-first 2026-11-26) — flags if a profile's median life falls
+  outside its band. **Immortality pace**: the line under the "Body, sect politics, deeds, rankings" table prints
+  each profile's runs that reached Immortality, the hour and the life number (`lineage.immortalGen`); the
+  **representative profile (`active`)** is flagged outside `FIRST_ASCENSION_H.active [150,260]` h or
+  `GENERATIONS_TO_ASCEND [12,22]` lives, or when a run of ≥ its band never gets there. Casual's looser band is
+  `[300,480]` h. (2026-11-26: shorter active completion; the old casual 380–540h / 30–45 lives target was measured
+  on the idle economy and retired.)
   A **Family** table (family.md) follows it: marriage events / crises, spouses lost, duels won/lost/fled, affairs +
   discoveries, reaction mix, children born/lost per life (from `lastReincarnation.familyTally`).
   **M2 task 2.5** added three family columns to the same table (share of lives married, mean children per life, share

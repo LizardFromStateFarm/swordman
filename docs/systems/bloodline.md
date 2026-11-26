@@ -49,6 +49,11 @@ nothing). A stronger bloodline is the head start a reincarnated life carries, no
 ## Phase 47 (1.21) — the Trial requires the full bloodline; the long climb
 Three linked changes (user 2026-10-03) turn the pre-Immortal game into a long bloodline climb (~15 reincarnations)
 instead of a ~4-life gamble. There is **no post-Immortal content** — the game still ends at the first Immortality.
+
+> **QA re-base 2026-11-26 (active-first, shorter completion — user):** `BLOODLINE_G_BASE` 1 → 3 and
+> `BLOODLINE_G_SELF` 8 → 14, so a full-realm life adds ~15 BQ (~9 full lives / a normal active run ~200h to the
+> 100 gate). The BQ-100 requirement and its ×2 Qi at cap are unchanged. The sim's Immortality bands were re-based
+> too (active 150–260h, 12–22 lives; see `docs/systems/qa-sim.md`).
 - **`ASCENSION_MIN_BLOODLINE = 100`** — `attemptAscension()` is refused below it (`reason: 'bloodline_too_low'`, no
   roll, no death). `ascensionBreakdown()` returns `req: { need, have, met }`, and the UI (the Character tile, the
   Trial overlay's lock note + refused button, the Ascension + Bloodline breakdown cards) explains the lock.

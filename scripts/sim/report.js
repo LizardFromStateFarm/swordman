@@ -394,18 +394,19 @@ function buildReport(runs, args) {
     const pre = x => med(g.map(r => Object.entries(r.actions || {}).filter(([k]) => k.startsWith(x)).reduce((t, [, v]) => t + v, 0)))
     L.push(`| ${p} | ${f(a('temper'))} (${f(a('temper_ordeal'))} · ${f(a('temper_blood'))}) | ${f(a('ordeal_qi'))} · ${f(a('ordeal_endure'))} · ${f(a('ordeal_ease'))} | ${f(a('body_trial_marrow'))} · ${f(a('body_trial_bitter'))} | ${f(med(g.map(r => r.body?.tier ?? null)))} | ${f(a('minigame_pushups'))} · ${f(a('minigame_run'))} · ${f(a('minigame_lift'))} · ${f(a('minigame_flow'))} · ${f(a('minigame_memory'))} | ${f(a('fund_sect_hall'))} | ${f(a('petition_master'))} · ${f(a('challenge_master'))} | ${f(pre('sect_'))} | ${f(pre('deed_'))} | ${f(a('rank_duel'))} · ${f(a('road_invite_accept'))} · ${f(a('road_invite_decline'))} |`)
   }
-  // Immortality pace (user-accepted 2026-10-04: ~37 casual lives / ~430–475 h) — only checked on runs long enough to get there
+  // Immortality pace — checked on the representative profile (active-first since 2026-11-26; shorter bands)
   const imm = profiles.map(p => ({ p, g: group(p, longest).filter(r => r.milestones?.first_ascend_success != null) }))
+  const prim = PACING_PROFILE, primBand = FIRST_ASCENSION_H[prim] || FIRST_ASCENSION_H.casual
   L.push(``)
   // (a run that never got there counts as "after the horizon" in the median — leaving it out would bias the pace fast)
   const medAll = (g, all, k) => { const v = all.map(r => r.milestones?.first_ascend_success != null ? k(r) : Infinity).sort((a, b) => a - b); const lo = v[Math.floor((v.length - 1) / 2)], hi = v[Math.floor(v.length / 2)], m = (lo + hi) / 2; return m === Infinity ? null : m }   // (even count: the mean of the middle pair; Infinity if either is a non-finisher)
-  L.push(`- Immortality: ${imm.map(({ p, g }) => { const all = group(p, longest); return `${p} ${g.length}/${all.length} runs` + (g.length ? ` · median ${medAll(g, all, r => r.milestones.first_ascend_success) == null ? 'after ' + longest + 'h' : fmtH(medAll(g, all, r => r.milestones.first_ascend_success))}, life ${f(medAll(g, all, r => r.lineage?.immortalGen))} (range ${fmtH(Math.min(...g.map(r => r.milestones.first_ascend_success)))}–${fmtH(Math.max(...g.map(r => r.milestones.first_ascend_success)))})` : '') }).join(' · ')} (casual target ${FIRST_ASCENSION_H.casual[0]}–${FIRST_ASCENSION_H.casual[1]} h, ${GENERATIONS_TO_ASCEND[0]}–${GENERATIONS_TO_ASCEND[1]} lives; runs that never got there count as after the horizon)`)
-  const ci = imm.find(x => x.p === 'casual')
+  L.push(`- Immortality: ${imm.map(({ p, g }) => { const all = group(p, longest); return `${p} ${g.length}/${all.length} runs` + (g.length ? ` · median ${medAll(g, all, r => r.milestones.first_ascend_success) == null ? 'after ' + longest + 'h' : fmtH(medAll(g, all, r => r.milestones.first_ascend_success))}, life ${f(medAll(g, all, r => r.lineage?.immortalGen))} (range ${fmtH(Math.min(...g.map(r => r.milestones.first_ascend_success)))}–${fmtH(Math.max(...g.map(r => r.milestones.first_ascend_success)))})` : '') }).join(' · ')} (${prim} target ${primBand[0]}–${primBand[1]} h, ${GENERATIONS_TO_ASCEND[0]}–${GENERATIONS_TO_ASCEND[1]} lives; runs that never got there count as after the horizon)`)
+  const ci = imm.find(x => x.p === prim)
   if (ci?.g.length) {
-    const allC = group('casual', longest), h = medAll(ci.g, allC, r => r.milestones.first_ascend_success) ?? Infinity, lv = medAll(ci.g, allC, r => r.lineage?.immortalGen)
-    if (h < FIRST_ASCENSION_H.casual[0] || h > FIRST_ASCENSION_H.casual[1]) flags.push(`[casual ${longest}h] Immortality at ${fmtH(h)}, outside the accepted ${FIRST_ASCENSION_H.casual[0]}–${FIRST_ASCENSION_H.casual[1]} h`)
-    if (lv != null && (lv < GENERATIONS_TO_ASCEND[0] || lv > GENERATIONS_TO_ASCEND[1])) flags.push(`[casual ${longest}h] Immortality on life ${lv}, outside the accepted ${GENERATIONS_TO_ASCEND[0]}–${GENERATIONS_TO_ASCEND[1]}`)
-  } else if (ci && longest >= FIRST_ASCENSION_H.casual[1]) flags.push(`[casual ${longest}h] No casual run reached Immortality within ${longest}h (accepted ${FIRST_ASCENSION_H.casual[0]}–${FIRST_ASCENSION_H.casual[1]} h)`)
+    const allC = group(prim, longest), h = medAll(ci.g, allC, r => r.milestones.first_ascend_success) ?? Infinity, lv = medAll(ci.g, allC, r => r.lineage?.immortalGen)
+    if (h < primBand[0] || h > primBand[1]) flags.push(`[${prim} ${longest}h] Immortality at ${fmtH(h)}, outside the accepted ${primBand[0]}–${primBand[1]} h`)
+    if (lv != null && (lv < GENERATIONS_TO_ASCEND[0] || lv > GENERATIONS_TO_ASCEND[1])) flags.push(`[${prim} ${longest}h] Immortality on life ${lv}, outside the accepted ${GENERATIONS_TO_ASCEND[0]}–${GENERATIONS_TO_ASCEND[1]}`)
+  } else if (ci && longest >= primBand[1]) flags.push(`[${prim} ${longest}h] No ${prim} run reached Immortality within ${longest}h (accepted ${primBand[0]}–${primBand[1]} h)`)
   L.push(``)
   L.push(`## Slowest stage-ups (median, ${longest}h runs)`)
   for (const p of profiles) {
