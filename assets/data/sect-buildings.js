@@ -2,8 +2,10 @@
 // constants + name pools. Depends on: items.js (item ids). Used by: game-state.js (own-sect logic, _recalc), game.js
 // (Sect tab), renderer/game/sect-view.js (Halls), renderer/engine/scene-renderer.js (the Base diorama).
 
-// minStage 19 = Spirit Severing, where void_crystal first drops (void_rift) — was 18, an unreachable promise
-const SECT_FOUNDING = { minStage: 19, stones: 500, items: { void_crystal: 50 }, maxNameLen: 20 }
+// minStage 19 = Spirit Severing, where void_crystal first drops. QA 2026-11-26: 50 crystals made founding
+// effectively unreachable in a 100h run (needs ~3+ void_rift expeditions on top of everything else), so the
+// requirement was lowered to 10 — the fantasy should be reachable, not a promise. Stones 500 → 300.
+const SECT_FOUNDING = { minStage: 19, stones: 300, items: { void_crystal: 10 }, maxNameLen: 20 }
 
 // Index = hallLevel - 1. `cap` = disciple cap at that level; `upgradeStones` = cost to reach the next level.
 const SECT_HALL_LEVELS = [

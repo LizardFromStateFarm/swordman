@@ -276,6 +276,24 @@
     }
     setTimeOfDay(); setInterval(setTimeOfDay, 5 * 60 * 1000)
 
+    // Mobile lifecycle (Capacitor WebView, no Node): flush the save when the app is backgrounded and ask the OS
+    // to keep our storage (localStorage can be evicted under pressure). The Capacitor App plugin, when installed,
+    // gives us the hardware back button + appStateChange; both are feature-detected and harmless without it.
+    try { navigator.storage?.persist?.() } catch {}
+    document.addEventListener('visibilitychange', () => { if (document.hidden) gameState.forceSave() })
+    window.addEventListener('pagehide', () => gameState.forceSave())
+    try {
+      const capApp = window.Capacitor?.Plugins?.App
+      if (capApp?.addListener) {
+        capApp.addListener('appStateChange', ({ isActive }) => { if (!isActive) gameState.forceSave() })
+        capApp.addListener('backButton', () => {
+          if (isPopupOpen()) return            // let the overlay handle its own dismissal
+          if (nav.view !== 'stats') return nav.go('stats')
+          try { capApp.minimizeApp?.() } catch {}
+        })
+      }
+    } catch {}
+
     // Seed with the loaded save's existing value so a prior-session death doesn't re-pop the overlay.
     let _lastDeathTs = gameState.get()?.lastReincarnation?.ts ?? null
     let _lastBanterTs = gameState.get()?.banter?.last?.ts ?? null

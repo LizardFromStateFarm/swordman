@@ -354,6 +354,24 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-11-26 — part 118
+Agent: **Cleanup + QA round 1** (user: start cleanup and qa).
+  - **M8 cleanup finished (commit 6699497):** scripture codex (World → Events), challenge modes (chosen before
+    Awakening; qi/bt modifiers), spirit pet + cave cosmetics, cosmetic seasons. `checks/flavor.js` (12).
+  - **Mobile lifecycle (release blocker):** `renderer/game.js` flushes the save on `visibilitychange`/`pagehide`,
+    requests persistent storage, and (feature-detected) handles Capacitor's back button + appStateChange. Still to
+    install `@capacitor/app` + `@capacitor/preferences` and test on a device (android-port.md updated).
+  - **QA baseline — `npm run sim -- --profiles=casual,active --hours=100 --seeds=1` (healthy, 0 violations):**
+    - casual: Awakened 6.0h · FB 46.5h · CF 50h · NS 59.5h · SS 66.7h; median life 21.0h (target 8–20h);
+      3 generations, BQ 11 in 100h; 31% Qi-capped; dead zone 15.5h.
+    - active: SS Late by 27.8h; 8 generations, BQ 14; 7 deaths, 5 of them road; then cycles lives (needs BQ 100).
+    - Walls: QC-Late 7/9 (casual 4–8h, active 8.3h), FB Early casual 28.5h, NS Mid active 10.6h.
+    - Founding was unreachable → `SECT_FOUNDING` lowered to 300 stones + 10 void_crystal.
+  - **Open for the tuning round (needs a target-hours call):** re-base `PACING_TARGETS_MIN`/`FIRST_ASCENSION_H`
+    for the active economy (casual Immortality now ~700h+ vs the stale 380–540h); shave the QC-Late/NS-Mid walls;
+    the casual mortal arc (6h to Awaken at a 30-min glance cadence).
+  Next: decide target hours → re-base pacing + tune the walls; then a real-device pass + store assets.
+
 Date: 2026-11-26 — part 117
 Agent: **M8 — World flavor** (user: rush M5/M6/M8, cleanup + QA later).
   - **8.1 World Epochs:** new `assets/data/world-epochs.js` (4 ages × 400 game years, Qi ×0.92–×1.20);

@@ -78,6 +78,12 @@ No game state changes. This is a platform/build layer only. The Android shell us
 
 ## Gotchas / Not Done Yet
 
+- **Lifecycle hardening (2026-11-26):** `renderer/game.js` now flushes the save on `visibilitychange`/`pagehide`,
+  requests persistent storage (`navigator.storage.persist()`), and — **if `@capacitor/app` is installed** — handles the
+  hardware back button and `appStateChange` (save on background). The plugin is feature-detected, so nothing breaks
+  without it. **Still to do:** install `@capacitor/app` + `@capacitor/preferences` (native storage) and test on a real
+  device; the current save is `localStorage`.
+
 - **The UI is not responsive.** `renderer/styles.css` hard-codes a 300px width, so on a phone the beta renders as a
   small fixed box (same caveat the iOS doc calls out). A mobile-layout pass is tracked separately — worth doing
   before inviting friends to a beta.
