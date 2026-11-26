@@ -82,6 +82,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 | **Family depth (M6)** | ✅ **Phases 16 full · 18A · 18D–E (built 2026-11-26)**: courtship, children-as-persons and the Family Technique already rode existing systems; added **Ancestral Visions** (`assets/data/family-depth.js` — a deterministic choose-one boon at rebirth: +10% Qi/s · body XP · Integrity · stones, on Kin → Hall) and the **cross-save Hall of the Fallen** (`soul.fallen`, cap 60, recorded on every death, listed in Kin → Hall across all slots). `checks/family-depth.js` (12). Docs `docs/systems/family-depth.md` |
 
+| **World flavor (M8)** | ◐ **Phase 19 · 17 · 6A–D · 10 · 9C–D (built 2026-11-26)**: **world epochs** (four 400-year ages cycle on the game clock and scale Qi/s ×0.92–×1.20), **Secret Realm dungeons** (3 push-your-luck realms in Roam → Explore: press/rest/leave, final reward, Health floors at 1), **cosmetic titles** (Founder / Sect Master / Teacher of Many / Heir of a Line on Character), **day/night ambience** (a subtle local-time filter). 8.3 is covered by the art engine. **Still open:** Heaven's Will/Scripture lore (8.5), permadeath/challenge modes (8.6), spirit pet + cave (8.4), seasons (8.7), dungeon art. `checks/world-flavor.js` (17). Docs `docs/systems/world-flavor.md` |
+
 > **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
 > era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
 
@@ -352,6 +354,20 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-11-26 — part 117
+Agent: **M8 — World flavor** (user: rush M5/M6/M8, cleanup + QA later).
+  - **8.1 World Epochs:** new `assets/data/world-epochs.js` (4 ages × 400 game years, Qi ×0.92–×1.20);
+    `s.world.epoch`, `_tickEpoch` in the year queue, `epochInfo()`, `qMul('Spiritual age')`; shown on Character.
+  - **8.2 Secret Realm Dungeons:** new `assets/data/dungeons.js` (Mist Cave / Buried Palace / Heaven Tomb);
+    `s.secretRealm`, `secretRealmInfo/enterSecretRealm/secretRealmStep` (advance/rest/leave; Health floors at 1;
+    final reward); a block at the top of Roam → Explore.
+  - **8.4 titles:** `s.title`, `titleInfo/setTitle` (Founder / Sect Master / Teacher of Many / Heir of a Line),
+    chosen on Character. Pet/cave still open.
+  - **8.7 day/night:** `body[data-tod]` from local time, a subtle cosmetic filter. Seasons still open.
+  - 8.3 is covered by the art engine. **Still open:** 8.5 Heaven's Will/Scripture, 8.6 permadeath/challenge.
+  - Tests: `npm test` clean · `npm run checks` **2376 ok** (new `checks/world-flavor.js`, 17) · `sim:quick` healthy.
+  Next: one major cleanup + QA pass (balance flags, 48e/51e/52e, the M8 remainder, mobile hardening).
+
 Date: 2026-11-26 — part 116
 Agent: **M6 — Family depth** (user: rush M5/M6/M8).
   - New `assets/data/family-depth.js`: FAMILY_VISIONS (qi / body / integrity / stones) + FAMILY_VISION_COUNT.

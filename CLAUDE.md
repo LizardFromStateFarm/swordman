@@ -155,6 +155,7 @@ docs/
     character.md        ← M3: birth origin + constitution (inherited), alignment, the Core Formation Dao-path choice + Dao Reversal, the Heavenly Tribulation
     sect-management.md  ← M5: offices + personality fit, recruitment policy + auto-recruit, promotions, loyalty on a wrong, the derived sect tier
     family-depth.md     ← M6: Ancestral Visions + the cross-save Hall of the Fallen; where courtship/children/Family Technique live
+    world-flavor.md     ← M8: world epochs + tides, Secret Realm dungeons, cosmetic titles, day/night; the remaining flavor backlog
     crafting.md         ← Recipes, equipment, pills, elixirs (Phase 2)
     sects.md            ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
@@ -315,6 +316,8 @@ assets/
     character.js        ← M3 (character.md): BIRTH_ORIGINS + CONSTITUTIONS, ALIGNMENT_TIERS, DAO_PATHS + DAO_REVERSAL, TRIBULATION
     sect-management.js  ← M5 (sect-management.md): SECT_OFFICES + personality fit, SECT_TIERS, RECRUIT_STRICTNESS, loyalty/inner-yield constants
     family-depth.js     ← M6 (family-depth.md): FAMILY_VISIONS — the Ancestral Visions offered to a clan heir
+    world-epochs.js     ← M8 (world-flavor.md): WORLD_EPOCHS — the ages that cycle on the game clock and scale Qi/s
+    dungeons.js         ← M8 (world-flavor.md): SECRET_REALMS — the push-your-luck dungeon runs
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     tutorial.js         ← TUTORIAL_LESSONS + TUTORIAL_GROUPS — the coach-mark lessons: trigger (start / view / el), selectors to spotlight, text, Guide lines (task 1.23)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)

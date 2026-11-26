@@ -6570,3 +6570,17 @@ body[data-narrow="1"] .sv-offices { grid-template-columns: 1fr; }
 .hf-m { color: var(--dim-hi); overflow: hidden; text-overflow: ellipsis; }
 .hf-c { color: var(--dim); text-align: right; }
 body[data-narrow="1"] .hf-row { grid-template-columns: 1fr; }
+
+/* M8 (docs/systems/world-flavor.md): cosmetic day/night ambience (no bonuses) + the title picker */
+body[data-tod="night"] #app { filter: saturate(.92) brightness(.94); }
+body[data-tod="dawn"]  #app { filter: sepia(.04) brightness(1.02); }
+body[data-tod="dusk"]  #app { filter: sepia(.06) saturate(1.04); }
+.ch-title { font-family: var(--font); font-size: 10px; color: var(--dim-hi); background: var(--bg2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 7px; cursor: pointer; min-height: 22px; }
+.ch-title.active { color: var(--gold); border-color: var(--gold); }
+
+/* M8 (docs/systems/world-flavor.md): Secret Realm Dungeons in Roam → Explore */
+.exp-secret { margin-bottom: 8px; }
+.exp-secret-acts { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+.exp-secret-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 6px; }
+.exp-secret-log { margin-top: 4px; font-size: 10px; color: var(--dim-hi); line-height: 1.4; max-height: 90px; overflow-y: auto; }
+.loc-req { font-size: 10px; color: var(--dim-hi); font-weight: normal; }

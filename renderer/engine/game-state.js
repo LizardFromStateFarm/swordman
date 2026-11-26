@@ -144,6 +144,8 @@ class GameState {
       // M6 (family-depth.md): an ancestor's vision — a choose-one boon offered to a clan heir.
       vision:         null,
       visionOffer:    null,
+      // M8 (world-flavor.md): a Secret Realm run
+      secretRealm:    this._blankSecretRealm(),
       techniques:    ['qi_breathing'],
       root:          this._rollRoot(),
       // Phase 48 (active-cultivation.md): the Cultivate action's combo + cooldown. The active Qi loop.
@@ -4990,6 +4992,142 @@ class GameState {
     if (!Array.isArray(this._soul.fallen)) this._soul.fallen = []
   }
 
+  // ── M8 (world-flavor.md): World Epochs & Spiritual Tides ──────────────────────────────────────────────────
+
+  epochInfo() {
+    const w = this._s?.world
+    const def = (w?.epoch && WORLD_EPOCHS.find(e => e.id === w.epoch.id)) || WORLD_EPOCHS[0]
+    const since = w?.epoch?.since ?? 0
+    return { ...def, since, yearsLeft: Math.max(0, since + def.years - Math.floor(w?.year || 0)) }
+  }
+
+  _ensurePhase19Fields() {
+    const s = this._s
+    if (!s) return
+    if (s.title === undefined) s.title = null
+    const w = s.world
+    if (w && (!w.epoch || !w.epoch.id)) w.epoch = { id: EPOCH_DEFAULT, since: Math.floor(w.year || 0) }
+  }
+
+  _tickEpoch(yr) {
+    const w = this._s.world
+    if (!w) return
+    const cur = w.epoch || (w.epoch = { id: EPOCH_DEFAULT, since: Math.floor(w.year || 0) })
+    const def = WORLD_EPOCHS.find(e => e.id === cur.id) || WORLD_EPOCHS[0]
+    if (yr - (cur.since || 0) < def.years) return
+    const next = WORLD_EPOCHS[(WORLD_EPOCHS.indexOf(def) + 1) % WORLD_EPOCHS.length]
+    w.epoch = { id: next.id, since: yr }
+    this.addEvent({ text: `A new age begins: ${next.name}. ${next.desc}`, type: 'special' })
+    this._emit('epoch', { id: next.id })
+  }
+
+  // Cosmetic titles (M8 8.4): a flavour label on your name, chosen from what this life has earned.
+  titleInfo() {
+    const s = this._s
+    const defs = [
+      { id: 'none', name: '', ok: () => true },
+      { id: 'founder', name: 'Founder', ok: () => !!s.ownSect?.founded },
+      { id: 'master', name: 'Sect Master', ok: () => !!s.ownSect?.founded && (s.ownSect.hallLevel || 1) >= 2 },
+      { id: 'disciple', name: 'Teacher of Many', ok: () => (s.ownSect?.disciples || []).length >= 3 },
+      { id: 'bloodline', name: 'Heir of a Line', ok: () => (s.bloodlineQuality || 0) > 0 },
+    ]
+    const unlocked = defs.filter(d => d.ok())
+    const current = unlocked.find(d => d.id === (s.title || 'none')) || unlocked[0]
+    return { current, unlocked: unlocked.map(d => ({ id: d.id, name: d.name, active: d.id === current.id })) }
+  }
+
+  setTitle(id) {
+    const info = this.titleInfo()
+    if (!info.unlocked.some(t => t.id === id)) return { ok: false, reason: 'locked' }
+    this._s.title = id === 'none' ? null : id
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  // ── M8 (world-flavor.md): Secret Realm Dungeons ──────────────────────────────────────────────────────────
+
+  _blankSecretRealm() { return { active: false, id: null, room: 0, maxRooms: 0, log: [] } }
+
+  _ensureSecretRealmFields() {
+    const s = this._s
+    if (!s) return
+    if (!s.secretRealm || typeof s.secretRealm !== 'object') s.secretRealm = this._blankSecretRealm()
+    if (!Array.isArray(s.secretRealm.log)) s.secretRealm.log = []
+  }
+
+  secretRealmInfo() {
+    const s = this._s, r = s.secretRealm || this._blankSecretRealm()
+    const def = r.active ? SECRET_REALMS.find(x => x.id === r.id) : null
+    const active = def ? { id: def.id, name: def.name, desc: def.desc, room: r.room, maxRooms: r.maxRooms, log: r.log || [] } : null
+    const list = SECRET_REALMS.map(d => {
+      const lock = (s.stageIndex || 0) < d.minStage ? `Reach ${this._stName(d.minStage)} first`
+        : r.active ? 'You are already inside a realm'
+        : s.spiritStones < d.cost ? `Costs ${d.cost} Spirit Stones` : null
+      return { id: d.id, name: d.name, desc: d.desc, rooms: d.rooms, cost: d.cost, lock, ok: !lock }
+    })
+    return { active, list }
+  }
+
+  enterSecretRealm(id) {
+    const s = this._s, r = s.secretRealm, def = SECRET_REALMS.find(x => x.id === id)
+    if (!def) return { ok: false, reason: 'unknown' }
+    if (r.active) return { ok: false, reason: 'busy' }
+    if ((s.stageIndex || 0) < def.minStage) return { ok: false, reason: 'stage' }
+    if (s.spiritStones < def.cost) return { ok: false, reason: 'stones' }
+    s.spiritStones -= def.cost
+    s.secretRealm = { active: true, id, room: 0, maxRooms: def.rooms, log: [`You enter ${def.name}.`] }
+    this.addEvent({ text: `You enter ${def.name}.`, type: 'special' })
+    this._recalc(); this._notify()
+    return { ok: true }
+  }
+
+  _grantSecretLoot(def) {
+    const s = this._s
+    const stones = this._randInt(def.room.stones)
+    s.spiritStones += stones
+    const got = []
+    for (const [item, rng] of Object.entries(def.room.items)) {
+      const q = this._randInt(rng)
+      if (q > 0) { s.inventory[item] = (s.inventory[item] || 0) + q; got.push(`${q} ${ITEMS[item]?.name || item}`) }
+    }
+    return { stones, got }
+  }
+
+  secretRealmStep(choice) {
+    const s = this._s, r = s.secretRealm
+    if (!r?.active) return { ok: false, reason: 'no_realm' }
+    const def = SECRET_REALMS.find(x => x.id === r.id)
+    if (!def) { s.secretRealm = this._blankSecretRealm(); return { ok: false, reason: 'gone' } }
+    if (choice === 'leave') {
+      this.addEvent({ text: `You leave ${def.name} with what you carry.`, type: 'neutral' })
+      s.secretRealm = this._blankSecretRealm(); this._recalc(); this._notify()
+      return { ok: true, left: true }
+    }
+    if (choice === 'rest') {
+      const heal = Math.round(this.maxHealth() * 0.10)
+      s.health = Math.min(this.maxHealth(), (s.health ?? 100) + heal)
+      r.room++; r.log.push(`You rest a moment (+${heal} Health).`)
+    } else {
+      const loot = this._grantSecretLoot(def)
+      const dmg = this._randInt(def.room.damage)
+      s.health = Math.max(1, (s.health ?? 100) - dmg)
+      r.room++
+      r.log.push(`Room ${r.room}: ${loot.stones} stones${loot.got.length ? `, ${loot.got.join(', ')}` : ''} · −${dmg} Health.`)
+    }
+    let done = false, room = r.room
+    if (r.room >= r.maxRooms) {
+      done = true
+      const fin = def.final
+      const finStones = fin ? this._randInt(fin.stones) : 0
+      if (fin) { s.spiritStones += finStones; if (fin.item) s.inventory[fin.item] = (s.inventory[fin.item] || 0) + fin.qty }
+      r.log.push(`You reach the heart of ${def.name}: ${finStones} stones${fin?.item ? ` and ${fin.qty} ${ITEMS[fin.item]?.name || fin.item}` : ''}.`)
+      this.addEvent({ text: `You clear ${def.name}.`, type: 'special' })
+      s.secretRealm = this._blankSecretRealm()
+    }
+    this._recalc(); this._notify()
+    return { ok: true, done, room }
+  }
+
   _recalc() {
     const s  = this._s
     this._ensurePhase2Fields()
@@ -5022,6 +5160,8 @@ class GameState {
     this._ensurePhase49bFields()  // Phase 49b (mortal-phase.md): the mortal arc's per-life beat state
     this._ensurePhase12Fields()   // M3 (character.md): birth origin, alignment, Dao path (a new field set)
     this._ensurePhase18Fields()   // M6 (family-depth.md): the ancestral-vision fields
+    this._ensurePhase19Fields()   // M8 (world-flavor.md): world epochs + the cosmetic title
+    this._ensureSecretRealmFields()   // M8: the Secret Realm run state
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -5061,6 +5201,7 @@ class GameState {
     }
     if (s.daoPath) { const dp = this.daoPathInfo(); qMul(`Dao: ${dp.name}`, dp.qps); bAdd(`Dao: ${dp.name}`, dp.bt) }
     if (s.vision) { const v = FAMILY_VISIONS.find(x => x.id === s.vision); if (v?.qps) qMul('Ancestral vision', v.qps) }
+    const ep = this.epochInfo(); if (ep.qi !== 1) qMul('Spiritual age', ep.qi)
 
     // Equipped weapon bonuses
     const weapId = s.equipped.weapon
@@ -5246,6 +5387,7 @@ class GameState {
     const s = this._s, J = this._yearJobs ||= []
     J.push(() => this._tickFamily(), () => this._tickAlignment(), () => this._tickArena(), () => this._tickBranches(), () => this._tickWorldSects(),
       () => this._tickWorldLives(), () => this._tickRepute(yr), () => this._tickRival(yr), () => this._tickRanks(yr), () => this._tickSoulTech(),
+      () => this._tickEpoch(yr),
       () => { this._syncPersons(); if (s.ownSect?.founded && !s.interlude) this._roadRoll('gate', null, `the gate of ${s.ownSect.name}`) })
   }
   _drainYear(dt) {

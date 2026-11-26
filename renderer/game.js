@@ -269,6 +269,12 @@
 
   function bootGame() {
     tickRunning = true
+    // M8 (world-flavor.md 8.7): cosmetic day/night ambience from local time. No bonuses.
+    const setTimeOfDay = () => {
+      const h = new Date().getHours()
+      document.body.dataset.tod = h < 5 ? 'night' : h < 8 ? 'dawn' : h < 18 ? 'day' : h < 21 ? 'dusk' : 'night'
+    }
+    setTimeOfDay(); setInterval(setTimeOfDay, 5 * 60 * 1000)
 
     // Seed with the loaded save's existing value so a prior-session death doesn't re-pop the overlay.
     let _lastDeathTs = gameState.get()?.lastReincarnation?.ts ?? null
@@ -560,6 +566,31 @@
     if (r.ok) renderView('hall', gameState.get())
   })
 
+  // M8 (world-flavor.md): a cosmetic title.
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-title]')
+    if (!t) return
+    const r = gameState.setTitle(t.dataset.title)
+    if (r.ok) renderView('stats', gameState.get())
+  })
+
+  // M8 (world-flavor.md): Secret Realm Dungeons.
+  document.addEventListener('click', e => {
+    const en = e.target.closest('[data-secret-enter]')
+    if (en) {
+      const r = gameState.enterSecretRealm(en.dataset.secretEnter)
+      if (!r.ok) flashMessage({ stage: 'Your realm is too low for that place', stones: 'Not enough Spirit Stones', busy: 'Already inside a realm' }[r.reason] || 'Cannot enter', 'negative')
+      else renderView('explore', gameState.get())
+      return
+    }
+    const st = e.target.closest('[data-secret-step]')
+    if (st) {
+      const r = gameState.secretRealmStep(st.dataset.secretStep)
+      if (!r.ok) flashMessage('The realm is gone', 'negative')
+      renderView('explore', gameState.get())
+    }
+  })
+
   // A7 (Phase 38A): the Sect → Base compound scene — its own view (it owns a canvas, so SectView.render must not rebuild it)
   const baseView = new BaseView(gameState, { esc: escHtml, fmt, fmtTime, go: v => nav.go(v) })
   // 1.8b-1: one entry point per view (NAV_GROUPS in renderer/game/nav.js)
@@ -719,7 +750,7 @@
           ${(() => { const o = gameState.originInfo(); return o ? `<span class="ch-tag" title="${escHtml(o.origin.desc)}"><b data-icon="root"></b>${escHtml(o.origin.name)} · ${escHtml(o.constitution.name)}</span>` : '' })()}
           ${(() => { const a = gameState.alignmentInfo(); return `<span class="ch-tag" title="Alignment: how you live tilts it over the years — your karma and Dao path pull it"><b data-icon="lotus"></b>${escHtml(a.tier.name)} ${a.value > 0 ? '+' : ''}${a.value}</span>` })()}
         </div>
-        <div class="ch-meta" title="Age passes only while the game is open. Nothing dies of age.">Age ${Math.floor(s.age)} · Year ${Math.floor(s.world.year)} · Gen ${s.generation || 1}</div>
+        <div class="ch-meta" title="Age passes only while the game is open. Nothing dies of age.">Age ${Math.floor(s.age)} · Year ${Math.floor(s.world.year)} · Gen ${s.generation || 1} · ${escHtml(gameState.epochInfo().name)}</div>
         ${persona ? `<div class="ch-persona">${escHtml(persona.blurb)}</div>` : ''}
       </div>
       ${(() => {
@@ -762,6 +793,7 @@
           <div class="ch-sec-title"><span>Belongings &amp; Bonds</span></div>
           <div class="ch-list">
             ${(() => { const o = gameState.originInfo(), a = gameState.alignmentInfo(), p = gameState.daoPathInfo(); return `${o ? sr('Birth', `${escHtml(o.origin.name)} · ${escHtml(o.region)}`) : ''}${o ? sr('Constitution', escHtml(o.constitution.name)) : ''}${sr('Alignment', `${escHtml(a.tier.name)} ${a.value > 0 ? '+' : ''}${a.value}`)}${sr('Dao path', escHtml(p.name))}${s.daoPath && !s.daoReversalUsed ? `<div class="ch-dao-rev">Turn your Dao (once per life): ${['virtuous', 'neutral', 'demonic'].filter(id => id !== s.daoPath).map(id => `<button data-daorevert="${id}">${escHtml((DAO_PATHS[id]?.name || id).replace('The ', ''))}</button>`).join(' ')}</div>` : s.daoReversalUsed ? sr('Dao Reversal', 'Spent this life') : ''}` })()}
+            ${sr('Title', gameState.titleInfo().unlocked.map(t => `<button class="ch-title${t.active ? ' active' : ''}" data-title="${t.id}">${escHtml(t.name || 'None')}</button>`).join(' '))}
             ${sr('Weapon', s.equipped.weapon ? escHtml(ITEMS[s.equipped.weapon]?.name || s.equipped.weapon) : none)}
             ${sr('Artifact', s.equipped.artifact ? escHtml(ITEMS[s.equipped.artifact]?.name || s.equipped.artifact) : none)}
             ${sr('Techniques', `${s.techniques.length} of ${TECHNIQUES.length}`)}
@@ -1336,12 +1368,39 @@
     document.getElementById('awaken-overlay').classList.add('hidden')
   })
 
+  // M8 (world-flavor.md): Secret Realm Dungeons in Roam → Explore.
+  function renderSecretRealms(s) {
+    const info = gameState.secretRealmInfo()
+    const sec = document.createElement('section')
+    sec.className = 'exp-secret'
+    if (info.active) {
+      const a = info.active
+      sec.innerHTML = `<div class="exp-status-label">Secret realm · ${escHtml(a.name)}</div>
+        <div class="exp-idle">Room ${a.room} of ${a.maxRooms} · Health ${Math.round(s.health ?? 0)} · ${escHtml(a.desc)}</div>
+        <div class="exp-secret-acts">
+          <button class="loc-btn" data-secret-step="advance">Press deeper</button>
+          <button class="loc-btn" data-secret-step="rest">Rest a moment</button>
+          <button class="loc-btn" data-secret-step="leave">Leave</button>
+        </div>
+        ${a.log.length ? `<div class="exp-secret-log">${a.log.slice(-5).map(l => `<div>${escHtml(l)}</div>`).join('')}</div>` : ''}`
+    } else {
+      sec.innerHTML = `<div class="exp-status-label">Secret realms</div>
+        <div class="exp-idle">Places the world hides. Enter one, press deeper, and take what you find — or leave while you still can.</div>
+        <div class="exp-secret-list">${info.list.map(r => `<button class="loc-card" data-secret-enter="${r.id}" ${r.ok ? '' : 'disabled'} title="${escHtml(r.lock || r.desc)}">
+          <span class="loc-name">${escHtml(r.name)} <span class="loc-req">${r.rooms} rooms · ${fmt(r.cost)} stones</span></span>
+          <span class="loc-desc">${escHtml(r.desc)}</span>
+          ${r.lock ? `<span class="loc-lock">${Icon('lock')} ${escHtml(r.lock)}</span>` : ''}</button>`).join('')}</div>`
+    }
+    return sec
+  }
+
   function renderExplore(s) {
     const el = document.getElementById('tab-explore')
     el.innerHTML = ''
 
     const mortalSec = renderMortalBeat(s)   // Phase 49b: a mortal beat leads the view
     if (mortalSec) el.appendChild(mortalSec)
+    el.appendChild(renderSecretRealms(s))   // M8: Secret Realm Dungeons
 
     // Expedition status block
     const statusDiv = document.createElement('div')

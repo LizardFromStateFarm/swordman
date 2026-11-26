@@ -111,9 +111,9 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 26 | Immortal Island + ascension petitions | ⬜ | M7 (v2) |
 | 25 | Doctrine | ⬜ | M7 (v2) |
 | 23E | Secret Arts — **non-combat arts only** since 2026-09-29 (combat arts + the library/study infrastructure moved to Phase 42) | ⬜ | M7 (v2) |
-| 19 | World Epochs & Spiritual Tides (game time, change between generations) | ⬜ | M8 |
-| 17 | Secret Realm Dungeons | ⬜ | M8 |
-| 6A–D | Animation & visual overhaul | ↪ folded into Phase 34 (art engine) — particles, event animations, realm ambience are built as compositor effect passes | M1 (art track) |
+| 19 | World Epochs & Spiritual Tides (game time, change between generations) | ✅ 2026-11-26 (M8) | M8 |
+| 17 | Secret Realm Dungeons | ✅ 2026-11-26 (M8, simple) | M8 |
+| 6A–D | Animation & visual overhaul | ✅ covered by the Phase 34 art engine (A3/A4: hybrid ink renderer, realm scenery, death moment) | M1 (art track) |
 | 34 | **Art Engine & Art Direction**: layered glyph compositor, shape-to-glyph rendering, swappable parts, no emoji (user 2026-09-26) | ⬜ | M1 (art track) |
 | 35 | **Combat & Battles (战斗)**: an interactive battle page — turn-based exchanges with animated art, reusing the fight card (user 2026-09-27) | ⬜ | M1 (art track; built after A4) |
 | 36 | **Auction House & Crates (拍卖行)**: buy themed crates, open for a random-quality beast or a person (user 2026-09-27) | ⬜ | M4 |
@@ -133,10 +133,10 @@ The game ships in two releases. **v1 = every feature before Immortality; v2 = th
 | 50 | **Progressive Disclosure (循序)**: start with **only Explore + Body**; unlock each system by milestone (a data-driven `unlocks.js` + `NavUI.setAvailable` hiding groups); trim the forced opening from ~18 cards to ≤3 (HUD tour → the Guide); gate coach marks + attention to available systems. Spec `docs/systems/unlocks.md` (user 2026-10-10: "start simple and slowly introduce new mechanics") | ✅ 2026-11-26 | M0.5 (v1) |
 | 51 | **The Long Climb (登高)**: close the late-stage dead zones — extend content past the stage-19/20 ceiling (arts 16–21, techniques past 10, late locations/hunt grounds), rebalance the Qi curve so no stage balloons (`cf_mid` ×3.11, SS-late ~245h), add a repeatable high-realm pursuit, and fix the world bands (NS 8 / SS 4). Spec `docs/systems/core-loop.md` (user 2026-10-10: "dead zones in the later stages where you can't do much besides wait") | ✅ 2026-11-26 (51a/b/d built; 51c light) | M0.5 (v1) |
 | 52 | **Practice — fun mini-games (练功)**: a **registry-driven** set of optional active games — **Push-Ups** (timing; retires Tempering Strikes), **Running** (rhythm), **Lift** (hold/release; the "ridiculous items you can lift" ladder by body tier: water jar → boulder → pillar → gate → pagoda → mountain → island), plus **Memorization** (a Simon-style Qi puzzle); each exercise runs an **animated dot-silhouette** in the overlay; all short, forgiving ("designed for fun"), engine-verified. Spec `docs/systems/minigames.md` (user 2026-10-10) | ◐ **52a ✅** (registry + Strikes→Push-Ups); 52b–e ⬜ | M0.5 (v1) |
-| 10 | Cosmetics (titles, pet, cave) | ⬜ | M8 |
+| 10 | Cosmetics (titles, pet, cave) | ◐ 2026-11-26 (titles built; pet/cave pending) | M8 |
 | 11B–C | Heaven's Will, Scripture Lore | ⬜ | M8 |
 | 20A–B | Permadeath, Challenge modes | ⬜ | M8 |
-| 9C–D | Day/night + seasons, **cosmetic ambience only** (no bonuses) | ⬜ | M8 |
+| 9C–D | Day/night + seasons, **cosmetic ambience only** (no bonuses) | ◐ 2026-11-26 (day/night built; seasons pending) | M8 |
 
 ---
 
@@ -456,13 +456,13 @@ Trials + Immortality; they buy Qi gathering only (Soul Resonance); after the v1 
 
 | # | Task | Phase | Needs |
 |---|---|---|---|
-| 8.1 | World Epochs & Spiritual Tides on **game time**. An epoch shifts between generations ("the age your heir is born into") | 19 | M4, 2.3 |
-| 8.2 | Secret Realm Dungeons (+ NPC parties as encounters) | 17 | 4.9 |
-| 8.3 | Animation & visual overhaul | 6A–D | — |
-| 8.4 | Cosmetics: titles, spirit pet, cultivation cave | 10 | — |
-| 8.5 | Heaven's Will, Scripture Lore | 11B–C | — |
-| 8.6 | Permadeath + challenge modes (per clan, chosen at founding) | 20A–B | 2.7 |
-| 8.7 | Day/night + seasonal **canvas ambience** from the game clock or local time: cosmetic only, no bonuses | 9C–D | 8.3 |
+| 8.1 ✅ | World Epochs & Spiritual Tides on **game time**. **Built 2026-11-26:** four 400-year ages cycle on the game clock and scale Qi/s (×0.92–×1.20); `s.world.epoch`, `_tickEpoch`, `epochInfo`; shown on Character | 19 | M4, 2.3 |
+| 8.2 ✅ | Secret Realm Dungeons (+ NPC parties as encounters). **Built 2026-11-26 (simple):** 3 push-your-luck realms in Roam → Explore (enter · press/rest/leave · final reward); Health floors at 1 | 17 | 4.9 |
+| 8.3 ✅ | Animation & visual overhaul (folded into Phase 34 art engine — A3/A4). Covered | 6A–D | — |
+| 8.4 ◐ | Cosmetics: titles, spirit pet, cultivation cave. **Titles built 2026-11-26** (Founder / Sect Master / Teacher of Many / Heir of a Line, chosen on Character); pet + cave not built | 10 | — |
+| 8.5 ⬜ | Heaven's Will, Scripture Lore. Not built (cleanup/QA backlog) | 11B–C | — |
+| 8.6 ⬜ | Permadeath + challenge modes (per clan, chosen at founding). Not built (cleanup/QA backlog) | 20A–B | 2.7 |
+| 8.7 ◐ | Day/night + seasonal **canvas ambience** from the game clock or local time: cosmetic only, no bonuses. **Day/night built 2026-11-26** (a subtle local-time filter); seasons not built | 9C–D | 8.3 |
 
 ---
 
