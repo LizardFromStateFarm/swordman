@@ -156,6 +156,7 @@ docs/
     sect-management.md  ← M5: offices + personality fit, recruitment policy + auto-recruit, promotions, loyalty on a wrong, the derived sect tier
     family-depth.md     ← M6: Ancestral Visions + the cross-save Hall of the Fallen; where courtship/children/Family Technique live
     world-flavor.md     ← M8: world epochs + tides, Secret Realm dungeons, cosmetic titles, day/night; the remaining flavor backlog
+    monetization.md     ← Phase 53: free (optional rewarded ads) vs $2 paid (ad-free) — the variant flag, build injection, AdMob/consent/store prep
     crafting.md         ← Recipes, equipment, pills, elixirs (Phase 2)
     sects.md            ← Sect join/rank/missions/bonuses (Phase 4)
     own-sect.md         ← Found a sect: buildings, disciples, income (Phase 5A)
@@ -255,6 +256,7 @@ renderer/
     banner-menus.js     ← BannerMenus — banner strip quick-action dropdowns: missions/explore/craft/learn (1.7b)
     nav.js              ← NavUI + NAV_GROUPS — six nav groups → sub-tab views, badges, automation chip (1.8b-1)
     unlocks.js          ← Phase 50: viewUnlocked / availableViews / unlockReason / lockedGroups — which views a save may see (DOM-free)
+    ads.js              ← Phase 53: AdPromptUI (the optional rewarded-ad prompt) + RewardedAd (feature-detected Capacitor plugin wrapper)
     attention.js        ← collectAttention() (DOM-free) + AttentionUI — the "needs you" strip/cards (1.8b-1)
     breakdowns.js       ← buildBreakdown() (DOM-free) + BreakdownUI — "why" popovers for any [data-bd] number, stageShortName() (1.8b-2)
     person-card.js      ← PersonCard — tap any [data-pid] name for that person's card: realm, root, temper, character, what they think of you, kin (tap through, Back), where to act (Phase 28 / 4.2)
@@ -318,6 +320,8 @@ assets/
     family-depth.js     ← M6 (family-depth.md): FAMILY_VISIONS — the Ancestral Visions offered to a clan heir
     world-epochs.js     ← M8 (world-flavor.md): WORLD_EPOCHS — the ages that cycle on the game clock and scale Qi/s
     dungeons.js         ← M8 (world-flavor.md): SECRET_REALMS — the push-your-luck dungeon runs
+    variant.js          ← Phase 53 (monetization.md): APP_VARIANT — free (optional rewarded ads) vs paid (ad-free); build-ios-web rewrites it
+    monetization.js     ← Phase 53: AD_PROMPT_ACTIVE_SECONDS / AD_REWARD / AD_UNIT_IDS — the optional rewarded-ad tuning
     settings.js         ← SETTINGS_DEFS — ⚙ panel options, defaults, validation ranges (Phase 20C)
     tutorial.js         ← TUTORIAL_LESSONS + TUTORIAL_GROUPS — the coach-mark lessons: trigger (start / view / el), selectors to spotlight, text, Guide lines (task 1.23)
     personalities.js    ← PERSONALITIES (14) + banter triggers/tuning constants (Phase 29)

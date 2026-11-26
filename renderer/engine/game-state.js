@@ -146,6 +146,8 @@ class GameState {
       visionOffer:    null,
       // M8 (world-flavor.md): a Secret Realm run
       secretRealm:    this._blankSecretRealm(),
+      // Free edition: active-time counter for the optional rewarded-ad prompt (never in the paid edition)
+      ad:             { sec: 0, next: (typeof AD_PROMPT_ACTIVE_SECONDS !== 'undefined' ? AD_PROMPT_ACTIVE_SECONDS : 1800) },
       // M8 cleanup: challenge mode, cosmetics, scripture codex
       challenge:      'normal',
       pet:            null,
@@ -5058,6 +5060,65 @@ class GameState {
     if (!s.lore || typeof s.lore !== 'object') s.lore = {}
   }
 
+  // ── Free/paid editions + the optional rewarded ad (docs/systems/monetization.md) ──────────────────────────
+  // The free edition asks every 30 min of ACTIVE play whether to watch a small ad; the paid edition never does.
+
+  _adInterval() { return typeof AD_PROMPT_ACTIVE_SECONDS === 'number' ? AD_PROMPT_ACTIVE_SECONDS : 1800 }
+  _adDeclineInterval() { return typeof AD_NEXT_AFTER_DECLINE_SECONDS === 'number' ? AD_NEXT_AFTER_DECLINE_SECONDS : 1800 }
+
+  adsEnabled() {
+    if (typeof APP_VARIANT === 'undefined' || APP_VARIANT !== 'free') return false
+    if (typeof window === 'undefined') return false
+    if (window.__ADS_SIMULATE === true) return true
+    const C = window.Capacitor
+    return !!(C && (C.isNativePlatform ? C.isNativePlatform() : C.isNative))
+  }
+
+  _ensureAdFields() {
+    const s = this._s
+    if (!s) return
+    if (!s.ad || typeof s.ad !== 'object') s.ad = { sec: 0, next: this._adInterval() }
+    if (typeof s.ad.sec !== 'number') s.ad.sec = 0
+    if (typeof s.ad.next !== 'number') s.ad.next = this._adInterval()
+  }
+
+  _tickAds(dt) {
+    const s = this._s
+    if (!s || !this.adsEnabled()) return
+    if (!s.ad) s.ad = { sec: 0, next: this._adInterval() }
+    s.ad.sec = (s.ad.sec || 0) + dt
+  }
+
+  adPromptDue() {
+    const s = this._s
+    if (!s || s.interlude || !this.adsEnabled()) return false
+    if (!s.ad) return false
+    return (s.ad.sec || 0) >= (s.ad.next ?? this._adInterval())
+  }
+
+  adMarkShown() {
+    const s = this._s
+    if (!s) return
+    if (!s.ad) s.ad = { sec: 0, next: this._adInterval() }
+    s.ad.next = (s.ad.sec || 0) + this._adDeclineInterval()
+  }
+
+  // The ad's reward: a modest, non-predatory boon (10 min of the active rate + a few stones).
+  grantAdReward() {
+    const s = this._s
+    const R = typeof AD_REWARD !== 'undefined' && AD_REWARD ? AD_REWARD : { qiSeconds: 600, stones: 25 }
+    const cap = s.derived?.qiCap
+    const rate = s.derived?.qiPerSecond || 0
+    let qi = Math.max(0, R.qiSeconds * rate)
+    if (isFinite(cap)) qi = Math.max(0, Math.min(qi, cap - s.qi))
+    s.qi = isFinite(cap) ? Math.min(cap, s.qi + qi) : s.qi + qi
+    const stones = R.stones || 0
+    s.spiritStones += stones
+    this.addEvent({ text: `A small boon for your patience: +${Math.round(qi)} Qi${stones ? ` and ${stones} Spirit Stones` : ''}.`, type: 'positive' })
+    this._recalc(); this._notify()
+    return { ok: true, qi, stones }
+  }
+
   challengeInfo() {
     const s = this._s
     const cur = CHALLENGES.find(c => c.id === (s?.challenge || 'normal')) || CHALLENGES[0]
@@ -5232,6 +5293,7 @@ class GameState {
     this._ensurePhase19Fields()   // M8 (world-flavor.md): world epochs + the cosmetic title
     this._ensureSecretRealmFields()   // M8: the Secret Realm run state
     this._ensureFlavorFields()        // M8 cleanup: challenge / cosmetics / lore
+    this._ensureAdFields()            // monetization: the rewarded-ad cadence
     const st = this._stage()
 
     // 1.8b-2 breakdowns: every term below is recorded as it is applied, so the Character view's "why" popovers
@@ -5592,6 +5654,7 @@ class GameState {
     this.tickOwnSect(dt)
     this.tickSectWar()
     this._tickAutomation(dt)
+    if (this._present) this._tickAds(dt)   // free edition: count ACTIVE (foreground) play toward the optional ad prompt
 
     this._saveT += dt
     if (this._saveT >= this.SAVE_INT) {

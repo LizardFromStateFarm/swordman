@@ -84,6 +84,8 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 
 | **World flavor (M8)** | ◐ **Phase 19 · 17 · 6A–D · 10 · 9C–D (built 2026-11-26)**: **world epochs** (four 400-year ages cycle on the game clock and scale Qi/s ×0.92–×1.20), **Secret Realm dungeons** (3 push-your-luck realms in Roam → Explore: press/rest/leave, final reward, Health floors at 1), **cosmetic titles** (Founder / Sect Master / Teacher of Many / Heir of a Line on Character), **day/night ambience** (a subtle local-time filter). 8.3 is covered by the art engine. **Still open:** Heaven's Will/Scripture lore (8.5), permadeath/challenge modes (8.6), spirit pet + cave (8.4), seasons (8.7), dungeon art. `checks/world-flavor.js` (17). Docs `docs/systems/world-flavor.md` |
 
+| **Monetization — free & paid (Phase 53)** | ◐ **Framework built 2026-11-26**: a build-time `APP_VARIANT` (`free` default / `paid`) rewired by `scripts/build-ios-web.js`; the **free edition** shows an **optional rewarded-ad card every 30 min of ACTIVE play** (declining costs nothing, re-asks later) worth a small boon (10 min of Qi + 25 stones); the **paid $2 edition is ad-free**. Ads are desktop-suppressed and feature-detect a Capacitor AdMob plugin (none installed yet → the free build stays silent). `checks/ads.js` (13). **Human setup remains:** AdMob account + rewarded unit ids, a Capacitor AdMob plugin, consent/UMP + iOS ATT, privacy/data-safety, and the two store records (or the one-app "Remove ads" IAP alternative). Docs `docs/systems/monetization.md` |
+
 > **Releases (user 2026-09-28): v1 = every pre-Immortal feature (M1–M6, M8, art track, Phase 40); v2 = the Immortal
 > era (M7) + character appearance/portraits (A5, A8–A10).** v1 ends at the first Immortality with the v1 screen. PLAN.md → "Releases".
 
@@ -354,6 +356,21 @@ Built with Electron + vanilla HTML/Canvas. ASCII art animated sprites. No framew
 ## Last Session — UPDATE THIS EVERY SESSION
 
 ```
+Date: 2026-11-26 — part 119
+Agent: **Monetization prep — free & paid editions + optional rewarded ads** (user: separate $2 paid / free-with-ads).
+  - Data: `assets/data/variant.js` (`APP_VARIANT = 'free'`; build rewrites it) + `assets/data/monetization.js`
+    (30-min active cadence, 10-min-Qi + 25-stone reward, ad-unit placeholder).
+  - Engine (`game-state.js`): `s.ad = { sec, next }`; `_tickAds` (only while present); `adPromptDue`/`adMarkShown`;
+    `grantAdReward` (clamped); `adsEnabled()` = free variant AND a native Capacitor platform (or a dev sim).
+  - UI (`renderer/game/ads.js`): `AdPromptUI` (a calm Watch/Not-now card, never over another popup) + `RewardedAd`
+    (feature-detected plugin wrapper, several APIs). Wired in the game loop.
+  - Build: `scripts/build-ios-web.js` injects the edition from `APP_VARIANT`; `npm run build:web` = free.
+  - Docs: new `docs/systems/monetization.md` (editions, cadence, AdMob/consent/store setup, the two-app vs one-app
+    IAP trade-off). `checks/ads.js` (13). PLAN Phase 53 added.
+  - **Human setup remains:** AdMob account + unit ids, install a Capacitor AdMob plugin, UMP/ATT consent, privacy
+    policy + data-safety, and the two store records (or the single-app "Remove ads" IAP route, recommended).
+  Next: mobile device pass + store assets; or the final 320h active confirmation.
+
 Date: 2026-11-26 — part 118
 Agent: **Cleanup + QA round 1** (user: start cleanup and qa).
   - **M8 cleanup finished (commit 6699497):** scripture codex (World → Events), challenge modes (chosen before

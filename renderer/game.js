@@ -355,6 +355,7 @@
       if (!tickRunning) return
       step(now)
       tutorialUI?.tick()   // 1.23: a tip on screen follows its target; otherwise look for the next one
+      AdPromptUI.tick(gameState)   // free edition: the optional rewarded-ad prompt (no-op on the paid/desktop build)
       requestAnimationFrame(loop)
     }
     requestAnimationFrame(loop)
