@@ -116,8 +116,8 @@ const NPC_WORLD = {
     { id: 'low', name: 'Mortals & Qi Condensation', short: 'Qi Cond.', from: 0,  to: 9,  target: 190 },
     { id: 'fb',  name: 'Foundation Building',       short: 'Found.',   from: 10, to: 12, target: 30 },
     { id: 'cf',  name: 'Core Formation',            short: 'Core',     from: 13, to: 15, target: 14 },
-    { id: 'ns',  name: 'Nascent Soul',              short: 'Nascent',  from: 16, to: 18, target: 8 },
-    { id: 'ss',  name: 'Spirit Severing',           short: 'Severing', from: 19, to: 21, target: 4 },
+    { id: 'ns',  name: 'Nascent Soul',              short: 'Nascent',  from: 16, to: 18, target: 10 },
+    { id: 'ss',  name: 'Spirit Severing',           short: 'Severing', from: 19, to: 21, target: 5 },
   ],
   tolerance: 0.15,            // "thin" below target × (1 − this), "crowded" above target × (1 + this)
 

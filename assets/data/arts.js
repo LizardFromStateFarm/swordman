@@ -276,6 +276,20 @@ const ARTS_LIST = [
     'The Sovereign of the Golden Pit fights like the pit is on fire. It usually is.', { sig: 'arena:golden' }),
   A('soul_lotus_bloom', 'Soul Lotus Bloom', '魂莲绽', 'wood', 'heaven', 16, 'move', { type: 'drain', power: 76, cost: 44, drain: 0.5, status: { id: 'entangle', chance: 0.5, turns: 2 }, desc: 'A lotus of soul-light that drinks from the enemy and binds them.' },
     'The Keeper of the Soul Lotus does not strike. The lotus does.', { sig: 'arena:lotus' }),
+
+  // ── Late realm (Phase 51): arts past stage 16, so 18 / 20 / 21 each hand out something new ──
+  A('starfall_spear', 'Starfall Spear', '陨星矛', 'metal', 'heaven', 18, 'move', { type: 'multi', power: 34, hits: 4, cost: 52, status: { id: 'bleed', chance: 0.3, turns: 2 }, desc: 'Four spears of falling starlight; each may open a wound.' },
+    'A star dies somewhere, and its last light arrives as a spear.'),
+  A('grand_circulation', 'Grand Circulation', '大周天', 'neutral', 'heaven', 18, 'passive', { stat: 'qiRegen', value: 8, desc: '+8 combat Qi every turn.' },
+    'Every meridian open at once, and the breath goes round without end.'),
+  A('world_ending_palm', 'World-Ending Palm', '倾世掌', 'neutral', 'immortal', 20, 'move', { type: 'finisher', power: 130, cost: 64, finisher: 1.1, desc: 'A palm that ends what it touches; far stronger against a wounded foe.' },
+    'When the palm descends, the world does not end. It simply stops arguing.'),
+  A('nine_heavens_breath', 'Nine Heavens Breath', '九天息', 'neutral', 'immortal', 20, 'passive', { stat: 'qiPool', value: 40, desc: '+40 combat Qi at the start of a fight.' },
+    'Nine heavens, one breath between them.'),
+  A('dao_anchoring_art', 'Dao-Anchoring Art', '定道功', 'earth', 'immortal', 21, 'passive', { stat: 'ward', value: 0.22, desc: '+22% Ward.' },
+    'The Dao is not held by strength. It is held by not moving.'),
+  A('heavenly_gate_sunder', 'Heavenly Gate Sunder', '天关裂', 'metal', 'immortal', 21, 'move', { type: 'strike', power: 165, cost: 70, status: { id: 'guardbreak', chance: 0.6, turns: 3 }, desc: 'A blow meant to crack the heavenly gate itself.' },
+    'Turned on a mortal, it is merely overkill.'),
 ]
 
 const ARTS = Object.fromEntries(ARTS_LIST.map(a => [a.id, a]))

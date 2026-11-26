@@ -85,4 +85,19 @@ const LOCATIONS = [
       { itemId: 'spirit_stone',  weight: 1, minQty: 5, maxQty: 10 },
     ],
   },
+  // Phase 51: the late-game expedition — stages 21 had no location of its own.
+  {
+    id: 'sky_altar',
+    name: 'Sky Altar', nameCN: '天坛',
+    desc: 'An altar balanced on the last stair of the world, where the heavens are thin enough to touch.',
+    minStage: 21,
+    duration: 900,
+    enemyTier: 5,
+    dropTable: [
+      { itemId: 'chaos_essence', weight: 5, minQty: 1, maxQty: 3 },
+      { itemId: 'void_crystal',  weight: 4, minQty: 1, maxQty: 2 },
+      { itemId: 'celestial_herb', weight: 3, minQty: 1, maxQty: 2 },
+      { itemId: 'spirit_stone',  weight: 2, minQty: 8, maxQty: 15 },
+    ],
+  },
 ]

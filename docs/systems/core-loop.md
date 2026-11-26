@@ -89,3 +89,20 @@ color            — hex string for UI tinting
   chance-based Ascension Trial (`attemptAscension()` / `ascensionChance()`); see `docs/systems/bloodline.md`
   (Phase 23A–C) for the survival curve, Bloodline Quality, and death/reincarnation.
 - `_ensurePhase2Fields()` is called at the top of every `_recalc` for save-migration safety; add Phase N fields there when new phases are implemented
+
+## Phase 51 — The Long Climb (as built, 2026-11-26)
+
+Closes the late-stage dead zones.
+
+- **The Qi curve:** the cap : `baseQps` ratio (raw seconds to fill a stage at 1×) is now bounded —
+  **≤ 1.5× the previous stage within a realm**, **≤ 2× across a realm boundary** — so no stage balloons.
+  This cut the `cf_mid` ×3.11 jump and the SS-late ~245 h raw fill to ~121 h. The re-curve is checked by
+  `scripts/sim/checks/late-game.js` (ratio envelope + content coverage). The absolute pacing still needs the
+  final QA pass (`MORTAL/PACING` targets + `FIRST_ASCENSION_H` were measured on the old curve).
+- **Late content:** 6 techniques past stage 10 (`starlight_sutra` 12 → `heaven_gate_key` 21, small multipliers
+  so they don't undo the curve smoothing); 6 arts at 18/20/21 so every stage 16–21 now has an art;
+  a stage-21 expedition (`sky_altar`). The Arena already covered a stage-21 champion.
+- **World bands (51d):** Nascent Soul target 8 → 10, Spirit Severing 4 → 5, so the high realms stay populated.
+- **51c (repeatable late activity):** the stage-21 `sky_altar` expedition + the late arts/techniques are the
+  repeatable pursuit for now; a dedicated late "Secret Realm" activity is still open for the final QA pass.
+- `scripts/sim/checks/late-game.js` (229 ok) pins all of the above.

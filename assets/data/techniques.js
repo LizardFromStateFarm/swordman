@@ -60,4 +60,50 @@ const TECHNIQUES = [
     effect: { type: 'karma_gain', value: 0.5 },
     flavor: '"Every deed sows seeds. Tend them well."',
   },
+
+  // ── LATE REALM (Phase 51: techniques past stage 10 — the late dead zone) ────
+  // Small multipliers on purpose: they stack on every earlier technique, so a big value would balloon
+  // the late Qi curve the same phase is smoothing. Costs scale with late-stage stone income.
+  {
+    id: 'starlight_sutra', name: 'Starlight Sutra', nameCN: '星光经',
+    element: 'any', minStage: 12, cost: 4000,
+    desc: 'Draws the cold light of distant stars into the meridians.',
+    effect: { type: 'qps_mult', value: 1.30 },
+    flavor: '"A star is a sun that learned patience."',
+  },
+  {
+    id: 'heart_of_heaven', name: 'Heart of Heaven', nameCN: '天心诀',
+    element: 'any', minStage: 14, cost: 8000,
+    desc: 'Aligns the Dao heart with the turning of heaven. Steadies every breakthrough.',
+    effect: { type: 'breakthrough_bonus', value: 0.05 },
+    flavor: '"Ask not for a longer road. Ask for steadier feet."',
+  },
+  {
+    id: 'void_marrow', name: 'Void Marrow Refinement', nameCN: '虚髓炼',
+    element: 'void', minStage: 16, cost: 16000,
+    desc: 'Hollows the marrow so it can hold more of the void.',
+    effect: { type: 'qi_cap_mult', value: 1.35 },
+    flavor: '"Make of yourself a vessel with no bottom."',
+  },
+  {
+    id: 'nine_turn_orbit', name: 'Nine-Turn Orbit', nameCN: '九转周天',
+    element: 'any', minStage: 18, cost: 32000,
+    desc: 'Nine complete circulations in a single breath, each faster than the last.',
+    effect: { type: 'qps_mult', value: 1.40 },
+    flavor: '"The first turn is the world. The ninth is the Dao."',
+  },
+  {
+    id: 'immortal_breath', name: 'Immortal Breath', nameCN: '仙息',
+    element: 'any', minStage: 20, cost: 64000,
+    desc: 'A breath taken once an hour, each one worth a mortal lifetime of gathering.',
+    effect: { type: 'qps_mult', value: 1.50 },
+    flavor: '"Mortals count breaths. Immortals count ages."',
+  },
+  {
+    id: 'heaven_gate_key', name: "Heaven's Gate Key", nameCN: '天关钥',
+    element: 'void', minStage: 21, cost: 120000,
+    desc: 'The last lock before the heavenly gate answers a little more readily.',
+    effect: { type: 'breakthrough_bonus', value: 0.06 },
+    flavor: '"The gate was never locked. It was only waiting for a hand that had earned it."',
+  },
 ]
